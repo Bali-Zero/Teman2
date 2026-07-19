@@ -1,0 +1,473 @@
+{
+  "_meta": {
+    "purpose": "GARUDA-FILIERA l4_bali disclosure cure: 56 STALE-CERTIFYING codes (+ 1 guarded, 80190) whose l4_bali block derives its Bali-moratorium verdict from a kategori_risiko tier that now exists ONLY in the disowned per_skala_disputed_pp28_collision block, while asserting confidence MEDIUM/HIGH and needs_review:false (some blocked:true at HIGH confidence, e.g. 52105 seed finding).",
+    "created": "2026-07-19",
+    "gate_reference": "Lot 6 gate report Appendix A §A.2 (fase1/batch-a certification-contract pattern) + census $HOME/.claude/jobs/680a67f6/tmp/census_output.json (census_disputed.py, read-only, run 2026-07-19)",
+    "hard_rule": "This cure changes ONLY l4_bali.confidence -> LOW, l4_bali.needs_review -> true, and l4_bali.reason (disclosure-wrapped, original preserved as audit-trail substring). l4_bali.status and l4_bali.blocked are NEVER modified — flipping either would be a re-derivation requiring true risk (F15: conservative posture stays). moratorium/from_2020/review_basis (when present) are copied through unchanged.",
+    "disclosure_template": {
+      "prefix": "[derivation under review] ",
+      "suffix_format": " — NOTE: the risk tier this verdict was derived from has been detached to {disputed_key} (see _data_note); verdict pending re-derivation from the true risk tier (GARUDA-FILIERA).",
+      "modeled_on": "8 pilot DISCLOSED records (49213, 68112, et al.) — vocabulary 'has been detached' / 'pending re-derivation' / '(GARUDA-FILIERA)' verbatim-shared with their l4_bali.reason phrasing."
+    }
+  },
+  "codes": {
+    "01700": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "02201": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "02402": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "PMA TERBUKA 100% (ex-02401 recoding Jasa Penggunaan Kawasan Hutan). Risk Menengah-Tinggi.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "02409": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "05102": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "05200": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "08920": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "19206": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "36003": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "38222": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "39001": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "42999": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "49233": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "49296": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "50113": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "52103": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "52105": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "52219": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "52232": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "52239": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "52299": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "60101": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "60103": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "60201": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "60203": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "60311": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "TERTUTUP",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "61905": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "61909": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "64220": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64320": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64330": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64920": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64940": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64955": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "64996": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "64997": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66113": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66116": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66123": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66124": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66129": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66131": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66132": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66149": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66153": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66159": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66192": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66197": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66211": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66224": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66292": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66299": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "66309": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true
+    },
+    "68123": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "68125": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "68126": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "80190": {
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "pending_pr": 2800,
+      "pending_pr_note": "80190 lives on origin/kbli/lot6-data-apply (PR #2800, auto-merge armed SQUASH as of 2026-07-19). Its l4_bali on origin/main today is still the STALE pre-cure shape but carries NO per_skala_disputed_* key yet (added by #2800, not yet merged). The compiler's generic disputed-key-absent guard skips this code WITH A WARNING (never silently) until #2800 merges. Re-run with --apply after the merge (or after rebasing this branch onto main) to activate the cure for 80190 — no spec change needed."
+    }
+  }
+}
