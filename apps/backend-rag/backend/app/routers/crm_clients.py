@@ -1274,6 +1274,12 @@ class ClientUpsertByPhone(BaseModel):
     restore_if_archived: bool = True
     improve_name: bool = True
     notes_append_min_age_hours: int = 24  # on enrich, append notes at most once per window
+    # Identity-RESOLUTION callers (intake delivery bridge) set this: a shared
+    # phone (matched_count > 1) must fail BEFORE any restore/rename/update —
+    # the "best match" pick is arbitrary and mutating it writes the caller's
+    # name onto a stranger (Codex 2026-07-19 round 6, F10). Default False keeps
+    # the wa-mirror lead-promotion semantics unchanged.
+    reject_ambiguous: bool = False
 
     @field_validator("phone_normalized")
     @classmethod
@@ -1321,6 +1327,17 @@ async def upsert_client_by_phone(
                 phone,
             )
             matched_count = len(rows)
+
+            if payload.reject_ambiguous and matched_count > 1:
+                # Fail BEFORE any restore/rename/update (F10): with a shared
+                # phone the rows[0] pick is arbitrary — nothing may be mutated.
+                return {
+                    "client_id": None,
+                    "was_created": False,
+                    "action": "rejected_ambiguous",
+                    "matched_count": matched_count,
+                    "recap_applied": False,
+                }
 
             if rows:
                 row = rows[0]

@@ -111,6 +111,13 @@ def strong_id_lock_value(kind: str, raw: object) -> str:
     return re.sub(r"[\s.\-/]", "", s).upper()
 
 
+class StrongIdLockBusy(TimeoutError):
+    """The bounded advisory-lock wait expired — the strong-id value is
+    contended by a concurrent transaction. Dedicated type so callers can treat
+    LOCK contention as a benign skip without swallowing unrelated timeouts
+    (Codex 2026-07-19 round 6, F9)."""
+
+
 async def acquire_strong_id_lock(conn: asyncpg.Connection, kind: str, value: str) -> None:
     """Take a transaction-scoped advisory lock on one strong-id value.
 
@@ -120,15 +127,19 @@ async def acquire_strong_id_lock(conn: asyncpg.Connection, kind: str, value: str
     at TX end, so the gate (verify) and the enricher (write) can nest inside
     the same commit without deadlocking themselves. The client-side timeout
     bounds the wait so a stuck peer TX cannot occupy a worker lane forever
-    (round-4 F6) — the caller's TX aborts and the worker retry/DLQ machinery
-    handles it.
+    (round-4 F6); expiry raises :class:`StrongIdLockBusy` — NOTE: the enclosing
+    transaction is aborted by the cancelled statement, so callers must let this
+    propagate out of their transaction context (rollback), never continue in it.
     """
-    await conn.fetchval(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, $2))",
-        f"strongid:{kind}:{strong_id_lock_value(kind, value)}",
-        STRONG_ID_LOCK_SEED,
-        timeout=10.0,
-    )
+    try:
+        await conn.fetchval(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, $2))",
+            f"strongid:{kind}:{strong_id_lock_value(kind, value)}",
+            STRONG_ID_LOCK_SEED,
+            timeout=10.0,
+        )
+    except TimeoutError as exc:
+        raise StrongIdLockBusy(f"advisory lock busy for strong-id kind={kind}") from exc
 
 
 def _clean_str(value: Any) -> str | None:

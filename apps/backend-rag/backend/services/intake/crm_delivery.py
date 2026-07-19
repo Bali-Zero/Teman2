@@ -48,14 +48,14 @@ async def deliver_committed_to_crm(
 
     blob_path: str | None = None
     mime_type: str | None = None
-    sender_phone: str | None = None
+    resolution_phone: str | None = None
     client_full_name: str | None = None
     already: asyncpg.Record | None = None
     async with pool.acquire() as conn:
         if queue_id is not None:
             qrow = await conn.fetchrow(
                 """
-                SELECT q.blob_path, di.mime_type, q.sender_phone
+                SELECT q.blob_path, di.mime_type
                 FROM intake_queue q
                 LEFT JOIN document_instances di ON di.id = q.instance_id
                 WHERE q.id = $1
@@ -65,18 +65,26 @@ async def deliver_committed_to_crm(
             if qrow is not None:
                 blob_path = qrow["blob_path"]
                 mime_type = qrow["mime_type"]
-                sender_phone = qrow["sender_phone"]
-        # Local client name — used ONLY to name a fresh Fly lead if the cross-DB
-        # phone-upsert has to create one (placeholder "Lead +<phone>" names are
-        # skipped so they never overwrite a better Fly name). Derived field only.
+        # Identity resolution is keyed on the SELECTED client's own canonical
+        # phone — NEVER the transport sender phone (Codex 2026-07-19 round 6,
+        # F5): a forwarder A can send B's document; after the reviewer assigns
+        # it to B, resolving Fly by A's phone would deliver B's PII to A. The
+        # committed plan.client_id is the reviewed identity ground truth; if
+        # that client has no phone on the local card, delivery fails CLOSED
+        # (identity_unresolved) rather than guessing. The name is used ONLY to
+        # label a fresh Fly lead (placeholder "Lead +<phone>" names skipped).
         if plan.client_id is not None:
             crow = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", int(plan.client_id)
+                "SELECT full_name, phone_normalized FROM clients WHERE id = $1",
+                int(plan.client_id),
             )
             if crow is not None:
                 _name = (crow["full_name"] or "").strip()
                 if _name and not _name.lower().startswith("lead "):
                     client_full_name = _name
+                _phone = (crow["phone_normalized"] or "").strip()
+                if _phone:
+                    resolution_phone = _phone
         if result.doc_id is not None:
             already = await conn.fetchrow(
                 "SELECT file_id, file_url FROM documents WHERE id = $1", result.doc_id
@@ -108,7 +116,7 @@ async def deliver_committed_to_crm(
             mime_type=mime_type,
             expiry_date=payload.get("expiry_date"),
             notes=payload.get("notes"),
-            sender_phone=sender_phone,
+            sender_phone=resolution_phone,
             client_full_name=client_full_name,
         )
 

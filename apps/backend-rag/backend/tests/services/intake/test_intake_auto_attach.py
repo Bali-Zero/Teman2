@@ -547,19 +547,30 @@ async def test_lock_busy_timeout_is_benign_skip(monkeypatch):
     BENIGN skip (proposal untouched), never as an exception that burns worker
     retry attempts toward poison-pill."""
 
+    from backend.services.intake import client_enricher
+
     async def _boom(proposal, pool, *, sender_phone):
-        raise TimeoutError("lock wait exceeded")
+        raise client_enricher.StrongIdLockBusy("lock wait exceeded")
 
     monkeypatch.setattr(auto_attach, "_try_auto_attach_inner", _boom)
     out = await auto_attach.try_auto_attach({"id": 9}, None, sender_phone="0812")
     assert out == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 9}
 
     async def _boom3(proposal, pool):
-        raise TimeoutError("lock wait exceeded")
+        raise client_enricher.StrongIdLockBusy("lock wait exceeded")
 
     monkeypatch.setattr(auto_attach, "_try_nameid_auto_attach_inner", _boom3)
     out3 = await auto_attach.try_nameid_auto_attach({"id": 11}, None)
     assert out3 == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 11}
+
+    # Round-6 F9 innocence: a NON-lock TimeoutError (e.g. an HTTP/read timeout
+    # from unrelated code) must NOT be masked as a benign skip — it propagates.
+    async def _other_timeout(proposal, pool, *, sender_phone):
+        raise TimeoutError("some unrelated timeout")
+
+    monkeypatch.setattr(auto_attach, "_try_auto_attach_inner", _other_timeout)
+    with pytest.raises(TimeoutError):
+        await auto_attach.try_auto_attach({"id": 9}, None, sender_phone="0812")
 
 
 def test_strong_id_lock_key_converges_across_formatting():

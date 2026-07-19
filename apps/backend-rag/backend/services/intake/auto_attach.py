@@ -765,7 +765,7 @@ async def try_auto_attach(
     proposal_id = dict(proposal).get("id")
     try:
         return await _try_auto_attach_inner(proposal, pool, sender_phone=sender_phone)
-    except TimeoutError:
+    except client_enricher.StrongIdLockBusy:
         logger.info(
             "auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
             "(bounded wait exceeded — will be re-evaluated later)",
@@ -1071,7 +1071,7 @@ async def try_nameid_auto_attach(
     proposal_id = dict(proposal).get("id")
     try:
         return await _try_nameid_auto_attach_inner(proposal, pool)
-    except TimeoutError:
+    except client_enricher.StrongIdLockBusy:
         logger.info(
             "nameid_auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
             "(bounded wait exceeded — will be re-evaluated later)",

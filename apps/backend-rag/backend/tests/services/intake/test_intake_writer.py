@@ -1234,6 +1234,98 @@ async def test_pre_m248_candidate_shape_fails_closed(pool, seed, monkeypatch):
     assert "needs human" in verdict["reason"]
 
 
+async def test_delivery_resolves_by_selected_client_phone_not_sender(pool, seed, monkeypatch):
+    """Round-6 F5 guilt: a forwarder A sends B's document; after review assigns
+    it to B, Fly identity must be resolved by B's OWN canonical phone — never by
+    the transport sender phone (which belongs to A)."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    sender_phone = "62" + str(uuid.uuid4().int + 7)[:9]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2",
+            client_phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET sender_phone=$1 "
+            "WHERE id=(SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            sender_phone,
+            seed["p_a"],
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f5")
+
+    out = await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] == client_phone  # the SELECTED client's phone
+    assert captured["sender_phone"] != sender_phone
+    assert out["status"] == "identity_unresolved"
+
+
+async def test_delivery_fails_closed_when_selected_client_has_no_phone(pool, seed, monkeypatch):
+    """Round-6 F5 innocence: selected client with NO phone on the card → the
+    push receives sender_phone=None and delivery fails closed downstream —
+    the transport sender phone is never used as a fallback."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=NULL WHERE id=$1", seed["cid_a"]
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET sender_phone=$1 "
+            "WHERE id=(SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            "628123450000",
+            seed["p_a"],
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f5b")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None
+
+
 async def test_enrichment_failure_never_rolls_back_document_commit(pool, seed, monkeypatch):
     """Savepoint proof (Codex finding 2): enrichment SQL blowing up mid-commit must
     NOT abort the document write — the enricher runs in a nested transaction and

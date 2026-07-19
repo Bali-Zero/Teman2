@@ -156,6 +156,9 @@ async def _ensure_client_on_fly(
         "phone_normalized": digits,
         "create_if_missing": True,
         "lead_source": "whatsapp_auto",
+        # Resolution must be mutation-safe on shared phones: the endpoint
+        # refuses BEFORE any restore/rename when >1 rows match (F10).
+        "reject_ambiguous": True,
     }
     if full_name and full_name.strip():
         body["full_name"] = full_name.strip()
