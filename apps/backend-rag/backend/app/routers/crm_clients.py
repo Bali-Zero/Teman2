@@ -42,7 +42,13 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
-from backend.db.repositories.client_repository import ClientRepository
+from backend.db.repositories.client_repository import (
+    DUP_OWNER_SQL,
+    ClientRepository,
+    DuplicatePhoneError,
+    incoming_phone_cores,
+)
+from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
 
@@ -52,20 +58,57 @@ logger = get_logger(__name__)
 def _normalize_phone_digits(raw: str | None) -> str | None:
     """Reduce a phone to a comparable digit tail for dedup.
 
-    Strips every non-digit, then drops the Indonesian country/trunk prefix
-    (`62` or a leading `0`) so `+62 821-3454-721`, `0821 3454721` and
-    `8213454721` all collapse to the same key. Returns None for empty/too-short
-    input (a 1-2 digit fragment is never a usable dedup key).
+    Delegates to the SINGLE canonical projection ``backend.phone_lock
+    .phone_core`` (digits, one leading ``62``/``0`` prefix stripped, ≥6) —
+    shared with the intake-delivery gate and every phone writer, so "the same
+    phone" has exactly one definition (Codex 2026-07-19 round 10).
     """
-    if not raw:
-        return None
-    digits = re.sub(r"\D", "", raw)
-    if digits.startswith("62"):
-        digits = digits[2:]
-    elif digits.startswith("0"):
-        digits = digits[1:]
-    return digits if len(digits) >= 6 else None
+    return phone_core(raw)
 
+
+def _row_str(row: object, key: str) -> str | None:
+    """Subscript a DB row (asyncpg Record / dict) for a string column,
+    tolerating missing keys and non-string test doubles."""
+    if row is None:
+        return None
+    try:
+        value = row[key]  # type: ignore[index]
+    except (KeyError, TypeError):
+        return None
+    return value if isinstance(value, str) else None
+
+
+# Core-equivalence matcher for upsert-by-phone: matches every stored row whose
+# phone columns collapse to the same canonical core as the payload — 0812… and
+# 62812… are ONE identity (Codex 2026-07-19 round 10, F15). The predicate
+# covers ALL THREE ownership columns: phone_normalized + raw phone (round 12:
+# historical rows exist with a raw `phone` and a NULL/stale `phone_normalized`
+# — the trigger only recomputes on UPDATE OF phone) + whatsapp (round 15, F21:
+# whatsapp is an ownership column for the dedup/upload gates, so a
+# whatsapp-only owner must be VISIBLE to the resolver too, or the two sides
+# enumerate "owner" differently). $1 is the payload's core. SQL CASE mirrors
+# backend.phone_lock.phone_core.
+UPSERT_MATCH_SQL = """
+SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
+FROM clients
+WHERE CASE WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') END = $1
+   OR CASE WHEN regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') END = $1
+   OR CASE WHEN regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') END = $1
+ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
+FOR UPDATE
+"""
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
@@ -553,38 +596,17 @@ async def create_client(
         # for legitimate shared-phone people (spouses / reused numbers — 51 live
         # groups). The auto-promote path already dedups via upsert_client_by_phone;
         # this closes the manual-create hole.
-        phone_norm = _normalize_phone_digits(client.phone or client.whatsapp)
-        if phone_norm and not allow_dup_phone:
-            # Match on digits-only on BOTH sides: the table stores phone in two
-            # inconsistent shapes (E.164 `+62…` in `phone`, bare digits in
-            # `phone_normalized`), and that drift is part of why duplicates slip
-            # through. Compare normalized-to-digits to catch either shape.
+        incoming_cores = incoming_phone_cores(client.phone, client.whatsapp)
+        if incoming_cores and not allow_dup_phone:
+            # DUP_OWNER_SQL is the SAME query the repository re-runs under the
+            # phonecore lock (round 13, F16): every incoming core (phone AND
+            # whatsapp) against ALL three stored columns independently — the
+            # earlier COALESCE let a stale non-null phone_normalized hide the
+            # raw phone, and whatsapp-only owners were invisible. Keeping
+            # pre-check and re-check on one constant is load-bearing: if they
+            # drift, the gate silently diverges (false safety).
             async with db_pool.acquire() as conn:
-                # Mirror `_normalize_phone_digits` IN SQL: strip non-digits, then
-                # drop a leading `62` or `0` so both sides collapse to the same
-                # tail. Keeping these two normalizers identical is load-bearing —
-                # if they drift, the gate silently never matches (false safety).
-                dup = await conn.fetchrow(
-                    """
-                    WITH norm AS (
-                        SELECT id, full_name, assigned_to, updated_at,
-                               REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
-                                              '\\D', '', 'g') AS digits
-                        FROM clients
-                        WHERE deleted_at IS NULL
-                    )
-                    SELECT id, full_name, assigned_to
-                    FROM norm
-                    WHERE CASE
-                            WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
-                            WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
-                            ELSE digits
-                          END = $1
-                    ORDER BY updated_at DESC NULLS LAST
-                    LIMIT 1
-                    """,
-                    phone_norm,
-                )
+                dup = await conn.fetchrow(DUP_OWNER_SQL, incoming_cores)
             if dup:
                 # Do NOT log the raw phone (UU PDP / Law 2: no PII in clear text —
                 # CodeQL clear-text-logging gate). The existing client id is a
@@ -637,12 +659,37 @@ async def create_client(
                 if nib:
                     company_data["nib"] = nib
 
-        # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
-        created_record = await client_service.create_client(
-            client_data=client_data,
-            company_data=company_data,
-            existing_company_id=existing_company_id,
-        )
+        # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors).
+        # enforce_unique_phone_core (round 12, F16): the dedup pre-check above
+        # runs OUTSIDE the create transaction — arm the repository's
+        # under-lock re-check so two concurrent creates cannot both pass it
+        # and double-insert.
+        try:
+            created_record = await client_service.create_client(
+                client_data=client_data,
+                company_data=company_data,
+                existing_company_id=existing_company_id,
+                enforce_unique_phone_core=not allow_dup_phone,
+            )
+        except DuplicatePhoneError as dup_err:
+            logger.info(
+                "create_client phone dedup hit under lock: existing client id=%s",
+                dup_err.existing_client_id,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "duplicate_phone",
+                    "message": (
+                        "A client with this phone already exists. Open the "
+                        "existing record, or resend with allow_duplicate_phone "
+                        "to add a separate person on a shared number."
+                    ),
+                    "existing_client_id": dup_err.existing_client_id,
+                    "existing_full_name": dup_err.existing_full_name,
+                    "existing_assigned_to": dup_err.existing_assigned_to,
+                },
+            ) from dup_err
 
         new_client = dict(created_record)
 
@@ -1274,6 +1321,12 @@ class ClientUpsertByPhone(BaseModel):
     restore_if_archived: bool = True
     improve_name: bool = True
     notes_append_min_age_hours: int = 24  # on enrich, append notes at most once per window
+    # Identity-RESOLUTION callers (intake delivery bridge) set this: a shared
+    # phone (matched_count > 1) must fail BEFORE any restore/rename/update —
+    # the "best match" pick is arbitrary and mutating it writes the caller's
+    # name onto a stranger (Codex 2026-07-19 round 6, F10). Default False keeps
+    # the wa-mirror lead-promotion semantics unchanged.
+    reject_ambiguous: bool = False
 
     @field_validator("phone_normalized")
     @classmethod
@@ -1309,23 +1362,64 @@ async def upsert_client_by_phone(
             # Serialize concurrent upserts for THIS phone (insert-race proof without a
             # unique index, which is infeasible: 51 live shared-phone groups exist).
             await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", phone)
+            _core = _normalize_phone_digits(phone)
+            if _core:
+                # Canonical phone-core lock: converges with the intake-delivery
+                # resolution window and the PATCH phone writer even when the
+                # stored formats/prefixes differ (0812… vs 62812…) — round-9
+                # F12/F13. Acquisition order is lexicographic (the digits key
+                # above always sorts before 'phonecore:…'), giving every
+                # participant the same total order: deadlock-safe.
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext($1))", f"phonecore:{_core}"
+                )
 
-            rows = await conn.fetch(
-                """
-                SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
-                FROM clients
-                WHERE phone_normalized = $1
-                ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
-                FOR UPDATE
-                """,
-                phone,
-            )
+            if _core:
+                rows = await conn.fetch(UPSERT_MATCH_SQL, _core)
+            else:
+                # Payload too short to yield a core — legacy exact match.
+                rows = await conn.fetch(
+                    """
+                    SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
+                    FROM clients
+                    WHERE phone_normalized = $1
+                    ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
+                    FOR UPDATE
+                    """,
+                    phone,
+                )
             matched_count = len(rows)
+
+            if payload.reject_ambiguous and matched_count > 1:
+                # Fail BEFORE any restore/rename/update (F10): with a shared
+                # phone the rows[0] pick is arbitrary — nothing may be mutated.
+                return {
+                    "client_id": None,
+                    "was_created": False,
+                    "action": "rejected_ambiguous",
+                    "matched_count": matched_count,
+                    "recap_applied": False,
+                    "was_archived": False,
+                }
 
             if rows:
                 row = rows[0]
                 cid: int = row["id"]
                 was_archived = row["deleted_at"] is not None
+                if was_archived and not payload.restore_if_archived:
+                    # Archived rows are READ-ONLY when restore is disabled: an
+                    # identity-resolution caller must never rename/annotate an
+                    # archived card ahead of its own rejection — the local
+                    # identity it sends may not be this card's person (Codex
+                    # 2026-07-19 round 9, F14). No restore, no name/notes/recap.
+                    return {
+                        "client_id": cid,
+                        "was_created": False,
+                        "action": "skipped_archived",
+                        "matched_count": matched_count,
+                        "recap_applied": False,
+                        "was_archived": True,
+                    }
                 set_parts: list[str] = []
                 params: list[Any] = []
                 pi = 1
@@ -1386,6 +1480,11 @@ async def upsert_client_by_phone(
                     "action": action,
                     "matched_count": matched_count,
                     "recap_applied": recap_applied,
+                    # The matched row was soft-deleted at match time. Identity
+                    # RESOLUTION callers (intake delivery) treat this as
+                    # unresolvable: an archived row cannot prove a live
+                    # identity (Codex 2026-07-19 round 8, F11 archive gap).
+                    "was_archived": was_archived,
                 }
             else:
                 if not payload.create_if_missing:
@@ -1395,6 +1494,7 @@ async def upsert_client_by_phone(
                         "action": "skipped_not_found",
                         "matched_count": 0,
                         "recap_applied": False,
+                        "was_archived": False,
                     }
                 if not payload.full_name or not payload.full_name.strip():
                     raise HTTPException(
@@ -1431,6 +1531,7 @@ async def upsert_client_by_phone(
                     "action": "inserted",
                     "matched_count": 0,
                     "recap_applied": bool(payload.strategic_recap),
+                    "was_archived": False,
                 }
 
     # Cache invalidation OUTSIDE the transaction (HTTP-layer cache; best-effort).
@@ -1532,6 +1633,23 @@ async def update_client(
                         except ValueError:
                             value = None
 
+                # NPWP is a strong-id key (the intake m248 matcher corroborates
+                # doc→client on it): store canonical ASCII digits only, and refuse
+                # incomplete values outright — a fragment on the card poisons
+                # strong-id matching downstream. Empty string → skip (no write;
+                # previously it stored "" on the column).
+                if field == "npwp" and value is not None:
+                    digits = re.sub(r"[^0-9]", "", str(value))
+                    if not str(value).strip():
+                        value = None
+                    elif len(digits) not in (15, 16):
+                        raise HTTPException(
+                            status_code=422,
+                            detail="npwp must contain exactly 15 or 16 digits",
+                        )
+                    else:
+                        value = digits
+
                 # Allow explicit NULL assignment for nullable fields
                 if value is not None or field in nullable_fields:
                     column_name = field_mapping[field]
@@ -1569,7 +1687,62 @@ async def update_client(
             """
             params.append(client_id)
 
-            row = await conn.fetchrow(query, *params)  # nosemgrep
+            if updates.phone is not None or updates.whatsapp is not None:
+                # Phone AND whatsapp are OWNERSHIP columns: intake delivery
+                # and the upload ownership token resolve identity over
+                # phone_normalized, phone and whatsapp alike, so ANY writer
+                # touching EITHER column must be cooperative with the
+                # 'phonecore:' advisory-lock window (Codex rounds 9-10 F12;
+                # round 15 F21 — a whatsapp-only PATCH used to bypass the
+                # protocol entirely). Lock the canonical cores of the NEW
+                # values plus everything the row currently holds, with a
+                # re-read-under-lock CONVERGENCE loop — the pre-lock read can
+                # be stale, so keep re-reading and additively locking until
+                # the row's cores are fully covered by locks we hold.
+                async with conn.transaction():
+                    _locked: set[str] = set()
+                    _converged = False
+                    for _ in range(3):
+                        _cur = await conn.fetchrow(
+                            "SELECT phone, phone_normalized, whatsapp"
+                            "  FROM clients WHERE id = $1",
+                            client_id,
+                        )
+                        _want = {
+                            c
+                            for c in (
+                                phone_core(updates.phone),
+                                phone_core(updates.whatsapp),
+                                phone_core(_row_str(_cur, "phone")),
+                                phone_core(_row_str(_cur, "phone_normalized")),
+                                phone_core(_row_str(_cur, "whatsapp")),
+                            )
+                            if c is not None
+                        }
+                        if _want <= _locked:
+                            _converged = True
+                            break
+                        _locked |= await lock_phone_cores(
+                            conn,
+                            updates.phone,
+                            updates.whatsapp,
+                            _row_str(_cur, "phone"),
+                            _row_str(_cur, "phone_normalized"),
+                            _row_str(_cur, "whatsapp"),
+                        )
+                    if not _converged:
+                        # Fail CLOSED (Codex round 12, F12 gap 1): a value
+                        # oscillating across concurrent writers for 3 rounds
+                        # means we would UPDATE while the row's CURRENT core is
+                        # not among the locks we hold — retryable contention,
+                        # never a silent race.
+                        raise HTTPException(
+                            status_code=409,
+                            detail="phone_lock_convergence_failed — concurrent phone writers, retry",
+                        )
+                    row = await conn.fetchrow(query, *params)  # nosemgrep
+            else:
+                row = await conn.fetchrow(query, *params)  # nosemgrep
 
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
