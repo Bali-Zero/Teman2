@@ -34,16 +34,31 @@
 #      scripts/docs_guardian.sh's weekly L1 job — this script only cures the TABLE drift.
 #
 # P3-prime (2026-07-17, research/operations/2026-07-17-push-pipeline-optimization-spec.md
-# §P3): docs_audit.py --regen-only now runs in a "write mode" that deterministically
-# stamps `orphan_flipped_on` on any doc that just crossed its `orphan_eligible_on` date
-# (real "today", since no --as-of is passed here — this is the ONE legitimate place in
-# the whole pipeline allowed to consult wall-clock for that decision; --check, the PR
-# gate, never does). If $DOCS_AUDIT_STATS_JSON is set, the --json stats payload
-# (includes `flips_this_run`/`flipped_paths`) is captured there for the calling workflow
-# to surface in its PR body/log — see .github/workflows/docs-inventory-refresh.yml. Unset
-# by default so this script's plain-usage contract (scripts/docs_guardian.sh does NOT use
-# this script today, but a future caller that doesn't care about the flip count pays zero
-# extra cost) is unchanged.
+# §P3): docs_audit.py --regen-only runs in a "write mode" that deterministically stamps
+# `orphan_flipped_on` on any doc that just crossed its `orphan_eligible_on` date. If
+# $DOCS_AUDIT_STATS_JSON is set, the --json stats payload (includes
+# `flips_this_run`/`flipped_paths`) is captured there for the calling workflow to surface
+# in its PR body/log — see .github/workflows/docs-inventory-refresh.yml. Unset by default
+# so this script's plain-usage contract (scripts/docs_guardian.sh does NOT use this script
+# today, but a future caller that doesn't care about the flip count pays zero extra cost)
+# is unchanged.
+#
+# DEFAULT MODE vs --organ (footgun fix, 2026-07-19 — PR #2626 landing incident):
+#   default (no args): GATE-CONSISTENT — passes docs_audit.py --gate-consistent, which
+#     never invents a fresh orphan flip and reads provenance from --trusted-ref
+#     (origin/main), i.e. exactly the computation `inventory-check` (docs-guardian.yml)
+#     itself verifies. Safe to run on a PR branch and commit the result: the incident this
+#     cures was this script's OLD default silently consulting real wall-clock ("today"),
+#     which could advance orphan flips a contributor never intended and the PR gate
+#     (which NEVER consults wall-clock, --check is always as_of=None) would then reject as
+#     drift ON THE SAME PR that just ran this script. This is now the recommended
+#     contributor path — also what `inventory-check`'s own failure message points at.
+#   --organ: the OLD dated/wall-clock behavior, explicitly opted into — passes
+#     docs_audit.py --as-of "$(date -u +%Y-%m-%d)" (real "today"; this is the ONE
+#     legitimate place in the whole pipeline allowed to consult wall-clock for the
+#     orphan-eligibility TIME-CROSSING decision — --check, the PR gate, never does). ONLY
+#     the scheduled refresh organ (.github/workflows/docs-inventory-refresh.yml) should
+#     pass this — it is the one caller whose entire job IS advancing flips from real time.
 #
 # Exit code (revised BLOCKER-3, red-team 2026-07-18): 0 on a completed run, REGARDLESS
 # of whether content changed — docs_sync.py (write mode) and docs_audit.py --regen-only
@@ -60,14 +75,28 @@
 # P3-prime liveness guardian, which only sees whether the calling GH Actions STEP
 # succeeded, not what happened inside it.
 #
-# Usage: scripts/docs_inventory_regen.sh   (no args; run from anywhere, cd's to repo root)
-#        DOCS_AUDIT_STATS_JSON=/path/to/out.json scripts/docs_inventory_regen.sh
+# Usage: scripts/docs_inventory_regen.sh            (no args; gate-consistent; run from
+#                                                      anywhere, cd's to repo root)
+#        scripts/docs_inventory_regen.sh --organ     (dated/wall-clock mode; scheduled
+#                                                      refresh organ ONLY)
+#        DOCS_AUDIT_STATS_JSON=/path/to/out.json scripts/docs_inventory_regen.sh [--organ]
 #          (also writes the --json stats payload to that path)
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
+
+ORGAN_MODE=false
+if [[ "${1:-}" == "--organ" ]]; then
+  ORGAN_MODE=true
+fi
+
+if [[ "$ORGAN_MODE" == "true" ]]; then
+  TIME_MODE_ARGS=(--as-of "$(date -u +%Y-%m-%d)")
+else
+  TIME_MODE_ARGS=(--gate-consistent)
+fi
 
 # Kept identical to .github/workflows/docs-guardian.yml's inventory-check step args —
 # see LOCKSTEP NOTICE above.
@@ -115,10 +144,10 @@ if [[ -n "${DOCS_AUDIT_STATS_JSON:-}" ]]; then
   # --json instead of --quiet: stdout (JSON only) goes to the stats file,
   # stderr (including docs_audit's own "advanced N flip(s)..." line, P3-prime)
   # still flows to the caller's log normally.
-  python3 scripts/docs_audit.py --regen-only --json "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" \
+  python3 scripts/docs_audit.py --regen-only --json "${TIME_MODE_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" \
     >"$DOCS_AUDIT_STATS_JSON"
 else
-  python3 scripts/docs_audit.py --regen-only --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}"
+  python3 scripts/docs_audit.py --regen-only --quiet "${TIME_MODE_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}"
 fi
 audit_rc=$?
 if [[ "$audit_rc" -gt 1 ]]; then

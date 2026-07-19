@@ -36,9 +36,11 @@ def _make_fake_repo(tmp_path: Path, *, sync_exit: str, audit_exit: str) -> Path:
     return tmp_path
 
 
-def _run_regen(fake_repo: Path, env: dict | None = None) -> subprocess.CompletedProcess:
+def _run_regen(
+    fake_repo: Path, env: dict | None = None, *args: str
+) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["bash", str(fake_repo / "scripts" / "docs_inventory_regen.sh")],
+        ["bash", str(fake_repo / "scripts" / "docs_inventory_regen.sh"), *args],
         cwd=fake_repo,
         capture_output=True,
         text=True,
@@ -147,3 +149,63 @@ def test_docs_audit_stats_json_path_still_used_on_clean_run(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert stats_path.exists()
     assert '"flips_this_run": 0' in stats_path.read_text()
+
+
+# ============================================================================
+# Footgun fix (2026-07-19, PR #2626 landing incident): the wrapper's default
+# invocation used to pass docs_audit.py no time-mode flag at all, which
+# silently meant "real today" inside docs_audit.py itself (see
+# test_docs_audit.py's own guilt/innocence pair for that half). The fix has
+# a WRAPPER-side half too: the default must thread --gate-consistent, and
+# only an explicit --organ argument may thread --as-of <today> instead. The
+# stub below captures its own argv so these tests verify the WRAPPER's
+# arg-passing plumbing specifically — a bug here (e.g. --organ silently
+# swallowed, or the wrong flag threaded) would not be caught by
+# test_docs_audit.py's tests, which invoke docs_audit.py directly and never
+# exercise this wrapper's own argument-forwarding logic at all.
+# ============================================================================
+
+_STUB_AUDIT_CAPTURE_ARGV = (
+    "#!/usr/bin/env python3\n"
+    "import sys, pathlib\n"
+    "pathlib.Path(__file__).parent.joinpath('captured_argv.txt').write_text(\n"
+    "    '\\n'.join(sys.argv[1:])\n"
+    ")\n"
+    "sys.exit(0)\n"
+)
+
+
+def test_default_invocation_passes_gate_consistent_not_as_of(tmp_path):
+    """INNOCENCE (wrapper plumbing): with no arguments, the wrapper must pass
+    --gate-consistent to docs_audit.py and must NOT pass --as-of — the
+    PR-side/contributor-safe default.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = (fake_repo / "scripts" / "captured_argv.txt").read_text()
+    assert "--gate-consistent" in captured.split("\n"), captured
+    assert "--as-of" not in captured, captured
+
+
+def test_organ_flag_passes_as_of_today_not_gate_consistent(tmp_path):
+    """GUILT/mechanism (wrapper plumbing): with --organ, the wrapper must
+    pass --as-of <today, YYYY-MM-DD> to docs_audit.py and must NOT pass
+    --gate-consistent — the scheduled refresh organ's dated/wall-clock mode,
+    now requiring this explicit opt-in instead of being the silent default.
+    """
+    import datetime
+
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo, None, "--organ")
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = (fake_repo / "scripts" / "captured_argv.txt").read_text().split("\n")
+    assert "--gate-consistent" not in captured, captured
+    assert "--as-of" in captured, captured
+    as_of_value = captured[captured.index("--as-of") + 1]
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    assert as_of_value == today, (as_of_value, today)
