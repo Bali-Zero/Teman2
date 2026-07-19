@@ -7,6 +7,8 @@ replacement: writes are staged in-memory during a poller tick and flushed
 once, per kind, into ONE bot branch + auto-merged PR.
 """
 
+import base64
+import json
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -645,3 +647,191 @@ class TestProcessItemNeverSkipsImageStep:
         mock_image.assert_called_once()
         # mark_step_done must NOT be called for "image" when run_image fails
         assert ("lost-slug", "image") not in [c.args for c in mock_mark.call_args_list]
+
+
+# ── SEO step: migrated off the deprecated `gemini` CLI ──────────────────────
+#
+# `gemini -m gemini-2.5-pro` started returning `IneligibleTierError: ... migrate
+# to the Antigravity suite` — Google discontinued the free-tier CLI outright
+# (confirmed live 2026-07-18), a PERMANENT break, not a PATH/model mismatch.
+# run_seo() now delegates to _seo_llm_complete(), which tries agy first
+# (CLAUDE.md's mandated replacement) then falls back to codex (already wired
+# into this file for cover images) — each pre-flight health-checked so a dead
+# tool leaves the item queued instead of corrupting frontmatter.
+
+
+class TestExtractSeoJson:
+    def test_valid_json_only(self):
+        raw = '{"seoTitle": "Foo", "seoDescription": "Bar"}'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Foo", "seoDescription": "Bar"}
+
+    def test_json_with_surrounding_prose(self):
+        raw = 'Here is the metadata:\n{"seoTitle": "Foo", "seoDescription": "Bar"}\nHope that helps!'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Foo", "seoDescription": "Bar"}
+
+    def test_prompt_echo_then_real_answer_picks_the_last_valid_object(self):
+        # Simulates an agentic CLI echoing an unrelated JSON blob (e.g. its
+        # own input record) before the real answer — must pick the LAST
+        # candidate that parses AND carries an expected key, not the first.
+        raw = '{"unrelated": "echo"}\n\n{"seoTitle": "Real", "seoDescription": "Answer"}'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Real", "seoDescription": "Answer"}
+
+    def test_no_braces_returns_none(self):
+        assert ppp._extract_seo_json("Error: authentication required. Run 'agy' to log in.") is None
+
+    def test_empty_string_returns_none(self):
+        assert ppp._extract_seo_json("") is None
+
+    def test_malformed_json_returns_none(self):
+        assert ppp._extract_seo_json("{seoTitle: not valid json}") is None
+
+
+class TestSeoLlmCascade:
+    def test_agy_healthy_and_generates_uses_agy_only(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=True),
+            patch.object(ppp, "agy_generate_text", return_value='{"seoTitle": "x"}') as mock_agy,
+            patch.object(ppp, "codex_healthy") as mock_codex_healthy,
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoTitle": "x"}', "agy")
+        mock_agy.assert_called_once_with("prompt")
+        mock_codex_healthy.assert_not_called()
+
+    def test_agy_unreachable_falls_back_to_codex(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=False),
+            patch.object(ppp, "codex_healthy", return_value=True),
+            patch.object(ppp, "codex_generate_text", return_value='{"seoDescription": "y"}') as mock_codex,
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoDescription": "y"}', "codex")
+        mock_codex.assert_called_once_with("prompt")
+
+    def test_agy_healthy_but_generation_fails_falls_back_to_codex(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=True),
+            patch.object(ppp, "agy_generate_text", return_value=None),
+            patch.object(ppp, "codex_healthy", return_value=True),
+            patch.object(ppp, "codex_generate_text", return_value='{"seoTitle": "z"}'),
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoTitle": "z"}', "codex")
+
+    def test_both_unreachable_returns_none_never_fabricates(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=False),
+            patch.object(ppp, "codex_healthy", return_value=False),
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert raw is None
+        assert tool == ""
+
+
+def _mdx_frontmatter_payload(body_extra: str = "") -> str:
+    """A `gh api contents/...` response body for a not-yet-optimized MDX file
+    (no answerSnippet in frontmatter, so run_seo won't short-circuit as
+    already-optimized)."""
+    content = (
+        "---\n"
+        'title: "Test Article"\n'
+        'seoTitle: ""\n'
+        "---\n"
+        f"Body text here.{body_extra}\n"
+    )
+    return json.dumps({"content": base64.b64encode(content.encode()).decode("ascii")})
+
+
+class TestRunSeo:
+    def test_valid_json_response_stages_seo_commit(self):
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        seo_json = (
+            '{"seoTitle": "Great SEO Title", "seoDescription": "Great SEO description.", '
+            '"aiOptimization": {"answerSnippet": "The answer.", "primaryQuestion": "What is it?"}}'
+        )
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=(seo_json, "agy")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is True
+        staged = [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"]
+        assert len(staged) == 1
+        decoded = base64.b64decode(staged[0]["content_b64"]).decode()
+        assert "Great SEO Title" in decoded
+        assert "Great SEO description." in decoded
+        assert staged[0]["gh_path"] == "apps/mouth/src/content/articles/business/test-slug.mdx"
+
+    def test_empty_or_non_json_response_does_not_stage_and_returns_false(self):
+        """The CLI ran (agy/codex both reported healthy) but its answer had no
+        parseable JSON (e.g. a stray auth-error string past the health-check,
+        or a truncated response) — must NOT stage a commit and must return
+        False so the item is honestly retried, never a silent no-op success."""
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=("not json at all", "agy")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is False
+        assert [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"] == []
+
+    def test_neither_agy_nor_codex_reachable_leaves_item_queued(self):
+        """Both CLIs unreachable (e.g. agy needs interactive re-auth AND codex
+        token revoked) — must leave the step queued (return False, no staged
+        commit), never fabricate metadata to force a "done" state."""
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=(None, "")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is False
+        assert [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"] == []
+
+    def test_agy_invocation_uses_configured_model_and_sandbox(self):
+        """Regression pin for the actual CLI invocation shape (agy_swarm_
+        commander.py convention: --model "Gemini 3.1 Pro (High)" --sandbox)."""
+        captured = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            captured["env"] = kwargs.get("env")
+            return _res(stdout='{"seoTitle": "x"}')
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            out = ppp.agy_generate_text("some prompt")
+
+        assert out == '{"seoTitle": "x"}'
+        cmd = captured["cmd"]
+        assert cmd[0] == "agy"
+        assert "--model" in cmd and ppp.AGY_MODEL in cmd
+        assert "--sandbox" in cmd
+        assert "--print" in cmd and "some prompt" in cmd
+        # PATH must include agy's install dir even if the cron PATH lacks it
+        assert ppp.AGY_BIN_DIR in captured["env"]["PATH"].split(":")
