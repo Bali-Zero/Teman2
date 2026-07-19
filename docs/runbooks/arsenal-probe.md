@@ -13,12 +13,13 @@ health-ping was recommended 2026-05-24 and never armed — this tool is that arm
 
 ## What it does
 
-One run live-probes every AI seat reachable from this machine (claude, glm, agy, codex,
+One run live-probes every AI seat reachable from this machine (claude, glm, kimi, agy, codex,
 deepseek, ollama, nlm — thread-parallel, per-seat timeouts) and classifies each by OUTPUT
 CONTENT (never exit code alone) into: `LIVE · AUTH_DEAD · CONTEXT_AUTH · QUOTA_DEAD ·
 BALANCE_DEAD · MODEL_ERR · SHED · TIMEOUT · CRED_UNAVAILABLE · NOT_INSTALLED · UNKNOWN_ERR`.
 
 Outputs:
+
 - `~/.organism/arsenal/last.json` (report; previous kept as `prev.json`; transitions computed)
 - `~/.organism/last_seen/<machine>.arsenal_probe.json` (heartbeat sidecar, healer-compatible)
 - stdout table (`--table`), full JSON (`--json`), or one line (`--quiet`)
@@ -45,15 +46,16 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 - `AUTH_DEAD` / `BALANCE_DEAD` / `MODEL_ERR` = persistent and fixable — almost always
   operator-gated:
 
-| Seat dead | Cure (operator unless noted) |
-|---|---|
-| codex AUTH_DEAD | interactive `codex login` on that machine |
-| claude AUTH/QUOTA | `claude auth status`; window cap → wait reset or switch slot |
-| glm AUTH_DEAD | re-copy token from a live keychain (see memory `discovery_glm_mini_seat_armed_fable_model_leak_2026_07_06`) |
-| glm MODEL_ERR | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak) |
-| deepseek BALANCE_DEAD | top-up at platform.deepseek.com |
-| agy AUTH_DEAD (GUI ctx) | interactive `agy` login in a live session |
-| nlm AUTH_DEAD | `nlm login` on Pro (recurs ~monthly) |
+| Seat dead               | Cure (operator unless noted)                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| codex AUTH_DEAD         | interactive `codex login` on that machine                                                                                                                    |
+| claude AUTH/QUOTA       | `claude auth status`; window cap → wait reset or switch slot                                                                                                 |
+| glm AUTH_DEAD           | re-copy token from a live keychain (see memory `discovery_glm_mini_seat_armed_fable_model_leak_2026_07_06`)                                                  |
+| glm MODEL_ERR           | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak)                                                                              |
+| deepseek BALANCE_DEAD   | top-up at platform.deepseek.com                                                                                                                              |
+| agy AUTH_DEAD (GUI ctx) | interactive `agy` login in a live session                                                                                                                    |
+| nlm AUTH_DEAD           | `nlm login` on Pro (recurs ~monthly)                                                                                                                         |
+| kimi AUTH_DEAD          | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19) |
 
 ## Selftest / CI
 

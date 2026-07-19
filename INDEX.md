@@ -162,6 +162,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
 | `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
 | `.claude/skills/visaoracle/` | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |
+| `.claude/skills/workflow/` | Strategic multi-agent orchestration playbook — the Workflow tool wired to the full cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy wi... |
 | `.claude/skills/wr2/` | "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control ... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 
