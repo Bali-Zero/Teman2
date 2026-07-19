@@ -493,6 +493,150 @@ async def test_harvest_to_qdrant_bersyarat_row_still_written() -> None:
     assert point["payload"]["verbatim_eligible"] is False
 
 
+# ── --verbatim-all override (task #27, Zero's Legge-5 order 2026-07-19) ────
+
+
+def test_derive_verbatim_eligible_verbatim_all_promotes_bersyarat_row() -> None:
+    """GUILT — under verbatim_all, a BERSYARAT row (which would be False
+    under the default policy) becomes eligible."""
+    row = _row(confidence_class="BERSYARAT", answer="No figures here.")
+    assert harvest._derive_verbatim_eligible(row) is False
+    assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is True
+
+
+def test_derive_verbatim_eligible_verbatim_all_still_blocks_price_bearing_row() -> None:
+    """INNOCENCE — the FATAL 13 pricing rail is never bypassed by
+    verbatim_all, regardless of confidence_class."""
+    row = _row(confidence_class="BERSYARAT", answer="The processing fee is Rp 5.000.000.")
+    assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is False
+
+    jelas_price_row = _row(confidence_class="JELAS", answer="USD 130,000 deposit.")
+    assert harvest._derive_verbatim_eligible(jelas_price_row, verbatim_all=True) is False
+
+
+def test_derive_verbatim_eligible_verbatim_all_still_blocks_client_specific_price_row() -> None:
+    """INNOCENCE — client_specific + price-bearing under verbatim_all is
+    still refused on the pricing rail alone (client_specific itself is
+    bypassed by the override, but pricing is not)."""
+    row = _row(
+        confidence_class="JELAS",
+        client_specific=True,
+        answer="The deposit is USD 130,000.",
+    )
+    assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is False
+
+
+def test_derive_verbatim_eligible_verbatim_all_false_is_unchanged_default() -> None:
+    """INNOCENCE — verbatim_all defaulting to False leaves every existing
+    default-policy verdict untouched (explicit False, not just omitted)."""
+    jelas_clean = _row(confidence_class="JELAS", answer="No figures here.")
+    bersyarat = _row(confidence_class="BERSYARAT")
+    price_bearing = _row(confidence_class="JELAS", answer="Rp 5.000.000 fee.")
+
+    assert harvest._derive_verbatim_eligible(jelas_clean, verbatim_all=False) is True
+    assert harvest._derive_verbatim_eligible(bersyarat, verbatim_all=False) is False
+    assert harvest._derive_verbatim_eligible(price_bearing, verbatim_all=False) is False
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_verbatim_all_promotes_bersyarat_row_with_provenance(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — flag ON: a BERSYARAT row reaches the FAQ sink and its
+    metadata carries the override provenance stamp."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False, verbatim_all=True)
+
+    assert stats.faq_written == 1
+    assert stats.faq_ineligible_skipped == 0
+    got = await faq_cache.get("Conditional Q", notebook_id=domain_scope_id("visa"))
+    assert got is not None
+    assert got["metadata"]["verbatim_eligible"] is True
+    assert got["metadata"]["verbatim_override"] == harvest.VERBATIM_OVERRIDE_PROVENANCE
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_verbatim_all_off_matches_default_behavior(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """INNOCENCE — flag OFF (the default): a BERSYARAT row is refused
+    exactly like before the override existed, and no metadata carries the
+    override key."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 0
+    assert stats.faq_ineligible_skipped == 1
+    assert await faq_cache.get("Conditional Q", notebook_id=domain_scope_id("visa")) is None
+
+    # A clean JELAS row (unaffected either way) never carries the override
+    # key when the flag is off.
+    clean_rows = [_row(question="Clean Q", confidence_class="JELAS")]
+    await harvest.harvest_to_faq(clean_rows, faq_cache, dry_run=False)
+    got = await faq_cache.get("Clean Q", notebook_id=domain_scope_id("visa"))
+    assert "verbatim_override" not in got["metadata"]
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_verbatim_all_price_bearing_row_still_hard_refused(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """INNOCENCE — the negative-guard proof: with verbatim_all ON, a
+    price-bearing row (any confidence class) is STILL refused by the FAQ
+    sink and counted as a price rejection, never written."""
+    rows = [
+        _row(
+            question="Price Q",
+            confidence_class="BERSYARAT",
+            answer="The processing fee is Rp 5.000.000.",
+        ),
+    ]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False, verbatim_all=True)
+
+    assert stats.faq_written == 0
+    assert stats.faq_price_rejected == 1
+    assert await faq_cache.get("Price Q") is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_qdrant_verbatim_all_promotes_and_stamps_provenance() -> None:
+    """GUILT (Qdrant side) — under verbatim_all, a BERSYARAT row's payload
+    carries verbatim_eligible=True and the override provenance stamp."""
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_qdrant(rows, client, embedder, dry_run=False, verbatim_all=True)
+
+    assert stats.qdrant_written == 1
+    (point,) = client.points.values()
+    assert point["payload"]["verbatim_eligible"] is True
+    assert point["payload"]["verbatim_override"] == harvest.VERBATIM_OVERRIDE_PROVENANCE
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_qdrant_verbatim_all_off_never_carries_override_key() -> None:
+    """INNOCENCE (Qdrant side) — flag OFF: default behavior unchanged, and
+    no payload ever carries the override key."""
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_qdrant(rows, client, embedder, dry_run=False)
+
+    assert stats.qdrant_written == 1
+    (point,) = client.points.values()
+    assert point["payload"]["verbatim_eligible"] is False
+    assert "verbatim_override" not in point["payload"]
+
+
 # ── ensure_qdrant_collection ─────────────────────────────────────────────────
 
 

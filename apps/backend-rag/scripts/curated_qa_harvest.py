@@ -59,6 +59,7 @@ Usage:
     PYTHONPATH=. python scripts/curated_qa_harvest.py --faq --dry-run
     PYTHONPATH=. python scripts/curated_qa_harvest.py --purge-domain visa --faq --qdrant
     PYTHONPATH=. python scripts/curated_qa_harvest.py --purge-batch visa-abc123def456 --faq --qdrant
+    PYTHONPATH=. python scripts/curated_qa_harvest.py --faq --qdrant --verbatim-all  # operator order only, see --help
 
 Do NOT run against prod without Zero's review of the batch being loaded —
 this writes into the same FAQ cache / curated_qa collection the live
@@ -231,14 +232,18 @@ def validate_row(row: dict) -> str | None:
     return None
 
 
-def _derive_verbatim_eligible(row: dict) -> bool:
-    """Independently RE-DERIVE FAQ-sink eligibility — Phase-0 safety rail
-    (FATAL 3). NEVER trusts `row.get("verbatim_eligible")`; a stored value
-    (converter best-effort guess, or a hand-edited JSONL) is informational
-    only and is ignored here by construction. Eligibility =
-    confidence_class == JELAS AND NOT client_specific AND the answer text
-    is pricing-clean (FATAL 13 detector).
-    """
+# Provenance value stamped on any row whose eligibility only cleared because
+# of --verbatim-all (Zero's Legge-5 order, 2026-07-19: "far diventare
+# verbatim tutte le risposte" — task #27, the 21 gated CHATKB dossiers). A
+# CONSTANT, not an operator-supplied string: this override has exactly one
+# sanctioned origin, so there is nothing to parametrize and no way to stamp
+# an unaccountable provenance value by typo.
+VERBATIM_OVERRIDE_PROVENANCE = "zero-legge5-2026-07-19"
+
+
+def _default_verbatim_eligible(row: dict) -> bool:
+    """The FATAL-3 default eligibility rule, unconditional of any override:
+    confidence_class == JELAS AND NOT client_specific AND pricing-clean."""
     from backend.services.misc.curated_qa_pricing_detector import has_price_content
 
     if row.get("confidence_class") != _JELAS_CONFIDENCE_CLASS:
@@ -248,7 +253,43 @@ def _derive_verbatim_eligible(row: dict) -> bool:
     return not has_price_content(row.get("answer"))
 
 
-def _row_provenance_metadata(row: dict, *, batch_id: str | None = None) -> dict[str, Any]:
+def _derive_verbatim_eligible(row: dict, *, verbatim_all: bool = False) -> bool:
+    """Independently RE-DERIVE FAQ-sink eligibility — Phase-0 safety rail
+    (FATAL 3). NEVER trusts `row.get("verbatim_eligible")`; a stored value
+    (converter best-effort guess, or a hand-edited JSONL) is informational
+    only and is ignored here by construction. Default eligibility =
+    confidence_class == JELAS AND NOT client_specific AND the answer text
+    is pricing-clean (FATAL 13 detector).
+
+    `verbatim_all` (Zero's Legge-5 operator order, task #27): when True,
+    bypasses the confidence_class/client_specific gate entirely — EVERY
+    answerable row is promoted to verbatim-eligible regardless of its
+    CONFIDENCE class. The FATAL 13 pricing rail is the ONE check that is
+    NEVER bypassed by this override, even under verbatim_all — a price
+    figure must always come from PricingTool, never a cached verbatim
+    answer, no matter which business order is in effect. Pricing is
+    checked FIRST and unconditionally so this invariant reads as an
+    early, unmissable return rather than something buried under a flag
+    branch.
+    """
+    from backend.services.misc.curated_qa_pricing_detector import has_price_content
+
+    if has_price_content(row.get("answer")):
+        return False
+
+    if verbatim_all:
+        return True
+
+    return _default_verbatim_eligible(row)
+
+
+def _row_provenance_metadata(
+    row: dict,
+    *,
+    batch_id: str | None = None,
+    verbatim_all: bool = False,
+) -> dict[str, Any]:
+    eligible = _derive_verbatim_eligible(row, verbatim_all=verbatim_all)
     metadata: dict[str, Any] = {
         "source_ref": row["source_ref"],
         "source_date": row["source_date"],
@@ -259,10 +300,17 @@ def _row_provenance_metadata(row: dict, *, batch_id: str | None = None) -> dict[
         # RE-DERIVED, not the row's own stored value (see
         # _derive_verbatim_eligible docstring) — this is what actually
         # gated the FAQ-sink write for this row.
-        "verbatim_eligible": _derive_verbatim_eligible(row),
+        "verbatim_eligible": eligible,
     }
     if batch_id is not None:
         metadata["batch_id"] = batch_id
+    # Provenance for the Legge-5 override (task #27): stamped whenever this
+    # row is eligible under a verbatim_all run, so every FAQ/Qdrant entry
+    # written under the order carries an auditable trail back to it — a
+    # price-blocked row never gets eligible=True in the first place, so it
+    # never gets this stamp either (the pricing rail's refusal stays clean).
+    if verbatim_all and eligible:
+        metadata["verbatim_override"] = VERBATIM_OVERRIDE_PROVENANCE
     return metadata
 
 
@@ -389,6 +437,7 @@ async def harvest_to_faq(
     dry_run: bool = False,
     stats: HarvestStats | None = None,
     batch_id: str | None = None,
+    verbatim_all: bool = False,
 ) -> HarvestStats:
     """Write `rows` to the FAQ cache with DOMAIN-SCOPED keys
     (notebook_id=domain_scope_id(row["domain"])) — Phase-0 safety rail
@@ -401,15 +450,20 @@ async def harvest_to_faq(
 
     FATAL 3 (verbatim_eligible): only rows that RE-DERIVE (never the row's
     own stored value) as eligible — confidence_class == JELAS, not
-    client_specific, and pricing-clean — are written here. A row that would
-    otherwise be eligible except for a detected price in its answer is a
-    hard error (the E33 "FINAL (client-facing)" text is meant to route
-    prices through PricingTool, never state one) — logged at ERROR with the
-    offending question, counted separately from routine ineligibility
-    (BERSYARAT/DINAMIS/etc rows, which are Qdrant-only by design, not an
-    error).
+    client_specific, and pricing-clean — are written here, UNLESS
+    `verbatim_all` is set (Zero's Legge-5 override, task #27), in which
+    case every answerable, non-price-bearing row is eligible regardless of
+    confidence_class/client_specific. A row that would otherwise be
+    eligible except for a detected price in its answer is a hard error
+    (the E33 "FINAL (client-facing)" text is meant to route prices through
+    PricingTool, never state one) — logged at ERROR with the offending
+    question, counted separately from routine ineligibility (BERSYARAT/
+    DINAMIS/etc rows under the default policy, which are Qdrant-only by
+    design, not an error). The pricing rail is NEVER bypassed by
+    verbatim_all — see `_derive_verbatim_eligible`.
     """
     from backend.services.caching.notebooklm_cache_service import domain_scope_id
+    from backend.services.misc.curated_qa_pricing_detector import has_price_content
 
     stats = stats or HarvestStats()
     for row in rows:
@@ -418,7 +472,7 @@ async def harvest_to_faq(
             continue
 
         stored_eligible = row.get("verbatim_eligible")
-        derived_eligible = _derive_verbatim_eligible(row)
+        derived_eligible = _derive_verbatim_eligible(row, verbatim_all=verbatim_all)
         if stored_eligible is not None and bool(stored_eligible) != derived_eligible:
             logger.warning(
                 "verbatim_eligible drift for '%.60s': stored=%r derived=%r "
@@ -430,13 +484,16 @@ async def harvest_to_faq(
             )
 
         if not derived_eligible:
-            is_price_bearing = row.get(
-                "confidence_class"
-            ) == _JELAS_CONFIDENCE_CLASS and not row.get("client_specific")
+            # A direct pricing-content check (not a confidence_class proxy):
+            # under verbatim_all EVERY row is a would-be-eligible candidate,
+            # so "why did this one fail" is always answerable by asking the
+            # pricing detector directly rather than inferring it from a
+            # class check that only applied under the default policy.
+            is_price_bearing = has_price_content(row.get("answer"))
             if is_price_bearing:
                 stats.faq_price_rejected += 1
                 logger.error(
-                    "FAQ sink REFUSED (price-bearing JELAS row): '%.80s' "
+                    "FAQ sink REFUSED (price-bearing row): '%.80s' "
                     "(source_ref=%s) — prices must come from PricingTool "
                     "only, never a cached verbatim answer.",
                     row.get("question"),
@@ -446,7 +503,7 @@ async def harvest_to_faq(
                 stats.faq_ineligible_skipped += 1
             continue
 
-        metadata = _row_provenance_metadata(row, batch_id=batch_id)
+        metadata = _row_provenance_metadata(row, batch_id=batch_id, verbatim_all=verbatim_all)
         if dry_run:
             stats.faq_written += 1
             continue
@@ -570,6 +627,7 @@ async def harvest_to_qdrant(
     batch_size: int = 100,
     stats: HarvestStats | None = None,
     batch_id: str | None = None,
+    verbatim_all: bool = False,
 ) -> HarvestStats:
     """Embed the QUESTION of each row and upsert a flat payload into the
     curated_qa collection.
@@ -580,6 +638,13 @@ async def harvest_to_qdrant(
     only burn embedding cost and collection space for zero benefit. (They
     remain visible for coverage analysis via the FAQ-sink stats / the JSONL
     source files themselves.)
+
+    `verbatim_all` (task #27, Zero's Legge-5 override) travels into the
+    payload's `verbatim_eligible`/`verbatim_override` fields exactly like it
+    does for the FAQ sink — Qdrant was never eligibility-GATED (it always
+    got every answerable row), but the flag it carries must still reflect
+    which policy computed it, so a grounding-injection audit and the FAQ
+    sink agree on the same row's eligibility under the same run.
     """
     stats = stats or HarvestStats()
 
@@ -615,7 +680,7 @@ async def harvest_to_qdrant(
                 # regardless of eligibility (grounding-only for
                 # BERSYARAT/DINAMIS/etc), but the flag travels with the
                 # payload for audit/filtering.
-                "verbatim_eligible": _derive_verbatim_eligible(r),
+                "verbatim_eligible": _derive_verbatim_eligible(r, verbatim_all=verbatim_all),
                 # Staleness rail (MAJOR 7/8/11): every freshly-written row
                 # starts active. curated_qa_regen_trigger.py flips this to
                 # False (+ sets invalidated_at) when a regulatory delta
@@ -626,6 +691,16 @@ async def harvest_to_qdrant(
                 "active": True,
                 "invalidated_at": None,
                 **({"batch_id": batch_id} if batch_id is not None else {}),
+                # Same Legge-5 provenance stamp as the FAQ sink (task #27) —
+                # only present when this row's eligibility was actually
+                # computed under the override AND came out eligible; a
+                # price-blocked row never carries it (the pricing rail's
+                # refusal is unconditional, see _derive_verbatim_eligible).
+                **(
+                    {"verbatim_override": VERBATIM_OVERRIDE_PROVENANCE}
+                    if verbatim_all and _derive_verbatim_eligible(r, verbatim_all=True)
+                    else {}
+                ),
             }
             for r in batch
         ]
@@ -692,6 +767,7 @@ async def load_batch(
     do_qdrant: bool = False,
     dry_run: bool = False,
     stats: HarvestStats | None = None,
+    verbatim_all: bool = False,
 ) -> HarvestStats:
     """Load one batch's `rows` into the requested sink(s) — Qdrant STAGING
     FIRST, then Redis (verbatim FAQ) LAST — persisting a commit marker to
@@ -727,6 +803,7 @@ async def load_batch(
                 dry_run=dry_run,
                 stats=stats,
                 batch_id=batch_id,
+                verbatim_all=verbatim_all,
             )
             if not dry_run:
                 manifest["qdrant_committed"] = True
@@ -740,7 +817,14 @@ async def load_batch(
                 batch_id,
             )
         else:
-            await harvest_to_faq(rows, faq_cache, dry_run=dry_run, stats=stats, batch_id=batch_id)
+            await harvest_to_faq(
+                rows,
+                faq_cache,
+                dry_run=dry_run,
+                stats=stats,
+                batch_id=batch_id,
+                verbatim_all=verbatim_all,
+            )
             if not dry_run:
                 manifest["faq_committed"] = True
                 manifest["faq_committed_at"] = _now_iso()
@@ -896,6 +980,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "5). Not needed for paths already inside data/curated_qa/."
         ),
     )
+    parser.add_argument(
+        "--verbatim-all",
+        action="store_true",
+        help=(
+            "OPERATOR-ORDERED OVERRIDE (task #27, Zero's Legge-5 ruling "
+            "2026-07-19: 'far diventare verbatim tutte le risposte'). "
+            "Bypasses the confidence_class==JELAS / non-client_specific "
+            "FATAL-3 gate for the FAQ (Redis) sink and the Qdrant "
+            "verbatim_eligible payload field — every answerable, "
+            "non-price-bearing row is promoted regardless of its "
+            "CONFIDENCE class. Does NOT touch the source allowlist (FATAL "
+            "5) or the pricing detector (FATAL 13) — both stay in full "
+            "force; a price-bearing row is refused either way. Every row "
+            "whose eligibility this override actually decided is stamped "
+            "metadata.verbatim_override='zero-legge5-2026-07-19' for "
+            "audit. Use ONLY under an explicit operator business order — "
+            "never as a default."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -983,6 +1086,16 @@ async def main_async(args: argparse.Namespace) -> HarvestStats:
             await ensure_qdrant_collection(qdrant_client)
         embedder = create_embeddings_generator(provider="openai")
 
+    if args.verbatim_all:
+        logger.warning(
+            "⚠️  --verbatim-all ACTIVE (task #27, Zero's Legge-5 override "
+            "2026-07-19): the confidence_class==JELAS FATAL-3 gate is "
+            "BYPASSED for this run — every answerable, non-price-bearing "
+            "row is being promoted to verbatim-eligible. Pricing detector "
+            "(FATAL 13) and source allowlist (FATAL 5) remain in full "
+            "force.",
+        )
+
     for batch_id, manifest_path, manifest, rows in batches:
         await load_batch(
             batch_id,
@@ -996,6 +1109,7 @@ async def main_async(args: argparse.Namespace) -> HarvestStats:
             do_qdrant=args.qdrant,
             dry_run=args.dry_run,
             stats=stats,
+            verbatim_all=args.verbatim_all,
         )
 
     return stats

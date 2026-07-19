@@ -45,6 +45,15 @@ with zero reasoning is a wrong answer waiting for the wrong client.
 are grounding-only (Qdrant `curated_qa` collection) forever — see
 `curated_qa_harvest.py::_derive_verbatim_eligible`.
 
+**Operator override (`--verbatim-all`, task #27):** an explicit, logged
+business-order escape hatch that bypasses the `confidence_class`/
+`client_specific` half of this gate — every answerable, non-price-bearing
+row is promoted regardless of CONFIDENCE class. It does NOT touch the
+FATAL 13 pricing rail (a price-bearing row is refused either way) or the
+FATAL 5 source allowlist. Any row this override actually decided carries
+`metadata.verbatim_override = "zero-legge5-2026-07-19"` in both sinks for
+audit. Not a default — pass only under an explicit operator order.
+
 ## Question-only seeds (`answer: null`)
 
 Some source corpora (NLM prewarm question banks, golden-answer canonical
