@@ -994,6 +994,193 @@ def test_p3prime_organ_flip_then_check_stays_green_carried_forward(tmp_path):
     assert "advanced" not in result.stderr
 
 
+# ============================================================================
+# Footgun fix (2026-07-19, PR #2626 landing incident): a write-mode regen run
+# with NO --as-of silently defaulted to real "today" for the orphan
+# time-crossing decision. scripts/docs_inventory_regen.sh's own plain-usage
+# instructions (no --as-of — that flag is documented as a deterministic-
+# testing/organ knob) meant a PR-side contributor's own regen could commit
+# fresh orphan_flipped_on stamps that --check (always as_of=None) then
+# rejected as drift ON THE SAME PR. Structural fix: --gate-consistent, a new
+# write-mode opt-in that reproduces --check's exact computation (as_of=None,
+# trusted-ref provenance) but WRITES the file. docs_inventory_regen.sh now
+# passes it by default; the scheduled organ opts OUT via its own --organ
+# flag (--as-of "$(date -u +%Y-%m-%d)").
+#
+#   GUILT     — a dated write-mode regen (the footgun shape) committed on a
+#               branch fails --check (P3I)
+#   INNOCENCE — a --gate-consistent regen committed on a branch passes
+#               --check cleanly (P3J)
+# ============================================================================
+
+
+def test_p3prime_guilt_dated_regen_committed_on_branch_fails_check(tmp_path):
+    """GUILT (footgun repro, PR #2626 2026-07-19): a write-mode regen using a
+    dated --as-of (the shape docs_inventory_regen.sh's OLD default silently
+    produced) advances a fresh orphan flip that origin/main's trusted
+    provenance never recorded. If that content is committed directly (never
+    pushed through the organ), a LATER --check on the same branch must
+    correctly flag it as drift — this is the exact failure that caught PR
+    #2626's own landing attempt, reproduced here as a permanent regression
+    proof that --check WOULD catch it (and did).
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    # origin/main has NO flip recorded for this doc at all (no organ run in
+    # this repo's history) — the dated regen below invents one from nothing.
+    dated_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", dated_as_of)
+    assert result.returncode == 1  # "content changed" — expected for a write mode
+    inventory = (repo / "docs" / "DOCS_INVENTORY.md").read_text()
+    row = _row_cells(inventory, "docs/OLD_DOC.md")
+    assert row[2].strip() == "ARCHIVED", "sanity: the footgun shape must actually invent a flip"
+
+    # Commit the dated regen's output directly on this branch — WITHOUT
+    # pushing to origin/main first (origin/main still has no flip recorded),
+    # simulating "a contributor ran the dated/organ-mode regen locally and
+    # committed its output on their feature branch".
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "dated regen (guilty)"],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilt: a dated flip absent from trusted origin/main provenance must "
+        f"be flagged as drift. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_innocence_gate_consistent_regen_committed_on_branch_passes_check(
+    tmp_path,
+):
+    """INNOCENCE (the actual fix): the SAME scenario as the guilt test above
+    — a doc genuinely past its orphan-eligibility threshold, origin/main has
+    no flip recorded for it — but the write-mode regen uses --gate-consistent
+    instead of a dated --as-of. Must produce content byte-identical to what
+    --check itself independently verifies, and committing it on a branch
+    must pass --check cleanly. This is exactly what
+    scripts/docs_inventory_regen.sh's new default invokes.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+
+    # Write mode always returns 1 on content change (docs/DOCS_INVENTORY.md
+    # doesn't exist yet — creating it IS a change, same documented contract
+    # every other write-mode call in this file follows; see
+    # test_p3prime_organ_flip_then_check_stays_green_carried_forward's own
+    # baseline call a few tests above, which asserts nothing on this return
+    # code for the identical reason). What matters is the CONTENT below, and
+    # the --check call after commit+push.
+    result = _run_audit(repo, "--orphan-days", "90", "--gate-consistent")
+    assert result.returncode in (0, 1), (
+        f"unexpected crash: {result.stdout}{result.stderr}"
+    )
+    inventory = (repo / "docs" / "DOCS_INVENTORY.md").read_text()
+    row = _row_cells(inventory, "docs/OLD_DOC.md")
+    assert row[2].strip() == "LIVE", (
+        "innocence: --gate-consistent must NOT invent a fresh flip just "
+        "because the doc is genuinely old by real wall-clock"
+    )
+    assert row[6].strip() == "—"  # orphan_flipped_on column stays empty
+
+    _commit_and_push(repo, "gate-consistent regen (innocent)")
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, (
+        "innocence: a --gate-consistent regen committed on a branch must "
+        f"pass --check cleanly. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_path):
+    """GUILT/mechanism proof (R1 red-team, PR #2863, 2026-07-20): the two
+    tests above prove --gate-consistent's END-TO-END round-trip (write then
+    --check) is green, but neither one distinguishes "provenance came from
+    origin/main" from "provenance came from the local working tree" — in
+    both, local and trusted happened to already agree before the write
+    ran, so a --gate-consistent that had REGRESSED to
+    parse_prev_flipped(old_content) (the local file, exactly what --check's
+    own BLOCKER-2 fix forbids) instead of read_trusted_prev_flipped(...)
+    would have passed those tests for the wrong reason.
+
+    This test forces local and trusted to DISAGREE: origin/main records a
+    genuine organ flip (ARCHIVED), then a candidate checkout hand-forges
+    its OWN local docs/DOCS_INVENTORY.md to delete that flip (status LIVE,
+    orphan_flipped_on cleared) — the identical forge shape as
+    test_redteam_blocker2_forged_candidate_deletes_flip_caught_red, just
+    exercised against --gate-consistent's WRITE path instead of --check's
+    read-only path. If --gate-consistent honors read_trusted_prev_flipped()
+    like it's supposed to, the freshly written inventory must reproduce the
+    TRUSTED (ARCHIVED, real flip date) state, overwriting the local forgery
+    — never render the forged LIVE state back out.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")  # this becomes the TRUSTED main
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    trusted_flip_date = cells[6].strip()
+    assert trusted_flip_date != "—", "test setup sanity failed: no flip date recorded"
+
+    # Forge the candidate's LOCAL working tree only (never pushed): flip
+    # removed, status reset to LIVE — same shape as the BLOCKER-2 forgery
+    # test, but this time the forged file is what --gate-consistent's WRITE
+    # step will see as "old_content" if it (incorrectly) reads local state.
+    cells[2] = " LIVE "
+    cells[6] = " — "
+    cells[11] = " — "
+    forged_row = "|".join(cells)
+    lines = inv_path.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = _run_audit(candidate, "--orphan-days", "90", "--gate-consistent")
+    assert result.returncode in (0, 1), (
+        f"unexpected crash: {result.stdout}{result.stderr}"
+    )
+    rewritten = (candidate / "docs" / "DOCS_INVENTORY.md").read_text()
+    row = _row_cells(rewritten, "docs/OLD_DOC.md")
+    assert row[2].strip() == "ARCHIVED", (
+        "--gate-consistent must reproduce the TRUSTED (origin/main) "
+        "ARCHIVED state, not the locally-forged LIVE state — a regression "
+        "to local-file provenance would silently resurrect the doc: "
+        + rewritten
+    )
+    assert row[6].strip() == trusted_flip_date, (
+        "--gate-consistent must reproduce origin/main's ORIGINAL flip "
+        f"date ({trusted_flip_date!r}), not invent a new one or keep the "
+        f"forged blank: got {row[6].strip()!r}"
+    )
+
+
 def test_p3prime_guilt_last_touched_date_inconsistent_with_git_history(tmp_path):
     """GUILT ('date incoerenti con la storia git -> rosso'): hand-mutating
     last_touched_date to a value that disagrees with the actual git commit
@@ -1155,6 +1342,29 @@ def test_p3prime_as_of_rejects_bad_format(tmp_path):
     result = _run_audit(repo, "--as-of", "not-a-date")
     assert result.returncode != 0
     assert "YYYY-MM-DD" in (result.stderr + result.stdout)
+
+
+def test_p3prime_check_and_gate_consistent_are_mutually_exclusive(tmp_path):
+    """--check + --gate-consistent is a contradiction: --check already IS the
+    gate-consistent computation (as_of=None, trusted-ref provenance) — the
+    combination is redundant-to-the-point-of-meaningless, refused at
+    argparse time rather than silently accepted as a no-op alias.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    result = _run_audit(repo, "--check", "--gate-consistent")
+    assert result.returncode != 0
+    assert "mutually exclusive" in (result.stderr + result.stdout)
+
+
+def test_p3prime_as_of_and_gate_consistent_are_mutually_exclusive(tmp_path):
+    """--as-of + --gate-consistent is a contradiction: 'invent a flip from
+    this specific date' and 'never invent one, carry forward from
+    --trusted-ref' cannot both be the instruction for the same run.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    result = _run_audit(repo, "--as-of", "2026-01-01", "--gate-consistent")
+    assert result.returncode != 0
+    assert "mutually exclusive" in (result.stderr + result.stdout)
 
 
 def test_p3prime_parse_prev_flipped_handles_missing_table(tmp_path):
