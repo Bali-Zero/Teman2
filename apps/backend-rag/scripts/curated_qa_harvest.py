@@ -493,6 +493,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Delete every entry for this domain from the selected sink(s) instead of loading",
     )
+    parser.add_argument(
+        "--source-attestation",
+        default=None,
+        help=(
+            "Name/path of the reviewed dossier authorizing an --input path "
+            "outside data/curated_qa/ (Phase-0 PII source allowlist, FATAL "
+            "5). Not needed for paths already inside data/curated_qa/."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -518,6 +527,11 @@ async def main_async(args: argparse.Namespace) -> HarvestStats:
         return stats
 
     paths = _resolve_input_paths(args.input)
+
+    from scripts.curated_qa_source_allowlist import check_source_allowlist
+
+    check_source_allowlist(paths, source_attestation=args.source_attestation)
+
     rows, malformed = load_jsonl_rows(paths)
     stats.malformed_lines = malformed
     stats.total_rows = len(rows)

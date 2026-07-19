@@ -336,6 +336,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Override source_date for E33 mode if the file has no 'generated YYYY-MM-DD' header",
     )
+    parser.add_argument(
+        "--source-attestation",
+        default=None,
+        help=(
+            "Name/path of the reviewed dossier authorizing an --input path "
+            "outside data/curated_qa/ (Phase-0 PII source allowlist, FATAL "
+            "5). Required for the typical E33 mode invocation, since the "
+            "hand-authored dossier normally lives outside the repo."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -359,6 +369,11 @@ def main() -> None:
     else:
         if not args.input:
             raise SystemExit("--input is required unless --golden-yaml or --prewarm is given")
+
+        from scripts.curated_qa_source_allowlist import check_source_allowlist
+
+        check_source_allowlist([args.input], source_attestation=args.source_attestation)
+
         rows, counts = parse_e33_markdown_file(
             args.input,
             domain=args.domain,
