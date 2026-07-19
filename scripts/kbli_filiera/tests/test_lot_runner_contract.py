@@ -552,3 +552,48 @@ def test_innocence_d5_prompt_instructs_the_inventory_regardless_of_empty_pp28_so
         "facts inventory — the circular NOT_APPLICABLE read this patch kills is not addressed in "
         "the prompt text a seat actually reads"
     )
+
+
+def test_guilt_d5_schema_and_prompt_carry_oss_native_locator_clause(js_source: str) -> None:
+    """GUILT (Lot 6 conductor gate finding, foreseeable Lot-7 control artifact): a fact may be
+    marked verified via EITHER a page/row citation from RENDERED evidence (PP28/crosswalk) OR —
+    ONLY for a record whose canonical carries the marker _l2_source=OSS_RBA_resiko_2025 — the
+    matching OSS probe file under the code's dossier oss/ directory. Without this clause, a
+    literal seat marks every OSS-native per_skala fact "absent" (that record class has no
+    PP28/crosswalk render to cite at all), flipping the recurring innocence controls
+    59140/59201 (and any other OSS-native code) to quarantined at Lot 7 — a control
+    false-positive of the guard's own making, not a genuine finding. This regex-contract check
+    pins the clause on BOTH seat-visible surfaces (the schema field description AND d5Prompt) so
+    a future edit cannot silently regress it on either channel alone — the exact
+    fix-on-one-channel-only shape superscar #3 (W83->W84) already burned this program on once."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    assert "_l2_source=OSS_RBA_resiko_2025" in schema_body, (
+        "D5_SCHEMA's exposed_facts_inventory/source_locator description does not mention the "
+        "OSS-native marker _l2_source=OSS_RBA_resiko_2025 — an OSS-native record's per_skala "
+        'facts have no PP28/crosswalk render to cite, so a literal seat marks them all "absent" '
+        "and flips an innocent OSS-native code to quarantined"
+    )
+    assert re.search(r"oss/[\w.]+\.json", schema_body), (
+        "D5_SCHEMA does not point the seat at the dossier's oss/ probe file as an alternate "
+        "verified-status locator for OSS-native records"
+    )
+
+    _params, prompt_body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "_l2_source=OSS_RBA_resiko_2025" in prompt_body, (
+        "d5Prompt does not mention the OSS-native marker _l2_source=OSS_RBA_resiko_2025 — the "
+        "seat-visible prompt text must carry the same OSS-native locator exception as the "
+        "schema, or the fix lives on only one of the two seat-visible channels"
+    )
+    assert re.search(r"oss/[\w.]+\.json", prompt_body), (
+        "d5Prompt does not point the seat at the dossier's oss/ probe file as an alternate "
+        "verified-status locator for OSS-native records"
+    )
+    # the pre-existing "pp28_sources empty is never a skip reason" guarantee must still hold —
+    # the OSS-native clause is an ADDITIONAL verified-path, never a replacement for the existing
+    # honest-absent default.
+    assert "pp28_sources is empty" in prompt_body, (
+        "the OSS-native locator amendment must not have displaced the pre-existing "
+        '"pp28_sources is empty is never a reason to skip" guarantee'
+    )

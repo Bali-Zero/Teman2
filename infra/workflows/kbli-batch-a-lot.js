@@ -400,10 +400,14 @@ const D5_SCHEMA = {
         'Standar", Rendah -> "NIB", per PP 28/2025 Pasal 124(4)). A record with ZERO client-facing ' +
         "facts (e.g. a genuinely empty per_skala) returns an empty list — that is the only case an " +
         'empty list is honest. For every fact you DO list, mark status="verified" ONLY if you can ' +
-        "cite a page/row locator AND a vintage (2020 vs 2025) for it from the rendered evidence; " +
-        'otherwise mark status="absent". Do not guess a locator to make the list look complete — ' +
-        'an "absent" entry is not a failure on your part, it is the honest answer this field ' +
-        "exists to capture.",
+        "cite EITHER (a) a page/row locator AND a vintage (2020 vs 2025) for it from the rendered " +
+        "evidence (PP28/crosswalk), OR (b) — ONLY for a record whose canonical carries the marker " +
+        "_l2_source=OSS_RBA_resiko_2025 — the matching OSS probe file under this code's dossier " +
+        'oss/ directory (e.g. oss/ruang_lingkup.json) with vintage "2025", since that record class ' +
+        'has no PP28/crosswalk render to cite; otherwise mark status="absent". An empty ' +
+        "pp28_sources array is NEVER, by itself, a reason to mark a fact absent. Do not guess a " +
+        'locator to make the list look complete — an "absent" entry is not a failure on your part, ' +
+        "it is the honest answer this field exists to capture.",
       items: {
         type: "object",
         required: ["field", "value", "status"],
@@ -419,8 +423,12 @@ const D5_SCHEMA = {
           source_locator: {
             type: "string",
             description:
-              'page/row citation from the rendered evidence when status="verified"; empty string ' +
-              "when absent",
+              "a page/row citation from the rendered evidence (PP28/crosswalk PNGs) when " +
+              'status="verified" — OR, ONLY for a record whose canonical carries the marker ' +
+              "_l2_source=OSS_RBA_resiko_2025, a citation of the matching OSS probe file under " +
+              "this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, vintage 2025) " +
+              "instead, since that record class has no PP28/crosswalk render to point at; never " +
+              "guess a locator either way; empty string when absent.",
           },
           vintage: {
             type: "string",
@@ -554,10 +562,13 @@ function d5Prompt(code) {
     `fiktif_positif fact this code's per_skala rows actually assert, plus the license the frontend ` +
     `would derive from risk when perizinan is empty (Tinggi -> "NIB + Izin", Menengah Tinggi/Menengah ` +
     `Rendah -> "NIB + Sertifikat Standar", Rendah -> "NIB"), each marked verified only when you can ` +
-    `cite a page/row locator and a vintage for it from the rendered evidence, otherwise absent. A ` +
-    `genuinely empty per_skala returns an empty list; do not guess a locator to make the list look ` +
-    `complete. The WORKFLOW, not you, compares your conclusion against D1's — that comparison happens ` +
-    `entirely outside your context.`
+    `cite EITHER a page/row locator and a vintage for it from the rendered evidence (PP28/crosswalk), ` +
+    `OR — ONLY if this code's canonical carries the marker _l2_source=OSS_RBA_resiko_2025 — the ` +
+    `matching OSS probe file under this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, ` +
+    `vintage 2025), since that record class has no PP28/crosswalk render to cite; otherwise absent. A ` +
+    `genuinely empty per_skala returns an empty list; never guess a locator either way to make the ` +
+    `list look complete. The WORKFLOW, not you, compares your conclusion against D1's — that ` +
+    `comparison happens entirely outside your context.`
   );
 }
 
