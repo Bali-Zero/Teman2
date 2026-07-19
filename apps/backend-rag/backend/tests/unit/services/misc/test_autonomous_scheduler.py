@@ -12,10 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.services.misc.autonomous_scheduler import (
+    _WORKER_ID,
     AutonomousScheduler,
     ScheduledTask,
     _acquire_task_lock,
     _get_client,
+    _release_task_lock,
     close_scheduler_client,
     get_autonomous_scheduler,
 )
@@ -160,6 +162,70 @@ class TestAcquireTaskLock:
 
         result = await _acquire_task_lock("test_task", 300)
         assert result is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# _release_task_lock
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestReleaseTaskLock:
+    """
+    SCAR 2026-07-19: a crashed KG run held its 24h-TTL lock with no way to
+    release early, poisoning retries for a full day. `_release_task_lock`
+    lets a `finally` block free the lock immediately — but ONLY if this
+    worker still owns it (compare-and-delete), so it never deletes a lock a
+    different worker acquired after this one's TTL expired.
+    """
+
+    @pytest.mark.asyncio
+    @patch("backend.services.misc.autonomous_scheduler._get_redis", new_callable=AsyncMock)
+    async def test_no_redis_returns_false(self, mock_get_redis: AsyncMock) -> None:
+        mock_get_redis.return_value = None
+        result = await _release_task_lock("test_task")
+        assert result is False
+
+    @pytest.mark.asyncio
+    @patch("backend.services.misc.autonomous_scheduler._get_redis", new_callable=AsyncMock)
+    async def test_releases_own_lock(self, mock_get_redis: AsyncMock) -> None:
+        mock_redis = AsyncMock()
+        mock_redis.eval = AsyncMock(return_value=1)  # Lua DEL returns 1 on success
+        mock_get_redis.return_value = mock_redis
+
+        result = await _release_task_lock("test_task")
+
+        assert result is True
+        mock_redis.eval.assert_awaited_once()
+        args = mock_redis.eval.await_args.args
+        # (script, numkeys, key, worker_id) — the compare value must be THIS
+        # worker's identity, never a bare DEL.
+        assert args[1] == 1
+        assert args[2] == "nuzantara:scheduler:lock:test_task"
+        assert args[3] == _WORKER_ID
+
+    @pytest.mark.asyncio
+    @patch("backend.services.misc.autonomous_scheduler._get_redis", new_callable=AsyncMock)
+    async def test_does_not_release_foreign_lock(self, mock_get_redis: AsyncMock) -> None:
+        """Lua script returns 0 when GET != our worker id — nothing was deleted."""
+        mock_redis = AsyncMock()
+        mock_redis.eval = AsyncMock(return_value=0)
+        mock_get_redis.return_value = mock_redis
+
+        result = await _release_task_lock("test_task")
+        assert result is False
+
+    @pytest.mark.asyncio
+    @patch("backend.services.misc.autonomous_scheduler._get_redis", new_callable=AsyncMock)
+    async def test_redis_error_returns_false(self, mock_get_redis: AsyncMock) -> None:
+        mock_redis = AsyncMock()
+        mock_redis.eval = AsyncMock(side_effect=ConnectionError("Redis down"))
+        mock_get_redis.return_value = mock_redis
+
+        # Unlike acquire (fail-open=True/"run anyway"), release fails closed
+        # to False — an unreleased lock just expires via its own TTL, which
+        # is safe; a *falsely reported* release is not.
+        result = await _release_task_lock("test_task")
+        assert result is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
