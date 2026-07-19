@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -218,6 +219,16 @@ def test_check_flag_exit_codes(aged_fixture):
     common = [
         "--whitelist",
         "docs/WHITELIST_KEEPER.md",
+        # BLOCKER-2 (red-team 2026-07-18): aged_fixture is deliberately
+        # git-less (exercises the stat-mtime fallback elsewhere) so it has
+        # no origin/main --check can trust — an already-organ-archived doc
+        # (ORPHAN_OLD.md, aged via os.utime) would legitimately "revert" to
+        # LIVE under the new trusted-provenance read, unrelated to what this
+        # test actually asserts (exit-code contract via a broken-link
+        # mutation). Whitelisting it removes it from the orphan/flip
+        # mechanism entirely so that unrelated behavior change can't leak in.
+        "--whitelist",
+        "docs/ORPHAN_OLD.md",
         "--cluster",
         "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
@@ -249,6 +260,14 @@ def test_check_ignores_mtime_days_drift(aged_fixture):
     common = [
         "--whitelist",
         "docs/WHITELIST_KEEPER.md",
+        # BLOCKER-2 (red-team 2026-07-18): see the identical comment in
+        # test_check_flag_exit_codes — aged_fixture has no origin/main for
+        # --check to trust, so ORPHAN_OLD.md's already-organ-archived state
+        # would unrelatedly "revert" to LIVE; whitelist it out of the
+        # orphan/flip mechanism, irrelevant to this test's actual assertion
+        # (mtime_days-only drift must be masked).
+        "--whitelist",
+        "docs/ORPHAN_OLD.md",
         "--cluster",
         "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
@@ -567,6 +586,27 @@ def _init_git_repo(repo: Path, backdate_days: int = 0) -> dict:
     if backdate_days:
         commit_cmd += ["--date", env["GIT_AUTHOR_DATE"]]
     subprocess.run(commit_cmd, cwd=repo, check=True, env=env)
+
+    # P3-prime BLOCKER-2 (red-team 2026-07-18): wire a same-content `origin`
+    # remote so --check's trusted-ref read (default origin/main) resolves in
+    # tests exactly as it always does in real CI (a genuine actions/checkout
+    # always has one) — self-referential by construction (origin/main ==
+    # this repo's own current main) unless a test deliberately diverges the
+    # two afterward, e.g. via a separate `git clone` + working-tree tamper
+    # (see the BLOCKER-2 forgery tests below).
+    origin_bare = repo.parent / f"{repo.name}-origin.git"
+    subprocess.run(
+        ["git", "init", "-q", "--bare", "-b", "main", str(origin_bare)],
+        check=True,
+        env=env,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(origin_bare)],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+    subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, env=env)
     return env
 
 
@@ -733,3 +773,706 @@ def test_regen_only_rejects_check(tmp_path):
     result = _run_audit(tmp_repo, "--regen-only", "--check")
     assert result.returncode != 0
     assert "mutually exclusive" in (result.stderr + result.stdout)
+
+
+# ============================================================================
+# P3-prime — deterministic eligibility-date gate
+# (research/operations/2026-07-17-push-pipeline-optimization-spec.md §P3).
+#
+# The disease: classify()'s orphan rule used to compare mtime_days (derived
+# from `datetime.now()`) against orphan_days on EVERY run, including --check
+# (the PR merge gate) — so an unrelated PR could go red the day a totally
+# different, untouched doc's age silently crossed the 90-day mark (2x on
+# #2509, again on #2592/#2613 area). The cure: --check (as_of=None) verifies
+# only DETERMINISTIC per-tree facts (last_touched_date, orphan_eligible_on —
+# pure functions of git history + orphan_days arithmetic) and NEVER decides
+# the orphan time-crossing itself; only a write-mode call (the scheduled
+# docs-inventory-refresh.yml organ) may stamp a fresh orphan_flipped_on.
+#
+# Tests below, by category:
+#   GUILT      — dates inconsistent with git history -> red (P3A, P3B)
+#   GUILT      — STATUS=ARCHIVED without organ provenance -> red (P3C)
+#   INNOCENCE  — an unrelated doc crossing eligibility never flips --check on
+#                its own, no matter how much real time has passed (P3D, the
+#                direct #2509/#2592 regression test)
+#   INNOCENCE  — strongest form: --check is provably immune to a MOCKED
+#                datetime.now(), not just "happens to be" immune (P3E)
+#   mechanism  — the organ's flip is stable/idempotent once made (P3F)
+#   CLI rails  — --check+--as-of and malformed --as-of are rejected (P3G/P3H)
+# ============================================================================
+
+
+def _make_git_repo_with_old_doc(tmp_path, backdate_days: int = 200) -> Path:
+    """A minimal, single-doc git repo (docs/OLD_DOC.md, zero inbound refs,
+    never whitelisted), committed `backdate_days` days before real "today".
+
+    Deliberately avoids the shared FIXTURE_REPO (which has cross-referencing
+    docs) so refs_in is unambiguously 0 — the ONLY thing gating this doc's
+    orphan eligibility is the calendar, which is exactly what these tests
+    need to control precisely via --as-of.
+    """
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    (repo / "docs" / "OLD_DOC.md").write_text(
+        "# Old doc\n\nNo relation to any other file in this fixture.\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo, backdate_days=backdate_days)
+    return repo
+
+
+def _commit_and_push(repo: Path, message: str = "snapshot") -> None:
+    """Commit the CURRENT working-tree state and push it to `repo`'s own
+    `origin` (wired by _init_git_repo) — simulates "the organ committed and
+    pushed this to main", making it visible to a LATER --check's trusted-ref
+    read (BLOCKER-2, red-team 2026-07-18). Needed after any write-mode
+    docs_audit.py call whose result a test then wants --check to see as
+    prior/trusted state — --check reads provenance from origin/main, NEVER
+    from the working tree, so a write-mode regen that is never committed+
+    pushed is invisible to it BY DESIGN (that invisibility is the whole
+    point of the fix).
+    """
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(["git", "commit", "-q", "-m", message], cwd=repo, check=True, env=env)
+    subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, env=env)
+
+
+def _row_cells(inventory_text: str, path: str) -> list[str]:
+    """Split the `## Files` table row for `path` into raw `|`-delimited cells
+    (including the leading/trailing empty strings from split), so a test can
+    mutate a SPECIFIC column by index without hand-building a whole row.
+    """
+    for line in inventory_text.splitlines():
+        if line.startswith(f"| {path} |"):
+            return line.split("|")
+    raise AssertionError(f"row for {path!r} not found in inventory:\n{inventory_text}")
+
+
+def test_p3prime_check_never_invents_a_flip_no_matter_the_real_age(tmp_path):
+    """INNOCENCE (core proof, direct regression test for #2509/#2592): a doc
+    committed 200 real days ago — genuinely, structurally past the 90-day
+    orphan threshold AS OF TODAY — whose last organ-regen baseline (dated,
+    via --as-of, to BEFORE it was eligible) recorded it LIVE, must STAY LIVE
+    under `--check` run at the real current date. --check must never
+    independently decide "it's old enough now, archive it" — time passing
+    alone must never flip the gate's verdict.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+
+    # Non-mutating probe (--check never writes) to discover the tool's own
+    # computed eligibility date — avoids hand-computing dates in the test
+    # (which would be timezone-fragile) by reading ground truth from the
+    # tool itself.
+    probe = _run_audit(repo, "--orphan-days", "90", "--check", "--json")
+    stats = json.loads(probe.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    eligible_on = date.fromisoformat(files["docs/OLD_DOC.md"]["orphan_eligible_on"])
+    assert not (repo / "docs" / "DOCS_INVENTORY.md").exists(), "--check must never write"
+
+    # Baseline: the organ regenerated well BEFORE eligibility (60 days early).
+    early_as_of = (eligible_on - timedelta(days=60)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", early_as_of, "--json")
+    baseline = json.loads(result.stdout)
+    files = {f["path"]: f for f in baseline["files"]}
+    assert files["docs/OLD_DOC.md"]["status"] == "LIVE"
+    assert files["docs/OLD_DOC.md"]["orphan_flipped_on"] is None
+
+    # --check at the REAL current date: the doc is genuinely well past
+    # eligibility by now, yet nothing about the TREE changed since the
+    # baseline was committed. Must stay GREEN.
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, (
+        "innocent: --check must not flip a doc to ARCHIVED on its own just "
+        f"because real time passed. stdout={result.stdout} stderr={result.stderr}"
+    )
+
+
+def test_p3prime_check_immune_to_mocked_wallclock(tmp_path, monkeypatch):
+    """INNOCENCE, strongest form ('testalo con date mockate'): monkeypatch
+    datetime.now() to a wildly different date in-process and prove
+    classify(as_of=None, ...) — the exact call shape main() uses for --check —
+    is byte-identical on every gate-relevant field regardless. This is a
+    structural proof, not a coincidence: as_of=None makes the time-crossing
+    branch unreachable (see classify()'s docstring), so mocking "now" cannot
+    possibly matter to it — this test would catch a future refactor that
+    accidentally reintroduces a datetime.now() read into that branch.
+
+    mtime_days is deliberately excluded from the equality check: it is
+    cosmetic/wall-clock-relative BY DESIGN (compute_mtime_days docstring) and
+    is masked by strip_volatile() before any real --check comparison (see
+    test_check_ignores_mtime_days_drift) — it is ALLOWED, expected even, to
+    differ here.
+    """
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    doc = repo / "docs" / "OLD_DOC.md"
+
+    row_real = docs_audit.classify(
+        doc, repo, 90, [], [], {}, as_of=None, prev_flipped={}
+    )
+
+    real_datetime = docs_audit.datetime
+
+    class _FrozenFarFuture(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2099, 1, 1, tzinfo=tz)
+
+    monkeypatch.setattr(docs_audit, "datetime", _FrozenFarFuture)
+    row_mocked = docs_audit.classify(
+        doc, repo, 90, [], [], {}, as_of=None, prev_flipped={}
+    )
+
+    assert row_real.status == row_mocked.status == "LIVE"
+    assert row_real.last_touched_date == row_mocked.last_touched_date
+    assert row_real.orphan_eligible_on == row_mocked.orphan_eligible_on
+    assert row_real.orphan_flipped_on is None
+    assert row_mocked.orphan_flipped_on is None
+    assert row_real.action == row_mocked.action
+    # The one field ALLOWED (expected) to differ:
+    assert row_mocked.mtime_days != row_real.mtime_days
+
+
+def test_p3prime_organ_flip_then_check_stays_green_carried_forward(tmp_path):
+    """Positive/mechanism path: once a write-mode (organ) run flips a doc
+    (as_of >= orphan_eligible_on), a LATER --check must reproduce that exact
+    ARCHIVED status — proving carry-forward works, not just "check never
+    archives anything". Also proves the flip is idempotent (a second organ
+    run past the same eligibility does not re-flip / does not report a
+    'flip this run' again) and that the stderr 'advanced N flip(s)' log line
+    fires exactly once, on the run that actually crosses the threshold.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+
+    # Baseline: organ ran before eligibility — not yet archived, no flip.
+    early_as_of = (eligible_on - timedelta(days=60)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", early_as_of)
+
+    # Organ runs again, now past eligibility — should flip exactly once.
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of, "--json")
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    assert files["docs/OLD_DOC.md"]["status"] == "ARCHIVED"
+    assert files["docs/OLD_DOC.md"]["orphan_flipped_on"] == late_as_of
+    assert stats["flips_this_run"] == 1
+    assert "docs/OLD_DOC.md" in stats["flipped_paths"]
+    assert "docs_audit: advanced 1 flip(s)" in result.stderr
+
+    # BLOCKER-2 (red-team 2026-07-18): --check reads flip provenance from
+    # origin/main, never the working tree — the organ run above must be
+    # committed+pushed before a LATER --check can see it as trusted.
+    _commit_and_push(repo, "organ flip")
+
+    # --check afterwards must be GREEN — the flip carries forward exactly.
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    # A SECOND organ run at an even later as_of must NOT re-flip: the date
+    # stays pinned to the FIRST flip, and flips_this_run must read 0.
+    later_as_of = (eligible_on + timedelta(days=60)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", later_as_of, "--json")
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    assert files["docs/OLD_DOC.md"]["orphan_flipped_on"] == late_as_of  # unchanged
+    assert stats["flips_this_run"] == 0
+    assert "advanced" not in result.stderr
+
+
+def test_p3prime_guilt_last_touched_date_inconsistent_with_git_history(tmp_path):
+    """GUILT ('date incoerenti con la storia git -> rosso'): hand-mutating
+    last_touched_date to a value that disagrees with the actual git commit
+    history must trip --check. --check recomputes this fact fresh from `git
+    log` on every run, so any stored value that disagrees with the tree is,
+    by construction, real drift.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    _run_audit(repo, "--orphan-days", "90")  # baseline (real today, not eligible)
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    lines = inventory.read_text().splitlines()
+    mutated_lines = []
+    found = False
+    for line in lines:
+        if line.startswith("| docs/OLD_DOC.md |"):
+            found = True
+            parts = line.split("|")
+            true_date = date.fromisoformat(parts[4].strip())
+            parts[4] = f" {(true_date - timedelta(days=7)).isoformat()} "
+            line = "|".join(parts)
+        mutated_lines.append(line)
+    assert found, "fixture assumption broken — OLD_DOC.md row not found"
+    inventory.write_text("\n".join(mutated_lines) + "\n")
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilty: last_touched_date disagreeing with git history must fail "
+        f"--check. stdout={result.stdout}"
+    )
+
+
+def test_p3prime_guilt_orphan_eligible_on_inconsistent(tmp_path):
+    """GUILT: mutating ONLY orphan_eligible_on (leaving last_touched_date
+    correct) must ALSO trip --check — it is re-derived fresh as
+    last_touched_date + orphan_days on every run, so a stored value
+    disagreeing with that arithmetic is inconsistent with the tree.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    _run_audit(repo, "--orphan-days", "90")
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    lines = inventory.read_text().splitlines()
+    mutated_lines = []
+    found = False
+    for line in lines:
+        if line.startswith("| docs/OLD_DOC.md |"):
+            found = True
+            parts = line.split("|")
+            true_eligible = date.fromisoformat(parts[5].strip())
+            parts[5] = f" {(true_eligible + timedelta(days=1)).isoformat()} "
+            line = "|".join(parts)
+        mutated_lines.append(line)
+    assert found, "fixture assumption broken — OLD_DOC.md row not found"
+    inventory.write_text("\n".join(mutated_lines) + "\n")
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1
+
+
+def test_p3prime_guilt_status_archived_without_organ_flip(tmp_path):
+    """GUILT ('un doc flippato senza passare dall'organo -> rosso'): a row
+    hand-edited to STATUS=ARCHIVED with orphan-style action text, but with
+    NO real orphan_flipped_on provenance marker, must fail --check — the flip
+    provenance is missing/absent, so --check must not just trust the STATUS
+    column at face value.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    # Baseline generated BEFORE eligibility — legitimately LIVE, no flip.
+    early_as_of = (eligible_on - timedelta(days=60)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", early_as_of)
+
+    inventory = repo / "docs" / "DOCS_INVENTORY.md"
+    lines = inventory.read_text().splitlines()
+    mutated_lines = []
+    found = False
+    for line in lines:
+        if line.startswith("| docs/OLD_DOC.md |"):
+            found = True
+            parts = line.split("|")
+            assert parts[2].strip() == "LIVE", parts
+            assert parts[6].strip() == "—", parts  # orphan_flipped_on untouched
+            parts[2] = " ARCHIVED "  # hand-edit STATUS only
+            parts[-2] = " archive: orphan, mtime=200d, refs=0 "  # and action text
+            line = "|".join(parts)
+        mutated_lines.append(line)
+    assert found, "fixture assumption broken — OLD_DOC.md row not found"
+    inventory.write_text("\n".join(mutated_lines) + "\n")
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "guilty: STATUS=ARCHIVED without a real orphan_flipped_on marker must "
+        f"fail --check. stdout={result.stdout}"
+    )
+
+
+def test_p3prime_time_crossing_boundary_is_strict_matches_pre_existing_threshold(
+    tmp_path,
+):
+    """Exact-day boundary regression: the pre-P3-prime rule was
+    `mtime_days > orphan_days` (STRICT — a doc exactly `orphan_days` old was
+    NOT yet orphaned, only STRICTLY older). The refactored time-crossing
+    check (`as_of > orphan_eligible_on`) must reproduce that exactly, not
+    `>=` — otherwise this change would silently move every doc's real-world
+    archive date one calendar day earlier than before, an unintended drift
+    outside P3-prime's stated scope (determinism, not threshold redefinition).
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+
+    # AT eligible_on exactly: must NOT flip (strict `>`, not `>=`).
+    result = _run_audit(
+        repo, "--orphan-days", "90", "--as-of", eligible_on.isoformat(), "--json"
+    )
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    assert files["docs/OLD_DOC.md"]["status"] == "LIVE", (
+        "a doc exactly orphan_days old must NOT be archived yet — the "
+        "pre-P3-prime rule was strictly-greater-than, not greater-or-equal"
+    )
+    assert stats["flips_this_run"] == 0
+
+    # ONE DAY past eligible_on: must flip.
+    one_day_later = (eligible_on + timedelta(days=1)).isoformat()
+    result = _run_audit(
+        repo, "--orphan-days", "90", "--as-of", one_day_later, "--json"
+    )
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    assert files["docs/OLD_DOC.md"]["status"] == "ARCHIVED"
+    assert stats["flips_this_run"] == 1
+
+
+def test_p3prime_check_and_as_of_are_mutually_exclusive(tmp_path):
+    """--check + --as-of is a contradiction: the merge gate must be
+    STRUCTURALLY incapable of being handed a wall-clock override — enforced
+    at argparse time, not left to classify()'s internal branching alone.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    result = _run_audit(repo, "--check", "--as-of", "2026-01-01")
+    assert result.returncode != 0
+    assert "mutually exclusive" in (result.stderr + result.stdout)
+
+
+def test_p3prime_as_of_rejects_bad_format(tmp_path):
+    """--as-of must be YYYY-MM-DD; garbage input fails loud, not silently."""
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=10)
+    result = _run_audit(repo, "--as-of", "not-a-date")
+    assert result.returncode != 0
+    assert "YYYY-MM-DD" in (result.stderr + result.stdout)
+
+
+def test_p3prime_parse_prev_flipped_handles_missing_table(tmp_path):
+    """parse_prev_flipped() must degrade to {} (never crash) on an empty or
+    malformed table — the deliberately fail-closed bootstrap: no doc is
+    archived-via-orphan until the organ has actually said so at least once.
+    """
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    assert docs_audit.parse_prev_flipped("") == {}
+    assert docs_audit.parse_prev_flipped("not a table at all\njust prose") == {}
+
+
+def test_p3prime_flips_this_run_never_rendered_into_committed_inventory(tmp_path):
+    """The 'N flips this run' count is deliberately EPHEMERAL/session-relative
+    (stderr + --json only) and must NEVER be baked into docs/DOCS_INVENTORY.md
+    itself. If it were, --check would compare a persisted "N flips happened
+    THAT run" against a freshly-regenerated "0 flips happen during --check"
+    (--check never flips) and flap red on every PR forever after any real
+    organ flip — reintroducing exactly the instability P3-prime removes.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of, "--json")
+    stats = json.loads(result.stdout)
+    assert stats["flips_this_run"] == 1  # sanity: a flip really happened
+
+    inventory = (repo / "docs" / "DOCS_INVENTORY.md").read_text()
+    # Precise phrase checks, NOT a bare "flip" substring ban — the per-doc
+    # `orphan_flipped_on` PROVENANCE COLUMN is legitimate and expected to
+    # appear (it's a stable, deterministic fact); what must never appear is
+    # the session-relative COUNTER/log phrasing (a bare substring check here
+    # would itself be the guard-over-match bug this repo's cicatrix rules
+    # warn about — it would false-positive on "orphan_flipped_on").
+    assert "flips_this_run" not in inventory, (
+        "the ephemeral flip COUNTER leaked into the committed artifact — this "
+        "would make --check unstable across runs (see docstring)."
+    )
+    assert "advanced" not in inventory.lower(), (
+        "the stderr-only 'advanced N flip(s)' log phrasing leaked into the "
+        "committed artifact."
+    )
+    assert "orphan_flipped_on" in inventory, (
+        "sanity: the legitimate per-doc provenance column must still be present"
+    )
+
+    # BLOCKER-2 (red-team 2026-07-18): --check reads flip provenance from
+    # origin/main, never the working tree — commit+push before checking.
+    _commit_and_push(repo, "organ flip")
+
+    # And the direct proof: --check right after a real flip must be green.
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+# ============================================================================
+# Red-team round 1 fixes (2026-07-18): PR #2626, io + Codex Sol xhigh,
+# generator != grader. 4 BLOCKER + 4 MAJOR. MAJOR-8 (common-mode scheduler
+# risk) is documentation + PENDING-ARMS only, no code, so no test here — see
+# .github/workflows/docs-inventory-refresh-liveness.yml's header comment and
+# .claude/skills/modus/PENDING-ARMS.md.
+# ============================================================================
+
+
+def _clone_origin(repo: Path, dest: Path) -> Path:
+    """Clone `repo`'s own origin (wired by _init_git_repo) into `dest` — a
+    genuine PR-candidate-style checkout, independent of `repo`'s own working
+    tree, so a test can diverge the two exactly like a malicious/careless PR
+    diff would.
+    """
+    origin_bare = repo.parent / f"{repo.name}-origin.git"
+    subprocess.run(["git", "clone", "-q", str(origin_bare), str(dest)], check=True)
+    return dest
+
+
+def test_redteam_blocker2_forged_candidate_deletes_flip_caught_red(tmp_path):
+    """GUILT (red-team 2026-07-18 BLOCKER-2, exact prescribed shape:
+    "inventory del candidato falsificato (flip rimosso + status LIVE) ->
+    check ROSSO"). A PR candidate hand-edits its OWN docs/DOCS_INVENTORY.md
+    to delete an organ-flip (silently resurrecting an ARCHIVED doc to LIVE)
+    — this is the exact gate-gameable shape: the candidate's own working
+    tree is now perfectly SELF-consistent (a fresh regen sourcing provenance
+    from that same tampered file would reproduce the forged LIVE state
+    exactly — precisely how the pre-fix gate passed). --check must instead
+    re-derive provenance from origin/main (still showing the REAL flip) and
+    go RED.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")  # this becomes the TRUSTED main
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+
+    # Forge: flip removed (column 6, orphan_flipped_on) + status set to LIVE
+    # (column 2) — a PR author's hand-edit / bad merge-conflict resolution,
+    # never touching the working tree's OLD_DOC.md itself.
+    cells[2] = " LIVE "
+    cells[6] = " — "
+    cells[11] = " — "
+    forged_row = "|".join(cells)
+    lines = inv_path.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = _run_audit(candidate, "--orphan-days", "90", "--check")
+    assert result.returncode == 1, (
+        "a candidate that forged its own inventory (flip deleted, status "
+        "LIVE) must be caught RED by --check, not silently pass: "
+        + result.stdout
+        + result.stderr
+    )
+    assert "docs/OLD_DOC.md" in result.stderr
+
+
+def test_redteam_blocker2_untampered_candidate_clone_stays_green(tmp_path):
+    """INNOCENCE (BLOCKER-2 fix must not break the ordinary case): a PR
+    candidate that clones the SAME trusted origin and changes NOTHING in
+    docs/DOCS_INVENTORY.md must still pass --check cleanly — the
+    trusted-ref read must reproduce exactly what's already on disk when
+    nothing was forged.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    result = _run_audit(candidate, "--orphan-days", "90", "--check")
+    assert result.returncode == 0, (
+        "an untampered candidate clone must stay green: " + result.stdout + result.stderr
+    )
+
+
+def test_redteam_blocker2_unresolvable_trusted_ref_fails_closed(tmp_path):
+    """FAIL-CLOSED (red-team 2026-07-18 BLOCKER-2, explicit requirement:
+    "base illeggibile -> errore esplicito, non pass silenzioso"). A real git
+    repo whose `origin` remote cannot be resolved (removed/misconfigured)
+    must NOT silently treat --check as if there were no prior state (which
+    would let Rule 2 fall through and resurrect any already-organ-archived
+    doc) — it must fail LOUD and distinctly (exit 2, "could not determine"),
+    never exit 0 or 1.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    subprocess.run(["git", "remote", "remove", "origin"], cwd=repo, check=True)
+
+    result = _run_audit(repo, "--orphan-days", "90", "--check")
+    assert result.returncode == 2, (
+        f"an unresolvable trusted ref must exit 2 (could-not-determine), "
+        f"not silently pass or report ordinary drift: got {result.returncode}, "
+        + result.stdout
+        + result.stderr
+    )
+    assert "trusted ref" in (result.stdout + result.stderr).lower()
+
+
+def test_redteam_major5_doc_touched_after_flip_resurrects_to_live(tmp_path):
+    """INNOCENCE (red-team 2026-07-18 MAJOR-5, exact prescribed shape: "doc
+    toccato post-flip -> LIVE"). A doc archived via a genuine organ flip,
+    then RE-TOUCHED (edited + re-committed) after that flip date, must not
+    stay ARCHIVED forever on a stale provenance marker: last_touched_date
+    moving past orphan_flipped_on invalidates the carried flip (pure tree
+    fact, zero wall-clock — the comparison uses only already-computed
+    dates), and the doc falls through to LIVE based on current tree state
+    (still zero inbound refs here).
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    flip_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    result = _run_audit(repo, "--orphan-days", "90", "--as-of", flip_as_of, "--json")
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    assert files["docs/OLD_DOC.md"]["status"] == "ARCHIVED"  # sanity
+    _commit_and_push(repo, "organ flip")
+
+    # Re-touch the doc AFTER the flip date, with a LATER commit date
+    # (compute_last_commit_date reads git log, so the backdate matters).
+    doc = repo / "docs" / "OLD_DOC.md"
+    doc.write_text(doc.read_text() + "\nEdited after archival.\n", encoding="utf-8")
+    touch_date = (date.fromisoformat(flip_as_of) + timedelta(days=5)).isoformat()
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        "GIT_AUTHOR_DATE": f"{touch_date}T00:00:00",
+        "GIT_COMMITTER_DATE": f"{touch_date}T00:00:00",
+    }
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "edit after archival", "--date", env["GIT_AUTHOR_DATE"]],
+        cwd=repo,
+        check=True,
+        env=env,
+    )
+    subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, env=env)
+
+    # --check (as_of=None, no wall-clock at all) must independently resurrect
+    # the doc to LIVE purely from tree facts (last_touched > carried flip).
+    result = _run_audit(repo, "--orphan-days", "90", "--check", "--json")
+    stats2 = json.loads(result.stdout)
+    files2 = {f["path"]: f for f in stats2["files"]}
+    assert files2["docs/OLD_DOC.md"]["status"] == "LIVE", (
+        f"a doc touched after its flip must resurrect to LIVE under --check: "
+        f"{files2['docs/OLD_DOC.md']}"
+    )
+    assert files2["docs/OLD_DOC.md"]["orphan_flipped_on"] is None
+
+
+def test_redteam_major7_pipe_in_doc_path_rejected_loud(tmp_path):
+    """GUILT (red-team 2026-07-18 MAJOR-7, exact prescribed shape:
+    "roundtrip test with docs/a|b.md"). A doc path containing a literal '|'
+    would corrupt the Markdown table (an extra cell) and silently vanish
+    from the NEXT parse (_parse_inventory_table's cell-count guard drops
+    mismatched rows) — permanently red for that doc thereafter, since its
+    orphan-flip provenance can never again be carried forward. Refused LOUD
+    at generation instead: docs_audit.py must exit non-zero with a clear
+    message naming the offending path, and critically must never write
+    docs/DOCS_INVENTORY.md at all in that run (no half-corrupted table).
+    """
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    (repo / "docs" / "a|b.md").write_text("# Pipe path\n", encoding="utf-8")
+    _init_git_repo(repo)
+
+    result = _run_audit(repo, "--orphan-days", "90")
+    assert result.returncode != 0, "a doc path containing '|' must be refused"
+    assert "a|b.md" in (result.stdout + result.stderr)
+    assert not (repo / "docs" / "DOCS_INVENTORY.md").exists(), (
+        "no inventory file should be written when generation is refused"
+    )
+
+
+def test_redteam_major7_normal_paths_render_unaffected(tmp_path):
+    """INNOCENCE: the MAJOR-7 guard must not trip on ordinary doc paths
+    (none of which legitimately contain '|')."""
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=1)
+    result = _run_audit(repo, "--orphan-days", "90")
+    assert result.returncode in (0, 1)  # normal write-mode outcomes only
+    assert (repo / "docs" / "DOCS_INVENTORY.md").exists()
+
+
+def _load_docs_audit_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("docs_audit", AUDIT_SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_redteam_blocker3_crash_maps_to_exit_2():
+    """GUILT (red-team 2026-07-18 BLOCKER-3, Python half): a genuine
+    uncaught exception must map to exit 2 — a code main() itself never
+    returns — so a caller distinguishing "1 = expected drift" from "2 =
+    crashed" (scripts/docs_inventory_regen.sh, same red-team round) can
+    actually tell them apart.
+    """
+    docs_audit = _load_docs_audit_module()
+
+    def _boom():
+        raise RuntimeError("synthetic crash for BLOCKER-3 test")
+
+    rc = docs_audit._run_and_map_exit_code(_boom)
+    assert rc == 2
+
+
+def test_redteam_blocker3_normal_returns_pass_through_unmapped():
+    """INNOCENCE: main()'s own ordinary 0/1 return values must pass through
+    _run_and_map_exit_code unchanged — the crash-boundary must not remap
+    codes main() itself legitimately returns."""
+    docs_audit = _load_docs_audit_module()
+    assert docs_audit._run_and_map_exit_code(lambda: 0) == 0
+    assert docs_audit._run_and_map_exit_code(lambda: 1) == 1
+
+
+def test_redteam_blocker3_systemexit_reraised_unchanged():
+    """INNOCENCE: a deliberate SystemExit (parse_args()'s usage-error path,
+    e.g. a malformed --cluster spec) must propagate UNCHANGED — never
+    remapped to exit 2, which would hide a clear usage-error message behind
+    a generic 'CRASHED' one."""
+    docs_audit = _load_docs_audit_module()
+
+    def _usage_error():
+        raise SystemExit("bad args, deliberately")
+
+    with pytest.raises(SystemExit, match="bad args, deliberately"):
+        docs_audit._run_and_map_exit_code(_usage_error)
