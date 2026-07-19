@@ -307,6 +307,15 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "KBLI filiera cure specs: compiler input artifacts (data-plane guard #2550), "
         "sha256 render/evidence digests by design, zero credentials",
     ),
+    # Nuzantara Lex source manifests pin downloaded public regulations by
+    # SHA-256 so the fetcher can prove byte identity across runs. These are
+    # content digests, not bearer tokens or credentials.
+    (
+        re.compile(
+            r"(^|/)apps/nuzantara-lex/data_sources/ketenagakerjaan_seed\.json$"
+        ),
+        "nuzantara-lex public regulation manifest: SHA-256 content digests, not secrets",
+    ),
     (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",

@@ -32,6 +32,8 @@ class ClientService:
         client_data: dict[str, Any],
         company_data: dict[str, Any] | None = None,
         existing_company_id: int | None = None,
+        *,
+        enforce_unique_phone_core: bool = False,
     ) -> asyncpg.Record:
         """
         1. Valida l'input tramite Pydantic
@@ -49,6 +51,7 @@ class ClientService:
                 client_data=validated_data,
                 company_data=company_data,
                 existing_company_id=existing_company_id,
+                enforce_unique_phone_core=enforce_unique_phone_core,
             )
 
             # 3. Invalidazione della Cache

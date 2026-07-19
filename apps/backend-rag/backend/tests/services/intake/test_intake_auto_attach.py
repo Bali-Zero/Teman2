@@ -484,6 +484,126 @@ async def test_try_direct_phone_auto_attach_noop_when_writer_off(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
+# _extracted_subject_name — FASE-3 stores fields as {"value": X, "confidence": ..}
+# (extract.py); the raw scalar shape comes from HITL overrides. Both must yield
+# the bare name — str() on the dict would tokenize {"value","confidence"} noise
+# into every LEVA-3 name comparison (fixed 2026-07-19; this pins it).
+# --------------------------------------------------------------------------- #
+def test_extracted_subject_name_unwraps_fase3_value_dict():
+    so = {
+        "extract": {
+            "fields": {"name": {"value": "MARIA ROSSI", "confidence": 0.9, "source_page": 1}}
+        }
+    }
+    assert auto_attach._extracted_subject_name(so) == "MARIA ROSSI"
+
+
+def test_extracted_subject_name_accepts_flat_scalar_and_missing():
+    assert (
+        auto_attach._extracted_subject_name({"extract": {"fields": {"name": "MARIA ROSSI"}}})
+        == "MARIA ROSSI"
+    )
+    assert auto_attach._extracted_subject_name({"extract": {"fields": {}}}) is None
+    assert auto_attach._extracted_subject_name({}) is None
+    assert auto_attach._extracted_subject_name({"extract": {"fields": {"name": {"value": ""}}}}) is None
+    assert (
+        auto_attach._extracted_subject_name({"extract": {"fields": {"name": {"value": None}}}})
+        is None
+    )
+
+
+# --------------------------------------------------------------------------- #
+# _fresh_vs_locked_divergence — round-3 F3: an EXPLICIT fresh client_id=None is
+# a real fresh value (unresolved target) and must diverge from a locked client;
+# only a payload with NO fresh resolution at all skips the check.
+# --------------------------------------------------------------------------- #
+def test_divergence_explicit_none_client_diverges():
+    reason = auto_attach._fresh_vs_locked_divergence(
+        {"routing": {"client_id": None}, "entity_resolution": {"decision": "AUTO_ATTACH"}},
+        "AUTO_ATTACH",
+        42,
+    )
+    assert reason is not None and "diverges" in reason
+
+
+def test_divergence_id_only_caller_skips():
+    assert auto_attach._fresh_vs_locked_divergence({"id": 7}, "AUTO_ATTACH", 42) is None
+
+
+def test_divergence_matching_payload_passes():
+    assert (
+        auto_attach._fresh_vs_locked_divergence(
+            {"routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}},
+            "AUTO_ATTACH",
+            42,
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_lock_busy_timeout_is_benign_skip(monkeypatch):
+    """Round-5 F9: a bounded advisory-lock wait that expires must surface as a
+    BENIGN skip (proposal untouched), never as an exception that burns worker
+    retry attempts toward poison-pill."""
+
+    from backend.services.intake import client_enricher
+
+    async def _boom(proposal, pool, *, sender_phone):
+        raise client_enricher.StrongIdLockBusy("lock wait exceeded")
+
+    monkeypatch.setattr(auto_attach, "_try_auto_attach_inner", _boom)
+    out = await auto_attach.try_auto_attach({"id": 9}, None, sender_phone="0812")
+    assert out == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 9}
+
+    async def _boom3(proposal, pool):
+        raise client_enricher.StrongIdLockBusy("lock wait exceeded")
+
+    monkeypatch.setattr(auto_attach, "_try_nameid_auto_attach_inner", _boom3)
+    out3 = await auto_attach.try_nameid_auto_attach({"id": 11}, None)
+    assert out3 == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 11}
+
+    # Round-6 F9 innocence: a NON-lock TimeoutError (e.g. an HTTP/read timeout
+    # from unrelated code) must NOT be masked as a benign skip — it propagates.
+    async def _other_timeout(proposal, pool, *, sender_phone):
+        raise TimeoutError("some unrelated timeout")
+
+    monkeypatch.setattr(auto_attach, "_try_auto_attach_inner", _other_timeout)
+    with pytest.raises(TimeoutError):
+        await auto_attach.try_auto_attach({"id": 9}, None, sender_phone="0812")
+
+
+def test_strong_id_lock_key_converges_across_formatting():
+    """Round-4 F2 guilt: the gate locks the NORMALIZED value while a writer may
+    hold the FORMATTED variant — both must project to the SAME lock key, or the
+    advisory serialization silently misses (different hash, no contention)."""
+    from backend.services.intake.client_enricher import strong_id_lock_value
+
+    assert strong_id_lock_value("kitas", "2C-123.456/AB") == strong_id_lock_value(
+        "kitas", "2C123456AB"
+    )
+    assert strong_id_lock_value("passport", "x 123-456") == strong_id_lock_value(
+        "passport", "X123456"
+    )
+    assert strong_id_lock_value("npwp", "01.234.567.8-901.234") == strong_id_lock_value(
+        "npwp", "012345678901234"
+    )
+
+
+def test_matched_value_validity_mirrors_matcher():
+    # npwp: exactly 15/16 ASCII digits, already canonical
+    assert auto_attach._matched_value_is_valid("npwp", "0" * 15)
+    assert auto_attach._matched_value_is_valid("npwp", "1" * 16)
+    assert not auto_attach._matched_value_is_valid("npwp", "9" * 14)  # F4 guilt
+    assert not auto_attach._matched_value_is_valid("npwp", "0" * 17)
+    assert not auto_attach._matched_value_is_valid("npwp", "01.234.567.8-901.234")
+    # passport/kitas: must already BE the normalized projection
+    assert auto_attach._matched_value_is_valid("passport_number", "X123456")
+    assert not auto_attach._matched_value_is_valid("passport_number", "x 123-456")
+    assert not auto_attach._matched_value_is_valid("kitas_number", "")
+
+
+# --------------------------------------------------------------------------- #
 # LEVA 3 — name-id concordance for NO-PHONE sources (Drive/Dropbox bulk).
 # Second signal = OCR-extracted subject name vs CRM client name; a present,
 # resolving sender phone is LEVA 2 territory and must NEVER be overruled here.
