@@ -107,6 +107,19 @@ class CrmPushResult:
         return asdict(self)
 
 
+def crm_write_key_from_env() -> str | None:
+    """Scoped CRM service-write key from the environment, if configured.
+
+    Needed even on the bearer path: identity RESOLUTION (upsert-by-phone) is a
+    service-key operation regardless of which token authorizes the upload.
+    """
+    for name in ("INTAKE_CRM_PUSH_WRITE_KEY", "WA_MIRROR_CRM_WRITE_KEY"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return None
+
+
 def _parse_drive_file_id(file_url: str | None) -> str | None:
     if not file_url:
         return None
@@ -168,11 +181,23 @@ async def _ensure_client_on_fly(
     fly_id = data.get("client_id") if isinstance(data, dict) else None
     if fly_id is None:
         return None
+    matched_count = data.get("matched_count") if isinstance(data, dict) else None
+    if isinstance(matched_count, int) and matched_count > 1:
+        # The phone is SHARED (spouse/agent/office line — 51 live groups on the
+        # Fly book): the endpoint picked one row arbitrarily, which is exactly
+        # the wrong-client delivery vector. Fail closed — a shared phone cannot
+        # resolve an identity (Codex 2026-07-19 round 5, F7).
+        logger.warning(
+            "intake.crm_push.upsert_ambiguous matched=%s — refusing delivery "
+            "(shared phone cannot resolve a single Fly client)",
+            matched_count,
+        )
+        return None
     logger.info(
         "intake.crm_push.upsert_ok fly_client=%s created=%s matched=%s",
         fly_id,
         (data.get("was_created") if isinstance(data, dict) else None),
-        (data.get("matched_count") if isinstance(data, dict) else None),
+        matched_count,
     )
     return int(fly_id)
 
@@ -262,39 +287,49 @@ async def push_committed_document(
             {"X-CRM-Write-Key": crm_write_key or ""},
         )
 
-    # Cross-DB identity bridge (Codex 2026-07-19 round 4, F5): the local Pro pk
-    # and the Fly pk are DIFFERENT namespaces — the same number can name a
+    # Cross-DB identity bridge (Codex 2026-07-19 rounds 4-5, F5): the local Pro
+    # pk and the Fly pk are DIFFERENT namespaces — the same number can name a
     # DIFFERENT person on Fly, and an upload addressed by the local pk that
-    # happens to exist there delivers PII to the wrong client. In the headless
-    # service-key path the Fly id is therefore ALWAYS resolved by phone BEFORE
-    # any upload; with no phone to resolve with, delivery fails CLOSED (the
-    # document stays committed locally, the verdict says undelivered). The
-    # bearer path is untouched: a reviewer's JWT addresses ids in the same
-    # namespace the reviewer is browsing.
-    target_client_id = client_id
-    if not bearer_token:
-        if not sender_phone:
-            return CrmPushResult(
-                ok=False,
-                status="identity_unresolved",
-                detail=(
-                    "no sender phone to resolve the Fly client — refusing to "
-                    "address Fly by the LOCAL pk"
-                ),
-            )
-        fly_cid = await _ensure_client_on_fly(
-            crm_write_key=crm_write_key or "",
-            sender_phone=sender_phone,
-            full_name=client_full_name,
-            base_url=base,
+    # happens to exist there delivers PII to the wrong client. This holds for
+    # BOTH auth modes: every caller (auto-attach delivery AND the reviewer
+    # approve flow) passes the LOCALLY-committed plan.client_id, so the bearer
+    # only changes which upload endpoint authorizes the write — never the id
+    # namespace. The Fly id is therefore ALWAYS resolved by phone BEFORE any
+    # upload; with no phone or no service key to resolve with, delivery fails
+    # CLOSED (the document stays committed locally, the verdict says
+    # undelivered — never claims Kita).
+    if not sender_phone:
+        return CrmPushResult(
+            ok=False,
+            status="identity_unresolved",
+            detail=(
+                "no sender phone to resolve the Fly client — refusing to "
+                "address Fly by the LOCAL pk"
+            ),
         )
-        if fly_cid is None:
-            return CrmPushResult(
-                ok=False,
-                status="identity_unresolved",
-                detail="phone-upsert could not resolve a Fly client id",
-            )
-        target_client_id = fly_cid
+    resolution_key = crm_write_key or crm_write_key_from_env()
+    if not resolution_key:
+        return CrmPushResult(
+            ok=False,
+            status="identity_unresolved",
+            detail=(
+                "no CRM service key available to resolve the Fly identity — "
+                "refusing to address Fly by the LOCAL pk"
+            ),
+        )
+    fly_cid = await _ensure_client_on_fly(
+        crm_write_key=resolution_key,
+        sender_phone=sender_phone,
+        full_name=client_full_name,
+        base_url=base,
+    )
+    if fly_cid is None:
+        return CrmPushResult(
+            ok=False,
+            status="identity_unresolved",
+            detail="phone-upsert could not resolve an UNAMBIGUOUS Fly client id",
+        )
+    target_client_id = fly_cid
 
     url, headers = _build_request(target_client_id)
     client = _get_client()

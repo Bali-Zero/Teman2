@@ -755,6 +755,35 @@ async def try_auto_attach(
     *,
     sender_phone: str | None,
 ) -> dict[str, Any]:
+    """Public LEVA-2 gate — see :func:`_try_auto_attach_inner` for the logic.
+
+    The only added behavior: a strong-id advisory-lock wait exceeding its bound
+    (round-5 F9) surfaces as a BENIGN skip instead of an exception — the value
+    is contended by a concurrent TX, the proposal stays review_pending, and no
+    worker retry attempt is burned on what is ordinary lock contention.
+    """
+    proposal_id = dict(proposal).get("id")
+    try:
+        return await _try_auto_attach_inner(proposal, pool, sender_phone=sender_phone)
+    except TimeoutError:
+        logger.info(
+            "auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
+            "(bounded wait exceeded — will be re-evaluated later)",
+            proposal_id,
+        )
+        return {
+            "committed": False,
+            "skipped": "strong_id_lock_busy",
+            "proposal_id": proposal_id,
+        }
+
+
+async def _try_auto_attach_inner(
+    proposal: dict[str, Any] | asyncpg.Record,
+    pool: asyncpg.Pool,
+    *,
+    sender_phone: str | None,
+) -> dict[str, Any]:
     """Attempt a double-concordant auto-attach for one review_pending proposal.
 
     Idempotent + safe-by-default. Returns a verdict dict; ``committed`` is True
@@ -1031,6 +1060,31 @@ async def try_direct_phone_auto_attach(
 
 
 async def try_nameid_auto_attach(
+    proposal: dict[str, Any] | asyncpg.Record,
+    pool: asyncpg.Pool,
+) -> dict[str, Any]:
+    """Public LEVA-3 gate — see :func:`_try_nameid_auto_attach_inner`.
+
+    Same benign-skip contract as :func:`try_auto_attach` for a bounded
+    advisory-lock wait (round-5 F9).
+    """
+    proposal_id = dict(proposal).get("id")
+    try:
+        return await _try_nameid_auto_attach_inner(proposal, pool)
+    except TimeoutError:
+        logger.info(
+            "nameid_auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
+            "(bounded wait exceeded — will be re-evaluated later)",
+            proposal_id,
+        )
+        return {
+            "committed": False,
+            "skipped": "strong_id_lock_busy",
+            "proposal_id": proposal_id,
+        }
+
+
+async def _try_nameid_auto_attach_inner(
     proposal: dict[str, Any] | asyncpg.Record,
     pool: asyncpg.Pool,
 ) -> dict[str, Any]:

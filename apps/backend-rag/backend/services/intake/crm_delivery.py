@@ -120,6 +120,21 @@ async def deliver_committed_to_crm(
     if push.detail:
         crm_info["detail"] = push.detail
 
+    if push.status == "identity_unresolved":
+        # Distinct, greppable marker (round-5 F8): the document IS committed
+        # locally but could not be delivered to Kita because no unambiguous
+        # Fly identity exists (no phone / shared phone / no service key).
+        # There is deliberately NO auto-requeue: a retry cannot succeed until
+        # the identity mapping itself changes — these rows are found via this
+        # marker + the persisted delivery status, not by blind redelivery.
+        logger.warning(
+            "intake.delivery.identity_unresolved queue=%s doc=%s client=%s detail=%s",
+            queue_id,
+            result.doc_id,
+            plan.client_id,
+            push.detail,
+        )
+
     try:
         async with pool.acquire() as conn:
             if push.ok and result.doc_id is not None:

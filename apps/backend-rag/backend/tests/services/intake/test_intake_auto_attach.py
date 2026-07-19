@@ -541,6 +541,27 @@ def test_divergence_matching_payload_passes():
     )
 
 
+@pytest.mark.asyncio
+async def test_lock_busy_timeout_is_benign_skip(monkeypatch):
+    """Round-5 F9: a bounded advisory-lock wait that expires must surface as a
+    BENIGN skip (proposal untouched), never as an exception that burns worker
+    retry attempts toward poison-pill."""
+
+    async def _boom(proposal, pool, *, sender_phone):
+        raise TimeoutError("lock wait exceeded")
+
+    monkeypatch.setattr(auto_attach, "_try_auto_attach_inner", _boom)
+    out = await auto_attach.try_auto_attach({"id": 9}, None, sender_phone="0812")
+    assert out == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 9}
+
+    async def _boom3(proposal, pool):
+        raise TimeoutError("lock wait exceeded")
+
+    monkeypatch.setattr(auto_attach, "_try_nameid_auto_attach_inner", _boom3)
+    out3 = await auto_attach.try_nameid_auto_attach({"id": 11}, None)
+    assert out3 == {"committed": False, "skipped": "strong_id_lock_busy", "proposal_id": 11}
+
+
 def test_strong_id_lock_key_converges_across_formatting():
     """Round-4 F2 guilt: the gate locks the NORMALIZED value while a writer may
     hold the FORMATTED variant — both must project to the SAME lock key, or the

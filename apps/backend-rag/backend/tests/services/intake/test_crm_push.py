@@ -72,9 +72,31 @@ def _push_kwargs(blob: Path, **overrides: object) -> dict:
         "mime_type": "application/pdf",
         "notes": "intake:wa-123",
         "base_url": "http://fly.test",
+        # F5 (rounds 4-5): EVERY upload — bearer included — must phone-resolve
+        # the Fly id first; the defaults carry what resolution needs.
+        "sender_phone": "+62 812-3456-7890",
+        "crm_write_key": "service-key-abc",
     }
     kwargs.update(overrides)
     return kwargs
+
+
+FLY_CLIENT_ID = 4321
+
+
+def _serve_upsert(handler):
+    """Wrap a handler so the mandatory phone-first resolution succeeds
+    unambiguously; the wrapped handler then sees only the UPLOAD requests."""
+
+    def _wrapped(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/upsert-by-phone"):
+            return httpx.Response(
+                200,
+                json={"client_id": FLY_CLIENT_ID, "was_created": False, "matched_count": 1},
+            )
+        return handler(request)
+
+    return _wrapped
 
 
 # --------------------------------------------------------------------------- #
@@ -93,7 +115,7 @@ async def test_success_parses_doc_id_file_url_and_drive_file_id(mock_client, blo
             },
         )
 
-    requests = mock_client(handler)
+    requests = mock_client(_serve_upsert(handler))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is True
@@ -102,10 +124,12 @@ async def test_success_parses_doc_id_file_url_and_drive_file_id(mock_client, blo
     assert result.file_url == DRIVE_URL
     assert result.file_id == DRIVE_FILE_ID
 
-    # Exactly one request, against the REAL endpoint path, with the reviewer JWT.
-    assert len(requests) == 1
-    req = requests[0]
-    assert req.url.path == f"/api/crm/clients/{CLIENT_ID}/documents/upload"
+    # Phone-resolution first, then ONE upload at the RESOLVED Fly id (never the
+    # local pk — F5 applies to the bearer path too), with the reviewer JWT.
+    assert len(requests) == 2
+    assert requests[0].url.path == "/api/crm/clients/upsert-by-phone"
+    req = requests[1]
+    assert req.url.path == f"/api/crm/clients/{FLY_CLIENT_ID}/documents/upload"
     assert req.headers["authorization"] == "Bearer jwt-token-abc"
 
     # Body matches DocumentUploadBase64 field names exactly.
@@ -159,31 +183,33 @@ async def test_service_key_uses_internal_upload_endpoint(mock_client, blob):
 
 
 async def test_403_denied_rbac_no_retry(mock_client, blob):
-    requests = mock_client(lambda r: httpx.Response(403, json={"detail": "nope"}))
+    requests = mock_client(_serve_upsert(lambda r: httpx.Response(403, json={"detail": "nope"})))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is False
     assert result.status == "denied_rbac"
     assert "403" in (result.detail or "")
-    assert len(requests) == 1  # no retry on auth failures
+    assert len(requests) == 2  # upsert + ONE upload, no retry on auth failures
 
 
 async def test_401_denied_rbac_no_retry(mock_client, blob):
-    requests = mock_client(lambda r: httpx.Response(401, json={"detail": "expired"}))
+    requests = mock_client(_serve_upsert(lambda r: httpx.Response(401, json={"detail": "expired"})))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is False
     assert result.status == "denied_rbac"
-    assert len(requests) == 1
+    assert len(requests) == 2
 
 
 async def test_other_4xx_rejected_no_retry(mock_client, blob):
-    requests = mock_client(lambda r: httpx.Response(400, json={"detail": "Invalid base64"}))
+    requests = mock_client(
+        _serve_upsert(lambda r: httpx.Response(400, json={"detail": "Invalid base64"}))
+    )
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is False
     assert result.status == "rejected"
-    assert len(requests) == 1
+    assert len(requests) == 2
 
 
 async def test_500_then_200_retried_ok(mock_client, blob):
@@ -193,35 +219,35 @@ async def test_500_then_200_retried_ok(mock_client, blob):
             httpx.Response(200, json={"success": True, "document_id": 9, "file_url": DRIVE_URL}),
         ]
     )
-    requests = mock_client(lambda r: next(responses))
+    requests = mock_client(_serve_upsert(lambda r: next(responses)))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is True
     assert result.status == "pushed"
     assert result.fly_doc_id == 9
-    assert len(requests) == 2  # one retry
+    assert len(requests) == 3  # upsert + failed upload + retried upload
 
 
 async def test_500_twice_server_error(mock_client, blob):
-    requests = mock_client(lambda r: httpx.Response(500, text="dead"))
+    requests = mock_client(_serve_upsert(lambda r: httpx.Response(500, text="dead")))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is False
     assert result.status == "server_error"
-    assert len(requests) == 2
+    assert len(requests) == 3
 
 
 async def test_connect_error_twice_unreachable(mock_client, blob):
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused")
 
-    requests = mock_client(handler)
+    requests = mock_client(_serve_upsert(handler))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
 
     assert result.ok is False
     assert result.status == "unreachable"
     assert "ConnectError" in (result.detail or "")
-    assert len(requests) == 2  # initial + ONE retry
+    assert len(requests) == 3  # upsert + initial upload + ONE retry
 
 
 async def test_oversize_blob_too_large_without_http_call(mock_client, blob, monkeypatch):
@@ -247,7 +273,9 @@ async def test_missing_blob_no_http_call(mock_client, tmp_path):
 
 async def test_no_token_no_http_call(mock_client, blob):
     requests = mock_client(lambda r: httpx.Response(200, json={"success": True}))
-    result = await crm_push.push_committed_document(**_push_kwargs(blob, bearer_token=None))
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None, crm_write_key=None)
+    )
 
     assert result.ok is False
     assert result.status == "no_token"
@@ -272,12 +300,11 @@ def test_parse_drive_file_id():
 
 
 # --------------------------------------------------------------------------- #
-# Cross-DB identity bridge (F5, phone-FIRST): the local pk is NEVER a valid Fly #
-# address — the same number can name a DIFFERENT person there. Service-key path #
-# must resolve the Fly id by phone BEFORE any upload, and fail CLOSED when it   #
-# cannot (no phone / upsert failure). Bearer path stays direct (same namespace).#
+# Cross-DB identity bridge (F5, phone-FIRST, rounds 4-5): the local pk is NEVER #
+# a valid Fly address — the same number can name a DIFFERENT person there. BOTH #
+# auth modes resolve the Fly id by phone BEFORE any upload and fail CLOSED when #
+# they cannot (no phone / no key / upsert failure / SHARED phone — F7).         #
 # --------------------------------------------------------------------------- #
-FLY_CLIENT_ID = 4321
 
 
 async def test_phone_first_resolution_never_addresses_local_pk(mock_client, blob):
@@ -336,7 +363,9 @@ async def test_service_key_without_phone_fails_closed(mock_client, blob):
 
     requests = mock_client(handler)
     result = await crm_push.push_committed_document(
-        **_push_kwargs(blob, bearer_token=None, crm_write_key="service-key-abc")
+        **_push_kwargs(
+            blob, bearer_token=None, crm_write_key="service-key-abc", sender_phone=None
+        )
     )
     assert result.ok is False
     assert result.status == "identity_unresolved"
@@ -366,17 +395,57 @@ async def test_service_key_upsert_failure_fails_closed(mock_client, blob):
     assert [r.url.path for r in requests] == ["/api/crm/clients/upsert-by-phone"]
 
 
-async def test_404_with_bearer_token_does_not_upsert(mock_client, blob):
-    """INNOCENCE: reviewer-JWT path is human-driven against Fly directly — the
-    cross-DB bridge is service-key-only, so a JWT 404 must NOT upsert."""
+async def test_bearer_path_also_resolves_fly_id_first(mock_client, blob):
+    """Round-5 F5: the reviewer-JWT path passes a LOCAL plan.client_id too — it
+    must resolve the Fly id first exactly like the service-key path, and a 404
+    on the RESOLVED id is a clean rejected (never a local-pk upload)."""
+
     def handler(request: httpx.Request) -> httpx.Response:
-        assert not request.url.path.endswith("/upsert-by-phone")
+        assert f"/clients/{CLIENT_ID}/" not in request.url.path
         return httpx.Response(404, json={"detail": "Client not found"})
+
+    requests = mock_client(_serve_upsert(handler))
+    result = await crm_push.push_committed_document(**_push_kwargs(blob))  # bearer default
+    assert result.ok is False
+    assert result.status == "rejected"
+    assert [r.url.path for r in requests] == [
+        "/api/crm/clients/upsert-by-phone",
+        f"/api/crm/clients/{FLY_CLIENT_ID}/documents/upload",
+    ]
+
+
+async def test_bearer_without_phone_fails_closed(mock_client, blob):
+    """Round-5 F5 guilt: bearer + no sender phone → identity_unresolved with
+    ZERO HTTP calls — the local pk must never be a fallback address."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no HTTP call may be made without a resolved identity")
 
     requests = mock_client(handler)
     result = await crm_push.push_committed_document(
-        **_push_kwargs(blob, sender_phone="+62 812-3456-7890")  # keeps bearer_token
+        **_push_kwargs(blob, sender_phone=None)
     )
     assert result.ok is False
-    assert result.status == "rejected"
-    assert len(requests) == 1
+    assert result.status == "identity_unresolved"
+    assert len(requests) == 0
+
+
+async def test_shared_phone_ambiguity_fails_closed(mock_client, blob):
+    """Round-5 F7 guilt: upsert-by-phone returning matched_count > 1 (shared
+    phone — spouse/agent/office line) must NOT deliver: the endpoint picked one
+    row arbitrarily and that is exactly the wrong-client vector."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/upsert-by-phone"):
+            return httpx.Response(
+                200, json={"client_id": 777, "was_created": False, "matched_count": 3}
+            )
+        raise AssertionError("upload must not run on an ambiguous identity")
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None)
+    )
+    assert result.ok is False
+    assert result.status == "identity_unresolved"
+    assert [r.url.path for r in requests] == ["/api/crm/clients/upsert-by-phone"]
