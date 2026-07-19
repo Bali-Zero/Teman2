@@ -1,0 +1,85 @@
+{
+ "boundary_guard_data_bands": {
+  "246": 0,
+  "247": 0,
+  "248": 0,
+  "249": 0,
+  "250": 0,
+  "323": 0,
+  "324": 0,
+  "443": 0,
+  "444": 0
+ },
+ "bps_pdf": {
+  "pages": 444,
+  "path": "/Users/nuzantara/nuzantara-vault/bps/tabel-konversi-kbli-2020-2025-volume2-2026.pdf",
+  "sha256": "29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949"
+ },
+ "canonical_input": {
+  "path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+  "sha256": "03e3116a5d6bddd30d1d154842a30024396512c81b9ccfe28e0a0f813047fc02"
+ },
+ "edges": {
+  "lampiran10": 2560,
+  "lampiran5": 2560
+ },
+ "extraction_tool": {
+  "flags": {
+   "anchor_rule": "exactly one ^\\d{5}$ in LEFT zone [38,80) AND exactly one in RIGHT zone [255,302) per band; else fail-closed to unresolved",
+   "band_rule": "full-width horizontal rects (width-span>=300pt, height<3pt), bands = inter-rule regions, word assignment by vertical center",
+   "char_filter": "drop chars whose fontname contains 'Arial' (diagonal 'https://www.bps.go.id' watermark; body=Aptos family)",
+   "extract_words": {
+    "keep_blank_chars": false,
+    "use_text_flow": false
+   }
+  },
+  "library": "pdfplumber",
+  "version": "0.11.9"
+ },
+ "label_row_failures": [],
+ "lampiran_spans_pdf_pages": {
+  "10": [
+   325,
+   442
+  ],
+  "5": [
+   131,
+   245
+  ]
+ },
+ "page_numbering": {
+  "convention": "printed_page = pdf_page - 14",
+  "footer_failures": [],
+  "footer_total_pages": 233,
+  "footer_verified_pages": 233
+ },
+ "parser_run_digest": "f1bcf118127a077eb0ee166fd216fe5d1c5552ee54821fb3557ecc2d13c489a6",
+ "parser_source": {
+  "git_blob": "02f65e7d00252a9defa4a02e2a5ab0f9cea5c60d",
+  "path": "scripts/kbli_filiera/parse_bps_crosswalk.py",
+  "sha256": "00e6741b616fdaa413454501534be5f42789c73b5ccab25a8b0fe93d3e022136"
+ },
+ "python": {
+  "implementation": "CPython",
+  "version": "3.11.15"
+ },
+ "row_count_ground_truth": {
+  "band_lane": {
+   "5": 2560,
+   "10": 2560
+  },
+  "divergent_pages": {
+   "10": [],
+   "5": []
+  },
+  "note": "two independent extraction lanes (pdfplumber geometry vs poppler layout-text); per-page divergences MUST be eye-adjudicated before the §1.4 gate uses a frozen true count",
+  "pdftotext_lane": {
+   "5": 2560,
+   "10": 2560
+  }
+ },
+ "sebagian_note": "capability implemented (code-cell modifier scan); Vol.2 L5/L10 tables carry zero 'sebagian' markers (2 PDF-wide hits are copyright/prose pages) — calibration 2026-07-20",
+ "sebagian_observed_rows": 0,
+ "spec": "research/operations/2026-07-19-kbli-batch-b-design.md (REV-4b) §1.4",
+ "unresolved_rows": 0
+}
