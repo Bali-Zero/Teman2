@@ -571,6 +571,58 @@ class TestMaybeFlushAllBatches:
 # when the flag lied.
 
 
+class TestRunTranslateTimeoutGuard:
+    """Regression coverage for the crash bug: the subprocess.run() call for
+    translate-articles.py used to be bare (no try/except). When the script
+    wedges past the 15min timeout, subprocess.TimeoutExpired propagated
+    uncaught and crashed the ENTIRE poller run — every remaining queue item
+    was abandoned mid-tick (8 real incidents in post_publish_poller.err on
+    Pro). run_translate() must catch the timeout, log the cause (stderr
+    tail — never a bare fail), and return False so the item is reported as a
+    failed step and retried on the next tick instead of killing the run."""
+
+    def test_translate_timeout_is_caught_returns_false_not_raised(self, tmp_path, monkeypatch, _silence_log):
+        _fake_repo_root(tmp_path, monkeypatch)
+        # MDX already present locally so run_translate skips the GitHub-pull
+        # branch entirely and goes straight to the translate subprocess call.
+        mdx_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / "business"
+        mdx_dir.mkdir(parents=True, exist_ok=True)
+        (mdx_dir / "test-slug.mdx").write_text("---\nfoo\n---\nbody", encoding="utf-8")
+
+        distinctive_tail = "OLLAMA_HUNG_CUDA_TIMEOUT_XYZ123"
+
+        def fake_run(cmd, **kwargs):
+            if cmd[0] == "pgrep":
+                return _res(returncode=1)  # no other translate running -> free immediately
+            # This is the translate-articles.py invocation — simulate it wedging.
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=15 * 60, output="", stderr=distinctive_tail)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            # Without the try/except this raises subprocess.TimeoutExpired and
+            # the test errors out instead of asserting — that IS the guilt case.
+            result = ppp.run_translate("test-slug", "business")
+
+        assert result is False
+        assert any(distinctive_tail in m for m in _silence_log)
+
+    def test_translate_success_path_unaffected(self, tmp_path, monkeypatch):
+        """INNOCENCE: the guard must not swallow a genuine success/failure exit."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        mdx_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / "business"
+        mdx_dir.mkdir(parents=True, exist_ok=True)
+        (mdx_dir / "ok-slug.mdx").write_text("---\nfoo\n---\nbody", encoding="utf-8")
+
+        def fake_run(cmd, **kwargs):
+            if cmd[0] == "pgrep":
+                return _res(returncode=1)
+            return _res(returncode=0)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            result = ppp.run_translate("ok-slug", "business")
+
+        assert result is True
+
+
 class TestProcessItemNeverSkipsImageStep:
     def test_intel_source_calls_run_image_even_when_completed_steps_true(self):
         item = {

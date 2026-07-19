@@ -600,10 +600,27 @@ def run_translate(slug: str, category: str) -> bool:
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
             return False
-    result = subprocess.run(
-        [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
-        capture_output=True, text=True, timeout=15 * 60,
-    )
+    try:
+        result = subprocess.run(
+            [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
+            capture_output=True, text=True, timeout=15 * 60,
+        )
+    except subprocess.TimeoutExpired as e:
+        # Live incident (8x in post_publish_poller.err): translate-articles.py
+        # wedges past the 15min budget — this used to propagate uncaught and
+        # crash the ENTIRE poller run (every remaining queue item abandoned
+        # mid-tick). Caught here, logged, and reported as a failed step so the
+        # reaper picks the item back up next tick instead of the run dying.
+        stderr_tail = e.stderr
+        if isinstance(stderr_tail, bytes):
+            stderr_tail = stderr_tail.decode("utf-8", errors="replace")
+        log(f"  ❌ translate timed out after {15 * 60}s: "
+            f"{stderr_tail[-200:] if stderr_tail else '(no stderr captured)'}")
+        return False
+    except Exception as e:
+        log(f"  ❌ translate error: {e}")
+        return False
+
     ok = result.returncode == 0
     log(f"  {'✅' if ok else '❌'} translate exit={result.returncode}")
     if not ok and result.stderr:
