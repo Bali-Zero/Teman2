@@ -165,12 +165,20 @@ function makeReceipt(target, overrides = {}) {
   };
 }
 
-async function stageAndReadTarget(routes, db, runtime, kind = "edition") {
+async function stageAndReadTarget(
+  routes,
+  db,
+  runtime,
+  kind = "edition",
+  packetOverrides = {},
+) {
   const story = storyVersion({
     suffix: `audit-${kind}-${crypto.randomUUID()}`,
   });
   const packet =
-    kind === "edition" ? editionPacket(story) : breakingPacket(story);
+    kind === "edition"
+      ? editionPacket(story, packetOverrides)
+      : breakingPacket(story, packetOverrides);
   const operation = kind === "edition" ? "edition.publish" : "breaking.publish";
   const body = JSON.stringify(packet);
   const request = await signedMachineRequest({
@@ -479,6 +487,101 @@ test(
       ).current_revision,
       2,
     );
+  },
+);
+
+test(
+  "leapfrog receipt is rejected until every canonical predecessor is anchored",
+  { skip: !routesExist },
+  async () => {
+    const db = new SqliteD1Database();
+    const routes = await loadRoutes();
+    const runtime = bindings(db);
+    const first = await stageAndReadTarget(routes, db, runtime, "edition");
+    const second = await stageAndReadTarget(routes, db, runtime, "breaking", {
+      expected_breaking_revision: 1,
+    });
+    const firstReceipt = makeReceipt({
+      ...first.target,
+      stream_id: STREAM_ID,
+    });
+    const prematureSecondReceipt = makeReceipt({
+      ...second.target,
+      stream_id: STREAM_ID,
+    });
+
+    const prematureSecondRequest = await signedMachineRequest({
+      path: "/api/machine/audit-anchor",
+      body: JSON.stringify(prematureSecondReceipt),
+    });
+    assert.equal(
+      (await invoke(routes.anchor, prematureSecondRequest, runtime)).status,
+      409,
+    );
+    assert.equal(
+      db.get(
+        "SELECT stream_seq FROM audit_anchor_heads WHERE stream_id = ?",
+        STREAM_ID,
+      ),
+      null,
+    );
+    assert.equal(
+      db.get(
+        `SELECT status FROM audit_promotion_permits
+         WHERE operation = ? AND packet_id = ?`,
+        second.operation,
+        second.packet.packet_id,
+      ),
+      null,
+    );
+
+    const firstAnchorRequest = await signedMachineRequest({
+      path: "/api/machine/audit-anchor",
+      body: JSON.stringify(firstReceipt),
+    });
+    assert.equal(
+      (await invoke(routes.anchor, firstAnchorRequest, runtime)).status,
+      201,
+    );
+    const firstFinalizeRequest = await signedMachineRequest({
+      path: "/api/machine/publications/editions",
+      body: first.body,
+    });
+    assert.equal(
+      (await invoke(routes.edition, firstFinalizeRequest, runtime)).status,
+      201,
+    );
+
+    const orderedSecondReceipt = makeReceipt(
+      { ...second.target, stream_id: STREAM_ID },
+      { body: { previous_anchor_hash: firstReceipt.anchor_hash } },
+    );
+    const secondAnchorRequest = await signedMachineRequest({
+      path: "/api/machine/audit-anchor",
+      body: JSON.stringify(orderedSecondReceipt),
+    });
+    assert.equal(
+      (await invoke(routes.anchor, secondAnchorRequest, runtime)).status,
+      201,
+    );
+    const secondFinalizeRequest = await signedMachineRequest({
+      path: "/api/machine/publications/breaking",
+      body: second.body,
+    });
+    assert.equal(
+      (await invoke(routes.breaking, secondFinalizeRequest, runtime)).status,
+      201,
+    );
+
+    for (const packet of [first.packet, second.packet]) {
+      assert.equal(
+        db.get(
+          "SELECT publication_state FROM publication_packets WHERE packet_id = ?",
+          packet.packet_id,
+        ).publication_state,
+        "published",
+      );
+    }
   },
 );
 

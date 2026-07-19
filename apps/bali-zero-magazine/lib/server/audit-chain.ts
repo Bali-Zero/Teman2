@@ -722,17 +722,19 @@ export async function acceptAuditAnchor(
     )
     .bind(receipt.body.stream_id)
     .first<AnchorHeadRow>();
+  const expectedStreamSequence = (head?.stream_seq ?? 0) + 1;
+  const expectedPreviousEventHash = head?.event_hash ?? AUDIT_ZERO_HASH;
   if (
     receipt.body.previous_anchor_hash !==
       (head?.anchor_hash ?? AUDIT_ZERO_HASH) ||
-    Number(receipt.body.stream_seq) <= (head?.stream_seq ?? 0)
+    Number(receipt.body.stream_seq) !== expectedStreamSequence
   ) {
     throw new Error("audit anchor chain conflict");
   }
   const target = await db
     .prepare(
       `SELECT b.operation, b.packet_id, b.event_id, b.stream_id,
-              b.stream_seq, b.event_hash
+              b.stream_seq, b.event_hash, e.previous_event_hash
        FROM publication_audit_bindings b
        JOIN audit_events e ON e.event_id = b.event_id
        WHERE b.stream_id = ? AND b.stream_seq = ?
@@ -744,7 +746,12 @@ export async function acceptAuditAnchor(
       receipt.body.event_hash,
     )
     .first<PublicationBindingRow>();
-  if (target === null) throw new Error("anchor target is not canonical");
+  if (
+    target === null ||
+    target.previous_event_hash !== expectedPreviousEventHash
+  ) {
+    throw new Error("anchor target is not canonical successor");
+  }
   const now = new Date().toISOString();
   await db.batch([
     db
