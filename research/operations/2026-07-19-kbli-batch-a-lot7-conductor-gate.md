@@ -3,7 +3,7 @@ date: 2026-07-19
 domain: operations
 client_case: none (GARUDA-FILIERA Batch A — Lot 7 conductor D6 gate)
 adversarial_review: codex
-adversarial_review_detail: "SCHEDULED on this signed report (sol xhigh read-only, full-output capture per W97) — findings will be appended and cured before the cure ships."
+adversarial_review_detail: "DONE (sol xhigh read-only, full-output capture per W97 — /tmp/kbli-conductor-a1-0718/lot7-redteam.txt, verdict at lines 9641-9679, 549,576 tokens). Verdict: FIX-FIRST — 1 BLOCKER (41013 absolved prematurely and on a WRONG legal base: MT→Pasal 225(1) not 230; fail-closed was CORRECT) + 2 MAJOR (20232 'concordant' contradicts the runner tuple; 'RANDOM'/disease-rate unsupported) + 3 MINOR. ALL cured in this SECOND SIGNING. Checks (a)(b)(c)(e)(f)(g)(h) PASS with exact independent recomputation — the objective adjudications of 85330/91222/20232 STAND."
 sources:
   - "plan: research/operations/2026-07-18-kbli-batch-a-plan.md"
   - "runner: /tmp/kbli-conductor-a1-0718/lot7-runner.js sha256 9bb3870fe5bae3c977c8e1ab5895d098e7be86a604d54c0c9f4a6be6a103a609 = git blob a3e27f7fd2c7036a3183b466eb82960524ac57a1 @ origin/main 06b26c4639c2 — FIRST LOT under the patched certification contract (#2800 + OSS-native amendment bcd60e026e)"
@@ -30,11 +30,13 @@ sources:
 **13/13 in-scope QUARANTINED — evidence-driven, five categories.** Both controls
 were ALSO quarantined, for two very different reasons that are the twin headlines of
 this lot (§3.4/§3.5): 20232 carries a REAL, conductor-eye-verified metadata falsity
-(the "verified" OSS-native set disease again — FATAL-4 corroboration from a code
-picked as an innocence control); 41013 is seat-clean and was quarantined SOLELY by
-the new facts-inventory gate on `fiktif_positif` — a **contract artifact** exposing
-the second derived-fact category error (§3.5). Zero fabrications observed in either
-control.
+(the "verified" OSS-native set disease again — an additional observed defect from a
+fresh SELECTED control); 41013 is seat-clean on the problem bits and was quarantined
+by the facts-inventory gate on `fiktif_positif` — a **CORRECT fail-closed under the
+current contract** (post-adversarial correction: the record genuinely asserts the
+fact ×5 with no cited provenance; the absolution to "contract artifact" is
+CONDITIONAL on the derived-provenance refinement landing and 41013's seats being
+re-run under it — §3.5).
 
 Final category census (runner assignment, 6/4/1/1/1 = 13):
 
@@ -61,7 +63,10 @@ state, same compensating isolation.
   scope change (pasta gigi dropped from the title, contact-lens fluid added, bespoke
   perfume hived off). The control's canonical `status_mapping='MATCH_LANGSUNG'` +
   "Direct 1:1 match — code and scope unchanged" is **contradicted by government
-  ink** — the seats' concordant finding is REAL.
+  ink**. Both seats INDEPENDENTLY found SPLIT + `mapping_metadata_false`; the full
+  runner tuple is nonetheless DIVERGENT on `licensing_inherits` (D1 false, D5 true —
+  compiled `divergent=true`), so this is a both-sick divergence, not a concordance
+  *(adversarial MAJOR cured: the first signing wrote "concordant finding")*.
 - **`85330/crosswalk/lampiran10_p431-431.png` (printed p.417):** single row
   `85330 ← 85220 "Pendidikan Menengah/Aliyah Swasta"` — the canonical's claimed
   source 85499 is refuted; three rows below, `85530 "Kegiatan Sekolah Mengemudi" ←
@@ -109,32 +114,51 @@ state, same compensating isolation.
    class as the 59140 pp28-label nit but LOUDER (title/scope materially changed).
    Disposition: **no detach** (OSS-native, not a member; per_skala provenance sound
    by marker); joins the standalone metadata cure-list (with 01629, 71204, 59140
-   pp28-label). **FATAL-4 corroboration: a RANDOM fresh control from the "verified"
-   1,336 set carries a false mapping claim** — the disease rate in the verified set
-   keeps confirming itself (POS ledger: 1 clean / 3 contaminated; controls: 20232
-   now too). Burn-list grows: +20232.
-5. **41013 control — CONTRACT ARTIFACT (adjudicated: seats clean, gate over-broad
-   on derived facts):** both seats problem_found=false; D5's 25-entry inventory has
-   **20 verified through BOTH locator channels working as designed** (PP28 render
-   p.23 row 5 for Mikro/Kecil/Menengah + `oss/ruang_lingkup.json` KbliResikos for
-   Besar/BG003+GT003 — the OSS-native amendment proven live on its first exercise)
-   and **5 absent — ALL `fiktif_positif`**. `fiktif_positif` is not a table cell in
-   ANY source: it is a LEGAL CONSEQUENCE derived from Pasal 230 / Pasal 124(4)
-   (risk tier + day-SLA ⇒ auto-issuance). Requiring an independent locator for a
-   rule-derived fact is a category error — under the current wording, **no record
-   asserting fiktif_positif can ever certify**, which silently forces m2=0 forever.
-   Disposition: 41013 recorded as **seat-clean control, quarantine = contract
-   artifact, NOT a record defect** (no cure, no burn — eligible for reuse after the
-   refinement since its record was never shown defective... conservatively: burn it
-   anyway, fresh controls are cheap; +41013 to burn-list). **Contract refinement #2
-   REQUIRED (cure deliverable, precondition for Lot 8): a DERIVED fact
-   (fiktif_positif, derived_license-when-empty) is `verified` iff (a) its base
-   facts (kategori_risiko, jangka_waktu) are verified AND (b) the derivation rule
-   is cited with instrument+vintage (e.g. "PP 28/2025 Pasal 230, vintage 2025").
-   Regression test: guilt (base facts absent ⇒ derived fact absent ⇒ no
-   certification) + innocence (base verified + rule cited ⇒ derived verified ⇒
-   certification possible).** The gate itself (demote-only) behaved correctly —
-   fail-closed is the right default; the WORDING is what needs the refinement.
+   pp28-label). **FATAL-4 corroboration, stated precisely (adversarial MAJOR
+   cured):** 20232 is a fresh SELECTED control (conductor-screened for
+   non-exposure, not a reproducible random draw — no sampling frame/seed was
+   published), so this is **an additional observed defect in the "verified" 1,336
+   set, NOT a rate estimate**. The qualitative pattern stands: every independent
+   selection path into that set keeps surfacing defects (POS ledger 1 clean / 3
+   contaminated; now a fresh control too). A defensible disease-RATE needs a
+   published frame + algorithm + seed — that is exactly the FATAL-4 sweep decision
+   pending with Zero. Burn-list grows: +20232.
+5. **41013 control — CORRECT FAIL-CLOSED; absolution CONDITIONAL (adversarial
+   BLOCKER accepted in full, adjudication rewritten):** seat problem bits clean
+   (D1 `needs_quarantine=false`; D5 `problem_found=false` — the two seats' schemas
+   carry DIFFERENT field names, stated precisely per the adversarial MINOR). D5's
+   25-entry inventory has **20 verified through BOTH locator channels working as
+   designed** (PP28 render p.23 row 5 for Mikro/Kecil/Menengah +
+   `oss/ruang_lingkup.json` KbliResikos for Besar/BG003+GT003 — the OSS-native
+   amendment proven live on its first exercise) and **5 absent — ALL
+   `fiktif_positif`**. The record GENUINELY asserts `fiktif_positif=true` in all
+   five scale entries (dossier canonical.json:10/30/56/82/110/140) with no citable
+   provenance — so **the gate's fail-closed demotion is CORRECT under the current
+   contract, and 41013 stays QUARANTINED as "derived provenance not yet
+   certifiable"**. The first signing's "contract artifact, NOT a record defect"
+   was PREMATURE (it absolved the record before the refined contract exists) and
+   cited the WRONG legal base — corrected here: `fiktif_positif` is a rule-derived
+   legal consequence codified by UU Cipta Kerja 6/2023, with **Pasal 225(1) PP
+   28/2025 governing Menengah Tinggi** (Sertifikat Standar deemed verified on SLA
+   miss — 41013's actual tier) and **Pasal 230 governing Tinggi** (Izin
+   auto-issued); **Pasal 124(4) is the separate derived-LICENSE rule** the runner
+   already encodes. The repo carries the versioned formula:
+   `scripts/derive_fiktif_positif.py` (NB-3-verbatim boolean rule, incl. the
+   external-regime exclusions). **Contract refinement #2 (cure deliverable,
+   precondition for Lot 8): a DERIVED-class inventory entry is `verified` iff (a)
+   its BASE facts (kategori_risiko, jangka_waktu) are verified with locators, (b)
+   the derivation formula is cited versioned (script + instrument + article + 
+   vintage: Pasal 225(1)/230 PP 28/2025), and (c) the formula's exclusions are
+   checked. Guilt test: base facts absent ⇒ derived absent ⇒ no certification.
+   Innocence test: base verified + formula cited ⇒ derived verified ⇒
+   certification possible. THEN both 41013 seats are RE-RUN under the refined
+   contract — only that re-run can convert this disposition to "contract
+   artifact, not record defect".** Until then no absolution is on record.
+   Burn-list: +41013 (conservative — fresh controls are cheap). Scope of the
+   current limitation, stated precisely (adversarial MINOR cured): the present
+   wording blocks certification of every NON-EMPTY record asserting
+   `fiktif_positif` (an empty-per_skala record still certifies vacuously) — not
+   "m2=0 forever".
 6. **91222 — illegitimate_inheritance (first sighting):** 2-parent merge
    {91024, 91029} per both crosswalk directions (p.241 + p.437, seat-cited);
    canonical claims `MATCH_LANGSUNG` + `pp28_sources=['91022']` — and 91022
@@ -166,11 +190,18 @@ state, same compensating isolation.
    51108 fan; 85404 → {85332, 85340}; 91222 → {91024, 91029} illegitimate
    inheritance; 90111 → p.498 I.P.8 truth + ISO-9001 matcher trap record) + F12
    everywhere.
-4. **Contract refinement #2** (§3.5): derived-fact rule + regression tests + both
-   contract-refinement re-runs (41013 seats) — precondition for Lot 8.
+4. **Contract refinement #2** (§3.5): derived-fact rule + regression tests
+   (guilt + innocence) + **re-run of BOTH 41013 seats under the refined contract —
+   this re-run is the VALIDATION gate of the cure PR** (only it can convert the
+   §3.5 disposition to "contract artifact"); precondition for Lot 8.
 5. Standalone metadata cure-list grows: +20232 (with 01629, 71204, 59140).
 6. D0 matcher hardening (ISO-9001 boilerplate trap, `fuzzy_code_pattern` guilt+
    innocence corpus) — FILED for the filiera-compiler lane.
+6b. **Journal provenance (adversarial MINOR, runner deliverable):** each seat's
+   journal entry must carry its LABEL, the sha256 of the FULL prompt actually
+   sent, the sha256 of the response schema, the runner blob sha, and
+   `control_tag_applied_after: true` for controls — so a future audit can prove
+   which prompt/schema produced which verdict without trusting neutral labels.
 7. Surfaces: proven consumer-map 13 codes + NOTE: `kbli_documents` 4th surface
    apply (sibling lane owns the `--all-quarantined` prod apply; verify it covers
    the L7 13 at close-out or run it coordinated via ledger).
@@ -194,11 +225,14 @@ state, same compensating isolation.
   Every hardening reveals the next layer — the honest ceiling for certification is
   "base facts verified + derivation rules cited", not "every field has a table
   cell". Refinement #2 encodes exactly that, nothing more.
-- **The "verified" 1,336 set keeps failing random probes:** POS draws 1 clean / 3
-  contaminated; now a FRESH innocence control (20232) drawn for cleanliness carries
-  a false MATCH_LANGSUNG. Every independent sampling path lands on the same
-  conclusion — the FATAL-4 verified-set sweep decision (Zero, Legge 5) is riper
-  with each lot.
+- **The "verified" 1,336 set keeps yielding defects under every SELECTION path
+  tried (adversarial MAJOR accepted — no rate is claimed):** POS picks 1 clean /
+  3 contaminated; now a FRESH innocence control (20232), picked for expected
+  cleanliness, carries a false MATCH_LANGSUNG. None of these paths was randomized
+  or frame-defined, so they support NO defect-rate estimate — only the
+  qualitative signal that independent selection paths keep finding defects. A
+  formal rate needs a declared frame + seed: exactly the FATAL-4 verified-set
+  sweep decision (Zero, Legge 5), riper with each lot.
 
 ## 7. Artifact manifest (immutable pins)
 
@@ -214,17 +248,34 @@ state, same compensating isolation.
 | Pre-launch pins | `/tmp/kbli-conductor-a1-0718/lot7-prelaunch-pins.md` |
 | Raw compiled result | task output `whbngdcvp` (JSON `.result`, 15 entries) + journal `wf_f557bfcc-249/journal.jsonl` (30 results) |
 
-## Adversarial review
+## Adversarial review — VERDICT AND CURES
 
-Seat: **codex** — scheduled on this SIGNED report: sol xhigh read-only over this
-file + the compiled result + journal + canonical + renders. Findings appended and
-cured before the cure ships.
+Seat: **codex gpt-5.6-sol xhigh**, read-only over this file + compiled result +
+journal + canonical + renders. FULL output captured per W97
+(`/tmp/kbli-conductor-a1-0718/lot7-redteam.txt`, 9,679 lines / 549,576 tokens;
+verdict verbatim at lines 9641–9679). Overall verdict: **FIX-FIRST**. The
+objective adjudications (85330 aviation payload, 91222 illegitimate inheritance,
+20232 SPLIT, census 6/4/1/1/1, m4 token identity) were independently recomputed
+and STAND.
+
+| # | Severity | Finding | Cure in this signing |
+|---|----------|---------|----------------------|
+| 1 | BLOCKER | 41013 absolved as "contract artifact" PREMATURELY and on a WRONG legal base (Pasal 230/124(4) cited for a Menengah Tinggi record; the rule is Pasal 225(1), already versioned in `scripts/derive_fiktif_positif.py`) | §3.5 rewritten: fail-closed CORRECT, record stays QUARANTINED, legal base corrected (225(1) MT / 230 Tinggi / 124(4) derived-license), absolution CONDITIONAL on refinement #2 implemented+tested+seats re-run (§5.4) |
+| 2 | MAJOR | 20232 described as seat-"concordant" while the compiled runner tuple is DIVERGENT on `licensing_inherits` (D1 false / D5 true) | §2 corrected: both seats independently found SPLIT+mapping_metadata_false, tuple nonetheless DIVERGENT on licensing_inherits |
+| 3 | MAJOR | "RANDOM" probe / disease-rate language unsupported (selections were not randomized nor frame-defined) | §3.4 ("fresh SELECTED control... NOT a rate estimate") + §6 bullet rewritten with explicit no-rate caveat |
+| 4 | MINOR | "m2=0 forever" over-broad (empty-per_skala records certify vacuously) | §3.5 scoped: blocks every NON-EMPTY record asserting fiktif_positif |
+| 5 | MINOR | Journal entries lack prompt/label/schema provenance (neutral labels) | §5.6b deliverable: label + full-prompt sha256 + schema sha256 + runner blob sha + control_tag_applied_after |
+| 6 | MINOR | Seat problem bits conflated ("both problem_found=false" — the two schemas use different field names) | §3.5 stated precisely: D1 `needs_quarantine=false`; D5 `problem_found=false` |
 
 ## Sign-off
 
-**Lot 7 conductor gate: SIGNED — FIRST SIGNING, pre-adversarial-pass** (census
-verified against runner output; 20232 SPLIT + 85330 true-parent/51108-fan
-conductor-eye-verified; both control dispositions adjudicated; m4 identity-checked
-to the token). Cure authorized to be SPECCED (13/13 + contract refinement #2 +
-standalone 20232) but ships only after the red-team pass on this report. —
-Conductor (Fable, MANDATO S2), 2026-07-19.
+**Lot 7 conductor gate: SIGNED — SECOND SIGNING, adversarial pass DONE** (codex
+sol xhigh FIX-FIRST verdict: 1 BLOCKER + 2 MAJOR + 3 MINOR, ALL cured above; the
+objective adjudications stand as independently recomputed). Census verified
+against runner output; 20232 SPLIT + 85330 true-parent/51108-fan
+conductor-eye-verified; both control dispositions adjudicated (41013 QUARANTINED
+pending refinement #2 re-run); m4 identity-checked to the token. Cure PR
+authorized to ship: 13/13 detach spec + contract refinement #2 (with the 41013
+seats re-run as its validation gate) + standalone 20232 + journal provenance —
+auto-merge armed only after the conductor's gate on the diff. — Conductor
+(Fable, MANDATO S2), 2026-07-19.
