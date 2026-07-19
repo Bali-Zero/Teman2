@@ -12,8 +12,8 @@ publication, collector mutation, client-data access, or paid API call occurred.
 
 ## Review Remediation
 
-Two review waves corrected four independently confirmed authorization, lease,
-heartbeat-lifecycle, and DLP findings.
+Three review waves corrected five independently confirmed authorization, lease,
+heartbeat-lifecycle, DLP, and production-wiring findings.
 
 ### Wave 1 — Authorization and Server Lease Fencing
 
@@ -56,6 +56,32 @@ heartbeat-lifecycle, and DLP findings.
   exception detail, and classifier-provided explanations are absent from return
   values and logs.
 
+### Wave 3 — Production Research Sources and Runner
+
+- **Closed Pro source registry:** a strict server-side configuration maps only
+  stable `topic:` and `entity:` identifiers to sanitized labels/search terms,
+  exactly four bounded `*.public.json` projections, and masked NotebookLM
+  references. Relative, symlinked, oversized, missing, duplicate, or unknown
+  projection paths fail startup; no live notebook reference is committed.
+- **Concrete local adapters:** search, compare, and timeline load the existing
+  Intel Lake, MATA GARUDA, Regulatory Watcher, and NotebookLM public projection
+  contracts. They filter only configured sources, stable subjects, domains,
+  languages, evidence types, and projection cutoff timestamps; claims without
+  a public HTTPS citation and publication timestamp are excluded. Compare and
+  timeline cardinality and ordering are deterministic.
+- **Closed Notebook Insight:** the production client invokes the authenticated
+  Pro-local `nlm` mechanism with `asyncio.create_subprocess_exec`, fixed argv,
+  no shell, discarded stderr, bounded output, and a hard timeout. The prompt is
+  assembled only from a configured public label and one fixed template. Strict
+  JSON, evidence, URL, timestamp, numeric metadata, and sanitization checks run
+  before a finding can reach the worker DLP gate; malformed, private, uncited,
+  unavailable, or oversized responses become content-free failures.
+- **Production composition root:** one factory builds all four adapters and the
+  persistent signed `MagazineTransport` with a `DurableOutcomeJournal`. The new
+  `magazine-research-worker` executable polls only through the existing outbound
+  machine bridge, uses bounded backoff, handles termination cleanly, and logs no
+  request, notebook, response, secret, or exception content.
+
 ## Delivered Components
 
 - Internal Research list, workbench, and structured finding detail views.
@@ -65,8 +91,8 @@ heartbeat-lifecycle, and DLP findings.
   heartbeat, cancellation, completion, failure, replay, and metadata-only audit.
 - Human APIs with current-role authorization and machine APIs with signed HMAC
   envelopes.
-- Pro-side worker and transport with deterministic request handling and safe
-  structured receipts.
+- Pro-side production registry, four adapters, persistent signed transport,
+  deterministic runner, and safe structured receipts.
 
 ## TDD Evidence
 
@@ -96,6 +122,20 @@ heartbeat-lifecycle, and DLP findings.
   classifier outcomes quarantine both PII-like and ordinary text without raw
   content in results or logs.
 
+### Wave 3
+
+- RED was captured before implementation: the new production integration suite
+  failed collection because `zantara_media.magazine.research_runtime` did not
+  exist.
+- GREEN production-factory coverage is `7 passed`: all four modes execute
+  through the real factory against temporary sanitized projections and an
+  injected Notebook client; the non-injected path constructs the persistent
+  signed transport and durable journal; unknown subject IDs, raw query/path
+  keys, missing or unsafe configuration, future-dated rows, uncited/private
+  Notebook output, UUID leakage, unbound/numerically incomplete claims, shell
+  invocation, unbounded output, backoff, and graceful stop are rejected or
+  covered.
+
 ## Final Gates
 
 From `apps/bali-zero-magazine`:
@@ -124,17 +164,29 @@ From `apps/zantara-media`:
 33 passed in 0.24s
 
 .venv/bin/python -m pytest tests/magazine tests/test_dlp.py -q
-104 passed in 25.58s
+111 passed in 3.85s
+
+.venv/bin/python -m pytest tests/magazine/test_research_runtime.py \
+  tests/magazine/test_research_worker.py tests/magazine/test_loaders.py -q
+24 passed in 1.07s
 
 .venv/bin/ruff check zantara_media/magazine/research_worker.py \
+  zantara_media/magazine/research_sources.py \
+  zantara_media/magazine/research_adapters.py \
+  zantara_media/magazine/research_runtime.py \
+  zantara_media/cli/magazine_research_worker.py \
   zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
-  tests/test_dlp.py
+  tests/magazine/test_research_runtime.py tests/test_dlp.py
 All checks passed!
 
 .venv/bin/ruff format --check zantara_media/magazine/research_worker.py \
+  zantara_media/magazine/research_sources.py \
+  zantara_media/magazine/research_adapters.py \
+  zantara_media/magazine/research_runtime.py \
+  zantara_media/cli/magazine_research_worker.py \
   zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
-  tests/test_dlp.py
-4 files already formatted
+  tests/magazine/test_research_runtime.py tests/test_dlp.py
+All changed Task 7 files formatted
 ```
 
 Repository hygiene:
