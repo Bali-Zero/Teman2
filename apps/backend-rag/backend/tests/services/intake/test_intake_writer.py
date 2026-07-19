@@ -78,6 +78,10 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         "practices": [],
     }
     bh = (uuid.uuid4().hex + uuid.uuid4().hex)[:64]  # shared blob for both clients
+    # Unique per-seed npwp: the tests run against the REAL dev book, so a fixed
+    # synthetic value could collide with a live client and flip a strong-id
+    # revalidation to duplicate (Codex round-2 NIT).
+    npwp_digits = str(uuid.uuid4().int)[:15].rjust(15, "7")
 
     async with pool.acquire() as conn:
         cid_a = await conn.fetchval(
@@ -134,13 +138,27 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                 ikey,
             )
             created["queues"].append(qid)
-            entity = {"decision": decision, "candidates": [{"table": "clients", "id": client_id}]}
+            # Candidates mirror the REAL m248 resolver shape (method + score +
+            # matched_value) — the auto-attach gates re-verify strong-id
+            # ownership from matched_value at commit time.
+            entity = {
+                "decision": decision,
+                "candidates": [
+                    {
+                        "table": "clients",
+                        "id": client_id,
+                        "method": "npwp",
+                        "score": 0.99,
+                        "matched_value": npwp_digits,
+                    }
+                ],
+            }
             routing = {
                 "client_id": client_id,
                 "company_id": None,
                 "practice_id": practice_id,
                 "doc_type": "npwp",
-                "fields": {"npwp_number": {"value": "01.234.567.8-901.000"}},
+                "fields": {"npwp_number": {"value": npwp_digits}},
             }
             gate = {"requires_human": decision != "AUTO_ATTACH", "decision": decision}
             pid = await conn.fetchval(
@@ -174,6 +192,7 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         "p_a": p_a,
         "p_b": p_b,
         "bh": bh,
+        "npwp_digits": npwp_digits,
         "created": created,
     }
 
@@ -432,7 +451,7 @@ async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch)
             seed["p_a"],
         )
     assert correction["field_name"] == "npwp_number"
-    assert correction["ai_value"] == "01.234.567.8-901.000"
+    assert correction["ai_value"] == seed["npwp_digits"]
     assert correction["human_value"] == correction["ai_value"]
     assert correction["outcome"] == "approved"
     assert correction["source"] == "drive"
@@ -773,11 +792,16 @@ async def test_leva2_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatc
     monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
     _stub_delivery(monkeypatch)
 
-    phone = "6289990001234"
+    phone = "62" + str(uuid.uuid4().int)[:9]
     await _reopen_for_auto(pool, seed["p_a"])
     async with pool.acquire() as conn:
+        # ownership precondition: the strong-id revalidation requires the routed
+        # client to STILL own the matched npwp at commit time
         await conn.execute(
-            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_a"]
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            seed["npwp_digits"],
+            seed["cid_a"],
         )
         proposal = await conn.fetchrow(
             "SELECT id, routing, entity_resolution FROM document_routing_proposal WHERE id=$1",
@@ -807,8 +831,7 @@ async def test_leva2_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatc
     assert audit["committed_by"] == "system:auto-attach"
     assert audit["outcome"] == "committed"
     assert audit["dry_run"] is False
-    # routing.fields.npwp_number "01.234.567.8-901.000" → digits-canonical on the card
-    assert npwp == "012345678901000"
+    assert npwp == seed["npwp_digits"]
 
 
 async def test_leva3_nameid_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatch):
@@ -826,6 +849,11 @@ async def test_leva3_nameid_auto_attach_commits_npwp_matched_doc(pool, seed, mon
     async with pool.acquire() as conn:
         client_name = await conn.fetchval(
             "SELECT full_name FROM clients WHERE id=$1", seed["cid_b"]
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_b"],
         )
         await conn.execute(
             "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
@@ -875,12 +903,16 @@ async def test_m248_chain_resolver_to_leva2_commit(pool, seed, monkeypatch):
     monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
     _stub_delivery(monkeypatch)
 
-    phone = "6289990005678"
-    npwp_digits = "098765432109876"  # synthetic 15-digit, unique in the test book
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    npwp_digits = str(uuid.uuid4().int)[:15].rjust(15, "3")  # collision-free per run
+    npwp_formatted = (
+        f"{npwp_digits[:2]}.{npwp_digits[2:5]}.{npwp_digits[5:8]}."
+        f"{npwp_digits[8]}-{npwp_digits[9:12]}.{npwp_digits[12:15]}"
+    )
     async with pool.acquire() as conn:
         await conn.execute(
             "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
-            "09.876.543.2-109.876",  # stored FORMATTED — resolver must normalize
+            npwp_formatted,  # stored FORMATTED — resolver must normalize
             phone,
             seed["cid_a"],
         )
@@ -936,8 +968,8 @@ async def test_m248_chain_dup_npwp_degrades_and_gate_refuses(pool, seed, monkeyp
     monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
     _stub_delivery(monkeypatch)
 
-    phone = "6289990009999"
-    dup = "091827364509182"
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    dup = str(uuid.uuid4().int)[:15].rjust(15, "5")  # collision-free per run
     async with pool.acquire() as conn:
         await conn.execute(
             "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
@@ -983,7 +1015,7 @@ async def test_leva2_evaluates_persisted_row_not_caller_payload(pool, seed, monk
     monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
     _stub_delivery(monkeypatch)
 
-    phone = "6289990007777"
+    phone = "62" + str(uuid.uuid4().int)[:9]
     await _reopen_for_auto(pool, seed["p_b"])
     async with pool.acquire() as conn:
         await conn.execute(
@@ -1007,8 +1039,80 @@ async def test_leva2_evaluates_persisted_row_not_caller_payload(pool, seed, monk
     }
     verdict = await aa.try_auto_attach(hostile_payload, pool, sender_phone=phone)
     assert verdict["committed"] is False
-    assert verdict["skipped"] == "not_concordant"
-    assert "LINK_CANDIDATE" in verdict["reason"]
+    # fresh payload disagrees with the persisted row → the divergence guard
+    # refuses BEFORE any concordance logic runs (neither side is trusted)
+    assert verdict["skipped"] == "stale_row_divergence"
+    assert "diverges" in verdict["reason"]
+
+
+async def test_strongid_ownership_moved_refuses_commit(pool, seed, monkeypatch):
+    """Guilt for the in-TX ownership revalidation (Codex round-2 BLOCKER): the
+    persisted proposal says npwp→client A, but the CRM was corrected meanwhile
+    and the npwp now belongs to client B. Phone still concords with A — yet the
+    strong-id evidence is stale, so the gate must refuse (unbounded staleness:
+    ON CONFLICT-preserved rows and the backlog bridge)."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        # phone concords with A, but the npwp the proposal matched on has MOVED to B
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=NULL WHERE id=$2",
+            phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_b"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+    assert status == "review_pending"
+
+
+async def test_pre_m248_candidate_shape_fails_closed(pool, seed, monkeypatch):
+    """A proposal whose candidates carry NO method/matched_value (pre-m248 shape,
+    arbitrarily old backlog rows) cannot be ownership-revalidated → the gate
+    fails CLOSED to human review instead of trusting stale evidence."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_a"]
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "AUTO_ATTACH",
+                    "candidates": [{"table": "clients", "id": seed["cid_a"]}],
+                }
+            ),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    assert "needs human" in verdict["reason"]
 
 
 async def test_enrichment_failure_never_rolls_back_document_commit(pool, seed, monkeypatch):
