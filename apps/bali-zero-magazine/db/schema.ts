@@ -724,25 +724,115 @@ export const assetStatusEvents = sqliteTable(
   ],
 );
 
-export const researchJobs = sqliteTable("research_jobs", {
-  jobId: text("job_id").primaryKey(),
-  actorKey: text("actor_key").notNull(),
-  mode: text("mode").notNull(),
-  queryJson: text("query_json").notNull(),
-  status: text("status").notNull(),
-  createdAt: createdAt(),
-  expiresAt: text("expires_at").notNull(),
-});
+export const researchJobs = sqliteTable(
+  "research_jobs",
+  {
+    jobId: text("job_id").primaryKey(),
+    actorKey: text("actor_key").notNull(),
+    mode: text("mode").notNull(),
+    queryJson: text("query_json").notNull(),
+    requestHash: text("request_hash").notNull(),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    status: text("status").notNull(),
+    attemptLimit: integer("attempt_limit").notNull().default(3),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    workerId: text("worker_id"),
+    claimToken: text("claim_token"),
+    fencingToken: integer("fencing_token").notNull().default(0),
+    heartbeatAt: text("heartbeat_at"),
+    leaseDeadline: text("lease_deadline"),
+    createdAt: createdAt(),
+    expiresAt: text("expires_at").notNull(),
+    completedAt: text("completed_at"),
+    cancelledAt: text("cancelled_at"),
+  },
+  (table) => [
+    index("research_jobs_claim_queue_idx").on(
+      table.status,
+      table.expiresAt,
+      table.createdAt,
+    ),
+    check("research_jobs_actor_key_check", sha256Check("actor_key")),
+    check("research_jobs_request_hash_check", sha256Check("request_hash")),
+    check(
+      "research_jobs_mode_check",
+      sql`${table.mode} in ('search', 'compare', 'timeline', 'notebook_insight')`,
+    ),
+    check(
+      "research_jobs_status_check",
+      sql`${table.status} in ('queued', 'claimed', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "research_jobs_attempts_check",
+      sql`${table.attemptLimit} between 1 and 5 and ${table.attemptCount} between 0 and ${table.attemptLimit}`,
+    ),
+    check("research_jobs_fencing_check", sql`${table.fencingToken} >= 0`),
+  ],
+);
 
-export const researchResults = sqliteTable("research_results", {
-  resultId: text("result_id").primaryKey(),
-  jobId: text("job_id")
-    .notNull()
-    .references(() => researchJobs.jobId),
-  resultJson: text("result_json").notNull(),
-  resultHash: text("result_hash").notNull(),
-  createdAt: createdAt(),
-});
+export const researchResults = sqliteTable(
+  "research_results",
+  {
+    resultId: text("result_id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => researchJobs.jobId)
+      .unique(),
+    status: text("status").notNull(),
+    resultJson: text("result_json").notNull(),
+    resultHash: text("result_hash").notNull(),
+    requestHash: text("request_hash").notNull(),
+    fencingToken: integer("fencing_token").notNull(),
+    receiptKeyId: text("receipt_key_id").notNull(),
+    receiptBodyHash: text("receipt_body_hash").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    check("research_results_hash_check", sha256Check("result_hash")),
+    check("research_results_request_hash_check", sha256Check("request_hash")),
+    check(
+      "research_results_receipt_hash_check",
+      sha256Check("receipt_body_hash"),
+    ),
+    check(
+      "research_results_status_check",
+      sql`${table.status} in ('completed', 'failed')`,
+    ),
+    check("research_results_fencing_check", sql`${table.fencingToken} > 0`),
+  ],
+);
+
+export const researchAuditEvents = sqliteTable(
+  "research_audit_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => researchJobs.jobId),
+    eventType: text("event_type").notNull(),
+    actorKey: text("actor_key"),
+    workerId: text("worker_id"),
+    status: text("status").notNull(),
+    failureCode: text("failure_code"),
+    fencingToken: integer("fencing_token"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("research_audit_job_idx").on(table.jobId, table.createdAt),
+    check(
+      "research_audit_event_type_check",
+      sql`${table.eventType} in ('created', 'cancelled', 'claimed', 'completed', 'failed')`,
+    ),
+    check(
+      "research_audit_status_check",
+      sql`${table.status} in ('queued', 'claimed', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "research_audit_failure_code_check",
+      sql`${table.failureCode} is null or ${table.failureCode} in ('source_unavailable', 'dlp_rejected', 'evidence_missing', 'invalid_result', 'internal_error')`,
+    ),
+  ],
+);
 
 export const opsIntents = sqliteTable("ops_intents", {
   intentId: text("intent_id").primaryKey(),

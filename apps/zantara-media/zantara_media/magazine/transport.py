@@ -524,6 +524,82 @@ class MagazineTransport:
     async def submit_collector_run(self, packet: Mapping[str, Any]) -> dict[str, Any]:
         return await self.post_json("/api/machine/collector-runs", packet)
 
+    async def claim_research_job(
+        self, *, worker_id: str, lease_seconds: int
+    ) -> Mapping[str, Any] | None:
+        """Claim one Sites-owned research job through the outbound-only bridge."""
+        path = "/api/machine/research/jobs/claim"
+        packet = {
+            "schema_version": "research-claim.v1",
+            "worker_id": worker_id,
+            "lease_seconds": lease_seconds,
+        }
+        body = json.dumps(
+            packet, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{secrets.token_hex(16)}",
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid research claim response")
+        job = payload.get("job")
+        if job is not None and not isinstance(job, dict):
+            raise RuntimeError("invalid research claim job")
+        return job
+
+    async def heartbeat_research_job(
+        self,
+        *,
+        job_id: str,
+        claim_token: str,
+        fencing_token: int,
+        lease_seconds: int,
+    ) -> Mapping[str, Any]:
+        """Renew an exact research lease; stale fencing tokens fail closed."""
+        path = f"/api/machine/research/jobs/{job_id}/heartbeat"
+        packet = {
+            "schema_version": "research-heartbeat.v1",
+            "claim_token": claim_token,
+            "fencing_token": fencing_token,
+            "lease_seconds": lease_seconds,
+        }
+        body = json.dumps(
+            packet, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{fencing_token}:{secrets.token_hex(12)}",
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid research heartbeat response")
+        return payload
+
+    async def submit_research_result(
+        self, *, job_id: str, result: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        """Submit a closed, sanitized result under byte-exact HMAC authentication."""
+        path = f"/api/machine/research/jobs/{job_id}/result"
+        body = json.dumps(
+            result, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{hashlib.sha256(body).hexdigest()}",
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid research result response")
+        return payload
+
     async def publish_breaking(
         self, packet: Mapping[str, Any], *, release_binding: ReleaseBinding
     ) -> dict[str, Any]:
