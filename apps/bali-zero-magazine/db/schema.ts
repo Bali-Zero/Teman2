@@ -739,6 +739,8 @@ export const researchJobs = sqliteTable(
     workerId: text("worker_id"),
     claimToken: text("claim_token"),
     fencingToken: integer("fencing_token").notNull().default(0),
+    targetKey: text("target_key").notNull(),
+    targetFencingToken: integer("target_fencing_token").notNull().default(0),
     heartbeatAt: text("heartbeat_at"),
     leaseDeadline: text("lease_deadline"),
     createdAt: createdAt(),
@@ -857,6 +859,8 @@ export const opsIntents = sqliteTable(
     effectToken: text("effect_token"),
     preEffectAttestedAt: text("pre_effect_attested_at"),
     attestedPolicyVersion: text("attested_policy_version"),
+    attestationExpiresAt: text("attestation_expires_at"),
+    effectConsumedAt: text("effect_consumed_at"),
     expiresAt: text("expires_at").notNull(),
     startedAt: text("started_at"),
     completedAt: text("completed_at"),
@@ -886,6 +890,13 @@ export const opsIntents = sqliteTable(
     check("ops_intents_request_hash_check", sha256Check("request_hash")),
   ],
 );
+
+export const opsTargetFences = sqliteTable("ops_target_fences", {
+  targetKey: text("target_key").primaryKey(),
+  nextFencingToken: integer("next_fencing_token").notNull().default(0),
+  effectFencingToken: integer("effect_fencing_token").notNull().default(0),
+  updatedAt: text("updated_at").notNull(),
+});
 
 export const opsReceipts = sqliteTable(
   "ops_receipts",

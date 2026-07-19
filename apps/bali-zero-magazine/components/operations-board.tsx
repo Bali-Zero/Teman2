@@ -30,6 +30,12 @@ type Intent = Readonly<{
   created_at: string;
 }>;
 
+type ActionTarget = Readonly<{
+  target_id: string;
+  label: string;
+  params: Readonly<Record<string, string | number>>;
+}>;
+
 const reasonByKind = {
   rerun_collector: "collector_recovery",
   rebuild_edition: "edition_recovery",
@@ -41,31 +47,30 @@ const reasonByKind = {
 export function OperationsBoard({
   health,
   intents,
+  action_targets,
   canCreate,
 }: Readonly<{
   health: Health;
   intents: readonly Intent[];
+  action_targets: Readonly<
+    Record<OperationIntentKind, readonly ActionTarget[]>
+  >;
   canCreate: boolean;
 }>) {
   const [kind, setKind] = useState<OperationIntentKind>("rerun_collector");
-  const [targetId, setTargetId] = useState("");
+  const [targetId, setTargetId] = useState(
+    action_targets.rerun_collector[0]?.target_id ?? "",
+  );
   const [message, setMessage] = useState("");
+  const targets = action_targets[kind];
+  const selected = targets.find((target) => target.target_id === targetId);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const numeric = 0;
-    const params =
-      kind === "rerun_collector"
-        ? { collector_id: "regulatory-watcher", failed_run_id: targetId }
-        : kind === "rebuild_edition"
-          ? { edition_id: targetId, expected_revision: numeric }
-          : kind === "refresh_research_job"
-            ? { research_job_id: targetId }
-            : {
-                story_id: targetId,
-                story_version: 1,
-                expected_visibility_seq: numeric,
-              };
+    if (selected === undefined) {
+      setMessage("No valid target precondition is available.");
+      return;
+    }
     const response = await fetch("/api/operations/intents", {
       method: "POST",
       headers: { "content-type": "application/json", "x-magazine-csrf": "1" },
@@ -75,7 +80,7 @@ export function OperationsBoard({
         idempotency_key: `ops-ui-${kind}-${crypto.randomUUID()}`,
         reason_code: reasonByKind[kind],
         expires_at: new Date(Date.now() + 3_600_000).toISOString(),
-        params,
+        params: selected.params,
       }),
     });
     setMessage(response.ok ? "Intent queued." : "Intent rejected.");
@@ -137,7 +142,11 @@ export function OperationsBoard({
             <select
               value={kind}
               onChange={(event) =>
-                setKind(event.target.value as OperationIntentKind)
+                (() => {
+                  const nextKind = event.target.value as OperationIntentKind;
+                  setKind(nextKind);
+                  setTargetId(action_targets[nextKind][0]?.target_id ?? "");
+                })()
               }
             >
               {Object.keys(reasonByKind).map((value) => (
@@ -146,15 +155,25 @@ export function OperationsBoard({
             </select>
           </label>
           <label>
-            Stable target ID
-            <input
-              required
+            Valid target and current precondition
+            <select
               value={targetId}
               onChange={(event) => setTargetId(event.target.value)}
-              pattern="[a-z][a-z0-9-]{15,95}"
-            />
+              disabled={targets.length === 0}
+            >
+              {targets.map((target) => (
+                <option key={target.target_id} value={target.target_id}>
+                  {target.label}
+                </option>
+              ))}
+            </select>
           </label>
-          <button type="submit">Queue intent</button>
+          <button type="submit" disabled={selected === undefined}>
+            Queue intent
+          </button>
+          {selected === undefined ? (
+            <p>No target with a current precondition is available.</p>
+          ) : null}
           <p aria-live="polite">{message}</p>
         </form>
       ) : null}

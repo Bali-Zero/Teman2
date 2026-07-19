@@ -1,5 +1,5 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
-import { verifyMachineRequest } from "./hmac.ts";
+import { MachinePayloadTooLargeError, verifyMachineRequest } from "./hmac.ts";
 import type {
   MachineHmacKey,
   MachineNonceStore,
@@ -75,7 +75,10 @@ class D1NonceStore implements MachineNonceStore {
 
 export async function authenticateMachineRequest(
   request: Request,
-  options: Readonly<{ signedHeaderNames?: readonly string[] }> = {},
+  options: Readonly<{
+    signedHeaderNames?: readonly string[];
+    maxBodyBytes?: number;
+  }> = {},
 ): Promise<VerifiedMachineRequest> {
   requireAdmissionContext(request.headers);
   const bindings = getMagazineBindings();
@@ -94,11 +97,27 @@ export async function authenticateMachineRequest(
         "current",
       ),
       nextKey,
-      maxBodyBytes: 13 * 1024 * 1024,
+      maxBodyBytes: options.maxBodyBytes ?? 13 * 1024 * 1024,
       nonceStore: new D1NonceStore(bindings.DB),
     },
     options,
   );
+}
+
+export const OPERATIONS_MACHINE_MAX_BODY_BYTES = 4 * 1024;
+
+export function isMachinePayloadTooLarge(
+  error: unknown,
+): error is MachinePayloadTooLargeError {
+  return error instanceof MachinePayloadTooLargeError;
+}
+
+export function authenticateOperationsMachineRequest(
+  request: Request,
+): Promise<VerifiedMachineRequest> {
+  return authenticateMachineRequest(request, {
+    maxBodyBytes: OPERATIONS_MACHINE_MAX_BODY_BYTES,
+  });
 }
 
 export function parseJsonBody(body: Uint8Array): unknown {

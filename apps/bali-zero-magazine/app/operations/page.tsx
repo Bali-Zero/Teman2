@@ -21,15 +21,17 @@ export default async function OperationsPage() {
   if (bindings.DB === undefined)
     throw new Error("Operations database is unavailable");
   const repository = createOperationsRepository(bindings.DB);
-  const [health, intents] = await Promise.all([
+  const [health, intents, actionTargets] = await Promise.all([
     repository.healthSnapshot(),
     repository.listIntents(),
+    repository.actionTargets(),
   ]);
   return (
     <MagazineShell eyebrow="Bali Zero control plane">
       <OperationsBoard
         health={health}
         intents={intents}
+        action_targets={actionTargets}
         canCreate={viewer.role === "operator"}
       />
     </MagazineShell>

@@ -12,6 +12,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
@@ -94,7 +95,15 @@ class OperationsTransport(Protocol):
 class OperationsDomainService(Protocol):
     async def prepare(self, kind: str, params: Mapping[str, Any]) -> None: ...
 
-    async def execute(self, kind: str, params: Mapping[str, Any], *, fencing_token: int) -> str: ...
+    async def execute(
+        self,
+        kind: str,
+        params: Mapping[str, Any],
+        *,
+        fencing_token: int,
+        target_fencing_token: int,
+        effect_token: str,
+    ) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +147,16 @@ class OperationsJournal:
                       phase TEXT NOT NULL CHECK (phase IN ('claimed', 'safe_retry', 'attested', 'effect_started', 'effect_completed', 'receipt_acknowledged')),
                       result_json TEXT,
                       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS operations_target_fences (
+                      target_key TEXT PRIMARY KEY,
+                      target_fencing_token INTEGER NOT NULL CHECK (target_fencing_token > 0),
+                      effect_token TEXT NOT NULL UNIQUE,
+                      consumed_at TEXT NOT NULL
                     )
                     """
                 )
@@ -236,6 +255,67 @@ class OperationsJournal:
             result=result,
         )
 
+    def _authorize_effect_sync(
+        self,
+        *,
+        target_key: str,
+        target_fencing_token: int,
+        effect_token: str,
+        expires_at: str,
+        now: str,
+    ) -> None:
+        if (
+            not target_key
+            or target_fencing_token < 1
+            or _TOKEN.fullmatch(effect_token) is None
+            or _parse_iso(expires_at) <= _parse_iso(now)
+        ):
+            raise OperationsWorkerError("invalid effect attestation")
+        with contextlib.closing(self._connect()) as connection:
+            with connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT target_fencing_token, effect_token FROM operations_target_fences WHERE target_key = ?",
+                    (target_key,),
+                ).fetchone()
+                if row is not None:
+                    if target_fencing_token < row[0]:
+                        raise OperationsWorkerError("stale target fence")
+                    if target_fencing_token == row[0]:
+                        raise OperationsWorkerError("effect authority replay")
+                try:
+                    connection.execute(
+                        """
+                        INSERT INTO operations_target_fences(target_key, target_fencing_token, effect_token, consumed_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(target_key) DO UPDATE SET
+                          target_fencing_token = excluded.target_fencing_token,
+                          effect_token = excluded.effect_token,
+                          consumed_at = excluded.consumed_at
+                        """,
+                        (target_key, target_fencing_token, effect_token, now),
+                    )
+                except sqlite3.IntegrityError as exc:
+                    raise OperationsWorkerError("effect authority replay") from exc
+
+    async def authorize_effect(
+        self,
+        *,
+        target_key: str,
+        target_fencing_token: int,
+        effect_token: str,
+        expires_at: str,
+        now: str,
+    ) -> None:
+        await asyncio.to_thread(
+            self._authorize_effect_sync,
+            target_key=target_key,
+            target_fencing_token=target_fencing_token,
+            effect_token=effect_token,
+            expires_at=expires_at,
+            now=now,
+        )
+
     @asynccontextmanager
     async def target_lock(self, target_key: str):
         digest = hashlib.sha256(target_key.encode()).hexdigest()
@@ -265,6 +345,16 @@ def _identifier(value: Any, pattern: re.Pattern[str]) -> str:
     if not isinstance(value, str) or pattern.fullmatch(value) is None:
         raise OperationsWorkerError("invalid operation intent")
     return value
+
+
+def _parse_iso(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as exc:
+        raise OperationsWorkerError("invalid effect attestation") from exc
+    if parsed.tzinfo is None:
+        raise OperationsWorkerError("invalid effect attestation")
+    return parsed.astimezone(UTC)
 
 
 class OperationsWorker:
@@ -301,11 +391,14 @@ class OperationsWorker:
                 "intent_kind",
                 "params",
                 "target_id",
+                "target_key",
+                "actor_key",
                 "request_hash",
                 "reason_code",
                 "status",
                 "claim_token",
                 "fencing_token",
+                "target_fencing_token",
                 "lease_deadline",
                 "attempt_count",
             },
@@ -320,10 +413,12 @@ class OperationsWorker:
             or value.get("status") != "claimed"
             or _IDS["intent"].fullmatch(cast(str, value.get("intent_id", ""))) is None
             or _SHA256.fullmatch(cast(str, value.get("request_hash", ""))) is None
+            or _SHA256.fullmatch(cast(str, value.get("actor_key", ""))) is None
             or _TOKEN.fullmatch(cast(str, value.get("claim_token", ""))) is None
         ):
             raise OperationsWorkerError("invalid operation intent")
         _positive_int(value.get("fencing_token"))
+        _positive_int(value.get("target_fencing_token"))
         _positive_int(value.get("attempt_count"))
         if kind == "rerun_collector":
             _exact(params, {"collector_id", "failed_run_id"})
@@ -343,6 +438,15 @@ class OperationsWorker:
             _exact(params, {"research_job_id"})
             target = _identifier(params.get("research_job_id"), _IDS["research"])
         if value.get("target_id") != target:
+            raise OperationsWorkerError("invalid operation intent")
+        expected_target_key = {
+            "rerun_collector": "collector",
+            "rebuild_edition": "edition",
+            "quarantine_story": "story",
+            "release_story": "story",
+            "refresh_research_job": "research",
+        }[cast(str, kind)]
+        if value.get("target_key") != f"{expected_target_key}:{target}":
             raise OperationsWorkerError("invalid operation intent")
         return value
 
@@ -389,7 +493,7 @@ class OperationsWorker:
         intent = self.validate_intent(claimed)
         kind = cast(str, intent["intent_kind"])
         params = cast(Mapping[str, Any], intent["params"])
-        target_key = f"{kind}:{intent['target_id']}"
+        target_key = cast(str, intent["target_key"])
         binding = {
             "intent_id": cast(str, intent["intent_id"]),
             "request_hash": cast(str, intent["request_hash"]),
@@ -421,19 +525,59 @@ class OperationsWorker:
                     raise OperationsLeaseLostError("invalid authorization attestation")
                 if attestation.get("authorized") is not True:
                     return
+                if set(attestation) != {
+                    "schema_version",
+                    "authorized",
+                    "status",
+                    "intent_id",
+                    "request_hash",
+                    "actor_key",
+                    "target_id",
+                    "target_key",
+                    "fencing_token",
+                    "target_fencing_token",
+                    "policy_version",
+                    "effect_token",
+                    "attested_at",
+                    "expires_at",
+                }:
+                    raise OperationsWorkerError("invalid effect attestation")
                 effect_token = attestation.get("effect_token")
                 policy_version = attestation.get("policy_version")
+                expires_at = attestation.get("expires_at")
                 if (
-                    not isinstance(effect_token, str)
+                    attestation.get("schema_version") != "ops-effect-attestation.v1"
+                    or attestation.get("status") != "running"
+                    or attestation.get("intent_id") != intent["intent_id"]
+                    or attestation.get("request_hash") != intent["request_hash"]
+                    or attestation.get("actor_key") != intent["actor_key"]
+                    or attestation.get("target_id") != intent["target_id"]
+                    or attestation.get("target_key") != intent["target_key"]
+                    or attestation.get("fencing_token") != intent["fencing_token"]
+                    or attestation.get("target_fencing_token") != intent["target_fencing_token"]
+                    or not isinstance(effect_token, str)
                     or _TOKEN.fullmatch(effect_token) is None
                     or not isinstance(policy_version, str)
+                    or not isinstance(expires_at, str)
+                    or _parse_iso(expires_at) <= _parse_iso(self._now())
                 ):
-                    raise OperationsLeaseLostError("invalid authorization attestation")
+                    raise OperationsWorkerError("invalid effect attestation")
                 await self.journal.record(**binding, phase="attested", result=None)
+                await self.journal.authorize_effect(
+                    target_key=target_key,
+                    target_fencing_token=cast(int, intent["target_fencing_token"]),
+                    effect_token=effect_token,
+                    expires_at=expires_at,
+                    now=self._now(),
+                )
                 await self.journal.record(**binding, phase="effect_started", result=None)
                 try:
                     code = await self._domain.execute(
-                        kind, params, fencing_token=cast(int, intent["fencing_token"])
+                        kind,
+                        params,
+                        fencing_token=cast(int, intent["fencing_token"]),
+                        target_fencing_token=cast(int, intent["target_fencing_token"]),
+                        effect_token=effect_token,
                     )
                     if code != "effect_acknowledged":
                         raise RuntimeError("invalid domain receipt")
@@ -457,8 +601,13 @@ class OperationsWorker:
                     "failure": failure,
                     "claim_token": intent["claim_token"],
                     "fencing_token": intent["fencing_token"],
+                    "target_fencing_token": intent["target_fencing_token"],
+                    "actor_key": intent["actor_key"],
+                    "target_key": intent["target_key"],
+                    "target_id": intent["target_id"],
                     "effect_token": effect_token,
                     "attested_policy_version": policy_version,
+                    "attestation_expires_at": expires_at,
                 }
                 await self.journal.record(**binding, phase="effect_completed", result=result)
                 await self._transport.submit_operation_result(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -33,11 +34,14 @@ CLAIM: dict[str, Any] = {
         "failed_run_id": "collector-run-0123456789abcdef",
     },
     "target_id": "collector-run-0123456789abcdef",
+    "target_key": "collector:collector-run-0123456789abcdef",
+    "actor_key": "b" * 64,
     "request_hash": "a" * 64,
     "reason_code": "collector_recovery",
     "status": "claimed",
     "claim_token": "claim-token-0123456789abcdef",
     "fencing_token": 1,
+    "target_fencing_token": 1,
     "lease_deadline": "2026-07-19T05:00:00.000Z",
     "attempt_count": 1,
 }
@@ -68,10 +72,20 @@ class FakeTransport:
         return {
             "ok": True,
             "attestation": {
+                "schema_version": "ops-effect-attestation.v1",
                 "authorized": self.authorized,
                 "status": "running" if self.authorized else "cancelled_revoked",
+                "intent_id": CLAIM["intent_id"],
+                "request_hash": CLAIM["request_hash"],
+                "actor_key": CLAIM["actor_key"],
+                "target_id": CLAIM["target_id"],
+                "target_key": CLAIM["target_key"],
+                "fencing_token": CLAIM["fencing_token"],
+                "target_fencing_token": CLAIM["target_fencing_token"],
                 "policy_version": "roles.operations.v2",
                 "effect_token": "effect-token-0123456789abcdef" if self.authorized else None,
+                "attested_at": "2026-07-19T04:30:00.000Z",
+                "expires_at": "2026-07-19T04:30:30.000Z",
             },
         }
 
@@ -85,13 +99,21 @@ class FakeTransport:
 
 class FakeDomain:
     def __init__(self) -> None:
-        self.effects: list[tuple[str, Mapping[str, Any], int]] = []
+        self.effects: list[tuple[str, Mapping[str, Any], int, int, str]] = []
 
     async def prepare(self, kind: str, params: Mapping[str, Any]) -> None:
         return None
 
-    async def execute(self, kind: str, params: Mapping[str, Any], *, fencing_token: int) -> str:
-        self.effects.append((kind, params, fencing_token))
+    async def execute(
+        self,
+        kind: str,
+        params: Mapping[str, Any],
+        *,
+        fencing_token: int,
+        target_fencing_token: int,
+        effect_token: str,
+    ) -> str:
+        self.effects.append((kind, params, fencing_token, target_fencing_token, effect_token))
         return "effect_acknowledged"
 
 
@@ -121,7 +143,13 @@ async def test_worker_attests_immediately_before_effect_and_heartbeats_until_rec
     )
     assert await worker.run_once() is True
     assert domain.effects == [
-        ("rerun_collector", CLAIM["params"], 1),
+        (
+            "rerun_collector",
+            CLAIM["params"],
+            1,
+            1,
+            "effect-token-0123456789abcdef",
+        ),
     ]
     assert transport.events.index("attest") < transport.events.index("result")
     assert "heartbeat" in transport.events
@@ -138,8 +166,13 @@ async def test_worker_attests_immediately_before_effect_and_heartbeats_until_rec
         "failure",
         "claim_token",
         "fencing_token",
+        "target_fencing_token",
+        "actor_key",
+        "target_key",
+        "target_id",
         "effect_token",
         "attested_policy_version",
+        "attestation_expires_at",
     }
 
 
@@ -164,8 +197,16 @@ async def test_possible_effect_crash_becomes_outcome_unknown_without_replay(
     tmp_path: Path,
 ) -> None:
     class AmbiguousDomain(FakeDomain):
-        async def execute(self, kind: str, params: Mapping[str, Any], *, fencing_token: int) -> str:
-            self.effects.append((kind, params, fencing_token))
+        async def execute(
+            self,
+            kind: str,
+            params: Mapping[str, Any],
+            *,
+            fencing_token: int,
+            target_fencing_token: int,
+            effect_token: str,
+        ) -> str:
+            self.effects.append((kind, params, fencing_token, target_fencing_token, effect_token))
             raise TimeoutError("private downstream detail")
 
     transport = FakeTransport()
@@ -223,17 +264,63 @@ async def test_journal_rejects_same_fence_phase_regression(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_production_factory_is_exact_and_fails_closed() -> None:
-    service = build_operations_domain_service()
-    for kind in (
+async def test_production_factory_runs_only_exact_fixed_json_commands() -> None:
+    kinds = (
         "rerun_collector",
         "rebuild_edition",
         "quarantine_story",
         "release_story",
         "refresh_research_job",
-    ):
-        with pytest.raises(CapabilityUnavailableError):
-            await service.prepare(kind, {})
+    )
+    command_program = (
+        "import json,sys; payload=json.load(sys.stdin); "
+        "assert set(payload)=={'schema_version','intent_kind','target_id','params','authority'}; "
+        "assert payload['schema_version']=='ops-domain-command.v1'; "
+        "assert payload['intent_kind']==sys.argv[1]; "
+        "assert payload['authority']=={'fencing_token':1,'target_fencing_token':2,"
+        "'effect_token':'effect-token-0123456789abcdef'}; "
+        "print(json.dumps({'schema_version':'ops-domain-receipt.v1',"
+        "'code':'effect_acknowledged','target_id':payload['target_id']}))"
+    )
+    commands = {kind: [sys.executable, "-c", command_program, kind] for kind in kinds}
+    cases: dict[str, Mapping[str, Any]] = {
+        "rerun_collector": CLAIM["params"],
+        "rebuild_edition": {
+            "edition_id": "edition-0123456789abcdef",
+            "expected_revision": 2,
+        },
+        "quarantine_story": {
+            "story_id": "story-0123456789abcdef",
+            "story_version": 2,
+            "expected_visibility_seq": 1,
+        },
+        "release_story": {
+            "story_id": "story-0123456789abcdef",
+            "story_version": 2,
+            "expected_visibility_seq": 1,
+        },
+        "refresh_research_job": {"research_job_id": "research-job-0123456789abcdef"},
+    }
+    service = build_operations_domain_service(json.dumps(commands))
+    for kind, params in cases.items():
+        await service.prepare(kind, params)
+        assert (
+            await service.execute(
+                kind,
+                params,
+                fencing_token=1,
+                target_fencing_token=2,
+                effect_token="effect-token-0123456789abcdef",
+            )
+            == "effect_acknowledged"
+        )
+
+    with pytest.raises(CapabilityUnavailableError):
+        await service.prepare("rerun_collector", {**CLAIM["params"], "command": "forbidden"})
+
+    for invalid in (None, "{}", json.dumps({kind: commands[kind] for kind in kinds[:-1]})):
+        with pytest.raises(OperationsRuntimeConfigError):
+            build_operations_domain_service(invalid)
 
     with pytest.raises(OperationsRuntimeConfigError):
         FixedOperationsDomainService(
@@ -245,6 +332,70 @@ async def test_production_factory_is_exact_and_fails_closed() -> None:
                 "refresh_research_job": lambda: None,
                 "shell": lambda: None,
             }
+        )
+
+
+@pytest.mark.asyncio
+async def test_worker_rejects_every_unbound_or_expired_attestation(tmp_path: Path) -> None:
+    mutations = {
+        "intent_id": "ops-intent-fedcba9876543210",
+        "request_hash": "f" * 64,
+        "actor_key": "c" * 64,
+        "target_id": "collector-run-fedcba9876543210",
+        "target_key": "collector:collector-run-fedcba9876543210",
+        "fencing_token": 2,
+        "target_fencing_token": 2,
+        "expires_at": "2026-07-19T04:29:59.000Z",
+    }
+    for field, value in mutations.items():
+        transport = FakeTransport()
+        original = transport.attest_operation_intent
+
+        async def altered(*, _field: str = field, _value: Any = value, **kwargs: Any):
+            response = await original(**kwargs)
+            response["attestation"][_field] = _value
+            return response
+
+        transport.attest_operation_intent = altered  # type: ignore[method-assign]
+        domain = FakeDomain()
+        worker = OperationsWorker(
+            transport=transport,
+            domain=domain,
+            journal=OperationsJournal(tmp_path / f"{field}.sqlite3"),
+            now=lambda: "2026-07-19T04:30:00.000Z",
+        )
+        with pytest.raises(OperationsWorkerError, match="attestation"):
+            await worker.run_once()
+        assert domain.effects == []
+
+
+@pytest.mark.asyncio
+async def test_target_fence_cas_rejects_stale_and_reused_effect_authority(
+    tmp_path: Path,
+) -> None:
+    journal = OperationsJournal(tmp_path / "operations.sqlite3")
+    await journal.authorize_effect(
+        target_key=CLAIM["target_key"],
+        target_fencing_token=2,
+        effect_token="effect-token-2222222222222222",
+        expires_at="2026-07-19T04:30:30.000Z",
+        now="2026-07-19T04:30:00.000Z",
+    )
+    with pytest.raises(OperationsWorkerError, match="stale target fence"):
+        await journal.authorize_effect(
+            target_key=CLAIM["target_key"],
+            target_fencing_token=1,
+            effect_token="effect-token-1111111111111111",
+            expires_at="2026-07-19T04:30:30.000Z",
+            now="2026-07-19T04:30:00.000Z",
+        )
+    with pytest.raises(OperationsWorkerError, match="effect authority replay"):
+        await journal.authorize_effect(
+            target_key=CLAIM["target_key"],
+            target_fencing_token=2,
+            effect_token="effect-token-2222222222222222",
+            expires_at="2026-07-19T04:30:30.000Z",
+            now="2026-07-19T04:30:00.000Z",
         )
 
 

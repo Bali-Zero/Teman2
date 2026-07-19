@@ -1,5 +1,7 @@
 DROP TABLE IF EXISTS ops_receipts;
 --> statement-breakpoint
+DROP TABLE IF EXISTS ops_target_fences;
+--> statement-breakpoint
 DROP TABLE IF EXISTS ops_intents;
 --> statement-breakpoint
 CREATE TABLE ops_intents (
@@ -18,15 +20,19 @@ CREATE TABLE ops_intents (
   worker_id text,
   claim_token text,
   fencing_token integer NOT NULL DEFAULT 0 CHECK (fencing_token >= 0),
+  target_key text NOT NULL,
+  target_fencing_token integer NOT NULL DEFAULT 0 CHECK (target_fencing_token >= 0),
   heartbeat_at text,
   lease_deadline text,
   effect_token text,
   pre_effect_attested_at text,
   attested_policy_version text,
+  attestation_expires_at text,
+  effect_consumed_at text,
   expires_at text NOT NULL,
   started_at text,
   completed_at text,
-  failure_code text CHECK (failure_code IS NULL OR failure_code IN ('capability_unavailable', 'invalid_target', 'effect_failed', 'lease_lost', 'authorization_revoked', 'outcome_ambiguous', 'internal_error')),
+  failure_code text CHECK (failure_code IS NULL OR failure_code IN ('capability_unavailable', 'invalid_target', 'effect_failed', 'lease_lost', 'authorization_revoked', 'intent_expired', 'retry_exhausted', 'stale_target_fence', 'outcome_ambiguous', 'internal_error')),
   created_at text NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(actor_key, idempotency_key)
 );
@@ -34,6 +40,13 @@ CREATE TABLE ops_intents (
 CREATE INDEX ops_intents_claim_idx ON ops_intents(status, expires_at, lease_deadline, created_at);
 --> statement-breakpoint
 CREATE INDEX ops_intents_actor_idx ON ops_intents(actor_key, created_at);
+--> statement-breakpoint
+CREATE TABLE ops_target_fences (
+  target_key text PRIMARY KEY NOT NULL,
+  next_fencing_token integer NOT NULL DEFAULT 0 CHECK (next_fencing_token >= 0),
+  effect_fencing_token integer NOT NULL DEFAULT 0 CHECK (effect_fencing_token >= 0),
+  updated_at text NOT NULL
+);
 --> statement-breakpoint
 CREATE TABLE ops_receipts (
   receipt_id text PRIMARY KEY NOT NULL,
@@ -44,7 +57,7 @@ CREATE TABLE ops_receipts (
   request_hash text NOT NULL CHECK (length(request_hash) = 64 AND request_hash NOT GLOB '*[^0-9a-f]*'),
   key_id text NOT NULL,
   body_hash text NOT NULL CHECK (length(body_hash) = 64 AND body_hash NOT GLOB '*[^0-9a-f]*'),
-  fencing_token integer NOT NULL CHECK (fencing_token > 0),
+  fencing_token integer NOT NULL CHECK (fencing_token >= 0),
   attested_policy_version text,
   created_at text NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -56,7 +69,7 @@ CREATE TABLE ops_audit_events (
   actor_key text,
   worker_id text,
   status text NOT NULL CHECK (status IN ('queued', 'claimed', 'running', 'succeeded', 'failed', 'cancelled_revoked', 'outcome_unknown')),
-  failure_code text CHECK (failure_code IS NULL OR failure_code IN ('capability_unavailable', 'invalid_target', 'effect_failed', 'lease_lost', 'authorization_revoked', 'outcome_ambiguous', 'internal_error')),
+  failure_code text CHECK (failure_code IS NULL OR failure_code IN ('capability_unavailable', 'invalid_target', 'effect_failed', 'lease_lost', 'authorization_revoked', 'intent_expired', 'retry_exhausted', 'stale_target_fence', 'outcome_ambiguous', 'internal_error')),
   fencing_token integer,
   created_at text NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

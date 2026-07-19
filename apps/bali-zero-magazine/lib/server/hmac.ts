@@ -242,6 +242,8 @@ export function canonicalizeMachineSignature(
   return fields.join("\n");
 }
 
+export class MachinePayloadTooLargeError extends TypeError {}
+
 async function requestBody(
   request: Request,
   maximumBytes: number,
@@ -253,13 +255,17 @@ async function requestBody(
       !/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maximumBytes
     ) {
-      throw new TypeError("machine request body exceeds size limit");
+      throw new MachinePayloadTooLargeError(
+        "machine request body exceeds size limit",
+      );
     }
   }
   const source = consumeOriginal ? request : request.clone();
   const body = new Uint8Array(await source.arrayBuffer());
   if (body.byteLength > maximumBytes)
-    throw new TypeError("machine request body exceeds size limit");
+    throw new MachinePayloadTooLargeError(
+      "machine request body exceeds size limit",
+    );
   return body;
 }
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import os
-from collections.abc import Mapping
+import re
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,51 +31,250 @@ class CapabilityUnavailableError(RuntimeError):
     """A required, explicitly wired local capability is unavailable."""
 
 
+_KINDS = (
+    "rerun_collector",
+    "rebuild_edition",
+    "quarantine_story",
+    "release_story",
+    "refresh_research_job",
+)
+_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9:_-]{15,127}$")
+_COLLECTORS = frozenset({"intel-lake", "mata-garuda", "regulatory-watcher", "notebooklm"})
+_IDS = {
+    "collector_run": re.compile(r"^collector-run-[a-z0-9][a-z0-9-]{15,79}$"),
+    "edition": re.compile(r"^edition-[a-z0-9][a-z0-9-]{15,79}$"),
+    "story": re.compile(r"^story-[a-z0-9][a-z0-9-]{15,79}$"),
+    "research": re.compile(r"^research-job-[a-z0-9][a-z0-9-]{15,79}$"),
+}
+_MAX_CONFIG_BYTES = 32 * 1024
+_MAX_COMMAND_INPUT_BYTES = 8 * 1024
+_MAX_COMMAND_OUTPUT_BYTES = 8 * 1024
+_COMMAND_TIMEOUT_SECONDS = 120
+
+CapabilityHandler = Callable[..., Awaitable[str]]
+
+
+def _revision(value: Any, *, allow_zero: bool = False) -> bool:
+    minimum = 0 if allow_zero else 1
+    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
+
+
+def _validated_params(kind: str, params: Mapping[str, Any]) -> dict[str, Any]:
+    value = dict(params)
+    if kind == "rerun_collector":
+        valid = (
+            set(value) == {"collector_id", "failed_run_id"}
+            and value.get("collector_id") in _COLLECTORS
+            and isinstance(value.get("failed_run_id"), str)
+            and _IDS["collector_run"].fullmatch(value["failed_run_id"]) is not None
+        )
+    elif kind == "rebuild_edition":
+        valid = (
+            set(value) == {"edition_id", "expected_revision"}
+            and isinstance(value.get("edition_id"), str)
+            and _IDS["edition"].fullmatch(value["edition_id"]) is not None
+            and _revision(value.get("expected_revision"), allow_zero=True)
+        )
+    elif kind in {"quarantine_story", "release_story"}:
+        valid = (
+            set(value) == {"story_id", "story_version", "expected_visibility_seq"}
+            and isinstance(value.get("story_id"), str)
+            and _IDS["story"].fullmatch(value["story_id"]) is not None
+            and _revision(value.get("story_version"))
+            and _revision(value.get("expected_visibility_seq"), allow_zero=True)
+        )
+    elif kind == "refresh_research_job":
+        valid = (
+            set(value) == {"research_job_id"}
+            and isinstance(value.get("research_job_id"), str)
+            and _IDS["research"].fullmatch(value["research_job_id"]) is not None
+        )
+    else:
+        valid = False
+    if not valid:
+        raise CapabilityUnavailableError("operation capability unavailable")
+    return value
+
+
+def _target_id(kind: str, params: Mapping[str, Any]) -> str:
+    value = _validated_params(kind, params)
+    field = {
+        "rerun_collector": "failed_run_id",
+        "rebuild_edition": "edition_id",
+        "quarantine_story": "story_id",
+        "release_story": "story_id",
+        "refresh_research_job": "research_job_id",
+    }[kind]
+    return str(value[field])
+
+
+def _safe_command_environment() -> dict[str, str]:
+    environment = {
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
+    }
+    for name in ("HOME", "TMPDIR", "TZ"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    environment.update(
+        {
+            name: value
+            for name, value in os.environ.items()
+            if name.startswith("MAGAZINE_CAPABILITY_")
+        }
+    )
+    return environment
+
+
+class FixedJsonCommand:
+    """A preconfigured argv adapter with bounded JSON stdin/stdout and no shell."""
+
+    def __init__(self, *, kind: str, argv: tuple[str, ...]) -> None:
+        self._kind = kind
+        self._argv = argv
+
+    async def __call__(
+        self,
+        params: Mapping[str, Any],
+        *,
+        fencing_token: int,
+        target_fencing_token: int,
+        effect_token: str,
+    ) -> str:
+        if fencing_token < 1 or target_fencing_token < 1 or _TOKEN.fullmatch(effect_token) is None:
+            raise CapabilityUnavailableError("operation capability unavailable")
+        safe_params = _validated_params(self._kind, params)
+        target_id = _target_id(self._kind, safe_params)
+        payload = json.dumps(
+            {
+                "schema_version": "ops-domain-command.v1",
+                "intent_kind": self._kind,
+                "target_id": target_id,
+                "params": safe_params,
+                "authority": {
+                    "fencing_token": fencing_token,
+                    "target_fencing_token": target_fencing_token,
+                    "effect_token": effect_token,
+                },
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        if len(payload) > _MAX_COMMAND_INPUT_BYTES:
+            raise CapabilityUnavailableError("operation capability unavailable")
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *self._argv,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+                env=_safe_command_environment(),
+            )
+            assert process.stdin is not None and process.stdout is not None
+            process.stdin.write(payload)
+            await process.stdin.drain()
+            process.stdin.close()
+            output = await asyncio.wait_for(
+                process.stdout.read(_MAX_COMMAND_OUTPUT_BYTES + 1),
+                timeout=_COMMAND_TIMEOUT_SECONDS,
+            )
+            return_code = await asyncio.wait_for(process.wait(), timeout=_COMMAND_TIMEOUT_SECONDS)
+        except (OSError, TimeoutError, asyncio.TimeoutError) as exc:
+            if "process" in locals() and process.returncode is None:
+                process.kill()
+                await process.wait()
+            raise CapabilityUnavailableError("operation capability unavailable") from exc
+
+        if return_code != 0 or len(output) > _MAX_COMMAND_OUTPUT_BYTES:
+            raise CapabilityUnavailableError("operation capability unavailable")
+        try:
+            receipt = json.loads(output)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise CapabilityUnavailableError("operation capability unavailable") from exc
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != {"schema_version", "code", "target_id"}
+            or receipt.get("schema_version") != "ops-domain-receipt.v1"
+            or receipt.get("code") != "effect_acknowledged"
+            or receipt.get("target_id") != target_id
+        ):
+            raise CapabilityUnavailableError("operation capability unavailable")
+        return "effect_acknowledged"
+
+
 class FixedOperationsDomainService:
     """Fixed five-handler map; it cannot dispatch shell, paths, or URLs."""
 
-    def __init__(self, handlers: Mapping[str, Any]) -> None:
-        expected = {
-            "rerun_collector",
-            "rebuild_edition",
-            "quarantine_story",
-            "release_story",
-            "refresh_research_job",
-        }
-        if set(handlers) != expected or any(not callable(item) for item in handlers.values()):
+    def __init__(self, handlers: Mapping[str, CapabilityHandler]) -> None:
+        if set(handlers) != set(_KINDS) or any(not callable(item) for item in handlers.values()):
             raise OperationsRuntimeConfigError("invalid operations capability map")
         self._handlers = dict(handlers)
 
     async def prepare(self, kind: str, params: Mapping[str, Any]) -> None:
-        del params
-        if kind not in self._handlers or self._handlers[kind] is _unavailable:
+        if kind not in self._handlers:
             raise CapabilityUnavailableError("operation capability unavailable")
+        _target_id(kind, params)
 
-    async def execute(self, kind: str, params: Mapping[str, Any], *, fencing_token: int) -> str:
+    async def execute(
+        self,
+        kind: str,
+        params: Mapping[str, Any],
+        *,
+        fencing_token: int,
+        target_fencing_token: int,
+        effect_token: str,
+    ) -> str:
         handler = self._handlers.get(kind)
         if handler is None:
             raise CapabilityUnavailableError("operation capability unavailable")
-        result = await handler(params, fencing_token=fencing_token)
+        result = await handler(
+            params,
+            fencing_token=fencing_token,
+            target_fencing_token=target_fencing_token,
+            effect_token=effect_token,
+        )
         if result != "effect_acknowledged":
             raise CapabilityUnavailableError("operation capability unavailable")
         return result
 
 
-async def _unavailable(_params: Mapping[str, Any], *, fencing_token: int) -> str:
-    del fencing_token
-    raise CapabilityUnavailableError("operation capability unavailable")
+def _parse_capability_map(raw: str | None) -> dict[str, tuple[str, ...]]:
+    if raw is None or not raw.strip() or len(raw.encode()) > _MAX_CONFIG_BYTES:
+        raise OperationsRuntimeConfigError("invalid operations capability map")
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise OperationsRuntimeConfigError("invalid operations capability map") from exc
+    if not isinstance(value, dict) or set(value) != set(_KINDS):
+        raise OperationsRuntimeConfigError("invalid operations capability map")
+    parsed: dict[str, tuple[str, ...]] = {}
+    for kind in _KINDS:
+        argv = value.get(kind)
+        if (
+            not isinstance(argv, list)
+            or not 1 <= len(argv) <= 16
+            or any(not isinstance(item, str) or not item or len(item) > 1024 for item in argv)
+        ):
+            raise OperationsRuntimeConfigError("invalid operations capability map")
+        executable = Path(argv[0])
+        if (
+            not executable.is_absolute()
+            or not executable.is_file()
+            or not os.access(executable, os.X_OK)
+        ):
+            raise OperationsRuntimeConfigError("invalid operations capability map")
+        parsed[kind] = tuple(argv)
+    return parsed
 
 
-def build_operations_domain_service() -> OperationsDomainService:
-    """Return the audited production map; absent capabilities fail closed."""
+def build_operations_domain_service(capabilities_json: str | None) -> OperationsDomainService:
+    """Build the closed five-capability map from preconfigured executable argv values."""
+    commands = _parse_capability_map(capabilities_json)
     return FixedOperationsDomainService(
-        {
-            "rerun_collector": _unavailable,
-            "rebuild_edition": _unavailable,
-            "quarantine_story": _unavailable,
-            "release_story": _unavailable,
-            "refresh_research_job": _unavailable,
-        }
+        {kind: FixedJsonCommand(kind=kind, argv=commands[kind]) for kind in _KINDS}
     )
 
 
@@ -132,7 +334,9 @@ def create_operations_runtime(*, env: Mapping[str, str] | None = None) -> Operat
         lease_seconds = _integer(environment, "MAGAZINE_OPERATIONS_LEASE_SECONDS", 120, 30, 300)
         worker = OperationsWorker(
             transport=transport,
-            domain=build_operations_domain_service(),
+            domain=build_operations_domain_service(
+                _required(environment, "MAGAZINE_OPERATIONS_CAPABILITIES_JSON")
+            ),
             journal=OperationsJournal(_path(environment, "MAGAZINE_OPERATIONS_ACTION_JOURNAL")),
             now=_now,
             worker_id=environment.get("MAGAZINE_OPERATIONS_WORKER_ID", "worker:pro-magazine"),

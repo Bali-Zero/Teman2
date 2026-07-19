@@ -1,5 +1,6 @@
 import {
-  authenticateMachineRequest,
+  authenticateOperationsMachineRequest,
+  isMachinePayloadTooLarge,
   machineFailure,
   parseJsonBody,
 } from "../../../../../../../lib/server/machine-ingress.ts";
@@ -17,9 +18,9 @@ export async function POST(
 ): Promise<Response> {
   let verified;
   try {
-    verified = await authenticateMachineRequest(request);
-  } catch {
-    return machineFailure(401);
+    verified = await authenticateOperationsMachineRequest(request);
+  } catch (error) {
+    return machineFailure(isMachinePayloadTooLarge(error) ? 413 : 401);
   }
   try {
     if (request.headers.get("content-type") !== "application/json")
