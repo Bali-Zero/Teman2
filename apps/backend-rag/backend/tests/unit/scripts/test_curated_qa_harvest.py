@@ -166,7 +166,10 @@ def test_load_jsonl_rows_parses_multiple_files(tmp_path: Path) -> None:
 def test_load_jsonl_rows_skips_malformed_lines_and_counts_them(tmp_path: Path) -> None:
     path = tmp_path / "bad.jsonl"
     path.write_text(
-        json.dumps(_row(question="good one")) + "\n{not json\n" + json.dumps(_row(question="also good")) + "\n",
+        json.dumps(_row(question="good one"))
+        + "\n{not json\n"
+        + json.dumps(_row(question="also good"))
+        + "\n",
         encoding="utf-8",
     )
 
@@ -226,7 +229,9 @@ def test_validate_row_accepts_fully_populated_row() -> None:
 
 
 @pytest.mark.asyncio
-async def test_harvest_to_faq_writes_domain_scoped_entries(faq_cache: NotebookLMCacheService) -> None:
+async def test_harvest_to_faq_writes_domain_scoped_entries(
+    faq_cache: NotebookLMCacheService,
+) -> None:
     """Phase-0 safety rail (FATAL 1): harvest_to_faq() writes DOMAIN-SCOPED
     keys, not unscoped ones — the legacy unscoped get() must NOT find a
     domain-scoped write (proves the cross-domain collision surface is
@@ -263,10 +268,12 @@ async def test_harvest_to_faq_same_question_different_domains_do_not_collide(
     assert stats.faq_written == 2
     assert stats.faq_collision_refused == 0
     visa_got = await faq_cache.get(
-        "What documents do I need?", notebook_id=domain_scope_id("visa"),
+        "What documents do I need?",
+        notebook_id=domain_scope_id("visa"),
     )
     tax_got = await faq_cache.get(
-        "What documents do I need?", notebook_id=domain_scope_id("tax"),
+        "What documents do I need?",
+        notebook_id=domain_scope_id("tax"),
     )
     assert visa_got["answer"] == "Visa answer"
     assert tax_got["answer"] == "Tax answer"
@@ -575,7 +582,9 @@ async def test_purge_domain_faq_dry_run_deletes_nothing(
     deleted = await harvest.purge_domain_faq(faq_cache, "visa", dry_run=True)
 
     assert deleted == 1  # counted as "would delete"
-    assert await faq_cache.get("visa Q", notebook_id=domain_scope_id("visa")) is not None  # untouched
+    assert (
+        await faq_cache.get("visa Q", notebook_id=domain_scope_id("visa")) is not None
+    )  # untouched
 
 
 @pytest.mark.asyncio
@@ -614,3 +623,333 @@ async def test_purge_domain_qdrant_dry_run_deletes_nothing() -> None:
 
     assert deleted == 1
     assert len(client.points) == 1
+
+
+# ── purge_batch_faq / purge_batch_qdrant (MAJOR 9) ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_purge_batch_faq_deletes_only_matching_batch(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    await harvest.harvest_to_faq(
+        [_row(question="Q1", domain="visa")],
+        faq_cache,
+        dry_run=False,
+        batch_id="visa-aaa",
+    )
+    await harvest.harvest_to_faq(
+        [_row(question="Q2", domain="visa")],
+        faq_cache,
+        dry_run=False,
+        batch_id="visa-bbb",
+    )
+
+    deleted = await harvest.purge_batch_faq(faq_cache, "visa-aaa", dry_run=False)
+
+    assert deleted == 1
+    assert await faq_cache.get("Q1", notebook_id=domain_scope_id("visa")) is None
+    assert (await faq_cache.get("Q2", notebook_id=domain_scope_id("visa")))["answer"] is not None
+
+
+@pytest.mark.asyncio
+async def test_purge_batch_qdrant_deletes_only_matching_batch() -> None:
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    await harvest.harvest_to_qdrant(
+        [_row(question="Q1", domain="visa")],
+        client,
+        embedder,
+        dry_run=False,
+        batch_id="visa-aaa",
+    )
+    await harvest.harvest_to_qdrant(
+        [_row(question="Q2", domain="visa")],
+        client,
+        embedder,
+        dry_run=False,
+        batch_id="visa-bbb",
+    )
+
+    deleted = await harvest.purge_batch_qdrant(client, "visa-aaa", dry_run=False)
+
+    assert deleted == 1
+    remaining = [p["payload"]["batch_id"] for p in client.points.values()]
+    assert remaining == ["visa-bbb"]
+
+
+# ── compute_batch_id / build_batch_manifest / write_batch_manifest ─────────
+
+
+def test_compute_batch_id_is_deterministic_and_domain_specific() -> None:
+    first = harvest.compute_batch_id("visa", "abc123def456")
+    second = harvest.compute_batch_id("visa", "abc123def456")
+    assert first == second
+    assert first == "visa-abc123def456"[: len("visa-") + 12]
+    assert harvest.compute_batch_id("tax", "abc123def456") != first
+
+
+def test_build_batch_manifest_computes_class_histogram_and_gate_flags(tmp_path: Path) -> None:
+    path = _write_jsonl(
+        tmp_path / "batch.jsonl",
+        [
+            _row(question="Q1", confidence_class="JELAS"),
+            _row(question="Q2", confidence_class="JELAS", client_specific=True),
+            _row(question="Q3", confidence_class="BERSYARAT"),
+            _row(question="Q4", confidence_class="JELAS", answer="The fee is Rp 5.000.000."),
+        ],
+    )
+    rows, _ = harvest.load_jsonl_rows([path])
+
+    manifest = harvest.build_batch_manifest(path, rows)
+
+    assert manifest["domain"] == "visa"
+    assert manifest["row_count"] == 4
+    assert manifest["class_histogram"] == {"JELAS": 3, "BERSYARAT": 1}
+    assert manifest["gate_flags"] == {
+        "price_bearing_rows": 1,
+        "client_specific_rows": 1,
+        "verbatim_eligible_rows": 1,  # only Q1 clears all three gates
+    }
+    assert manifest["qdrant_committed"] is False
+    assert manifest["faq_committed"] is False
+
+
+def test_build_batch_manifest_rejects_mixed_domain_file(tmp_path: Path) -> None:
+    path = _write_jsonl(
+        tmp_path / "mixed.jsonl",
+        [_row(question="Q1", domain="visa"), _row(question="Q2", domain="tax")],
+    )
+    rows, _ = harvest.load_jsonl_rows([path])
+
+    with pytest.raises(ValueError, match="single domain"):
+        harvest.build_batch_manifest(path, rows)
+
+
+def test_write_batch_manifest_writes_to_manifests_dir(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+
+    manifest = harvest.write_batch_manifest(path, dry_run=False)
+
+    manifest_file = tmp_path / "_manifests" / f"{manifest['batch_id']}.json"
+    assert manifest_file.exists()
+    on_disk = json.loads(manifest_file.read_text(encoding="utf-8"))
+    assert on_disk["batch_id"] == manifest["batch_id"]
+    assert on_disk["row_count"] == 1
+
+
+def test_write_batch_manifest_dry_run_writes_nothing(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+
+    manifest = harvest.write_batch_manifest(path, dry_run=True)
+
+    manifest_file = tmp_path / "_manifests" / f"{manifest['batch_id']}.json"
+    assert not manifest_file.exists()
+
+
+# ── _load_and_gate_batches (FATAL 2: fail-closed manifest gate) ────────────
+
+
+def test_load_and_gate_batches_refuses_file_without_manifest(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert batches == []
+    assert stats.manifest_missing_rows == 1
+
+
+def test_load_and_gate_batches_refuses_on_edited_file_as_missing_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """batch_id is DERIVED from the file's content hash, so editing the file
+    after approval produces a DIFFERENT batch_id — the old manifest simply
+    isn't found at the new expected path (defense in depth: this is the
+    manifest_missing_rows path, not manifest_mismatch_rows, for this
+    specific tamper vector — see the sibling test below for the hash-
+    mismatch path, which requires a directly-tampered manifest)."""
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+    harvest.write_batch_manifest(path, dry_run=False)
+
+    path.write_text(
+        json.dumps(_row(question="Q1 EDITED", confidence_class="JELAS")) + "\n",
+        encoding="utf-8",
+    )
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert batches == []
+    assert stats.manifest_missing_rows == 1
+
+
+def test_load_and_gate_batches_refuses_on_hash_mismatch(tmp_path: Path, monkeypatch) -> None:
+    """GUILT — a manifest whose recorded source_file_sha256 was directly
+    tampered (drifted from the file it claims to describe) must refuse the
+    load even though the manifest FILE is found at the expected batch_id
+    path."""
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+    manifest = harvest.write_batch_manifest(path, dry_run=False)
+
+    manifest_path = tmp_path / "_manifests" / f"{manifest['batch_id']}.json"
+    tampered = dict(manifest)
+    tampered["source_file_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(tampered), encoding="utf-8")
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert batches == []
+    assert stats.manifest_mismatch_rows == 1
+
+
+def test_load_and_gate_batches_passes_with_valid_manifest(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    path = _write_jsonl(tmp_path / "batch.jsonl", [_row(question="Q1", confidence_class="JELAS")])
+    manifest = harvest.write_batch_manifest(path, dry_run=False)
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert len(batches) == 1
+    batch_id, manifest_path, loaded_manifest, rows = batches[0]
+    assert batch_id == manifest["batch_id"]
+    assert len(rows) == 1
+    assert stats.manifest_missing_rows == 0
+    assert stats.manifest_mismatch_rows == 0
+
+
+# ── load_batch (two-sink atomicity, MAJOR 10) ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_load_batch_writes_qdrant_first_then_faq_with_commit_markers(
+    tmp_path: Path,
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    manifest_path = tmp_path / "visa-abc123def456.json"
+    manifest = {
+        "batch_id": "visa-abc123def456",
+        "domain": "visa",
+        "qdrant_committed": False,
+        "qdrant_committed_at": None,
+        "faq_committed": False,
+        "faq_committed_at": None,
+    }
+    rows = [_row(question="Q1", confidence_class="JELAS")]
+    qdrant_client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+
+    await harvest.load_batch(
+        "visa-abc123def456",
+        manifest_path,
+        manifest,
+        rows,
+        faq_cache=faq_cache,
+        qdrant_client=qdrant_client,
+        embedder=embedder,
+        do_faq=True,
+        do_qdrant=True,
+        dry_run=False,
+    )
+
+    assert manifest["qdrant_committed"] is True
+    assert manifest["faq_committed"] is True
+    assert len(qdrant_client.points) == 1
+    assert await faq_cache.get("Q1", notebook_id=domain_scope_id("visa")) is not None
+    on_disk = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert on_disk["qdrant_committed"] is True
+    assert on_disk["faq_committed"] is True
+
+
+@pytest.mark.asyncio
+async def test_load_batch_interrupted_run_is_idempotently_re_runnable(
+    tmp_path: Path,
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — simulates a crash between the Qdrant phase and the FAQ phase
+    (manifest says qdrant_committed=True, faq_committed=False on disk). A
+    second run must SKIP the already-committed Qdrant phase and complete
+    only the FAQ phase — no double Qdrant write, FAQ ends up written."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    manifest_path = tmp_path / "visa-abc123def456.json"
+    interrupted_manifest = {
+        "batch_id": "visa-abc123def456",
+        "domain": "visa",
+        "qdrant_committed": True,
+        "qdrant_committed_at": "2026-07-19T00:00:00Z",
+        "faq_committed": False,
+        "faq_committed_at": None,
+    }
+    manifest_path.write_text(json.dumps(interrupted_manifest), encoding="utf-8")
+    rows = [_row(question="Q1", confidence_class="JELAS")]
+    qdrant_client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+
+    await harvest.load_batch(
+        "visa-abc123def456",
+        manifest_path,
+        dict(interrupted_manifest),
+        rows,
+        faq_cache=faq_cache,
+        qdrant_client=qdrant_client,
+        embedder=embedder,
+        do_faq=True,
+        do_qdrant=True,
+        dry_run=False,
+    )
+
+    # Qdrant phase was skipped (not re-embedded) — but idempotent upsert
+    # means re-running it WOULD have been harmless too; here we assert the
+    # skip actually happened (no embedder call).
+    assert embedder.calls == []
+    assert await faq_cache.get("Q1", notebook_id=domain_scope_id("visa")) is not None
+    on_disk = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert on_disk["faq_committed"] is True
+
+
+@pytest.mark.asyncio
+async def test_load_batch_dry_run_never_persists_commit_markers(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "visa-abc123def456.json"
+    manifest = {
+        "batch_id": "visa-abc123def456",
+        "domain": "visa",
+        "qdrant_committed": False,
+        "qdrant_committed_at": None,
+        "faq_committed": False,
+        "faq_committed_at": None,
+    }
+    rows = [_row(question="Q1", confidence_class="JELAS")]
+    qdrant_client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    faq_cache = NotebookLMCacheService()
+    faq_cache.redis_client = FakeAsyncRedis()
+
+    await harvest.load_batch(
+        "visa-abc123def456",
+        manifest_path,
+        manifest,
+        rows,
+        faq_cache=faq_cache,
+        qdrant_client=qdrant_client,
+        embedder=embedder,
+        do_faq=True,
+        do_qdrant=True,
+        dry_run=True,
+    )
+
+    assert manifest["qdrant_committed"] is False
+    assert manifest["faq_committed"] is False
+    assert not manifest_path.exists()
