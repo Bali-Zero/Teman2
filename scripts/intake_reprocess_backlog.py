@@ -2135,6 +2135,42 @@ async def run_reroute_npwp(
     )
 
 
+UNDELIVERED_REPORT_SQL = """
+SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id
+  FROM intake_commit_audit a
+ WHERE a.outcome = 'committed'
+   AND a.dry_run = false
+   AND a.plan->'crm_push'->>'status' = 'identity_unresolved'
+ ORDER BY a.id
+"""
+
+
+async def run_report_undelivered(pool: asyncpg.Pool) -> dict[str, int]:
+    """Operator consumer for the ``intake.delivery.identity_unresolved`` marker.
+
+    Read-only, integer ids only (Law 2). Lists committed documents whose Kita
+    delivery failed identity resolution — the rows to redeliver AFTER the
+    identity mapping (client phone / dedup) is fixed. Blind auto-redelivery
+    stays forbidden by design: a retry cannot succeed until the mapping itself
+    changes.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(UNDELIVERED_REPORT_SQL)
+    # Integer ids ONLY (Law 2): committed_by carries the reviewer's e-mail on
+    # HITL commits — it must never reach report/log output (Codex r7 F8-NIT).
+    for r in rows:
+        logger.info(
+            "[report-undelivered] audit=%s proposal=%s queue=%s client=%s doc=%s",
+            r["audit_id"],
+            r["proposal_id"],
+            r["queue_id"],
+            r["client_id"],
+            r["doc_id"],
+        )
+    logger.info("[report-undelivered] total=%d (full list, no display cap)", len(rows))
+    return {"undelivered": len(rows)}
+
+
 async def run_revive_stub(
     pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
 ) -> dict[str, int]:
@@ -3536,6 +3572,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--media-types", default=None, help="comma list for --backfill (default document,image)"
     )
+    p.add_argument(
+        "--report-undelivered",
+        action="store_true",
+        help=(
+            "operator report (read-only, ids only): committed documents whose "
+            "Kita delivery failed identity resolution (crm_push status "
+            "identity_unresolved in the audit) — the consumer for the "
+            "intake.delivery.identity_unresolved marker"
+        ),
+    )
     return p
 
 
@@ -3565,6 +3611,7 @@ async def main(argv: list[str] | None = None) -> int:
         or args.auto_attach_direct_phone
         or args.promote_direct_new_prospects
         or args.review_backlog_report
+        or args.report_undelivered
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
@@ -3610,6 +3657,8 @@ async def main(argv: list[str] | None = None) -> int:
                 max(args.reroute_limit, 1),
                 args.apply,
             )
+        if args.report_undelivered:
+            await run_report_undelivered(pool)
         if args.reroute_npwp:
             await run_reroute_npwp(
                 pool,

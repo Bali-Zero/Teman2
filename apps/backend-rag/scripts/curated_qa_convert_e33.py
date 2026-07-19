@@ -35,6 +35,15 @@ Modes (mutually exclusive):
    is kept verbatim (never silently dropped) and counted under its own key
    in the summary — "map confidence classes; skip nothing silently."
 
+   COMPOUND tags (Fable gate, 2026-07-19, Wave-3 ruling): a dossier row
+   whose CONFIDENCE line names MORE THAN ONE of the 5 known classes (e.g.
+   "JELAS (mechanics); BERSYARAT (eligibility)", "JELAS/BERSYARAT split")
+   DEGRADES to the least-promotable class named — the verbatim-promotion
+   gate only auto-serves pure JELAS rows. The original tag string is
+   preserved in an ADDITIONAL `confidence_class_raw` field, emitted only
+   when normalization actually changed the value. See
+   `_normalize_confidence_class`.
+
 2. --golden-yaml: converts scripts/golden_answers_questions.yaml.
    QUESTION-ONLY (that file has no answer field — the actual golden answer
    is generated live against NLM and stored in Postgres by
@@ -109,6 +118,23 @@ _SHARED_SCHEMA_KEYS = (
 
 _GENERATED_DATE_RE = re.compile(r"generated\s+(\d{4}-\d{2}-\d{2})")
 _QUESTION_HEADER_RE = re.compile(r"^### Q(\d+)\.\s*(.+?)\s*$", re.MULTILINE)
+
+# Promotability rank for the 5 known CONFIDENCE classes observed in the real
+# corpus — HIGHER rank = MORE promotable (safer to auto-serve verbatim at
+# harvest). Used by `_normalize_confidence_class` below (Fable gate, 2026-07-19,
+# Wave-3 curated-cache cantiere ruling): a COMPOUND tag naming more than one
+# of these classes must degrade to the LEAST-promotable (lowest rank) one —
+# the verbatim-promotion gate only auto-serves pure JELAS, so a dossier that
+# hedges ("JELAS (mechanics); BERSYARAT (eligibility)") must never harvest as
+# the more-promotable half of its own hedge.
+_CONFIDENCE_RANK: dict[str, int] = {
+    "JELAS": 5,
+    "BERSYARAT": 4,
+    "DINAMIS": 3,
+    "KEBIJAKAN_PENYEDIA": 2,
+    "BELUM_DIATUR_PUBLIK": 1,
+}
+_CONFIDENCE_TOKEN_RE = re.compile(r"\b(?:" + "|".join(_CONFIDENCE_RANK) + r")\b")
 # NOTE (2026-07-19, curated-cache cantiere Wave 1/2 postmortem): the answer
 # body has been observed in TWO physical layouts across real dossiers, both
 # equally valid per the spec's own prose (which never mandated a line break)
@@ -129,7 +155,13 @@ _FINAL_RE = re.compile(
     r"\*\*FINAL \(client-facing\):\*\*\s*(.*?)\n\s*\*\*CONFIDENCE:\*\*",
     re.DOTALL,
 )
-_CONFIDENCE_RE = re.compile(r"\*\*CONFIDENCE:\*\*\s*(\S+)")
+# Captures the FULL rest-of-line after the label (not just the first
+# whitespace-delimited token) — real dossiers sometimes hedge with a
+# COMPOUND tag on that one line (e.g. "JELAS (mechanics); BERSYARAT
+# (eligibility)", "JELAS/BERSYARAT split"). `.` does not match `\n` without
+# re.DOTALL, so this still stops at end-of-line same as the old `\S+` did
+# for the common single-token case. See `_normalize_confidence_class`.
+_CONFIDENCE_RE = re.compile(r"\*\*CONFIDENCE:\*\*[ \t]*(.+)")
 # Same postmortem, two more real-world variants beyond the header text:
 # (a) the "(source-cited, unverified)" qualifier is dropped in 9 of the 14
 #     Wave 1/2 dossiers ("**LAW REFS:**" bare) — the `(?: ...)?` makes it
@@ -211,6 +243,50 @@ def _extract_law_refs(block: str) -> list[str]:
     return []
 
 
+def _normalize_confidence_class(raw: str) -> tuple[str, str | None]:
+    """Degrade a (possibly compound) CONFIDENCE tag to its harvestable class.
+
+    Ruling (Fable gate, 2026-07-19, Wave-3 curated-cache cantiere): a
+    compound CONFIDENCE tag — e.g. "JELAS (mechanics); BERSYARAT
+    (eligibility)" or "JELAS/BERSYARAT split" — must DEGRADE to the
+    least-promotable class named in it at harvest time. The verbatim-
+    promotion gate only auto-serves pure JELAS rows; a hedged/compound tag
+    is, by construction, not a pure JELAS row.
+
+    Returns (normalized_class, raw_if_changed):
+
+    - 0 known class tokens found in `raw` (unrecognized tag): preserve the
+      pre-existing behavior exactly — the bare first whitespace-delimited
+      token of the line, kept verbatim (P7 principle: never silently drop
+      an anomalous tag). No raw field.
+    - Exactly 1 known class token found: that class, verbatim. No raw
+      field — nothing was normalized.
+    - >1 DISTINCT known class tokens found: normalized = the token with the
+      LOWEST promotability rank (`_CONFIDENCE_RANK`). `raw` is populated
+      with the original full tag string ONLY if the normalized class
+      differs from the FIRST class token that appears in the string — a
+      class token can appear a second time inside descriptive prose around
+      the SAME leading tag (e.g. "BERSYARAT (JELAS only after OSS
+      confirmation)"); there the min-rank class already equals the leading
+      tag, nothing actually degraded, so no raw is emitted even though the
+      scan found 2 tokens.
+    """
+    tokens = _CONFIDENCE_TOKEN_RE.findall(raw)
+    if not tokens:
+        parts = raw.split(None, 1)
+        return (parts[0] if parts else raw), None
+
+    distinct = list(dict.fromkeys(tokens))  # de-dup, preserve first-seen order
+    if len(distinct) == 1:
+        return distinct[0], None
+
+    normalized = min(distinct, key=lambda cls: _CONFIDENCE_RANK[cls])
+    first_listed = distinct[0]
+    if normalized == first_listed:
+        return normalized, None
+    return normalized, raw
+
+
 def parse_e33_markdown_file(
     path: Path,
     *,
@@ -257,26 +333,28 @@ def parse_e33_markdown_file(
         answer = final_match.group(1).strip() if final_match else ""
 
         confidence_match = _CONFIDENCE_RE.search(block)
-        confidence_class = confidence_match.group(1).strip() if confidence_match else "UNKNOWN"
+        confidence_raw_line = confidence_match.group(1).strip() if confidence_match else "UNKNOWN"
+        confidence_class, confidence_class_raw = _normalize_confidence_class(confidence_raw_line)
         confidence_class_counts[confidence_class] = (
             confidence_class_counts.get(confidence_class, 0) + 1
         )
 
         law_refs = _extract_law_refs(block)
 
-        rows.append(
-            {
-                "question": question_text,
-                "answer": answer,
-                "domain": domain,
-                "lang": lang,
-                "source_ref": f"{path.name}#Q{question_number}",
-                "source_date": source_date,
-                "confidence_class": confidence_class,
-                "law_refs": law_refs,
-                "source_priority": source_priority,
-            },
-        )
+        row: dict[str, Any] = {
+            "question": question_text,
+            "answer": answer,
+            "domain": domain,
+            "lang": lang,
+            "source_ref": f"{path.name}#Q{question_number}",
+            "source_date": source_date,
+            "confidence_class": confidence_class,
+            "law_refs": law_refs,
+            "source_priority": source_priority,
+        }
+        if confidence_class_raw is not None:
+            row["confidence_class_raw"] = confidence_class_raw
+        rows.append(row)
 
     return rows, confidence_class_counts
 
