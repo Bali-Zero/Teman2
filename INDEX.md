@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 31 · **Packages:** 6
+**Apps:** 32 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -119,6 +119,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
 | `nuz-status-mac` | Native macOS control surface for Nuzantara operational health. |
+| `nuzantara-lex` | > Second body of the organism. "Avvocato Totale" — the Indonesian labor-law |
 | `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
