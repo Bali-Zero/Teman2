@@ -9,6 +9,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.core.exceptions import DatabaseError, ResourceNotFoundError, ValidationError
 
@@ -31,6 +32,8 @@ def mock_pool():
             return None
 
     pool.acquire = MagicMock(return_value=_AsyncCtx())
+    # conn.transaction() must be an async CM, not a coroutine (phone-lock TX).
+    conn.transaction = MagicMock(return_value=_AsyncCtx())
     return pool, conn
 
 
@@ -214,7 +217,7 @@ def test_client_validator_name_stripped():
 
 
 def test_client_validator_name_too_short():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         ClientValidator(full_name="X")
 
 
@@ -225,7 +228,7 @@ def test_client_validator_phone_cleaned():
 
 
 def test_client_validator_phone_too_short():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         ClientValidator(full_name="Test User", phone="123")
 
 
@@ -235,7 +238,7 @@ def test_client_validator_passport_uppercased():
 
 
 def test_client_validator_passport_invalid():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         ClientValidator(full_name="Test User", passport_number="invalid!!!")
 
 
@@ -258,12 +261,12 @@ def test_practice_validator_valid():
 
 
 def test_practice_validator_invalid_status():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         PracticeValidator(client_id=1, practice_type_id=2, status="invalid_status")
 
 
 def test_practice_validator_invalid_priority():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         PracticeValidator(client_id=1, practice_type_id=2, priority="super_urgent")
 
 
@@ -280,7 +283,7 @@ def test_practice_validator_valid_priority_options():
 
 
 def test_practice_validator_negative_client_id():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         PracticeValidator(client_id=-1, practice_type_id=2)
 
 
@@ -295,7 +298,7 @@ def test_interaction_validator_valid():
 
 
 def test_interaction_validator_invalid_type():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         InteractionValidator(interaction_type="fax")
 
 
@@ -305,7 +308,7 @@ def test_interaction_validator_valid_sentiment():
 
 
 def test_interaction_validator_invalid_sentiment():
-    with pytest.raises(Exception):
+    with pytest.raises(PydanticValidationError):
         InteractionValidator(interaction_type="email", sentiment="happy")
 
 
@@ -494,6 +497,7 @@ def test_auditor_stop_periodic_flush_noop_when_no_task(auditor):
     audit, _ = auditor
     audit._flush_task = None
     audit.stop_periodic_flush()  # Should not raise
+    assert audit._flush_task is None  # still no task, and no exception escaped
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -592,7 +596,7 @@ async def test_create_client_db_error_raises(crm_service, mock_pool):
 @pytest.mark.asyncio
 async def test_create_client_invalid_input_raises(crm_service):
     service, _ = crm_service
-    with pytest.raises(Exception):
+    with pytest.raises(DatabaseError):
         await service.create_client({"full_name": "X"})  # Name too short
 
 
@@ -693,6 +697,75 @@ async def test_update_client_no_changes_returns_old(crm_service, mock_pool):
     assert result["full_name"] == "Same Name"
 
 
+@pytest.mark.asyncio
+async def test_create_client_with_phone_takes_phonecore_lock(crm_service, mock_pool):
+    """Round-15 F21 class-audit: EnhancedCRMService.create_client writes the
+    ownership columns (phone, whatsapp) and therefore MUST take the
+    'phonecore:' advisory locks inside its transaction before the INSERT."""
+    service, _ = crm_service
+    pool, conn = mock_pool
+    conn.fetchval = AsyncMock(return_value=None)  # No duplicate
+    conn.execute = AsyncMock()
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "id": 7,
+            "full_name": "Jane Doe",
+            "email": None,
+            "phone": "+62 812 3454 721",
+            "whatsapp": None,
+            "nationality": None,
+            "passport_number": None,
+            "status": "active",
+            "client_type": "individual",
+            "assigned_to": None,
+            "custom_fields": {},
+        }
+    )
+
+    with patch.object(service.auditor, "log_client_created", new_callable=AsyncMock):
+        await service.create_client({"full_name": "Jane Doe", "phone": "+62 812 3454 721"})
+
+    lock_sqls = [c[0][0] for c in conn.execute.call_args_list if "pg_advisory_xact_lock" in c[0][0]]
+    assert lock_sqls  # the phonecore lock WAS taken before the INSERT
+
+
+@pytest.mark.asyncio
+async def test_update_client_whatsapp_only_takes_phonecore_lock(crm_service, mock_pool):
+    """Round-15 F21 class-audit: a whatsapp-ONLY update through
+    EnhancedCRMService.update_client must enter the phone-lock convergence
+    loop — whatsapp is an ownership column, same as phone."""
+    service, _ = crm_service
+    pool, conn = mock_pool
+    old_row = {
+        "id": 1,
+        "full_name": "Test",
+        "email": None,
+        "phone": None,
+        "phone_normalized": None,
+        "whatsapp": None,
+        "status": "active",
+        "client_type": "individual",
+        "assigned_to": None,
+        "nationality": None,
+        "passport_number": None,
+        "custom_fields": {},
+        "tags": [],
+        "notes": None,
+        "deleted_at": None,
+    }
+    new_row = {**old_row, "whatsapp": "+62 812 3454 721"}
+    conn.execute = AsyncMock()
+    # Reads: old_data, convergence read 1, convergence read 2 (stable), UPDATE.
+    conn.fetchrow = AsyncMock(side_effect=[old_row, old_row, old_row, new_row])
+
+    with patch.object(service.auditor, "log_client_updated", new_callable=AsyncMock):
+        result = await service.update_client(1, {"whatsapp": "+62 812 3454 721"})
+
+    assert result["whatsapp"] == "+62 812 3454 721"
+    lock_sqls = [c[0][0] for c in conn.execute.call_args_list if "pg_advisory_xact_lock" in c[0][0]]
+    assert lock_sqls  # whatsapp-only update DID take the phonecore lock
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # EnhancedCRMService — get_client
 # ─────────────────────────────────────────────────────────────────────────────
@@ -770,7 +843,7 @@ async def test_create_practice_success(crm_service, mock_pool):
 @pytest.mark.asyncio
 async def test_create_practice_invalid_data_raises(crm_service):
     service, _ = crm_service
-    with pytest.raises(Exception):
+    with pytest.raises(DatabaseError):
         await service.create_practice({"client_id": -1, "practice_type_id": 2})
 
 

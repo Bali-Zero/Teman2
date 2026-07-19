@@ -380,6 +380,7 @@ _DEFAULT_DB_URL = os.environ.get(
 
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_250_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "250_visa_engine_core.sql"
+_MIGRATION_251_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "251_visa_activation_writer.sql"
 
 
 def _read_migration_250() -> tuple[str, str]:
@@ -395,6 +396,18 @@ def _read_migration_250() -> tuple[str, str]:
     return forward, rollback
 
 
+def _read_migration_251() -> tuple[str, str]:
+    """Return (forward_sql, rollback_sql) for migration 251 — the STEP-6a
+    activation writer (``visa_activate_rule_pack`` SECURITY DEFINER function
+    + the ``activated_by_principal`` column + the hardened migration-250
+    trigger functions). Same ``split_migration_sql`` helper as 250's own
+    reader above."""
+    sql = _MIGRATION_251_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 251 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_pool() -> asyncpg.Pool:
     pool = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
@@ -404,20 +417,38 @@ async def db_pool() -> asyncpg.Pool:
 
 @pytest_asyncio.fixture(scope="function")
 async def visa_schema(db_pool: asyncpg.Pool) -> None:
-    """Fresh ``visa_rule_packs``/``visa_ruleset_activations`` for one test.
+    """Fresh ``visa_rule_packs``/``visa_ruleset_activations`` + the STEP-6a
+    activation writer for one test.
 
-    Drops (idempotent — every statement in the rollback section is
-    ``IF EXISTS``) then recreates both tables + the append-only trigger +
-    function + index, so every test starts from zero rows regardless of
-    what a previous test committed.
+    Applies migration 250's forward SQL, then migration 251's forward SQL —
+    same order a real deploy applies them (251 lands in the same release as
+    250, per 251's own header note) — so every test starts from a schema
+    that includes the ``activated_by_principal`` column, the hardened
+    (schema-qualified, ``search_path``-pinned) trigger functions, and the
+    ``visa_activate_rule_pack`` writer function, with zero rows regardless
+    of what a previous test committed.
+
+    Setup AND teardown both roll back 251 THEN 250 (dependency-safe order —
+    251's rollback drops the writer function, reverts the four trigger
+    functions to their pre-251 bodies, and drops the
+    ``activated_by_principal`` column/constraint, all while the tables
+    still exist; only THEN does 250's rollback drop the tables themselves).
+    251's rollback uses ``ALTER TABLE IF EXISTS`` throughout specifically so
+    calling it at setup — defensively, before either migration's forward SQL
+    has ever run against a brand-new disposable DB — never errors on a
+    table that doesn't exist yet.
     """
-    forward, rollback = _read_migration_250()
+    forward_250, rollback_250 = _read_migration_250()
+    forward_251, rollback_251 = _read_migration_251()
     async with db_pool.acquire() as conn:
-        await conn.execute(rollback)
-        await conn.execute(forward)
+        await conn.execute(rollback_251)
+        await conn.execute(rollback_250)
+        await conn.execute(forward_250)
+        await conn.execute(forward_251)
     yield
     async with db_pool.acquire() as conn:
-        await conn.execute(rollback)
+        await conn.execute(rollback_251)
+        await conn.execute(rollback_250)
 
 
 @pytest_asyncio.fixture(scope="function")

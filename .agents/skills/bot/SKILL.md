@@ -20,7 +20,17 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-18 ~23:30 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-19 ~21:00 WITA — keep current)
+
+- **WA OUTBOX P0 (2026-07-19) — FIXED #2812 + DEPLOYED 12:45 UTC + VERIFIED**: the per-thread
+  advisory lock passed raw `int thread_id` into `hashtext('wa_outbox_thread_' || $1::text)` —
+  asyncpg types `$1` TEXT from the cast and refuses int (`DataError: expected str, got int`),
+  so the scheduler crashed EVERY tick and the bot was mute ~4h (2,495 crashes). Fix:
+  `str(thread_id)` at lock AND unlock (must hash to the same key). Unit mocks never caught it —
+  they don't do asyncpg's client-side type validation. Deploy got lost twice (concurrency-cancel
+  - ~2h runner queue); caught by the new fly-logs accumulator (O0-P1). Verified: zero
+    occurrences after 12:44 UTC. **Lesson: lock/unlock key args must be same TYPE, and mocks of
+    asyncpg conns lie about type checking.**
 
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
