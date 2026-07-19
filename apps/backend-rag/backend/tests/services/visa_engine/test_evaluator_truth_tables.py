@@ -24,11 +24,16 @@ table):
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 from backend.services.visa_engine import models as M
-from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import FactPath
-from backend.services.visa_engine.evaluator import ProductProofStatus, evaluate_product
+from backend.services.visa_engine.evaluator import (
+    ProductProof,
+    ProductProofStatus,
+    evaluate_product,
+)
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.tests.services.visa_engine import _builders as B
 from backend.tests.services.visa_engine.conftest import make_applicant_facts
@@ -59,14 +64,14 @@ def _applicant_facts(fact_value: bool | None) -> M.ApplicantFacts:
     )
 
 
-def _build_pack(*, stage_under_test: str):
+def _build_pack(*, stage_under_test: str) -> tuple[CompiledRulePack, str]:
     source_id = B.new_uuid()
     product_id = B.new_uuid()
     src = B.source_record(source_id=source_id)
     prod = B.product(product_id=product_id, source_id=source_id, covered_purposes=["TOURISM"])
 
     when = {"op": "eq", "fact": _UNDER_TEST_FACT, "value": True}
-    rules = []
+    rules: list[dict[str, Any]] = []
 
     if stage_under_test == "HARD_FILTER":
         rules.append(
@@ -136,7 +141,7 @@ def _build_pack(*, stage_under_test: str):
     return build_compiled_pack(pack), product_id
 
 
-def _proof_for(stage_under_test: str, fact_value: bool | None):
+def _proof_for(stage_under_test: str, fact_value: bool | None) -> ProductProof:
     compiled, product_id = _build_pack(stage_under_test=stage_under_test)
     facts = _applicant_facts(fact_value)
     snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=_EFFECTIVE_AT)

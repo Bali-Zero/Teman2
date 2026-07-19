@@ -18,21 +18,25 @@ out of PR5 scope, see ``evaluator.py``'s module docstring divergence #4):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import pytest
 
 from backend.services.visa_engine import evaluator
+from backend.services.visa_engine.compiler import CompiledRulePack
 from backend.services.visa_engine.enums import DecisionState
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 
 _INV_MIN = gf.GOLD_INVESTOR_MIN_IDR
+_TEST_HMAC_KEY = b"visa-evaluator-test-key-material-32b"
+_TEST_KEY_ID = "test-evaluator-v1"
 
 
 @dataclass(frozen=True)
 class Persona:
     id: int
     label: str
-    overrides: dict
+    overrides: dict[str, Any]
     expected_state: DecisionState
     expected_candidates: tuple[str, ...] = ()
     expected_missing: tuple[str, ...] = ()
@@ -283,18 +287,20 @@ assert [p.id for p in PERSONAS] == list(range(1, 21)), "persona ids must be 1..2
 
 
 @pytest.fixture(scope="module")
-def compiled_gold_pack():
+def compiled_gold_pack() -> CompiledRulePack:
     return gf.build_gold_compiled_pack()
 
 
 @pytest.mark.parametrize("persona", PERSONAS, ids=[f"persona-{p.id:02d}" for p in PERSONAS])
-def test_gold_persona(persona: Persona, compiled_gold_pack) -> None:
+def test_gold_persona(persona: Persona, compiled_gold_pack: CompiledRulePack) -> None:
     facts = gf.applicant_facts(overrides=persona.overrides)
     decision = evaluator.evaluate(
         facts,
         compiled_gold_pack,
         effective_at=gf.GOLD_EFFECTIVE_AT,
         observed_at=gf.GOLD_EFFECTIVE_AT,
+        fingerprint_hmac_key=_TEST_HMAC_KEY,
+        fingerprint_key_id=_TEST_KEY_ID,
     )
 
     assert decision.state is persona.expected_state, (

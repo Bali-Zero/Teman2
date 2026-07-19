@@ -126,9 +126,9 @@ one place.
   greenfield. Returns ``models.Decision`` directly rather than spec's
   ``DecisionDraft``/``EvaluationContext`` (neither exists anywhere in this
   package) — see ``evaluator.py``'s own module docstring for this and every
-  other documented divergence (facts_fingerprint/decision_id/public_id
-  placeholder derivation, the folded-in global-review pre-pass, the
-  union-not-intersection ``minimal_missing_fact_set``, the
+  other documented divergence (caller-supplied facts-fingerprint HMAC,
+  assessment-scoped deterministic decision IDs, the explicit global-review
+  pre-pass, the union-not-intersection ``minimal_missing_fact_set``, the
   NO_SUPPORTED_PATH fallback reason). **Still NOT included**:
   ``TEMPORARILY_UNAVAILABLE`` production (out of this pure function's
   scope by construction — see divergence #4), real pricing (``quotes`` is

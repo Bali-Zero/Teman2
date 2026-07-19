@@ -21,8 +21,10 @@ must produce a byte-identical ``Decision`` on every call).
    Neither ``EvaluationContext`` nor ``DecisionDraft`` exists anywhere in this
    package (both are explicitly "not started, deferred" per
    ``visa_engine/__init__.py``'s PR-scope map) — the PR5 task brief instead
-   specifies ``evaluate(facts, compiled_pack, *, effective_at, observed_at)
-   -> Decision`` directly, skipping the draft/context indirection entirely.
+   specifies ``evaluate(facts, compiled_pack, *, effective_at, observed_at,
+   fingerprint_hmac_key, fingerprint_key_id) -> Decision`` directly,
+   skipping the draft/context indirection while keeping key ownership at the
+   caller boundary.
    This module follows the task brief (a real, already-frozen target type)
    over the spec's scaffolding names for two never-implemented types.
 2. **``facts`` is the wire ``models.ApplicantFacts``, not a pre-derived
@@ -34,21 +36,13 @@ must produce a byte-identical ``Decision`` on every call).
    the "one call assembles one Decision" contract self-contained for
    callers, and matches the task brief's "FactSnapshot-or-ApplicantFacts per
    the models' shape" phrasing by picking the actual ``models.py`` type.
-3. **A separate upfront ``evaluate_global_review_rules`` pre-pass (spec
-   §4.3) is folded into the existing per-product ``HUMAN_REVIEW`` stage,
-   not implemented as a second code path.** ``CompiledRulePack.rules_for()``
-   already includes every GLOBAL rule in *every* product's rule list, so a
-   GLOBAL ``HUMAN_REVIEW`` rule that is TRUE makes ``evaluate_product``
-   return ``REVIEW`` for *every* product identically — the outer loop's
-   ``review = [proof for proof in proofs if proof.status is REVIEW]``
-   check then sees a REVIEW proof for every product and returns
-   ``HUMAN_REVIEW_REQUIRED`` exactly as the spec's separate pre-pass would
-   have, with zero observable behavioral difference (same facts, same rule,
-   same deterministic result, evaluated ``len(products)`` times instead of
-   once). This is a provable-equivalent simplification, not a semantic
-   change — documented here rather than duplicating the same rule
-   evaluation in two places. A future perf-only patch may reintroduce the
-   short-circuit without touching behavior.
+3. **GLOBAL ``HUMAN_REVIEW`` rules use the spec §4.3 pre-pass.** They are
+   evaluated before purpose completeness and product selection so an
+   independently true global safety trigger cannot be masked by a product's
+   earlier ``HARD_FILTER`` stage, an unknown ``intent.purposes`` fact, or a
+   pack with no active products. ``rules_for()`` still includes GLOBAL rules
+   in each product for UNKNOWN propagation, but a definitely TRUE global
+   review trigger always short-circuits at the global precedence boundary.
 4. **``TEMPORARILY_UNAVAILABLE`` is never produced by this function.** Its
    two triggers per spec §4.3 ("absent/unverifiable pack, compilation
    failure" and "persistence-required dependency failure") are both
@@ -59,21 +53,11 @@ must produce a byte-identical ``Decision`` on every call).
    are undone, PR4+/later scope) — ``quotes`` is always ``()``. Resolving
    "no active pack" is the caller's (repository/service layer) job, done
    *before* ``evaluate()`` is ever invoked.
-5. **``facts_fingerprint``/``decision_id``/``public_id`` use a documented
-   PLACEHOLDER, not real HMAC secret management.** ``crypto.py`` (secret/key
-   management) is undone (PR4+/later, per ``__init__.py``'s PR-scope map),
-   so this module cannot pull a real HMAC key from anywhere without
-   inventing one out of scope. It instead derives a deterministic (same
-   inputs -> same output, required for the determinism test) fingerprint
-   using a fixed, clearly-named, NON-SECRET placeholder key
-   (``_FACTS_FINGERPRINT_PLACEHOLDER_KEY``) — mirroring ``bundle.py``'s own
-   "UNSIGNED-DEV firebreak, never silently treated as real security"
-   posture. ``decision_id``/``public_id`` are derived (UUIDv5 / truncated
-   SHA-256 hex) from the same inputs for the same determinism reason — a
-   random ``uuid4()`` would make two evaluations of identical inputs produce
-   different ``Decision`` payloads, failing the required byte-identical
-   round-trip. **Do not treat any of these three as a real integrity
-   guarantee until crypto.py lands the genuine secret.**
+5. **The caller supplies the HMAC key and key id.** The evaluator stays pure
+   and deterministic, but it never invents or embeds a repository-visible
+   signing key. ``decision_id``/``public_id`` are derived (UUIDv5 / truncated
+   SHA-256 hex) from the assessment identity plus the rule-pack/facts inputs;
+   distinct assessments with identical answers therefore cannot collide.
 6. **"minimal_missing_fact_set" (spec §4.3) is implemented as the UNION of
    every ``BLOCKED_UNKNOWN`` proof's ``missing_facts``, not an
    intersection.** An intersection could legitimately be empty when two
@@ -118,6 +102,7 @@ from backend.services.visa_engine.enums import (
     DecisionState,
     FactPath,
     OnUnknownAction,
+    RuleScope,
     RuleStage,
     TruthValue,
     VisaProductStatus,
@@ -199,9 +184,7 @@ def _rules_by_stage(rules: Sequence[CompiledRule]) -> Mapping[RuleStage, tuple[C
     return {stage: tuple(bucket) for stage, bucket in buckets.items()}
 
 
-def _evaluate_stage(
-    rules: Sequence[CompiledRule], facts: FactSnapshot
-) -> tuple[_StageResult, ...]:
+def _evaluate_stage(rules: Sequence[CompiledRule], facts: FactSnapshot) -> tuple[_StageResult, ...]:
     """Evaluate every rule in one stage against ``facts``. Never short-circuits
     across rules (each rule's own ``evaluate_condition`` already never
     short-circuits within itself — spec §4.1)."""
@@ -362,11 +345,14 @@ def evaluate_product(
         )
 
     missing_purposes = purposes - covered
-    could_cover = any(
-        frozenset(rule.effect.covered_purposes) & missing_purposes  # type: ignore[union-attr]
-        for rule, _ in support_unknowns
+    unknown_coverage = (
+        frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_unknowns)  # type: ignore[union-attr]
+        )
+        if support_unknowns
+        else frozenset()
     )
-    if could_cover:
+    if missing_purposes <= unknown_coverage:
         missing = _underlying_applicant_facts(support_unknowns, fact_registry)
         return ProductProof(
             product=product,
@@ -476,37 +462,30 @@ def _build_notices(facts: FactSnapshot, compiled_pack: CompiledRulePack) -> tupl
 # Deterministic identity + facts fingerprint (divergence #5 — see module docstring)
 # ---------------------------------------------------------------------------
 
-#: NOT a secret. A fixed, non-secret placeholder standing in for the real
-#: HMAC key ``crypto.py`` (PR4+/later, undone) will eventually manage. Never
-#: treat a ``Fingerprint`` built with this key as a real integrity guarantee.
-_FACTS_FINGERPRINT_PLACEHOLDER_KEY = b"visa-engine-pr5-unsigned-dev-placeholder-key"
-_FACTS_FINGERPRINT_KEY_ID = "pr5-unsigned-dev-placeholder-v1"
-
 #: Fixed, arbitrary namespace UUID for deriving a deterministic ``decision_id``
 #: via UUIDv5 — never treat as a secret; its only job is to keep the derived
 #: UUID out of the random (v4) namespace so it is visibly "derived, not random".
 _DECISION_ID_NAMESPACE = uuid.UUID("2f6a8b2e-6a3b-4b8e-9b0a-6f1a8b2e6a3b")
 
 
-def _facts_fingerprint(facts: ApplicantFacts) -> Fingerprint:
+def _facts_fingerprint(facts: ApplicantFacts, *, hmac_key: bytes, key_id: str) -> Fingerprint:
+    if len(hmac_key) < 32:
+        raise ValueError("facts fingerprint HMAC key must be at least 32 bytes")
     canonical = canonical_fact_payload(facts)
     payload_bytes = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    digest = hmac.new(
-        _FACTS_FINGERPRINT_PLACEHOLDER_KEY, payload_bytes, hashlib.sha256
-    ).hexdigest()
-    return Fingerprint(
-        algorithm="HMAC-SHA256", key_id=_FACTS_FINGERPRINT_KEY_ID, digest=digest
-    )
+    digest = hmac.new(hmac_key, payload_bytes, hashlib.sha256).hexdigest()
+    return Fingerprint(algorithm="HMAC-SHA256", key_id=key_id, digest=digest)
 
 
 def _deterministic_ids(
     *,
+    assessment_id: uuid.UUID,
     rule_pack_id: uuid.UUID,
     sequence: int,
     facts_digest: str,
     effective_at: datetime,
 ) -> tuple[uuid.UUID, str]:
-    seed = f"{rule_pack_id}:{sequence}:{facts_digest}:{effective_at.isoformat()}"
+    seed = f"{assessment_id}:{rule_pack_id}:{sequence}:{facts_digest}:{effective_at.isoformat()}"
     decision_id = uuid.uuid5(_DECISION_ID_NAMESPACE, seed)
     public_id = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:20]
     return decision_id, public_id
@@ -521,6 +500,28 @@ def _product_is_effective(period: TimeRange, moment: datetime) -> bool:
     package otherwise follows).
     """
     return period.from_ <= moment and (period.to is None or moment < period.to)
+
+
+def _global_review_reasons(
+    compiled_pack: CompiledRulePack,
+    facts: FactSnapshot,
+    *,
+    effective_at: datetime,
+) -> tuple[Reason, ...]:
+    """Evaluate in-force GLOBAL review rules before any product stage loop."""
+    rules = tuple(
+        sorted(
+            (
+                rule
+                for rule in compiled_pack.rules
+                if rule.scope is RuleScope.GLOBAL
+                and rule.stage is RuleStage.HUMAN_REVIEW
+                and _product_is_effective(rule.source_rule.valid_period, effective_at)
+            ),
+            key=lambda rule: (rule.priority, rule.rule_id),
+        )
+    )
+    return _dedupe_reasons(_true_reasons(_evaluate_stage(rules, facts)))
 
 
 def _assemble(
@@ -589,6 +590,8 @@ def evaluate(
     *,
     effective_at: datetime,
     observed_at: datetime,
+    fingerprint_hmac_key: bytes,
+    fingerprint_key_id: str,
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
 ) -> Decision:
     """Assemble one ``Decision`` for ``facts`` against ``compiled_pack``.
@@ -608,17 +611,9 @@ def evaluate(
     4. ``NO_SUPPORTED_PATH`` — every applicable product is EXCLUDED or
        UNSUPPORTED.
 
-    Note the order SUPPORTED_CANDIDATES-before-REVIEW in the spec's own
-    ``evaluate()`` pseudocode is inverted from the precedence table's prose
-    ordering — followed here exactly as pseudocode'd (checking ``supported``
-    before ``review`` in the outer loop): a REVIEW result can only ever
-    coexist with a SUPPORTED result across *different* products when the
-    review trigger is itself product-scoped (not GLOBAL) — a GLOBAL review
-    trigger already makes every product's own per-product stage loop return
-    REVIEW before it ever reaches its ELIGIBILITY stage (see divergence #3),
-    so it can never coexist with a SUPPORTED proof from another product in
-    the first place. The two orderings therefore never actually disagree on
-    a reachable case.
+    The prose precedence table is the safety contract when it conflicts with
+    the pseudocode ordering: any independently true applicable review trigger
+    wins over a supported proof from another product.
     """
     rule_pack_ref = RulePackRef(
         rule_pack_id=compiled_pack.rule_pack_id,
@@ -626,8 +621,13 @@ def evaluate(
         version=compiled_pack.version,
         payload_sha256=compiled_pack.source_pack.payload_sha256,
     )
-    facts_fingerprint = _facts_fingerprint(facts)
+    facts_fingerprint = _facts_fingerprint(
+        facts,
+        hmac_key=fingerprint_hmac_key,
+        key_id=fingerprint_key_id,
+    )
     decision_id, public_id = _deterministic_ids(
+        assessment_id=facts.assessment_id,
         rule_pack_id=compiled_pack.rule_pack_id,
         sequence=compiled_pack.sequence,
         facts_digest=facts_fingerprint.digest,
@@ -647,6 +647,17 @@ def evaluate(
             observed_at=observed_at,
             notices=notices,
             **kwargs,  # type: ignore[arg-type]
+        )
+
+    global_review_reasons = _global_review_reasons(
+        compiled_pack,
+        snapshot,
+        effective_at=effective_at,
+    )
+    if global_review_reasons:
+        return assemble(
+            state=DecisionState.HUMAN_REVIEW_REQUIRED,
+            review_reasons=global_review_reasons,
         )
 
     purposes_fact = snapshot.values.get(FactPath.INTENT_PURPOSES)
@@ -686,17 +697,15 @@ def evaluate(
         for compiled_product in products
     ]
 
-    supported = [proof for proof in proofs if proof.status is ProductProofStatus.SUPPORTED]
-    if supported:
-        candidates = _rank_supported(
-            supported, snapshot, compiled_pack, effective_at=effective_at
-        )
-        return assemble(state=DecisionState.SUPPORTED_CANDIDATES, candidates=candidates)
-
     review = [proof for proof in proofs if proof.status is ProductProofStatus.REVIEW]
     if review:
         review_reasons = _dedupe_reasons(reason for proof in review for reason in proof.reasons)
         return assemble(state=DecisionState.HUMAN_REVIEW_REQUIRED, review_reasons=review_reasons)
+
+    supported = [proof for proof in proofs if proof.status is ProductProofStatus.SUPPORTED]
+    if supported:
+        candidates = _rank_supported(supported, snapshot, compiled_pack, effective_at=effective_at)
+        return assemble(state=DecisionState.SUPPORTED_CANDIDATES, candidates=candidates)
 
     blocked = [proof for proof in proofs if proof.status is ProductProofStatus.BLOCKED_UNKNOWN]
     if blocked:

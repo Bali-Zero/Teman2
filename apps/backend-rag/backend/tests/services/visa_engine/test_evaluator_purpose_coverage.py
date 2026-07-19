@@ -14,9 +14,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from backend.services.visa_engine import models as M
-from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import FactPath
-from backend.services.visa_engine.evaluator import ProductProofStatus, evaluate_product
+from backend.services.visa_engine.evaluator import (
+    ProductProof,
+    ProductProofStatus,
+    evaluate_product,
+)
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.tests.services.visa_engine import _builders as B
 from backend.tests.services.visa_engine.conftest import make_applicant_facts
@@ -24,7 +28,7 @@ from backend.tests.services.visa_engine.conftest import make_applicant_facts
 _EFFECTIVE_AT = datetime(2026, 7, 18, tzinfo=timezone.utc)
 
 
-def _facts(overrides: dict) -> M.ApplicantFacts:
+def _facts(overrides: dict[str, object]) -> M.ApplicantFacts:
     base = make_applicant_facts()
     data = base.facts.model_dump(by_alias=True, mode="json")
     data.update(overrides)
@@ -36,15 +40,20 @@ def _facts(overrides: dict) -> M.ApplicantFacts:
     )
 
 
-def _known(value):
+def _known(value: object) -> dict[str, object]:
     return {"status": "KNOWN", "value": value}
 
 
-def _unknown(reason: str = "NOT_PROVIDED"):
+def _unknown(reason: str = "NOT_PROVIDED") -> dict[str, object]:
     return {"status": "UNKNOWN", "reason": reason}
 
 
-def _proof(compiled, product_id: str, facts: M.ApplicantFacts, purposes: frozenset[str]):
+def _proof(
+    compiled: CompiledRulePack,
+    product_id: str,
+    facts: M.ApplicantFacts,
+    purposes: frozenset[str],
+) -> ProductProof:
     (product,) = [p for p in compiled.products if str(p.product_version_id) == product_id]
     snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=_EFFECTIVE_AT)
     rules = compiled.rules_for(product, effective_at=_EFFECTIVE_AT)
@@ -55,7 +64,9 @@ class TestExactCoverage:
     def test_single_rule_covering_exactly_the_declared_purposes_supports(self) -> None:
         product_id = B.new_uuid()
         src_id = B.new_uuid()
-        prod = B.product(product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY"])
+        prod = B.product(
+            product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY"]
+        )
         rule = B.rule(
             rule_id="el.exact",
             stage="ELIGIBILITY",
@@ -87,7 +98,9 @@ class TestSupersetCoverage:
         product_id = B.new_uuid()
         src_id = B.new_uuid()
         prod = B.product(
-            product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY", "MEDICAL"]
+            product_id=product_id,
+            source_id=src_id,
+            covered_purposes=["TOURISM", "STUDY", "MEDICAL"],
         )
         rule = B.rule(
             rule_id="el.superset",
@@ -129,7 +142,11 @@ class TestUnionAcrossMultipleSupportRules:
             scope="PRODUCTS",
             product_version_ids=[product_id],
             when={"op": "eq", "fact": "intent.stay_days", "value": 30},
-            effect={"type": "SUPPORT", "reason_code": "TOURISM_HALF", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "TOURISM_HALF",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=src_id,
             required_facts=["intent.stay_days"],
         )
@@ -160,7 +177,10 @@ class TestUnionAcrossMultipleSupportRules:
         proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
         assert proof.status is ProductProofStatus.SUPPORTED
         assert proof.covered_purposes == frozenset({"TOURISM", "STUDY"})
-        assert {rule.rule_id for rule in proof.support_rules} == {"el.tourism-half", "el.study-half"}
+        assert {rule.rule_id for rule in proof.support_rules} == {
+            "el.tourism-half",
+            "el.study-half",
+        }
 
 
 class TestPartialCoverageIsUnsupportedNotSupported:
@@ -194,7 +214,9 @@ class TestPartialCoverageIsUnsupportedNotSupported:
         assert proof.status is ProductProofStatus.UNSUPPORTED
         assert proof.missing_purposes == frozenset({"TOURISM"})
 
-    def test_missing_purpose_with_unknown_rule_that_could_cover_it_blocks(self) -> None:
+    def test_unknown_rules_must_collectively_cover_every_missing_purpose_to_block(
+        self,
+    ) -> None:
         product_id = B.new_uuid()
         src_id = B.new_uuid()
         prod = B.product(
@@ -216,15 +238,71 @@ class TestPartialCoverageIsUnsupportedNotSupported:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        # study.admission_confirmed UNKNOWN: if it resolves TRUE it would
-        # cover STUDY, one of the two missing purposes (TOURISM never
-        # covered by any rule here either — still correctly blocked, not
-        # silently declared UNSUPPORTED, because the STUDY half is still
-        # genuinely undetermined).
+        # The UNKNOWN rule could cover STUDY, but TOURISM has no possible
+        # support rule. No resolution can make the product cover the full
+        # declared set, so the product is definitively UNSUPPORTED.
         facts = _facts({"study.admission_confirmed": _unknown()})
         proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
+        assert proof.status is ProductProofStatus.UNSUPPORTED
+        assert proof.missing_purposes == frozenset({"TOURISM", "STUDY"})
+
+    def test_unknown_rules_collectively_covering_every_missing_purpose_block(self) -> None:
+        product_id = B.new_uuid()
+        src_id = B.new_uuid()
+        prod = B.product(
+            product_id=product_id,
+            source_id=src_id,
+            covered_purposes=["TOURISM", "STUDY"],
+        )
+        rules = [
+            B.rule(
+                rule_id="el.tourism-unknown",
+                stage="ELIGIBILITY",
+                scope="PRODUCTS",
+                product_version_ids=[product_id],
+                when={"op": "eq", "fact": "intent.stay_days", "value": 30},
+                effect={
+                    "type": "SUPPORT",
+                    "reason_code": "TOURISM_UNKNOWN",
+                    "covered_purposes": ["TOURISM"],
+                },
+                source_id=src_id,
+                required_facts=["intent.stay_days"],
+            ),
+            B.rule(
+                rule_id="el.study-unknown",
+                stage="ELIGIBILITY",
+                scope="PRODUCTS",
+                product_version_ids=[product_id],
+                when={"op": "eq", "fact": "study.admission_confirmed", "value": True},
+                effect={
+                    "type": "SUPPORT",
+                    "reason_code": "STUDY_UNKNOWN",
+                    "covered_purposes": ["STUDY"],
+                },
+                source_id=src_id,
+                required_facts=["study.admission_confirmed"],
+            ),
+        ]
+        payload = B.rule_pack_payload(
+            rules=rules,
+            products=[prod],
+            source_records=[B.source_record(source_id=src_id)],
+        )
+        compiled = build_compiled_pack(M.RulePack.model_validate(B.rule_pack_envelope(payload)))
+        facts = _facts(
+            {
+                "intent.stay_days": _unknown(),
+                "study.admission_confirmed": _unknown(),
+            }
+        )
+
+        proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
+
         assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
-        assert FactPath.STUDY_ADMISSION_CONFIRMED in proof.missing_facts
+        assert proof.missing_facts == frozenset(
+            {FactPath.INTENT_STAY_DAYS, FactPath.STUDY_ADMISSION_CONFIRMED}
+        )
 
     def test_missing_purpose_with_unknown_rule_that_could_not_cover_it_is_unsupported(self) -> None:
         """An UNKNOWN support rule whose covered_purposes does NOT intersect

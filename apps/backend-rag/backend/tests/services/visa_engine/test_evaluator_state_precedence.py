@@ -1,5 +1,5 @@
-"""Global state-precedence matrix (spec §4.3): SUPPORTED_CANDIDATES >
-HUMAN_REVIEW_REQUIRED > NEEDS_INPUT > NO_SUPPORTED_PATH, proven by
+"""Global state-precedence matrix (spec §4.3): HUMAN_REVIEW_REQUIRED >
+SUPPORTED_CANDIDATES > NEEDS_INPUT > NO_SUPPORTED_PATH, proven by
 successively removing the winning product from a single 4-product pack and
 observing the outer assembly fall through to the next tier.
 
@@ -17,13 +17,15 @@ from datetime import datetime, timezone
 import pytest
 
 from backend.services.visa_engine import models as M
-from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
 from backend.services.visa_engine.evaluator import evaluate
 from backend.tests.services.visa_engine import _builders as B
 from backend.tests.services.visa_engine.conftest import make_applicant_facts
 
 _EFFECTIVE_AT = datetime(2026, 7, 18, tzinfo=timezone.utc)
+_TEST_HMAC_KEY = b"visa-evaluator-test-key-material-32b"
+_TEST_KEY_ID = "test-evaluator-v1"
 
 _SUPP_FACT = "work.employer_is_indonesian_entity"
 _REV_FACT = "work.serves_indonesian_clients"
@@ -32,12 +34,17 @@ _BLK_FACT = "study.admission_confirmed"
 _EXC_FACT = "work.indonesian_work_sponsor_confirmed"
 
 
-def _four_product_pack():
+def _four_product_pack() -> CompiledRulePack:
     source_id = B.new_uuid()
     ids = {code: B.new_uuid() for code in ("SUPP", "REV", "BLK", "EXC")}
     src = B.source_record(source_id=source_id)
     products = [
-        B.product(product_id=ids[code], source_id=source_id, product_code=code, covered_purposes=["TOURISM"])
+        B.product(
+            product_id=ids[code],
+            source_id=source_id,
+            product_code=code,
+            covered_purposes=["TOURISM"],
+        )
         for code in ids
     ]
 
@@ -48,7 +55,11 @@ def _four_product_pack():
             scope="PRODUCTS",
             product_version_ids=[ids["SUPP"]],
             when={"op": "eq", "fact": _SUPP_FACT, "value": True},
-            effect={"type": "SUPPORT", "reason_code": "SUPP_ELIGIBLE", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "SUPP_ELIGIBLE",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=source_id,
             required_facts=[_SUPP_FACT],
         ),
@@ -68,7 +79,11 @@ def _four_product_pack():
             scope="PRODUCTS",
             product_version_ids=[ids["REV"]],
             when={"op": "eq", "fact": _REV_ELIGIBILITY_FACT, "value": True},
-            effect={"type": "SUPPORT", "reason_code": "REV_ELIGIBLE", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "REV_ELIGIBLE",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=source_id,
             required_facts=[_REV_ELIGIBILITY_FACT],
         ),
@@ -78,7 +93,11 @@ def _four_product_pack():
             scope="PRODUCTS",
             product_version_ids=[ids["BLK"]],
             when={"op": "eq", "fact": _BLK_FACT, "value": True},
-            effect={"type": "SUPPORT", "reason_code": "BLK_ELIGIBLE", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "BLK_ELIGIBLE",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=source_id,
             required_facts=[_BLK_FACT],
         ),
@@ -103,7 +122,11 @@ def _four_product_pack():
             # excluded — only relevant in the final cascade step where EXC is
             # evaluated for UNSUPPORTED-vs-EXCLUDED bookkeeping.
             when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
-            effect={"type": "SUPPORT", "reason_code": "EXC_ELIGIBLE", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "EXC_ELIGIBLE",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=source_id,
             required_facts=["intent.purposes"],
         ),
@@ -116,11 +139,11 @@ def _four_product_pack():
 
 
 @pytest.fixture(scope="module")
-def compiled_pack():
+def compiled_pack() -> CompiledRulePack:
     return _four_product_pack()
 
 
-def _facts(overrides: dict) -> M.ApplicantFacts:
+def _facts(overrides: dict[str, object]) -> M.ApplicantFacts:
     base = make_applicant_facts()
     data = base.facts.model_dump(by_alias=True, mode="json")
     data["intent.purposes"] = {"status": "KNOWN", "value": ["TOURISM"]}
@@ -133,11 +156,11 @@ def _facts(overrides: dict) -> M.ApplicantFacts:
     )
 
 
-def _known(value):
+def _known(value: object) -> dict[str, object]:
     return {"status": "KNOWN", "value": value}
 
 
-def _unknown(reason: str = "NOT_PROVIDED"):
+def _unknown(reason: str = "NOT_PROVIDED") -> dict[str, object]:
     return {"status": "UNKNOWN", "reason": reason}
 
 
@@ -145,7 +168,9 @@ class TestStatePrecedenceCascade:
     """Every step keeps the PREVIOUS winner's disqualifying fact and only
     flips the current tier's product to prove precedence, not coincidence."""
 
-    def test_supported_wins_over_review_blocked_and_excluded(self, compiled_pack) -> None:
+    def test_review_wins_over_supported_blocked_and_excluded(
+        self, compiled_pack: CompiledRulePack
+    ) -> None:
         facts = _facts(
             {
                 _SUPP_FACT: _known(True),  # SUPP -> SUPPORTED
@@ -154,40 +179,66 @@ class TestStatePrecedenceCascade:
                 _EXC_FACT: _known(True),  # EXC -> EXCLUDED
             }
         )
-        decision = evaluate(facts, compiled_pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
-        assert decision.state is DecisionState.SUPPORTED_CANDIDATES
-        assert [c.product_code for c in decision.candidates] == ["SUPP"]
+        decision = evaluate(
+            facts,
+            compiled_pack,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [r.code for r in decision.review_reasons] == ["REV_REVIEW"]
 
-    def test_review_wins_over_blocked_and_excluded_when_nothing_supported(self, compiled_pack) -> None:
+    def test_supported_wins_over_blocked_and_excluded_when_nothing_needs_review(
+        self, compiled_pack: CompiledRulePack
+    ) -> None:
         facts = _facts(
             {
-                _SUPP_FACT: _known(False),  # SUPP -> UNSUPPORTED
-                _REV_FACT: _known(True),  # REV -> REVIEW
+                _SUPP_FACT: _known(True),  # SUPP -> SUPPORTED
+                _REV_FACT: _known(False),  # REV review silent
+                _REV_ELIGIBILITY_FACT: _known(False),  # REV -> UNSUPPORTED
                 _BLK_FACT: _unknown(),  # BLK -> BLOCKED_UNKNOWN
                 _EXC_FACT: _known(True),  # EXC -> EXCLUDED
             }
         )
-        decision = evaluate(facts, compiled_pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
-        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
-        assert [r.code for r in decision.review_reasons] == ["REV_REVIEW"]
+        decision = evaluate(
+            facts,
+            compiled_pack,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
+        assert decision.state is DecisionState.SUPPORTED_CANDIDATES
+        assert [c.product_code for c in decision.candidates] == ["SUPP"]
 
     def test_needs_input_wins_over_excluded_when_nothing_supported_or_reviewed(
-        self, compiled_pack
+        self, compiled_pack: CompiledRulePack
     ) -> None:
         facts = _facts(
             {
                 _SUPP_FACT: _known(False),  # SUPP -> UNSUPPORTED
                 _REV_FACT: _known(False),  # REV review silent
-                _REV_ELIGIBILITY_FACT: _known(False),  # REV -> UNSUPPORTED (not accidentally SUPPORTED)
+                _REV_ELIGIBILITY_FACT: _known(
+                    False
+                ),  # REV -> UNSUPPORTED (not accidentally SUPPORTED)
                 _BLK_FACT: _unknown(),  # BLK -> BLOCKED_UNKNOWN
                 _EXC_FACT: _known(True),  # EXC -> EXCLUDED
             }
         )
-        decision = evaluate(facts, compiled_pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            facts,
+            compiled_pack,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
         assert decision.state is DecisionState.NEEDS_INPUT
         assert tuple(m.value for m in decision.missing_facts) == (_BLK_FACT,)
 
-    def test_no_supported_path_is_the_floor(self, compiled_pack) -> None:
+    def test_no_supported_path_is_the_floor(self, compiled_pack: CompiledRulePack) -> None:
         facts = _facts(
             {
                 _SUPP_FACT: _known(False),  # SUPP -> UNSUPPORTED
@@ -197,7 +248,14 @@ class TestStatePrecedenceCascade:
                 _EXC_FACT: _known(True),  # EXC -> EXCLUDED (the only named reason left)
             }
         )
-        decision = evaluate(facts, compiled_pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            facts,
+            compiled_pack,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert [r.code for r in decision.no_path_reasons] == ["EXC_EXCLUDED"]
         assert decision.candidates == ()

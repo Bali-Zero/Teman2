@@ -18,19 +18,22 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from backend.services.visa_engine import models as M
-from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
 from backend.services.visa_engine.evaluator import evaluate
 from backend.tests.services.visa_engine import _builders as B
 from backend.tests.services.visa_engine.conftest import make_applicant_facts
 
 _EFFECTIVE_AT = datetime(2026, 7, 18, tzinfo=timezone.utc)
+_TEST_HMAC_KEY = b"visa-evaluator-test-key-material-32b"
+_TEST_KEY_ID = "test-evaluator-v1"
 
 
-def _facts() -> M.ApplicantFacts:
+def _facts(overrides: dict[str, object] | None = None) -> M.ApplicantFacts:
     base = make_applicant_facts()
     data = base.facts.model_dump(by_alias=True, mode="json")
     data["intent.purposes"] = {"status": "KNOWN", "value": ["TOURISM"]}
+    data.update(overrides or {})
     return M.ApplicantFacts(
         schema_version="1.0.0",
         assessment_id=base.assessment_id,
@@ -64,7 +67,14 @@ class TestNoActiveProducts:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        decision = evaluate(_facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            _facts(),
+            compiled,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
 
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert decision.no_path_reasons  # non-empty — Decision's own invariant
@@ -97,7 +107,14 @@ class TestNoActiveProducts:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        decision = evaluate(_facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            _facts(),
+            compiled,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
 
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert decision.no_path_reasons
@@ -109,7 +126,12 @@ class TestAllExcluded:
         product_ids = [B.new_uuid(), B.new_uuid()]
         src = B.source_record(source_id=source_id)
         products = [
-            B.product(product_id=pid, source_id=source_id, product_code=f"P{i}", covered_purposes=["TOURISM"])
+            B.product(
+                product_id=pid,
+                source_id=source_id,
+                product_code=f"P{i}",
+                covered_purposes=["TOURISM"],
+            )
             for i, pid in enumerate(product_ids)
         ]
         hard_filter = B.rule(
@@ -121,9 +143,7 @@ class TestAllExcluded:
             source_id=source_id,
             required_facts=["immigration.currently_in_indonesia"],
         )
-        payload = B.rule_pack_payload(
-            rules=[hard_filter], products=products, source_records=[src]
-        )
+        payload = B.rule_pack_payload(rules=[hard_filter], products=products, source_records=[src])
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
@@ -138,10 +158,111 @@ class TestAllExcluded:
             facts=data,
         )
 
-        decision = evaluate(facts, compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            facts,
+            compiled,
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
 
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         # Deduped: the SAME GLOBAL rule fired identically for both products —
         # one Reason, not two.
         assert [r.code for r in decision.no_path_reasons] == ["ALWAYS_EXCLUDED_TEST"]
         assert decision.candidates == ()
+
+
+def _global_review_pack(*, product_status: str = "ACTIVE") -> CompiledRulePack:
+    source_id = B.new_uuid()
+    product_id = B.new_uuid()
+    source = B.source_record(source_id=source_id)
+    product = B.product(
+        product_id=product_id,
+        source_id=source_id,
+        covered_purposes=["TOURISM"],
+        status=product_status,
+    )
+    rules = [
+        B.rule(
+            rule_id="global.hard-filter",
+            stage="HARD_FILTER",
+            scope="GLOBAL",
+            when={"op": "intersects", "fact": "person.nationalities", "values": ["ID"]},
+            effect={"type": "EXCLUDE", "reason_code": "GLOBAL_HARD_FILTER"},
+            source_id=source_id,
+            required_facts=["person.nationalities"],
+        ),
+        B.rule(
+            rule_id="global.review",
+            stage="HUMAN_REVIEW",
+            scope="GLOBAL",
+            when={"op": "eq", "fact": "work.serves_indonesian_clients", "value": True},
+            effect={"type": "REQUIRE_REVIEW", "reason_code": "GLOBAL_REVIEW"},
+            source_id=source_id,
+            required_facts=["work.serves_indonesian_clients"],
+        ),
+        B.rule(
+            rule_id="product.eligibility",
+            stage="ELIGIBILITY",
+            scope="PRODUCTS",
+            product_version_ids=[product_id],
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "TOURISM_SUPPORTED",
+                "covered_purposes": ["TOURISM"],
+            },
+            source_id=source_id,
+            required_facts=["intent.purposes"],
+        ),
+    ]
+    payload = B.rule_pack_payload(rules=rules, products=[product], source_records=[source])
+    return build_compiled_pack(M.RulePack.model_validate(B.rule_pack_envelope(payload)))
+
+
+class TestGlobalReviewPrePass:
+    def test_global_review_is_not_masked_by_hard_filter(self) -> None:
+        decision = evaluate(
+            _facts(
+                {
+                    "person.nationalities": {"status": "KNOWN", "value": ["ID"]},
+                    "work.serves_indonesian_clients": {"status": "KNOWN", "value": True},
+                }
+            ),
+            _global_review_pack(),
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in decision.review_reasons] == ["GLOBAL_REVIEW"]
+
+    def test_global_review_is_not_masked_by_unknown_purposes(self) -> None:
+        decision = evaluate(
+            _facts(
+                {
+                    "intent.purposes": {"status": "UNKNOWN", "reason": "NOT_PROVIDED"},
+                    "work.serves_indonesian_clients": {"status": "KNOWN", "value": True},
+                }
+            ),
+            _global_review_pack(),
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+
+    def test_global_review_is_not_masked_by_no_active_products(self) -> None:
+        decision = evaluate(
+            _facts({"work.serves_indonesian_clients": {"status": "KNOWN", "value": True}}),
+            _global_review_pack(product_status="DEPRECATED"),
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+            fingerprint_hmac_key=_TEST_HMAC_KEY,
+            fingerprint_key_id=_TEST_KEY_ID,
+        )
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
