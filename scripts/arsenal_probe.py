@@ -82,10 +82,9 @@ CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "deepseek", "ollama", "nlm"]
 
 REQUIRED_SEATS = {
-    # kimi NOT required on mini yet: binary installed but the device-code login
-    # is pending operator authorization (PENDING-ARMS 2026-07-19) — promote once
-    # the seat probes LIVE there.
-    "mini": ["claude", "glm", "codex", "ollama"],
+    # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
+    # authorized by the operator same day).
+    "mini": ["claude", "glm", "codex", "kimi", "ollama"],
     "pro": ["claude", "codex", "deepseek", "kimi", "ollama", "nlm"],
     "m5": ["claude", "glm", "agy", "codex", "kimi"],
 }
