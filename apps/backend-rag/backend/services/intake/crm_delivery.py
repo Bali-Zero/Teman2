@@ -57,7 +57,8 @@ def _raw_phone_state(raw: object) -> tuple[str, str | None]:
 _PHONE_DUP_OWNERS_SQL = """
 SELECT COUNT(*) FROM (
   SELECT regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') AS dn,
-         regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr
+         regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr,
+         regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') AS dw
     FROM clients
    WHERE id <> $1
 ) t
@@ -67,7 +68,16 @@ SELECT COUNT(*) FROM (
     OR CASE WHEN t.dr LIKE '62%' THEN substr(t.dr, 3)
             WHEN t.dr LIKE '0%'  THEN substr(t.dr, 2)
             ELSE t.dr END = $2
+    OR CASE WHEN t.dw LIKE '62%' THEN substr(t.dw, 3)
+            WHEN t.dw LIKE '0%'  THEN substr(t.dw, 2)
+            ELSE t.dw END = $2
 """
+# ^ Round 16, F24: whatsapp is the THIRD ownership column (the Fly resolver
+# and the dedup/upload gates all search it) — a co-owner known only by
+# whatsapp was invisible to this sole-owner gate, and on Fly that same core
+# can legitimately resolve to THAT client: the exact wrong-attach vector the
+# gate exists to close. The W89 writer audit covered writers; this gate is a
+# READER and needed the same third leg.
 
 
 async def _resolve_and_push_locked(
@@ -115,7 +125,8 @@ async def _resolve_and_push_locked(
         async with conn.transaction():
             if plan.client_id is not None:
                 crow = await conn.fetchrow(
-                    "SELECT full_name, phone_normalized, phone FROM clients WHERE id = $1",
+                    "SELECT full_name, phone_normalized, phone, whatsapp "
+                    "FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 if crow is not None:
@@ -125,21 +136,27 @@ async def _resolve_and_push_locked(
                     digits = re.sub(r"[^0-9]", "", crow["phone_normalized"] or "")
                     core_norm = _phone_core(crow["phone_normalized"])
                     raw_state, core_raw = _raw_phone_state(crow["phone"])
-                    # Round-9/10 F11 gap 1: the selected client's OWN card must
-                    # be internally consistent — a stale non-null
-                    # phone_normalized diverging from raw `phone` means neither
-                    # value can prove the identity. Fail CLOSED on divergence,
-                    # on an unusable normalized value with a raw present, AND on
-                    # a present-but-unusable raw (short/garbage digits cannot
-                    # cross-check the normalized value — round-10 residual).
+                    wa_state, core_wa = _raw_phone_state(crow["whatsapp"])
+                    # Round-9/10 F11 gap 1 (+ round-16 F24: whatsapp is the
+                    # third ownership column and joins every arm): the
+                    # selected client's OWN card must be internally
+                    # consistent — a stale non-null phone_normalized
+                    # diverging from raw `phone` OR from `whatsapp` means no
+                    # value can prove the identity. Fail CLOSED on
+                    # divergence, on an unusable normalized value with any
+                    # other phone-ish value present, AND on a
+                    # present-but-unusable raw/whatsapp (garbage digits
+                    # cannot cross-check the normalized value).
                     reason: str | None = None
                     if core_norm is None or not digits:
-                        if raw_state != "absent":
+                        if raw_state != "absent" or wa_state != "absent":
                             reason = "unusable_normalized_phone"
                         # else: plain no-phone card → silent fail-closed (as before)
-                    elif raw_state == "unusable":
+                    elif raw_state == "unusable" or wa_state == "unusable":
                         reason = "unusable_raw_phone"
-                    elif core_raw is not None and core_raw != core_norm:
+                    elif (core_raw is not None and core_raw != core_norm) or (
+                        core_wa is not None and core_wa != core_norm
+                    ):
                         reason = "phone_columns_diverged"
                     if reason is not None:
                         logger.warning(
@@ -163,11 +180,17 @@ async def _resolve_and_push_locked(
                         # Re-read BOTH columns under the lock: pre-lock reads may
                         # be stale.
                         fresh = await conn.fetchrow(
-                            "SELECT phone_normalized, phone FROM clients WHERE id = $1",
+                            "SELECT phone_normalized, phone, whatsapp "
+                            "FROM clients WHERE id = $1",
                             int(plan.client_id),
                         )
                         _f_state, _f_core = (
                             _raw_phone_state(fresh["phone"])
+                            if fresh is not None
+                            else ("absent", None)
+                        )
+                        _fw_state, _fw_core = (
+                            _raw_phone_state(fresh["whatsapp"])
                             if fresh is not None
                             else ("absent", None)
                         )
@@ -177,6 +200,8 @@ async def _resolve_and_push_locked(
                             == digits
                             and _f_state != "unusable"
                             and _f_core in (None, core_norm)
+                            and _fw_state != "unusable"
+                            and _fw_core in (None, core_norm)
                         )
                         dup_owners = 0
                         if stable:
@@ -217,7 +242,8 @@ async def _resolve_and_push_locked(
                 # landed on a resolution that no longer holds — it cannot be
                 # unwound here, so flag loudly for HITL review (ids only).
                 fresh = await conn.fetchrow(
-                    "SELECT phone_normalized, phone FROM clients WHERE id = $1",
+                    "SELECT phone_normalized, phone, whatsapp "
+                    "FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 dup_after = await conn.fetchval(
@@ -226,11 +252,20 @@ async def _resolve_and_push_locked(
                 _p_state, _p_core = (
                     _raw_phone_state(fresh["phone"]) if fresh is not None else ("absent", None)
                 )
+                _w_state, _w_core = (
+                    _raw_phone_state(fresh["whatsapp"])
+                    if fresh is not None
+                    else ("absent", None)
+                )
                 changed = (
                     fresh is None
                     or re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "") != phone_digits
                     or _p_state == "unusable"
                     or _p_core not in (None, phone_core)
+                    # Round 16 F24 residual: the self-consistency re-check must
+                    # examine the THIRD ownership column too.
+                    or _w_state == "unusable"
+                    or _w_core not in (None, phone_core)
                 )
                 if changed or dup_after:
                     logger.error(
