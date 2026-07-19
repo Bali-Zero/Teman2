@@ -2,11 +2,16 @@
 date: 2026-07-19
 domain: operations
 client_case: none (GARUDA-FILIERA Batch B pre-registration DRAFT)
-status: DRAFT REV-3 — post 4-LLM panel (Codex GPT-5.6-sol xhigh red-team REJECT with 10
-  blockers + 14 majors; Gemini 3.1 Pro constructive with 10 recommendations) then a Codex
-  re-check on REV-2 (B1/B4/B9 CURED; B2/B3/B5/B6/B10 PARTIAL; B7/B8 NOT-CURED; SIGN-READY: NO).
-  REV-3 closes every residual. Still NOT armed. No lot may run under this document until a
-  conductor re-reviews REV-3 and signs it.
+status: DRAFT REV-4 — post 4-LLM panel (Codex GPT-5.6-sol xhigh red-team REJECT with 10
+  blockers + 14 majors; Gemini 3.1 Pro constructive with 10 recommendations), a Codex re-check
+  on REV-2 (B1/B4/B9 CURED; B2/B3/B5/B6/B10 PARTIAL; B7/B8 NOT-CURED), REV-3 closing those 7,
+  then a third Codex round on REV-3 (B2/B6/B8 CURED; B3/B5/B7/B10 still NOT-CURED — all four
+  were determinism gaps, not missing content: the derivation RULE, the draw ALGORITHM, the
+  mechanical (not asserted) same-key conflict, and the evidence→verdict MAPPING). REV-4 freezes
+  all four. Per conductor ruling (2026-07-19), this is the LAST Codex loop — any further
+  NOT-CURED verdict routes to the conductor for an explicit accept/reject, not a self-started
+  REV-5. Still NOT armed. No lot may run under this document until a conductor re-reviews REV-4
+  and signs it.
 sources:
   - "methodology: research/operations/2026-07-16-kbli-filiera-methodology.md (P1-P9, G13-G17, Phase 1-4)"
   - "Batch A plan + amendments A-1..A-10: research/operations/2026-07-18-kbli-batch-a-plan.md"
@@ -21,14 +26,16 @@ sources:
   - "live consumers grepped this session: apps/mouth/src/lib/{kbli-data.ts,kbli-data.server.ts,kbli-types.ts,types/kbli.ts}, apps/kbli-navigator/lib/{kbli-data.ts,kbli-types.ts}, apps/backend-rag/backend/services/kbli_eye.py, apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py"
   - "BPS Tabel Konversi KBLI 2020-2025 Vol.2 (vault-pinned, sha256 29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949), data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json"
   - "twin-race lessons: lesson_lot1_closeout_twin_race_two_conductors_2026_07_18, lesson_garuda_c1_twin_race_clobbered_prod_sibling_2026_07_18, lesson_outbound_email_twin_race_mailbox_check_2026_07_18 (memory)"
-adversarial_review: REV-3 — re-check verdicts incorporated; sign-off pending conductor. REV-1
+adversarial_review: REV-4 — third-round re-check verdicts incorporated; sign-off pending
+  conductor, and per conductor ruling this is the LAST Codex loop for this document. REV-1
   panel (Codex sol xhigh REJECT + Gemini 3.1 Pro constructive) is summarized in full in §Panel
-  below; the REV-2 re-check (7 residual PARTIAL/NOT-CURED findings) is dispositioned in
-  §Changelog alongside the original 24. No lease, lot, or compiler run may cite this document
-  as authority until a fresh conductor pass signs REV-3.
+  below; the REV-2 re-check (7 residuals) and the REV-3 re-check (4 residuals, all
+  determinism gaps) are both dispositioned in §Changelog alongside the original 24. No lease,
+  lot, or compiler run may cite this document as authority until a fresh conductor pass signs
+  REV-4.
 ---
 
-# Batch B design — the crosswalk-metadata sweep (DRAFT REV-3, pre-registration)
+# Batch B design — the crosswalk-metadata sweep (DRAFT REV-4, pre-registration)
 
 > Conductor note: this document is authored by a dispatched lane (worktree
 > `.worktrees/docs-batch-b-design`, branch `agent/air-m5/docs/batch-b-design`), NOT by the
@@ -69,24 +76,32 @@ disposition is self-contained and auditable without the transient files). REV-2 
 incorporates conductor rulings on all 10 blockers baked in over the panel output; every major
 and minor finding is individually dispositioned in the changelog.
 
-## Changelog — REV-1 → REV-2 → REV-3 (all 24 original findings + the 7 REV-2 residuals dispositioned)
+## Changelog — REV-1 → REV-2 → REV-3 → REV-4 (all 24 original findings + all 11 residuals across two re-checks dispositioned)
 
 **REV-3 note:** Codex's re-check of REV-2 read B1/B4/B9 as **CURED** (unchanged below, no
 REV-3 addendum needed) and B2/B3/B5/B6/B10 as **PARTIAL**, B7/B8 as **NOT-CURED** — each of
-those 7 rows below now carries a REV-3 addendum closing its specific residual.
+those 7 rows below carries a REV-3 addendum closing its specific residual.
 
-| # | Finding (one-line) | Action in REV-2 |
+**REV-4 note:** Codex's third-round re-check of REV-3 read B2/B6/B8 as **CURED** (no further
+addendum) and B3/B5/B7/B10 as **still NOT-CURED** — but all four were determinism gaps, not
+missing content (a rule/algorithm/mapping was described in prose but not frozen into a
+reproducible procedure). Each of those 4 rows below carries a REV-4 addendum. Per the
+conductor's explicit exit-criterion ruling, this is the LAST Codex loop for this document — any
+further NOT-CURED verdict on a future round goes to the conductor for an accept/reject decision,
+not a self-started REV-5.
+
+| # | Finding (one-line) | Action (REV-2 base, REV-3/REV-4 addenda inline where applicable) |
 |---|---|---|
 | B1 | "Independent" L5↔L10 check is counterfeit independence — same-source agreement can reproduce a shared upstream error | **Renamed** to "same-source consistency check" throughout (§1.4). Every adjudicated code, all tiers, now keeps a genuinely independent, image-grounded cross-family seat on the RAW page render (§4) — the parser output gates *which pages/rows* get pulled, it never substitutes for the independent read. |
 | B2 | `pp28_sources` has no stable operational meaning — the detector flags the cure convention itself | **New §2, typed-field split.** Additive `bps_2020_ancestors` field becomes the sole source of truth for full BPS crosswalk ancestry; `pp28_sources` keeps its existing (now precisely documented) role. Grep-verified consumer-map, backfill policy, migration plan. §2.1 corrected mid-review (team-lead, 2026-07-19): 46100/52101 were NOT structurally identical findings treated inconsistently — 46100's pointer was true-but-incomplete, 52101's was outright false, and both were handled consistently under a real ruling ("correct FALSITY; record incompleteness in `_data_note`"). The still-damning fact, kept: that ruling lives only in PR prose, never in the schema — a reader can't tell verified-narrow from falsely-incomplete from the field alone, which is exactly what the typed split fixes. **REV-3 (closes PARTIAL):** §2.5's redefined Tier-1 detector had a scope bug — read literally pre-Phase-0 it would sweep all 409 AGGREGAZIONE/RINUMERATO codes into Tier 1, contradicting the frozen 46-code seed list. Fixed by sequencing: Tier 1/2 (§1.5) are FROZEN at pre-registration and never re-derived; the redefined detector only goes live *after* Phase 0 populates `bps_2020_ancestors`, and even then feeds Tier-3 formation only, never a retroactive Tier-1 relabel. Also: `previousCodes` (the live `pp28_sources`-sourced display prop in `apps/mouth`/`kbli-navigator`) is now named on the §5 field-dependency matrix as the explicit migration target for the follow-up UI PR. |
-| B3 | `m2′` left deliberately gameable — undefined direction/denominator/floor-vs-ceiling | **§3.2**, full frozen formula: per-stratum defect-rate, denominator = adjudicated codes only (abstentions/parser-failures reported separately, never in denominator), floor ≥0.10 for Tier 1/2 (yield), ceiling for Tier 4 — numbers proposed and marked CONDUCTOR-PROPOSED/Zero-ratified, not silently assumed. **REV-3 (closes PARTIAL):** four residuals closed — (1) stratum membership FREEZES at lot-open, adjudication outcomes never move a code between strata mid-lot; (2) m2′ computed as a rate only when the adjudicated-denominator ≥10, else raw counts only; (3) per-lot abstention-rate ceiling of 0.30 added (breach = pause, same escalation shape as a defect-rate breach); (4) Tier-4 AQL parameters (n, acceptance number, switching rule) are now a **required output of the Phase-0 gate itself** (§1.4 item 10), named owner conductor+Zero, before any Tier-4 certification can run. |
+| B3 | `m2′` left deliberately gameable — undefined direction/denominator/floor-vs-ceiling | **§3.2**, full frozen formula: per-stratum defect-rate, denominator = adjudicated codes only (abstentions/parser-failures reported separately, never in denominator), floor ≥0.10 for Tier 1/2 (yield), ceiling for Tier 4 — numbers proposed and marked CONDUCTOR-PROPOSED/Zero-ratified, not silently assumed. **REV-3 (closes PARTIAL):** four residuals closed — (1) stratum membership FREEZES at lot-open, adjudication outcomes never move a code between strata mid-lot; (2) m2′ computed as a rate only when the adjudicated-denominator ≥10, else raw counts only; (3) per-lot abstention-rate ceiling of 0.30 added (breach = pause, same escalation shape as a defect-rate breach); (4) Tier-4 AQL parameters (n, acceptance number, switching rule) are now a **required output of the Phase-0 gate itself** (§1.4 item 10), named owner conductor+Zero, before any Tier-4 certification can run. **REV-4 (closes NOT-CURED — Codex round-3: the numbers were still deferred with no frozen derivation RULE):** §1.4 item 10 now freezes the rule, not just the requirement — ISO 2859-1 single-sampling, General Inspection Level II, normal inspection to start; AQL class = smallest standard AQL value ≥ the Phase-0-measured holdout edge error rate; lot size = stratum code count; switching = tightened after 2/5 lots rejected, back to normal after 5 consecutive accepted. Zero's Legge-5 ratification is accept-or-override of this default, never invent-from-scratch — two conductors with the same measured error rate now derive the identical (n, Ac, switching-state). |
 | B4 | The promised census quietly becomes sampling | **§1.5 reframed**: the Phase-0 parser pass *is* the census (every one of 1,338 gets a mechanical entry). Adjudication is tiered; Tier-4 clean-parse codes get an honest, distinct verdict class (`machine-consistent, not eye-adjudicated`) instead of an implied full validation. Every "code-by-code eye validation" claim for Tier 4 removed. |
-| B5 | Parser evidence nowhere near validation-grade; 82%→"~99%" jump was invented; missingness is differential, not random | **§1.4 Phase-0 gate**: adopts Codex's acceptance-criteria list verbatim (frozen row counts, edge-level precision/recall on a stratified manual truth sample incl. wrapped/N:M rows, digests+locators, fail-closed unanchored rows, zero unexplained L5↔L10 diffs) + Gemini's $m_P$ metric. The "~99%" claim is deleted; differential-missingness risk (multi-parent rows disproportionately wrapped) is named explicitly and routed to Tier 2.5, never silently absorbed into Tier 3/4. **REV-3 (closes PARTIAL — the gate still wasn't deterministic):** every number frozen — manual truth sample = 10 pages/lampiran (20 total), stratified to require ≥3 wrapped-row pages and ≥3 N:M-relation pages; page selection seeded deterministically from the parser-run digest (pre-registered, never hand-picked); the 10-page draw splits into disjoint 5-page tuning/holdout halves (tuning may be studied repeatedly, holdout scored blind exactly once); pass = edge-level precision ≥0.995 AND recall ≥0.995 on the holdout half only. $m_P$ is consolidated onto the same tuning half as an early diagnostic (closing the two-inconsistent-sample-specs problem — REV-2 had a separate "random 5-page sample" for $m_P$ alongside the vague stratified sample for the main gate). |
+| B5 | Parser evidence nowhere near validation-grade; 82%→"~99%" jump was invented; missingness is differential, not random | **§1.4 Phase-0 gate**: adopts Codex's acceptance-criteria list verbatim (frozen row counts, edge-level precision/recall on a stratified manual truth sample incl. wrapped/N:M rows, digests+locators, fail-closed unanchored rows, zero unexplained L5↔L10 diffs) + Gemini's $m_P$ metric. The "~99%" claim is deleted; differential-missingness risk (multi-parent rows disproportionately wrapped) is named explicitly and routed to Tier 2.5, never silently absorbed into Tier 3/4. **REV-3 (closes PARTIAL — the gate still wasn't deterministic):** every number frozen — manual truth sample = 10 pages/lampiran (20 total), stratified to require ≥3 wrapped-row pages and ≥3 N:M-relation pages; page selection seeded deterministically from the parser-run digest (pre-registered, never hand-picked); the 10-page draw splits into disjoint 5-page tuning/holdout halves (tuning may be studied repeatedly, holdout scored blind exactly once); pass = edge-level precision ≥0.995 AND recall ≥0.995 on the holdout half only. $m_P$ is consolidated onto the same tuning half as an early diagnostic (closing the two-inconsistent-sample-specs problem — REV-2 had a separate "random 5-page sample" for $m_P$ alongside the vague stratified sample for the main gate). **REV-4 (closes NOT-CURED — Codex round-3: the seed was named but the draw algorithm wasn't):** §1.4 item 2 now freezes the mechanical procedure — enumerate eligible pages ascending, rank by `SHA256(parser_run_digest:lampiran_id:zero_padded_page_number)` hex ascending, deterministic greedy fill (lowest-ranked pages to ≥3 wrapped-row, then ≥3 N:M, then remaining to 10 total), tuning/holdout assignment by final rank parity (odd→tuning, even→holdout). Any conductor with the same digest reproduces the identical draw byte-for-byte. |
 | B6 | Gold sets circular (verified by the same mechanism under test) and not genuinely blind (famous codes) | **Two separate gold registries** (parser-extraction gold vs. metadata-truth gold), per ruling 5. The B2 typed-field split independently dissolves the "expected verdict depends on the disputed convention" problem for 52101/46100 (§2.5). The non-blindness of already-published seed codes (56101/52101/46100/10433) is explicitly acknowledged as a **residual, not fully closed** risk (§3.1) — new NEG/POS material for Batch B onward must be freshly discovered and digest-blinded before any prose names it. **REV-3 (closes PARTIAL — the metadata-truth gold was still labeled via the parser under test and the same Lampiran corpus, with no independent minimum):** the metadata-truth gold set must now include **≥5 FRESH POS controls** — codes never named in any program document — **eye-adjudicated by the conductor directly on raw Lampiran page renders, at Phase-0 close, before Lot B-1 opens** (§3.1). The 4 known cases are formally demoted to regression fixtures only and are **never counted toward the m5 hit-rate denominator**. |
-| B7 | No actual locking — PR comments + a shared JSON is a TOCTOU race | **§6 (REV-2)**: CAS-style lease via git's own merge serialization (a reservation PR must be green+merged before its lot dispatches — two competing reservation PRs touching the same tracked JSON conflict on merge by construction), explicit code lists (not vague ranges) for scattered tiers, conductor id + TTL + heartbeat/expiry fields specified. **REV-3 (closes NOT-CURED — Codex correctly called out that "conflict by construction" overstated what git's merge machinery guarantees):** §6 rewritten (§6.1). The reservation register is now a **single JSON object keyed by `lot_id`**. Claiming a lot = writing your own key (`conductor_id`, `code_range`, `opened_at`, `ttl_hours: 12`, `heartbeat`). Precisely stated: **different keys are additive edits and merge cleanly by design** (this is correct/expected — different lots genuinely don't collide, and REV-2's own §1.5 dispatch-order work wants concurrent different-lot lanes); **the SAME `lot_id` claimed twice is a genuine same-key textual conflict**, which is the actual CAS property. Expiry: `ttl_hours` elapsed with no heartbeat comment → any conductor may supersede by overwriting the key with an explicit `superseded_previous` note, auditable in the file's own git history. |
+| B7 | No actual locking — PR comments + a shared JSON is a TOCTOU race | **§6 (REV-2)**: CAS-style lease via git's own merge serialization (a reservation PR must be green+merged before its lot dispatches — two competing reservation PRs touching the same tracked JSON conflict on merge by construction), explicit code lists (not vague ranges) for scattered tiers, conductor id + TTL + heartbeat/expiry fields specified. **REV-3 (closes NOT-CURED — Codex correctly called out that "conflict by construction" overstated what git's merge machinery guarantees):** §6 rewritten (§6.1). The reservation register is now a **single JSON object keyed by `lot_id`**. Claiming a lot = writing your own key (`conductor_id`, `code_range`, `opened_at`, `ttl_hours: 12`, `heartbeat`). Precisely stated: **different keys are additive edits and merge cleanly by design** (this is correct/expected — different lots genuinely don't collide, and REV-2's own §1.5 dispatch-order work wants concurrent different-lot lanes); **the SAME `lot_id` claimed twice is a genuine same-key textual conflict**, which is the actual CAS property. Expiry: `ttl_hours` elapsed with no heartbeat comment → any conductor may supersede by overwriting the key with an explicit `superseded_previous` note, auditable in the file's own git history. **REV-4 (closes NOT-CURED — Codex round-3: same-key identity doesn't itself guarantee a git textual conflict, and heartbeat enforcement was still procedural, not mechanical):** §6.1 adds a format rule — each `lot_id` entry serialized **compact, single-line**, making "same key" and "same line" identical facts so git's three-way merge cannot silently auto-resolve two edits to an existing key. The residual gap this doesn't close (two concurrent ADDS of a never-before-seen `lot_id`, which can both land as duplicate keys) is named explicitly and backstopped by a new CI validator (`check_batch_b_reservation_conformance.py`, BUILD-phase deliverable, assertions frozen: fails on duplicate top-level keys, malformed JSON, missing required fields). Heartbeat is stated plainly as procedural, not mechanical — REV-3 shouldn't have implied otherwise. |
 | B8 | "Different records" doesn't make concurrent canonical writes safe — same file, whole-file rewrite conflicts | **§6 (REV-2)**: canonical emits SERIALIZED — at most one open, unmerged canonical-emit PR per batch at any time; a second conductor must wait. Blob-pin re-fencing at emit time (reused verbatim from Batch A plan §4/A-3 precedent) stated explicitly. **REV-3 (closes NOT-CURED — Codex correctly called out that "grep open PRs, then open" is still TOCTOU, and per-batch scope let Batch A and B race on the same canonical file):** §6 rewritten (§6.2). Serialization is now **program-wide** — at most one open canonical-writing PR across Batch A and Batch B and every conductor, at any time. The pre-open grep-then-claim-comment protocol is now **explicitly acknowledged as TOCTOU-imperfect** rather than claimed to prevent the race — the honest backstop is procedure, not the register: a genuine race resolves first-to-merge-wins, and the loser's PR is **regenerated from the new base, never hand-merged or carried forward** (the Batch A plan §8 A-10 precedent, already used in practice), making a race non-destructive and slow rather than silent and corrupting. Blob-pin re-fencing at emit time remains in force unchanged. |
 | B9 | Population denominators contradictory (221 vs 114; 1,338 vs 1,340 unexplained) | **New §1.1b, frozen population manifest** — every denominator (1,559 canonical; 221 no-scope; 114 Batch-A original operational scope, a reason-coded *subset* of the 221, not the full 221; 49 Batch-A remaining; 1,338 Batch-B population; the 1,340 BPS-table-observed figure) reconciled in one table, with the ~2-code delta named as an open Phase-0 reconciliation category, not asserted-away as noise. |
-| B10 | BPS crosswalk evidence alone cannot certify regulatory inheritance/licensing-basis semantics | **§4**: the D1/D5 task is explicitly split into two layers — (a) mechanical crosswalk-**edge** verification (what Phase-0 + the consistency check establish) and (b) regulatory/**inheritance** adjudication (a separate judgment, reusing the existing 01700-vs-49213 "convergent vs. divergent ancestor regimes" precedent, requiring the independent image-grounded seat and, where needed, PP28 evidence — never claimed to follow from the BPS table alone). **REV-3 (closes PARTIAL — the operative contract registered only BPS locators, with no explicit per-ancestor evidence requirement or verifiable decision rule):** §4 now states a **numbered advancement gate** (item 3): `inheritance_verdict` may move off `not-adjudicated` only when *every* ancestor in `bps_2020_ancestors.codes` has at least one of two evidence classes attached — a PP28-lampiran row **image-verified** (same 300-dpi/locator standard as 68112/49213), or confirmed **OSS-native provenance**. A `bps_2020_ancestors` entry alone, however populated, **never** advances the verdict; a single ancestor missing both evidence classes keeps the code at `not-adjudicated`. |
+| B10 | BPS crosswalk evidence alone cannot certify regulatory inheritance/licensing-basis semantics | **§4**: the D1/D5 task is explicitly split into two layers — (a) mechanical crosswalk-**edge** verification (what Phase-0 + the consistency check establish) and (b) regulatory/**inheritance** adjudication (a separate judgment, reusing the existing 01700-vs-49213 "convergent vs. divergent ancestor regimes" precedent, requiring the independent image-grounded seat and, where needed, PP28 evidence — never claimed to follow from the BPS table alone). **REV-3 (closes PARTIAL — the operative contract registered only BPS locators, with no explicit per-ancestor evidence requirement or verifiable decision rule):** §4 now states a **numbered advancement gate** (item 3): `inheritance_verdict` may move off `not-adjudicated` only when *every* ancestor in `bps_2020_ancestors.codes` has at least one of two evidence classes attached — a PP28-lampiran row **image-verified** (same 300-dpi/locator standard as 68112/49213), or confirmed **OSS-native provenance**. A `bps_2020_ancestors` entry alone, however populated, **never** advances the verdict; a single ancestor missing both evidence classes keeps the code at `not-adjudicated`. **REV-4 (closes NOT-CURED — Codex round-3: the gate said when adjudication may begin, never how evidence maps to which verdict):** §4 item 3 now enumerates the full mapping as a frozen 4-row table — `not-adjudicated` (default; any ancestor missing both evidence classes), `inherited-uniform` (all verified, same regime → single merged claim), `inherited-divergent` (all verified, regimes differ → per-ancestor rows only, 49213 shape), `not-inherited` (all verified, regime doesn't transfer → ancestors as history only). Each value is a boolean precondition, no fifth value, no partial credit; §2.2's schema sketch updated to match (`inheritable/non-inheritable/not-adjudicated` → the frozen 4-value enum). |
 | M1 | "4/4 hit rate" framing indefensible — denominator not 4, controls not random | Language corrected throughout (§0, §2.1, §3.2) to "4 confirmed cases, tiny and non-random sample" — never stated as a fraction implying a clean trial count. |
 | M2 | Lot size 25 has no statistical power justification | **§4** now states plainly: N≥25 is a conductor-review ergonomics choice for Tier 1–3, not a power guarantee; real AQL sample-size/LTPD/producer-consumer-risk parameters are named as an explicit BUILD-phase deliverable, not resolved in this draft. |
 | M3 | Contiguous taxonomy lots create cluster bias; tier ordering conflicts with intact-division rule | **§4**: "contiguous taxonomy segment" lot-shape is now scoped ONLY to Tier 4's AQL frame, and even there sampling must be stratified/randomized across divisions, not one contiguous block. Tier 1/2/2.5/3 lots are explicit **code lists**, never taxonomy-contiguous by construction. |
@@ -311,15 +326,26 @@ requirements — nothing in this gate is optional, and no Batch-B lot may dispat
    - **Stratification**: each lampiran's 10-page draw is required to include **≥3 wrapped/
      continuation-row pages and ≥3 N:M (many-to-many) relation pages** — the two shapes B5
      named as differentially missed by whitespace-based extraction.
-   - **Page selection is pre-registered, not hand-picked**: seeded deterministically from the
-     SHA256 digest of the specific parser run being gated (the digest already required by item 9's
-     pinning) — a fixed pseudorandom draw over the eligible pages within each stratum, computed
-     the same way by any conductor re-running the gate against the same parser-run digest. A
-     parser fix produces a new digest, which reseeds a fresh draw — there is no re-scoring the
-     same pages after a tune.
-   - **Tuning/holdout split**: the 10-page sample per lampiran splits into two **disjoint**
-     5-page halves — a **tuning half** (may be read, studied, and used to debug the parser as
-     many times as needed) and a **holdout half** (scored **exactly once**, blind).
+   - **Page selection is pre-registered, not hand-picked** — and, closing the REV-3→REV-4
+     residual (Codex's round-3 point: naming a digest as the seed is not itself an algorithm),
+     the draw is now the following **frozen, mechanical procedure**, reproducible byte-for-byte
+     by any conductor re-running the gate against the same parser-run digest:
+     1. Per lampiran, enumerate all eligible pages in ascending page-number order.
+     2. Rank each page by `SHA256(parser_run_digest + ":" + lampiran_id + ":" +
+        zero_padded_page_number)`, hex string, ascending.
+     3. **Deterministic greedy fill**: walk the rank-ascending list and take the lowest-ranked
+        pages satisfying the wrapped/continuation-row stratum until that stratum has **≥3**;
+        continue walking and take the lowest-ranked pages satisfying the N:M-relation stratum
+        until that stratum has **≥3**; continue walking and take the lowest-ranked remaining
+        eligible pages (any stratum) until the sample reaches **10 total**.
+     4. A parser fix changes `parser_run_digest`, which reseeds a fresh rank order and a fresh
+        draw — there is no re-scoring the same pages after a tune, by construction of the
+        formula (not by a separate rule saying so).
+   - **Tuning/holdout split, mechanical (closes the same residual):** assign by the pages' final
+     rank order from step 2/3 above — **odd rank-position → tuning half, even rank-position →
+     holdout half** — never a separate random split. Tuning pages may be read, studied, and used
+     to debug the parser as many times as needed; the holdout half is scored **exactly once**,
+     blind.
    - **Pass criterion**: edge-level precision ≥ **0.995** AND recall ≥ **0.995**, measured on the
      **holdout half only**. A miss fails Phase 0 outright — no partial credit.
 3. **$m_P$ (Gemini 3.1), consolidated onto the same frozen sample (closes the two-different-
@@ -358,11 +384,24 @@ requirements — nothing in this gate is optional, and no Batch-B lot may dispat
 10. **Tier-4 AQL parameters — REQUIRED OUTPUT of this gate, not left floating (closes the B3
     residual on the Tier-4 ceiling):** before Phase 0 is declared PASSED, it must emit the
     concrete acceptance-sampling parameters Tier 4 will run under — sample size **n**,
-    acceptance number, and the switching rule (normal/tightened/reduced, ISO-2859 spirit, per
-    §0's AQL framing) — computed from the actual Phase-0-measured edge error rate, not asserted
-    in advance. **Named owner: conductor + Zero** (Legge 5 — Tier-4 volume and the residual
-    false-negative risk it accepts is a business call, not a lane decision); no Tier-4
-    certification may run before this parameter set is signed off.
+    acceptance number, and the switching rule — computed from the actual Phase-0-measured edge
+    error rate, not asserted in advance. **Named owner: conductor + Zero** (Legge 5 — Tier-4
+    volume and the residual false-negative risk it accepts is a business call, not a lane
+    decision); no Tier-4 certification may run before this parameter set is signed off.
+    **Derivation RULE, frozen (REV-4, closes the B3 determinism gap — Codex's round-3 point:
+    the numbers depend on measured data and can't be frozen, but the RULE that turns those
+    measurements into numbers can, and wasn't):** Tier-4 acceptance sampling runs **ISO 2859-1
+    single-sampling, General Inspection Level II**, starting under **normal inspection**. The
+    **AQL class = the smallest standard ISO 2859-1 AQL value that is ≥ the Phase-0-measured
+    holdout edge error rate** (§1.4 item 2) — never hand-picked. **Lot size = the stratum's
+    code count** (the population Tier 4 is drawn from). **Switching**, per ISO 2859-1: move to
+    **tightened inspection** after 2 of 5 consecutive lots rejected; return to **normal** after
+    5 consecutive lots accepted under tightened. Zero's Legge-5 ratification is an
+    **accept-or-override of this frozen default**, never an invent-from-scratch choice — the
+    rule, not the resulting (n, Ac) pair, is what's pre-registered here. **Two conductors
+    running Phase 0 against the same measured holdout error rate and the same stratum code
+    count MUST derive the identical (n, Ac, switching-state) triple** — this is the
+    determinism property the residual required.
 
 **4-digit `golongan` inheritance check (Gemini 4.1, Phase-0 mechanical pass):** KBLI 5-digit
 (`kelompok`) codes inherit structural scope from their 4-digit (`golongan`) parent; BPS sometimes
@@ -452,7 +491,7 @@ rule's output is invisible in the data it governs.
   ],
   "parser_run_digest": "<Phase-0 output relation sha256>",
   "adjudication_status": "mechanical-only | tier1-2-adjudicated | tier3-adjudicated | tier4-aql-verified",
-  "inheritance_verdict": "inheritable | non-inheritable | not-adjudicated",
+  "inheritance_verdict": "not-adjudicated | inherited-uniform | inherited-divergent | not-inherited",
   "adjudicated_by": "<seat/session ids, or 'mechanical-only'>",
   "adjudicated_at": "<date>"
 }
@@ -467,8 +506,8 @@ rule's output is invisible in the data it governs.
 - **`inheritance_verdict` defaults to `not-adjudicated`, never silently inferred.** A
   mechanically-populated edge set (Tier 4, `adjudication_status: mechanical-only`) never implies
   the licensing regime transfers — that requires the separate semantic judgment §4/B10 describes,
-  reusing the 01700 (divergent ancestor regimes, non-inheritable) vs. 49213 (convergent regimes,
-  inheritable) precedent.
+  reusing the 01700 (divergent ancestor regimes → `inherited-divergent`) vs. 49213 (convergent
+  regimes → `inherited-uniform`) precedent, per the frozen enum in §4.
 - **Writers: compilers only**, per data-plane-guard convention (#2550). Two distinct writer
   shapes: (a) a new **bulk** Phase-0 output compiler (`scripts/kbli_filiera/populate_bps_ancestors.py`,
   not yet built) writes `mechanical-only` entries for all 1,338 in one deterministic pass, fully
@@ -665,8 +704,9 @@ falsifiable here for the first time.
 2. **Regulatory/inheritance adjudication** — a separate judgment, never claimed to follow from
    the BPS table alone: does the licensing/regulatory regime attached to the true 2020
    ancestor(s) actually transfer to the 2025 code, reusing the program's own existing precedent
-   (01700: divergent ancestor regimes → non-inheritable; 49213: convergent regimes across all
-   three ancestors → inheritable). This layer requires the independent, image-grounded
+   (01700: divergent ancestor regimes → `inherited-divergent`; 49213: convergent regimes across
+   all three ancestors → `inherited-uniform` — full enum in item 3 below). This layer requires
+   the independent, image-grounded
    cross-family seat on the raw page render — **for every adjudicated code, all tiers** (closes
    B1's "adjudication seats never see parser output" requirement and Gemini 2.3's AQL-independence
    point simultaneously: Tier 4's AQL sample is evaluated against the raw render, never the
@@ -689,6 +729,23 @@ falsifiable here for the first time.
    ancestry relationship exists, never that its regulatory regime transfers. If any single
    ancestor lacks both evidence classes, the code stays `not-adjudicated` and routes to Tier 2.5
    or the next tier's manual queue — it does not get a partial or majority-rule verdict.
+
+   **Evidence → verdict MAPPING, enumerated (REV-4, closes the B10 residual — Codex's round-3
+   point: the paragraph above says WHEN evidence-gathering may begin, never HOW the gathered
+   evidence maps to one of the verdict values). `inheritance_verdict` takes exactly one of four
+   values, each defined as a boolean precondition over the per-ancestor evidence set — no other
+   values, no majority rule, no partial credit, replacing the earlier
+   `inheritable | non-inheritable | not-adjudicated` sketch in §2.2 with this frozen enum:**
+
+   | Value | Precondition (boolean over `bps_2020_ancestors.codes`) | What it licenses downstream |
+   |---|---|---|
+   | `not-adjudicated` | **Default.** True whenever *any* ancestor is missing both evidence classes above. | Nothing — stays queued, routes to Tier 2.5 or the next tier's manual queue. |
+   | `inherited-uniform` | **ALL** ancestors are evidence-verified **AND** all verified ancestors point to the **same** licensing regime. | The regime transfers as a single claim — `per_skala`-style rows are citable for the 2025 code (Batch A's detach-lane still gates the actual write, §5's firewall unchanged). |
+   | `inherited-divergent` | **ALL** ancestors are evidence-verified **AND** the verified regimes **differ** across ancestors. | The 01700/49213 "convergent-vs-divergent" precedent, divergent branch: **per-ancestor rows only**, never merged into one claim — reuses the 49213-precedent shape exactly. |
+   | `not-inherited` | **ALL** ancestors are evidence-verified **AND** the evidence shows the regime does **not** transfer (e.g. the 2025 successor is itself OSS-native with its own independent regime). | Ancestors are recorded as **history only** — zero licensing inference drawn from them. |
+
+   No fifth value, no "partially inherited," no verdict assigned on a subset of ancestors —
+   the table above is exhaustive and the only legal transitions out of `not-adjudicated`.
 
 **Lot composition, corrected (closes M2/M3):**
 
@@ -803,6 +860,45 @@ existing `kbli-filiera` entry's `protected` glob in `infra/claude-hooks/data-pla
 already covers `data/kbli-filiera/**`, so the reservation path is guarded automatically — no new
 registry entry needed. Only `scripts/kbli_filiera/` compilers may write it.
 
+**Making the same-key conflict MECHANICAL, not asserted (REV-4, closes the B7 residual — Codex's
+round-3 point was exact: same-key *identity* is a JSON-semantic fact, but git's merge is
+line-based, and pretty-printed multi-line JSON doesn't guarantee that "same key" lands on "same
+line" — a key's value can span several lines whose exact boundaries shift with formatting, so
+two edits to the "same key" are not automatically a same-line edit git's merge is forced to
+conflict on):**
+
+- **Format rule (part of this file's schema, stated here, not left to whoever writes it next):**
+  each `lot_id` entry is serialized **compact, on a single line** — `"B-L1":
+  {"conductor_id":"...","code_range":[...],"opened_at":"...","ttl_hours":12,"heartbeat":"...",
+  "status":"open"}` — never pretty-printed across multiple lines. This makes "same key" and
+  "same line" the identical fact, not merely correlated: any edit to an existing key's value is
+  by construction an edit to that one line, and git's three-way merge **cannot silently
+  auto-resolve two different edits to the same line** — it conflict-markers it, full stop, which
+  is exactly the property a CAS lease needs and what REV-3's prose only asserted.
+- **The gap this format rule does NOT close, named explicitly (Codex's residual again):** two
+  **concurrent ADDS** of a `lot_id` that doesn't exist yet in either lane's base — e.g. two
+  conductors both decide to claim `B-L7` for the first time — are two *insertions*, not edits to
+  a shared existing line. Depending on where each lane's diff places the new line, git's merge
+  can land **both** insertions successfully, producing a file with the same top-level key
+  duplicated (valid-looking JSON syntax that most parsers silently resolve by "last value wins,"
+  which is exactly a silent double-claim). Line-format discipline alone cannot prevent this —
+  it is a genuine gap, stated as one, not argued around.
+- **Backstop, named as a BUILD-phase deliverable with its assertions frozen here:** a
+  `check_batch_b_reservation_conformance.py` CI validator (docs-guardian-style, same pattern as
+  the existing `infra/guard-conformance/` machinery) runs on every PR touching
+  `batch-b-lot-reservations.json` and **fails** on: (a) duplicate top-level keys in the parsed
+  JSON (catches the concurrent-ADD gap above — this is the one check that actually closes it),
+  (b) malformed/non-parseable JSON, (c) any entry missing `conductor_id`, `opened_at`, or
+  `ttl_hours`. This is the mechanical enforcement the register's format rule alone cannot
+  provide.
+- **Heartbeat stays procedural, said plainly (not oversold as mechanical):** TTL expiry and the
+  supersession-by-overwrite are enforced by the file's own content plus the CI validator, but
+  the *heartbeat refresh itself* (a conductor posting a PR comment while a lot is still active)
+  is a human/session action with no automated enforcement — a conductor who simply forgets to
+  heartbeat loses their reservation to a legitimate supersession at TTL expiry, which is the
+  intended fail-safe, not a bug, but it is procedure, not a mechanical guarantee, and REV-3
+  should not have implied otherwise.
+
 ### 6.2 Canonical-emit serialization (closes B8)
 
 **Rule, corrected per-batch scope (REV-2 said per-batch; REV-3 widens it as instructed):** at
@@ -886,7 +982,7 @@ instance of this same lesson on a sixth field.
    claim-comment convention sufficient until a race actually recurs?** This draft's own position
    (stated, not decided): build it — three twin-races already happened at 1× the scale.
 
-## Top remaining risks (post-REV-3)
+## Top remaining risks (post-REV-4)
 
 1. **The Tier 1/2 hypothesis has zero empirical support so far** (§1.3/§3.2) — all four confirmed
    disease cases were Tier-4-shape pre-cure. A first Tier 1/2 lot reading at or near its 0.10
@@ -895,23 +991,34 @@ instance of this same lesson on a sixth field.
    not quietly waived because the codes were "obviously" going to be diseased.
 2. **Phase 0's acceptance gate (§1.4) is a hard, non-negotiable precondition, and it is real
    engineering work** — position-anchored `pdfplumber` extraction, `sebagian`/`uraian` handling,
-   the now-frozen 10-page-per-lampiran truth sample, and the $m_P$ tuning diagnostic are all
-   unbuilt. Nothing in REV-3 should be read as "the parser is basically done, tune the numbers"
-   — it is closer to "the parser's *design* and its gate's *numbers* are now specified enough to
-   build," which is a meaningfully earlier stage than REV-1 implied.
+   the now-frozen 10-page-per-lampiran truth sample with its frozen draw algorithm, and the
+   $m_P$ tuning diagnostic are all unbuilt. Nothing in REV-4 should be read as "the parser is
+   basically done, tune the numbers" — it is closer to "the parser's *design*, its gate's
+   *numbers*, and the *procedure* that derives both are now specified enough to build," which is
+   a meaningfully earlier stage than REV-1 implied.
 3. **The typed-field split (§2) touches a live backend matching service
    (`kbli_eye.py`) and two duplicate frontend consumers** discovered only by grepping this
    session — the migration is additive and should be safe, but "should be safe" is not the same
    as verified; the BUILD phase must run the actual consumer surfaces (not just read their
    source) before this is called done, per CLAUDE.md §2's PROVE-LIVE discipline.
-4. **REV-3's coordination fixes (§6) are a precisely-stated procedure, not a guarantee** — B8's
-   honest limit stands: two conductors can still race past the pre-open grep on a genuine
-   coincidence. The design accepts this and makes the race non-destructive (regenerate, not
-   carry forward) rather than claiming to prevent it; a BUILD-phase reviewer should not mistake
-   "TOCTOU-imperfect, acknowledged" for "TOCTOU-imperfect, unaddressed."
+4. **The coordination fixes (§6) are a precisely-stated procedure, not a guarantee, even after
+   REV-4's mechanical hardening** — B8's honest limit stands: two conductors can still race past
+   the pre-open grep on a genuine coincidence, and B7's concurrent-ADD gap (two brand-new
+   `lot_id` claims landing as duplicate keys) is closed only by a CI validator that is itself
+   still a BUILD-phase deliverable, not yet built. The design accepts these limits and makes
+   both non-destructive (regenerate, not carry forward; CI rejects duplicate keys post-hoc)
+   rather than claiming to prevent them upstream; a BUILD-phase reviewer should not mistake
+   "TOCTOU-imperfect, acknowledged, backstopped" for "TOCTOU-imperfect, unaddressed."
+5. **REV-4's four fixes are all determinism/procedure freezes, not new empirical evidence** —
+   the ISO 2859-1 derivation rule (§1.4 item 10), the page-draw algorithm (§1.4 item 2), the
+   single-line register format (§6.1), and the evidence→verdict enum (§4 item 3) all close
+   *reproducibility* gaps Codex found; none of them have been run yet. The BUILD phase is where
+   these frozen procedures first meet real BPS pages and real Phase-0 output — a bug in the
+   procedure itself (not just in an implementation of it) is still possible and would surface
+   only then.
 
 ## Sign-off
 
-Not yet signed. REV-3 is submitted for a fresh conductor pass; per the panel's own generator≠grader
+Not yet signed. REV-4 is submitted for a fresh conductor pass; per the panel's own generator≠grader
 discipline, this authoring lane does not grade its own revision. A `## Sign-off` section is
 appended here only after that re-review closes.
