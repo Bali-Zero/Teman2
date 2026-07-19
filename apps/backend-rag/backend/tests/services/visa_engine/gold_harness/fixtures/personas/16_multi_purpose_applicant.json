@@ -1,0 +1,166 @@
+{
+  "persona_id": "16_multi_purpose_applicant",
+  "narrative": "Digital nomad from Portugal combining a short holiday leg with ongoing remote work for a European employer.",
+  "notes": "",
+  "facts": {
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1993-07-07"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["PT"]
+    },
+    "person.marital_status": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.currently_in_indonesia": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "immigration.current_status_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.current_status_expiry": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.last_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.overstay_days": {
+      "status": "KNOWN",
+      "value": 0
+    },
+    "immigration.violation_history": {
+      "status": "KNOWN",
+      "value": []
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["TOURISM", "REMOTE_WORK"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 10
+    },
+    "intent.desired_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.entry_pattern": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.requested_product_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.employer_country_code": {
+      "status": "KNOWN",
+      "value": "PT"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.serves_indonesian_clients": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.indonesia_source_compensation": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.indonesian_work_sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.pt_pma_committed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.investment_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.paid_up_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.proposed_role": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.relation_to_sponsor": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_nationalities": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_status_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.marriage_registered": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.level": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.admission_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "OFFSHORE"
+    },
+    "process.wants_onshore_conversion": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.service_fee_budget_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.wants_quote": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    }
+  },
+  "expected": {
+    "global_state": "SUPPORTED_CANDIDATES",
+    "global_reason_codes": [],
+    "products": {
+      "E33G": {
+        "proof_state": "SUPPORTED",
+        "reason_codes": ["REMOTE_WORK_SUPPORTED"],
+        "covered_purposes": ["REMOTE_WORK", "TOURISM"]
+      },
+      "C1": {
+        "proof_state": "UNSUPPORTED",
+        "missing_purposes": ["REMOTE_WORK"]
+      }
+    },
+    "default": {
+      "kind": "UNSUPPORTED_NO_PURPOSE_OVERLAP",
+      "requested_purposes": ["TOURISM", "REMOTE_WORK"]
+    }
+  }
+}

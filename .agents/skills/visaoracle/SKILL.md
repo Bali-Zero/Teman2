@@ -165,6 +165,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
   is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
   is done.
+- 2026-07-19: GOLD HARNESS (G-b) claimed+shipped by M5 — 20 personas + designed pack + metamorphic
+  replay; evidence artifact = replay report JSON; PR5 Decision-level adapter pending PR5 merge.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
