@@ -61,6 +61,38 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
 - **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
+**Surfaces 4-6 + capital doctrine + Batch-B (M5 conductor-verified 2026-07-19):**
+
+- **Surface 4 — `kbli_documents` Postgres table, CURED IN PROD** (#2796 merged + fly apply): table
+  seeded 2026-02-18, no builder, injected VERBATIM into `chat_kbli`'s LLM context
+  (`kbli_notebook_chat.py:635/:699`) — served fabricated licensing for quarantined codes (live
+  proof: 50113 asserted Menengah Tinggi/KSOP/BKI/STCW + Rp10bn from the revoked BKPM 4/2021).
+  Cure `backend/scripts/kbli_documents_cure.py` (provenance-bound, dry-run default, `--only`
+  mandatory) applied to 86 codes (85 gap→`PENDING_REGULATION`, 49213 restored rows preserved);
+  forensic archive `kbli_documents_archive` (86 rows, one-shot); PROVE-LIVE: `chat_kbli` 50113
+  now serves the honest gap. PENDING-ARMS: whole-table refresh (~1,473 unmanaged rows), KG
+  variant-node cleanup, `search_kbli` "Unknown" label.
+- **Generation-layer capital doctrine corrected** (#2813, armed, in CI): `chat_kbli`'s prompt had
+  Rp10bn-as-paid-up HARDCODED in 5 places; corrected to the BKPM 5/2025 two-threshold doctrine
+  (modal disetor 2.5bn ≠ investment value >10bn/KBLI/location) + a new abstention rule (never
+  estimate a risk tier by analogy).
+- **Surfaces 5 & 6 — `apps/kbli-navigator` (knowledge.balizero.com; it is a Next.js/Vercel+Netlify
+  app, NOT the "native desktop app" §5 describes — mislabel found during Batch-B design work,
+  ALIGN-FLEET TODO):** (5) its `data/kbli-2025.json` was untracked in the 2026-03-28 cleanup and
+  rotted (1,563 records, zero quarantine markers, 68112 still MICE) — **cure lane in flight**,
+  branch `agent/air-m5/frontend/kbli-navigator-dataset-desync` (conductor-gated), re-tracking +
+  extending `scripts/sync_kbli_dataset.sh`/`check-kbli-dataset-sync`. (6)
+  `apps/kbli-navigator/lib/kbli-gold-content.ts` (~45K lines, hand-authored, separate from mouth
+  gold) OVERRIDES cured data on 68112/49213 pages (verified in built HTML) — **OPEN, queued, task
+  #19**.
+- **Mouth gold cure LIVE** (#2794): 10 gold records' detached-code echoes cured
+  (whatYouNeed/zantaraOpener/baliContext), PROVE-LIVE on 68123/60103; 63-phantom triage table
+  `scripts/kbli_gold_remap_table_status.json` (48 unmapped / 8 ambiguous-SPLIT / 7
+  single-candidate).
+- **Batch-B pre-registration design SIGNED** (#2801 merged, REV-4b): determinism gate closed after
+  4 Codex xhigh rounds + Gemini; OPEN gates before any lot: Phase-0 parser build + Zero's Legge-5
+  ratifications. See §5.
+
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
 phantom gold-remap rows · Batches A(remainder)/B/C/D of the Filiera sweep. See §5.
@@ -315,9 +347,12 @@ corner (flagged only, nothing fixed here):**
    of TEXT, never of DIGITS.
 6. **Consumer-map before scoping any data fix**: canonical → mouth `/kbli/<code>` SSR · **gold →
    same pages, and gold WINS over intel_2026** · KG/Qdrant → WA/webchat via `inspect_kbli` ·
-   intel_2026/editorial → baked prose · native `kbli-navigator` desktop app (M5/Pro/Mini) reads the
-   canonical too · NB sources. Fix the class across ALL consumers or explicitly park the rest;
-   "merged" ≠ "live" ≠ "every surface".
+   intel_2026/editorial → baked prose · `kbli_documents` Postgres table → injected verbatim into
+   `chat_kbli` LLM context, cured 2026-07-19 (#2796) · `apps/kbli-navigator` app
+   (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
+   `data/kbli-2025.json` fork (stale, cure in flight) AND its own `lib/kbli-gold-content.ts`
+   override layer (OPEN, task #19) · NB sources. Fix the class across ALL consumers or explicitly
+   park the rest; "merged" ≠ "live" ≠ "every surface".
 7. **Derived layers need invalidation**: after correcting any source fact, list which derived fields
    (gold whatYouNeed, editorial, l4_bali reason, KG properties, NB) were generated FROM it and
    schedule them; guards on markers won't catch baked prose.
@@ -381,6 +416,11 @@ Each batch pins a vault-manifest revision; per-code lease `agent_lock:kbli-dossi
 
 Processed in taxonomy order. Sampling = ISO-2859-spirit AQL (start tightened, loosen only on a
 clean run of batches), NOT naive 10%/min-12 (red-team F6). No throughput promises before measurement.
+
+**Batch B design SIGNED 2026-07-19** (REV-4b, `research/operations/2026-07-19-kbli-batch-b-design.md`,
+#2801 merged) — pre-registration determinism gate closed after 4 Codex xhigh rounds + Gemini; OPEN
+gates before any lot: Phase-0 parser build + Zero's Legge-5 ratifications (AQL default, Tier-4
+volume). See LIVE STATE.
 
 ### The four phases (methodology doc §rollout)
 
