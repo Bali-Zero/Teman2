@@ -347,3 +347,40 @@ Per W100: agreement was never counted as evidence — every load-bearing NEW cla
 above was either conductor-eye-verified this session or explicitly labeled a lead.
 
 — Conductor (Fable, MANDATO S2), 2026-07-19, appended post SECOND SIGNING.
+
+## Post-refinement validation — 41013 seats re-run (wf_644964d5-783)
+
+Executed by the conductor as the §3.5/§5.4 validation gate for cure PR #2831, using
+the PATCHED runner from `kbli/lot7-cure` (file sha256 `a33d72db2127a1605ab565d852…`,
+caller-supplied as `args.runnerBlobSha256`), the lot's byte-exact membership blob,
+and the original L7 dossier. 2 seats, 0 errors.
+
+**Outcome: verdict `quarantined`, `facts_inventory_failed=true` — and that is the
+CORRECT, most-informative result.** Conductor's deterministic replication of the
+gate logic over the returned inventory proves:
+
+- ALL 15 inventory entries are seat-`verified`; base facts carry real locators
+  (PP28 render p.23 row 5 for Mikro/Kecil/Menengah; `oss/relasi.json` KbliResikos
+  41013-04-04/05 for the two Besar scopes — the OSS-native clause exercised again).
+- ALL 6 derived entries (3× fiktif_positif, 3× derived_license) now carry
+  well-formed `derivation_citation`s with the CORRECT articles (225(1) on the
+  Menengah-Tinggi fiktif_positif; 124(4) on derived_license) — the refinement's
+  innocence path certified **4 of 6** derived entries live.
+- The 2 residual failures are SOLELY a tier-label join miss:
+  `fiktif_positif:Mikro,Kecil,Menengah` looks for
+  `kategori_risiko:Mikro,Kecil,Menengah` but the seat labeled the base row
+  `…:Mikro,Kecil,Menengah (scope BG003)` — exact-suffix matching on free-form
+  labels (the scar #3/#9 form-vs-entity signature, now INSIDE the contract).
+
+**Dispositions:** (1) **Refinement #2 VALIDATED** — guilt held in tests, innocence
+held live, fail-closed preserved: #2831's validation gate PASSES, auto-merge armed.
+(2) **41013 converts to "CONTRACT ARTIFACT, not record defect"** — the record is
+seat-clean (D1 `needs_quarantine=false`, D5 `problem_found=false`), every exposed
+fact verified, every derived fact correctly cited; it nonetheless STAYS
+operationally quarantined (fail-closed) until **refinement #3 (tier-label
+canonicalization)** lands — FILED in PENDING-ARMS with an explicit warning that a
+naive "strip the (scope …) parenthetical" fix would wrongly join across distinct
+scopes (BG003 vs GT003), the W84 fix-begets-twin-bug trap. (3) Journal provenance
+proven live: both seats stamped label + prompt sha256 + schema sha256 + the
+caller-supplied runner sha + `control_tag_applied_after=true`; D2 null (never
+dispatched). — Conductor (Fable, MANDATO S2), 2026-07-19.
