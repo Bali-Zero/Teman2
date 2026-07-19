@@ -152,6 +152,17 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
   declared in every gate with compensating isolation. Local vault mirror on Pro
   (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
   `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
+- **Standalone metadata cure-list BACKLOG (grows lot-by-lot, not yet a dedicated spec+PR — the
+  only place this list is currently tracked; update here when it changes):** `01629` + `71204`
+  (Lot 5 gate §m5-POS, 2026-07-19 — multi-parent crosswalk metadata false, evidence-gated) ·
+  `59140` pp28-label (Lot 6 gate §3.4 — OSS-native, pp28_sources unverifiable, per_skala provenance
+  sound by marker) · **`20232` (Lot 7 gate §3.4, 2026-07-19 — fresh SELECTED control, conductor-eye
+  SPLIT on lampiran5_p156-156.png printed p.142: canonical `status_mapping='MATCH_LANGSUNG'`/"scope
+  unchanged" refuted by two consecutive rows, 2025-20232 + 2025-20235; per rule #9 NOT detached in
+  the Lot 7 cure — OSS-native, healthy per_skala).** All four are `metadata_only` candidates (same
+  compiler action as 52101/46100/10433/`metadata_fixes_2026_07_19.json` — status_mapping/whatChanged/
+  pp28_sources correction, per_skala untouched) pending a dedicated evidence-gated spec+PR; none has
+  a canonical write yet.
 
 **Governance flags:**
 
