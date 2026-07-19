@@ -35,6 +35,27 @@ REQUIRED_FAQ_PROVENANCE_KEYS: tuple[str, ...] = (
     "source_priority",
 )
 
+# Domain-scoped key prefix (Phase-0 safety rail — FATAL 1,
+# research/operations/2026-07-17-full-domain-cache-design.md §8): reuses the
+# existing notebook_id key-scoping mechanism (below, _hash_question) to
+# isolate FAQ cache keys per curated_qa `domain`. Without this, two domains
+# with byte-identical question phrasing ("what documents do I need?") would
+# collide on the SAME MD5 key — the higher-source_priority entry wins
+# regardless of domain, silently serving one domain's answer to another
+# domain's question with the abstain gate fully bypassed (verbatim serving).
+DOMAIN_SCOPE_PREFIX = "domain:"
+
+
+def domain_scope_id(domain: str) -> str:
+    """Return the notebook_id-scoping value for a curated_qa `domain` tag.
+
+    Module-level helper (not a method) so both the harvester (write path,
+    scripts/curated_qa_harvest.py) and orchestrator_core.check_faq_cache()
+    (read path) derive the identical scope key without instantiating the
+    service.
+    """
+    return f"{DOMAIN_SCOPE_PREFIX}{domain}"
+
 
 class NotebookLMCacheService:
     """

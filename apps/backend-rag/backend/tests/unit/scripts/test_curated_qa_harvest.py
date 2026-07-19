@@ -217,16 +217,50 @@ def test_validate_row_accepts_fully_populated_row() -> None:
 
 
 @pytest.mark.asyncio
-async def test_harvest_to_faq_writes_unscoped_entries(faq_cache: NotebookLMCacheService) -> None:
-    rows = [_row(question="Q1"), _row(question="Q2")]
+async def test_harvest_to_faq_writes_domain_scoped_entries(faq_cache: NotebookLMCacheService) -> None:
+    """Phase-0 safety rail (FATAL 1): harvest_to_faq() writes DOMAIN-SCOPED
+    keys, not unscoped ones — the legacy unscoped get() must NOT find a
+    domain-scoped write (proves the cross-domain collision surface is
+    closed at the write path)."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Q1", domain="visa"), _row(question="Q2", domain="visa")]
 
     stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
 
     assert stats.faq_written == 2
-    got = await faq_cache.get("Q1")  # unscoped get() — no notebook_id
+    got = await faq_cache.get("Q1", notebook_id=domain_scope_id("visa"))
     assert got is not None
     assert got["answer"] == "USD 130,000 in a state-owned bank."
     assert got["metadata"]["source_priority"] == 80
+    assert await faq_cache.get("Q1") is None  # legacy unscoped lookup: MISS
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_same_question_different_domains_do_not_collide(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT (FATAL 1): byte-identical question text across two domains must
+    land at two DIFFERENT keys, never refuse/overwrite each other."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [
+        _row(question="What documents do I need?", domain="visa", answer="Visa answer"),
+        _row(question="What documents do I need?", domain="tax", answer="Tax answer"),
+    ]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 2
+    assert stats.faq_collision_refused == 0
+    visa_got = await faq_cache.get(
+        "What documents do I need?", notebook_id=domain_scope_id("visa"),
+    )
+    tax_got = await faq_cache.get(
+        "What documents do I need?", notebook_id=domain_scope_id("tax"),
+    )
+    assert visa_got["answer"] == "Visa answer"
+    assert tax_got["answer"] == "Tax answer"
 
 
 @pytest.mark.asyncio
@@ -252,6 +286,8 @@ async def test_harvest_to_faq_dry_run_writes_nothing(faq_cache: NotebookLMCacheS
 
 @pytest.mark.asyncio
 async def test_harvest_to_faq_respects_collision_policy(faq_cache: NotebookLMCacheService) -> None:
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
     rows_high_then_low = [
         _row(question="Q1", answer="high prio", source_priority=90),
     ]
@@ -261,7 +297,7 @@ async def test_harvest_to_faq_respects_collision_policy(faq_cache: NotebookLMCac
     stats = await harvest.harvest_to_faq(rows_low, faq_cache, dry_run=False)
 
     assert stats.faq_collision_refused == 1
-    got = await faq_cache.get("Q1")
+    got = await faq_cache.get("Q1", notebook_id=domain_scope_id("visa"))
     assert got["answer"] == "high prio"
 
 
@@ -309,6 +345,26 @@ async def test_harvest_to_qdrant_embeds_question_and_writes_flat_payload() -> No
 
 
 @pytest.mark.asyncio
+async def test_harvest_to_qdrant_same_question_different_domains_get_different_point_ids() -> None:
+    """GUILT (FATAL 1): byte-identical question text across two domains must
+    upsert to two DIFFERENT Qdrant point ids, never silently overwrite each
+    other's answer."""
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [
+        _row(question="What documents do I need?", domain="visa", answer="Visa answer"),
+        _row(question="What documents do I need?", domain="tax", answer="Tax answer"),
+    ]
+
+    stats = await harvest.harvest_to_qdrant(rows, client, embedder, dry_run=False)
+
+    assert stats.qdrant_written == 2
+    assert len(client.points) == 2  # not a silent overwrite
+    answers = {p["payload"]["domain"]: p["payload"]["answer"] for p in client.points.values()}
+    assert answers == {"visa": "Visa answer", "tax": "Tax answer"}
+
+
+@pytest.mark.asyncio
 async def test_harvest_to_qdrant_skips_answerless_rows() -> None:
     client = FakeQdrantClient(exists=True)
     embedder = FakeEmbedder()
@@ -341,6 +397,8 @@ async def test_harvest_to_qdrant_dry_run_does_not_call_embedder_or_write() -> No
 async def test_purge_domain_faq_deletes_only_matching_domain(
     faq_cache: NotebookLMCacheService,
 ) -> None:
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
     await harvest.harvest_to_faq(
         [
             _row(question="visa Q", domain="visa"),
@@ -353,20 +411,22 @@ async def test_purge_domain_faq_deletes_only_matching_domain(
     deleted = await harvest.purge_domain_faq(faq_cache, "visa", dry_run=False)
 
     assert deleted == 1
-    assert await faq_cache.get("visa Q") is None
-    assert (await faq_cache.get("tax Q"))["answer"] is not None
+    assert await faq_cache.get("visa Q", notebook_id=domain_scope_id("visa")) is None
+    assert (await faq_cache.get("tax Q", notebook_id=domain_scope_id("tax")))["answer"] is not None
 
 
 @pytest.mark.asyncio
 async def test_purge_domain_faq_dry_run_deletes_nothing(
     faq_cache: NotebookLMCacheService,
 ) -> None:
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
     await harvest.harvest_to_faq([_row(question="visa Q", domain="visa")], faq_cache, dry_run=False)
 
     deleted = await harvest.purge_domain_faq(faq_cache, "visa", dry_run=True)
 
     assert deleted == 1  # counted as "would delete"
-    assert await faq_cache.get("visa Q") is not None  # but untouched
+    assert await faq_cache.get("visa Q", notebook_id=domain_scope_id("visa")) is not None  # untouched
 
 
 @pytest.mark.asyncio

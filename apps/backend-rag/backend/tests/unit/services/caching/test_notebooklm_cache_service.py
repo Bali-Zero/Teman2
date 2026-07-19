@@ -21,7 +21,10 @@ from typing import Any
 
 import pytest
 
-from backend.services.caching.notebooklm_cache_service import NotebookLMCacheService
+from backend.services.caching.notebooklm_cache_service import (
+    NotebookLMCacheService,
+    domain_scope_id,
+)
 
 VALID_METADATA: dict[str, Any] = {
     "source_ref": "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1",
@@ -283,3 +286,43 @@ async def test_notebook_scoped_and_unscoped_entries_do_not_collide(
 
     assert scoped["answer"] == "scoped legacy answer"
     assert unscoped["answer"] == "harvester answer"
+
+
+# ── domain_scope_id() — Phase-0 safety rail (FATAL 1) ───────────────────────
+
+
+def test_domain_scope_id_is_deterministic_and_domain_specific() -> None:
+    first_call = domain_scope_id("visa")
+    second_call = domain_scope_id("visa")
+    assert first_call == second_call  # deterministic — same domain, same key
+    assert domain_scope_id("visa") != domain_scope_id("tax")  # domain-specific
+
+
+@pytest.mark.asyncio
+async def test_domain_scoped_entries_for_same_question_do_not_collide(
+    cache: NotebookLMCacheService,
+) -> None:
+    """GUILT (FATAL 1): two domains, byte-identical question text, must
+    resolve to two different cache keys — no collision-policy refusal."""
+    visa_metadata = {**VALID_METADATA, "domain": "visa"}
+    tax_metadata = {**VALID_METADATA, "domain": "tax"}
+
+    ok_visa = await cache.set(
+        "What documents do I need?",
+        "Visa answer",
+        metadata=visa_metadata,
+        notebook_id=domain_scope_id("visa"),
+    )
+    ok_tax = await cache.set(
+        "What documents do I need?",
+        "Tax answer",
+        metadata=tax_metadata,
+        notebook_id=domain_scope_id("tax"),
+    )
+
+    assert ok_visa is True
+    assert ok_tax is True
+    visa_got = await cache.get("What documents do I need?", notebook_id=domain_scope_id("visa"))
+    tax_got = await cache.get("What documents do I need?", notebook_id=domain_scope_id("tax"))
+    assert visa_got["answer"] == "Visa answer"
+    assert tax_got["answer"] == "Tax answer"

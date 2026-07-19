@@ -4,9 +4,13 @@ Reads normalized JSONL rows from apps/backend-rag/data/curated_qa/*.jsonl
 (schema documented in that directory's README.md) and writes them to two
 independent sinks:
 
-- --faq: the FAQ cache (Redis via NotebookLMCacheService), UNSCOPED keys
-  (no notebook_id) — this is what orchestrator_core.check_faq_cache() reads
-  via faq_cache.get(query). Provenance is enforced by
+- --faq: the FAQ cache (Redis via NotebookLMCacheService), DOMAIN-SCOPED keys
+  (notebook_id=domain_scope_id(row["domain"]), Phase-0 safety rail FATAL 1 —
+  research/operations/2026-07-17-full-domain-cache-design.md §8) — this is
+  what orchestrator_core.check_faq_cache() reads via
+  faq_cache.get(query, notebook_id=domain_scope_id(classified_domain)), with
+  a dual-read fallback to the legacy UNSCOPED key for entries written before
+  this rail shipped (see that method's docstring). Provenance is enforced by
   NotebookLMCacheService.set() itself (P7): every row's metadata is required
   to carry source_ref/source_date/domain/confidence_class/source_priority.
 - --qdrant: the curated_qa Qdrant collection (create-if-missing, 1536-dim
@@ -168,12 +172,17 @@ async def harvest_to_faq(
     dry_run: bool = False,
     stats: HarvestStats | None = None,
 ) -> HarvestStats:
-    """Write `rows` to the FAQ cache with UNscoped keys (notebook_id="").
+    """Write `rows` to the FAQ cache with DOMAIN-SCOPED keys
+    (notebook_id=domain_scope_id(row["domain"])) — Phase-0 safety rail
+    FATAL 1: without domain scoping, two domains with byte-identical
+    question phrasing collide on the same MD5 key.
 
     Answer-less rows (question-only seeds) are skipped — an FAQ entry with no
     answer would violate NotebookLMCacheService.set()'s provenance contract
     and is meaningless to serve.
     """
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
     stats = stats or HarvestStats()
     for row in rows:
         if row.get("answer") is None:
@@ -186,7 +195,12 @@ async def harvest_to_faq(
             continue
 
         try:
-            ok = await cache.set(row["question"], row["answer"], metadata=metadata)
+            ok = await cache.set(
+                row["question"],
+                row["answer"],
+                metadata=metadata,
+                notebook_id=domain_scope_id(row["domain"]),
+            )
         except ValueError as e:
             # Provenance contract violation — should not happen given
             # validate_row(), but never crash the batch on one bad row.
@@ -253,13 +267,19 @@ async def ensure_qdrant_collection(qdrant_client: Any) -> bool:
     return True
 
 
-def _stable_point_id(question: str) -> str:
+def _stable_point_id(question: str, domain: str) -> str:
+    """Deterministic Qdrant point id, DOMAIN-SCOPED (Phase-0 safety rail
+    FATAL 1): without folding `domain` into the digest, two domains with
+    byte-identical question text would upsert to the SAME point — the
+    second write silently overwrites the first regardless of domain, and
+    a single Qdrant hit can only ever carry one domain's answer.
+    """
     import hashlib
     import uuid
 
-    digest = hashlib.sha256(question.strip().lower().encode("utf-8")).hexdigest()
-    # Deterministic UUID5 from the digest — same question always maps to the
-    # same point id, so re-running the harvester upserts in place.
+    digest = hashlib.sha256(f"{domain}:{question.strip().lower()}".encode()).hexdigest()
+    # Deterministic UUID5 from the digest — same (domain, question) always
+    # maps to the same point id, so re-running the harvester upserts in place.
     return str(uuid.uuid5(uuid.NAMESPACE_URL, digest))
 
 
@@ -314,7 +334,7 @@ async def harvest_to_qdrant(
             }
             for r in batch
         ]
-        ids = [_stable_point_id(q) for q in questions]
+        ids = [_stable_point_id(q, r["domain"]) for q, r in zip(questions, batch, strict=True)]
 
         result = await qdrant_client.upsert_documents(
             chunks=questions,
