@@ -46,6 +46,27 @@ sources:
   not prod (fly-split-brain class, no P0).
 - Lever #5 (`/api/drive/*` fix): started by this session — see PR reference below
   once opened.
+- **Lever #12 re-grounded + partially DONE** (2026-07-20, fresh re-verification —
+  the original row's claims were checked again on disk, not trusted from memory):
+  - `apps/kb/data/immigration/`: **87** raw txt (audit said 84 — corrected), zero
+    code/cron/CI references confirmed by repo-wide grep. NOT archived this
+    session: two visaoracle-v2 research docs (`research/visa/2026-07-17-*`)
+    still list it on their own "to examine" pile — moving it now would collide
+    with that lane's pending work (scar family #5, standing rule #2). Deferred
+    until that lane confirms done with it.
+  - `backend/kb/raw/top5_wave3/`: confirmed genuinely dead (one-off 2026-04-22
+    KG rerun, zero live references) — **DELETED**, see commit in this PR.
+  - `apps/kbli-navigator/data/`: the row's own framing ("second copy, sync
+    unverified") is **stale and wrong** — it's a live, CI-gated
+    (`check-kbli-dataset-sync.yml`), prod-feeding
+    (`scripts/sync_kbli_dataset.sh` → knowledge.balizero.com) consumer copy,
+    NOT an orphan. **New finding, more urgent than the lever it was filed
+    under**: `scripts/sync_kbli_dataset.sh --check` fails live on `origin/main`
+    right now — 12,663-byte drift between the navigator copy and the canonical
+    `source_documents/KBLI_2025_FINAL_CLEAN.json` — despite PR #2821 (merged
+    2026-07-19, same day as the audit) claiming to cure exactly this class of
+    drift. Tracked and handled as its own item, not as an "archive an orphan"
+    task — see below.
 
 ## Standing rules for this ledger
 
