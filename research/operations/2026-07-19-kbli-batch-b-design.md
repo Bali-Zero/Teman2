@@ -26,13 +26,7 @@ sources:
   - "live consumers grepped this session: apps/mouth/src/lib/{kbli-data.ts,kbli-data.server.ts,kbli-types.ts,types/kbli.ts}, apps/kbli-navigator/lib/{kbli-data.ts,kbli-types.ts}, apps/backend-rag/backend/services/kbli_eye.py, apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py"
   - "BPS Tabel Konversi KBLI 2020-2025 Vol.2 (vault-pinned, sha256 29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949), data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json"
   - "twin-race lessons: lesson_lot1_closeout_twin_race_two_conductors_2026_07_18, lesson_garuda_c1_twin_race_clobbered_prod_sibling_2026_07_18, lesson_outbound_email_twin_race_mailbox_check_2026_07_18 (memory)"
-adversarial_review: REV-4b — SIGNED by the conducting session 2026-07-19 after 4 adversarial
-  Codex rounds + 1 Gemini constructive pass. REV-1 panel (Codex sol xhigh REJECT + Gemini 3.1
-  Pro constructive) is summarized in full in §Panel below; the REV-2 re-check (7 residuals),
-  REV-3 re-check (4 determinism-gap residuals), and REV-4 round-4 re-check (3 residuals, closed
-  by conductor-dictated amendment, B7 Codex-cured) are all dispositioned in §Changelog alongside
-  the original 24. See §Sign-off for the signed disposition. Still NOT ARMED — see status above
-  for the open gates.
+adversarial_review: codex
 ---
 
 # Batch B design — the crosswalk-metadata sweep (REV-4b, pre-registration — SIGNED)
@@ -46,6 +40,41 @@ adversarial_review: REV-4b — SIGNED by the conducting session 2026-07-19 after
 > Phase-0's actual build and Zero's Legge-5 ratifications (AQL default, Tier-4 volume) remain
 > open before any lot may dispatch. See §Panel/§Changelog for the full disposition of every
 > finding across all rounds.
+
+## Adversarial review
+
+**Seat: Codex GPT-5.6-sol, xhigh effort (primary refuter, read-only red-team), 4 rounds** +
+**Gemini 3.1 Pro, constructive seat, 1 pass** — generator≠grader per CLAUDE.md §6 (neither seat
+is the authoring lane). Full round-by-round disposition lives in §Panel/§Changelog; summarized
+here per the R1 gate contract:
+
+- **Round 1 (REV-1)**: Codex **REJECT — DO NOT SIGN OR ARM**, 10 blockers (B1–B10) + 14 majors
+  + 7 minors. Gemini: constructive, 10 recommendations.
+- **Round 2 (on REV-2, which baked in 10 conductor rulings responding to round 1)**: B1/B4/B9
+  **CURED**; B2/B3/B5/B6/B10 **PARTIAL**; B7/B8 **NOT-CURED**.
+- **Round 3 (on REV-3, which closed those 7)**: B2/B6/B8 **CURED**; B3/B5/B7/B10 **still
+  NOT-CURED** — all four determinism gaps (a rule/algorithm/mapping stated in prose but never
+  frozen into a reproducible procedure).
+- **Round 4 (on REV-4, which froze those four)**: B7 **CURED**; B3/B5/B10 **still NOT-CURED**,
+  each a real but one-line-closable residual. Per the conductor's own exit-criterion ruling this
+  was declared the LAST Codex loop — B3/B5/B10 were closed by verbatim conductor-dictated
+  amendment (REV-4b) rather than a fifth round.
+
+**Result: 10/10 original blockers dispositioned, 11 residuals across rounds 2–4 closed** (7 in
+REV-3, 1 by Codex in round 4, 3 by conductor amendment in REV-4b). Standard met: pre-registration
+determinism, not implementation completeness.
+
+**Surviving objections (listed per the gate's own convention, not hidden):**
+
+- **§6's TOCTOU limit** — the pre-open grep-then-claim protocol for canonical-emit serialization
+  is acknowledged as imperfect (two conductors can still race past it on genuine coincidence),
+  backstopped by regenerate-not-carry-forward + blob-pin re-fencing, never claimed eliminated.
+- **B7's concurrent-ADD gap** — two brand-new `lot_id` claims can still land as duplicate JSON
+  keys; closed only by a `check_batch_b_reservation_conformance.py` CI validator that is itself
+  a BUILD-phase deliverable, not yet built.
+- **The Tier 1/2 disease hypothesis has zero empirical support** until the first lots actually
+  run (Top-remaining-risk 1) — REV-4b freezes *how* to measure and decide, not what the
+  measurement will show.
 
 ## Panel (REV-1 review — verdicts and where the outputs live)
 
