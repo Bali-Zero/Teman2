@@ -279,3 +279,71 @@ authorized to ship: 13/13 detach spec + contract refinement #2 (with the 41013
 seats re-run as its validation gate) + standalone 20232 + journal provenance —
 auto-merge armed only after the conductor's gate on the diff. — Conductor
 (Fable, MANDATO S2), 2026-07-19.
+
+## Appendix A — Cross-family GLM 5.2 pass (adjudicated by the conductor)
+
+Seat: **GLM 5.2** (`claude --print` + `CLAUDE_CONFIG_DIR=~/.claude-glm`), probed LIVE
+at run time (proprioception had it CRED_UNAVAILABLE 2h earlier — transitioned back).
+15/15 calls completed (1 transient timeout on m1-A-85330, auto-retried clean).
+Protocol mirrors L6 Appendix A: **Call A** image-only blind crosswalk re-derivation;
+**Call B** fresh independent process, renders + REDACTED canonical record,
+contradiction-check. Operator-agent grep confirmed no conductor verdicts, lot
+numbers, or category enums in the m1 prompts (one NEG exception disclosed below).
+Artifacts (session-ephemeral): `/tmp/kbli-conductor-a1-0718/{prompts,out}/lot7c-*`,
+runner log `out/_runner-lot7c.log`, generator `gen_lot7c_prompts.py`.
+
+### A.1 m1 — 5 members, two-call blind (85330 + 91222 mandatory)
+
+| Code | Conductor verdict | GLM outcome | Adjudication |
+| --- | --- | --- | --- |
+| 85330 | payload (aviation page-bleed) | A: ONE_TO_MANY high, true ancestor **85220** (not 85499), split {85316,85317,85330} · B: CONTRADICTION — wrong ancestor + verbatim flying-school licensing (DGCA 141-01, TCO) on an education code | **Strong independent re-derivation** — image-blind GLM converges on BOTH the ancestry and the contamination mechanism |
+| 91222 | illegitimate_inheritance | A: MANY_TO_ONE high, confirms **{91024, 91029}** on both pages · B: CONTRADICTION — MATCH_LANGSUNG/91022 refuted; notes 91022 belongs to sibling 91212 | **Strong independent re-derivation**. Bonus UNVERIFIED LEAD: B flags a kewajiban line possibly borrowed from sibling 91221 — recorded for the cure lane, NOT adjudicated |
+| 90111 | code_collision (90011/90021) | A: reads ancestor 90024, no 90011/90021 · B: EXACT_MATCH confirming 90011+90021 (medium) | **Scope mismatch, not a miss**: the collision lives at the PP28-lampiran evidence layer, which the m1 crosswalk-image protocol does not show GLM. PROTOCOL NOTE for Lot 8: collision-class codes get the PP28 render in Call A |
+| 86201 | source_absent_in_vault | A: 1:1 clean crosswalk · B: EXACT_MATCH; explicitly notes crosswalk carries no licensing fields | **Consistent at the correct evidence layer** — the crosswalk IS clean; the disease is PP28-side absence, invisible to a crosswalk-only read (matches the gate's D1-clean-vs-D5-problem adjudication) |
+| 85401 | payload (multi-parent, 51108 fan) | A: MANY_TO_ONE medium, confirms 85311/85312, surfaces-then-self-discounts a 51108 row · B: PARTIAL — finds FOUR off-sector regimes (electrical, aviation, maritime, medical-radiation) | **Corroborated, richer than the gate's own framing.** Conductor keyword-probe on the live per_skala THIS session confirms electricity (row 1) + aviation AND maritime (row 2); medical-radiation stays a GLM-cited lead, not independently confirmed. Call A's self-discounted 51108 hit noted for confidence calibration |
+
+**m1 net: 5/5 — no L7 verdict overturned; two verdicts independently re-derived
+from images alone by a different model family.**
+
+### A.2 m5-NEG — honesty-of-detach, 3 fresh cured codes (52239 L2, 68127 L5, 78109 L6)
+
+- **52239 — DEVIATION, CONDUCTOR-CONFIRMED (eyes on canonical this session):**
+  per_skala correctly detached (`[]` + disputed key), but `intel_2026.editorial`
+  standfirst still asserts "Open to every listed business scale and up to 100%
+  foreign ownership nationally … not blocked by Bali's moratorium" — the editorial
+  layer re-certifies the DETACHED scale values AND asserts pma/l4_bali facets that
+  are under P1-v2 abstain.
+- **68127 — DEVIATION, CONDUCTOR-CONFIRMED:** same pattern ("open nationally to
+  large-scale foreign investment while Bali records a proposal for PMA closure") —
+  re-certifies "Besar" + PMA on a detached record.
+- **78109 — HONEST, but the control is TAINTED for blindness purposes:** the live
+  `_data_note` embeds the literal enum "payload_cross_contamination" and the
+  redaction script does not strip category-enum tokens, so it leaked to GLM for
+  this code only. The HONEST verdict is independently justified by the structural
+  booleans GLM cited, but 78109 does NOT count as a clean blind NEG. Redaction gap
+  FILED (PENDING-ARMS).
+
+**Disease record (program-level): THIRD and FOURTH sighting of the
+"derived surface re-certifies a disowned value" class** — first sightings were on
+l4_bali reasons (cured class-wide in #2807); these two live on
+`intel_2026.editorial`, a surface #2807 does NOT cover. The editorial layer also
+asserts PMA/Bali facets under P1-v2 abstain. An editorial-class census + cure is
+FILED (PENDING-ARMS); 52239/68127 are its first two members.
+
+### A.3 m5-POS — structural honesty, v3 pool draws
+
+- **81300 — CLEAN (4/4 booleans)** · **74112 — CLEAN (4/4; correctly discounts
+  `per_skala_legacy` construction noise)**. Pool residual: {46620}; excluded {50122}.
+  (L6 was 1 clean / 1 suspect; L7 is 2/2 clean.)
+
+### A.4 Adjudication summary
+
+The cross-family pass STRENGTHENS the lot: no verdict overturned, two
+independently re-derived, one protocol gap (collision-class evidence layer) and one
+redaction gap identified, two REAL editorial-layer findings on cured codes
+(52239/68127) confirmed by the conductor's own read of the canonical, and two
+unverified leads recorded (91221 kewajiban borrow; 85401 medical-radiation regime).
+Per W100: agreement was never counted as evidence — every load-bearing NEW claim
+above was either conductor-eye-verified this session or explicitly labeled a lead.
+
+— Conductor (Fable, MANDATO S2), 2026-07-19, appended post SECOND SIGNING.
