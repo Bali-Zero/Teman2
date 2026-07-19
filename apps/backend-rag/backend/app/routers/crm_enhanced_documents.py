@@ -52,6 +52,16 @@ def _parse_date_or_none(date_str: str | None) -> date | None:
         return None
 
 
+def _row_get(row: Any, key: str) -> Any:
+    """Subscript a DB row (asyncpg Record / dict), tolerating missing keys —
+    test doubles built before a column was added must read as absent, not
+    crash the gate."""
+    try:
+        return row[key]
+    except (KeyError, TypeError):
+        return None
+
+
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced-documents"])
 
 # ============================================
@@ -599,7 +609,7 @@ async def upload_document_base64(
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
                 "SELECT id, full_name, google_drive_folder_id, client_type,"
-                "       phone, phone_normalized"
+                "       phone, phone_normalized, whatsapp"
                 "  FROM clients WHERE id = $1",
                 client_id,
             )
@@ -617,8 +627,13 @@ async def upload_document_base64(
                 # from THE shared primitive (phone_value_state) — 'absent'
                 # includes digit-free free-text like "n/a" (not a phone
                 # CLAIM), 'unusable' (digit signal but no core) fails closed.
+                # Round 16 F25: whatsapp joins the consistency set — the
+                # resolver (UPSERT_MATCH_SQL) finds whatsapp-only owners, so
+                # a row whose ONLY phone-ish value is whatsapp must be able
+                # to prove ownership here, or the resolver arm can never
+                # complete its own defining case.
                 cores = set()
-                for raw in (row["phone"], row["phone_normalized"]):
+                for raw in (row["phone"], row["phone_normalized"], _row_get(row, "whatsapp")):
                     state, core = phone_value_state(raw)
                     if state == "absent":
                         continue
@@ -848,7 +863,7 @@ async def upload_document_base64(
                     # re-check atomic with the INSERT against direct writers
                     # too (any concurrent UPDATE blocks until we commit).
                     _recheck = await conn.fetchrow(
-                        "SELECT phone, phone_normalized FROM clients"
+                        "SELECT phone, phone_normalized, whatsapp FROM clients"
                         " WHERE id = $1 FOR UPDATE",
                         client_id,
                     )
