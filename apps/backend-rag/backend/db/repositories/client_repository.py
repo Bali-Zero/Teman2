@@ -41,11 +41,15 @@ LIMIT 1
 """
 
 # Round 14, F18: DUP_OWNER_SQL answers "who is THE owner" (LIMIT 1) for the
-# create-dedup; the upload ownership token needs the FULL live owner set —
-# the originally-resolved client can still own the core while a SECOND
+# create-dedup; the upload ownership token needs the FULL owner set — the
+# originally-resolved client can still own the core while a SECOND
 # legitimate owner (allow_duplicate_phone create) appeared since the
 # resolve, and sole ownership is what the token actually asserts. Same
-# projections, no LIMIT.
+# projections, no LIMIT. Round 15, F22: NO deleted_at filter — the resolver
+# (UPSERT_MATCH_SQL) sees archived rows and refuses ambiguity
+# (reject_ambiguous, restore_if_archived=False), so the upload re-proof must
+# enumerate owners the SAME way: an archived co-owner makes a fresh resolve
+# ambiguous, therefore it must fail the sole-ownership token too.
 CORE_OWNER_IDS_SQL = """
 WITH norm AS (
     SELECT id,
@@ -53,7 +57,6 @@ WITH norm AS (
            regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr,
            regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') AS dw
     FROM clients
-    WHERE deleted_at IS NULL
 )
 SELECT id FROM norm
 WHERE CASE WHEN dn LIKE '62%' THEN substr(dn, 3)

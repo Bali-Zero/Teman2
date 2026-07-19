@@ -26,7 +26,7 @@ from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
-from backend.phone_lock import lock_cores, phone_core
+from backend.phone_lock import lock_cores, phone_core, phone_value_state
 from backend.services.common.background import spawn
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -613,16 +613,16 @@ async def upload_document_base64(
                 # on EXACTLY the expected core. A divergent row (phone=A,
                 # phone_normalized=B) is the same untrustworthy stale state the
                 # delivery gate fails closed on — expected∈{A,B} must refuse.
-                # Round 14, F19: a column that is PRESENT but yields no core
-                # (too short, non-ASCII digits) is unusable state, NOT absence
-                # — fail closed, mirroring crm_delivery._raw_phone_state. Only
-                # a genuinely empty column may be skipped.
+                # Round 14 F19 + round 15 F23: absent/unusable/usable comes
+                # from THE shared primitive (phone_value_state) — 'absent'
+                # includes digit-free free-text like "n/a" (not a phone
+                # CLAIM), 'unusable' (digit signal but no core) fails closed.
                 cores = set()
                 for raw in (row["phone"], row["phone_normalized"]):
-                    if raw is None or not str(raw).strip():
+                    state, core = phone_value_state(raw)
+                    if state == "absent":
                         continue
-                    core = phone_core(raw)
-                    if core is None:
+                    if state == "unusable":
                         return False
                     cores.add(core)
                 return cores == {data.expected_phone_core}

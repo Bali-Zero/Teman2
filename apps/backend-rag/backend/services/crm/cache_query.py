@@ -262,10 +262,15 @@ class CRMQueryOptimizer:
             RETURNING id
         """
         async with self.db_pool.acquire() as conn, conn.transaction():
-            # Phone is an identity-resolution key (Codex 2026-07-19 round 10,
-            # F12): batch-created owners must be cooperative with the intake
-            # delivery lock window (keys sorted inside the helper).
-            await lock_phone_cores(conn, *[c.get("phone") for c in clients])
+            # Phone AND whatsapp are identity-resolution keys (Codex
+            # 2026-07-19 round 10 F12; round 15 F21 made whatsapp an
+            # ownership column too): batch-created owners must be cooperative
+            # with the intake delivery lock window for EVERY core they
+            # introduce (keys sorted inside the helper).
+            await lock_phone_cores(
+                conn,
+                *[v for c in clients for v in (c.get("phone"), c.get("whatsapp"))],
+            )
             rows = await conn.fetch(query, *all_params)
             return [row["id"] for row in rows]
 

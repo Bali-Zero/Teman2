@@ -81,11 +81,13 @@ def _row_str(row: object, key: str) -> str | None:
 # Core-equivalence matcher for upsert-by-phone: matches every stored row whose
 # phone columns collapse to the same canonical core as the payload — 0812… and
 # 62812… are ONE identity (Codex 2026-07-19 round 10, F15). The predicate
-# covers BOTH columns (round 12): historical rows exist with a raw `phone` and
-# a NULL/stale `phone_normalized` (the trigger only recomputes on UPDATE OF
-# phone), and matching only the normalized column would let the INSERT path
-# mint a duplicate card for a raw-only owner. $1 is the payload's core. SQL
-# CASE mirrors backend.phone_lock.phone_core.
+# covers ALL THREE ownership columns: phone_normalized + raw phone (round 12:
+# historical rows exist with a raw `phone` and a NULL/stale `phone_normalized`
+# — the trigger only recomputes on UPDATE OF phone) + whatsapp (round 15, F21:
+# whatsapp is an ownership column for the dedup/upload gates, so a
+# whatsapp-only owner must be VISIBLE to the resolver too, or the two sides
+# enumerate "owner" differently). $1 is the payload's core. SQL CASE mirrors
+# backend.phone_lock.phone_core.
 UPSERT_MATCH_SQL = """
 SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
 FROM clients
@@ -99,6 +101,11 @@ WHERE CASE WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'
            WHEN regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
            THEN substr(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 2)
            ELSE regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') END = $1
+   OR CASE WHEN regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') END = $1
 ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
 FOR UPDATE
 """
@@ -1680,30 +1687,35 @@ async def update_client(
             """
             params.append(client_id)
 
-            if updates.phone is not None:
-                # Phone is an identity-resolution key: intake delivery resolves
-                # the Fly identity by it while holding 'phonecore:' advisory
-                # locks. Changing a phone must be COOPERATIVE with that window
-                # (Codex 2026-07-19 rounds 9-10, F12): lock the canonical cores
-                # of the NEW value plus everything the row currently holds,
-                # with a re-read-under-lock CONVERGENCE loop — the pre-lock
-                # read can be stale (a racing PATCH may land between our read
-                # and our locks), so keep re-reading and additively locking
-                # until the row's cores are fully covered by locks we hold.
+            if updates.phone is not None or updates.whatsapp is not None:
+                # Phone AND whatsapp are OWNERSHIP columns: intake delivery
+                # and the upload ownership token resolve identity over
+                # phone_normalized, phone and whatsapp alike, so ANY writer
+                # touching EITHER column must be cooperative with the
+                # 'phonecore:' advisory-lock window (Codex rounds 9-10 F12;
+                # round 15 F21 — a whatsapp-only PATCH used to bypass the
+                # protocol entirely). Lock the canonical cores of the NEW
+                # values plus everything the row currently holds, with a
+                # re-read-under-lock CONVERGENCE loop — the pre-lock read can
+                # be stale, so keep re-reading and additively locking until
+                # the row's cores are fully covered by locks we hold.
                 async with conn.transaction():
                     _locked: set[str] = set()
                     _converged = False
                     for _ in range(3):
                         _cur = await conn.fetchrow(
-                            "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                            "SELECT phone, phone_normalized, whatsapp"
+                            "  FROM clients WHERE id = $1",
                             client_id,
                         )
                         _want = {
                             c
                             for c in (
                                 phone_core(updates.phone),
+                                phone_core(updates.whatsapp),
                                 phone_core(_row_str(_cur, "phone")),
                                 phone_core(_row_str(_cur, "phone_normalized")),
+                                phone_core(_row_str(_cur, "whatsapp")),
                             )
                             if c is not None
                         }
@@ -1713,8 +1725,10 @@ async def update_client(
                         _locked |= await lock_phone_cores(
                             conn,
                             updates.phone,
+                            updates.whatsapp,
                             _row_str(_cur, "phone"),
                             _row_str(_cur, "phone_normalized"),
+                            _row_str(_cur, "whatsapp"),
                         )
                     if not _converged:
                         # Fail CLOSED (Codex round 12, F12 gap 1): a value

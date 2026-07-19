@@ -14,6 +14,7 @@ import asyncpg
 # (backend.phone_lock) — "the same phone" has exactly one definition, so the
 # round-9 F13 parity requirement holds by construction, not by mirroring.
 from backend.phone_lock import phone_core as _phone_core
+from backend.phone_lock import phone_value_state
 from backend.services.intake import crm_push
 from backend.services.intake import writer as intake_writer
 
@@ -40,20 +41,10 @@ def _raw_phone_state(raw: object) -> tuple[str, str | None]:
     than trust a possibly-stale phone_normalized (Codex round 10, F11 gap 1
     residual: a raw ``"12345"`` must not be treated as raw-absent).
     """
-    s = ("" if raw is None else str(raw)).strip()
-    if not s:
-        return ("absent", None)
-    # Digit-SIGNAL detection is Unicode-aware on purpose (Codex round 12, F11
-    # Unicode variant): a raw of Arabic-Indic/full-width digits is a phone
-    # CLAIM even though `phone_core` (deliberately ASCII-only, mirroring the
-    # SQL [^0-9] projections) can extract no core from it — that combination
-    # must land in `unusable` (fail closed), never `absent`.
-    if not re.search(r"\d", s):
-        return ("absent", None)
-    core = _phone_core(s)
-    if core is None:
-        return ("unusable", None)
-    return ("usable", core)
+    # Round 15, F23: delegate to THE shared primitive — this gate and the
+    # upload ownership gate must classify absent/unusable identically, and a
+    # second local copy is exactly the drift twin that bit here.
+    return phone_value_state(raw)
 
 
 # Sole-owner gate over BOTH phone columns (Codex round-8, F11 gaps): historical

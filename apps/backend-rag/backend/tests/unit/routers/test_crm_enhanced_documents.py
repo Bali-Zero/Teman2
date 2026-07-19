@@ -1382,13 +1382,20 @@ async def test_upload_refuses_unusable_raw_phone_even_if_normalized_matches(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("stored_phone", [None, "n/a"])
 async def test_upload_allows_absent_raw_phone_with_matching_normalized(
     mock_db_pool,
     mock_current_user,
+    stored_phone,
 ):
     """F19 innocence: a genuinely EMPTY phone column (absence, not garbage)
     with a matching phone_normalized is legitimate single-column ownership —
-    the fail-closed rule must not over-refuse it."""
+    the fail-closed rule must not over-refuse it.
+
+    F23 companion (round 15): the parametrized 'n/a' case proves digit-FREE
+    free-text garbage is classified as ABSENCE too — same shared
+    phone_value_state primitive as the delivery gate, so the two surfaces
+    cannot drift on what 'absent' means."""
     from fastapi import BackgroundTasks
 
     from backend.app.routers.crm_enhanced_documents import (
@@ -1401,7 +1408,7 @@ async def test_upload_allows_absent_raw_phone_with_matching_normalized(
         "full_name": "Client One",
         "google_drive_folder_id": "root",
         "client_type": "individual",
-        "phone": None,  # genuinely absent
+        "phone": stored_phone,  # absent: NULL, or digit-free free-text
         "phone_normalized": "6281234567890",
     }
     conn = mock_db_pool._mock_conn

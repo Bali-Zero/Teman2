@@ -1164,3 +1164,36 @@ class TestUpdateClientPhoneLockConvergence:
         # The UPDATE ... RETURNING never ran — every execute was a lock.
         for call in conn.execute.call_args_list:
             assert "UPDATE clients" not in call[0][0]
+
+    def test_patch_whatsapp_only_enters_lock_protocol(self, client, mock_db_pool):
+        """Round-15 F21 guilt: a whatsapp-ONLY PATCH must enter the SAME
+        convergence loop — whatsapp is an ownership column (resolver, dedup
+        and upload gates all search it). Before the fix this request bypassed
+        the protocol entirely and would have written without any lock; an
+        oscillating whatsapp core proves participation via the 409."""
+        pool, conn = mock_db_pool
+
+        conn.execute = AsyncMock()
+        # Every re-read shows a FRESH whatsapp core — never converges.
+        oscillating = [
+            {
+                "phone": None,
+                "phone_normalized": None,
+                "whatsapp": f"+628{n}{n}{n}{n}{n}{n}{n}{n}",
+            }
+            for n in range(1, 9)
+        ]
+        conn.fetchrow = AsyncMock(side_effect=oscillating)
+
+        response = client.patch(
+            "/api/crm/clients/1?updated_by=test@example.com",
+            json={"whatsapp": "+6281234567890"},
+        )
+
+        assert response.status_code == 409
+        assert "phone_lock_convergence_failed" in response.json()["detail"]
+        # The whatsapp-only PATCH took advisory locks and never reached UPDATE.
+        lock_calls = [c for c in conn.execute.call_args_list if "pg_advisory_xact_lock" in c[0][0]]
+        assert lock_calls
+        for call in conn.execute.call_args_list:
+            assert "UPDATE clients" not in call[0][0]

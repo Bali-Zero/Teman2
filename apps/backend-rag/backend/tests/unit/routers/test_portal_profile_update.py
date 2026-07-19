@@ -244,3 +244,27 @@ async def test_update_profile_phone_lock_converges_on_stable_row():
     assert result is not None
     update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
     assert update_sqls  # the write DID happen
+
+
+@pytest.mark.asyncio
+async def test_update_profile_whatsapp_only_takes_phone_lock():
+    """Round-15 F21 guilt: a whatsapp-ONLY portal profile update must take
+    the phonecore advisory locks — whatsapp is an ownership column, and
+    before the fix this path bypassed the lock protocol entirely."""
+    service, mock_conn = _make_service()
+
+    result = await service.update_profile(
+        client_id=1,
+        fields={"whatsapp": "+6281234567890"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+    assert result is not None
+    lock_sqls = [
+        c[0][0]
+        for c in mock_conn.execute.call_args_list
+        if "pg_advisory_xact_lock" in c[0][0]
+    ]
+    assert lock_sqls  # the whatsapp-only update DID take the phonecore lock
+    update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
+    assert update_sqls and "whatsapp" in update_sqls[0]

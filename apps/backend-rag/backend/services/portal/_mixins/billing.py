@@ -270,16 +270,19 @@ class PortalBillingMixin:
                 set_clause = ", ".join(set_parts)
 
                 async with conn.transaction():
-                    if "phone" in safe_fields:
-                        # Phone is an identity-resolution key: intake delivery
-                        # resolves the Fly identity by it under 'phonecore:'
-                        # advisory locks (Codex 2026-07-19 round 10, F12) — a
-                        # portal self-serve phone change must be cooperative
-                        # with that window, never race it. Re-read-under-lock
-                        # CONVERGENCE loop (round 12, F12 gap 2): the pre-lock
-                        # read can be stale, so keep re-reading and additively
-                        # locking until the row's cores are covered by locks we
-                        # hold — and fail CLOSED if that never converges.
+                    if "phone" in safe_fields or "whatsapp" in safe_fields:
+                        # Phone AND whatsapp are OWNERSHIP columns: intake
+                        # delivery and the upload ownership token resolve
+                        # identity over phone_normalized, phone and whatsapp
+                        # alike, so a portal self-serve change of EITHER must
+                        # be cooperative with the 'phonecore:' advisory-lock
+                        # window (Codex round 10 F12; round 15 F21 — a
+                        # whatsapp-only update used to bypass the protocol).
+                        # Re-read-under-lock CONVERGENCE loop (round 12, F12
+                        # gap 2): the pre-lock read can be stale, so keep
+                        # re-reading and additively locking until the row's
+                        # cores are covered — and fail CLOSED if that never
+                        # converges.
                         def _val(row: Any, key: str) -> Any:
                             try:
                                 return row[key]
@@ -290,17 +293,20 @@ class PortalBillingMixin:
                         _converged = False
                         for _ in range(3):
                             _old = await conn.fetchrow(
-                                "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                                "SELECT phone, phone_normalized, whatsapp"
+                                "  FROM clients WHERE id = $1",
                                 client_id,
                             )
                             _want = {
                                 c
                                 for c in (
                                     phone_core(safe_fields.get("phone")),
+                                    phone_core(safe_fields.get("whatsapp")),
                                     phone_core(_val(_old, "phone") if _old else None),
                                     phone_core(
                                         _val(_old, "phone_normalized") if _old else None
                                     ),
+                                    phone_core(_val(_old, "whatsapp") if _old else None),
                                 )
                                 if c is not None
                             }
@@ -310,8 +316,10 @@ class PortalBillingMixin:
                             _locked |= await lock_phone_cores(
                                 conn,
                                 safe_fields.get("phone"),
+                                safe_fields.get("whatsapp"),
                                 _val(_old, "phone") if _old else None,
                                 _val(_old, "phone_normalized") if _old else None,
+                                _val(_old, "whatsapp") if _old else None,
                             )
                         if not _converged:
                             raise RuntimeError(

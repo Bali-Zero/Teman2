@@ -2101,3 +2101,70 @@ async def test_dup_owner_sql_finds_whatsapp_only_owner(pool):
         async with pool.acquire() as conn:
             if cid is not None:
                 await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_upsert_match_sql_finds_whatsapp_only_owner(pool):
+    """Round-15 F21: whatsapp is an OWNERSHIP column — an owner known only
+    by whatsapp must be visible to the upsert-by-phone resolver, or two
+    writers create a split identity that the dedup gates then treat as
+    ambiguous forever. Executed against the real SQL's whatsapp leg."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, whatsapp) VALUES ($1,$2) RETURNING id",
+                f"waup-{uuid.uuid4().hex[:6]}",
+                "0" + tail,
+            )
+            check = await conn.fetchrow(
+                "SELECT phone, phone_normalized FROM clients WHERE id=$1", cid
+            )
+            assert check["phone"] is None  # whatsapp-only shape is real
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            assert cid in {r["id"] for r in rows}  # found via the whatsapp leg
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_core_owner_ids_sql_sees_archived_coowner(pool):
+    """Round-15 F22: the sole-ownership resolver must see ARCHIVED co-owners
+    too — the delivery resolver refuses an ambiguous core whether the other
+    owner is live or soft-deleted (reject_ambiguous + restore_if_archived
+    both key off existence, not liveness), so the upload re-proof must apply
+    the same parity or a stale token slips through on an archived twin."""
+    from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
+
+    tail = str(uuid.uuid4().int)[:9]
+    ids: list[int] = []
+    try:
+        async with pool.acquire() as conn:
+            ids.append(
+                await conn.fetchval(
+                    "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                    f"live-{uuid.uuid4().hex[:6]}",
+                    "0" + tail,
+                )
+            )
+            ids.append(
+                await conn.fetchval(
+                    "INSERT INTO clients (full_name, phone, deleted_at)"
+                    " VALUES ($1,$2, now()) RETURNING id",
+                    f"arch-{uuid.uuid4().hex[:6]}",
+                    "62" + tail,
+                )
+            )
+            rows = await conn.fetch(CORE_OWNER_IDS_SQL, [tail])
+            owners = {r["id"] for r in rows}
+            assert set(ids) <= owners  # archived co-owner is NOT invisible
+    finally:
+        async with pool.acquire() as conn:
+            for cid in ids:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)

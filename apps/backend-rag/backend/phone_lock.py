@@ -42,6 +42,35 @@ def phone_core(raw: object) -> str | None:
     return digits if len(digits) >= 6 else None
 
 
+def phone_value_state(raw: object) -> tuple[str, str | None]:
+    """Classify ONE stored phone-ish value for consistency gates.
+
+    THE shared absent/unusable/usable primitive (Codex round 15, F23 — the
+    delivery gate and the upload ownership gate each carried their own copy
+    and the 'absent' semantics drifted):
+
+    - ``('absent', None)`` — empty, or contains NO digit at all: free-text
+      garbage like ``"n/a"`` is not a phone CLAIM.
+    - ``('unusable', None)`` — has a digit SIGNAL but ``phone_core`` yields
+      no core (short fragment, non-ASCII digits): a present-but-garbage claim
+      that cannot cross-check anything → callers fail closed.
+    - ``('usable', core)`` — yields a canonical core.
+
+    Digit-SIGNAL detection is Unicode-aware on purpose (round 12, F11
+    Unicode variant): Arabic-Indic/full-width digits are a phone CLAIM even
+    though ``phone_core`` (deliberately ASCII-only, mirroring the SQL
+    ``[^0-9]`` projections) extracts no core — that combination is
+    ``unusable``, never ``absent``.
+    """
+    s = ("" if raw is None else str(raw)).strip()
+    if not s or not re.search(r"\d", s):
+        return ("absent", None)
+    core = phone_core(s)
+    if core is None:
+        return ("unusable", None)
+    return ("usable", core)
+
+
 async def lock_cores(conn: asyncpg.Connection, *cores: str | None) -> set[str]:
     """Take transaction-scoped advisory locks on ALREADY-canonical cores.
 
