@@ -21,7 +21,16 @@ def _make_pool(conn=None):
         async def __aexit__(self, *a):
             pass
 
+    class _Tx:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
     pool.acquire = MagicMock(return_value=_Ctx())
+    # conn.transaction() must be an async CM, not a coroutine (phone-lock TX).
+    conn.transaction = MagicMock(return_value=_Tx())
     pool._conn = conn
     return pool, conn
 

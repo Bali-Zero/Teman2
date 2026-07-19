@@ -9,10 +9,15 @@ Each test names the gate it falsifies. The gates (from the P9 spec):
   G2  spend in [threshold, budget) -> DEGRADE returns next tier (not STOP,
       not blind-continue).
   G3  STOP push is a CHOICE ([D]/[P]/[C]), not a bare diagnosis.
-  G6  every cascade provider in {claude_oauth, gemini, deepseek} has a
-      breaker threshold (no provider unguarded).
+  G6  every cascade provider in {claude_oauth, gemini, openrouter} has a
+      breaker threshold (no PAID provider unguarded). kimi and ollama are
+      intentionally excluded — flat-subscription / local, zero marginal cost.
 Plus: window-sum correctness with injected fake rows (provider isolation),
 next_tier cascade order + terminal None, and import-purity.
+
+DeepSeek V4 Pro API RETIRED 2026-07-19 (owner order, pre-auth revoked — never
+top up). Its replacement seat in the cascade is Kimi (flat Allegro
+subscription, unguarded like ollama — see cost_breaker.py CASCADE_ORDER).
 """
 
 from __future__ import annotations
@@ -50,11 +55,13 @@ class _SpyPush:
 @pytest.fixture()
 def config() -> cb.BreakerConfig:
     # Deterministic config independent of env: budget 10, threshold 85% = 8.5.
+    # Third provider is openrouter (the real third GUARDED tier post-DeepSeek
+    # retirement) — not kimi, which is intentionally unguarded (flat sub).
     return cb.BreakerConfig(
         budgets_usd={
             "claude_oauth": Decimal("10.00"),
             "gemini": Decimal("10.00"),
-            "deepseek": Decimal("10.00"),
+            "openrouter": Decimal("10.00"),
         },
         threshold_fraction=Decimal("0.85"),
         window_seconds=24 * 60 * 60,
@@ -99,7 +106,7 @@ def test_g2_degrade_returns_next_tier(config: cb.BreakerConfig) -> None:
 
 def test_g2_degrade_exactly_at_threshold(config: cb.BreakerConfig) -> None:
     # spend == threshold (8.50) -> DEGRADE (inclusive lower bound)
-    verdict = cb.evaluate("deepseek", Decimal("8.50"), config)
+    verdict = cb.evaluate("openrouter", Decimal("8.50"), config)
     assert verdict is cb.Verdict.DEGRADE
 
 
@@ -120,7 +127,7 @@ def test_g3_stop_pushes_a_choice(config: cb.BreakerConfig) -> None:
     spy = _SpyPush()
     # spend 10.00 >= budget 10.00 -> STOP. cooldown_sec=0 keeps the test
     # deterministic + writes no state file (P2-1 cooldown is off here).
-    decision = cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=0)
+    decision = cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=0)
     assert decision.verdict is cb.Verdict.STOP
     assert len(spy.calls) == 1, "STOP must push exactly once"
     msg = spy.calls[0]
@@ -132,7 +139,7 @@ def test_g3_stop_pushes_a_choice(config: cb.BreakerConfig) -> None:
 
 def test_g3_diagnosis_only_message_is_rejected(config: cb.BreakerConfig) -> None:
     # Falsifier: a message with the spend but NO options must fail the G3 check.
-    diagnosis_only = "budget deepseek exhausted: spend $10.00 / $10.00 in 24h."
+    diagnosis_only = "budget openrouter exhausted: spend $10.00 / $10.00 in 24h."
     has_options = all(opt in diagnosis_only for opt in ("[D]", "[P]", "[C]"))
     assert not has_options, "a diagnosis-only message must NOT pass the choice gate"
 
@@ -152,15 +159,17 @@ def test_g3_build_stop_message_directly(config: cb.BreakerConfig) -> None:
 
 def test_g6_every_guarded_provider_has_threshold() -> None:
     config = cb.BreakerConfig.from_env(env={})  # pure defaults
-    for provider in ("claude_oauth", "gemini", "deepseek"):
+    for provider in ("claude_oauth", "gemini", "openrouter"):
         assert config.budget_for(provider) is not None, f"{provider} has no budget (G6)"
         assert config.threshold_for(provider) is not None, f"{provider} has no threshold (G6)"
         assert config.budget_for(provider) > 0
 
 
 def test_g6_guarded_set_covers_paid_cascade_tiers() -> None:
-    # Every cascade tier that costs money must be in the guarded set.
-    paid_tiers = [t for t in cb.CASCADE_ORDER if t != "ollama"]
+    # Every cascade tier that costs real money must be in the guarded set.
+    # ollama (local) and kimi (flat Allegro subscription) are both zero
+    # marginal cost by design — neither is a "paid tier" here.
+    paid_tiers = [t for t in cb.CASCADE_ORDER if t not in ("ollama", "kimi")]
     for tier in paid_tiers:
         assert tier in cb.GUARDED_PROVIDERS, f"paid tier {tier} is unguarded (G6)"
 
@@ -170,6 +179,24 @@ def test_g6_ollama_is_unguarded_and_always_allows() -> None:
     config = cb.BreakerConfig.from_env(env={})
     assert config.budget_for("ollama") is None
     assert cb.evaluate("ollama", Decimal("9999"), config) is cb.Verdict.ALLOW
+
+
+def test_g6_kimi_is_unguarded_and_always_allows() -> None:
+    # kimi is a flat-subscription seat (Moonshot Allegro plan) — zero
+    # marginal cost, same posture as ollama; intentionally unguarded.
+    config = cb.BreakerConfig.from_env(env={})
+    assert config.budget_for("kimi") is None
+    assert cb.evaluate("kimi", Decimal("9999"), config) is cb.Verdict.ALLOW
+
+
+def test_deepseek_retired_not_in_cascade_or_guarded() -> None:
+    # DeepSeek V4 Pro API RETIRED 2026-07-19 (owner order, pre-auth revoked —
+    # never top up). Guilt-style: it must not resurface anywhere in the live
+    # cascade topology.
+    assert "deepseek" not in cb.CASCADE_ORDER
+    assert "deepseek" not in cb.GUARDED_PROVIDERS
+    assert "deepseek" not in cb._DEFAULT_BUDGET_USD
+    assert cb.next_tier("deepseek") is None
 
 
 # ---------------------------------------------------------------------------
@@ -201,10 +228,10 @@ def test_window_sum_excludes_rows_before_window() -> None:
     now = datetime(2026, 6, 8, 12, 0, 0, tzinfo=timezone.utc)
     start = now - timedelta(hours=24)
     rows = [
-        _row("deepseek", "1.00", now - timedelta(hours=1)),  # in window
-        _row("deepseek", "9.99", now - timedelta(hours=48)),  # too old
+        _row("kimi", "1.00", now - timedelta(hours=1)),  # in window
+        _row("kimi", "9.99", now - timedelta(hours=48)),  # too old
     ]
-    total = cb.sum_rows_in_window(rows, "deepseek", start)
+    total = cb.sum_rows_in_window(rows, "kimi", start)
     assert total == Decimal("1.00"), "rows older than the window must be excluded"
 
 
@@ -239,12 +266,14 @@ def test_window_sum_skips_malformed_rows() -> None:
 
 
 def test_next_tier_cascade_order() -> None:
-    # openrouter (paid per-token, no flat sub) is the last PAID tier before the
-    # free floor (P0-2), so the cascade is now
-    # claude_oauth -> gemini -> deepseek -> openrouter -> ollama.
+    # kimi (flat Allegro subscription, unguarded — replaces the retired
+    # DeepSeek leg 2026-07-19) sits between gemini and openrouter. openrouter
+    # (paid per-token, no flat sub) is the last PAID tier before the free
+    # floor (P0-2), so the cascade is now
+    # claude_oauth -> gemini -> kimi -> openrouter -> ollama.
     assert cb.next_tier("claude_oauth") == "gemini"
-    assert cb.next_tier("gemini") == "deepseek"
-    assert cb.next_tier("deepseek") == "openrouter"
+    assert cb.next_tier("gemini") == "kimi"
+    assert cb.next_tier("kimi") == "openrouter"
     assert cb.next_tier("openrouter") == "ollama"
 
 
@@ -318,7 +347,7 @@ def test_jsonl_fallback_reads_real_file(tmp_path: Path) -> None:
     f.write_text(
         "\n".join(
             [
-                f'{{"provider": "deepseek", "cost_usd": 1.5, "ts_utc": "{now.isoformat()}"}}',
+                f'{{"provider": "kimi", "cost_usd": 1.5, "ts_utc": "{now.isoformat()}"}}',
                 f'{{"provider": "gemini", "cost_usd": 9.0, "ts_utc": "{now.isoformat()}"}}',
                 "not json at all",  # malformed line must be skipped
             ],
@@ -326,7 +355,7 @@ def test_jsonl_fallback_reads_real_file(tmp_path: Path) -> None:
     )
     total = asyncio.run(
         cb.provider_spend_in_window(
-            "deepseek", 3600, jsonl_root=tmp_path, now=now,
+            "kimi", 3600, jsonl_root=tmp_path, now=now,
         ),
     )
     assert total == Decimal("1.5")
@@ -407,7 +436,7 @@ def test_p0_1_empty_but_read_source_is_known_zero_allows(config: cb.BreakerConfi
     day = now.date().isoformat()
     f = tmp_path / f"llm_cost_log.{day}.jsonl"
     f.write_text(  # a row for a DIFFERENT provider — gemini has zero, but read
-        f'{{"provider": "deepseek", "cost_usd": 1.0, "ts_utc": "{now.isoformat()}"}}\n',
+        f'{{"provider": "kimi", "cost_usd": 1.0, "ts_utc": "{now.isoformat()}"}}\n',
     )
     spend = asyncio.run(
         cb.provider_spend_in_window("gemini", 3600, jsonl_root=tmp_path, now=now),
@@ -423,11 +452,11 @@ def test_p0_1_db_zero_is_known_zero_not_unknown(config: cb.BreakerConfig) -> Non
     # A successful DB read returning 0 is KNOWN zero -> Decimal(0) -> ALLOW.
     conn = _FakeConn(0)
     spend = asyncio.run(
-        cb.provider_spend_in_window("deepseek", 3600, conn_or_pool=conn),
+        cb.provider_spend_in_window("openrouter", 3600, conn_or_pool=conn),
     )
     assert spend == Decimal("0")
     assert spend is not None
-    assert cb.evaluate("deepseek", spend, config) is cb.Verdict.ALLOW
+    assert cb.evaluate("openrouter", spend, config) is cb.Verdict.ALLOW
 
 
 def test_p0_1_unguarded_provider_unknown_still_allows(config: cb.BreakerConfig) -> None:
@@ -481,16 +510,16 @@ def test_p0_2_gemini_flash_counts_toward_gemini() -> None:
     rows = [
         _row("gemini-flash", "2.00", now - timedelta(hours=1)),
         _row("gemini-2.0", "3.00", now - timedelta(hours=2)),
-        _row("deepseek-v4-pro", "9.00", now - timedelta(hours=1)),  # not gemini
+        _row("kimi-code/k3", "9.00", now - timedelta(hours=1)),  # not gemini
     ]
     total = cb.sum_rows_in_window(rows, "gemini", start, now)
     assert total == Decimal("5.00"), "model-suffixed gemini variants fold onto gemini"
 
 
-def test_p0_2_deepseek_suffix_folds() -> None:
-    assert cb._normalize_provider("deepseek-v4-pro") == "deepseek"
-    assert cb._normalize_provider("deepseek-v4-flash") == "deepseek"
-    assert cb._normalize_provider("DeepSeek") == "deepseek"
+def test_p0_2_kimi_suffix_folds() -> None:
+    assert cb._normalize_provider("kimi-code/k3") == "kimi"
+    assert cb._normalize_provider("kimi-for-coding") == "kimi"
+    assert cb._normalize_provider("Kimi") == "kimi"
 
 
 def test_p0_2_openrouter_is_guarded_not_auto_allow() -> None:
@@ -570,10 +599,10 @@ def test_p1_2_future_dated_row_excluded_jsonl() -> None:
     now = datetime(2026, 6, 8, 12, 0, 0, tzinfo=timezone.utc)
     start = now - timedelta(hours=24)
     rows = [
-        _row("deepseek", "1.00", now - timedelta(hours=1)),  # in window
-        _row("deepseek", "99.00", now + timedelta(hours=1)),  # FUTURE — excluded
+        _row("kimi", "1.00", now - timedelta(hours=1)),  # in window
+        _row("kimi", "99.00", now + timedelta(hours=1)),  # FUTURE — excluded
     ]
-    total = cb.sum_rows_in_window(rows, "deepseek", start, now)
+    total = cb.sum_rows_in_window(rows, "kimi", start, now)
     assert total == Decimal("1.00"), "a future-dated row must not inflate spend (P1-2)"
 
 
@@ -599,11 +628,11 @@ def test_p1_3_inf_and_negative_cost_skipped() -> None:
     now = datetime(2026, 6, 8, 12, 0, 0, tzinfo=timezone.utc)
     start = now - timedelta(hours=24)
     rows = [
-        _row("deepseek", "Infinity", now - timedelta(hours=1)),  # skipped
-        _row("deepseek", "-5.00", now - timedelta(hours=2)),  # negative skipped
-        _row("deepseek", "4.00", now - timedelta(hours=3)),
+        _row("kimi", "Infinity", now - timedelta(hours=1)),  # skipped
+        _row("kimi", "-5.00", now - timedelta(hours=2)),  # negative skipped
+        _row("kimi", "4.00", now - timedelta(hours=3)),
     ]
-    total = cb.sum_rows_in_window(rows, "deepseek", start, now)
+    total = cb.sum_rows_in_window(rows, "kimi", start, now)
     assert total == Decimal("4.00")
 
 
@@ -625,23 +654,23 @@ def test_p1_3_nan_does_not_flip_verdict_to_allow(config: cb.BreakerConfig) -> No
     now = datetime(2026, 6, 8, 12, 0, 0, tzinfo=timezone.utc)
     start = now - timedelta(hours=24)
     rows = [
-        _row("deepseek", "12.00", now - timedelta(hours=1)),
-        _row("deepseek", "NaN", now - timedelta(hours=2)),
+        _row("openrouter", "12.00", now - timedelta(hours=1)),
+        _row("openrouter", "NaN", now - timedelta(hours=2)),
     ]
-    total = cb.sum_rows_in_window(rows, "deepseek", start, now)
-    assert cb.evaluate("deepseek", total, config) is cb.Verdict.STOP
+    total = cb.sum_rows_in_window(rows, "openrouter", start, now)
+    assert cb.evaluate("openrouter", total, config) is cb.Verdict.STOP
 
 
 def test_p1_3_zero_budget_config_is_unguarded_no_stop_spam() -> None:
     # A directly-constructed budget=0 must NOT STOP at every spend (STOP-spam);
     # zero budget = unguarded = ALLOW.
     cfg = cb.BreakerConfig(
-        budgets_usd={"deepseek": Decimal("0")},
+        budgets_usd={"openrouter": Decimal("0")},
         threshold_fraction=Decimal("0.85"),
         window_seconds=3600,
     )
-    assert cfg.budget_for("deepseek") is None
-    assert cb.evaluate("deepseek", Decimal("100"), cfg) is cb.Verdict.ALLOW
+    assert cfg.budget_for("openrouter") is None
+    assert cb.evaluate("openrouter", Decimal("100"), cfg) is cb.Verdict.ALLOW
 
 
 # ---------------------------------------------------------------------------
@@ -654,17 +683,17 @@ def test_p2_1_stop_push_suppressed_within_cooldown(config: cb.BreakerConfig, tmp
     monkeypatch.setattr(cb, "_COOLDOWN_STATE_DIR", tmp_path)
     spy = _SpyPush()
     # First STOP fires + sets cooldown.
-    cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
+    cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
     assert len(spy.calls) == 1, "first STOP must push"
     # Second STOP within cooldown is suppressed.
-    cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
+    cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
     assert len(spy.calls) == 1, "duplicate STOP within cooldown must be suppressed (P2-1)"
 
 
 def test_p2_1_cooldown_is_per_provider(config: cb.BreakerConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cb, "_COOLDOWN_STATE_DIR", tmp_path)
     spy = _SpyPush()
-    cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
+    cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
     cb.decide("gemini", Decimal("10.00"), config, push=spy, cooldown_sec=3600)
     assert len(spy.calls) == 2, "a different provider has its own cooldown"
 
@@ -672,8 +701,8 @@ def test_p2_1_cooldown_is_per_provider(config: cb.BreakerConfig, tmp_path: Path,
 def test_p2_1_cooldown_zero_disables(config: cb.BreakerConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cb, "_COOLDOWN_STATE_DIR", tmp_path)
     spy = _SpyPush()
-    cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=0)
-    cb.decide("deepseek", Decimal("10.00"), config, push=spy, cooldown_sec=0)
+    cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=0)
+    cb.decide("openrouter", Decimal("10.00"), config, push=spy, cooldown_sec=0)
     assert len(spy.calls) == 2, "cooldown_sec=0 must not suppress (every STOP pushes)"
 
 

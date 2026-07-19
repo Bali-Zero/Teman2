@@ -63,6 +63,85 @@ def _digits_only(value: Any) -> str | None:
     return cleaned or None
 
 
+def _npwp_digits(value: Any) -> str | None:
+    """NPWP digits, written only when a COMPLETE number was read.
+
+    A valid NPWP is exactly 15 (legacy) or 16 (NIK-format) digits — the same
+    gate the intake matcher applies (``routing._match_person_strong``, m248),
+    and the same ASCII-only ``[^0-9]`` projection (``\\D`` is Unicode-aware and
+    would let non-ASCII digits survive into the stored value, which the
+    matcher's SQL ``[^0-9]`` projection then counts differently). A partial OCR
+    fragment stored here would pollute the CRM key book that strong-id
+    corroboration reads from, so incomplete reads are dropped, never stored.
+    """
+    if value is None:
+        return None
+    cleaned = re.sub(r"[^0-9]", "", str(value))
+    if len(cleaned) not in (15, 16):
+        return None
+    return cleaned
+
+
+# Advisory-lock seed shared by every strong-id writer/verifier on this DB.
+# The auto-attach gates take the same per-value xact lock before re-verifying
+# ownership; the enricher takes it before writing a strong-id column. This
+# serializes "verify then commit" against "write a new owner" for the same
+# identifier value — closing the in-TX TOCTOU (Codex 2026-07-19 round 3).
+STRONG_ID_LOCK_SEED = 4248
+
+_STRONG_ID_LOCK_KINDS = {
+    "passport_number": "passport",
+    "kitas_number": "kitas",
+    "npwp": "npwp",
+}
+
+
+def strong_id_lock_value(kind: str, raw: object) -> str:
+    """Canonical lock-key projection for one strong-id value.
+
+    EVERY lock participant must project the value the same way, or two
+    formatting-equivalent strings ("2X-123.456/YZ" vs "2X123456YZ") hash to
+    DIFFERENT advisory keys and silently miss each other's lock (Codex
+    2026-07-19 round 4, F2). Mirrors the matcher normalization per kind:
+    npwp → ASCII digits; passport/kitas → separator-stripped upper-case.
+    """
+    s = str(raw)
+    if kind == "npwp":
+        return re.sub(r"[^0-9]", "", s)
+    return re.sub(r"[\s.\-/]", "", s).upper()
+
+
+class StrongIdLockBusy(TimeoutError):
+    """The bounded advisory-lock wait expired — the strong-id value is
+    contended by a concurrent transaction. Dedicated type so callers can treat
+    LOCK contention as a benign skip without swallowing unrelated timeouts
+    (Codex 2026-07-19 round 6, F9)."""
+
+
+async def acquire_strong_id_lock(conn: asyncpg.Connection, kind: str, value: str) -> None:
+    """Take a transaction-scoped advisory lock on one strong-id value.
+
+    The value is canonicalized (``strong_id_lock_value``) so verifier and
+    writer converge on the same key regardless of stored formatting.
+    ``pg_advisory_xact_lock`` is reentrant within the session and auto-released
+    at TX end, so the gate (verify) and the enricher (write) can nest inside
+    the same commit without deadlocking themselves. The client-side timeout
+    bounds the wait so a stuck peer TX cannot occupy a worker lane forever
+    (round-4 F6); expiry raises :class:`StrongIdLockBusy` — NOTE: the enclosing
+    transaction is aborted by the cancelled statement, so callers must let this
+    propagate out of their transaction context (rollback), never continue in it.
+    """
+    try:
+        await conn.fetchval(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, $2))",
+            f"strongid:{kind}:{strong_id_lock_value(kind, value)}",
+            STRONG_ID_LOCK_SEED,
+            timeout=10.0,
+        )
+    except TimeoutError as exc:
+        raise StrongIdLockBusy(f"advisory lock busy for strong-id kind={kind}") from exc
+
+
 def _clean_str(value: Any) -> str | None:
     if value is None:
         return None
@@ -105,7 +184,7 @@ def _unwrap(raw: Any) -> Any:
 # Keys are the INTAKE EXTRACT SCHEMA names (backend/services/intake/extract.py),
 # NOT the manual CRM endpoint's renamed keys. Columns verified to exist on the
 # `clients` table (migration 041/042). Mirrors the UPDATE clients SET ... blocks in
-# crm_clients_documents.py (passport 420-469, npwp 697-703, nib 834-840) and extends
+# crm_clients_documents.py (passport L420-469, npwp L697-703, nib L834-840) and extends
 # them with KITAS (columns exist; no manual endpoint enriched them before).
 ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
     "passport": [
@@ -121,7 +200,7 @@ ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
         ("expiry", "kitas_expiry_date", _to_date),
     ],
     "npwp": [
-        ("npwp_number", "npwp", _digits_only),
+        ("npwp_number", "npwp", _npwp_digits),
     ],
     "nib": [
         ("nib_number", "nib", _digits_only),
@@ -198,6 +277,21 @@ async def enrich_client_from_extracted_fields(
 
     if not set_parts:
         return {}
+
+    # Serialize against concurrent strong-id verification/writes on the same
+    # value. Sorted on the CANONICAL (kind, projected value) key — the same
+    # ordering every other participant uses — for a deterministic acquisition
+    # order (no AB-BA between two multi-value transactions).
+    lock_keys = sorted(
+        (kind, strong_id_lock_value(kind, val))
+        for kind, val in (
+            (_STRONG_ID_LOCK_KINDS[col], val)
+            for col, val in written.items()
+            if col in _STRONG_ID_LOCK_KINDS and val
+        )
+    )
+    for kind, val in lock_keys:
+        await acquire_strong_id_lock(conn, kind, val)
 
     params.append(client_id)
     sql = f"UPDATE clients SET {', '.join(set_parts)}, updated_at = NOW() WHERE id = ${idx}"

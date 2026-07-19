@@ -78,6 +78,10 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         "practices": [],
     }
     bh = (uuid.uuid4().hex + uuid.uuid4().hex)[:64]  # shared blob for both clients
+    # Unique per-seed npwp: the tests run against the REAL dev book, so a fixed
+    # synthetic value could collide with a live client and flip a strong-id
+    # revalidation to duplicate (Codex round-2 NIT).
+    npwp_digits = str(uuid.uuid4().int)[:15].rjust(15, "7")
 
     async with pool.acquire() as conn:
         cid_a = await conn.fetchval(
@@ -134,13 +138,27 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                 ikey,
             )
             created["queues"].append(qid)
-            entity = {"decision": decision, "candidates": [{"table": "clients", "id": client_id}]}
+            # Candidates mirror the REAL m248 resolver shape (method + score +
+            # matched_value) — the auto-attach gates re-verify strong-id
+            # ownership from matched_value at commit time.
+            entity = {
+                "decision": decision,
+                "candidates": [
+                    {
+                        "table": "clients",
+                        "id": client_id,
+                        "method": "npwp",
+                        "score": 0.99,
+                        "matched_value": npwp_digits,
+                    }
+                ],
+            }
             routing = {
                 "client_id": client_id,
                 "company_id": None,
                 "practice_id": practice_id,
                 "doc_type": "npwp",
-                "fields": {"npwp_number": {"value": "01.234.567.8-901.000"}},
+                "fields": {"npwp_number": {"value": npwp_digits}},
             }
             gate = {"requires_human": decision != "AUTO_ATTACH", "decision": decision}
             pid = await conn.fetchval(
@@ -174,6 +192,7 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         "p_a": p_a,
         "p_b": p_b,
         "bh": bh,
+        "npwp_digits": npwp_digits,
         "created": created,
     }
 
@@ -432,7 +451,7 @@ async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch)
             seed["p_a"],
         )
     assert correction["field_name"] == "npwp_number"
-    assert correction["ai_value"] == "01.234.567.8-901.000"
+    assert correction["ai_value"] == seed["npwp_digits"]
     assert correction["human_value"] == correction["ai_value"]
     assert correction["outcome"] == "approved"
     assert correction["source"] == "drive"
@@ -736,6 +755,1268 @@ async def test_enrichment_skips_archive_only_no_client(pool, seed, monkeypatch):
     assert written == {}  # no-op, no exception
 
 
+# --------------------------------------------------------------------------- #
+# Wire proof (m248): the LEVA auto-commit tiers COMMIT on an npwp-matched doc.
+# The gates are doc-type-agnostic by design (decision + client_id + concordance,
+# no passport/kitas field allow-list) — these tests pin that: no future doc-type
+# filter may silently unwire npwp. First commit-success coverage for try_* at
+# all (previously only killswitch-off no-ops were tested).
+# --------------------------------------------------------------------------- #
+async def _reopen_for_auto(pool, proposal_id: int) -> None:
+    """Seeded proposals are review_claimed; the auto gates only touch review_pending."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET status='review_pending', "
+            "lease_owner=NULL, lease_expires_at=NULL, claim_token=NULL WHERE id=$1",
+            proposal_id,
+        )
+
+
+def _stub_delivery(monkeypatch):
+    from backend.services.intake import auto_attach as aa
+
+    async def _no_delivery(**_kw):
+        return {"status": "stubbed_in_test"}
+
+    monkeypatch.setattr(aa.intake_crm_delivery, "deliver_committed_to_crm", _no_delivery)
+
+
+async def test_leva2_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatch):
+    """LEVA-2 wire proof: npwp doc, strong-id→client A, sender phone→same client
+    → REAL commit: proposal auto_routed, audit row by system:auto-attach, and the
+    enricher backfills the client's npwp key in the same TX (identity-backfill
+    compounding, m248)."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        # ownership precondition: the strong-id revalidation requires the routed
+        # client to STILL own the matched npwp at commit time
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            seed["npwp_digits"],
+            seed["cid_a"],
+        )
+        proposal = await conn.fetchrow(
+            "SELECT id, routing, entity_resolution FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        proposal = {
+            "id": proposal["id"],
+            "routing": json.loads(proposal["routing"]),
+            "entity_resolution": json.loads(proposal["entity_resolution"]),
+        }
+
+    verdict = await aa.try_auto_attach(proposal, pool, sender_phone=phone)
+    assert verdict["committed"] is True, verdict
+    assert verdict["status"] == "auto_routed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        audit = await conn.fetchrow(
+            "SELECT committed_by, outcome, dry_run FROM intake_commit_audit "
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_a"],
+        )
+        npwp = await conn.fetchval("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+    assert status == "auto_routed"
+    assert audit["committed_by"] == "system:auto-attach"
+    assert audit["outcome"] == "committed"
+    assert audit["dry_run"] is False
+    assert npwp == seed["npwp_digits"]
+
+
+async def test_leva3_nameid_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatch):
+    """LEVA-3 wire proof: npwp doc, NO sender phone, doc subject name (FASE-3
+    {"value": ...} wrapped shape) concordant with client A → REAL commit by
+    system:auto-nameid. Also exercises the _extracted_subject_name unwrap on the
+    real dict shape."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        client_name = await conn.fetchval(
+            "SELECT full_name FROM clients WHERE id=$1", seed["cid_b"]
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_b"],
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps(
+                {
+                    "extract": {
+                        "fields": {
+                            "name": {"value": client_name, "confidence": 0.93, "source_page": 1}
+                        }
+                    }
+                }
+            ),
+            seed["p_b"],
+        )
+        proposal = await conn.fetchrow(
+            "SELECT id FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+
+    verdict = await aa.try_nameid_auto_attach(dict(proposal), pool)
+    assert verdict["committed"] is True, verdict
+    assert verdict["status"] == "auto_routed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+        audit = await conn.fetchrow(
+            "SELECT committed_by, outcome FROM intake_commit_audit "
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_b"],
+        )
+    assert status == "auto_routed"
+    assert audit["committed_by"] == "system:auto-nameid"
+    assert audit["outcome"] == "committed"
+
+
+async def test_m248_chain_resolver_to_leva2_commit(pool, seed, monkeypatch):
+    """FULL-CHAIN wire proof (Codex 2026-07-19 finding 4): the AUTO_ATTACH decision
+    and candidate come from the REAL m248 resolver (resolve_entity against the DB),
+    not hand-seeded JSON — if npwp matching were unwired this test fails at the
+    resolver assert, before the gate ever runs."""
+    from backend.services.intake import auto_attach as aa
+    from backend.services.intake.routing import resolve_entity
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    npwp_digits = str(uuid.uuid4().int)[:15].rjust(15, "3")  # collision-free per run
+    npwp_formatted = (
+        f"{npwp_digits[:2]}.{npwp_digits[2:5]}.{npwp_digits[5:8]}."
+        f"{npwp_digits[8]}-{npwp_digits[9:12]}.{npwp_digits[12:15]}"
+    )
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
+            npwp_formatted,  # stored FORMATTED — resolver must normalize
+            phone,
+            seed["cid_a"],
+        )
+
+    entity = await resolve_entity(
+        {"npwp_number": {"value": npwp_digits, "confidence": 0.9}}, "npwp", pool
+    )
+    npwp_cands = [c for c in entity["candidates"] if c.get("method") == "npwp"]
+    assert entity["decision"] == "AUTO_ATTACH"
+    assert [c["id"] for c in npwp_cands] == [seed["cid_a"]]
+
+    # route-stage mapping: entity → routing (client_id from the single candidate)
+    routing = {
+        "client_id": seed["cid_a"],
+        "company_id": None,
+        "practice_id": None,
+        "doc_type": "npwp",
+        "fields": {"npwp_number": {"value": npwp_digits, "confidence": 0.9}},
+    }
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb, "
+            "routing=$2::jsonb WHERE id=$3",
+            json.dumps(entity),
+            json.dumps(routing),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is True, verdict
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        npwp_after = await conn.fetchval(
+            "SELECT npwp FROM clients WHERE id=$1", seed["cid_a"]
+        )
+    assert status == "auto_routed"
+    # enricher canonicalized the formatted card value to bare digits in the same TX
+    assert npwp_after == npwp_digits
+
+
+async def test_m248_chain_dup_npwp_degrades_and_gate_refuses(pool, seed, monkeypatch):
+    """Guilt chain (Codex finding 4): duplicate npwp across two clients → the REAL
+    resolver degrades to AMBIGUOUS, and even a hostile routing payload naming one
+    of them cannot make the gate commit (persisted decision wins — lock-first)."""
+    from backend.services.intake import auto_attach as aa
+    from backend.services.intake.routing import resolve_entity
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    dup = str(uuid.uuid4().int)[:15].rjust(15, "5")  # collision-free per run
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
+            dup,
+            phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2", dup, seed["cid_b"]
+        )
+
+    entity = await resolve_entity({"npwp_number": dup}, "npwp", pool)
+    assert entity["decision"] == "AMBIGUOUS"
+
+    routing = {"client_id": seed["cid_a"], "doc_type": "npwp", "fields": {}}
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb, "
+            "routing=$2::jsonb WHERE id=$3",
+            json.dumps(entity),
+            json.dumps(routing),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "not_concordant"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+    assert status == "review_pending"
+
+
+async def test_leva2_evaluates_persisted_row_not_caller_payload(pool, seed, monkeypatch):
+    """Guilt for the lock-first fix (Codex finding 3): the caller's payload claims
+    AUTO_ATTACH but the PERSISTED proposal says LINK_CANDIDATE — the gate must
+    read the locked row and refuse, never trust the in-memory payload."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_b"]
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "LINK_CANDIDATE",
+                    "candidates": [{"table": "clients", "id": seed["cid_b"]}],
+                }
+            ),
+            seed["p_b"],
+        )
+
+    hostile_payload = {
+        "id": seed["p_b"],
+        "routing": {"client_id": seed["cid_b"]},
+        "entity_resolution": {"decision": "AUTO_ATTACH"},
+    }
+    verdict = await aa.try_auto_attach(hostile_payload, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    # fresh payload disagrees with the persisted row → the divergence guard
+    # refuses BEFORE any concordance logic runs (neither side is trusted)
+    assert verdict["skipped"] == "stale_row_divergence"
+    assert "diverges" in verdict["reason"]
+
+
+async def test_strongid_ownership_moved_refuses_commit(pool, seed, monkeypatch):
+    """Guilt for the in-TX ownership revalidation (Codex round-2 BLOCKER): the
+    persisted proposal says npwp→client A, but the CRM was corrected meanwhile
+    and the npwp now belongs to client B. Phone still concords with A — yet the
+    strong-id evidence is stale, so the gate must refuse (unbounded staleness:
+    ON CONFLICT-preserved rows and the backlog bridge)."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        # phone concords with A, but the npwp the proposal matched on has MOVED to B
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=NULL WHERE id=$2",
+            phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_b"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+    assert status == "review_pending"
+
+
+async def test_npwp_company_collision_after_routing_refuses(pool, seed, monkeypatch):
+    """Round-3 F1 guilt: the persisted proposal matched npwp→client A uniquely,
+    but a COMPANY has acquired the same digits since — the live resolver would
+    say cross-table AMBIGUOUS, so revalidation must refuse."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    company_name = f"{seed['tag']}-PT-Collision"
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            seed["npwp_digits"],
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "INSERT INTO companies (company_name, npwp_company) VALUES ($1, $2)",
+            company_name,
+            seed["npwp_digits"],
+        )
+    try:
+        verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+        assert verdict["committed"] is False
+        assert verdict["skipped"] == "strong_id_stale"
+        assert "company" in verdict["reason"]
+    finally:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM companies WHERE company_name=$1", company_name
+            )
+
+
+async def test_malformed_matched_value_fails_closed(pool, seed, monkeypatch):
+    """Round-3 F4 guilt: a persisted candidate whose matched_value the matcher
+    would reject today (14-digit npwp, pre-gate era) must fail closed — even
+    when a client card still carries that exact malformed value."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    malformed = str(uuid.uuid4().int)[:14].rjust(14, "9")  # 14 digits: invalid
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            malformed,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "AUTO_ATTACH",
+                    "candidates": [
+                        {
+                            "table": "clients",
+                            "id": seed["cid_a"],
+                            "method": "npwp",
+                            "score": 0.99,
+                            "matched_value": malformed,
+                        }
+                    ],
+                }
+            ),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    assert "reject" in verdict["reason"]
+
+
+async def test_leva3_strongid_ownership_moved_refuses_commit(pool, seed, monkeypatch):
+    """Round-3 coverage gap: the ownership revalidation must bite in LEVA-3 too
+    — name concordant, no phone, but the npwp moved to the OTHER client."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        client_name = await conn.fetchval(
+            "SELECT full_name FROM clients WHERE id=$1", seed["cid_b"]
+        )
+        # doc subject name concords with B, but the npwp is now owned by A
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps({"extract": {"fields": {"name": {"value": client_name}}}}),
+            seed["p_b"],
+        )
+
+    verdict = await aa.try_nameid_auto_attach({"id": seed["p_b"]}, pool)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+    assert status == "review_pending"
+
+
+async def test_pre_m248_candidate_shape_fails_closed(pool, seed, monkeypatch):
+    """A proposal whose candidates carry NO method/matched_value (pre-m248 shape,
+    arbitrarily old backlog rows) cannot be ownership-revalidated → the gate
+    fails CLOSED to human review instead of trusting stale evidence."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_a"]
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "AUTO_ATTACH",
+                    "candidates": [{"table": "clients", "id": seed["cid_a"]}],
+                }
+            ),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    assert "needs human" in verdict["reason"]
+
+
+async def test_delivery_resolves_by_selected_client_phone_not_sender(pool, seed, monkeypatch):
+    """Round-6 F5 guilt: a forwarder A sends B's document; after review assigns
+    it to B, Fly identity must be resolved by B's OWN canonical phone — never by
+    the transport sender phone (which belongs to A)."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    sender_phone = "62" + str(uuid.uuid4().int + 7)[:9]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2",
+            client_phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET sender_phone=$1 "
+            "WHERE id=(SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            sender_phone,
+            seed["p_a"],
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f5")
+
+    out = await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] == client_phone  # the SELECTED client's phone
+    assert captured["sender_phone"] != sender_phone
+    assert out["status"] == "identity_unresolved"
+
+
+async def test_delivery_refuses_phone_shared_by_another_live_local_client(pool, seed, monkeypatch):
+    """Round-7 F11 guilt: the selected client's phone is shared (same canonical
+    digits, different formatting) with ANOTHER live local client. Fly may know
+    only the other owner and report matched_count=1 — invisible ambiguity. The
+    local uniqueness gate must fail CLOSED: no resolution phone flows."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            # Insert via `phone`: the trg_normalize_phone trigger computes
+            # phone_normalized (digits) exactly as production does — a direct
+            # phone_normalized INSERT would be silently wiped by that trigger.
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-owner-{uuid.uuid4().hex[:8]}",
+                "+62 " + shared[2:],
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # fail closed, never resolve by a shared phone
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_soft_deleted_phone_duplicate_also_blocks(pool, seed, monkeypatch):
+    """Round-8 F11 archive gap: a SOFT-DELETED phone duplicate still blocks —
+    the Fly resolver searches archived rows and (by default) can restore one,
+    so an archived local co-owner is a reachable wrong-attach vector. ANY other
+    owner of the digits, live or archived, must fail CLOSED."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone, deleted_at) "
+                "VALUES ($1,$2,NOW()) RETURNING id",
+                f"dup-archived-{uuid.uuid4().hex[:8]}",
+                shared,
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11b")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # archived co-owner ⇒ fail closed
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_blocks_on_stale_normalized_phone_duplicate(pool, seed, monkeypatch):
+    """Round-8 F11 stale-normalization gap: a historical co-owner whose
+    phone_normalized is MISSING (raw `phone` only) must still block — the CRM
+    dedup code coalesces raw phone for exactly this population."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-stale-{uuid.uuid4().hex[:8]}",
+                "+62 " + shared[2:],
+            )
+            # Simulate the historical stale row: wipe phone_normalized directly
+            # (trg_normalize_phone fires only ON UPDATE OF phone, so this sticks).
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=NULL WHERE id=$1", dup_cid
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11c")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # raw-phone co-owner ⇒ fail closed
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_blocks_on_trunk_prefix_variant_duplicate(pool, seed, monkeypatch):
+    """Round-9 F13 guilt: a co-owner stored with the 0-trunk form (`0812…`)
+    of the selected client's 62-form number (`62812…`) is the SAME identity
+    per the official CRM dedup — the sole-owner gate must block it."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    tail = str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", "62" + tail, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-trunk-{uuid.uuid4().hex[:8]}",
+                "0" + tail,  # trunk-prefix variant of the SAME number
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f13")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # 0812… and 62812… are one owner
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_refuses_diverged_phone_columns(pool, seed, monkeypatch):
+    """Round-9 F11 gap-1 guilt: the SELECTED client's own card carries a stale
+    non-null phone_normalized that disagrees with raw `phone` — neither value
+    can prove the identity, so resolution must fail CLOSED."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    raw_phone = "62" + str(uuid.uuid4().int)[:9]
+    stale_norm = "62" + str(uuid.uuid4().int + 31)[:9]
+    async with pool.acquire() as conn:
+        # First set raw phone (trigger aligns phone_normalized)…
+        await conn.execute(
+            "UPDATE clients SET phone=$1 WHERE id=$2", "+" + raw_phone, seed["cid_a"]
+        )
+        # …then simulate the historical stale card: phone_normalized diverges
+        # (direct update — the trigger fires only ON UPDATE OF phone).
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11d")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # diverged card ⇒ fail closed
+
+
+async def test_delivery_refuses_unusable_raw_phone(pool, seed, monkeypatch):
+    """Round-10 F11 gap-1 residual guilt: raw phone PRESENT but UNUSABLE
+    ("12345" — digits below the core threshold) cannot cross-check the
+    normalized value; a possibly-stale phone_normalized must NOT be trusted."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    stale_norm = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        # Raw first (trigger aligns normalized to '12345'), then the stale-valid
+        # normalized via direct update (trigger fires only ON UPDATE OF phone).
+        await conn.execute("UPDATE clients SET phone='12345' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11e")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # unusable raw ⇒ cannot cross-check ⇒ closed
+
+
+async def test_delivery_digitfree_raw_phone_is_absent(pool, seed, monkeypatch):
+    """Round-10 F11 gap-1 innocence: a digit-free raw value ("n/a") is not a
+    phone CLAIM — normalized-only resolution proceeds."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    valid = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE clients SET phone='n/a' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", valid, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11f")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] == valid
+
+
+async def test_delivery_unicode_digit_raw_phone_is_unusable(pool, seed, monkeypatch):
+    """Round-12 F11 Unicode variant guilt: a raw phone made of NON-ASCII digits
+    (Arabic-Indic '١٢٣٤٥') is a phone CLAIM that yields no ASCII core — it must
+    classify `unusable` and fail delivery closed, never `absent` (which would
+    let a valid-but-stale phone_normalized resolve unchecked)."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+    from backend.services.intake.crm_delivery import _raw_phone_state
+
+    # Unit-level guilt+innocence for the classifier itself.
+    assert _raw_phone_state("١٢٣٤٥") == ("unusable", None)
+    assert _raw_phone_state("０８１２３") == ("unusable", None)  # full-width
+    assert _raw_phone_state("n/a") == ("absent", None)  # digit-free stays absent
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    stale_norm = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        # Raw with Unicode digits (trigger's [^0-9] SQL strip empties it →
+        # normalized recomputed empty), then a stale-valid normalized via
+        # direct update (trigger fires only ON UPDATE OF phone).
+        await conn.execute("UPDATE clients SET phone='١٢٣٤٥' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11u")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # unicode-digit raw ⇒ unusable ⇒ closed
+
+
+async def test_upsert_match_sql_finds_raw_only_owner(pool):
+    """Round-12 F15: a historical row with a RAW phone and NULL/stale
+    phone_normalized must still match by core — the predicate covers BOTH
+    columns. Executed against the real SQL; the raw-only shape is built by
+    nulling phone_normalized directly (the trigger fires only ON UPDATE OF
+    phone, so the NULL sticks)."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"rawonly-{uuid.uuid4().hex[:6]}",
+                "0" + tail,
+            )
+            await conn.execute(
+                "UPDATE clients SET phone_normalized = NULL WHERE id=$1", cid
+            )
+            check = await conn.fetchrow(
+                "SELECT phone, phone_normalized FROM clients WHERE id=$1", cid
+            )
+            assert check["phone_normalized"] is None  # raw-only shape is real
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            assert cid in {r["id"] for r in rows}  # found via the raw column leg
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_upsert_match_sql_equates_prefix_variants(pool):
+    """Round-10 F15: the upsert-by-phone matcher must recognize 0812… and
+    62812… as ONE identity — executed against the REAL matcher SQL, so a
+    regression to exact-string matching fails here."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    ids: list[int] = []
+    try:
+        async with pool.acquire() as conn:
+            for variant in ("0" + tail, "62" + tail):
+                ids.append(
+                    await conn.fetchval(
+                        "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                        f"variant-{variant[:2]}-{uuid.uuid4().hex[:6]}",
+                        variant,
+                    )
+                )
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            found = {r["id"] for r in rows}
+            assert set(ids) <= found  # both prefix variants are the same identity
+    finally:
+        async with pool.acquire() as conn:
+            for cid in ids:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+def test_phone_core_parity_with_crm_dedup():
+    """The delivery gate's `_phone_core` MUST stay behaviourally identical to
+    the official CRM dedup `_normalize_phone_digits` (round-9 F13): a drift
+    between the two silently re-opens the prefix-equivalence hole."""
+    from backend.app.routers.crm_clients import _normalize_phone_digits
+    from backend.services.intake.crm_delivery import _phone_core
+
+    corpus = [
+        "+62 821-3454-721",
+        "0821 3454721",
+        "8213454721",
+        "62812345678",
+        "0812345678",
+        "812345678",
+        "+62 (0)",
+        "12345",  # <6 after strip → None
+        "",
+        None,
+    ]
+    for value in corpus:
+        assert _phone_core(value) == _normalize_phone_digits(value), value
+    # And the equivalence class itself:
+    assert _phone_core("0821 3454721") == _phone_core("+62 821-3454-721")
+
+
+async def test_delivery_holds_phone_advisory_lock_during_push(pool, seed, monkeypatch):
+    """Round-8 F12: the resolve→push window must hold the LOCAL phone advisory
+    lock (same hashtext key the upsert-by-phone endpoint takes) so
+    lock-respecting phone writers are serialized against the cross-DB window."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    lock_free_during_push: list[bool] = []
+
+    async def _probe_push(**kw):
+        async with pool.acquire() as probe_conn:
+            async with probe_conn.transaction():
+                got = await probe_conn.fetchval(
+                    "SELECT pg_try_advisory_xact_lock(hashtext($1))", client_phone
+                )
+                lock_free_during_push.append(bool(got))
+                # The canonical core key must be held too (round-9 F12/F13:
+                # this is the key prefix-variant writers converge on).
+                got_core = await probe_conn.fetchval(
+                    "SELECT pg_try_advisory_xact_lock(hashtext($1))",
+                    "phonecore:" + client_phone[2:],
+                )
+                lock_free_during_push.append(bool(got_core))
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _probe_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", client_phone, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f12")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert lock_free_during_push == [False, False]  # both keys held during push
+
+    # And released afterwards:
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            assert await conn.fetchval(
+                "SELECT pg_try_advisory_xact_lock(hashtext($1))", client_phone
+            )
+
+
+async def test_delivery_flags_phone_owner_divergence_post_upload(pool, seed, monkeypatch, caplog):
+    """Round-8 F12 detection layer: a lock-BYPASSING writer that mutates the
+    selected client's phone mid-push cannot be prevented, but the post-upload
+    re-check must flag the delivery loudly for HITL review."""
+    import logging as _logging
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    hijack_phone = "62" + str(uuid.uuid4().int + 13)[:9]
+
+    async def _mutating_push(**kw):
+        # Simulate a writer that does NOT take the phone advisory lock.
+        async with pool.acquire() as w_conn:
+            await w_conn.execute(
+                "UPDATE clients SET phone=$1 WHERE id=$2",
+                "+" + hijack_phone,
+                seed["cid_a"],
+            )
+        return crm_push.CrmPushResult(ok=True, status="uploaded", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _mutating_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", client_phone, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f12b")
+
+    with caplog.at_level(_logging.ERROR, logger="zantara.intake.crm_delivery"):
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+    assert any("phone_owner_diverged_post_upload" in r.message for r in caplog.records)
+
+
+async def test_delivery_fails_closed_when_selected_client_has_no_phone(pool, seed, monkeypatch):
+    """Round-6 F5 innocence: selected client with NO phone on the card → the
+    push receives sender_phone=None and delivery fails closed downstream —
+    the transport sender phone is never used as a fallback."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=NULL WHERE id=$1", seed["cid_a"]
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET sender_phone=$1 "
+            "WHERE id=(SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            "628123450000",
+            seed["p_a"],
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f5b")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None
+
+
+async def test_enrichment_failure_never_rolls_back_document_commit(pool, seed, monkeypatch):
+    """Savepoint proof (Codex finding 2): enrichment SQL blowing up mid-commit must
+    NOT abort the document write — the enricher runs in a nested transaction and
+    the commit proceeds without the card update."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+
+    async def _boom(conn, client_id, doc_type, fields):
+        # force a REAL Postgres error inside the TX (aborts it without a savepoint)
+        await conn.execute("SELECT * FROM table_that_does_not_exist_xyz")
+        return {}
+
+    monkeypatch.setattr(intake_writer, "enrich_client_from_extracted_fields", _boom)
+
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "committed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        doc_count = await conn.fetchval(
+            "SELECT count(*) FROM documents WHERE client_id=$1", seed["cid_a"]
+        )
+        passport_after = await conn.fetchval(
+            "SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"]
+        )
+    assert status == "routed"
+    assert doc_count == 1
+    assert passport_after is None  # enrichment rolled back alone, document survived
+
+
+async def test_leva3_nameid_holds_on_name_contradiction(pool, seed, monkeypatch):
+    """Guilt twin (the live 161274 class): npwp strong-id resolves uniquely but
+    the doc subject name affirmatively contradicts the client (overlap 0) → the
+    gate HOLDS: no commit, proposal stays review_pending, no committed audit row.
+    A readable disagreeing name is a signal, not an absence."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps(
+                {
+                    "extract": {
+                        "fields": {
+                            "name": {"value": "COMPLETELY DIFFERENT PERSON", "confidence": 0.95}
+                        }
+                    }
+                }
+            ),
+            seed["p_b"],
+        )
+
+    verdict = await aa.try_nameid_auto_attach({"id": seed["p_b"]}, pool)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "not_concordant"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+        committed_rows = await conn.fetchval(
+            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1 AND outcome='committed'",
+            seed["p_b"],
+        )
+    assert status == "review_pending"
+    assert committed_rows == 0
+
+
+async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, monkeypatch):
+    """npwp identity-backfill wire (m248): a COMPLETE 15/16-digit npwp is written
+    digits-canonical; a partial OCR fragment or an overlong garble must NEVER be
+    stored — it would pollute the key book the strong-id matcher corroborates
+    against (guilt AND innocence, cicatrix #3)."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
+    async with pool.acquire() as conn:
+        # formatted legacy 15-digit → stored as bare digits (innocence: full read lands)
+        written = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01.234.567.8-901.234"}}
+        )
+        assert written.get("npwp") == "012345678901234"
+        # 16-digit NIK-format → stored
+        written16 = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
+        )
+        assert written16.get("npwp") == "0123456789012345"
+        # 10-digit fragment → dropped (guilt), card keeps the previous full value
+        frag = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789"}}
+        )
+        # 17-digit concatenation garble → dropped
+        garble = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01234567890123499"}}
+        )
+        # Unicode digits are NOT ASCII digits: the [^0-9] projection (mirror of the
+        # matcher SQL class) strips them, leaving 13 ASCII digits → dropped
+        unicode_mix = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "٠1234567890123٤5"}}
+        )
+        row = await conn.fetchrow("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+    assert frag == {}
+    assert garble == {}
+    assert unicode_mix == {}
+    assert row["npwp"] == "0123456789012345"
+
+
 async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeypatch):
     """Innocence test: unknown doc_type → no-op; a garbage date → that field skipped,
     others still written (never raises, never rolls back the document)."""
@@ -758,3 +2039,132 @@ async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeyp
         )
     assert written.get("passport_number") == "YC9999999"
     assert "passport_expiry" not in written
+
+
+async def test_dup_owner_sql_sees_raw_phone_behind_stale_normalized(pool):
+    """Round-13 F16 guilt 1: with raw phone=A and a stale non-null
+    phone_normalized=B, the old COALESCE hid A entirely — DUP_OWNER_SQL must
+    find the owner via the raw column independently."""
+    from backend.db.repositories.client_repository import (
+        DUP_OWNER_SQL,
+        incoming_phone_cores,
+    )
+
+    tail_a = str(uuid.uuid4().int)[:9]
+    stale_b = "62" + str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"stalemask-{uuid.uuid4().hex[:6]}",
+                "0" + tail_a,
+            )
+            # Stale divergent normalized via direct update (trigger fires only
+            # ON UPDATE OF phone, so the bogus value sticks).
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_b, cid
+            )
+            cores = incoming_phone_cores("62" + tail_a, None)
+            assert cores == [tail_a]
+            dup = await conn.fetchrow(DUP_OWNER_SQL, cores)
+            assert dup is not None and dup["id"] == cid  # raw leg found it
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_dup_owner_sql_finds_whatsapp_only_owner(pool):
+    """Round-13 F16 guilt 2: an owner known ONLY by whatsapp was invisible to
+    the dedup search — the query must examine the whatsapp column too, and
+    the incoming whatsapp core must participate in the lookup."""
+    from backend.db.repositories.client_repository import (
+        DUP_OWNER_SQL,
+        incoming_phone_cores,
+    )
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, whatsapp) VALUES ($1,$2) RETURNING id",
+                f"waonly-{uuid.uuid4().hex[:6]}",
+                "+62 " + tail,
+            )
+            # Incoming payload duplicates the number in the WHATSAPP field.
+            cores = incoming_phone_cores(None, "0" + tail)
+            dup = await conn.fetchrow(DUP_OWNER_SQL, cores)
+            assert dup is not None and dup["id"] == cid
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_upsert_match_sql_finds_whatsapp_only_owner(pool):
+    """Round-15 F21: whatsapp is an OWNERSHIP column — an owner known only
+    by whatsapp must be visible to the upsert-by-phone resolver, or two
+    writers create a split identity that the dedup gates then treat as
+    ambiguous forever. Executed against the real SQL's whatsapp leg."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, whatsapp) VALUES ($1,$2) RETURNING id",
+                f"waup-{uuid.uuid4().hex[:6]}",
+                "0" + tail,
+            )
+            check = await conn.fetchrow(
+                "SELECT phone, phone_normalized FROM clients WHERE id=$1", cid
+            )
+            assert check["phone"] is None  # whatsapp-only shape is real
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            assert cid in {r["id"] for r in rows}  # found via the whatsapp leg
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_core_owner_ids_sql_sees_archived_coowner(pool):
+    """Round-15 F22: the sole-ownership resolver must see ARCHIVED co-owners
+    too — the delivery resolver refuses an ambiguous core whether the other
+    owner is live or soft-deleted (reject_ambiguous + restore_if_archived
+    both key off existence, not liveness), so the upload re-proof must apply
+    the same parity or a stale token slips through on an archived twin."""
+    from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
+
+    tail = str(uuid.uuid4().int)[:9]
+    ids: list[int] = []
+    try:
+        async with pool.acquire() as conn:
+            ids.append(
+                await conn.fetchval(
+                    "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                    f"live-{uuid.uuid4().hex[:6]}",
+                    "0" + tail,
+                )
+            )
+            ids.append(
+                await conn.fetchval(
+                    "INSERT INTO clients (full_name, phone, deleted_at)"
+                    " VALUES ($1,$2, now()) RETURNING id",
+                    f"arch-{uuid.uuid4().hex[:6]}",
+                    "62" + tail,
+                )
+            )
+            rows = await conn.fetch(CORE_OWNER_IDS_SQL, [tail])
+            owners = {r["id"] for r in rows}
+            assert set(ids) <= owners  # archived co-owner is NOT invisible
+    finally:
+        async with pool.acquire() as conn:
+            for cid in ids:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)

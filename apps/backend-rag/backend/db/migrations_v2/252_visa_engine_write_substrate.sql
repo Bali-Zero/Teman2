@@ -240,14 +240,18 @@
 --     value the column defaults to, plus recorded_period gains the same
 --     "lower bound is never -infinity" guard legal_period already has.
 --   * DEFERRED to PENDING-ARMS (not resolved here -- see
---     .claude/skills/modus/PENDING-ARMS.md): (1) visa_decisions.citations
---     array elements are still not validated to reference real
---     visa_source_records rows -- that needs the STEP-6c writer/repository
---     layer, not a DDL-only migration; (2) migration 250's own trigger
---     functions still have no SET search_path pinned -- 250 stays
---     off-limits to edit (sibling isolation), so hardening those 4
---     functions is a dedicated follow-up migration, never a silent
---     piggyback here.
+--     .claude/skills/modus/PENDING-ARMS.md): visa_decisions.citations array
+--     elements are still not validated to reference real visa_source_records
+--     rows -- that needs the STEP-6c writer/repository layer, not a
+--     DDL-only migration. (A second deferred item this migration's own
+--     header used to list here -- migration 250's trigger functions lacking
+--     SET search_path -- was independently CLOSED by migration 251
+--     [STEP-6a], landed on main after this migration was first authored:
+--     251's CREATE OR REPLACE FUNCTION re-declares all 4 of 250's trigger
+--     functions, byte-identical logic, with SET search_path = pg_catalog,
+--     pg_temp pinned on each. Verified on disk at merge time, 2026-07-20 --
+--     the PENDING-ARMS line has been marked closed accordingly, not left
+--     stale.)
 --   * REJECTED (reviewed, deliberately NOT implemented): (1) narrowing
 --     engine_mode's CHECK to drop 'ENFORCE' -- this migration's whole point
 --     is that the SAME schema serves SHADOW today and ENFORCE once
