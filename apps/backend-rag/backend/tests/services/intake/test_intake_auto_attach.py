@@ -541,6 +541,23 @@ def test_divergence_matching_payload_passes():
     )
 
 
+def test_strong_id_lock_key_converges_across_formatting():
+    """Round-4 F2 guilt: the gate locks the NORMALIZED value while a writer may
+    hold the FORMATTED variant — both must project to the SAME lock key, or the
+    advisory serialization silently misses (different hash, no contention)."""
+    from backend.services.intake.client_enricher import strong_id_lock_value
+
+    assert strong_id_lock_value("kitas", "2C-123.456/AB") == strong_id_lock_value(
+        "kitas", "2C123456AB"
+    )
+    assert strong_id_lock_value("passport", "x 123-456") == strong_id_lock_value(
+        "passport", "X123456"
+    )
+    assert strong_id_lock_value("npwp", "01.234.567.8-901.234") == strong_id_lock_value(
+        "npwp", "012345678901234"
+    )
+
+
 def test_matched_value_validity_mirrors_matcher():
     # npwp: exactly 15/16 ASCII digits, already canonical
     assert auto_attach._matched_value_is_valid("npwp", "0" * 15)

@@ -262,9 +262,42 @@ async def push_committed_document(
             {"X-CRM-Write-Key": crm_write_key or ""},
         )
 
-    url, headers = _build_request(client_id)
+    # Cross-DB identity bridge (Codex 2026-07-19 round 4, F5): the local Pro pk
+    # and the Fly pk are DIFFERENT namespaces — the same number can name a
+    # DIFFERENT person on Fly, and an upload addressed by the local pk that
+    # happens to exist there delivers PII to the wrong client. In the headless
+    # service-key path the Fly id is therefore ALWAYS resolved by phone BEFORE
+    # any upload; with no phone to resolve with, delivery fails CLOSED (the
+    # document stays committed locally, the verdict says undelivered). The
+    # bearer path is untouched: a reviewer's JWT addresses ids in the same
+    # namespace the reviewer is browsing.
+    target_client_id = client_id
+    if not bearer_token:
+        if not sender_phone:
+            return CrmPushResult(
+                ok=False,
+                status="identity_unresolved",
+                detail=(
+                    "no sender phone to resolve the Fly client — refusing to "
+                    "address Fly by the LOCAL pk"
+                ),
+            )
+        fly_cid = await _ensure_client_on_fly(
+            crm_write_key=crm_write_key or "",
+            sender_phone=sender_phone,
+            full_name=client_full_name,
+            base_url=base,
+        )
+        if fly_cid is None:
+            return CrmPushResult(
+                ok=False,
+                status="identity_unresolved",
+                detail="phone-upsert could not resolve a Fly client id",
+            )
+        target_client_id = fly_cid
+
+    url, headers = _build_request(target_client_id)
     client = _get_client()
-    upsert_tried = False
 
     try:
         last_detail: str | None = None
@@ -298,34 +331,6 @@ async def push_committed_document(
                     )
                     continue
                 return CrmPushResult(ok=False, status="server_error", detail=last_detail)
-            if resp.status_code == 404 and not upsert_tried and not bearer_token and crm_write_key and sender_phone:
-                # The LOCAL client_id has no row on Fly (wa-mirror lead minted only
-                # in nuzantara_dev). Phone-upsert it onto Fly, re-aim the upload at
-                # the RETURNED Fly id, and retry ONCE. This is the cross-DB identity
-                # bridge: never reuse the local pk against Fly.
-                upsert_tried = True
-                fly_cid = await _ensure_client_on_fly(
-                    crm_write_key=crm_write_key,
-                    sender_phone=sender_phone,
-                    full_name=client_full_name,
-                    base_url=base,
-                )
-                if fly_cid is not None and fly_cid != client_id:
-                    url, headers = _build_request(fly_cid)
-                    logger.info(
-                        "intake.crm_push.client_not_on_fly local=%s -> fly=%s — retrying upload",
-                        client_id,
-                        fly_cid,
-                    )
-                    if attempt == 0:
-                        continue
-                    # 404 on the SECOND attempt's slot — re-aimed but loop is done;
-                    # fall through to a clean rejected with the bridge note.
-                last_detail = (
-                    f"HTTP 404: {resp.text[:160]} "
-                    f"(phone-upsert {'mapped to fly=' + str(fly_cid) if fly_cid else 'failed'})"
-                )
-                return CrmPushResult(ok=False, status="rejected", detail=last_detail)
             if resp.status_code >= 400:
                 return CrmPushResult(
                     ok=False,

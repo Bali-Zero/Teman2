@@ -96,17 +96,38 @@ _STRONG_ID_LOCK_KINDS = {
 }
 
 
+def strong_id_lock_value(kind: str, raw: object) -> str:
+    """Canonical lock-key projection for one strong-id value.
+
+    EVERY lock participant must project the value the same way, or two
+    formatting-equivalent strings ("2C-123.456/AB" vs "2C123456AB") hash to
+    DIFFERENT advisory keys and silently miss each other's lock (Codex
+    2026-07-19 round 4, F2). Mirrors the matcher normalization per kind:
+    npwp → ASCII digits; passport/kitas → separator-stripped upper-case.
+    """
+    s = str(raw)
+    if kind == "npwp":
+        return re.sub(r"[^0-9]", "", s)
+    return re.sub(r"[\s.\-/]", "", s).upper()
+
+
 async def acquire_strong_id_lock(conn: asyncpg.Connection, kind: str, value: str) -> None:
     """Take a transaction-scoped advisory lock on one strong-id value.
 
+    The value is canonicalized (``strong_id_lock_value``) so verifier and
+    writer converge on the same key regardless of stored formatting.
     ``pg_advisory_xact_lock`` is reentrant within the session and auto-released
     at TX end, so the gate (verify) and the enricher (write) can nest inside
-    the same commit without deadlocking themselves.
+    the same commit without deadlocking themselves. The client-side timeout
+    bounds the wait so a stuck peer TX cannot occupy a worker lane forever
+    (round-4 F6) — the caller's TX aborts and the worker retry/DLQ machinery
+    handles it.
     """
     await conn.fetchval(
         "SELECT pg_advisory_xact_lock(hashtextextended($1, $2))",
-        f"strongid:{kind}:{value}",
+        f"strongid:{kind}:{strong_id_lock_value(kind, value)}",
         STRONG_ID_LOCK_SEED,
+        timeout=10.0,
     )
 
 
@@ -247,11 +268,16 @@ async def enrich_client_from_extracted_fields(
         return {}
 
     # Serialize against concurrent strong-id verification/writes on the same
-    # value (locks sorted for a deterministic acquisition order — no AB-BA).
+    # value. Sorted on the CANONICAL (kind, projected value) key — the same
+    # ordering every other participant uses — for a deterministic acquisition
+    # order (no AB-BA between two multi-value transactions).
     lock_keys = sorted(
-        (_STRONG_ID_LOCK_KINDS[col], str(val))
-        for col, val in written.items()
-        if col in _STRONG_ID_LOCK_KINDS and val
+        (kind, strong_id_lock_value(kind, val))
+        for kind, val in (
+            (_STRONG_ID_LOCK_KINDS[col], val)
+            for col, val in written.items()
+            if col in _STRONG_ID_LOCK_KINDS and val
+        )
     )
     for kind, val in lock_keys:
         await acquire_strong_id_lock(conn, kind, val)

@@ -340,8 +340,17 @@ async def _strong_id_still_owned(
             "no revalidatable strong-id candidate on the proposal "
             "(stale/pre-m248 shape) — needs human",
         )
-    # Deterministic lock order across candidates (no AB-BA between two gates).
-    strong.sort(key=lambda c: (str(c.get("method")), str(c.get("matched_value"))))
+    # Deterministic lock order across candidates, keyed on the CANONICAL
+    # (kind, projected value) — the same ordering the enricher uses — so two
+    # multi-value transactions can never interleave AB-BA.
+    strong.sort(
+        key=lambda c: (
+            _STRONG_ID_LOCK_KIND[c["method"]],
+            client_enricher.strong_id_lock_value(
+                _STRONG_ID_LOCK_KIND[c["method"]], str(c.get("matched_value"))
+            ),
+        )
+    )
     for c in strong:
         method = c["method"]
         value = c.get("matched_value")

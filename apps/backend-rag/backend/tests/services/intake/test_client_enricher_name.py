@@ -34,7 +34,7 @@ class FakeConn:
         self.execute_calls.append((query, args))
         return "UPDATE 1"
 
-    async def fetchval(self, query: str, *args: Any) -> None:
+    async def fetchval(self, query: str, *args: Any, timeout: float | None = None) -> None:
         # pg_advisory_xact_lock taken before strong-id column writes — record it
         # so tests can assert the lock protocol without a real Postgres.
         self.lock_calls = getattr(self, "lock_calls", [])
