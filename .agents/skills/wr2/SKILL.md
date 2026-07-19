@@ -42,9 +42,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
 
 **Open wounds / next targets:**
 
-- **Liveness scorer returns 0.0 for ALL items** (classifier lane paused, #2501) → live pool
-  always empty → every topic composes as `evergreen`. The tier steers (length/tone) are dead
-  weight until this is rewired. HIGH-value fix.
+- ~~**Liveness scorer returns 0.0 for ALL items**~~ **HEALED 2026-07-19, proven at scale** (#2631 transport + #2635 forced-choice): run_20260719_010004.json = 3 developing (60) + 12 evergreen (0); topic-selector 05:10 → `using live pool (3 items, score >= 40)` — the first non-empty live pool in pipeline history. The breaking/developing register steers are live again. Residual: per-tier precision over 2-4 weeks via IG metrics loop (refuter SERIO-5).
 - **13 unknown_intent** queue entries (complete-or-nothing backfill refused to guess) — need
   adjudication = re-render from slides.json. · **3 render_incomplete** same family.
 - **fact_check_status "degraded" pipeline-wide** — the checker runs in degraded mode on every

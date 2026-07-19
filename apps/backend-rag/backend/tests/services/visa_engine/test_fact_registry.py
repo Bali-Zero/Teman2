@@ -39,7 +39,7 @@ from backend.tests.services.visa_engine.conftest import GOLD_EFFECTIVE_AT
 
 class TestDefaultCatalogCompleteness:
     def test_every_fact_path_has_a_spec(self) -> None:
-        for path in FactPath:
+        for path in list(FactPath):
             spec = DEFAULT_FACT_REGISTRY.spec(path)
             assert spec.path is path
 
@@ -54,7 +54,7 @@ class TestDefaultCatalogCompleteness:
             assert DEFAULT_FACT_REGISTRY.spec(path).derived is True
 
     def test_applicant_facts_not_flagged_derived(self) -> None:
-        for path in FactPath:
+        for path in list(FactPath):
             if path in DERIVED_FACT_PATHS:
                 continue
             assert DEFAULT_FACT_REGISTRY.spec(path).derived is False
@@ -88,7 +88,7 @@ class TestMissingPaths:
 
 class TestCommercialClassification:
     def test_commercial_paths_match_enums_constant(self) -> None:
-        for path in FactPath:
+        for path in list(FactPath):
             expected = path in COMMERCIAL_FACT_PATHS
             assert DEFAULT_FACT_REGISTRY.is_commercial(path) is expected
 
@@ -247,7 +247,7 @@ class TestValueFormatKindConsistency:
         assert spec.value_format == "country_code"
 
     def test_none_format_always_accepted_regardless_of_kind(self) -> None:
-        for kind in FactValueKind:
+        for kind in list(FactValueKind):
             spec = FactSpec(
                 path=FactPath.PERSON_MARITAL_STATUS,
                 kind=kind,

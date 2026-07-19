@@ -169,6 +169,166 @@ def test_emits_per_class_count_summary(synthetic_e33_file: Path) -> None:
     assert counts == {"BERSYARAT": 1, "BELUM_DIATUR_PUBLIK": 1, "KEBIJAKAN_PENYEDIA": 1}
 
 
+# ── Compound CONFIDENCE tag degrade (Fable gate, 2026-07-19, Wave-3) ────────
+# RULING: a compound CONFIDENCE tag (naming MORE THAN ONE of the 5 known
+# classes) must DEGRADE to the least-promotable class at harvest — the
+# verbatim-promotion gate only auto-serves pure JELAS. The original tag is
+# preserved in `confidence_class_raw`, emitted ONLY when normalization
+# actually changed the value (i.e. the degraded class differs from the
+# FIRST class token listed in the tag).
+
+
+def _confidence_fixture(tmp_path: Path, confidence_line: str) -> Path:
+    path = tmp_path / "compound.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        f"**CONFIDENCE:** {confidence_line}\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- some ref\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_compound_confidence_tag_degrades_to_least_promotable_class(
+    tmp_path: Path,
+) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS (mechanics); BERSYARAT (eligibility)")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS (mechanics); BERSYARAT (eligibility)"
+
+
+def test_slash_separated_compound_confidence_tag_degrades(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS/BERSYARAT split")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS/BERSYARAT split"
+
+
+def test_compound_confidence_tag_degrades_across_three_classes_to_lowest_rank(
+    tmp_path: Path,
+) -> None:
+    path = _confidence_fixture(tmp_path, "BERSYARAT; BELUM_DIATUR_PUBLIK")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BELUM_DIATUR_PUBLIK"
+    assert rows[0]["confidence_class_raw"] == "BERSYARAT; BELUM_DIATUR_PUBLIK"
+
+
+def test_pure_jelas_confidence_tag_stays_jelas_with_no_raw_field(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "JELAS"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_pure_belum_diatur_publik_confidence_tag_unchanged(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "BELUM_DIATUR_PUBLIK")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BELUM_DIATUR_PUBLIK"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_class_token_inside_prose_parentheses_around_same_leading_tag_does_not_emit_raw(
+    tmp_path: Path,
+) -> None:
+    """A class token can appear a SECOND time inside descriptive prose
+    around the SAME leading tag (e.g. explaining a condition under which a
+    different class would apply). The scan finds both tokens, but the
+    min-rank class already equals the leading/first-listed tag — nothing
+    actually degraded, so confidence_class_raw must NOT be emitted even
+    though 2 distinct tokens were found."""
+    path = _confidence_fixture(tmp_path, "BERSYARAT (JELAS only after OSS confirmation)")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_unrecognized_compound_looking_tag_falls_back_to_first_token_verbatim(
+    tmp_path: Path,
+) -> None:
+    """0 known class tokens found (P7 principle, pre-existing behavior):
+    the raw first whitespace-delimited token is kept verbatim, unchanged
+    by the compound-degrade logic."""
+    path = _confidence_fixture(tmp_path, "SOME_NEW_CLASS maybe-also-other")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "SOME_NEW_CLASS"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_confidence_class_count_summary_counts_the_normalized_class(tmp_path: Path) -> None:
+    """The per-class count summary must reflect the value that actually
+    lands in confidence_class (i.e. the DEGRADED class) — the summary
+    exists to catch anomalies in what gets harvested, not to audit raw
+    dossier tags class-by-class."""
+    path = _confidence_fixture(tmp_path, "JELAS (mechanics); BERSYARAT (eligibility)")
+
+    _, counts = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert counts == {"BERSYARAT": 1}
+
+
+# ── Interaction: #2810 verbatim_eligible x #2856 compound-degrade ──────────
+# These two Phase-0 rails were built on branches that diverged BEFORE either
+# landed on main (PR #2810 cache-phase0-rails vs PR #2856 confidence-degrade)
+# and were merged together 2026-07-20. The merge composes them (normalize
+# runs first inside parse_e33_markdown_file, then the row-builder derives
+# verbatim_eligible from the resulting `confidence_class` local) — this test
+# pins that composition so a future refactor can't silently split them apart
+# (e.g. by reading the un-normalized first-listed token instead).
+
+
+def test_compound_confidence_tag_verbatim_eligible_uses_normalized_class(
+    tmp_path: Path,
+) -> None:
+    """A compound tag "JELAS; BERSYARAT" degrades confidence_class to the
+    lower-rank BERSYARAT (Wave-3 ruling). verbatim_eligible MUST reflect
+    that NORMALIZED class — i.e. False, per the #2810 FATAL-3 rule that only
+    pure JELAS rows are converter-side eligible — never True as it would be
+    if verbatim_eligible were (incorrectly) derived from the raw tag's
+    first-listed token (JELAS) instead of the post-degrade class."""
+    path = _confidence_fixture(tmp_path, "JELAS; BERSYARAT")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS; BERSYARAT"
+    assert rows[0]["verbatim_eligible"] is False
+    assert rows[0]["client_specific"] is False
+
+
 def test_extracts_law_refs_as_flat_string_list(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
         synthetic_e33_file,
@@ -298,6 +458,228 @@ def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> No
     assert len(rows) == 1
     assert rows[0]["confidence_class"] == "SOME_NEW_CLASS"
     assert counts == {"SOME_NEW_CLASS": 1}
+
+
+def test_inline_final_answer_on_same_line_as_label_is_captured(tmp_path: Path) -> None:
+    """Curated-cache cantiere postmortem (2026-07-19, Wave 1/2 dossiers):
+    8 of 14 real dossiers write the answer INLINE, right after the label
+    on the same physical line, rather than starting on the next line —
+    e.g. `**FINAL (client-facing):** The standard rate is 22%...`. The
+    original regex silently produced answer="" for every such row
+    (162/272 rows across the cantiere) instead of raising — a quiet
+    data-loss bug caught only downstream in curated_qa_review_pack.py's
+    generated packs. This must never regress."""
+    path = tmp_path / "inline.md"
+    path.write_text(
+        "### Q1. What corporate income tax rate applies?\n\n"
+        "**FINAL (client-facing):** The standard rate is 22% of net taxable "
+        "income, with two narrow carve-outs described below.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**INTERNAL:**\nSourced from DJP article, fetched 2026-07-19.\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- pajak.go.id/en/node/94054\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["answer"] == (
+        "The standard rate is 22% of net taxable income, with two narrow "
+        "carve-outs described below."
+    )
+
+
+def test_bare_law_refs_label_without_qualifier_is_captured(tmp_path: Path) -> None:
+    """Same postmortem: 9 of 14 real dossiers write `**LAW REFS:**` (no
+    "(source-cited, unverified)" qualifier). The original regex required
+    the qualifier literally, so every such row silently got law_refs=[]
+    instead of the refs the dossier actually cited."""
+    path = tmp_path / "bare-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:**\n- UU PPh No. 36/2008 Pasal 17\n- Permenkumham 22/2023\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU PPh No. 36/2008 Pasal 17",
+        "Permenkumham 22/2023",
+    ]
+
+
+def test_inline_final_and_bare_law_refs_combined_matches_real_dossier_shape(
+    tmp_path: Path,
+) -> None:
+    """Both variants together — the actual shape of e.g.
+    tax-corporate/FINAL-v2.md and company-compliance/FINAL.md in the
+    curated-cache cantiere. Two questions to also confirm the LAW REFS
+    block boundary (`(?=\\n### Q\\d+\\.|...)`) still stops at the next
+    question header rather than swallowing it."""
+    path = tmp_path / "real-shape.md"
+    path.write_text(
+        "### Q1. First question?\n\n"
+        "**FINAL (client-facing):** Inline answer for Q1.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:**\n- ref-for-q1\n\n"
+        "---\n\n"
+        "### Q2. Second question?\n\n"
+        "**FINAL (client-facing):** Inline answer for Q2.\n\n"
+        "**CONFIDENCE:** BERSYARAT\n\n"
+        "**LAW REFS:**\n- ref-for-q2\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert len(rows) == 2
+    assert rows[0]["answer"] == "Inline answer for Q1."
+    assert rows[0]["law_refs"] == ["ref-for-q1"]
+    assert rows[1]["answer"] == "Inline answer for Q2."
+    assert rows[1]["law_refs"] == ["ref-for-q2"]
+
+
+def test_horizontal_rule_separator_is_not_mistaken_for_a_dash_bullet(
+    tmp_path: Path,
+) -> None:
+    """A bare `---` markdown horizontal rule between Q blocks is common
+    real-dossier formatting (visual separator before the next `### Q`).
+    Confirmed live on all 5 originally-clean Wave 1/2 dossiers
+    (visa-golden-investor, visa-business-multientry, visa-student,
+    company-kbli-signed-lots — near-100% of rows; tax-pmk37 uses no `---`
+    convention): the old per-line scan treated `stripped.startswith("-")`
+    as a bullet, so `---` became a bogus `"--"` entry appended to almost
+    every row's law_refs. Must be filtered, never emitted as a ref."""
+    path = tmp_path / "hr-separator.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n"
+        "- a real ref\n"
+        "- another real ref\n\n"
+        "---\n\n"
+        "### Q2. Trailing question just to anchor the boundary?\n\n"
+        "**FINAL (client-facing):**\nAnother answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- ref-2\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == ["a real ref", "another real ref"]
+    assert "--" not in rows[0]["law_refs"]
+
+
+def test_inline_semicolon_separated_law_refs_prose_is_split_into_discrete_refs(
+    tmp_path: Path,
+) -> None:
+    """The tax-corporate/FINAL-v2.md real shape: `**LAW REFS:**` followed
+    immediately by ONE prose sentence with semicolon-separated citations,
+    no bullets at all. Must split into per-citation entries, matching the
+    granularity the bulleted convention gives, not collapse to []."""
+    path = tmp_path / "prose-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** UU PPh No. 36/2008 Pasal 17(1)(b); Pasal 17(2b) "
+        "(19% public-company rate); Pasal 31E (small-turnover discount). "
+        "Source: pajak.go.id/en/node/94054 (fetched 2026-07-19).\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU PPh No. 36/2008 Pasal 17(1)(b)",
+        "Pasal 17(2b) (19% public-company rate)",
+        "Pasal 31E (small-turnover discount). Source: pajak.go.id/en/node/94054 "
+        "(fetched 2026-07-19).",
+    ]
+
+
+def test_hard_wrapped_multiline_law_refs_prose_is_rejoined_before_splitting(
+    tmp_path: Path,
+) -> None:
+    """The visa-kitap/FINAL-v2.md real shape: inline prose LAW REFS whose
+    physical lines are hard-wrapped (editor line width), not one bullet
+    per line. Must rejoin wrapped lines into a continuous sentence before
+    semicolon-splitting, not leave a stray line-break embedded mid-ref."""
+    path = tmp_path / "wrapped-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** UU 6/2011 jo. UU 63/2024, Pasal 59 "
+        "(https://www.imigrasi.go.id/uu_imigrasi/bab-5,\n"
+        "fetched 2026-07-19); Permenkumham 22/2023 Pasal 184-185 (Golden "
+        "Visa/investment).\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU 6/2011 jo. UU 63/2024, Pasal 59 "
+        "(https://www.imigrasi.go.id/uu_imigrasi/bab-5, fetched 2026-07-19)",
+        "Permenkumham 22/2023 Pasal 184-185 (Golden Visa/investment).",
+    ]
+
+
+def test_last_question_law_refs_do_not_swallow_trailing_document_sections(
+    tmp_path: Path,
+) -> None:
+    """Real bug found live on 7 of 14 curated-cache cantiere Wave 1/2
+    dossiers (company-compliance/FINAL.md Q20 being the clearest case):
+    the LAST question's `block` runs to EOF, and real dossiers append
+    document-level trailing sections after the last question — e.g.
+    "## Self-check pass", "## Arbiter verification pass" — which are NOT
+    spelled "## Section" (the only trailing-boundary spelling the old
+    regex recognized). Before the fix, the last question's LAW REFS block
+    engulfed those trailing sections whole, including any "- " bulleted
+    line inside them — leaking INTERNAL-adjacent reviewer-facing text into
+    curated_qa_review_pack.py packs. Any "## " heading must stop the
+    capture, not just ones literally starting with "## Section"."""
+    path = tmp_path / "trailing-sections.md"
+    path.write_text(
+        "### Q1. Last question in the file?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** N/A (see other rows).\n\n"
+        "---\n\n"
+        "## Self-check pass\n\n"
+        "- **Some internal note**: this must never appear in law_refs.\n"
+        "- **Another internal note**: neither must this.\n\n"
+        "## Arbiter verification pass (2026-07-19)\n\n"
+        "More internal-only commentary that must not leak.\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["law_refs"] == ["N/A (see other rows)."]
+    joined = "; ".join(rows[0]["law_refs"])
+    assert "internal note" not in joined
+    assert "Arbiter verification" not in joined
 
 
 def test_missing_generated_date_header_requires_explicit_source_date(tmp_path: Path) -> None:

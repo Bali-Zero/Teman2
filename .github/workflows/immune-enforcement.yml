@@ -84,6 +84,12 @@ jobs:
               scripts/prepush_classify.py|\
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
+              scripts/docs_audit.py|\
+              scripts/docs_inventory_refresh_liveness.py|\
+              scripts/docs_inventory_regen.sh|\
+              scripts/tests/test_docs_audit.py|\
+              scripts/tests/test_docs_inventory_refresh_liveness.py|\
+              scripts/tests/test_docs_inventory_regen.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -119,6 +125,9 @@ jobs:
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
             scripts/tests/test_prepush_classify.py \
+            scripts/tests/test_docs_audit.py \
+            scripts/tests/test_docs_inventory_refresh_liveness.py \
+            scripts/tests/test_docs_inventory_regen.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"

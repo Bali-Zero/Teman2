@@ -11,6 +11,7 @@
     "dev": "tsx watch bridge/index.ts",
     "onboard": "tsx scripts/onboard.ts",
     "status": "tsx scripts/status.ts",
+    "wa-tester": "tsx scripts/wa-tester.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
