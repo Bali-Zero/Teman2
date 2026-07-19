@@ -2224,3 +2224,47 @@ async def test_core_owner_ids_sql_sees_archived_coowner(pool):
         async with pool.acquire() as conn:
             for cid in ids:
                 await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+async def test_delivery_resolves_whatsapp_only_client(pool, seed, monkeypatch):
+    """Round-17 F26 innocence: a selected client whose ONLY phone-ish value
+    is whatsapp must still DELIVER — F24 made whatsapp a veto (co-owner
+    blocks), F26 makes it an ANCHOR: the resolution core is the single
+    coherent core across all three ownership columns, not phone_normalized
+    alone. Before the fix this card hit unusable_normalized_phone and every
+    delivery for it died identity_unresolved."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=True, status="success", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    core = "8" + str(uuid.uuid4().int)[:9]
+    wa_value = "+62 " + core
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=NULL, phone=NULL, whatsapp=$1 "
+            "WHERE id=$2",
+            wa_value,
+            seed["cid_a"],
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f26")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] == "62" + core
