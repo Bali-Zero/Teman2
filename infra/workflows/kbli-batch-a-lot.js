@@ -229,6 +229,135 @@ const CALIBRATION = {
   m4_tokens_per_dossier_ceiling: 400000,
 };
 
+// ----- journal provenance (Lot 7 gate adversarial MINOR #5, §5.6b — mandatory cure deliverable):
+// every seat call must be traceable to EXACTLY which prompt/schema/runner-version produced a
+// given verdict, without trusting a neutral label alone ("a future audit can prove which
+// prompt/schema produced which verdict without trusting neutral labels"). This script has no
+// fs/network/crypto primitive of its own (see the header notes on the lease guard and the
+// membership gate) — sha256Hex below is a minimal, dependency-free SHA-256 (FIPS 180-4) over a
+// UTF-8 string, so prompt/schema hashing never depends on an assumed runtime global
+// (crypto.subtle/node:crypto) that no other infra/workflows/*.js script here relies on either.
+function sha256Hex(message) {
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  let h0 = 0x6a09e667,
+    h1 = 0xbb67ae85,
+    h2 = 0x3c6ef372,
+    h3 = 0xa54ff53a;
+  let h4 = 0x510e527f,
+    h5 = 0x9b05688c,
+    h6 = 0x1f83d9ab,
+    h7 = 0x5be0cd19;
+
+  const bytes = [];
+  const utf8 = unescape(encodeURIComponent(message));
+  for (let i = 0; i < utf8.length; i++) bytes.push(utf8.charCodeAt(i) & 0xff);
+
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  bytes.push(0, 0, 0, 0); // high 32 bits of the 64-bit length — always 0 for these message sizes
+  const bitLenLow = bitLen >>> 0;
+  bytes.push(
+    (bitLenLow >>> 24) & 0xff,
+    (bitLenLow >>> 16) & 0xff,
+    (bitLenLow >>> 8) & 0xff,
+    bitLenLow & 0xff,
+  );
+
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+
+  for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += 64) {
+    const w = new Array(64).fill(0);
+    for (let i = 0; i < 16; i++) {
+      w[i] =
+        ((bytes[chunkStart + i * 4] << 24) |
+          (bytes[chunkStart + i * 4 + 1] << 16) |
+          (bytes[chunkStart + i * 4 + 2] << 8) |
+          bytes[chunkStart + i * 4 + 3]) >>>
+        0;
+    }
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+
+    let a = h0,
+      b = h1,
+      c = h2,
+      d = h3,
+      e = h4,
+      f = h5,
+      g = h6,
+      h = h7;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
+  }
+
+  const toHex = (n) => (n >>> 0).toString(16).padStart(8, "0");
+  return [h0, h1, h2, h3, h4, h5, h6, h7].map(toHex).join("");
+}
+
+// The runner blob sha256 is a SELF-REFERENCE this script cannot resolve from inside itself: it
+// has no fs primitive to read its own bytes, and a literal pinned to "the hash of this exact
+// file" is a fixed-point problem (inserting the computed hash changes the file, which changes the
+// hash). Exactly like args.membership (see the membership-gate header note above), the CALLER
+// supplies it — `git hash-object infra/workflows/kbli-batch-a-lot.js`, computed immediately before
+// dispatch, which the conductor already does per-lot for every cure spec's `_provenance` field;
+// this wires that existing practice into the args contract instead of leaving it undiscoverable
+// from inside a run. Absent input WARNs (observability only, same class as the lease-guard SKIP)
+// and falls back to the last self-pinned literal, which by construction can lag the file's true
+// current bytes by any edit made since the pin was last refreshed by hand.
+const RUNNER_BLOB_SHA256_LAST_PINNED =
+  "9bb3870fe5bae3c977c8e1ab5895d098e7be86a604d54c0c9f4a6be6a103a609";
+const runnerBlobSha256 =
+  typeof A.runnerBlobSha256 === "string" && A.runnerBlobSha256.trim()
+    ? A.runnerBlobSha256.trim()
+    : (() => {
+        log(
+          `WARN lot ${lotId} did not supply args.runnerBlobSha256 (git hash-object ` +
+            `infra/workflows/kbli-batch-a-lot.js, computed by the CALLER before dispatch — this ` +
+            `script cannot read its own file, no fs primitive) — falling back to the last ` +
+            `self-pinned literal ${RUNNER_BLOB_SHA256_LAST_PINNED}, which may be STALE relative ` +
+            `to this run's actual file bytes. Observability WARN only, not an enforced gate.`,
+        );
+        return RUNNER_BLOB_SHA256_LAST_PINNED;
+      })();
+
 // ----- lease guard (SKIP-with-WARN — see header note; per-code, before that code's adjudication
 // starts) ----------------------------------------------------------------------------------
 function leaseGuardWarn(code) {
@@ -417,7 +546,10 @@ const D5_SCHEMA = {
             description:
               "one of kategori_risiko / jangka_waktu / scope_uraian / fiktif_positif / " +
               "derived_license, optionally suffixed with the per_skala tier it came from (e.g. " +
-              '"kategori_risiko:Besar")',
+              '"kategori_risiko:Besar"). fiktif_positif and derived_license are DERIVED facts — ' +
+              "a rule-derived legal consequence, never a printed table cell — and REQUIRE a " +
+              "derivation_citation (below) whenever you mark them verified (contract refinement " +
+              "#2, Lot 7 gate §3.5/§5.4).",
           },
           value: { type: "string" },
           source_locator: {
@@ -428,7 +560,9 @@ const D5_SCHEMA = {
               "_l2_source=OSS_RBA_resiko_2025, a citation of the matching OSS probe file under " +
               "this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, vintage 2025) " +
               "instead, since that record class has no PP28/crosswalk render to point at; never " +
-              "guess a locator either way; empty string when absent.",
+              "guess a locator either way; empty string when absent. For a DERIVED field " +
+              "(fiktif_positif/derived_license) this stays empty even when verified=true — a " +
+              "derived fact is never a page/row citation, see derivation_citation instead.",
           },
           vintage: {
             type: "string",
@@ -436,6 +570,28 @@ const D5_SCHEMA = {
               "2020 or 2025 — which vintage's row grounds this fact; empty string when absent",
           },
           status: { type: "string", enum: ["verified", "absent"] },
+          derivation_citation: {
+            type: "object",
+            description:
+              'REQUIRED when field is fiktif_positif or derived_license AND status="verified" ' +
+              "(contract refinement #2, Lot 7 gate §3.5/§5.4, precondition for Lot 8): a rule-" +
+              "derived fact is a LEGAL CONSEQUENCE the OSS-RBA platform attaches automatically " +
+              "once the BASE facts (kategori_risiko, jangka_waktu, SAME per_skala tier) are " +
+              "themselves verified with a locator — it is never a page/row citation of its own. " +
+              'Cite the versioned formula: script="scripts/derive_fiktif_positif.py", ' +
+              'instrument="PP 28/2025", article="225(1)" when the base kategori_risiko is ' +
+              '"Menengah Tinggi" (Sertifikat Standar deemed verified on SLA miss), ' +
+              'article="230" when the base kategori_risiko is "Tinggi" (Izin auto-issued), or ' +
+              'article="124(4)" ONLY for the SEPARATE derived_license field (never for ' +
+              'fiktif_positif) — plus a vintage (e.g. "2025"). Omit entirely when the field is ' +
+              'not derived, or when its own status is "absent".',
+            properties: {
+              script: { type: "string" },
+              instrument: { type: "string" },
+              article: { type: "string" },
+              vintage: { type: "string" },
+            },
+          },
         },
       },
     },
@@ -567,7 +723,19 @@ function d5Prompt(code) {
     `matching OSS probe file under this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, ` +
     `vintage 2025), since that record class has no PP28/crosswalk render to cite; otherwise absent. A ` +
     `genuinely empty per_skala returns an empty list; never guess a locator either way to make the ` +
-    `list look complete. The WORKFLOW, not you, compares your conclusion against D1's — that ` +
+    `list look complete. DERIVED-FACT RULE (contract refinement #2, Lot 7 gate §3.5/§5.4): ` +
+    `fiktif_positif and derived_license are never a printed table cell — they are a LEGAL ` +
+    `CONSEQUENCE the OSS-RBA platform attaches automatically once the BASE facts (kategori_risiko, ` +
+    `jangka_waktu, same per_skala tier) are themselves verified. Mark one of these two fields ` +
+    `verified ONLY when (a) that tier's kategori_risiko AND jangka_waktu are ALSO listed as ` +
+    `verified with a locator in this SAME inventory, AND (b) you cite the versioned derivation ` +
+    `formula in derivation_citation: script="scripts/derive_fiktif_positif.py", ` +
+    `instrument="PP 28/2025", article="225(1)" when the base kategori_risiko is "Menengah Tinggi" ` +
+    `(Sertifikat Standar deemed verified on SLA miss), article="230" when the base kategori_risiko ` +
+    `is "Tinggi" (Izin auto-issued), or article="124(4)" ONLY for the SEPARATE derived_license ` +
+    `field (never for fiktif_positif) — plus a vintage. If the base facts are absent, or you cannot ` +
+    `cite the versioned formula, mark the derived field absent too — never verified from the code's ` +
+    `own plausibility alone. The WORKFLOW, not you, compares your conclusion against D1's — that ` +
     `comparison happens entirely outside your context.`
   );
 }
@@ -623,8 +791,24 @@ async function adjudicateInnocence(code) {
       `runner-side normalization of the member D1/D5/D2 pipeline (adjudicateCode) result — ` +
       `concordant=${adjudication.concordant}, divergent=${adjudication.divergent}`,
   };
+  // Journal provenance control_tag_applied_after (Lot 7 gate adversarial MINOR #5, §5.6b): the
+  // NAME itself documents when this happens — strictly AFTER the seat-blind adjudicateCode() call
+  // above has already returned, deterministic JS only, never seen or executed by any seat. This is
+  // the exact same "delegate then relabel" shape this function already uses for
+  // innocenceControl/innocence below (see the SYMMETRIC BLIND TREATMENT v2 header note) — a
+  // control's seat calls are 100% identical to a member's up to and including the seat dispatch
+  // itself; only the ALREADY-RETURNED provenance record is tagged, never anything passed TO a seat.
+  const seat_provenance = adjudication.seat_provenance
+    ? Object.fromEntries(
+        Object.entries(adjudication.seat_provenance).map(([seat, prov]) => [
+          seat,
+          prov ? { ...prov, control_tag_applied_after: true } : prov,
+        ]),
+      )
+    : adjudication.seat_provenance;
   return {
     ...adjudication,
+    seat_provenance,
     innocenceControl: true,
     innocence: true,
     innocence_verdict,
@@ -736,33 +920,146 @@ function diffD1D5(d1c, d5c) {
 // case this gate treats as vacuously fine, matching the gate's own corollary that "the certifiable
 // class" is not "codes that assert nothing" but "codes whose every exposed fact carries a verified
 // locator+vintage".
+//
+// DERIVED-FACT CERTIFICATION RULE (contract refinement #2, 2026-07-19 Lot 7 conductor gate
+// §3.5/§5.4, precondition for Lot 8 — mandatory cure deliverable): the patch above treats EVERY
+// exposed_facts_inventory entry the same way (verified needs a page/row locator) — but a rule-
+// DERIVED entry (fiktif_positif / derived_license) can never legitimately carry one: it is not
+// printed anywhere in the lampiran, it is a LEGAL CONSEQUENCE the OSS-RBA platform attaches
+// automatically once its BASE facts are known (UU Cipta Kerja 6/2023's silenzio-assenso flip,
+// codified PP 28/2025 Pasal 225(1) for Menengah Tinggi / Pasal 230 for Tinggi; Pasal 124(4) is the
+// SEPARATE derived-license rule — scripts/derive_fiktif_positif.py encodes the exact boolean rule,
+// reused here BY REFERENCE in prose/citation form, never re-implemented independently). The Lot 6
+// gate's fail-closed demotion of the 41013 innocence control (§3.5, adversarial BLOCKER, corrected
+// legal base) proved the PRE-refinement contract had no way to EVER certify a record honestly
+// asserting this fact — every "verified" fiktif_positif/derived_license entry would need a
+// page/row locator that structurally cannot exist. This refinement is the honest ceiling the gate
+// report names: "base facts verified + derivation rule cited", never "every field has a table
+// cell".
+const DERIVED_FIELDS = ["fiktif_positif", "derived_license"];
+
+function fieldBaseName(field) {
+  const s = String(field || "");
+  const i = s.indexOf(":");
+  return i === -1 ? s : s.slice(0, i);
+}
+
+function fieldTierSuffix(field) {
+  const s = String(field || "");
+  const i = s.indexOf(":");
+  return i === -1 ? null : s.slice(i + 1);
+}
+
+function isDerivedField(field) {
+  return DERIVED_FIELDS.includes(fieldBaseName(field));
+}
+
+function findInventoryEntry(inventory, baseName, tier) {
+  const wanted = tier ? `${baseName}:${tier}` : baseName;
+  return inventory.find((e) => e && e.field === wanted) || null;
+}
+
+// Pasal 225(1) PP 28/2025 governs Menengah Tinggi (Sertifikat Standar deemed verified on SLA
+// miss); Pasal 230 governs Tinggi (Izin auto-issued); Pasal 124(4) is the SEPARATE derived-LICENSE
+// rule (never cited for fiktif_positif itself). The article choice depends on the BASE
+// kategori_risiko VALUE, not the derived field's own name — a fiktif_positif entry never carries
+// its own risk tier, it inherits the tier from the base fact it is derived from.
+function expectedArticleFor(field, riskValue) {
+  if (fieldBaseName(field) === "derived_license") return "124(4)";
+  const risk = String(riskValue || "").trim();
+  if (risk === "Menengah Tinggi") return "225(1)";
+  if (risk === "Tinggi") return "230";
+  return null; // neither eligible tier -> no derivation rule applies at all (guilt path below)
+}
+
+function derivationCitationValid(entry, expectedArticle) {
+  const c = entry && entry.derivation_citation;
+  if (!c || typeof c !== "object") return false;
+  if (c.script !== "scripts/derive_fiktif_positif.py") return false;
+  if (!/28\s*\/\s*2025/.test(String(c.instrument || ""))) return false;
+  if (!expectedArticle || !String(c.article || "").includes(expectedArticle))
+    return false;
+  if (!String(c.vintage || "").trim()) return false;
+  return true;
+}
+
+// A derived-class entry is UNVERIFIED (regardless of its own status field) unless ALL THREE hold:
+// (a) its BASE facts (kategori_risiko AND jangka_waktu, SAME per_skala tier) are THEMSELVES
+// verified with a non-empty source_locator in this SAME inventory — GUILT: base facts absent ->
+// derived absent -> no certification; (b) it cites a versioned derivation formula whose article
+// matches the base risk tier's actual rule — INNOCENCE: base verified + formula cited -> derived
+// verified -> certification possible; (c) a base risk tier that is NEITHER Menengah Tinggi NOR
+// Tinggi has no derivation rule to cite at all — a seat asserting fiktif_positif=verified on a
+// Rendah/Otomatis tier (where the rule does not apply) cannot be verified by this rule either.
+function derivedEntryUnverified(entry, inventory) {
+  const tier = fieldTierSuffix(entry.field);
+  const riskEntry = findInventoryEntry(inventory, "kategori_risiko", tier);
+  const jwEntry = findInventoryEntry(inventory, "jangka_waktu", tier);
+  const baseFactsVerified =
+    Boolean(riskEntry) &&
+    riskEntry.status === "verified" &&
+    Boolean(riskEntry.source_locator) &&
+    Boolean(jwEntry) &&
+    jwEntry.status === "verified" &&
+    Boolean(jwEntry.source_locator);
+  if (!baseFactsVerified) return true;
+  const expectedArticle = expectedArticleFor(entry.field, riskEntry.value);
+  if (!expectedArticle) return true;
+  if (!derivationCitationValid(entry, expectedArticle)) return true;
+  return false;
+}
+
 function factsInventoryUnverified(d5) {
   const inventory =
     d5 && Array.isArray(d5.exposed_facts_inventory)
       ? d5.exposed_facts_inventory
       : null;
   if (inventory === null) return true; // missing entirely -> fail-closed, cannot certify
-  return inventory.some((entry) => !entry || entry.status !== "verified");
+  return inventory.some((entry) => {
+    if (!entry || entry.status !== "verified") return true;
+    if (isDerivedField(entry.field))
+      return derivedEntryUnverified(entry, inventory);
+    return false;
+  });
+}
+
+// Journal provenance wrapper (Lot 7 gate adversarial MINOR #5, §5.6b): wraps a single seat
+// agent() call and computes, ALONGSIDE the real answer (never wrapping/replacing it — every
+// caller below still gets the raw D1/D5/D2 answer shape untouched), a provenance record: the
+// seat's own label, sha256 of the FULL prompt text actually sent, sha256 of the response schema
+// object, and the runner blob sha256 (resolved once above, from args.runnerBlobSha256 or its
+// pinned fallback). Returns { answer, provenance } — callers destructure both.
+async function callSeat(promptText, opts) {
+  const answer = await agent(promptText, opts);
+  const provenance = {
+    label: opts.label,
+    promptSha256: sha256Hex(promptText),
+    schemaSha256: sha256Hex(JSON.stringify(opts.schema)),
+    runnerBlobSha256,
+  };
+  return { answer, provenance };
 }
 
 async function adjudicateCode(code) {
   leaseGuardWarn(code);
 
-  const d1 = await agent(d1Prompt(code), {
+  const d1Call = await callSeat(d1Prompt(code), {
     label: `D1:${code}`,
     phase: "Adjudicate",
     schema: D1_SCHEMA,
     model: "sonnet",
   });
+  const d1 = d1Call.answer;
 
   // D5 is a SEPARATE, blind adjudicator — receives ONLY code+evidence, NEVER d1's proposal (plan
   // §3/A4, red-team F5; see the D5 BLIND-REFUTATION FIX header note).
-  const d5 = await agent(d5Prompt(code), {
+  const d5Call = await callSeat(d5Prompt(code), {
     label: `D5:${code}`,
     phase: "Adjudicate",
     schema: D5_SCHEMA,
     model: "sonnet",
   });
+  const d5 = d5Call.answer;
 
   const diff = diffD1D5(deriveD1Comparable(d1), deriveD5Comparable(d5));
 
@@ -781,13 +1078,15 @@ async function adjudicateCode(code) {
     preD2Verdict === "certified" && factsInventoryUnverified(d5);
 
   let d2 = null;
+  let d2Call = null;
   if (preD2Verdict === "certified" && d1 && d1.licensing_inherits === true) {
-    d2 = await agent(d2Prompt(code), {
+    d2Call = await callSeat(d2Prompt(code), {
       label: `D2:${code}`,
       phase: "Adjudicate",
       schema: D2_SCHEMA,
       model: "sonnet",
     });
+    d2 = d2Call.answer;
   }
 
   // D2 SELF-CONFIRM RETRO-DEMOTE (post-Lot-A-L1 close-out fix, 2026-07-18): a certified verdict
@@ -837,6 +1136,15 @@ async function adjudicateCode(code) {
     d2_self_confirm_failed: d2SelfConfirmFailed,
     facts_inventory_failed: factsInventoryFailed,
     seatInvocations: d2 ? 3 : 2,
+    // journal provenance (Lot 7 gate adversarial MINOR #5, §5.6b): per-seat label + prompt sha256
+    // + schema sha256 + runner blob sha256, so a future audit can prove which prompt/schema
+    // produced which verdict without trusting neutral labels. D2 stays null when D2 never ran
+    // (mirrors d2's own null-when-not-dispatched shape above).
+    seat_provenance: {
+      D1: d1Call.provenance,
+      D5: d5Call.provenance,
+      D2: d2Call ? d2Call.provenance : null,
+    },
   };
 }
 
