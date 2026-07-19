@@ -26,9 +26,11 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 import sys
 import time
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -313,6 +315,42 @@ def _send_telegram(text: str) -> None:
 # Claude prompt (English output)
 # ─────────────────────────────────────────────────────────────────────────
 
+# ── Kicker/subhead variety (2026-07-20) ─────────────────────────────────────
+# PR #2544 (2026-07-16) banned "OUR TAKE"/"OUR READ"/"OUR VIEW" and added an
+# example kicker list to rule #7 below — since then 3/3 decks used "THE
+# SIGNAL: …" (the FIRST example in that list). Root cause: variety
+# instructions were prompt-only prose with NO memory of previous output —
+# every fixed example becomes the new invariant because it is the only
+# concrete thing the model can anchor on. This mirrors the ONE axis that
+# already has a proven DB-armed lookback (register/image-mode, P-4 Art 10.6:
+# `fetch_recent_same_domain` + `_build_avoid_steer` below) and extends the
+# same pattern to the take-slide kicker and the cover subhead, PLUS
+# de-anchors the static example list itself (`_render_kicker_examples`) so
+# no single example can calcify again. 2026-07-20 red-team MAJOR #3: the
+# Structure JSON worked example (below, slide 2) had its OWN static anchor
+# ("THE NET EFFECT: ...") — same disease, second site — so it gets its own
+# token + single-kicker sample via the same exclusion logic.
+_KICKER_EXAMPLES_TOKEN = "__KICKER_EXAMPLES__"
+_KICKER_EXAMPLE_TAKE_TOKEN = "__KICKER_EXAMPLE_TAKE__"
+
+KICKER_EXAMPLE_VOCABULARY: tuple[str, ...] = (
+    "THE UPSHOT",
+    "WHERE THIS LANDS",
+    "THE NET EFFECT",
+    "THE STAKES",
+    "THE SIGNAL",
+    "BETWEEN THE LINES",
+    "WHAT CHANGES NOW",
+    "THE QUIET PART",
+    "READ THE FINE PRINT",
+    "THE REAL COST",
+    "FOLLOW THE MONEY",
+    "THE PRECEDENT",
+    "WHY NOW",
+    "THE CATCH",
+    "THE TRADE-OFF",
+)
+
 SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zero (https://balizero.com).
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
@@ -446,17 +484,19 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    needed.
 
 7. Bali Zero "take" slides (typically slide 2 and the last slide): open the
-   headline with a short UPPERCASE editorial-stance kicker (2-3 words —
-   e.g. "THE UPSHOT", "WHERE THIS LANDS", "THE NET EFFECT", "THE STAKES",
-   "THE SIGNAL", "BETWEEN THE LINES", "WHAT CHANGES NOW" — or coin a new
-   one in the same register if none fits this angle), then continue in
-   first-person editorial voice, NOT as a third-party legal summary. Pick
-   the kicker that fits THIS carousel; never default to the same one two
-   carousels running. NEVER use "OUR TAKE" / "OUR READ" / "OUR VIEW" —
-   those were single-example placeholders that became an invariant because
-   they were the only example ever shown, not a fixed slot to fill in. Also
-   NEVER "THE BOTTOM LINE" — that's a banned filler heading pattern
-   elsewhere in the doctrine (2026-07-16 red-team finding #3).
+   headline with a short UPPERCASE editorial-stance kicker (2-4 words —
+   __KICKER_EXAMPLES__), then continue in first-person editorial voice,
+   NOT as a third-party legal summary. Pick the kicker that fits THIS
+   carousel; never default to the same one two carousels running. NEVER use
+   "OUR TAKE" / "OUR READ" / "OUR VIEW" — those were single-example
+   placeholders that became an invariant because they were the only
+   example ever shown, not a fixed slot to fill in. Also NEVER "THE BOTTOM
+   LINE" — that's a banned filler heading pattern elsewhere in the doctrine
+   (2026-07-16 red-team finding #3). (2026-07-20: the example list above is
+   ROTATED per generation and EXCLUDES recently-used kickers — a static
+   example list is exactly how a single entry calcifies into a new
+   invariant, the same failure mode this rule already fixed once for the
+   OUR-TAKE family.)
 
 8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
@@ -490,7 +530,7 @@ Structure:
       "slide_type": "take",
       "is_cover": false,
       "is_hero_image": false,
-      "headline": "THE NET EFFECT: ...",
+      "headline": "__KICKER_EXAMPLE_TAKE__: ...",
       "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
     {
@@ -555,6 +595,189 @@ ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
 HERO slides — use at least 4 DISTINCT modes per carousel; never let one scene
 type dominate the whole carousel.
 """
+
+
+# ── Kicker toolkit (2026-07-20) ─────────────────────────────────────────────
+# Pure, side-effect-free helpers shared by the DB lookback (fetch_recent_
+# editorial_signatures below), the regen guard (_kicker_collision, wired into
+# _process_one's generation loop) and the prompt-example de-anchor
+# (_render_kicker_examples). Grouped here, next to SYSTEM_INSTRUCTIONS, since
+# they all operate on the rule #7 kicker shape ("UPPERCASE KICKER: rest of
+# the sentence") that lives in that prompt text.
+
+
+def _normalize_kicker(text: str) -> str:
+    """Whole-string normalization for kicker collision matching. Mirrors
+    `wr2_html_renderer.composer._normalize_take_label` verbatim (NFKC fold,
+    whitespace collapse, terminal-punctuation strip, casefold) — duplicated
+    rather than imported: the composer module sits behind the Playwright
+    render-path import chain, which this launchd-invoked cron entry
+    deliberately avoids (see the BRAND_SUFFIX comment above re: why
+    backend.services.visual is inlined instead of imported). NFKC folds
+    NBSP and other compatibility-whitespace lookalikes to plain ASCII space;
+    `\\s+` collapse catches doubled/embedded whitespace; the terminal-punct
+    strip catches a trailing colon/dash a writer tacked on ("THE SIGNAL:");
+    casefold is the Unicode-correct case fold. Still whole-STRING, never
+    substring — callers only ever use this before an exact-set membership
+    check (scar family #3 over-match discipline)."""
+    normalized = unicodedata.normalize("NFKC", text)
+    normalized = re.sub(r"\s+", " ", normalized)
+    normalized = normalized.strip(" \t\r\n:;,.-–—")
+    return normalized.casefold()
+
+
+def _extract_take_kicker(headline: str) -> str | None:
+    """Pull the editorial kicker off a take-slide headline (rule #7's
+    "UPPERCASE 2-4 word kicker, then a colon, then the take" shape — e.g.
+    "THE SIGNAL: A headline, not a rule" -> "THE SIGNAL").
+
+    NFKC-normalizes the headline BEFORE partitioning on ":" (2026-07-20
+    red-team MINOR #5): a fullwidth colon (U+FF1A, "："), which NFKC folds
+    to ASCII ":", would otherwise bypass extraction entirely — the colon
+    branch below never triggers on a fullwidth colon in the RAW string, so
+    the whole headline falls through to the no-colon path instead and can
+    get rejected as too long. Casing is untouched by NFKC, so the returned
+    text still reads naturally.
+
+    The colon-prefix path requires 2-5 words (2026-07-20 MINOR #6): a
+    single word before the colon ("BALI: THE DOOR JUST CLOSED") is a
+    scene-setter/dateline, not a kicker — rule #7's kicker is always a
+    short PHRASE. Falls back to the WHOLE headline when there is no colon,
+    but only if it is itself short enough to plausibly BE a kicker (1-5
+    words) — matches the take_label convention headlines sometimes use
+    without a colon separator. A long colon-less headline, a 1-word colon
+    prefix, or an over-long prefix before the colon, is not a kicker — just
+    an unusual take-slide the model wrote — so we skip it (return None)
+    rather than mis-signature it: a wrong signature would falsely accuse a
+    later attempt of colliding on words it never actually coined."""
+    headline = (headline or "").strip()
+    if not headline:
+        return None
+    normalized_headline = unicodedata.normalize("NFKC", headline)
+    prefix, sep, _rest = normalized_headline.partition(":")
+    if sep:
+        prefix = prefix.strip()
+        if prefix and 2 <= len(prefix.split()) <= 5:
+            return prefix
+        return None
+    if 1 <= len(normalized_headline.split()) <= 5:
+        return normalized_headline
+    return None
+
+
+def _kicker_collision(
+    slides: list[dict[str, Any]], recent_kickers: list[str]
+) -> str | None:
+    """Whole-string collision check between THIS deck's take-slide kicker(s)
+    and the recent-history kickers. Never substring (scar family #3:
+    "TAKEAWAY FOR SELLERS" contains "TAKE" but must not match; "THE SIGNAL
+    TODAY" must NOT match "THE SIGNAL" — both compared as complete
+    normalized strings via set membership, not `in`). Returns the offending
+    kicker verbatim (this deck's own casing, for the log/steer message) or
+    None."""
+    if not recent_kickers:
+        return None
+    recent_normalized = {_normalize_kicker(k) for k in recent_kickers if k}
+    if not recent_normalized:
+        return None
+    for slide in slides:
+        if slide.get("slide_type") != "take":
+            continue
+        kicker = _extract_take_kicker(str(slide.get("headline") or ""))
+        if kicker and _normalize_kicker(kicker) in recent_normalized:
+            return kicker
+    return None
+
+
+def _sample_kickers(recent_kickers: list[str] | None, k: int) -> list[str]:
+    """Sample up to `k` kickers from KICKER_EXAMPLE_VOCABULARY, EXCLUDING
+    (normalized) any kicker used by a recent carousel. Shared by
+    `_render_kicker_examples` (rule #7's "e.g." list, k=3) and
+    `_render_schema_kicker` (the Structure JSON worked example's take-slide
+    headline, k=1 — 2026-07-20 red-team MAJOR #3) so neither prompt surface
+    ever teaches a kicker the variety steer just banned in the SAME
+    prompt. Returns FEWER than k (down to zero) if the pool is exhausted
+    after exclusion — callers decide how to degrade (MINOR #7: falling
+    back to the full, recently-used vocabulary here would silently
+    reintroduce a banned kicker)."""
+    excluded = {_normalize_kicker(k_) for k_ in (recent_kickers or []) if k_}
+    pool = [v for v in KICKER_EXAMPLE_VOCABULARY if _normalize_kicker(v) not in excluded]
+    return random.sample(pool, k=min(k, len(pool)))
+
+
+def _render_kicker_examples(recent_kickers: list[str] | None = None) -> str:
+    """Render up to 3 example kickers from KICKER_EXAMPLE_VOCABULARY as a
+    quoted, comma-joined string for rule #7's "e.g. ..." list — the
+    de-anchoring fix: a STATIC example list is exactly how "THE SIGNAL"
+    became the new invariant after PR #2544 banned "OUR READ" (it was the
+    first, and only ever, example).
+
+    Returns "" when `_sample_kickers` exhausts the pool (2026-07-20
+    red-team MINOR #7) — the caller, `_render_kicker_examples_clause`,
+    degrades the surrounding sentence to a no-examples instruction rather
+    than ever falling back to the full (recently-used) vocabulary. Callers
+    that need determinism (tests) seed the module `random` instance before
+    calling; production calls take whatever PRNG state the process is
+    on — this is example ROTATION, not a security surface."""
+    sampled = _sample_kickers(recent_kickers, 3)
+    return ", ".join(f'"{k}"' for k in sampled)
+
+
+def _render_kicker_examples_clause(recent_kickers: list[str] | None = None) -> str:
+    """Render rule #7's full "e.g. ... — or coin a new one..." clause as a
+    grammatical instruction in BOTH modes (2026-07-20 red-team MINOR #7):
+    when `_render_kicker_examples` has examples to show, and when recent
+    history has exhausted the vocabulary and it returns "". A naive
+    "e.g.  — or coin a new one..." (empty examples spliced into the static
+    template) would read as broken prompt text."""
+    examples = _render_kicker_examples(recent_kickers)
+    if examples:
+        return (
+            f"e.g. {examples} — or coin a new one in the same register if "
+            "none fits this angle"
+        )
+    return (
+        "coin a new one in the same register that fits this angle — recent "
+        "carousels have already used up the usual examples"
+    )
+
+
+# Round-2 red-team (2026-07-20): the round-1 fallback "YOUR FRESH KICKER"
+# was ITSELF a static, teachable-looking string — same disease one level
+# down, and never checked against history either. An angle-bracket
+# TEMPLATE SLOT reads unambiguously as "fill this in", never as a literal
+# kicker to imitate, so once the pool is exhausted this needs no history
+# check at all — it can never coincide with a real kicker by construction.
+_SCHEMA_KICKER_FALLBACK = "<COIN A FRESH 2-4 WORD KICKER>"
+
+
+def _render_schema_kicker(recent_kickers: list[str] | None = None) -> str:
+    """Sample ONE kicker for the Structure JSON worked example's take-slide
+    headline (2026-07-20 red-team MAJOR #3): the schema example used to
+    teach a literal "THE NET EFFECT" kicker regardless of history — a
+    second static anchor point, identical in kind to the rule #7 list this
+    whole patch de-anchors. Falls back to `_SCHEMA_KICKER_FALLBACK` — an
+    angle-bracket template slot, not a candidate kicker — when the pool is
+    exhausted (MINOR #7's degrade policy applied here too)."""
+    sampled = _sample_kickers(recent_kickers, 1)
+    return sampled[0] if sampled else _SCHEMA_KICKER_FALLBACK
+
+
+def _render_system_instructions(recent_kickers: list[str] | None = None) -> str:
+    """SYSTEM_INSTRUCTIONS with rule #7's example-kicker placeholder AND the
+    Structure JSON example's take-slide-headline placeholder filled in for
+    this generation call. Kept as a function rather than baked into the
+    SYSTEM_INSTRUCTIONS constant itself: test_wr2_draft_generator_
+    json_example.py imports SYSTEM_INSTRUCTIONS directly and asserts on its
+    static "Structure:" JSON example — that contract must keep working
+    without a live random/DB call (the two tokens remain literal, unquoted
+    text inside a JSON string value there, so json.loads() still parses
+    the un-substituted constant)."""
+    return (
+        SYSTEM_INSTRUCTIONS
+        .replace(_KICKER_EXAMPLES_TOKEN, _render_kicker_examples_clause(recent_kickers))
+        .replace(_KICKER_EXAMPLE_TAKE_TOKEN, _render_schema_kicker(recent_kickers))
+    )
 
 
 def _build_enriched_brief(enrichment: dict[str, Any], live_reasons: list[str] | None) -> str:
@@ -660,6 +883,7 @@ def _build_draft_prompt(
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
     liveness_tier: str = "",
+    recent_kickers: list[str] | None = None,
 ) -> str:
     """Build the slide-composition prompt.
 
@@ -680,6 +904,12 @@ def _build_draft_prompt(
       - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
     Falls back to the enriched brief alone when `summary` is empty.
+
+    `recent_kickers` (2026-07-20): optional list of take-kickers used by
+    recent carousels, threaded through to `_render_system_instructions` so
+    rule #7's worked example list never suggests a kicker that's also
+    banned by the variety steer in `avoid_steer`. Defaults to None so
+    existing call sites are unaffected.
     """
     use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
@@ -723,7 +953,9 @@ def _build_draft_prompt(
         "breaking": "6-7", "developing": "7-8", "evergreen": "9-10",
     }.get(liveness_tier, "6-8")
 
-    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{steer_block}
+    system_instructions = _render_system_instructions(recent_kickers)
+
+    return f"""{system_instructions}{avoid_steer}{steer_block}
 
 ---
 
@@ -844,11 +1076,13 @@ async def claude_compose_slides(
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
     liveness_tier: str = "",
+    recent_kickers: list[str] | None = None,
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
         avoid_steer=avoid_steer, liveness_tier=liveness_tier,
+        recent_kickers=recent_kickers,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -1307,6 +1541,139 @@ def _build_avoid_steer(recent: list[dict[str, Any]]) -> str:
     )
 
 
+async def fetch_recent_editorial_signatures(
+    conn: asyncpg.Connection, limit: int = 10
+) -> dict[str, list[str]]:
+    """Last-N rendered/published drafts' take-slide kickers + cover subheads,
+    newest-first (2026-07-20 — extends the P-4 pattern above to the axis
+    that had NO DB-armed lookback: see the module comment above
+    KICKER_EXAMPLE_VOCABULARY for why).
+
+    Returns {"kickers": [...], "subheads": [...]}, both order-preserving and
+    deduped case-insensitively (keeps the FIRST occurrence's original casing
+    for display in the steer block — see `_build_variety_steer`).
+
+    Best-effort like its sibling `fetch_recent_same_domain`: any
+    CONNECTION-level exception (table/column not migrated yet on this DB,
+    network drop) returns the empty shape so generation is NEVER blocked
+    by this lookback. A single malformed ROW (bad JSON, unexpected shape)
+    is isolated per-row (2026-07-20 red-team MAJOR #2): it's skipped and
+    logged at debug, but the OTHER rows' history still survives — the
+    original single try/except around the whole loop meant one bad legacy
+    row could silently zero out an otherwise-healthy history.
+
+    `created_at DESC` orders by draft-CREATION time, not by when the
+    carousel actually rendered/published (MINOR #10) — an older draft that
+    finishes rendering later than a newer one can be shadowed out of the
+    top-`limit` window. Accepted as an approximation, not fixed: the drift
+    is bounded by the WR2 pipeline's own processing latency (hours, not
+    days) and self-heals as soon as it renders.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT slides_json
+              FROM war_room_drafts
+             WHERE status IN ('rendered', 'published')
+               AND slides_json IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT $1
+            """,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — connection-level, never block generation
+        logger.warning("fetch_recent_editorial_signatures failed: %s", exc)
+        return {"kickers": [], "subheads": []}
+
+    kickers: list[str] = []
+    kickers_seen: set[str] = set()
+    subheads: list[str] = []
+    subheads_seen: set[str] = set()
+
+    for row in rows:
+        try:
+            # slides_json arrives as a dict OR a JSON string depending on the
+            # asyncpg codec registration on this connection — mirrors the
+            # exact defensive pattern wr2_daily_reconciler.py /
+            # wr2_fact_checker.py already use for the same column.
+            blob = row["slides_json"]
+            if isinstance(blob, str):
+                blob = json.loads(blob)
+            slides = blob.get("slides") if isinstance(blob, dict) else blob
+            if not isinstance(slides, list):
+                continue
+
+            for slide in slides:
+                if not isinstance(slide, dict):
+                    continue
+                if slide.get("slide_type") == "take":
+                    kicker = _extract_take_kicker(str(slide.get("headline") or ""))
+                    if kicker:
+                        key = _normalize_kicker(kicker)
+                        if key not in kickers_seen:
+                            kickers_seen.add(key)
+                            kickers.append(kicker)
+                if slide.get("is_cover"):
+                    subhead = str(slide.get("subhead") or "").strip()
+                    if subhead:
+                        key = _normalize_kicker(subhead)
+                        if key not in subheads_seen:
+                            subheads_seen.add(key)
+                            subheads.append(subhead)
+        except Exception as exc:  # noqa: BLE001 — isolate one bad row, keep the rest
+            logger.debug("fetch_recent_editorial_signatures: skipping malformed row: %s", exc)
+            continue
+
+    return {"kickers": kickers, "subheads": subheads}
+
+
+_VARIETY_STEER_KICKER_CAP = 12
+
+
+def _build_variety_steer(sig: dict[str, list[str]]) -> str:
+    """Render the recent take-kicker + cover-subhead history as a soft-steer
+    block, mirroring `_build_avoid_steer`'s shape. Empty history (both lists
+    empty) -> empty string, so this never touches the prompt when there's
+    nothing to steer away from.
+
+    The kicker line is phrased as a MUST-NOT (whole-phrase match, enforced
+    by `_kicker_collision`'s regen guard in the generation loop). The
+    subhead line is phrased as a softer "avoid the same formula" nudge —
+    spec calls for a ban only on kickers; subheads have no regen guard.
+
+    The MUST-NOT kicker list is capped at `_VARIETY_STEER_KICKER_CAP`
+    (2026-07-20 red-team MINOR #8): `fetch_recent_editorial_signatures`
+    can return up to ~2x its draft `limit` (a draft's cover AND closer are
+    both often "take"-type slides), and an uncapped list bloats the prompt
+    without adding real steering value beyond the most recent handful. The
+    cap is local to THIS rendering — `_kicker_collision`'s regen guard and
+    `_render_system_instructions`'s example de-anchor still see the FULL
+    uncapped history via `sig["kickers"]` directly."""
+    kickers = (sig.get("kickers") or [])[:_VARIETY_STEER_KICKER_CAP]
+    subheads = sig.get("subheads") or []
+    if not kickers and not subheads:
+        return ""
+
+    lines = ["\n\nEDITORIAL VARIETY (2026-07-20):"]
+    if kickers:
+        kicker_list = ", ".join(f"{k!r}" for k in kickers)
+        lines.append(
+            f"the last {len(kickers)} take-slide kickers we used were: "
+            f"{kicker_list}. The take-slide kicker in THIS carousel MUST NOT "
+            "be any of these (whole-phrase match) — coin a FRESH kicker that "
+            "fits THIS carousel's specific angle."
+        )
+    if subheads:
+        subhead_list = ", ".join(f"{s!r}" for s in subheads)
+        lines.append(
+            f"Recent cover subheads were: {subhead_list} — avoid repeating "
+            'the same formula (e.g. don\'t produce yet another "X ALERT" if '
+            "the recent list is saturated with ALERT/UPDATE variants). "
+            "Subheads are a soft steer here, not a ban."
+        )
+    return "\n".join(lines)
+
+
 async def _persist_ready(
     conn: asyncpg.Connection,
     draft_id: uuid.UUID,
@@ -1427,14 +1794,47 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
     # real data. The "unknown" domain bucket is never constrained.
     prospective_domain = tt.derive_domain(topic)
     recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
-    avoid_steer = _build_avoid_steer(recent)
+
+    # ── Kicker/subhead variety lookback (2026-07-20) ────────────────────────
+    # ALWAYS ON (unlike the domain anti-sameness above, whose HARD reject
+    # loop only engages when WR2_ANTIMONOTONE_ENFORCE=true) — see the module
+    # comment above KICKER_EXAMPLE_VOCABULARY for why this axis needed its
+    # own DB-armed lookback. `editorial_signatures["kickers"]` also threads
+    # into claude_compose_slides below so rule #7's worked-example list
+    # never suggests a kicker this same steer just banned.
+    editorial_signatures = await fetch_recent_editorial_signatures(conn, limit=10)
+
+    # `base_steer` is the ALWAYS-ON portion (domain anti-sameness + editorial
+    # variety), computed ONCE. Per-attempt regen feedback lives in
+    # `escalations` below and is APPENDED on top of this every attempt — it
+    # is never rebuilt from scratch (2026-07-20 red-team MAJOR #1: the old
+    # anti-sameness retry rebuilt `avoid_steer = _build_avoid_steer(recent) +
+    # (...)`, which silently discarded the EDITORIAL VARIETY block and any
+    # closer/kicker escalation accumulated on prior attempts — a "steer
+    # reset" bug).
+    base_steer = _build_avoid_steer(recent) + _build_variety_steer(editorial_signatures)
+
     enforce = os.environ.get("WR2_ANTIMONOTONE_ENFORCE", "false").lower() == "true"
     max_regen = 2  # => up to 3 total generation attempts
 
     parsed: dict[str, Any] | None = None
     register = ""
     slides: list[dict[str, Any]] = []
+    # Regen-feedback accumulator, keyed by guard name (2026-07-20 red-team
+    # MAJOR #1, refined round-2 MINOR "clear-on-pass"). Each guard that
+    # fires on an attempt SETS its own key, replacing any PREVIOUS message
+    # from the SAME guard (so repeated A4 failures don't duplicate lines);
+    # each guard that does NOT fire POPS its own key (so a RESOLVED
+    # objection — one whose "Your PREVIOUS attempt..." wording would
+    # otherwise go stale and misdescribe the attempt that's actually about
+    # to be retried — disappears instead of riding along forever). Every
+    # OTHER guard's entry is left untouched either way — the next attempt's
+    # prompt is `base_steer` plus only the escalations still LIVE, from any
+    # guard, in guard-name order.
+    escalations: dict[str, str] = {}
     for attempt in range(max_regen + 1):
+        avoid_steer = base_steer + "".join(escalations.values())
+
         # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
         # had zero writer before this). Wraps the single Claude call that stands
         # in for the interactive path's brief_interpreter (this script composes
@@ -1448,6 +1848,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
                 topic=topic, summary=summary, source_url=source_url,
                 enrichment=enrichment, live_reasons=live_reasons,
                 avoid_steer=avoid_steer, liveness_tier=liveness_tier,
+                recent_kickers=editorial_signatures.get("kickers"),
             )
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
             _wom_error = e
@@ -1485,11 +1886,28 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
             await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
             return "failed"
 
+        # Evaluate ALL regen guards against THIS attempt's slides — never
+        # short-circuit on the first hit (2026-07-20 red-team MAJOR #1: the
+        # old structure had each guard `continue` immediately on firing,
+        # which meant a long closer STARVED the kicker-collision and
+        # anti-sameness guards of ever running on that attempt's output —
+        # a real defect could ship because only the FIRST guard in source
+        # order ever got a chance to object). `fired` collects every guard
+        # that objected; the retry/accept decision is made ONCE at the end,
+        # after all three have had a look.
+        fired = False
+
         # A4 closer guard (tier-independent, flag-independent): if the closing
         # statement-bomb body is too long it wraps into a text-brick. WARN + a
         # targeted regen asking the model to compress it — never a hard reject.
-        # Checked BEFORE anti-sameness so it works even with WR2_ANTIMONOTONE off.
         if _closer_too_long(slides):
+            fired = True
+            escalations["closer"] = (
+                "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
+                f"({_closer_word_count(slides)} words). Rewrite the closer as a "
+                f"single-line bold statement of at most {CLOSER_MAX_WORDS} words "
+                "(apply any other corrections requested below/above as well)."
+            )
             if attempt < max_regen:
                 logger.warning(
                     "Draft %s closer too long (%d words > %d) — regenerating for a "
@@ -1497,48 +1915,92 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
                     draft_id, _closer_word_count(slides), CLOSER_MAX_WORDS,
                     attempt + 1, max_regen,
                 )
-                avoid_steer = avoid_steer + (
-                    "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
-                    f"({_closer_word_count(slides)} words). Rewrite ONLY the closer as a "
-                    f"single-line bold statement of at most {CLOSER_MAX_WORDS} words."
+            else:
+                logger.warning(
+                    "Draft %s closer still too long (%d words) after %d retries — "
+                    "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
+                    draft_id, _closer_word_count(slides), max_regen,
                 )
-                continue  # regenerate
-            logger.warning(
-                "Draft %s closer still too long (%d words) after %d retries — "
-                "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
-                draft_id, _closer_word_count(slides), max_regen,
-            )
+        else:
+            # Resolved: this guard no longer objects, so its (possibly
+            # stale, "PREVIOUS attempt"-worded) message must not ride the
+            # next prompt (2026-07-20 red-team round-2 MINOR).
+            escalations.pop("closer", None)
 
-        # Derived signature of THIS draft for the anti-sameness check.
+        # Kicker-collision regen guard (2026-07-20, mirrors A4 above: tier-
+        # and flag-INDEPENDENT — this must fire even when
+        # WR2_ANTIMONOTONE_ENFORCE is off, unlike the domain anti-sameness
+        # check below it). WARN + a single targeted regen, never a hard
+        # reject; Legge 5 (human review) is the backstop if it persists.
+        collision_kicker = _kicker_collision(
+            slides, editorial_signatures.get("kickers") or []
+        )
+        if collision_kicker:
+            fired = True
+            escalations["kicker"] = (
+                f"\n\nYour PREVIOUS attempt reused the kicker {collision_kicker!r} "
+                "which recent carousels already used. Choose a DIFFERENT "
+                "kicker — coin a fresh one for this angle."
+            )
+            if attempt < max_regen:
+                logger.warning(
+                    "Draft %s take-kicker collision (%r already used by a "
+                    "recent carousel) — regenerating for a fresh kicker "
+                    "(attempt %d/%d).",
+                    draft_id, collision_kicker, attempt + 1, max_regen,
+                )
+            else:
+                logger.warning(
+                    "Draft %s take-kicker collision persisted after %d retries "
+                    "(%r) — proceeding anyway (WARN); Legge 5 backstop at the "
+                    "review gate.",
+                    draft_id, max_regen, collision_kicker,
+                )
+        else:
+            escalations.pop("kicker", None)
+
+        # P-4 anti-sameness (constitution Art 10.6): the HARD reject only
+        # engages when WR2_ANTIMONOTONE_ENFORCE=true (default OFF) — when
+        # off, `antimonotone_collision` is always False, matching the
+        # original "always accept on this axis" behaviour.
         slides_envelope = {"slides": slides}
         dominant_mode = tt.derive_dominant_mode(slides_envelope)
-
-        if (
-            not enforce
-            or prospective_domain == tt.UNKNOWN
-            or not tt.collides_with_recent(register, dominant_mode, recent)
-        ):
-            break  # accepted (enforcement off, unknown domain, or no collision)
-
-        if attempt < max_regen:
-            logger.warning(
-                "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
-                "%s — regenerating (attempt %d/%d).",
-                prospective_domain, register, dominant_mode, recent,
-                attempt + 1, max_regen,
-            )
-            # Strengthen the steer on retry so the model does not repeat itself.
-            avoid_steer = _build_avoid_steer(recent) + (
+        antimonotone_collision = (
+            enforce
+            and prospective_domain != tt.UNKNOWN
+            and tt.collides_with_recent(register, dominant_mode, recent)
+        )
+        if antimonotone_collision:
+            fired = True
+            escalations["antimonotone"] = (
                 "\n\nYour PREVIOUS attempt repeated a forbidden combination. "
                 f"Do NOT use register={register!r} with image-mode={dominant_mode!r} "
                 "again. Change at least one of them."
             )
+            if attempt < max_regen:
+                logger.warning(
+                    "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
+                    "%s — regenerating (attempt %d/%d).",
+                    prospective_domain, register, dominant_mode, recent,
+                    attempt + 1, max_regen,
+                )
+            else:
+                logger.warning(
+                    "Anti-sameness collision persisted after %d retries "
+                    "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
+                    max_regen, prospective_domain, register, dominant_mode,
+                )
         else:
-            logger.warning(
-                "Anti-sameness collision persisted after %d retries "
-                "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
-                max_regen, prospective_domain, register, dominant_mode,
-            )
+            escalations.pop("antimonotone", None)
+
+        if not fired:
+            break  # accepted — no guard objected to this attempt's output
+
+        if attempt < max_regen:
+            continue  # regenerate with every guard's accumulated escalation
+        # Last attempt exhausted: every guard that still objects has already
+        # logged its own "proceeding anyway" WARN above — fall out of the
+        # loop and ship what we have (Legge 5 backstop at the review gate).
 
     assert parsed is not None  # loop always sets parsed or returns
 
