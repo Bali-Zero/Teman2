@@ -107,11 +107,26 @@ def _candidate_is_allowed(
         return False
     domains = facets.get("domains")
     languages = facets.get("languages")
+    confidence = facets.get("confidence")
+    lifecycle_states = facets.get("lifecycle_states")
+    if not all(
+        isinstance(selected, list)
+        for selected in (domains, languages, confidence, lifecycle_states)
+    ):
+        return False
     return (
-        isinstance(domains, list)
-        and isinstance(languages, list)
-        and (not domains or candidate.domain in domains)
+        (not domains or candidate.domain in domains)
         and (not languages or candidate.language in languages)
+        and (
+            not confidence
+            or candidate.research_confidence is not None
+            and candidate.research_confidence in confidence
+        )
+        and (
+            not lifecycle_states
+            or candidate.research_lifecycle_state is not None
+            and candidate.research_lifecycle_state in lifecycle_states
+        )
     )
 
 
@@ -332,13 +347,37 @@ _NOTEBOOK_TASKS = {
     "compare": "Compare the public positions found in the cited sources.",
     "timeline": "Order the public developments chronologically.",
 }
+_NOTEBOOK_EVIDENCE_TYPES = frozenset({"official", "journalism", "research", "dataset"})
+_NOTEBOOK_UNSUPPORTED_FACETS = ("domains", "confidence", "lifecycle_states", "languages")
 
 
-def _notebook_prompt(label: str, template: str) -> str:
+def _notebook_evidence_types(facets: Mapping[str, Any]) -> tuple[str, ...]:
+    if facets.get("source_system_ids") != ["notebooklm"]:
+        raise ResearchWorkerError("invalid notebook insight request")
+    for key in _NOTEBOOK_UNSUPPORTED_FACETS:
+        selected = facets.get(key)
+        if not isinstance(selected, list) or selected:
+            raise ResearchWorkerError("unsupported notebook insight facet")
+    selected_evidence = facets.get("evidence_types")
+    if (
+        not isinstance(selected_evidence, list)
+        or any(
+            not isinstance(source_type, str) or source_type not in _NOTEBOOK_EVIDENCE_TYPES
+            for source_type in selected_evidence
+        )
+        or len(set(selected_evidence)) != len(selected_evidence)
+    ):
+        raise ResearchWorkerError("invalid notebook insight evidence filter")
+    return tuple(sorted(selected_evidence or _NOTEBOOK_EVIDENCE_TYPES))
+
+
+def _notebook_prompt(label: str, template: str, evidence_types: Sequence[str]) -> str:
     task = _NOTEBOOK_TASKS[template]
+    allowed_evidence = ", ".join(evidence_types)
     return (
         "Use only public, citable sources already present in this notebook. "
         f"Subject: {label}. Task: {task} "
+        f"Allowed evidence types: {allowed_evidence}. "
         "Return JSON only with this exact closed schema: "
         '{"schema_version":"magazine-notebook-result.v1","summary":"...",'
         '"claims":[{"kind":"fact|numeric|analysis","text":"...",'
@@ -366,9 +405,10 @@ class NotebookInsightResearchAdapter:
             request.get("mode") != "notebook_insight"
             or len(subject_ids) != 1
             or template not in _NOTEBOOK_TASKS
-            or facets.get("source_system_ids") != ["notebooklm"]
         ):
             raise ResearchWorkerError("invalid notebook insight request")
+        evidence_types = _notebook_evidence_types(facets)
+        allowed_evidence_types = set(evidence_types)
         try:
             subject = self._registry.subject(subject_ids[0])
         except ValueError as exc:
@@ -378,7 +418,7 @@ class NotebookInsightResearchAdapter:
         try:
             answer = await self._client.query(
                 subject.notebook_ref.get_secret_value(),
-                _notebook_prompt(subject.label, str(template)),
+                _notebook_prompt(subject.label, str(template), evidence_types),
             )
             if not isinstance(answer, str) or len(answer.encode()) > _MAX_NOTEBOOK_ANSWER_BYTES:
                 raise ValueError("invalid notebook answer")
@@ -409,7 +449,10 @@ class NotebookInsightResearchAdapter:
                     published_at=item.published_at,
                 )
                 for evidence_index, item in enumerate(claim.evidence)
+                if item.source_type in allowed_evidence_types
             )
+            if not evidence:
+                continue
             claims.append(
                 ResearchClaim(
                     claim_id=_opaque_id(
@@ -423,7 +466,13 @@ class NotebookInsightResearchAdapter:
                     as_of=claim.as_of,
                 )
             )
-        return payload.summary, claims
+        if not claims:
+            raise ResearchSourceUnavailableError("notebook source unavailable")
+        summary = (
+            f"Notebook Insight returned {len(claims)} evidence-bound public findings "
+            f"for {subject.label}."
+        )
+        return summary, claims
 
 
 def build_production_adapters(

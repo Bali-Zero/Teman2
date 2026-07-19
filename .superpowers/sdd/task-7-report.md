@@ -12,8 +12,8 @@ publication, collector mutation, client-data access, or paid API call occurred.
 
 ## Review Remediation
 
-Three review waves corrected five independently confirmed authorization, lease,
-heartbeat-lifecycle, DLP, and production-wiring findings.
+Four review waves corrected independently confirmed authorization, lease,
+heartbeat-lifecycle, DLP, production-wiring, and filter-semantics findings.
 
 ### Wave 1 — Authorization and Server Lease Fencing
 
@@ -66,9 +66,10 @@ heartbeat-lifecycle, DLP, and production-wiring findings.
 - **Concrete local adapters:** search, compare, and timeline load the existing
   Intel Lake, MATA GARUDA, Regulatory Watcher, and NotebookLM public projection
   contracts. They filter only configured sources, stable subjects, domains,
-  languages, evidence types, and projection cutoff timestamps; claims without
-  a public HTTPS citation and publication timestamp are excluded. Compare and
-  timeline cardinality and ordering are deterministic.
+  languages, evidence types, normalized confidence, normalized lifecycle state,
+  and projection cutoff timestamps; claims without a public HTTPS citation and
+  publication timestamp are excluded. Compare and timeline cardinality and
+  ordering are deterministic.
 - **Closed Notebook Insight:** the production client invokes the authenticated
   Pro-local `nlm` mechanism with `asyncio.create_subprocess_exec`, fixed argv,
   no shell, discarded stderr, bounded output, and a hard timeout. The prompt is
@@ -81,6 +82,29 @@ heartbeat-lifecycle, DLP, and production-wiring findings.
   `magazine-research-worker` executable polls only through the existing outbound
   machine bridge, uses bounded backoff, handles termination cleanly, and logs no
   request, notebook, response, secret, or exception content.
+
+### Wave 4 — Closed Filter Semantics
+
+- **Sanitized metadata normalization:** local candidates expose only closed
+  confidence and lifecycle values. Confidence labels and numeric scores map to
+  the repository thresholds (`> 0.60` normal, `0.15–0.60` cautious, `< 0.15`
+  abstain); conflicting, unknown, non-finite, or out-of-range values fail
+  closed. Lifecycle aliases normalize only to published, amended, or
+  superseded; missing metadata cannot satisfy a selected filter.
+- **Every accepted local filter is enforced:** domain, language, evidence type,
+  source, confidence, lifecycle, and cutoff filtering all run against sanitized
+  candidate metadata. Combined filters are conjunctive and candidates missing
+  any selected facet are excluded.
+- **Provable Notebook facets only:** the TypeScript creation boundary, Python
+  worker, and Notebook adapter reject unsupported nonempty domain, confidence,
+  lifecycle, or language filters before any NotebookLM invocation. NotebookLM
+  is the mandatory exact source; selected evidence types are included in the
+  fixed prompt and enforced again against returned citations. A response with
+  no surviving evidence becomes a content-free source-unavailable outcome, and
+  its summary is derived only from the surviving structured claims.
+- **Honest workbench controls:** Notebook Insight hides unsupported domain and
+  language controls, fixes the source to NotebookLM, clears unsupported facets
+  from the request, and explains why those combinations are unavailable.
 
 ## Delivered Components
 
@@ -136,6 +160,19 @@ heartbeat-lifecycle, DLP, and production-wiring findings.
   invocation, unbounded output, backoff, and graceful stop are rejected or
   covered.
 
+### Wave 4
+
+- RED was captured before implementation. TypeScript research coverage produced
+  `15 passed, 2 failed` for the missing creation-boundary and workbench
+  restrictions. Python runtime and worker coverage produced `12 passed, 8
+  failed` across confidence/lifecycle enforcement, fail-closed missing metadata,
+  all four unsupported Notebook facets, and Notebook evidence filtering.
+- GREEN focused coverage is `17 passed` in the TypeScript research suite and
+  `32 passed` across Python runtime and worker suites. It exercises every local
+  facet independently, combined filters, confidence thresholds, absent
+  metadata, unsupported Notebook facets with zero NotebookLM calls, mandatory
+  source selection, evidence filtering, and the no-surviving-evidence failure.
+
 ## Final Gates
 
 From `apps/bali-zero-magazine`:
@@ -145,48 +182,43 @@ npm run typecheck
 exit 0
 
 npm test
-Build complete; 139 passed, 0 failed
+Build complete; 141 passed, 0 failed
 
 npm run lint
 exit 0
 
-npx prettier --check app/api/machine/research/jobs/claim/route.ts \
-  lib/server/research-http.ts lib/server/research-repository.ts \
-  tests/research.test.mjs
+npx prettier --check components/research-workbench.tsx \
+  lib/server/research-repository.ts tests/research.test.mjs
 All matched files use Prettier code style!
 ```
 
 From `apps/zantara-media`:
 
 ```text
-.venv/bin/python -m pytest tests/magazine/test_research_worker.py \
-  tests/test_dlp.py -q
-33 passed in 0.24s
+.venv/bin/python -m pytest tests/magazine/test_research_runtime.py \
+  tests/magazine/test_research_worker.py -q
+32 passed in 0.71s
 
 .venv/bin/python -m pytest tests/magazine tests/test_dlp.py -q
-111 passed in 3.85s
+124 passed in 3.10s
 
-.venv/bin/python -m pytest tests/magazine/test_research_runtime.py \
-  tests/magazine/test_research_worker.py tests/magazine/test_loaders.py -q
-24 passed in 1.07s
-
-.venv/bin/ruff check zantara_media/magazine/research_worker.py \
-  zantara_media/magazine/research_sources.py \
+.venv/bin/ruff check zantara_media/magazine/adapters.py \
   zantara_media/magazine/research_adapters.py \
-  zantara_media/magazine/research_runtime.py \
-  zantara_media/cli/magazine_research_worker.py \
-  zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
-  tests/magazine/test_research_runtime.py tests/test_dlp.py
+  zantara_media/magazine/research_worker.py \
+  tests/magazine/test_research_runtime.py \
+  tests/magazine/test_research_worker.py
 All checks passed!
 
-.venv/bin/ruff format --check zantara_media/magazine/research_worker.py \
-  zantara_media/magazine/research_sources.py \
+.venv/bin/ruff format --check zantara_media/magazine/adapters.py \
   zantara_media/magazine/research_adapters.py \
-  zantara_media/magazine/research_runtime.py \
-  zantara_media/cli/magazine_research_worker.py \
-  zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
-  tests/magazine/test_research_runtime.py tests/test_dlp.py
-All changed Task 7 files formatted
+  zantara_media/magazine/research_worker.py \
+  tests/magazine/test_research_runtime.py \
+  tests/magazine/test_research_worker.py
+5 files already formatted
+
+.venv/bin/python -m compileall -q zantara_media
+.venv/bin/python -m zantara_media.cli.magazine_research_worker --help
+exit 0
 ```
 
 Repository hygiene:

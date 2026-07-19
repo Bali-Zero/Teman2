@@ -59,6 +59,7 @@ export function ResearchWorkbench({
   const [status, setStatus] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const recentJobs = useMemo(() => jobs.slice(0, 12), [jobs]);
+  const notebookRestricted = mode === "notebook_insight";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +68,7 @@ export function ResearchWorkbench({
     const data = new FormData(form);
     const topics = selected(data, "topics");
     const entities = selected(data, "entities");
-    const tokens = mode === "notebook_insight" ? [] : selected(data, "tokens");
+    const tokens = notebookRestricted ? [] : selected(data, "tokens");
     setSubmitting(true);
     setStatus("Queuing research job…");
     try {
@@ -82,16 +83,14 @@ export function ResearchWorkbench({
             topic_ids: topics,
             entity_ids: entities,
             index_tokens: tokens,
-            template: mode === "notebook_insight" ? data.get("template") : null,
+            template: notebookRestricted ? data.get("template") : null,
             facets: {
-              domains: [data.get("domain")],
-              source_system_ids: [
-                mode === "notebook_insight" ? "notebooklm" : source,
-              ],
+              domains: notebookRestricted ? [] : [data.get("domain")],
+              source_system_ids: [notebookRestricted ? "notebooklm" : source],
               evidence_types: [data.get("evidence_type")],
-              confidence: ["normal"],
-              lifecycle_states: ["published"],
-              languages: [data.get("language")],
+              confidence: notebookRestricted ? [] : ["normal"],
+              lifecycle_states: notebookRestricted ? [] : ["published"],
+              languages: notebookRestricted ? [] : [data.get("language")],
             },
           },
         }),
@@ -187,18 +186,26 @@ export function ResearchWorkbench({
             </label>
           </div>
           {mode === "notebook_insight" ? (
-            <label>
-              Notebook template
-              <select
-                name="template"
-                defaultValue="explain"
-                disabled={!canCreate}
-              >
-                <option value="explain">Explain</option>
-                <option value="compare">Compare</option>
-                <option value="timeline">Timeline</option>
-              </select>
-            </label>
+            <>
+              <label>
+                Notebook template
+                <select
+                  name="template"
+                  defaultValue="explain"
+                  disabled={!canCreate}
+                >
+                  <option value="explain">Explain</option>
+                  <option value="compare">Compare</option>
+                  <option value="timeline">Timeline</option>
+                </select>
+              </label>
+              <p className="research-access-note">
+                Notebook Insight accepts only NotebookLM and evidence type
+                filters. Domain, confidence, lifecycle and language filters are
+                unavailable because the cited response cannot prove those
+                facets.
+              </p>
+            </>
           ) : (
             <label>
               Sanitized index tokens
@@ -217,20 +224,22 @@ export function ResearchWorkbench({
             </label>
           )}
           <div className="research-form-pair research-form-pair--compact">
-            <label>
-              Domain
-              <select
-                name="domain"
-                defaultValue="compliance"
-                disabled={!canCreate}
-              >
-                <option value="immigration">Immigration</option>
-                <option value="company">Company</option>
-                <option value="tax">Tax</option>
-                <option value="property">Property</option>
-                <option value="compliance">Compliance</option>
-              </select>
-            </label>
+            {!notebookRestricted && (
+              <label>
+                Domain
+                <select
+                  name="domain"
+                  defaultValue="compliance"
+                  disabled={!canCreate}
+                >
+                  <option value="immigration">Immigration</option>
+                  <option value="company">Company</option>
+                  <option value="tax">Tax</option>
+                  <option value="property">Property</option>
+                  <option value="compliance">Compliance</option>
+                </select>
+              </label>
+            )}
             <label>
               Source
               <select
@@ -258,13 +267,15 @@ export function ResearchWorkbench({
                 <option value="dataset">Dataset</option>
               </select>
             </label>
-            <label>
-              Language
-              <select name="language" defaultValue="en" disabled={!canCreate}>
-                <option value="en">English</option>
-                <option value="id">Indonesian</option>
-              </select>
-            </label>
+            {!notebookRestricted && (
+              <label>
+                Language
+                <select name="language" defaultValue="en" disabled={!canCreate}>
+                  <option value="en">English</option>
+                  <option value="id">Indonesian</option>
+                </select>
+              </label>
+            )}
           </div>
           <button type="submit" disabled={!canCreate || submitting}>
             {submitting ? "Queuing…" : "Queue research"}

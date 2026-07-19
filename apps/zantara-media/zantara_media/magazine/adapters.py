@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any, Protocol
+from math import isfinite
+from typing import Any, Literal, Protocol
 
 from pydantic import ConfigDict, BaseModel, Field
 
@@ -60,7 +61,21 @@ _UUID = re.compile(
 _CREDENTIAL = re.compile(
     r"(?i)(?:api[_-]?key|authorization|bearer\s+[a-z0-9._-]+|password\s*[:=]|secret\s*[:=])"
 )
-_RAW_MARKER = re.compile(r"(?i)(?:\[raw\]|-----begin [^-]+-----|raw[_ -](?:payload|document|content))")
+_RAW_MARKER = re.compile(
+    r"(?i)(?:\[raw\]|-----begin [^-]+-----|raw[_ -](?:payload|document|content))"
+)
+_CONFIDENCE_LABELS: dict[str, Literal["normal", "cautious", "abstain"]] = {
+    "high": "normal",
+    "medium": "cautious",
+    "low": "abstain",
+}
+_LIFECYCLE_STATES: dict[str, Literal["published", "amended", "superseded"] | None] = {
+    "developing": None,
+    "verified": "published",
+    "published": "published",
+    "amended": "amended",
+    "superseded": "superseded",
+}
 
 
 class SanitizationError(ValueError):
@@ -94,6 +109,8 @@ class StoryCandidate(BaseModel):
     recency: float = Field(default=0.5, ge=0, le=1)
     operational_impact: float = Field(ge=0, le=1)
     adapter_version: str
+    research_confidence: Literal["normal", "cautious", "abstain"] | None = None
+    research_lifecycle_state: Literal["published", "amended", "superseded"] | None = None
     expected_current_version: int = Field(default=0, ge=0)
 
 
@@ -150,6 +167,47 @@ def _assert_projection_has_no_pii(value: Any, path: str = "candidate") -> None:
             _assert_projection_has_no_pii(item, f"{path}[{index}]")
 
 
+def _research_confidence(
+    row: Mapping[str, Any],
+) -> Literal["normal", "cautious", "abstain"] | None:
+    label_value = row.get("confidence")
+    score_value = row.get("confidence_score")
+    label: Literal["normal", "cautious", "abstain"] | None = None
+    score: Literal["normal", "cautious", "abstain"] | None = None
+    if label_value is not None:
+        if not isinstance(label_value, str) or label_value not in _CONFIDENCE_LABELS:
+            raise SanitizationError("SANITIZATION_INVALID_CONFIDENCE")
+        label = _CONFIDENCE_LABELS[label_value]
+    if score_value is not None:
+        if (
+            isinstance(score_value, bool)
+            or not isinstance(score_value, (int, float))
+            or not isfinite(score_value)
+            or not 0 <= score_value <= 1
+        ):
+            raise SanitizationError("SANITIZATION_INVALID_CONFIDENCE_SCORE")
+        if score_value > 0.60:
+            score = "normal"
+        elif score_value >= 0.15:
+            score = "cautious"
+        else:
+            score = "abstain"
+    if label is not None and score is not None and label != score:
+        raise SanitizationError("SANITIZATION_CONFLICTING_CONFIDENCE")
+    return label or score
+
+
+def _research_lifecycle_state(
+    row: Mapping[str, Any],
+) -> Literal["published", "amended", "superseded"] | None:
+    value = row.get("lifecycle_state")
+    if value is None:
+        return None
+    if not isinstance(value, str) or value not in _LIFECYCLE_STATES:
+        raise SanitizationError("SANITIZATION_INVALID_LIFECYCLE")
+    return _LIFECYCLE_STATES[value]
+
+
 class BasePublicAdapter:
     """Allowlist projection shared by all federated collector adapters."""
 
@@ -177,7 +235,9 @@ class BasePublicAdapter:
         try:
             projection = {field: public[field] for field in fields}
         except KeyError as exc:
-            raise SanitizationError(f"collector manifest missing public field {exc.args[0]}") from exc
+            raise SanitizationError(
+                f"collector manifest missing public field {exc.args[0]}"
+            ) from exc
         projection["system_id"] = self.system_id
         return CollectorRunProjectionV1.model_validate(projection)
 
@@ -236,6 +296,8 @@ class BasePublicAdapter:
             recency=row.get("recency", 0.5),
             operational_impact=row.get("operational_impact", 0.5),
             adapter_version=self.adapter_version,
+            research_confidence=_research_confidence(row),
+            research_lifecycle_state=_research_lifecycle_state(row),
             expected_current_version=row.get("expected_current_version", 0),
         )
 

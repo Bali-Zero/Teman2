@@ -35,6 +35,7 @@ const routePaths = {
   ),
   page: new URL("../app/research/page.tsx", import.meta.url),
   detail: new URL("../app/research/jobs/[jobId]/page.tsx", import.meta.url),
+  workbench: new URL("../components/research-workbench.tsx", import.meta.url),
 };
 
 const catalogRaw = JSON.stringify({
@@ -283,6 +284,60 @@ test("closed request schema rejects free text, unknown IDs, notebook UUIDs, and 
       ),
     /exactly one/,
   );
+});
+
+test("Notebook Insight rejects every unsupported non-empty facet at the human boundary", () => {
+  const catalog = parseResearchCatalog(catalogRaw);
+  const notebookRequest = (facetOverrides = {}) =>
+    request({
+      mode: "notebook_insight",
+      index_tokens: [],
+      template: "explain",
+      facets: {
+        ...request().facets,
+        domains: [],
+        source_system_ids: ["notebooklm"],
+        confidence: [],
+        lifecycle_states: [],
+        languages: [],
+        ...facetOverrides,
+      },
+    });
+
+  assert.doesNotThrow(() => parseResearchRequest(notebookRequest(), catalog));
+  for (const [facet, selected] of [
+    ["domains", ["immigration"]],
+    ["confidence", ["normal"]],
+    ["lifecycle_states", ["published"]],
+    ["languages", ["en"]],
+  ]) {
+    assert.throws(
+      () =>
+        parseResearchRequest(notebookRequest({ [facet]: selected }), catalog),
+      /Notebook Insight does not support selected facet/,
+      facet,
+    );
+  }
+});
+
+test("Notebook Insight UI exposes only its closed supported facet contract", () => {
+  const source = readFileSync(routePaths.workbench, "utf8");
+  const normalized = source.replace(/\s+/g, " ");
+  assert.match(
+    normalized,
+    /Notebook Insight accepts only NotebookLM and evidence type filters/,
+  );
+  assert.match(normalized, /notebookRestricted/);
+  assert.match(normalized, /domains: notebookRestricted \? \[\] :/);
+  assert.match(
+    normalized,
+    /confidence: notebookRestricted \? \[\] : \["normal"\]/,
+  );
+  assert.match(
+    normalized,
+    /lifecycle_states: notebookRestricted \? \[\] : \["published"\]/,
+  );
+  assert.match(normalized, /languages: notebookRestricted \? \[\] :/);
 });
 
 test("catalog can be large while every request selection stays bounded", () => {

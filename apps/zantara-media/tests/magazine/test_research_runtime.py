@@ -29,8 +29,8 @@ VERSIONS = {
 NOTEBOOK_REF = "123e4567-e89b-42d3-a456-426614174000"
 
 
-def _evidence(system_id: str, suffix: str) -> dict[str, Any]:
-    return {
+def _evidence(system_id: str, suffix: str, *, source_type: str = "official") -> dict[str, Any]:
+    evidence: dict[str, Any] = {
         "evidence_id": f"evidence-{system_id}-{suffix}",
         "root_source_id": f"root-{system_id}-{suffix}",
         "canonical_url": f"https://public.example.org/{system_id}/{suffix}",
@@ -38,8 +38,8 @@ def _evidence(system_id: str, suffix: str) -> dict[str, Any]:
         "document_citation": f"Public notice {suffix}",
         "published_at": "2026-07-18T08:00:00Z",
         "retrieved_at": "2026-07-18T09:00:00Z",
-        "source_type": "official",
-        "primary_document_status": "verified",
+        "source_type": source_type,
+        "primary_document_status": ("verified" if source_type == "official" else "not-primary"),
         "root_resolution_status": "resolved",
         "independence_verdict": "independent",
         "evidence_note": "Public issuing-authority notice.",
@@ -49,6 +49,7 @@ def _evidence(system_id: str, suffix: str) -> dict[str, Any]:
         "independence_reason": "issuing-authority-primary-document",
         "counts_toward_breaking": True,
     }
+    return evidence
 
 
 def _candidate(
@@ -58,6 +59,12 @@ def _candidate(
     *,
     numeric: bool = False,
     updated_at: str = "2026-07-18T09:00:00Z",
+    domain: str = "immigration",
+    language: str = "en",
+    evidence_type: str = "official",
+    confidence: str | None = "high",
+    confidence_score: float | None = None,
+    lifecycle_state: str | None = "verified",
 ) -> dict[str, Any]:
     claim = {
         "claim_id": f"claim-{system_id}-{suffix}",
@@ -74,11 +81,11 @@ def _candidate(
         "evidence_ids": [f"evidence-{system_id}-{suffix}"],
         "breaking_gate": "official-primary",
     }
-    return {
+    candidate: dict[str, Any] = {
         "public_id": f"public-{system_id}-{suffix}",
         "slug": f"{system_id}-{suffix}",
-        "language": "en",
-        "domain": "immigration",
+        "language": language,
+        "domain": domain,
         "severity": "high",
         "first_seen_at": "2026-07-18T08:30:00Z",
         "event_occurred_at": "2026-07-18T08:00:00Z",
@@ -89,7 +96,7 @@ def _candidate(
         "why_it_matters": f"Operators following {subject} should review the notice.",
         "curiosity_text": None,
         "claims": [claim],
-        "evidence_refs": [_evidence(system_id, suffix)],
+        "evidence_refs": [_evidence(system_id, suffix, source_type=evidence_type)],
         "legal_effect_claim_ids": [],
         "asset_digests": [],
         "novelty": 0.8,
@@ -98,6 +105,13 @@ def _candidate(
         "expected_current_version": 0,
         **({"record_kind": "insight"} if system_id == "notebooklm" else {}),
     }
+    if confidence is not None:
+        candidate["confidence"] = confidence
+    if confidence_score is not None:
+        candidate["confidence_score"] = confidence_score
+    if lifecycle_state is not None:
+        candidate["lifecycle_state"] = lifecycle_state
+    return candidate
 
 
 def _write_projection(directory: Path, system_id: str, candidates: list[dict[str, Any]]) -> Path:
@@ -133,42 +147,57 @@ def _write_projection(directory: Path, system_id: str, candidates: list[dict[str
     return path
 
 
-def _write_registry(tmp_path: Path, *, overrides: Mapping[str, Any] | None = None) -> Path:
+def _write_registry(
+    tmp_path: Path,
+    *,
+    overrides: Mapping[str, Any] | None = None,
+    candidates_by_system: Mapping[str, list[dict[str, Any]]] | None = None,
+) -> Path:
+    selected = dict(candidates_by_system or {})
     projection_paths = {
         "intel-lake": str(
             _write_projection(
                 tmp_path,
                 "intel-lake",
-                [_candidate("intel-lake", "golden", "Golden Visa", numeric=True)],
+                selected.get(
+                    "intel-lake",
+                    [_candidate("intel-lake", "golden", "Golden Visa", numeric=True)],
+                ),
             )
         ),
         "mata-garuda": str(
             _write_projection(
                 tmp_path,
                 "mata-garuda",
-                [_candidate("mata-garuda", "investment", "Investment Permit")],
+                selected.get(
+                    "mata-garuda",
+                    [_candidate("mata-garuda", "investment", "Investment Permit")],
+                ),
             )
         ),
         "notebooklm": str(
             _write_projection(
                 tmp_path,
                 "notebooklm",
-                [_candidate("notebooklm", "golden", "Golden Visa")],
+                selected.get("notebooklm", [_candidate("notebooklm", "golden", "Golden Visa")]),
             )
         ),
         "regulatory-watcher": str(
             _write_projection(
                 tmp_path,
                 "regulatory-watcher",
-                [
-                    _candidate("regulatory-watcher", "golden", "Golden Visa"),
-                    _candidate(
-                        "regulatory-watcher",
-                        "future",
-                        "Golden Visa",
-                        updated_at="2026-07-20T00:00:00Z",
-                    ),
-                ],
+                selected.get(
+                    "regulatory-watcher",
+                    [
+                        _candidate("regulatory-watcher", "golden", "Golden Visa"),
+                        _candidate(
+                            "regulatory-watcher",
+                            "future",
+                            "Golden Visa",
+                            updated_at="2026-07-20T00:00:00Z",
+                        ),
+                    ],
+                ),
             )
         ),
     }
@@ -208,6 +237,7 @@ def _request(mode: str) -> dict[str, Any]:
     elif mode == "notebook_insight":
         template = "explain"
         sources = ["notebooklm"]
+    notebook_restricted = mode == "notebook_insight"
     return {
         "schema_version": "research-request.v1",
         "mode": mode,
@@ -216,12 +246,12 @@ def _request(mode: str) -> dict[str, Any]:
         "index_tokens": [],
         "template": template,
         "facets": {
-            "domains": ["immigration"],
+            "domains": [] if notebook_restricted else ["immigration"],
             "source_system_ids": sources,
             "evidence_types": ["official"],
-            "confidence": ["normal"],
-            "lifecycle_states": ["published"],
-            "languages": ["en"],
+            "confidence": [] if notebook_restricted else ["normal"],
+            "lifecycle_states": [] if notebook_restricted else ["published"],
+            "languages": [] if notebook_restricted else ["en"],
         },
     }
 
@@ -340,6 +370,233 @@ async def test_production_factory_executes_all_four_modes_from_public_sources(
     assert nlm.calls[0][0] == NOTEBOOK_REF
     assert NOTEBOOK_REF not in nlm.calls[0][1]
     assert NOTEBOOK_REF not in str(transport.results)
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("case_name", "candidate_kwargs", "facet_overrides", "requested_sources"),
+    [
+        ("domain", {"domain": "tax"}, {}, ["regulatory-watcher"]),
+        ("language", {"language": "id"}, {}, ["regulatory-watcher"]),
+        ("evidence", {"evidence_type": "journalism"}, {}, ["regulatory-watcher"]),
+        ("confidence", {"confidence": "medium"}, {}, ["regulatory-watcher"]),
+        ("lifecycle", {"lifecycle_state": "amended"}, {}, ["regulatory-watcher"]),
+        ("source", {}, {}, ["intel-lake"]),
+        (
+            "cutoff",
+            {"updated_at": "2026-07-20T00:00:00Z"},
+            {},
+            ["regulatory-watcher"],
+        ),
+    ],
+)
+async def test_local_adapter_enforces_every_facet_and_projection_cutoff(
+    tmp_path: Path,
+    case_name: str,
+    candidate_kwargs: Mapping[str, Any],
+    facet_overrides: Mapping[str, list[str]],
+    requested_sources: list[str],
+) -> None:
+    case_path = tmp_path / case_name
+    case_path.mkdir()
+    candidate = _candidate("regulatory-watcher", case_name, "Golden Visa", **candidate_kwargs)
+    registry_path = _write_registry(
+        case_path,
+        candidates_by_system={
+            "intel-lake": [],
+            "mata-garuda": [],
+            "notebooklm": [],
+            "regulatory-watcher": [candidate],
+        },
+    )
+    job = _job("search")
+    job["request"] = {
+        **job["request"],
+        "facets": {
+            **job["request"]["facets"],
+            "source_system_ids": requested_sources,
+            **facet_overrides,
+        },
+    }
+    transport = QueueTransport([job])
+    runtime = create_research_runtime(
+        env=_factory_env(registry_path),
+        transport=transport,
+        nlm_client=FakeNlmClient(),
+        dlp_gate=lambda _: True,
+        now=lambda: "2026-07-19T04:30:00.000Z",
+    )
+    assert await runtime.worker.run_once() is True
+    assert transport.results[0]["status"] == "completed"
+    assert transport.results[0]["claims"] == []
+    assert f"/{case_name}" not in str(transport.results[0])
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
+async def test_local_adapter_combines_facets_maps_confidence_and_excludes_missing_metadata(
+    tmp_path: Path,
+) -> None:
+    candidates = [
+        _candidate("regulatory-watcher", "allowed", "Golden Visa"),
+        _candidate("regulatory-watcher", "missing-confidence", "Golden Visa", confidence=None),
+        _candidate("regulatory-watcher", "missing-lifecycle", "Golden Visa", lifecycle_state=None),
+        _candidate(
+            "regulatory-watcher",
+            "cautious-threshold",
+            "Golden Visa",
+            confidence=None,
+            confidence_score=0.60,
+        ),
+        _candidate(
+            "regulatory-watcher",
+            "abstain-threshold",
+            "Golden Visa",
+            confidence=None,
+            confidence_score=0.14,
+        ),
+    ]
+    registry_path = _write_registry(
+        tmp_path,
+        candidates_by_system={
+            "intel-lake": [],
+            "mata-garuda": [],
+            "notebooklm": [],
+            "regulatory-watcher": candidates,
+        },
+    )
+
+    async def run(confidence: str, sequence: int) -> Mapping[str, Any]:
+        job = _job("search", sequence)
+        job["request"] = {
+            **job["request"],
+            "facets": {
+                **job["request"]["facets"],
+                "confidence": [confidence],
+            },
+        }
+        transport = QueueTransport([job])
+        runtime = create_research_runtime(
+            env=_factory_env(registry_path),
+            transport=transport,
+            nlm_client=FakeNlmClient(),
+            dlp_gate=lambda _: True,
+            now=lambda: "2026-07-19T04:30:00.000Z",
+        )
+        assert await runtime.worker.run_once() is True
+        await runtime.aclose()
+        return transport.results[0]
+
+    normal = await run("normal", 11)
+    cautious = await run("cautious", 12)
+    abstain = await run("abstain", 13)
+    assert "allowed" in str(normal)
+    assert "missing-confidence" not in str(normal)
+    assert "missing-lifecycle" not in str(normal)
+    assert "cautious-threshold" not in str(normal)
+    assert "cautious-threshold" in str(cautious)
+    assert "abstain-threshold" in str(abstain)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("facet", "selected"),
+    [
+        ("domains", ["immigration"]),
+        ("confidence", ["normal"]),
+        ("lifecycle_states", ["published"]),
+        ("languages", ["en"]),
+    ],
+)
+async def test_worker_rejects_unsupported_notebook_facets_before_nlm_call(
+    tmp_path: Path, facet: str, selected: list[str]
+) -> None:
+    job = _job("notebook_insight")
+    job["request"] = {
+        **job["request"],
+        "facets": {**job["request"]["facets"], facet: selected},
+    }
+    transport = QueueTransport([job])
+    nlm = FakeNlmClient()
+    runtime = create_research_runtime(
+        env=_factory_env(_write_registry(tmp_path)),
+        transport=transport,
+        nlm_client=nlm,
+        dlp_gate=lambda _: True,
+        now=lambda: "2026-07-19T04:30:00.000Z",
+    )
+    with pytest.raises(ResearchWorkerError, match="unsupported notebook insight facet"):
+        await runtime.worker.run_once()
+    assert nlm.calls == []
+    assert transport.results == []
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
+async def test_notebook_enforces_selected_evidence_type_and_fails_closed_without_match(
+    tmp_path: Path,
+) -> None:
+    answer = json.dumps(
+        {
+            "schema_version": "magazine-notebook-result.v1",
+            "summary": "Cited public synthesis.",
+            "claims": [
+                {
+                    "kind": "fact",
+                    "text": "Golden Visa has cited public coverage.",
+                    "numeric_value": None,
+                    "numeric_unit": None,
+                    "as_of": "2026-07-18",
+                    "evidence": [
+                        {
+                            "publisher": "Immigration Authority",
+                            "citation": "Official notice",
+                            "canonical_url": "https://public.example.org/official",
+                            "source_type": "official",
+                            "published_at": "2026-07-18T08:00:00Z",
+                        },
+                        {
+                            "publisher": "Public Policy Journal",
+                            "citation": "Research analysis",
+                            "canonical_url": "https://public.example.org/research",
+                            "source_type": "research",
+                            "published_at": "2026-07-18T09:00:00Z",
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+    registry_path = _write_registry(tmp_path)
+    matching = _job("notebook_insight", 21)
+    matching["request"] = {
+        **matching["request"],
+        "facets": {**matching["request"]["facets"], "evidence_types": ["research"]},
+    }
+    nonmatching = _job("notebook_insight", 22)
+    nonmatching["request"] = {
+        **nonmatching["request"],
+        "facets": {**nonmatching["request"]["facets"], "evidence_types": ["dataset"]},
+    }
+    transport = QueueTransport([matching, nonmatching])
+    nlm = FakeNlmClient(answer=answer)
+    runtime = create_research_runtime(
+        env=_factory_env(registry_path),
+        transport=transport,
+        nlm_client=nlm,
+        dlp_gate=lambda _: True,
+        now=lambda: "2026-07-19T04:30:00.000Z",
+    )
+    assert await runtime.worker.run_once() is True
+    matched = transport.results[0]
+    assert matched["status"] == "completed"
+    assert [item["source_type"] for item in matched["claims"][0]["evidence"]] == ["research"]
+    assert "Allowed evidence types: research" in nlm.calls[0][1]
+
+    assert await runtime.worker.run_once() is True
+    assert transport.results[1]["status"] == "failed"
+    assert transport.results[1]["failure"] == {"code": "source_unavailable"}
     await runtime.aclose()
 
 

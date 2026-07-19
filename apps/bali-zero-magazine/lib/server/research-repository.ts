@@ -439,6 +439,15 @@ export function parseResearchRequest(
   ) {
     throw new TypeError("notebook insight requires NotebookLM only");
   }
+  if (
+    mode === "notebook_insight" &&
+    (facets.domains.length > 0 ||
+      facets.confidence.length > 0 ||
+      facets.lifecycle_states.length > 0 ||
+      facets.languages.length > 0)
+  ) {
+    throw new TypeError("Notebook Insight does not support selected facet");
+  }
   return {
     schema_version: "research-request.v1",
     mode,

@@ -292,6 +292,10 @@ class ResearchWorker:
             raise ResearchWorkerError("research request requires a source system")
         if mode == "notebook_insight" and source_system_ids != ["notebooklm"]:
             raise ResearchWorkerError("notebook insight requires NotebookLM only")
+        if mode == "notebook_insight" and any(
+            facets[key] for key in ("domains", "confidence", "lifecycle_states", "languages")
+        ):
+            raise ResearchWorkerError("unsupported notebook insight facet")
         return value
 
     async def _passes_dlp(self, projection: Mapping[str, Any]) -> bool:
