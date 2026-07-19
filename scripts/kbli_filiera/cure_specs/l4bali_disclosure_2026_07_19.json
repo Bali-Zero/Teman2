@@ -469,5 +469,27 @@
       "pending_pr": 2800,
       "pending_pr_note": "80190 lives on origin/kbli/lot6-data-apply (PR #2800, auto-merge armed SQUASH as of 2026-07-19). Its l4_bali on origin/main today is still the STALE pre-cure shape but carries NO per_skala_disputed_* key yet (added by #2800, not yet merged). The compiler's generic disputed-key-absent guard skips this code WITH A WARNING (never silently) until #2800 merges. Re-run with --apply after the merge (or after rebasing this branch onto main) to activate the cure for 80190 — no spec change needed."
     }
+  },
+  "editorial_residue_flagged": [
+    "01287",
+    "01700",
+    "05102",
+    "05200",
+    "20111",
+    "49213",
+    "50115",
+    "51103",
+    "51203",
+    "60103",
+    "60312",
+    "64310",
+    "66211",
+    "68112",
+    "68129",
+    "70100"
+  ],
+  "excluded_clean_ambiguous": {
+    "68127": "census classification CLEAN (l4_bali reason 'real estate: proposto per chiusura PMA Bali', l4_from_2020='68111' — a structural/legal basis, not derived from the disputed-only risk tier). Shares the per_skala_disputed_pp28_collision key + 68111 lineage with the false-friend cluster, which is why it was flagged for a second look — but the current l4_bali reason does not cite a disputed-only tier, so it is EXCLUDED from this cure. Candidate for a future dedicated review, not touched here.",
+    "68129": "census classification CLEAN (same reason/from_2020 shape as 68127: 'real estate: proposto per chiusura PMA Bali', l4_from_2020='68111'). Also appears in the editorial_residue_flagged list (baliContext still asserts risk-tier language) — EXCLUDED from this cure's l4_bali change (structural reason, not disputed-tier-derived); the editorial residue is recorded, not rewritten, per this cure's SECONDARY scope. Candidate for a future dedicated review."
   }
 }

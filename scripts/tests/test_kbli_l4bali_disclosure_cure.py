@@ -557,8 +557,29 @@ def test_compiler_dry_run_reports_already_cured_and_guard():
 
 
 # ---------------------------------------------------------------------------
-# 9. Spec self-documentation.
+# 9. Spec bookkeeping — editorial residue + excluded-clean-ambiguous recorded,
+#    never mutated (SECONDARY deliverable: separate editorial-rewrite lane).
 # ---------------------------------------------------------------------------
+
+def test_spec_editorial_residue_flagged_matches_census():
+    spec = _load_spec()
+    expected = sorted([
+        "01287", "01700", "05102", "05200", "20111", "49213", "50115", "51103",
+        "51203", "60103", "60312", "64310", "66211", "68112", "68129", "70100",
+    ])
+    assert sorted(spec["editorial_residue_flagged"]) == expected, (
+        f"spec editorial_residue_flagged drifted from the census's 16-code list. "
+        f"got={sorted(spec['editorial_residue_flagged'])}"
+    )
+
+
+def test_spec_excluded_clean_ambiguous_recorded():
+    spec = _load_spec()
+    assert set(spec["excluded_clean_ambiguous"].keys()) == {"68127", "68129"}, (
+        "spec excluded_clean_ambiguous must record exactly 68127/68129 "
+        "(census CLEAN but flagged ambiguous, candidate for a future look)."
+    )
+
 
 def test_spec_hard_rule_documented():
     spec = _load_spec()
