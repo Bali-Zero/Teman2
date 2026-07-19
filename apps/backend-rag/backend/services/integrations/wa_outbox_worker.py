@@ -299,9 +299,10 @@ async def process_outbox_once(
                 CLAIM_CANDIDATE_LIMIT,
             )
             for candidate in candidates:
+                # $1 is typed TEXT by the || concat — asyncpg refuses int (P0 2026-07-19)
                 acquired = await conn.fetchval(
                     f"SELECT pg_try_advisory_lock({_THREAD_LOCK_KEY_SQL})",
-                    candidate["thread_id"],
+                    str(candidate["thread_id"]),
                 )
                 if not acquired:
                     # Another worker already owns this thread — leave the row
@@ -340,9 +341,10 @@ async def process_outbox_once(
             # missing finally here would be invisible until threads mysteriously
             # stop getting replies.)
             try:
+                # $1 is typed TEXT by the || concat — asyncpg refuses int (P0 2026-07-19)
                 await conn.execute(
                     f"SELECT pg_advisory_unlock({_THREAD_LOCK_KEY_SQL})",
-                    thread_id_for_lock,
+                    str(thread_id_for_lock),
                 )
             except Exception:
                 logger.exception(

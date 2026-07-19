@@ -15,6 +15,7 @@ import {
   buildTranscript,
   checkRecipientAllowlist,
   extractMessageText,
+  isPairedFromCreds,
   matchesBotRecipient,
   parseMessageTimestampMs,
   shouldReconnect,
@@ -420,5 +421,25 @@ describe("buildQuestionResult / buildTranscript — transcript assembly", () => 
       results: [answered, silent],
     });
     expect(transcriptHasZeroReplyQuestion(oneSilent)).toBe(true);
+  });
+});
+
+describe("isPairedFromCreds — guilt + innocence (QR-companion vs pairing-code flow)", () => {
+  it("[guilt] neither registered nor me.id present → NOT paired", () => {
+    expect(isPairedFromCreds({})).toBe(false);
+    expect(isPairedFromCreds({ registered: false })).toBe(false);
+  });
+
+  it("[innocence-1] pairing-code flow: registered:true → paired", () => {
+    expect(isPairedFromCreds({ registered: true })).toBe(true);
+  });
+
+  it("[innocence-2] QR-companion flow: registered:false + me.id present → paired", () => {
+    expect(
+      isPairedFromCreds({
+        registered: false,
+        me: { id: "628213465159:1@s.whatsapp.net" },
+      }),
+    ).toBe(true);
   });
 });
