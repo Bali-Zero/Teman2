@@ -484,6 +484,31 @@ async def test_try_direct_phone_auto_attach_noop_when_writer_off(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
+# _extracted_subject_name — FASE-3 stores fields as {"value": X, "confidence": ..}
+# (extract.py); the raw scalar shape comes from HITL overrides. Both must yield
+# the bare name — str() on the dict would tokenize {"value","confidence"} noise
+# into every LEVA-3 name comparison (fixed 2026-07-19; this pins it).
+# --------------------------------------------------------------------------- #
+def test_extracted_subject_name_unwraps_fase3_value_dict():
+    so = {
+        "extract": {
+            "fields": {"name": {"value": "MARIA ROSSI", "confidence": 0.9, "source_page": 1}}
+        }
+    }
+    assert auto_attach._extracted_subject_name(so) == "MARIA ROSSI"
+
+
+def test_extracted_subject_name_accepts_flat_scalar_and_missing():
+    assert (
+        auto_attach._extracted_subject_name({"extract": {"fields": {"name": "MARIA ROSSI"}}})
+        == "MARIA ROSSI"
+    )
+    assert auto_attach._extracted_subject_name({"extract": {"fields": {}}}) is None
+    assert auto_attach._extracted_subject_name({}) is None
+    assert auto_attach._extracted_subject_name({"extract": {"fields": {"name": {"value": ""}}}}) is None
+
+
+# --------------------------------------------------------------------------- #
 # LEVA 3 — name-id concordance for NO-PHONE sources (Drive/Dropbox bulk).
 # Second signal = OCR-extracted subject name vs CRM client name; a present,
 # resolving sender phone is LEVA 2 territory and must NEVER be overruled here.

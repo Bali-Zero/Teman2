@@ -63,6 +63,25 @@ def _digits_only(value: Any) -> str | None:
     return cleaned or None
 
 
+def _npwp_digits(value: Any) -> str | None:
+    """NPWP digits, written only when a COMPLETE number was read.
+
+    A valid NPWP is exactly 15 (legacy) or 16 (NIK-format) digits — the same
+    gate the intake matcher applies (``routing._match_person_strong``, m248),
+    and the same ASCII-only ``[^0-9]`` projection (``\\D`` is Unicode-aware and
+    would let non-ASCII digits survive into the stored value, which the
+    matcher's SQL ``[^0-9]`` projection then counts differently). A partial OCR
+    fragment stored here would pollute the CRM key book that strong-id
+    corroboration reads from, so incomplete reads are dropped, never stored.
+    """
+    if value is None:
+        return None
+    cleaned = re.sub(r"[^0-9]", "", str(value))
+    if len(cleaned) not in (15, 16):
+        return None
+    return cleaned
+
+
 def _clean_str(value: Any) -> str | None:
     if value is None:
         return None
@@ -105,7 +124,7 @@ def _unwrap(raw: Any) -> Any:
 # Keys are the INTAKE EXTRACT SCHEMA names (backend/services/intake/extract.py),
 # NOT the manual CRM endpoint's renamed keys. Columns verified to exist on the
 # `clients` table (migration 041/042). Mirrors the UPDATE clients SET ... blocks in
-# crm_clients_documents.py (passport 420-469, npwp 697-703, nib 834-840) and extends
+# crm_clients_documents.py (passport L420-469, npwp L697-703, nib L834-840) and extends
 # them with KITAS (columns exist; no manual endpoint enriched them before).
 ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
     "passport": [
@@ -121,7 +140,7 @@ ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
         ("expiry", "kitas_expiry_date", _to_date),
     ],
     "npwp": [
-        ("npwp_number", "npwp", _digits_only),
+        ("npwp_number", "npwp", _npwp_digits),
     ],
     "nib": [
         ("nib_number", "nib", _digits_only),

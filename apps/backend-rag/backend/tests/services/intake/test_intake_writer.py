@@ -736,6 +736,215 @@ async def test_enrichment_skips_archive_only_no_client(pool, seed, monkeypatch):
     assert written == {}  # no-op, no exception
 
 
+# --------------------------------------------------------------------------- #
+# Wire proof (m248): the LEVA auto-commit tiers COMMIT on an npwp-matched doc.
+# The gates are doc-type-agnostic by design (decision + client_id + concordance,
+# no passport/kitas field allow-list) — these tests pin that: no future doc-type
+# filter may silently unwire npwp. First commit-success coverage for try_* at
+# all (previously only killswitch-off no-ops were tested).
+# --------------------------------------------------------------------------- #
+async def _reopen_for_auto(pool, proposal_id: int) -> None:
+    """Seeded proposals are review_claimed; the auto gates only touch review_pending."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET status='review_pending', "
+            "lease_owner=NULL, lease_expires_at=NULL, claim_token=NULL WHERE id=$1",
+            proposal_id,
+        )
+
+
+def _stub_delivery(monkeypatch):
+    from backend.services.intake import auto_attach as aa
+
+    async def _no_delivery(**_kw):
+        return {"status": "stubbed_in_test"}
+
+    monkeypatch.setattr(aa.intake_crm_delivery, "deliver_committed_to_crm", _no_delivery)
+
+
+async def test_leva2_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatch):
+    """LEVA-2 wire proof: npwp doc, strong-id→client A, sender phone→same client
+    → REAL commit: proposal auto_routed, audit row by system:auto-attach, and the
+    enricher backfills the client's npwp key in the same TX (identity-backfill
+    compounding, m248)."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "6289990001234"
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_a"]
+        )
+        proposal = await conn.fetchrow(
+            "SELECT id, routing, entity_resolution FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        proposal = {
+            "id": proposal["id"],
+            "routing": json.loads(proposal["routing"]),
+            "entity_resolution": json.loads(proposal["entity_resolution"]),
+        }
+
+    verdict = await aa.try_auto_attach(proposal, pool, sender_phone=phone)
+    assert verdict["committed"] is True, verdict
+    assert verdict["status"] == "auto_routed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        audit = await conn.fetchrow(
+            "SELECT committed_by, outcome, dry_run FROM intake_commit_audit "
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_a"],
+        )
+        npwp = await conn.fetchval("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+    assert status == "auto_routed"
+    assert audit["committed_by"] == "system:auto-attach"
+    assert audit["outcome"] == "committed"
+    assert audit["dry_run"] is False
+    # routing.fields.npwp_number "01.234.567.8-901.000" → digits-canonical on the card
+    assert npwp == "012345678901000"
+
+
+async def test_leva3_nameid_auto_attach_commits_npwp_matched_doc(pool, seed, monkeypatch):
+    """LEVA-3 wire proof: npwp doc, NO sender phone, doc subject name (FASE-3
+    {"value": ...} wrapped shape) concordant with client A → REAL commit by
+    system:auto-nameid. Also exercises the _extracted_subject_name unwrap on the
+    real dict shape."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        client_name = await conn.fetchval(
+            "SELECT full_name FROM clients WHERE id=$1", seed["cid_b"]
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps(
+                {
+                    "extract": {
+                        "fields": {
+                            "name": {"value": client_name, "confidence": 0.93, "source_page": 1}
+                        }
+                    }
+                }
+            ),
+            seed["p_b"],
+        )
+        proposal = await conn.fetchrow(
+            "SELECT id FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+
+    verdict = await aa.try_nameid_auto_attach(dict(proposal), pool)
+    assert verdict["committed"] is True, verdict
+    assert verdict["status"] == "auto_routed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+        audit = await conn.fetchrow(
+            "SELECT committed_by, outcome FROM intake_commit_audit "
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_b"],
+        )
+    assert status == "auto_routed"
+    assert audit["committed_by"] == "system:auto-nameid"
+    assert audit["outcome"] == "committed"
+
+
+async def test_leva3_nameid_holds_on_name_contradiction(pool, seed, monkeypatch):
+    """Guilt twin (the live 161274 class): npwp strong-id resolves uniquely but
+    the doc subject name affirmatively contradicts the client (overlap 0) → the
+    gate HOLDS: no commit, proposal stays review_pending, no committed audit row.
+    A readable disagreeing name is a signal, not an absence."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps(
+                {
+                    "extract": {
+                        "fields": {
+                            "name": {"value": "COMPLETELY DIFFERENT PERSON", "confidence": 0.95}
+                        }
+                    }
+                }
+            ),
+            seed["p_b"],
+        )
+
+    verdict = await aa.try_nameid_auto_attach({"id": seed["p_b"]}, pool)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "not_concordant"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+        committed_rows = await conn.fetchval(
+            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1 AND outcome='committed'",
+            seed["p_b"],
+        )
+    assert status == "review_pending"
+    assert committed_rows == 0
+
+
+async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, monkeypatch):
+    """npwp identity-backfill wire (m248): a COMPLETE 15/16-digit npwp is written
+    digits-canonical; a partial OCR fragment or an overlong garble must NEVER be
+    stored — it would pollute the key book the strong-id matcher corroborates
+    against (guilt AND innocence, cicatrix #3)."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
+    async with pool.acquire() as conn:
+        # formatted legacy 15-digit → stored as bare digits (innocence: full read lands)
+        written = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01.234.567.8-901.234"}}
+        )
+        assert written.get("npwp") == "012345678901234"
+        # 16-digit NIK-format → stored
+        written16 = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
+        )
+        assert written16.get("npwp") == "0123456789012345"
+        # 10-digit fragment → dropped (guilt), card keeps the previous full value
+        frag = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789"}}
+        )
+        # 17-digit concatenation garble → dropped
+        garble = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01234567890123499"}}
+        )
+        # Unicode digits are NOT ASCII digits: the [^0-9] projection (mirror of the
+        # matcher SQL class) strips them, leaving 13 ASCII digits → dropped
+        unicode_mix = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "٠1234567890123٤5"}}
+        )
+        row = await conn.fetchrow("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+    assert frag == {}
+    assert garble == {}
+    assert unicode_mix == {}
+    assert row["npwp"] == "0123456789012345"
+
+
 async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeypatch):
     """Innocence test: unknown doc_type → no-op; a garbage date → that field skipped,
     others still written (never raises, never rolls back the document)."""

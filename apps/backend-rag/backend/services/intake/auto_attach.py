@@ -288,6 +288,12 @@ def _extracted_subject_name(stage_output: Any) -> str | None:
         return None
     fields = intake_writer._as_dict((intake_writer._as_dict(so.get("extract")) or {}).get("fields"))
     name = fields.get("name") if fields else None
+    if isinstance(name, dict):
+        # FASE-3 stores every extracted field as {"value": X, "confidence": ..,
+        # "source_page": ..} (extract.py:252). Unwrap like every other consumer
+        # (routing._field_value, client_enricher._unwrap) — str() on the raw dict
+        # would tokenize {"value", "confidence", ...} noise into the name compare.
+        name = name.get("value")
     return str(name).strip() if name and str(name).strip() else None
 
 
