@@ -15,6 +15,52 @@ Mandate: Zero, 2026-07-17. Working mode: multi-LLM deep-research ↔ brainstorm 
 rounds), all work in worktree `mouth-visa-oracle` until final draft for operator analysis. This is
 Subhi's surface (`apps/mouth`) — verification per CLAUDE.md §13 (CI + AI review, generator≠grader).
 
+## ENFORCE-GATE (Zero pre-authorized the flip, Legge 5 exercised 2026-07-19 — OBJECTIVE gate, never early)
+
+**Firebreak change (durable).** The ENFORCE flip on the public Visa Oracle surface was previously
+"Zero's decision only" (Legge 5). Zero has now PRE-EXERCISED that decision (2026-07-19, genuine message):
+the SESSION may execute the ENFORCE flip itself **without returning to ask** — but ONLY when the objective
+gate below is ALL-GREEN, and NEVER a flip in anticipation. If any criterion is red/unmeasured, ENFORCE stays
+OFF; the session keeps the engine in SHADOW and keeps collecting evidence. This authorization is conditional
+on the gate, not a blanket unlock. (Any change to the engine's legal _content/logic_ still re-opens the
+gate — a green gate certifies the engine as it was measured, not future edits.)
+
+**Prerequisites (both must hold before the gate can even be evaluated):**
+
+- PR4 #2804 merged to main ✅ (2026-07-19, squash `4f8f40ee48` — bitemporal substrate live on main).
+- SHADOW wiring LIVE on the real surface (STEP-6c): engine runs on real end-user requests, output written to
+  the audit log / `visa_decisions` ONLY, never rendered to the client. Until this is live there is no
+  evidence to measure, so the gate is trivially red.
+
+**The four criteria (ALL must be objectively green, measured from the SHADOW audit log):**
+
+- **G-a — VOLUME (threshold proposed + set by the session, per Zero's instruction).** ≥ **1,000** distinct
+  real end-user requests processed end-to-end by the engine in SHADOW (each producing a tri-state verdict +
+  an audit record), accumulated over a window of **≥ 7 consecutive days** (not a single-day burst — catches
+  day-boundary / regulatory-delta edges), AND with breadth ≥ **all 7 interview categories** exercised and
+  **≥ 30 distinct visa codes** hit (so the volume is not concentrated on 2–3 popular paths). Rationale: 1k
+  real requests over a week across ≥30 codes exercises the decision tree's live branches well beyond the 20
+  gold personas' designed cases, surfacing the long tail before any client sees an ENFORCE verdict.
+- **G-b — GOLD PERSONAS.** 20/20 gold personas replay through the engine with **zero unexplained
+  divergences** (any divergence from the expected verdict must have a written, accepted explanation — a
+  regulation change, a deliberate design correction — never an unexplained mismatch).
+- **G-c — GROUNDING.** Every SHADOW verdict in the window carries **valid citations** and **zero ungrounded
+  claims** (no verdict asserts a rule/number/eligibility without a resolvable, in-force source; abstention
+  where evidence is thin is a PASS, not a divergence).
+- **G-d — ROLLBACK PROVEN.** The ENFORCE→OFF rollback flag is **drilled and proven instantaneous** (a
+  recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
+  engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
+
+**GATE STATUS: 🔴 RED (all four unmeasured — SHADOW wiring not yet live).** The session updates this line as
+criteria go green, with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill
+capture) for each. Evidence is collected from the SHADOW audit substrate; nothing here is self-attested —
+each green needs a re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
+
+**Flip procedure (when GATE STATUS goes 🟢 all-green):** the session executes the flip itself, captures the
+before/after (flag state, a live ENFORCE verdict on a real request, the audit record), and reports the
+outcome to Zero — flip done + evidence, not a request for permission. Then it stands ready to execute the
+G-d rollback on any anomaly.
+
 ## Established truths (GROUND 2026-07-17, scout-verified file:line)
 
 - **v1 is LIVE, not missing** — www.balizero.com/visa, last touched 2026-07-14, 29 commits/90d.
