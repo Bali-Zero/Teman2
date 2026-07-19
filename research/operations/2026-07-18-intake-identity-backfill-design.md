@@ -230,6 +230,15 @@ Verified-on-code findings and accepted fixes:
   known scar case); OCR-derived fills (B/C) stay review-tier.
 - F10 (anti-funnel bypass): the backfill cohort filter uses its own exclusions (multi-pass
   clients measured directly, all-decision counting), not the runtime gate.
+- **queue-contradiction gate** (implementation-time follow-up, not a numbered red-team
+  finding): documentary triangulation against the live queue found that of the 277 Fuel A
+  STRICT pairs, 23 are independently CONFIRMED by a queue document (same passport, client
+  named as candidate) and 33 are CONTRADICTED (a queue doc names the client with a
+  DIFFERENT passport — funnel/family noise). `decide_pair` gained a gate: any local client
+  with a contradicting queue-doc passport is excluded from the write (`SKIP
+  queue-contradiction`); a confirming doc never blocks and is surfaced as `doc-confirmed`
+  in the batch report (validation-sample signal, not a stronger auto tier — still
+  `verified:false` per GATE-11 uniformity). Net: ~244 clean pairs enter the first apply lot.
 
 Final tiers (v3): **A = provisional fill (auto-write, review-gated consumption)** ·
 **B = pre-filled review** · **C = 12 promoted after field-level adjudication, 2 quarantined** ·
