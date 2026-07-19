@@ -130,7 +130,10 @@ def test_parses_all_questions_in_the_fixture(synthetic_e33_file: Path) -> None:
 
 def test_extracts_final_client_facing_answer_only(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     q1 = rows[0]
@@ -142,7 +145,10 @@ def test_extracts_final_client_facing_answer_only(synthetic_e33_file: Path) -> N
 
 def test_extracts_confidence_class_per_question(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert [r["confidence_class"] for r in rows] == [
@@ -154,7 +160,10 @@ def test_extracts_confidence_class_per_question(synthetic_e33_file: Path) -> Non
 
 def test_emits_per_class_count_summary(synthetic_e33_file: Path) -> None:
     _, counts = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert counts == {"BERSYARAT": 1, "BELUM_DIATUR_PUBLIK": 1, "KEBIJAKAN_PENYEDIA": 1}
@@ -162,7 +171,10 @@ def test_emits_per_class_count_summary(synthetic_e33_file: Path) -> None:
 
 def test_extracts_law_refs_as_flat_string_list(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert len(rows[0]["law_refs"]) == 2
@@ -173,7 +185,10 @@ def test_extracts_law_refs_as_flat_string_list(synthetic_e33_file: Path) -> None
 
 def test_source_ref_anchors_to_filename_and_question_number(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert rows[0]["source_ref"] == "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1"
@@ -183,7 +198,10 @@ def test_source_ref_anchors_to_filename_and_question_number(synthetic_e33_file: 
 
 def test_source_date_extracted_from_generated_header(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert all(r["source_date"] == "2026-07-15" for r in rows)
@@ -191,7 +209,10 @@ def test_source_date_extracted_from_generated_header(synthetic_e33_file: Path) -
 
 def test_every_row_matches_the_shared_curated_qa_schema(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     for row in rows:
@@ -220,7 +241,10 @@ def test_verbatim_eligible_true_only_for_jelas_class(synthetic_e33_file: Path) -
     is the converter's own best-effort value; the harvester re-derives it
     independently and never trusts this one)."""
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert all(r["verbatim_eligible"] is False for r in rows)
@@ -238,7 +262,11 @@ def test_verbatim_eligible_true_for_jelas_row(tmp_path: Path) -> None:
     )
 
     rows, _ = converter.parse_e33_markdown_file(
-        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-15",
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-07-15",
     )
 
     assert rows[0]["verbatim_eligible"] is True
@@ -260,7 +288,11 @@ def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> No
     )
 
     rows, counts = converter.parse_e33_markdown_file(
-        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-15",
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-07-15",
     )
 
     assert len(rows) == 1
@@ -293,7 +325,11 @@ def test_explicit_source_date_overrides_missing_header(tmp_path: Path) -> None:
     )
 
     rows, _ = converter.parse_e33_markdown_file(
-        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-01-01",
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-01-01",
     )
 
     assert rows[0]["source_date"] == "2026-01-01"

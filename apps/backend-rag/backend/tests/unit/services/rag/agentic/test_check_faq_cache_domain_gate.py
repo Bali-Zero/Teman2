@@ -115,10 +115,14 @@ async def test_same_question_two_domains_never_cross_serve(faq_cache: FakeFaqCac
 
     with patch("backend.app.metrics.faq_cache_hits_total"):
         visa_result = await core.check_faq_cache(
-            "What documents do I need?", {"domain": "visa"}, start_time=0.0,
+            "What documents do I need?",
+            {"domain": "visa"},
+            start_time=0.0,
         )
         tax_result = await core.check_faq_cache(
-            "What documents do I need?", {"domain": "tax"}, start_time=0.0,
+            "What documents do I need?",
+            {"domain": "tax"},
+            start_time=0.0,
         )
 
     assert visa_result.answer == "Visa answer."
@@ -141,7 +145,9 @@ async def test_legacy_unscoped_hit_served_when_stored_domain_matches(
 
     with patch("backend.app.metrics.faq_cache_hits_total"):
         result = await core.check_faq_cache(
-            "What is the E33 deposit amount?", {"domain": "visa"}, start_time=0.0,
+            "What is the E33 deposit amount?",
+            {"domain": "visa"},
+            start_time=0.0,
         )
 
     assert result is not None
@@ -157,11 +163,16 @@ async def test_legacy_unscoped_hit_refused_on_domain_mismatch(faq_cache: FakeFaq
     core = make_core()
     core.faq_cache = faq_cache
 
-    with patch(
-        "backend.app.metrics.faq_cache_domain_mismatch_averted_total",
-    ) as mock_mismatch, patch("backend.app.metrics.faq_cache_misses_total") as mock_misses:
+    with (
+        patch(
+            "backend.app.metrics.faq_cache_domain_mismatch_averted_total",
+        ) as mock_mismatch,
+        patch("backend.app.metrics.faq_cache_misses_total") as mock_misses,
+    ):
         result = await core.check_faq_cache(
-            "What documents do I need?", {"domain": "visa"}, start_time=0.0,
+            "What documents do I need?",
+            {"domain": "visa"},
+            start_time=0.0,
         )
 
     assert result is None
