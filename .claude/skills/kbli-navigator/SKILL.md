@@ -26,7 +26,7 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-18 — keep current)
+## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -111,6 +111,47 @@ finisce lot 2 procedi con gli altri lot senza fermarti") — continuous lot-by-l
 whole remainder (~101 in-scope codes, lots 2→~9) under the amended lane protocol, no per-lot GO
 needed; Zero is notified at Lot 2 kickoff. A-6(c) precondition (calibration registry v2
 re-emission on the cured canonical) ships in the governance PR before the Lot 2 lane starts.**
+
+**Batch-A SWEEP PROGRESS — Lots 1-5 (dense recap 2026-07-19, MANDATO S2 continuous run; supersedes the Lot-1-only block above for current state):**
+
+- **65/114 original in-scope adjudicated across 5 lots — 65/65 QUARANTINED, 0 certified.**
+  Census by lot: L1 13 (div 01→39, gate report 2026-07-18-...lot1..., cure applied+surfaced) ·
+  L2 13 (#2753 gate, #2761 cure) · L3 13 (#2768 gate, #2769 cure) · L4 13 (#2774 gate, #2776
+  cure incl. runner innocence-PROMPT fix; 64955 wrong-parent flagship; ALL TEN 66xxx carry the
+  identical cooperative-rating payload) · L5 13 (gate second-signed on branch `kbli/lot5-lane`,
+  cure PR #2778 auto-merge armed incl. runner INNOCENCE_SCHEMA symmetric-blind fix; members
+  66192→70100). **Membership census after L5 apply: in-scope remainder 49** (of 221 total,
+  invariant) → **~4 lots to finish** (L6-L9: 13+13+13+10). Surfaces: L1-L4 applied and
+  PROVEN-LIVE (380 contaminated KG REQUIRES edges removed: 147+93+96+44; Qdrant risk cleared;
+  cache busted; backend inspect + mouth SSR eye-verified per lot). L5 surfaces pending #2778
+  merge. Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
+  salt "v3", POS 8, `pos_preverification_required`, burned-set 16.
+- **Per-lot cycle (proven 5×, ~2h):** lane Workflow (launcher `/tmp/kbli-conductor-a1-0718/
+lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fence) → conductor
+  D6 gate + by-eye renders → FIRST signing → codex sol xhigh red-team (FULL-output capture, W97)
+  → cures → SECOND signing (now with immutable artifact manifest: sha256 of raw/journal/renders/
+  canonical + runner blob — L5 innovation, keep it) → cross-family GLM 5.2 pass (m1 sample +
+  m5-NEG + m5-POS w/ conductor exposed-codes screen) → Appendix A adjudication → gate PR →
+  cure PR (conductor gates the diff, then arms auto-merge) → surfaces → next lot.
+  **W100 held 5/5 lots: every first signing was FIX-FIRSTed; substance (quarantine verdicts)
+  survived every pass — the errors live in the conductor's audit trail, never in the verdicts.**
+- **Program-level discoveries (L4-L5):** (a) cooperative-payload ROOT traced: PP28 lampiran row
+  66292 is KBLI-2020-vintage ("Pemeringkat UMKM dan Koperasi", true 2025 home = 66198); one
+  vintage-blind digit-string join poisoned 17+ codes across div 66. (b) The 68-division fan
+  (2020-68111 → 7 children incl. BOTH halves of the pilot's 68112 collision: residential←68111,
+  MICE→68124) is conductor-eye-verified on the BPS table — the collision factory. (c)
+  Vision-read STRUCTURED labels (mapping_type) are soft — verdict bits + citations are the
+  load-bearing signal; never use structured labels as concordance keys (L4 Appendix A meta-note).
+  (d) The metadata-crosswalk disease also lives in the 1,336 "verified" OSS-native set
+  (FATAL-4 candidate — Zero/Legge-5 product decision pending). (e) Innocence-control blindness
+  took TWO generations to fix: prompt leak (#2776) then SCHEMA leak (#2778 symmetric pipeline,
+  runner-side normalization) — third instance of the fix-begets-twin-bug family; controls from
+  L1-L5 are all recorded as ANCHORED NON-BLIND FIXTURES, first true-blind control run due at L6
+  (59140/59201 re-run, condition 3 of the L5 sign-off).
+- **Standing infra state:** Redis lease registry NOAUTH from sessions → LEASE-GUARD SKIPPED
+  declared in every gate with compensating isolation. Local vault mirror on Pro
+  (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
+  `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
 
 **Governance flags:**
 
