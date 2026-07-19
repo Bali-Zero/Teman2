@@ -1,11 +1,11 @@
 import type { Permission, RoleAllowlist, Viewer } from "./authorization.ts";
-import { authorize } from "./authorization.ts";
+import { authorize, validateRoleAllowlist } from "./authorization.ts";
 import { requireViewer } from "./identity.ts";
 import type { ResearchJobView } from "./research-repository.ts";
 import { getMagazineBindings } from "./runtime-bindings.ts";
 import { privateNoStoreHeaders } from "./security.ts";
 
-function roleAllowlist(): RoleAllowlist {
+export function currentResearchRoleAllowlist(): RoleAllowlist {
   const raw = getMagazineBindings().ROLE_ALLOWLIST_JSON;
   if (raw === undefined) throw new TypeError("role allowlist is required");
   const value: unknown = JSON.parse(raw);
@@ -21,11 +21,13 @@ function roleAllowlist(): RoleAllowlist {
   ) {
     throw new TypeError("invalid role allowlist");
   }
-  return {
+  const current = {
     version: record.version,
     analysts: record.analysts as readonly string[],
     operators: record.operators as readonly string[],
   };
+  validateRoleAllowlist(current);
+  return current;
 }
 
 export async function authorizeResearchRequest(
@@ -33,7 +35,7 @@ export async function authorizeResearchRequest(
   permission: Permission,
 ): Promise<Viewer> {
   const bindings = getMagazineBindings();
-  const current = roleAllowlist();
+  const current = currentResearchRoleAllowlist();
   const viewer = await requireViewer(request.headers, {
     actorKeySecret: bindings.ACTOR_KEY_SECRET ?? "",
     roleAllowlist: current,

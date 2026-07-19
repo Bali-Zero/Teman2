@@ -667,6 +667,13 @@ const JOB_SELECT = `SELECT job.job_id, job.actor_key, job.mode, job.query_json,
   FROM research_jobs job
   LEFT JOIN research_results result ON result.job_id = job.job_id`;
 
+const MAX_CLAIM_SCAN = 100;
+
+type ClaimCandidate = Readonly<{
+  job_id: string;
+  actor_key: string;
+}>;
+
 export function createResearchRepository(
   db: D1DatabaseLike,
   options: RepositoryOptions = {},
@@ -731,7 +738,11 @@ export function createResearchRepository(
     },
 
     async claimNext(
-      input: Readonly<{ workerId: string; leaseSeconds: number }>,
+      input: Readonly<{
+        workerId: string;
+        leaseSeconds: number;
+        analystActorKeys: readonly string[];
+      }>,
     ): Promise<ResearchJobView | null> {
       if (!WORKER_ID.test(input.workerId))
         throw new TypeError("invalid worker id");
@@ -741,62 +752,117 @@ export function createResearchRepository(
         input.leaseSeconds > 300
       )
         throw new TypeError("invalid lease seconds");
+      if (!Array.isArray(input.analystActorKeys))
+        throw new TypeError("current Analyst allowlist is required");
+      const analystActorKeys = new Set(input.analystActorKeys);
+      if (
+        analystActorKeys.size !== input.analystActorKeys.length ||
+        [...analystActorKeys].some((actorKey) => !SHA256.test(actorKey))
+      )
+        throw new TypeError("invalid current Analyst allowlist");
       const claimedAt = now();
       const leaseDeadline = addSeconds(claimedAt, input.leaseSeconds);
-      const claimToken = `claim-${randomId()}`;
-      const claimed = await db.batch([
-        db
+      for (let scanned = 0; scanned < MAX_CLAIM_SCAN; scanned += 1) {
+        const candidate = await db
           .prepare(
-            `UPDATE research_jobs
-         SET status = 'claimed', worker_id = ?, claim_token = ?,
-             fencing_token = fencing_token + 1,
-             attempt_count = attempt_count + 1,
-             heartbeat_at = ?, lease_deadline = ?
-         WHERE job_id = (
-           SELECT job_id FROM research_jobs
-           WHERE expires_at > ? AND attempt_count < attempt_limit
-             AND (status = 'queued' OR (status = 'claimed' AND lease_deadline <= ?))
-           ORDER BY created_at, job_id LIMIT 1
-         )
-         AND expires_at > ? AND attempt_count < attempt_limit
-         AND (status = 'queued' OR (status = 'claimed' AND lease_deadline <= ?))
-        `,
+            `SELECT job_id, actor_key FROM research_jobs
+             WHERE expires_at > ? AND attempt_count < attempt_limit
+               AND (status = 'queued' OR (status = 'claimed' AND lease_deadline <= ?))
+             ORDER BY created_at, job_id LIMIT 1`,
           )
-          .bind(
-            input.workerId,
-            claimToken,
-            claimedAt,
-            leaseDeadline,
-            claimedAt,
-            claimedAt,
-            claimedAt,
-            claimedAt,
-          ),
-        db
+          .bind(claimedAt, claimedAt)
+          .first<ClaimCandidate>();
+        if (candidate === null) return null;
+
+        if (!analystActorKeys.has(candidate.actor_key)) {
+          const cancelled = await db.batch([
+            db
+              .prepare(
+                `UPDATE research_jobs
+                 SET status = 'cancelled', cancelled_at = ?, worker_id = NULL,
+                     claim_token = NULL, heartbeat_at = NULL, lease_deadline = NULL
+                 WHERE job_id = ? AND actor_key = ? AND expires_at > ?
+                   AND attempt_count < attempt_limit
+                   AND (status = 'queued' OR (status = 'claimed' AND lease_deadline <= ?))`,
+              )
+              .bind(
+                claimedAt,
+                candidate.job_id,
+                candidate.actor_key,
+                claimedAt,
+                claimedAt,
+              ),
+            db
+              .prepare(
+                `INSERT OR IGNORE INTO research_audit_events(
+                   event_id, job_id, event_type, actor_key, status, created_at
+                 ) SELECT job_id || ':cancelled', job_id, 'cancelled', actor_key,
+                          'cancelled', ? FROM research_jobs
+                   WHERE job_id = ? AND actor_key = ? AND status = 'cancelled'
+                     AND cancelled_at = ?`,
+              )
+              .bind(
+                claimedAt,
+                candidate.job_id,
+                candidate.actor_key,
+                claimedAt,
+              ),
+          ]);
+          if ((cancelled[0]?.meta?.changes ?? 0) === 0) continue;
+          if ((cancelled[1]?.meta?.changes ?? 0) !== 1)
+            throw new Error("research revocation audit did not persist");
+          continue;
+        }
+
+        const claimToken = `claim-${randomId()}`;
+        const claimed = await db.batch([
+          db
+            .prepare(
+              `UPDATE research_jobs
+               SET status = 'claimed', worker_id = ?, claim_token = ?,
+                   fencing_token = fencing_token + 1,
+                   attempt_count = attempt_count + 1,
+                   heartbeat_at = ?, lease_deadline = ?
+               WHERE job_id = ? AND actor_key = ? AND expires_at > ?
+                 AND attempt_count < attempt_limit
+                 AND (status = 'queued' OR (status = 'claimed' AND lease_deadline <= ?))`,
+            )
+            .bind(
+              input.workerId,
+              claimToken,
+              claimedAt,
+              leaseDeadline,
+              candidate.job_id,
+              candidate.actor_key,
+              claimedAt,
+              claimedAt,
+            ),
+          db
+            .prepare(
+              `INSERT INTO research_audit_events(
+                 event_id, job_id, event_type, worker_id, status,
+                 fencing_token, created_at
+               ) SELECT job_id || ':claimed:' || fencing_token, job_id, 'claimed',
+                        worker_id, 'claimed', fencing_token, ?
+                   FROM research_jobs
+                  WHERE claim_token = ? AND worker_id = ? AND status = 'claimed'
+                    AND heartbeat_at = ?`,
+            )
+            .bind(claimedAt, claimToken, input.workerId, claimedAt),
+        ]);
+        if ((claimed[0]?.meta?.changes ?? 0) === 0) continue;
+        if ((claimed[1]?.meta?.changes ?? 0) !== 1)
+          throw new Error("research claim audit did not persist");
+        const row = await db
           .prepare(
-            `INSERT INTO research_audit_events(
-           event_id, job_id, event_type, worker_id, status,
-           fencing_token, created_at
-         ) SELECT job_id || ':claimed:' || fencing_token, job_id, 'claimed',
-                  worker_id, 'claimed', fencing_token, ?
-             FROM research_jobs
-            WHERE claim_token = ? AND worker_id = ? AND status = 'claimed'
-              AND heartbeat_at = ?`,
+            `${JOB_SELECT} WHERE job.claim_token = ? AND job.worker_id = ?`,
           )
-          .bind(claimedAt, claimToken, input.workerId, claimedAt),
-      ]);
-      if ((claimed[0]?.meta?.changes ?? 0) === 0) return null;
-      if ((claimed[1]?.meta?.changes ?? 0) !== 1) {
-        throw new Error("research claim audit did not persist");
+          .bind(claimToken, input.workerId)
+          .first<JobRow>();
+        if (row === null) throw new Error("claimed research job disappeared");
+        return rowToView(row);
       }
-      const row = await db
-        .prepare(
-          `${JOB_SELECT} WHERE job.claim_token = ? AND job.worker_id = ?`,
-        )
-        .bind(claimToken, input.workerId)
-        .first<JobRow>();
-      if (row === null) throw new Error("claimed research job disappeared");
-      return rowToView(row);
+      return null;
     },
 
     async heartbeat(
@@ -821,7 +887,7 @@ export function createResearchRepository(
           `UPDATE research_jobs
          SET heartbeat_at = ?, lease_deadline = ?
          WHERE job_id = ? AND status = 'claimed' AND claim_token = ?
-           AND fencing_token = ? AND expires_at > ?
+           AND fencing_token = ? AND expires_at > ? AND lease_deadline > ?
          RETURNING job_id`,
         )
         .bind(
@@ -830,6 +896,7 @@ export function createResearchRepository(
           jobId,
           claimToken,
           fencingToken,
+          heartbeatAt,
           heartbeatAt,
         )
         .first<{ job_id: string }>();
@@ -865,7 +932,7 @@ export function createResearchRepository(
         throw new Error("CAS conflict: research result already exists");
       }
       const resultId = `research-result-${result.job_id}`;
-      const completedAt = result.completed_at;
+      const completedAt = now();
       const statements = [
         db
           .prepare(
@@ -873,6 +940,7 @@ export function createResearchRepository(
            SET status = ?, completed_at = ?, heartbeat_at = ?, lease_deadline = NULL
            WHERE job_id = ? AND mode = ? AND request_hash = ?
              AND status = 'claimed' AND claim_token = ? AND fencing_token = ?
+             AND expires_at > ? AND lease_deadline > ?
              AND NOT EXISTS (SELECT 1 FROM research_results WHERE job_id = research_jobs.job_id)`,
           )
           .bind(
@@ -884,6 +952,8 @@ export function createResearchRepository(
             result.request_hash,
             result.claim_token,
             result.fencing_token,
+            completedAt,
+            completedAt,
           ),
         db
           .prepare(

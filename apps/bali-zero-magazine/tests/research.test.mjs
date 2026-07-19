@@ -427,12 +427,17 @@ test("repository provides idempotent create, atomic lease claim, heartbeat, and 
   const claim = await repository.claimNext({
     workerId: "worker:pro-magazine",
     leaseSeconds: 120,
+    analystActorKeys: ["a".repeat(64)],
   });
   assert.ok(claim);
   assert.equal(claim.status, "claimed");
   assert.equal(claim.fencing_token, 1);
   assert.equal(
-    await repository.claimNext({ workerId: "worker:other", leaseSeconds: 120 }),
+    await repository.claimNext({
+      workerId: "worker:other",
+      leaseSeconds: 120,
+      analystActorKeys: ["a".repeat(64)],
+    }),
     null,
   );
   const heartbeat = await repository.heartbeat(
@@ -492,12 +497,14 @@ test("expired leases are reclaimed with fencing and stale workers fail closed", 
   const first = await repository.claimNext({
     workerId: "worker:first",
     leaseSeconds: 30,
+    analystActorKeys: ["a".repeat(64)],
   });
   assert.ok(first);
   clock = "2026-07-19T04:00:31.000Z";
   const second = await repository.claimNext({
     workerId: "worker:second",
     leaseSeconds: 30,
+    analystActorKeys: ["a".repeat(64)],
   });
   assert.ok(second);
   assert.equal(second.job_id, first.job_id);
@@ -547,6 +554,7 @@ test("failed and cancelled jobs are terminal and audit rows stay metadata-only",
   const failedClaim = await repository.claimNext({
     workerId: "worker:failure",
     leaseSeconds: 120,
+    analystActorKeys: ["a".repeat(64)],
   });
   assert.ok(failedClaim);
   const failed = parseResearchResult(
@@ -575,6 +583,7 @@ test("failed and cancelled jobs are terminal and audit rows stay metadata-only",
   const cancelledClaim = await repository.claimNext({
     workerId: "worker:cancel",
     leaseSeconds: 120,
+    analystActorKeys: ["a".repeat(64)],
   });
   assert.ok(cancelledClaim);
   assert.equal(
@@ -720,6 +729,7 @@ test("Reader and Operator can read sanitized findings; only the current owning A
   const claim = await repository.claimNext({
     workerId: "worker:human-read",
     leaseSeconds: 120,
+    analystActorKeys: [analystKey],
   });
   assert.ok(claim);
   await repository.complete(
@@ -796,6 +806,183 @@ test("Reader and Operator can read sanitized findings; only the current owning A
   assert.equal((await deleteJob("analyst@balizero.com")).status, 409);
 });
 
+test("machine claim cancels revoked creators and continues to the next current Analyst job", async () => {
+  const db = new SqliteD1Database();
+  const revokedActorKey = "a".repeat(64);
+  const analystActorKey = "b".repeat(64);
+  const repository = createResearchRepository(db);
+  const sanitized = parseResearchRequest(
+    request(),
+    parseResearchCatalog(catalogRaw),
+  );
+  const revoked = await repository.createJob(
+    revokedActorKey,
+    sanitized,
+    "revoked-creator-job-0001",
+  );
+  const eligible = await repository.createJob(
+    analystActorKey,
+    sanitized,
+    "current-analyst-job-0001",
+  );
+  db.sqlite
+    .prepare("UPDATE research_jobs SET created_at = ? WHERE job_id = ?")
+    .run("2026-07-19T00:00:00.000Z", revoked.job.job_id);
+  db.sqlite
+    .prepare("UPDATE research_jobs SET created_at = ? WHERE job_id = ?")
+    .run("2026-07-19T00:00:01.000Z", eligible.job.job_id);
+
+  const claimRoute = await import(routePaths.claim);
+  const claimRequest = await signedMachineRequest({
+    path: "/api/machine/research/jobs/claim",
+    body: JSON.stringify({
+      schema_version: "research-claim.v1",
+      worker_id: "worker:role-revalidation",
+      lease_seconds: 120,
+    }),
+  });
+  const response = await runWithMagazineBindings(
+    bindings(db, {
+      analysts: [analystActorKey],
+      operators: [revokedActorKey],
+    }),
+    () => claimRoute.POST(claimRequest),
+  );
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.job.job_id, eligible.job.job_id);
+
+  const revokedRow = db.sqlite
+    .prepare(
+      "SELECT status, claim_token, worker_id FROM research_jobs WHERE job_id = ?",
+    )
+    .get(revoked.job.job_id);
+  assert.deepEqual(
+    { ...revokedRow },
+    {
+      status: "cancelled",
+      claim_token: null,
+      worker_id: null,
+    },
+  );
+  const audit = db.sqlite
+    .prepare(
+      `SELECT event_type, actor_key, worker_id, status, failure_code
+       FROM research_audit_events
+       WHERE job_id = ? AND event_type = 'cancelled'`,
+    )
+    .get(revoked.job.job_id);
+  assert.deepEqual(
+    { ...audit },
+    {
+      event_type: "cancelled",
+      actor_key: revokedActorKey,
+      worker_id: null,
+      status: "cancelled",
+      failure_code: null,
+    },
+  );
+});
+
+test("expired machine lease rejects heartbeat plus completed and failed results", async () => {
+  const db = new SqliteD1Database();
+  const analystActorKey = "a".repeat(64);
+  const repository = createResearchRepository(db);
+  const sanitized = parseResearchRequest(
+    request(),
+    parseResearchCatalog(catalogRaw),
+  );
+  await repository.createJob(
+    analystActorKey,
+    sanitized,
+    "expired-machine-lease-job-0001",
+  );
+  const [claimRoute, heartbeatRoute, resultRoute] = await Promise.all([
+    import(routePaths.claim),
+    import(routePaths.heartbeat),
+    import(routePaths.result),
+  ]);
+  const runtime = bindings(db, { analysts: [analystActorKey] });
+  const claimRequest = await signedMachineRequest({
+    path: "/api/machine/research/jobs/claim",
+    body: JSON.stringify({
+      schema_version: "research-claim.v1",
+      worker_id: "worker:expired-lease",
+      lease_seconds: 120,
+    }),
+  });
+  const claimResponse = await runWithMagazineBindings(runtime, () =>
+    claimRoute.POST(claimRequest),
+  );
+  assert.equal(claimResponse.status, 200);
+  const claimed = (await claimResponse.json()).job;
+  db.sqlite
+    .prepare("UPDATE research_jobs SET lease_deadline = ? WHERE job_id = ?")
+    .run("2000-01-01T00:00:00.000Z", claimed.job_id);
+
+  const heartbeatPath = `/api/machine/research/jobs/${claimed.job_id}/heartbeat`;
+  const heartbeatRequest = await signedMachineRequest({
+    path: heartbeatPath,
+    body: JSON.stringify({
+      schema_version: "research-heartbeat.v1",
+      claim_token: claimed.claim_token,
+      fencing_token: claimed.fencing_token,
+      lease_seconds: 120,
+    }),
+  });
+  assert.equal(
+    (
+      await runWithMagazineBindings(runtime, () =>
+        heartbeatRoute.POST(heartbeatRequest, {
+          params: Promise.resolve({ jobId: claimed.job_id }),
+        }),
+      )
+    ).status,
+    409,
+  );
+
+  const resultPath = `/api/machine/research/jobs/${claimed.job_id}/result`;
+  const submitResult = async (payload) => {
+    const signed = await signedMachineRequest({
+      path: resultPath,
+      body: JSON.stringify(payload),
+    });
+    return runWithMagazineBindings(runtime, () =>
+      resultRoute.POST(signed, {
+        params: Promise.resolve({ jobId: claimed.job_id }),
+      }),
+    );
+  };
+  assert.equal(
+    (await submitResult(result(claimed.job_id, claimed))).status,
+    409,
+  );
+  assert.equal(
+    (
+      await submitResult(
+        result(claimed.job_id, claimed, {
+          status: "failed",
+          summary: null,
+          claims: [],
+          failure: { code: "source_unavailable" },
+        }),
+      )
+    ).status,
+    409,
+  );
+  assert.equal(
+    db.sqlite
+      .prepare("SELECT status FROM research_jobs WHERE job_id = ?")
+      .get(claimed.job_id).status,
+    "claimed",
+  );
+  assert.equal(
+    db.sqlite.prepare("SELECT count(*) AS count FROM research_results").get()
+      .count,
+    0,
+  );
+});
+
 test("machine routes enforce HMAC, then claim, heartbeat, and idempotent signed result", async () => {
   const db = new SqliteD1Database();
   const repository = createResearchRepository(db);
@@ -813,7 +1000,7 @@ test("machine routes enforce HMAC, then claim, heartbeat, and idempotent signed 
     import(routePaths.heartbeat),
     import(routePaths.result),
   ]);
-  const runtime = bindings(db);
+  const runtime = bindings(db, { analysts: ["a".repeat(64)] });
   const claimRequest = await signedMachineRequest({
     path: "/api/machine/research/jobs/claim",
     body: JSON.stringify({

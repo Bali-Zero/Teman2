@@ -7,6 +7,7 @@ import {
   createResearchRepository,
   parseResearchClaimRequest,
 } from "../../../../../../lib/server/research-repository.ts";
+import { currentResearchRoleAllowlist } from "../../../../../../lib/server/research-http.ts";
 import { getMagazineBindings } from "../../../../../../lib/server/runtime-bindings.ts";
 import { privateNoStoreHeaders } from "../../../../../../lib/server/security.ts";
 
@@ -23,7 +24,11 @@ export async function POST(request: Request): Promise<Response> {
     const db = getMagazineBindings().DB;
     if (db === undefined) return machineFailure(409);
     const input = parseResearchClaimRequest(parseJsonBody(verified.body));
-    const job = await createResearchRepository(db).claimNext(input);
+    const currentRoles = currentResearchRoleAllowlist();
+    const job = await createResearchRepository(db).claimNext({
+      ...input,
+      analystActorKeys: currentRoles.analysts,
+    });
     return Response.json(
       {
         ok: true,
