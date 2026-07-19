@@ -43,6 +43,21 @@ class FakeConn:
         self.fetch_calls: list[tuple[str, tuple[Any, ...]]] = []
         self.fetchrow_calls: list[tuple[str, tuple[Any, ...]]] = []
 
+    def transaction(self):
+        class _Tx:
+            async def __aenter__(self_tx):
+                return self_tx
+
+            async def __aexit__(self_tx, *a):
+                return False
+
+        return _Tx()
+
+    async def execute(self, query: str, *args: Any) -> str:
+        # Advisory-lock statements from lock_phone_cores (round-10 F12).
+        self.fetch_calls.append((query, args))
+        return "SELECT 1"
+
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         self.fetch_calls.append((query, args))
         if "phone_normalized IN" in query:

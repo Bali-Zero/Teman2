@@ -15,6 +15,52 @@ Mandate: Zero, 2026-07-17. Working mode: multi-LLM deep-research ↔ brainstorm 
 rounds), all work in worktree `mouth-visa-oracle` until final draft for operator analysis. This is
 Subhi's surface (`apps/mouth`) — verification per CLAUDE.md §13 (CI + AI review, generator≠grader).
 
+## ENFORCE-GATE (Zero pre-authorized the flip, Legge 5 exercised 2026-07-19 — OBJECTIVE gate, never early)
+
+**Firebreak change (durable).** The ENFORCE flip on the public Visa Oracle surface was previously
+"Zero's decision only" (Legge 5). Zero has now PRE-EXERCISED that decision (2026-07-19, genuine message):
+the SESSION may execute the ENFORCE flip itself **without returning to ask** — but ONLY when the objective
+gate below is ALL-GREEN, and NEVER a flip in anticipation. If any criterion is red/unmeasured, ENFORCE stays
+OFF; the session keeps the engine in SHADOW and keeps collecting evidence. This authorization is conditional
+on the gate, not a blanket unlock. (Any change to the engine's legal _content/logic_ still re-opens the
+gate — a green gate certifies the engine as it was measured, not future edits.)
+
+**Prerequisites (both must hold before the gate can even be evaluated):**
+
+- PR4 #2804 merged to main ✅ (2026-07-19, squash `4f8f40ee48` — bitemporal substrate live on main).
+- SHADOW wiring LIVE on the real surface (STEP-6c): engine runs on real end-user requests, output written to
+  the audit log / `visa_decisions` ONLY, never rendered to the client. Until this is live there is no
+  evidence to measure, so the gate is trivially red.
+
+**The four criteria (ALL must be objectively green, measured from the SHADOW audit log):**
+
+- **G-a — VOLUME (threshold proposed + set by the session, per Zero's instruction).** ≥ **1,000** distinct
+  real end-user requests processed end-to-end by the engine in SHADOW (each producing a tri-state verdict +
+  an audit record), accumulated over a window of **≥ 7 consecutive days** (not a single-day burst — catches
+  day-boundary / regulatory-delta edges), AND with breadth ≥ **all 7 interview categories** exercised and
+  **≥ 30 distinct visa codes** hit (so the volume is not concentrated on 2–3 popular paths). Rationale: 1k
+  real requests over a week across ≥30 codes exercises the decision tree's live branches well beyond the 20
+  gold personas' designed cases, surfacing the long tail before any client sees an ENFORCE verdict.
+- **G-b — GOLD PERSONAS.** 20/20 gold personas replay through the engine with **zero unexplained
+  divergences** (any divergence from the expected verdict must have a written, accepted explanation — a
+  regulation change, a deliberate design correction — never an unexplained mismatch).
+- **G-c — GROUNDING.** Every SHADOW verdict in the window carries **valid citations** and **zero ungrounded
+  claims** (no verdict asserts a rule/number/eligibility without a resolvable, in-force source; abstention
+  where evidence is thin is a PASS, not a divergence).
+- **G-d — ROLLBACK PROVEN.** The ENFORCE→OFF rollback flag is **drilled and proven instantaneous** (a
+  recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
+  engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
+
+**GATE STATUS: 🔴 RED (all four unmeasured — SHADOW wiring not yet live).** The session updates this line as
+criteria go green, with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill
+capture) for each. Evidence is collected from the SHADOW audit substrate; nothing here is self-attested —
+each green needs a re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
+
+**Flip procedure (when GATE STATUS goes 🟢 all-green):** the session executes the flip itself, captures the
+before/after (flag state, a live ENFORCE verdict on a real request, the audit record), and reports the
+outcome to Zero — flip done + evidence, not a request for permission. Then it stands ready to execute the
+G-d rollback on any anomaly.
+
 ## Established truths (GROUND 2026-07-17, scout-verified file:line)
 
 - **v1 is LIVE, not missing** — www.balizero.com/visa, last touched 2026-07-14, 29 commits/90d.
@@ -132,6 +178,39 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   anti-rollback). CodeQL note: iterate enums via `list(Enum)` in tests —
   py/non-iterable-in-for-loop is a required-check failure class (S3 cured it on their tree in
   commit 1a4360dc1b; A-tree tests should adopt the same pattern in PR1b).
+
+- 2026-07-19: **TRACK A PR1b ARBITRATION RESOLVED + STAGE_ORDER CORRECTED.** The 2026-07-18 line
+  126-134 WARNING above ("the two trees disagree on ELIGIBILITY vs HUMAN_REVIEW precedence —
+  arbitrate against the round-2 spec") was itself resolved WRONG the first time: the M5 lane's PR1b
+  attempt (worktree `backend-rag-visa-engine-pr1b`) arbitrated to the enum-DECLARATION order
+  (HARD_FILTER→ELIGIBILITY→HUMAN_REVIEW→RANKING, matching enums.py's literal source order + the
+  spec's JSON Schema enum listing) — flagged **P0 by tri-LLM review on its own PR #2781** and
+  independently re-verified by re-reading the spec's §4.2 `evaluate_product` ALGORITHM pseudocode
+  directly: the correct order is **HARD_FILTER→HUMAN_REVIEW→ELIGIBILITY→RANKING**, exactly what
+  sibling PR #2773 already shipped (commit message: "the prior docstring's 'evaluated in this strict
+  order' claim was wrong"). Declaration order ≠ processing order — do not re-litigate this without
+  re-reading §4.2 fresh. Meanwhile a sibling S3 lane had independently re-shipped the whole PR1b
+  port-list as **PR #2745 MERGED 2026-07-18T14:17:49Z** (after hotfix #2739, before PR2b #2757 and
+  PR3 #2773 — all 4 verified MERGED via `gh pr view` against `Balizero1987/Teman2`), making the M5
+  lane's #2781 a twin-race casualty: **CLOSED 2026-07-19T02:33:58Z**, no merge attempted, full
+  investigative writeup on the PR. Items 1 (canonical date literals) and 3 (StrictBool) were also
+  redundant against #2745's more mature equivalents. Only 2 of the original 5 port-list items were
+  genuinely still unclaimed after a fresh `origin/main` content grep (no merged commit, no open
+  PR/branch): CodeQL `list(Enum)` pattern (7 sites) and the JSON-Schema-vs-StrictInt integer-parity
+  documentation+pin (line 130-131's "common residual" above) — both shipped via branch
+  `agent/air-m5/backend-rag/visa-engine-pr1b-residual` (commit `fc24dc7913`, 492/492 suite green,
+  ruff clean, docs_sync clean).
+- 2026-07-19: **LEDGER GAP FLAGGED (not backfilled here — respecting "whoever changes state updates
+  this file")**: lines 116-118 above narrate Track A only through "STEP 3 (PR2 signed bundle) in
+  flight" — PR2b (#2757, merged 2026-07-18T17:45:52Z) and PR3 (#2773, strong-Kleene evaluator +
+  2-seat fixes, merged 2026-07-18T19:34:19Z) both already landed on main since then but have no
+  LIVE STATE entry recording it. Track A's own next-lane session should backfill STEP 4/5 entries.
+  **Verified standing blocker**: Ed25519 key ceremony remains explicitly operator-side and undone —
+  `bundle.py:269`'s own comment ("the key ceremony (generating...") plus the STEP-2/3 entry's
+  "FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD)" both confirm
+  signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
+  is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
+  is done.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
