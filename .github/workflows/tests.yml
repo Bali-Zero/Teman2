@@ -20,6 +20,7 @@ jobs:
   backend-tests:
     name: Backend Tests (Python)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -30,7 +31,7 @@ jobs:
           POSTGRES_DB: nuzantara_test
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
+          --health-interval 2s
           --health-timeout 5s
           --health-retries 5
         ports:
@@ -40,7 +41,7 @@ jobs:
         image: redis:7
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
+          --health-interval 2s
           --health-timeout 5s
           --health-retries 5
         ports:
@@ -84,20 +85,29 @@ jobs:
 
       - name: pip-audit
         run: |
-          pip install pip-audit
-          # pip-audit's `--skip-editable` skips the VULN LOOKUP for editable
-          # entries but still performs a dry-run resolve that then audits
-          # the resolved package by name, so `-e ../../packages/cell-core`
-          # surfaces as a hard failure ("Dependency not found on PyPI")
-          # under `--strict`. Strip cell-core out of the requirements file
-          # we hand to pip-audit — it's a first-party workspace package
-          # with no upstream PyPI metadata, so auditing it against PyPI
-          # would be meaningless either way.
+          cd apps/backend-rag
+          # Ad-hoc CI tool installs are version-pinned in requirements-ci-tools.txt
+          # (Day-1 CI honesty pass, 2026-07-20) — an unpinned `pip install pip-audit`
+          # silently drifts to whatever build happens to be "latest" the day CI
+          # runs, which can turn a green PR red (or a red PR green) with no
+          # corresponding code change.
+          pip install -r requirements-ci-tools.txt
+          # BUG FIXED (2026-07-20): this step used to audit requirements.txt, which
+          # pip-audit RE-RESOLVES against live PyPI at audit time — that can
+          # silently pick different transitive versions than what
+          # `uv pip install --system -r requirements.lock.txt` actually installed
+          # earlier in this same job. requirements.lock.txt (uv pip compile
+          # --generate-hashes) IS the real install manifest, so audit THAT
+          # instead, with --require-hashes: every entry must be pinned to an
+          # exact version AND carry a matching hash, exactly as installed — and
+          # (per pip-audit's own hash-pinned semantics) no re-resolution happens.
+          # cell-core (-e ../../packages/cell-core) is a first-party workspace
+          # package with no PyPI metadata and no hash (it's editable) — stripped
+          # before handing the file to pip-audit, same rationale as before.
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
-          cd apps/backend-rag
-          grep -v '^-e \.\./\.\./packages/cell-core' requirements.txt > /tmp/requirements-audit.txt
-          pip-audit --strict --requirement /tmp/requirements-audit.txt \
+          grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit.txt
+          pip-audit --strict --require-hashes --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855 \
             --ignore-vuln PYSEC-2025-217 \
             --ignore-vuln CVE-2025-62800 \
@@ -119,7 +129,7 @@ jobs:
       - name: Mypy type check (core + models)
         run: |
           cd apps/backend-rag
-          pip install mypy
+          pip install -r requirements-ci-tools.txt
           # Strict only on the allowlist in pyproject.toml → [[tool.mypy.overrides]].
           # Everything else is silenced by the backend.* opt-out. See FOLLOWUPS.md
           # (section "Mypy strict-module expansion") for the modules pending cleanup.
@@ -140,7 +150,8 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
+          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
+            -q -ra --no-header --tb=short --durations=10 -x \
             --junit-xml=test-results-core.xml
 
       - name: Bootstrap SQLModel tables
@@ -194,11 +205,11 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/ -v \
+          PYTHONPATH=.:../crm-cell pytest backend/tests/ \
+            -q -ra --no-header --durations=10 \
             --ignore=backend/tests/e2e \
             --cov=backend \
             --cov-report=xml:coverage.xml \
-            --cov-report=term-missing \
             --junit-xml=test-results-unit.xml \
             --tb=short -x
 
@@ -226,6 +237,7 @@ jobs:
   mcp-tests:
     name: MCP Server Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -240,13 +252,22 @@ jobs:
         run: |
           cd apps/nuzantara-mcp
           pip install --upgrade pip
-          pip install -e ".[test]" 2>/dev/null || true
+          # The editable install of nuzantara-mcp[test] is a KNOWN legitimately-
+          # optional path (git blame 9d2d7c90f5, 2026-04-12): it was flaky in CI,
+          # and the fix at the time was to guarantee the actual test deps
+          # (fastmcp, httpx, pytest, ...) install unconditionally on the next
+          # line regardless of whether the editable install succeeds. What was
+          # wrong was `2>/dev/null || true` — that made the failure SILENT. Keep
+          # the degrade-path behavior, drop the silence: log loudly instead.
+          if ! pip install -e ".[test]"; then
+            echo "::warning title=nuzantara-mcp editable install failed::pip install -e '.[test]' failed — falling back to the explicit test-deps install on the next line (known-flaky path, see commit 9d2d7c90f5). NOT silently ignored: if the MCP package itself fails to install, test collection may still fail downstream with a confusing import error — check this warning first."
+          fi
           pip install fastmcp httpx pytest pytest-asyncio pytest-mock
 
       - name: Run MCP tests
         run: |
           cd apps/nuzantara-mcp
-          python -m pytest tests/ -v --tb=short --junit-xml=test-results-mcp.xml
+          python -m pytest tests/ -q -ra --no-header --tb=short --durations=10 --junit-xml=test-results-mcp.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -258,6 +279,7 @@ jobs:
   frontend-tests:
     name: Frontend Tests (Next.js)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -331,7 +353,7 @@ jobs:
   e2e-tests:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -342,7 +364,7 @@ jobs:
           POSTGRES_DB: nuzantara_test
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
+          --health-interval 2s
           --health-timeout 5s
           --health-retries 5
         ports:
@@ -352,7 +374,7 @@ jobs:
         image: redis:7
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
+          --health-interval 2s
           --health-timeout 5s
           --health-retries 5
         ports:
@@ -407,6 +429,12 @@ jobs:
             echo "Waiting for backend... ($i/30)"
             sleep 2
           done
+          # Fail-open FIXED (Day-1 CI honesty, 2026-07-20): the loop above gives
+          # up silently after 30 tries (60s) and falls through with exit 0 either
+          # way, letting E2E run against a dead backend and fail with confusing
+          # connection-refused errors instead of a clear "backend never came up".
+          # Final hard gate: not-ready = red, loudly.
+          curl -sf http://localhost:8000/health || { echo "❌ Backend did not become healthy after 30 attempts (60s) — failing loudly instead of running E2E against a dead backend"; exit 1; }
 
       - name: Install Node dependencies
         run: npm install --no-fund
@@ -463,6 +491,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, mcp-tests, frontend-tests, e2e-tests]
     if: always()
+    timeout-minutes: 10
 
     steps:
       - name: Download all artifacts
@@ -470,33 +499,63 @@ jobs:
 
       - name: Create test summary
         uses: actions/github-script@v9
+        env:
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          MCP_RESULT: ${{ needs.mcp-tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+          E2E_RESULT: ${{ needs.e2e-tests.result }}
         with:
+          # FAIL-OPEN FIXED (Day-1 CI honesty, 2026-07-20): this job used to
+          # print a static "Passed" summary WITHOUT ever reading needs.*.result
+          # — it said "✅ Passed" even when every upstream job had failed. It
+          # also claimed an "80%" coverage target when the enforced gate
+          # (backend-tests "Check coverage threshold" step) is 55%. Not a
+          # required branch-protection context (verified via
+          # `gh api repos/.../branches/main/protection/required_status_checks`,
+          # 2026-07-20 — absent from the contexts list), so this failure was
+          # purely cosmetic/misleading, never blocking — but misleading is
+          # still a bug. Now: read the real results, state the real gate, and
+          # fail loudly (core.setFailed) if anything needed did not succeed.
           script: |
-            const fs = require('fs');
+            const results = {
+              "Backend Tests (Python)": process.env.BACKEND_RESULT,
+              "MCP Server Tests": process.env.MCP_RESULT,
+              "Frontend Tests (Next.js)": process.env.FRONTEND_RESULT,
+              "E2E Tests (Playwright)": process.env.E2E_RESULT,
+            };
+
+            const icon = (r) => {
+              if (r === "success") return "✅";
+              if (r === "skipped") return "⏭️";
+              if (r === "cancelled") return "⚠️";
+              return "❌";
+            };
+
+            const lines = Object.entries(results)
+              .map(([name, r]) => `- ${icon(r)} ${name}: ${r}`)
+              .join("\n");
+
+            const anyFailed = Object.values(results).some(
+              (r) => r === "failure" || r === "cancelled"
+            );
 
             const summary = `
-            ## ✅ Test Results
+            ## ${anyFailed ? "❌" : "✅"} Test Results
 
-            ### Backend Tests (Python)
-            - Unit tests: Passed
-            - Integration tests: Passed
-            - Coverage: Check Codecov for details
+            ${lines}
 
-            ### Frontend Tests (Next.js)
-            - Mouth app: Passed
-
-            ### E2E Tests (Playwright)
-            - Critical paths: Tested
-            - Report: See artifacts
-
-            ### Coverage Target
-            - **Target**: 80%
-            - **Status**: Check individual reports
+            ### Coverage
+            - **Enforced gate**: 55% (\`coverage report --fail-under=55\`, backend-tests job)
+            - Check Codecov for the full report and trend.
 
             ### Next Steps
             1. Review failing tests (if any)
-            2. Improve coverage if below target
+            2. Improve coverage if below the 55% gate
             3. Check Codecov dashboard for trends
             `;
 
             core.summary.addRaw(summary).write();
+
+            if (anyFailed) {
+              core.setFailed(`One or more required jobs did not succeed: ${JSON.stringify(results)}`);
+            }
