@@ -437,6 +437,14 @@ class OrchestratorCore:
         retrieved hits rather than as a Qdrant `filter` argument on purpose —
         see the search_collection call for why passing a filter there is a trap.
 
+        Injection is also STALENESS-GATED (Phase-0 safety rail, MAJOR 7/8):
+        each hit's `active` metadata field is rechecked per-hit alongside
+        the domain tag — a point flagged `active=False` (TTL-expired at
+        harvest time, or quarantined by curated_qa_regen_trigger.py after a
+        regulatory-delta match) is excluded even if it clears score AND
+        domain. Missing `active` (a point written before this rail existed)
+        defaults to included, never silently dropped.
+
         Defensive by design: any failure (Qdrant down, malformed payload,
         missing retriever) is logged and degrades to "" (no injection) —
         this step must never break the main query path.
@@ -506,6 +514,18 @@ class OrchestratorCore:
                 # every real curated_qa point carries an explicit domain.
                 hit_domain = metadata.get("domain")
                 if hit_domain != domain:
+                    continue
+                # Staleness rail (Phase-0 safety rail, MAJOR 7/8): a row
+                # written before its TTL expired is still "active" in
+                # Qdrant (points are never auto-expired the way Redis keys
+                # are), and curated_qa_regen_trigger.py flips this to False
+                # on a regulatory-delta match — folding that quarantine
+                # signal into the SAME field the class-based-TTL rail
+                # writes (rather than a second regulatory_flagged
+                # special-case here). Default True (missing field = a
+                # pre-Phase-0 point written before this rail existed —
+                # treated as active, not silently dropped).
+                if metadata.get("active", True) is False:
                     continue
                 answer = metadata.get("answer")
                 if not answer:

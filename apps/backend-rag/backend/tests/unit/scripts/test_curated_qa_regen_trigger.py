@@ -299,6 +299,12 @@ async def test_quarantine_row_deletes_faq_and_flags_qdrant(
     flagged = qdrant_client.points[point_id]["metadata"]
     assert flagged["regulatory_flagged"] is True
     assert flagged["regulatory_flagged_citation"] == "Permenkumham 22/2023"
+    # Staleness rail (MAJOR 7/8): quarantine also flips the SAME `active`
+    # field the class-based-TTL rail writes, so the grounding-injection
+    # filter excludes this point without a second regulatory_flagged
+    # special-case.
+    assert flagged["active"] is False
+    assert flagged["invalidated_at"] is not None
     # Qdrant point still EXISTS — flagged, not deleted.
     assert point_id in qdrant_client.points
 
@@ -336,6 +342,52 @@ async def test_quarantine_row_missing_qdrant_point_still_deletes_faq(
     assert await faq_cache.get(question, notebook_id=domain_scope_id(domain)) is None
 
 
+# ── compute_regen_candidate_backlog (MAJOR 11) ──────────────────────────────
+
+
+def test_compute_regen_candidate_backlog_empty_when_dir_missing(tmp_path: Path) -> None:
+    assert trigger.compute_regen_candidate_backlog(tmp_path / "does-not-exist") == {}
+
+
+def test_compute_regen_candidate_backlog_counts_per_domain(tmp_path: Path) -> None:
+    regen_dir = tmp_path / "_regen-candidates"
+    regen_dir.mkdir()
+    (regen_dir / "2026-07-18.jsonl").write_text(
+        "\n".join(
+            json.dumps(c)
+            for c in [
+                {"citation": "x", "domain": "visa", "question": "q1"},
+                {"citation": "x", "domain": "tax", "question": "q2"},
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (regen_dir / "2026-07-19.jsonl").write_text(
+        json.dumps({"citation": "y", "domain": "visa", "question": "q3"}) + "\n",
+        encoding="utf-8",
+    )
+
+    backlog = trigger.compute_regen_candidate_backlog(regen_dir)
+
+    assert backlog == {"visa": 2, "tax": 1}
+
+
+def test_compute_regen_candidate_backlog_ignores_malformed_lines(tmp_path: Path) -> None:
+    """INNOCENCE — one corrupt line in a candidates file must not crash the
+    scan or drop the other valid rows in the same file."""
+    regen_dir = tmp_path / "_regen-candidates"
+    regen_dir.mkdir()
+    (regen_dir / "2026-07-18.jsonl").write_text(
+        "not json\n" + json.dumps({"citation": "x", "domain": "visa", "question": "q1"}) + "\n",
+        encoding="utf-8",
+    )
+
+    backlog = trigger.compute_regen_candidate_backlog(regen_dir)
+
+    assert backlog == {"visa": 1}
+
+
 # ── run() orchestration ──────────────────────────────────────────────────────
 
 
@@ -349,6 +401,37 @@ async def test_run_true_no_op_zero_new_and_not_partial(tmp_path: Path) -> None:
     assert summary["no_op"] is True
     assert summary["alerts"] == []
     assert summary["quarantined"] == []
+
+
+@pytest.mark.asyncio
+async def test_run_refreshes_backlog_gauge_even_on_no_op_day(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Staleness rail (MAJOR 11): a PRIOR day's un-triaged candidates must
+    still be reflected in the gauge on a QUIET (no_op=True) day — the
+    backlog computation is a pure read of directory state, not derived
+    from today's delta, so it must run unconditionally, before the
+    no-op early return."""
+    regen_dir = tmp_path / "curated_qa" / "_regen-candidates"
+    monkeypatch.setattr(trigger, "_CURATED_QA_DATA_DIR", tmp_path / "curated_qa")
+    monkeypatch.setattr(trigger, "_REGEN_CANDIDATES_DIR", regen_dir)
+    regen_dir.mkdir(parents=True)
+    (regen_dir / "2026-07-10.jsonl").write_text(
+        json.dumps({"citation": "old", "domain": "visa", "question": "stale one"}) + "\n",
+        encoding="utf-8",
+    )
+
+    delta_path = tmp_path / "2026-07-19-delta.json"
+    delta_path.write_text(json.dumps(_delta(new_today_count=0, partial=False)), encoding="utf-8")
+
+    summary = await trigger.run("2026-07-19", delta_path=delta_path)
+
+    assert summary["no_op"] is True  # confirm we DID take the no-op path
+
+    from backend.app.metrics import curated_qa_regen_candidate_backlog_size
+
+    assert curated_qa_regen_candidate_backlog_size.labels(domain="visa")._value.get() == 1
 
 
 @pytest.mark.asyncio
@@ -468,6 +551,7 @@ async def test_run_same_day_quarantine_end_to_end(
     assert len(summary["quarantined"]) == 1
     assert await faq_cache.get(question, notebook_id=domain_scope_id(domain)) is None
     assert qdrant_client.points[point_id]["metadata"]["regulatory_flagged"] is True
+    assert qdrant_client.points[point_id]["metadata"]["active"] is False
     assert point_id in qdrant_client.points  # still there, just flagged
 
     candidates_file = curated_qa_dir / "_regen-candidates" / "2026-07-19.jsonl"

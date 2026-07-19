@@ -40,6 +40,17 @@ after each phase — an interrupted run is safely re-runnable
 back a single batch from both sinks without touching sibling batches in the
 same domain.
 
+Staleness rails (Phase-0 safety rail MAJOR 7/8): every FAQ-sink write gets a
+class-based TTL (JELAS=30d, DINAMIS=7d — see `_ttl_seconds_for_class`,
+though only JELAS ever reaches the FAQ sink today per FATAL 3) instead of
+the service's one-size-fits-all default, so a verbatim answer self-expires
+on a schedule matched to how settled its underlying fact is. Every Qdrant
+point is written with `active: true, invalidated_at: null`;
+curated_qa_regen_trigger.py flips these on a regulatory-delta match, and
+orchestrator_core._inject_curated_qa_grounding()'s per-hit filter honors
+`active` so an invalidated point stops influencing answers without being
+deleted (audit trail preserved).
+
 Usage:
     cd apps/backend-rag
     source .venv/bin/activate
@@ -93,6 +104,28 @@ REQUIRED_ROW_KEYS: tuple[str, ...] = (
 # served verbatim with zero per-request reasoning is a wrong answer waiting
 # for the wrong client.
 _JELAS_CONFIDENCE_CLASS = "JELAS"
+
+# Phase-0 safety rail (staleness, MAJOR 7): class-based TTL applied AT WRITE
+# TIME to the FAQ (Redis) sink, on top of Redis's own expiry. JELAS is
+# "settled" law/fact — 30 days. DINAMIS is "actively changing" — 7 days, so
+# a verbatim-served answer about a fast-moving fact self-expires quickly.
+# In practice, only JELAS rows ever reach the FAQ sink today (FATAL 3
+# eligibility gate refuses DINAMIS/BERSYARAT/etc outright) so the DINAMIS
+# entry is currently unreachable via harvest_to_faq — it is still defined
+# here (not left implicit) so the mapping is visible in code and a future
+# change to the eligibility gate can't silently inherit the wrong TTL.
+_CLASS_TTL_SECONDS: dict[str, int] = {
+    "JELAS": 30 * 24 * 3600,
+    "DINAMIS": 7 * 24 * 3600,
+}
+_DEFAULT_TTL_SECONDS = 30 * 24 * 3600  # any class with no explicit entry above
+
+
+def _ttl_seconds_for_class(confidence_class: Any) -> int:
+    """Class-based TTL lookup (MAJOR 7). Unknown/missing class falls back
+    to the 30-day default rather than raising — a missing TTL entry is a
+    generosity bug (entry outlives its class), never a hard failure."""
+    return _CLASS_TTL_SECONDS.get(str(confidence_class), _DEFAULT_TTL_SECONDS)
 
 
 @dataclass
@@ -424,6 +457,7 @@ async def harvest_to_faq(
                 row["answer"],
                 metadata=metadata,
                 notebook_id=domain_scope_id(row["domain"]),
+                ttl_seconds=_ttl_seconds_for_class(row.get("confidence_class")),
             )
         except ValueError as e:
             # Provenance contract violation — should not happen given
@@ -582,6 +616,15 @@ async def harvest_to_qdrant(
                 # BERSYARAT/DINAMIS/etc), but the flag travels with the
                 # payload for audit/filtering.
                 "verbatim_eligible": _derive_verbatim_eligible(r),
+                # Staleness rail (MAJOR 7/8/11): every freshly-written row
+                # starts active. curated_qa_regen_trigger.py flips this to
+                # False (+ sets invalidated_at) when a regulatory delta
+                # matches this row's citation — the row stays in Qdrant
+                # (audit trail) but orchestrator_core's grounding-injection
+                # filters it out client-side (never a native Qdrant filter —
+                # see that function's docstring for why).
+                "active": True,
+                "invalidated_at": None,
                 **({"batch_id": batch_id} if batch_id is not None else {}),
             }
             for r in batch

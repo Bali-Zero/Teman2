@@ -19,9 +19,17 @@ data/curated_qa/_regen-candidates/<date>.jsonl for the next generation
 batch to review with priority, AND quarantined THE SAME DAY, fail-safe:
 - FAQ (Redis) sink copy is deleted immediately (both the domain-scoped key
   and, defensively, the legacy unscoped key).
-- Qdrant copy STAYS (still useful as grounding-injection evidence) but its
-  payload is flagged regulatory_flagged=true — "stale/non-authoritative
-  evidence", not deleted.
+- Qdrant copy STAYS on disk (audit trail, re-activatable) but is flagged
+  `active=False` + `invalidated_at=<timestamp>` — the SAME staleness fields
+  the class-based-TTL rail (MAJOR 7/8) writes at harvest time, so
+  orchestrator_core._inject_curated_qa_grounding()'s single `active` filter
+  excludes it from grounding-injection too, not just from exact-match
+  serving. `regulatory_flagged`/`regulatory_flagged_citation`/
+  `regulatory_flagged_at` are ALSO written as the audit trail for WHY —
+  distinct from `active`, which is the one field a consumer actually needs
+  to check. (A flag nobody reads is a `check != action` bug — cicatrix
+  superscar #3/W99 — so `active` is the field the read path honors, not a
+  second regulatory_flagged special-case in the grounding-injection filter.)
 
 An unmapped service_line, or a `partial: true` delta run, is NEVER a
 silent no-op — both are surfaced as alerts. Only `new_today_count == 0 AND
@@ -181,6 +189,38 @@ def find_quarantine_candidates(
     return candidates, unmapped
 
 
+# ── Backlog observability (MAJOR 11) ────────────────────────────────────────
+
+
+def compute_regen_candidate_backlog(regen_dir: Path | None = None) -> dict[str, int]:
+    """Row count per domain across every data/curated_qa/_regen-candidates/
+    *.jsonl file (MAJOR 11: "no ... monitoring for ... candidate-triage").
+
+    Phase-0 has no triage/archival step yet — every candidate row `run()`
+    has ever written stays in these files until a future phase reviews and
+    removes it — so this is a pure read of CURRENT directory state, safe
+    (and intended) to call on every `run()` invocation including no-op
+    days, so the gauge never goes stale showing an old count from a prior
+    active day.
+    """
+    directory = regen_dir if regen_dir is not None else _REGEN_CANDIDATES_DIR
+    backlog: dict[str, int] = {}
+    if not directory.exists():
+        return backlog
+    for path in sorted(directory.glob("*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                row = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            domain = row.get("domain") or "unknown"
+            backlog[domain] = backlog.get(domain, 0) + 1
+    return backlog
+
+
 # ── Quarantine action (fail-safe, same-day) ─────────────────────────────────
 
 
@@ -198,9 +238,15 @@ async def quarantine_row(
     citation: str,
 ) -> None:
     """Delete the FAQ-sink copy (domain-scoped key + legacy unscoped key,
-    defensively) and flag the Qdrant copy `regulatory_flagged=true` — the
-    Qdrant point STAYS (grounding-only evidence, now marked
-    stale/non-authoritative), never deleted.
+    defensively) and flag the Qdrant copy `active=False` +
+    `invalidated_at=<timestamp>` — the SAME staleness fields the
+    class-based-TTL rail writes at harvest time (MAJOR 7/8), so
+    orchestrator_core._inject_curated_qa_grounding()'s `active` filter
+    excludes this point from grounding-injection too. The Qdrant point
+    itself is NEVER deleted (audit trail, re-activatable by a future
+    generation batch); `regulatory_flagged`/`regulatory_flagged_citation`/
+    `regulatory_flagged_at` are written alongside as the audit trail for WHY
+    it went inactive.
 
     Re-upserts using the SAME embedding already stored in Qdrant (fetched
     via qdrant_client.get()) — never a fresh embedding call. This function,
@@ -227,10 +273,13 @@ async def quarantine_row(
         )
         return
 
+    invalidated_at = _now_iso()
     metadata = dict(existing["metadatas"][0])
+    metadata["active"] = False
+    metadata["invalidated_at"] = invalidated_at
     metadata["regulatory_flagged"] = True
     metadata["regulatory_flagged_citation"] = citation
-    metadata["regulatory_flagged_at"] = _now_iso()
+    metadata["regulatory_flagged_at"] = invalidated_at
 
     await qdrant_client.upsert_documents(
         chunks=[existing["documents"][0]],
@@ -259,6 +308,19 @@ async def run(
     exist), real services are constructed.
     """
     delta = load_delta(date_str, delta_path=delta_path)
+
+    # Staleness rail (MAJOR 11): refresh the backlog gauge on EVERY run,
+    # including no-op days — it's a pure read of directory state (see
+    # compute_regen_candidate_backlog docstring), not derived from today's
+    # candidates, so a quiet regulatory day must not leave the gauge
+    # showing a stale count from the last active day.
+    try:
+        from backend.app.metrics import curated_qa_regen_candidate_backlog_size
+
+        for backlog_domain, count in compute_regen_candidate_backlog().items():
+            curated_qa_regen_candidate_backlog_size.labels(domain=backlog_domain).set(count)
+    except ImportError:
+        pass
 
     summary: dict[str, Any] = {
         "date": date_str,

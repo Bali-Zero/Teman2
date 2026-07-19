@@ -27,12 +27,14 @@ from scripts import curated_qa_harvest as harvest
 class FakeAsyncRedis:
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
 
     async def get(self, key: str) -> str | None:
         return self.store.get(key)
 
-    async def setex(self, key: str, _ttl: int, value: str) -> None:
+    async def setex(self, key: str, ttl: int, value: str) -> None:
         self.store[key] = value
+        self.ttls[key] = ttl
 
     async def delete(self, *keys: str) -> int:
         deleted = 0
@@ -248,6 +250,40 @@ async def test_harvest_to_faq_writes_domain_scoped_entries(
     assert got["answer"] == "The deposit must be held in a state-owned bank account."
     assert got["metadata"]["source_priority"] == 80
     assert await faq_cache.get("Q1") is None  # legacy unscoped lookup: MISS
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_jelas_row_gets_30_day_ttl(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """Staleness rail (MAJOR 7): a JELAS row (the only class that ever
+    reaches the FAQ sink, per FATAL 3) is written with the 30-day
+    class-based TTL, not the service's own unrelated default."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Q1", domain="visa", confidence_class="JELAS")]
+
+    await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    key = faq_cache.cache_prefix + faq_cache._hash_question("Q1", domain_scope_id("visa"))
+    assert faq_cache.redis_client.ttls[key] == harvest._CLASS_TTL_SECONDS["JELAS"]
+    assert faq_cache.redis_client.ttls[key] == 30 * 24 * 3600
+
+
+def test_ttl_seconds_for_class_unknown_class_falls_back_to_default() -> None:
+    """INNOCENCE: an unmapped/unknown confidence_class never raises or
+    returns a bogus TTL — it falls back to the 30-day default rather than
+    failing the whole harvest run over a missing lookup entry."""
+    assert harvest._ttl_seconds_for_class("SOME_FUTURE_CLASS") == harvest._DEFAULT_TTL_SECONDS
+    assert harvest._ttl_seconds_for_class(None) == harvest._DEFAULT_TTL_SECONDS
+
+
+def test_ttl_seconds_for_class_dinamis_is_7_days() -> None:
+    """The DINAMIS mapping is defined (even though FATAL 3 currently keeps
+    DINAMIS rows out of the FAQ sink entirely) — GUILT that the lookup
+    table itself is correct, independent of whether harvest_to_faq can
+    currently reach it."""
+    assert harvest._ttl_seconds_for_class("DINAMIS") == 7 * 24 * 3600
 
 
 @pytest.mark.asyncio
@@ -498,6 +534,9 @@ async def test_harvest_to_qdrant_embeds_question_and_writes_flat_payload() -> No
     assert point["payload"]["answer"] == "The deposit must be held in a state-owned bank account."
     assert point["payload"]["domain"] == "visa"
     assert "metadata" not in point["payload"]  # flat, not nested
+    # Staleness rail (MAJOR 7/8): every freshly-written point starts active.
+    assert point["payload"]["active"] is True
+    assert point["payload"]["invalidated_at"] is None
 
 
 @pytest.mark.asyncio

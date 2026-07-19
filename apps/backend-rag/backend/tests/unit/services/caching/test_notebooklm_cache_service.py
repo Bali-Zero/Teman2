@@ -40,12 +40,14 @@ class FakeAsyncRedis:
 
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
 
     async def get(self, key: str) -> str | None:
         return self.store.get(key)
 
-    async def setex(self, key: str, _ttl: int, value: str) -> None:
+    async def setex(self, key: str, ttl: int, value: str) -> None:
         self.store[key] = value
+        self.ttls[key] = ttl
 
     async def delete(self, *keys: str) -> int:
         deleted = 0
@@ -124,6 +126,31 @@ async def test_set_succeeds_with_full_provenance_metadata(
     assert got is not None
     assert got["answer"] == "PPh Badan is..."
     assert got["metadata"]["source_priority"] == 80
+
+
+@pytest.mark.asyncio
+async def test_set_uses_service_default_ttl_when_no_override_given(
+    cache: NotebookLMCacheService,
+) -> None:
+    await cache.set("What is PPh Badan?", "PPh Badan is...", metadata=VALID_METADATA)
+    key = cache.cache_prefix + cache._hash_question("What is PPh Badan?", "")
+    assert cache.redis_client.ttls[key] == cache.ttl_seconds
+
+
+@pytest.mark.asyncio
+async def test_set_ttl_seconds_override_is_used_instead_of_default(
+    cache: NotebookLMCacheService,
+) -> None:
+    custom_ttl = 7 * 24 * 3600  # DINAMIS class, 7 days
+    await cache.set(
+        "How often does the visa fee change?",
+        "It varies.",
+        metadata=VALID_METADATA,
+        ttl_seconds=custom_ttl,
+    )
+    key = cache.cache_prefix + cache._hash_question("How often does the visa fee change?", "")
+    assert cache.redis_client.ttls[key] == custom_ttl
+    assert cache.redis_client.ttls[key] != cache.ttl_seconds
 
 
 @pytest.mark.asyncio

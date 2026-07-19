@@ -72,6 +72,34 @@ still have no curated answer yet").
   **question** with the frozen `text-embedding-3-small` model. Used by the
   D3-L2 grounding-injection step in `orchestrator_core.py`.
 
+## Staleness (MAJOR 7/8/11)
+
+Every write carries a freshness signal so a cached answer can't outlive its
+source's shelf life:
+
+- **FAQ (Redis) sink**: a **class-based TTL** is set at write time —
+  `JELAS` = 30 days, `DINAMIS` = 7 days (see
+  `curated_qa_harvest.py::_ttl_seconds_for_class`; only `JELAS` ever reaches
+  this sink today per FATAL 3, so `DINAMIS`'s 7-day entry is defined but
+  currently unreachable via this path). This overrides
+  `NotebookLMCacheService`'s own one-size-fits-all default.
+- **Qdrant sink**: every point is written with `active: true,
+  invalidated_at: null`. `scripts/curated_qa_regen_trigger.py` flips these
+  to `active: false, invalidated_at: <timestamp>` (alongside
+  `regulatory_flagged`/`regulatory_flagged_citation`/
+  `regulatory_flagged_at` as the audit trail for *why*) when a
+  regulatory-watcher delta's citation matches the row — the point is never
+  deleted (re-activatable by a future generation batch), but
+  `orchestrator_core._inject_curated_qa_grounding()`'s per-hit filter
+  excludes any hit with `active == False`, so an invalidated point stops
+  influencing answers immediately, not just at its natural TTL.
+- **Backlog observability**: `curated_qa_regen_trigger.py::run()` refreshes
+  the `zantara_curated_qa_regen_candidate_backlog_size` Gauge (per domain)
+  on every invocation, including no-op days — it's a pure read of
+  `_regen-candidates/*.jsonl` directory state, not derived from that run's
+  own delta, so a quiet regulatory day never leaves the gauge showing a
+  stale count from the last active day.
+
 ## Corpora landed here so far
 
 | File | Rows | Source | Converter mode |

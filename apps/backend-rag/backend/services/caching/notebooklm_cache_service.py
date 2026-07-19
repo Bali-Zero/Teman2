@@ -232,6 +232,7 @@ class NotebookLMCacheService:
         answer: str,
         metadata: dict | None = None,
         notebook_id: str = "",
+        ttl_seconds: int | None = None,
     ) -> bool:
         """
         Cache answer for question.
@@ -245,6 +246,12 @@ class NotebookLMCacheService:
                 from this cache is only safe when every entry carries provable,
                 pre-vetted provenance.
             notebook_id: Optional notebook identifier to scope the cache key
+            ttl_seconds: Optional per-entry TTL override (Phase-0 staleness
+                rail, MAJOR 7). When omitted, falls back to the service-wide
+                default (`self.ttl_seconds`). Curated-QA callers pass a
+                confidence-class-derived TTL (e.g. JELAS=30d, DINAMIS=7d) so
+                a single collection-wide default can't leave a fast-moving
+                fact verbatim-served past its shelf life.
 
         Returns:
             True if cached successfully. False if a collision was refused
@@ -298,14 +305,16 @@ class NotebookLMCacheService:
                 "metadata": metadata,
             }
 
-            # Store with TTL
+            # Store with TTL — caller may override the default class-wide TTL
+            # (e.g. curated_qa_harvest.py picks a per-confidence-class TTL).
+            effective_ttl = ttl_seconds if ttl_seconds is not None else self.ttl_seconds
             await self.redis_client.setex(
                 key,
-                self.ttl_seconds,
+                effective_ttl,
                 json.dumps(cache_entry, ensure_ascii=False),
             )
 
-            logger.info(f"✅ Cached: {question[:50]}... (TTL: {self.ttl_seconds}s)")
+            logger.info(f"✅ Cached: {question[:50]}... (TTL: {effective_ttl}s)")
             return True
         except (TypeError, ValueError) as e:
             logger.warning("Failed to serialize cache entry for '%.50s': %s", question, e)
