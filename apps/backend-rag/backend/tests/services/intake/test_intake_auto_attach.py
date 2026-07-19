@@ -513,6 +513,48 @@ def test_extracted_subject_name_accepts_flat_scalar_and_missing():
 
 
 # --------------------------------------------------------------------------- #
+# _fresh_vs_locked_divergence — round-3 F3: an EXPLICIT fresh client_id=None is
+# a real fresh value (unresolved target) and must diverge from a locked client;
+# only a payload with NO fresh resolution at all skips the check.
+# --------------------------------------------------------------------------- #
+def test_divergence_explicit_none_client_diverges():
+    reason = auto_attach._fresh_vs_locked_divergence(
+        {"routing": {"client_id": None}, "entity_resolution": {"decision": "AUTO_ATTACH"}},
+        "AUTO_ATTACH",
+        42,
+    )
+    assert reason is not None and "diverges" in reason
+
+
+def test_divergence_id_only_caller_skips():
+    assert auto_attach._fresh_vs_locked_divergence({"id": 7}, "AUTO_ATTACH", 42) is None
+
+
+def test_divergence_matching_payload_passes():
+    assert (
+        auto_attach._fresh_vs_locked_divergence(
+            {"routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}},
+            "AUTO_ATTACH",
+            42,
+        )
+        is None
+    )
+
+
+def test_matched_value_validity_mirrors_matcher():
+    # npwp: exactly 15/16 ASCII digits, already canonical
+    assert auto_attach._matched_value_is_valid("npwp", "0" * 15)
+    assert auto_attach._matched_value_is_valid("npwp", "1" * 16)
+    assert not auto_attach._matched_value_is_valid("npwp", "9" * 14)  # F4 guilt
+    assert not auto_attach._matched_value_is_valid("npwp", "0" * 17)
+    assert not auto_attach._matched_value_is_valid("npwp", "01.234.567.8-901.234")
+    # passport/kitas: must already BE the normalized projection
+    assert auto_attach._matched_value_is_valid("passport_number", "X123456")
+    assert not auto_attach._matched_value_is_valid("passport_number", "x 123-456")
+    assert not auto_attach._matched_value_is_valid("kitas_number", "")
+
+
+# --------------------------------------------------------------------------- #
 # LEVA 3 — name-id concordance for NO-PHONE sources (Drive/Dropbox bulk).
 # Second signal = OCR-extracted subject name vs CRM client name; a present,
 # resolving sender phone is LEVA 2 territory and must NEVER be overruled here.

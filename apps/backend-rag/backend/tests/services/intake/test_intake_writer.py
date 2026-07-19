@@ -1082,6 +1082,125 @@ async def test_strongid_ownership_moved_refuses_commit(pool, seed, monkeypatch):
     assert status == "review_pending"
 
 
+async def test_npwp_company_collision_after_routing_refuses(pool, seed, monkeypatch):
+    """Round-3 F1 guilt: the persisted proposal matched npwp→client A uniquely,
+    but a COMPANY has acquired the same digits since — the live resolver would
+    say cross-table AMBIGUOUS, so revalidation must refuse."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    company_name = f"{seed['tag']}-PT-Collision"
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            seed["npwp_digits"],
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "INSERT INTO companies (company_name, npwp_company) VALUES ($1, $2)",
+            company_name,
+            seed["npwp_digits"],
+        )
+    try:
+        verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+        assert verdict["committed"] is False
+        assert verdict["skipped"] == "strong_id_stale"
+        assert "company" in verdict["reason"]
+    finally:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM companies WHERE company_name=$1", company_name
+            )
+
+
+async def test_malformed_matched_value_fails_closed(pool, seed, monkeypatch):
+    """Round-3 F4 guilt: a persisted candidate whose matched_value the matcher
+    would reject today (14-digit npwp, pre-gate era) must fail closed — even
+    when a client card still carries that exact malformed value."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "62" + str(uuid.uuid4().int)[:9]
+    malformed = str(uuid.uuid4().int)[:14].rjust(14, "9")  # 14 digits: invalid
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1, npwp=$2 WHERE id=$3",
+            phone,
+            malformed,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "AUTO_ATTACH",
+                    "candidates": [
+                        {
+                            "table": "clients",
+                            "id": seed["cid_a"],
+                            "method": "npwp",
+                            "score": 0.99,
+                            "matched_value": malformed,
+                        }
+                    ],
+                }
+            ),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    assert "reject" in verdict["reason"]
+
+
+async def test_leva3_strongid_ownership_moved_refuses_commit(pool, seed, monkeypatch):
+    """Round-3 coverage gap: the ownership revalidation must bite in LEVA-3 too
+    — name concordant, no phone, but the npwp moved to the OTHER client."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        client_name = await conn.fetchval(
+            "SELECT full_name FROM clients WHERE id=$1", seed["cid_b"]
+        )
+        # doc subject name concords with B, but the npwp is now owned by A
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2",
+            seed["npwp_digits"],
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET stage_output = stage_output || $1::jsonb "
+            "WHERE id = (SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+            json.dumps({"extract": {"fields": {"name": {"value": client_name}}}}),
+            seed["p_b"],
+        )
+
+    verdict = await aa.try_nameid_auto_attach({"id": seed["p_b"]}, pool)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "strong_id_stale"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
+    assert status == "review_pending"
+
+
 async def test_pre_m248_candidate_shape_fails_closed(pool, seed, monkeypatch):
     """A proposal whose candidates carry NO method/matched_value (pre-m248 shape,
     arbitrarily old backlog rows) cannot be ownership-revalidated → the gate

@@ -48,6 +48,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.intake import client_enricher
 from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
 from backend.services.intake.routing import _match_sender_phone, normalize_sender_phone
@@ -242,18 +243,23 @@ async def evaluate_concordance(
 # Re-validation queries for strong-id ownership at COMMIT time — each mirrors the
 # matcher's own normalization EXACTLY (routing._match_person_strong), so "still
 # owned" means "the matcher would still resolve this value to this client today".
+# ``FOR UPDATE`` locks the current owner rows so a concurrent TX cannot move the
+# identifier off them until this commit lands (the acquire-new-owner direction is
+# closed by the per-value advisory lock below, shared with client_enricher).
 _STRONG_ID_REVALIDATORS: dict[str, str] = {
     "passport_number": """
         SELECT id FROM clients
         WHERE deleted_at IS NULL
           AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
         ORDER BY id
+        FOR UPDATE
     """,
     "kitas_number": """
         SELECT id FROM clients
         WHERE deleted_at IS NULL
           AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
         ORDER BY id
+        FOR UPDATE
     """,
     "npwp": """
         SELECT id FROM clients
@@ -261,8 +267,46 @@ _STRONG_ID_REVALIDATORS: dict[str, str] = {
           AND npwp IS NOT NULL
           AND REGEXP_REPLACE(npwp, '[^0-9]', '', 'g') = $1
         ORDER BY id
+        FOR UPDATE
     """,
 }
+
+# The live resolver treats the same NPWP on a company AND a person as a
+# cross-table collision → AMBIGUOUS (routing.resolve_entity). Revalidation must
+# apply the same semantics: a company that acquired the digits after routing
+# invalidates the person match (Codex 2026-07-19 round 3, F1).
+_NPWP_COMPANY_COLLISION_SQL = """
+    SELECT id FROM companies
+    WHERE npwp_company IS NOT NULL
+      AND REGEXP_REPLACE(npwp_company, '[^0-9]', '', 'g') = $1
+    ORDER BY id
+    FOR UPDATE
+"""
+
+_STRONG_ID_LOCK_KIND = {
+    "passport_number": "passport",
+    "kitas_number": "kitas",
+    "npwp": "npwp",
+}
+
+_ID_NORM_RE = re.compile(r"[\s.\-/]")
+
+
+def _matched_value_is_valid(method: str, value: str) -> bool:
+    """Mirror the matcher's own validity gate on a persisted matched_value.
+
+    A malformed persisted candidate (e.g. a 14-digit npwp stored before the
+    m248 exact-length gate existed) would produce NO strong candidate in
+    today's matcher — so it must not pass revalidation either (round-3 F4).
+    """
+    if method == "npwp":
+        digits = re.sub(r"[^0-9]", "", value)
+        return digits == value and len(digits) in (15, 16)
+    # passport_number / kitas_number: matcher compares the separator-stripped,
+    # upper-cased projection — a stored matched_value must already BE that
+    # normalized form (idempotent), and non-empty.
+    norm = _ID_NORM_RE.sub("", value).upper()
+    return bool(norm) and norm == value
 
 
 async def _strong_id_still_owned(
@@ -276,10 +320,11 @@ async def _strong_id_still_owned(
     A persisted proposal can be arbitrarily stale: ``ON CONFLICT DO NOTHING``
     preserves an old row over a fresh re-resolution, and the backlog bridge
     selects eligible proposals with no freshness bound (Codex 2026-07-19). If
-    the CRM was corrected meanwhile (the id moved to another client, or became
-    a duplicate), committing on the stored candidate would be a WRONG attach.
-    Fail-closed: a proposal whose candidates carry no revalidatable strong-id
-    (pre-m248 shape, no ``matched_value``) goes to a human instead.
+    the CRM was corrected meanwhile (the id moved to another client, became a
+    duplicate, or now collides with a company book entry), committing on the
+    stored candidate would be a WRONG attach. Fail-closed: a proposal whose
+    candidates carry no revalidatable strong-id (pre-m248 shape, no
+    ``matched_value``) goes to a human instead.
     """
     cands = entity_resolution.get("candidates") or []
     strong = [
@@ -295,23 +340,50 @@ async def _strong_id_still_owned(
             "no revalidatable strong-id candidate on the proposal "
             "(stale/pre-m248 shape) — needs human",
         )
+    # Deterministic lock order across candidates (no AB-BA between two gates).
+    strong.sort(key=lambda c: (str(c.get("method")), str(c.get("matched_value"))))
     for c in strong:
+        method = c["method"]
         value = c.get("matched_value")
         if not value:
             return (
                 False,
-                f"strong-id candidate (method={c.get('method')}) lacks "
+                f"strong-id candidate (method={method}) lacks "
                 "matched_value — cannot re-verify ownership, needs human",
             )
-        rows = await conn.fetch(_STRONG_ID_REVALIDATORS[c["method"]], str(value))
+        value = str(value)
+        if not _matched_value_is_valid(method, value):
+            return (
+                False,
+                f"strong-id candidate (method={method}) carries a value the "
+                "matcher would reject today (malformed/pre-gate) — needs human",
+            )
+        # Serialize with every other verifier/writer of this value (enricher
+        # takes the same lock before writing the column).
+        await client_enricher.acquire_strong_id_lock(
+            conn, _STRONG_ID_LOCK_KIND[method], value
+        )
+        rows = await conn.fetch(_STRONG_ID_REVALIDATORS[method], value)
         owners = [r["id"] for r in rows]
         if owners != [client_id]:
             return (
                 False,
-                f"strong-id ownership changed since routing: method={c['method']} "
+                f"strong-id ownership changed since routing: method={method} "
                 f"now resolves to {len(owners)} client(s), not the routed one — needs human",
             )
+        if method == "npwp":
+            company_rows = await conn.fetch(_NPWP_COMPANY_COLLISION_SQL, value)
+            if company_rows:
+                return (
+                    False,
+                    "npwp now collides with the company book "
+                    f"({len(company_rows)} companies) — resolver semantics say "
+                    "AMBIGUOUS, needs human",
+                )
     return (True, "strong-id ownership re-verified in-TX")
+
+
+_MISSING = object()
 
 
 def _fresh_vs_locked_divergence(
@@ -325,19 +397,32 @@ def _fresh_vs_locked_divergence(
     The post-route hook passes the fresh in-memory proposal; when
     ``ON CONFLICT DO NOTHING`` preserved an OLD row, the two can name different
     decisions or clients. Either direction of trust would be wrong — divergence
-    means the resolution is contested, so a human decides. Callers that pass
-    only ``{"id": ...}`` (no fresh resolution) skip this check.
+    means the resolution is contested, so a human decides. Only callers that
+    pass NO fresh resolution at all (``{"id": ...}``) skip this check: an
+    explicit ``client_id=None`` in a present routing payload is a REAL fresh
+    value (an unresolved target) and participates in the comparison
+    (round-3 F3).
     """
     fresh_routing = intake_writer._as_dict(payload.get("routing"))
     fresh_entity = intake_writer._as_dict(payload.get("entity_resolution"))
-    fresh_decision = fresh_entity.get("decision") or fresh_routing.get("decision")
-    fresh_client = fresh_routing.get("client_id")
-    if fresh_decision is not None and fresh_decision != locked_decision:
+    if not fresh_routing and not fresh_entity:
+        return None  # id-only caller: nothing fresh to compare
+
+    fresh_decision: Any = _MISSING
+    if fresh_entity and "decision" in fresh_entity:
+        fresh_decision = fresh_entity["decision"]
+    elif fresh_routing and "decision" in fresh_routing:
+        fresh_decision = fresh_routing["decision"]
+    fresh_client: Any = _MISSING
+    if fresh_routing and "client_id" in fresh_routing:
+        fresh_client = fresh_routing["client_id"]
+
+    if fresh_decision is not _MISSING and fresh_decision != locked_decision:
         return (
             f"fresh resolution decision={fresh_decision} diverges from persisted "
             f"row decision={locked_decision} (stale proposal) — needs human"
         )
-    if fresh_client is not None and fresh_client != locked_client_id:
+    if fresh_client is not _MISSING and fresh_client != locked_client_id:
         return (
             f"fresh resolution client={fresh_client} diverges from persisted "
             f"row client={locked_client_id} (stale proposal) — needs human"

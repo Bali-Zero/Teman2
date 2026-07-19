@@ -82,6 +82,34 @@ def _npwp_digits(value: Any) -> str | None:
     return cleaned
 
 
+# Advisory-lock seed shared by every strong-id writer/verifier on this DB.
+# The auto-attach gates take the same per-value xact lock before re-verifying
+# ownership; the enricher takes it before writing a strong-id column. This
+# serializes "verify then commit" against "write a new owner" for the same
+# identifier value — closing the in-TX TOCTOU (Codex 2026-07-19 round 3).
+STRONG_ID_LOCK_SEED = 4248
+
+_STRONG_ID_LOCK_KINDS = {
+    "passport_number": "passport",
+    "kitas_number": "kitas",
+    "npwp": "npwp",
+}
+
+
+async def acquire_strong_id_lock(conn: asyncpg.Connection, kind: str, value: str) -> None:
+    """Take a transaction-scoped advisory lock on one strong-id value.
+
+    ``pg_advisory_xact_lock`` is reentrant within the session and auto-released
+    at TX end, so the gate (verify) and the enricher (write) can nest inside
+    the same commit without deadlocking themselves.
+    """
+    await conn.fetchval(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1, $2))",
+        f"strongid:{kind}:{value}",
+        STRONG_ID_LOCK_SEED,
+    )
+
+
 def _clean_str(value: Any) -> str | None:
     if value is None:
         return None
@@ -217,6 +245,16 @@ async def enrich_client_from_extracted_fields(
 
     if not set_parts:
         return {}
+
+    # Serialize against concurrent strong-id verification/writes on the same
+    # value (locks sorted for a deterministic acquisition order — no AB-BA).
+    lock_keys = sorted(
+        (_STRONG_ID_LOCK_KINDS[col], str(val))
+        for col, val in written.items()
+        if col in _STRONG_ID_LOCK_KINDS and val
+    )
+    for kind, val in lock_keys:
+        await acquire_strong_id_lock(conn, kind, val)
 
     params.append(client_id)
     sql = f"UPDATE clients SET {', '.join(set_parts)}, updated_at = NOW() WHERE id = ${idx}"
