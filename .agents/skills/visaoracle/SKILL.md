@@ -113,6 +113,9 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-18: TRACK C increment C3 shipped (Pro, worktree `mouth-visa-experience`, branch `agent/nuzantara/mouth/visa-experience-c3`) — verdict tree→card morph (View Transitions API + FLIP-style shared `view-transition-name`, feature-detected, spring-reveal fallback, reduced-motion instant swap), tree tap-to-edit (completed trunk steps are real buttons dispatching the existing EDIT action, guarded by new `isEditableTreeStep`), a real scannable QR (`qrcode` npm, reuse-first from `apps/wa-mirror`, synchronous SSR-safe SVG render — no canvas/network) beside the still-visible wa.me link, and a checkable + printable document checklist (real checkboxes, `window.print()` + dedicated `@media print` stylesheet, copy-summary with visible confirmation). Mock-only, single all-inclusive price untouched, EN/ID both updated. 58 unit + 9 e2e passing.
 - 2026-07-18: TRACK C SHIPPED — PR #2617 (C2, consolidated living-tree experience) merged 00:21 WITA and proven live: `https://www.balizero.com/visa-oracle` (200, noindex meta present) is now the single Track C foundation; `/visa-v2` 308-redirects there and C1 artifacts were removed in the consolidation. Experience is mock-only (5-state RecommendState, 12-card catalog, EN/ID, WCAG AA); real engine wiring stays gated on PR1 engine contracts landing on main. Worktree `mouth-visa-experience` intentionally kept alive for the sibling session's post-merge follow-up (widening CI e2e coverage back to the 4 interactive tests).
 - 2026-07-18: PR #2602 (bonifica) MERGED 2026-07-17T15:51Z — FASE 2 gate OPEN. PR #2607 had gone DIRTY after the night's LIVE-STATE merges (#2602/#2606/#2627/#2628 touch the same skill files); resolved the legal way (merge of origin/main into the branch, LIVE STATE lines reconciled, no force-push), automerge still armed.
+- 2026-07-18 (S3 engine lane): TWIN-PR COLLISION ADJUDICATED by Zero (Legge 5): **ADOPT_A** — PR #2654 (M5 tree "A") MERGED to main (f73cbb4a); S3's PR #2718 (tree "B") CLOSED, its branch `agent/nuzantara/mouth/visa-engine-pr1-0718` intentionally KEPT as the PR3 seed (strong-Kleene evaluator + truth-table tests). Binding order from Zero: (1) correctness HOTFIX first — Codex gaps confirmed live in A, fix+guilt+innocence same commit; (2) PR1b port-list from B (only proven incremental value); (3) PR2 signed-bundle re-adapted to A's API with REDONE 3-seat verify; (4) PR3 from seed. Comparative A-vs-B report: `research/visa/2026-07-18-visa-oracle-v2-pr1-a-vs-b-portlist.md`. Hotfix branch `agent/nuzantara/mouth/visa-engine-hotfix-0718` in flight: 4 live gaps (canonical-date-literal P0, ordering-ops-on-enum-strings P1, GLOBAL+explicit-null P1, country-code-format P1).
+- 2026-07-18 (S3, STEP 1 SHIPPED): hotfix **PR #2739 MERGED** to main 12:44Z (`8ac3184ce`) — 4 gaps fixed TDD-style (date literals P0 / ordering fail-closed P1 / country-code shape P1 / KnownDate calendar P0, the last found by the GLM refutation pass); **Gap C (Codex #8 GLOBAL+explicit-null) REFUTED at implementation** — deliberate round-4/5 schema design, evidence re-verified on disk, recorded in the report's §Post-implementation correction. Suite 235→258. 4-stage generator≠grader chain held (Sonnet implementer → GLM report pass → Codex sol-xhigh diff SHIP → Fable final gate). STEP 2 (PR1b) in flight on branch `agent/nuzantara/mouth/visa-engine-pr1b-0718`: 7/8 port-list items done (item 1 product_code dedup SKIPPED with evidence — bitemporal multi-version per product_code is the evaluator's intended §4.3 pattern; the B port would have broken it), suite 258→293, GLM diff review pending.
+- 2026-07-18 (S3, STEP 2 + STEP 3): **STEP 2 SHIPPED** — PR1b **#2745 MERGED** to main (`8ac3184ce`→squash) 14:17Z: 9 hardening commits (F6 quote↔candidate, StrictBool×5, alias-only wire, registry (kind,value_format) consistency, +2 GLM-prescribed P2: `_DATETIME_SHAPE` ASCII, duplicate-candidate-id guard); item-1 product_code dedup SKIPPED, skip **independently confirmed** by GLM (SKIP-RATIONALE CONFIRMED) — follow-up for PR3: enforce uniqueness of the effective+ACTIVE slice per product_code. Suite 258→300. **STEP 3 (PR2 signed bundle) in flight** on branch `agent/nuzantara/mouth/visa-engine-pr2b-clean-0718` (the `-pr2b-0718` branch was W88-rebased onto fresh main to drop the now-squashed PR1b commits): `bundle.py` re-adapted to A's API, **fresh 3-seat verify** (GLM SHIP / Codex FIX-FIRST(1,4,5,6) / Gemini FIX-FIRST) → 11 FIX-NOW hardening applied (TOCTOU, env-bound keys, future-skew on signed_at, unsigned-into-PROD refusal, …), **3 findings REFUTED on the real model** (Codex bootstrap-sequence — model already enforces it; Gemini env-defaults-to-PROD and hex-uppercase — both blocked upstream). FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD). Suite 300→385. rfc8785+rfc3339-validator declared, lock honors manifest (W98). Round-4 regulatory recheck persisted on the closed B branch (M.IP-08/2025 effective 2025-06-02 per dictum KELIMA; BVK Permenimipas 10/2026 adds Macau — 19-state official list; number-collision trap with Permenkumham 10/2026 Second Home) — to be re-landed with a later PR.
 - 2026-07-18: TRACK A PR1 foundations pushed (M5) — merge commits against origin/main resolved by regenerating docs_sync markers (README/AI_ONBOARDING quick-numbers) rather than picking a side; PR #2654 open, automerge armed.
 - 2026-07-18: TRACK A PR1 MERGED — dual-PR1 collision (M5 #2654 vs sibling S3 #2718, same
   visa_engine foundations scope) adjudicated ADOPT_A via independent cross-family comparative
@@ -129,6 +132,39 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   anti-rollback). CodeQL note: iterate enums via `list(Enum)` in tests —
   py/non-iterable-in-for-loop is a required-check failure class (S3 cured it on their tree in
   commit 1a4360dc1b; A-tree tests should adopt the same pattern in PR1b).
+
+- 2026-07-19: **TRACK A PR1b ARBITRATION RESOLVED + STAGE_ORDER CORRECTED.** The 2026-07-18 line
+  126-134 WARNING above ("the two trees disagree on ELIGIBILITY vs HUMAN_REVIEW precedence —
+  arbitrate against the round-2 spec") was itself resolved WRONG the first time: the M5 lane's PR1b
+  attempt (worktree `backend-rag-visa-engine-pr1b`) arbitrated to the enum-DECLARATION order
+  (HARD_FILTER→ELIGIBILITY→HUMAN_REVIEW→RANKING, matching enums.py's literal source order + the
+  spec's JSON Schema enum listing) — flagged **P0 by tri-LLM review on its own PR #2781** and
+  independently re-verified by re-reading the spec's §4.2 `evaluate_product` ALGORITHM pseudocode
+  directly: the correct order is **HARD_FILTER→HUMAN_REVIEW→ELIGIBILITY→RANKING**, exactly what
+  sibling PR #2773 already shipped (commit message: "the prior docstring's 'evaluated in this strict
+  order' claim was wrong"). Declaration order ≠ processing order — do not re-litigate this without
+  re-reading §4.2 fresh. Meanwhile a sibling S3 lane had independently re-shipped the whole PR1b
+  port-list as **PR #2745 MERGED 2026-07-18T14:17:49Z** (after hotfix #2739, before PR2b #2757 and
+  PR3 #2773 — all 4 verified MERGED via `gh pr view` against `Balizero1987/Teman2`), making the M5
+  lane's #2781 a twin-race casualty: **CLOSED 2026-07-19T02:33:58Z**, no merge attempted, full
+  investigative writeup on the PR. Items 1 (canonical date literals) and 3 (StrictBool) were also
+  redundant against #2745's more mature equivalents. Only 2 of the original 5 port-list items were
+  genuinely still unclaimed after a fresh `origin/main` content grep (no merged commit, no open
+  PR/branch): CodeQL `list(Enum)` pattern (7 sites) and the JSON-Schema-vs-StrictInt integer-parity
+  documentation+pin (line 130-131's "common residual" above) — both shipped via branch
+  `agent/air-m5/backend-rag/visa-engine-pr1b-residual` (commit `fc24dc7913`, 492/492 suite green,
+  ruff clean, docs_sync clean).
+- 2026-07-19: **LEDGER GAP FLAGGED (not backfilled here — respecting "whoever changes state updates
+  this file")**: lines 116-118 above narrate Track A only through "STEP 3 (PR2 signed bundle) in
+  flight" — PR2b (#2757, merged 2026-07-18T17:45:52Z) and PR3 (#2773, strong-Kleene evaluator +
+  2-seat fixes, merged 2026-07-18T19:34:19Z) both already landed on main since then but have no
+  LIVE STATE entry recording it. Track A's own next-lane session should backfill STEP 4/5 entries.
+  **Verified standing blocker**: Ed25519 key ceremony remains explicitly operator-side and undone —
+  `bundle.py:269`'s own comment ("the key ceremony (generating...") plus the STEP-2/3 entry's
+  "FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD)" both confirm
+  signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
+  is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
+  is done.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
