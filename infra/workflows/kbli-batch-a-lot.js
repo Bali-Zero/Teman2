@@ -345,6 +345,7 @@ const D5_SCHEMA = {
     "licensing_inherits",
     "problem_found",
     "rationale",
+    "exposed_facts_inventory",
   ],
   properties: {
     mapping_type: {
@@ -383,6 +384,61 @@ const D5_SCHEMA = {
         "uraian-level semantic rationale for your independent conclusion",
     },
     evidence_locators: { type: "array", items: RENDER_REF },
+    // CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory — see
+    // the factsInventoryUnverified() note below, adjudication section, for the full rationale).
+    // REQUIRED on every D5 answer, for a Batch-A member and for a reused non-member code alike
+    // (adjudicateCode() is the sole dispatch path for both) — regardless of pp28_sources being
+    // empty or licensing_inherits' value: an empty pp28_sources array is NEVER, by itself, a
+    // reason to skip this inventory.
+    exposed_facts_inventory: {
+      type: "array",
+      description:
+        "Enumerate EVERY client-facing fact this code's canonical record actually asserts, across " +
+        "every per_skala tier: kategori_risiko, jangka_waktu, scope_uraian (when present), " +
+        "fiktif_positif, and the license type the frontend derives from risk when perizinan is " +
+        'empty (Tinggi -> "NIB + Izin", Menengah Tinggi/Menengah Rendah -> "NIB + Sertifikat ' +
+        'Standar", Rendah -> "NIB", per PP 28/2025 Pasal 124(4)). A record with ZERO client-facing ' +
+        "facts (e.g. a genuinely empty per_skala) returns an empty list — that is the only case an " +
+        'empty list is honest. For every fact you DO list, mark status="verified" ONLY if you can ' +
+        "cite EITHER (a) a page/row locator AND a vintage (2020 vs 2025) for it from the rendered " +
+        "evidence (PP28/crosswalk), OR (b) — ONLY for a record whose canonical carries the marker " +
+        "_l2_source=OSS_RBA_resiko_2025 — the matching OSS probe file under this code's dossier " +
+        'oss/ directory (e.g. oss/ruang_lingkup.json) with vintage "2025", since that record class ' +
+        'has no PP28/crosswalk render to cite; otherwise mark status="absent". An empty ' +
+        "pp28_sources array is NEVER, by itself, a reason to mark a fact absent. Do not guess a " +
+        'locator to make the list look complete — an "absent" entry is not a failure on your part, ' +
+        "it is the honest answer this field exists to capture.",
+      items: {
+        type: "object",
+        required: ["field", "value", "status"],
+        properties: {
+          field: {
+            type: "string",
+            description:
+              "one of kategori_risiko / jangka_waktu / scope_uraian / fiktif_positif / " +
+              "derived_license, optionally suffixed with the per_skala tier it came from (e.g. " +
+              '"kategori_risiko:Besar")',
+          },
+          value: { type: "string" },
+          source_locator: {
+            type: "string",
+            description:
+              "a page/row citation from the rendered evidence (PP28/crosswalk PNGs) when " +
+              'status="verified" — OR, ONLY for a record whose canonical carries the marker ' +
+              "_l2_source=OSS_RBA_resiko_2025, a citation of the matching OSS probe file under " +
+              "this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, vintage 2025) " +
+              "instead, since that record class has no PP28/crosswalk render to point at; never " +
+              "guess a locator either way; empty string when absent.",
+          },
+          vintage: {
+            type: "string",
+            description:
+              "2020 or 2025 — which vintage's row grounds this fact; empty string when absent",
+          },
+          status: { type: "string", enum: ["verified", "absent"] },
+        },
+      },
+    },
     abstain: {
       type: "object",
       description:
@@ -427,30 +483,19 @@ const D2_SCHEMA = {
   },
 };
 
-// Frozen taxonomy end-to-end (pilot-report criterion #6 fix): the innocence branch emits ONLY
-// certified | quarantined | abstained — never the pilot's 4-token vocabulary.
-const INNOCENCE_SCHEMA = {
-  type: "object",
-  required: ["changes_proposed", "verdict"],
-  properties: {
-    changes_proposed: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "MUST be empty when verdict=certified — any entry here is itself a finding of over-extraction, not a legitimate regulatory discovery",
-    },
-    verdict: {
-      type: "string",
-      enum: ["certified", "quarantined", "abstained"],
-      description:
-        "certified = nothing needs changing (the frozen-taxonomy normalization of a true innocence " +
-        "control); quarantined = an unexpected change is proposed (over-extraction finding, needs " +
-        "conductor triage); abstained = the code turns out to depend on an OUT-OF-SCOPE facet " +
-        "(pma_status/l4_bali/TKA, plan §8 A-1) that cannot be adjudicated this pass",
-    },
-    notes: { type: "string" },
-  },
-};
+// INNOCENCE_SCHEMA + innocencePrompt() are RETIRED (2026-07-19, Lot 5 conductor gate second-signing
+// BLOCKER — see the SYMMETRIC BLIND TREATMENT v2 note above adjudicateInnocence() below). They used
+// to give the control branch its OWN schema and prompt; the schema's field descriptions ("MUST be
+// empty when verdict=certified", "the frozen-taxonomy normalization of a TRUE INNOCENCE CONTROL")
+// told the seat it was grading a control expected to come out boring — the Lot 4 fix neutralized the
+// PROMPT wording, but the SCHEMA still leaked the exact same information on a different channel (the
+// guard-fix-begets-twin-bug shape, scar family #3, THIRD instance in this program). The only durable
+// fix is for a control to receive the IDENTICAL schema+prompt pair (D1_SCHEMA/d1Prompt,
+// D5_SCHEMA/d5Prompt, D2_SCHEMA/d2Prompt) a member code gets — so there is no longer any
+// innocence-specific schema or prompt to leak from. Do not reintroduce either under any name; the
+// contract test (test_lot_runner_contract.py) fails on a re-added seat-visible innocence marker on
+// ANY channel (prompt body, schema property, `label`/`phase`/`model` passed to `agent()`), not just
+// the wording channel that bit last time.
 
 // ----- prompts ---------------------------------------------------------------------------------
 
@@ -461,20 +506,6 @@ const OUT_OF_SCOPE_NOTICE =
 
 function evidenceDirFor(code) {
   return `${evidenceRoot}/${code}`;
-}
-
-function innocencePrompt(code) {
-  const dir = evidenceDirFor(code);
-  return (
-    `INNOCENCE CONTROL — KBLI-2025 code ${code} (GARUDA-FILIERA Batch A lot ${lotId}, OSS-native, no ` +
-    `pp28_sources — the dossier MUST come out boring). ${OUT_OF_SCOPE_NOTICE} Read ${dir}/canonical.json, ` +
-    `${dir}/evidence-index.json, and every file under ${dir}/oss/, ${dir}/crosswalk/, ${dir}/pp28/ ` +
-    `(renders or their ABSENT/NOT_APPLICABLE verdict). Verify that NOTHING needs changing. Hold ` +
-    `yourself to the pilot's bar: any proposed change here is itself a finding of over-extraction in ` +
-    `the pipeline, not a legitimate regulatory discovery — do not manufacture a finding to seem ` +
-    `thorough. Emit verdict=certified if boring as expected, verdict=quarantined if you find an ` +
-    `unexpected change is needed, verdict=abstained only if an out-of-scope facet above blocks you.`
-  );
 }
 
 function d1Prompt(code) {
@@ -524,8 +555,20 @@ function d5Prompt(code) {
     `re-derive is worse than no refuter at all. If problem_found=true, set problem_category to the ONE ` +
     `closed-registry label that best fits, or the literal sentinel OTHER_NEW_CATEGORY if genuinely none ` +
     `fit (never invent a new label). If one of the three out-of-scope facets above blocks your ` +
-    `determination, set abstain={needed:true, facet:"<name>"} instead of guessing. The WORKFLOW, not ` +
-    `you, compares your conclusion against D1's — that comparison happens entirely outside your context.`
+    `determination, set abstain={needed:true, facet:"<name>"} instead of guessing. Independent of all ` +
+    `that, and regardless of whether pp28_sources is empty (an empty pp28_sources array is NEVER a ` +
+    `reason to skip this — a BPS_ONLY/empty-pp28_sources record can still carry live client-facing ` +
+    `facts), populate exposed_facts_inventory: list every kategori_risiko/jangka_waktu/scope_uraian/ ` +
+    `fiktif_positif fact this code's per_skala rows actually assert, plus the license the frontend ` +
+    `would derive from risk when perizinan is empty (Tinggi -> "NIB + Izin", Menengah Tinggi/Menengah ` +
+    `Rendah -> "NIB + Sertifikat Standar", Rendah -> "NIB"), each marked verified only when you can ` +
+    `cite EITHER a page/row locator and a vintage for it from the rendered evidence (PP28/crosswalk), ` +
+    `OR — ONLY if this code's canonical carries the marker _l2_source=OSS_RBA_resiko_2025 — the ` +
+    `matching OSS probe file under this code's dossier oss/ directory (e.g. oss/ruang_lingkup.json, ` +
+    `vintage 2025), since that record class has no PP28/crosswalk render to cite; otherwise absent. A ` +
+    `genuinely empty per_skala returns an empty list; never guess a locator either way to make the ` +
+    `list look complete. The WORKFLOW, not you, compares your conclusion against D1's — that ` +
+    `comparison happens entirely outside your context.`
   );
 }
 
@@ -546,29 +589,45 @@ function d2Prompt(code) {
 
 // ----- per-code adjudication ---------------------------------------------------------------
 
-function normalizeVerdict(verdict) {
-  return ["certified", "quarantined", "abstained"].includes(verdict)
-    ? verdict
-    : "quarantined"; // fail-closed: an out-of-taxonomy verdict is treated as needing conductor triage
-}
-
+// SYMMETRIC BLIND TREATMENT v2 (2026-07-19, Lot 5 conductor gate SECOND SIGNING — §1 BLOCKER, §6
+// meta-pattern "the guard-fix-begets-twin-bug shape now has a THIRD instance in this program"):
+// Lot 4 neutralized the innocence PROMPT's wording, but INNOCENCE_SCHEMA (now retired, see the note
+// above d1Prompt) still leaked the control's nature and expected outcome on a DIFFERENT seat-visible
+// channel — both control seats' own notes self-identified as "innocence control" even with the
+// neutral prompt in place. The prompt-fix begat its schema-shaped twin, same family as W83->W84 (the
+// noise-strip fix that spawned the cross-line over-match): a blindness fix is only done when the
+// ENTIRE seat-visible surface is symmetric, not just the one channel that bit last time.
+//
+// The fix: an innocence control no longer gets ANY schema or prompt of its own. It is dispatched
+// through adjudicateCode() — the EXACT function a member code uses (same d1Prompt/D1_SCHEMA,
+// d5Prompt/D5_SCHEMA, d2Prompt/D2_SCHEMA, same `label`/`phase`/`model` shape passed to agent(), same
+// diffD1D5() compiler diff) — so there is no separate prompt text, no separate schema property
+// description, and no separate label/meta value left to leak the control's identity on ANY channel.
+// The seat that produces `adjudication` below is never told, directly or indirectully, that this
+// code is a control.
+//
+// Only AFTER the seat-blind adjudication returns does this function do anything innocence-specific,
+// and that work is 100% deterministic JS the seat never executes or sees: it re-tags the identical
+// result as an innocence-control record (innocenceControl/innocence flags) and derives a legacy-
+// shaped `innocence_verdict` summary for conductor readability. Nothing here can leak forward into
+// the NEXT seat call, because there is no next seat call — adjudicateCode() has already finished.
 async function adjudicateInnocence(code) {
-  leaseGuardWarn(code);
-  const raw = await agent(innocencePrompt(code), {
-    label: `innocence:${code}`,
-    phase: "Adjudicate",
-    schema: INNOCENCE_SCHEMA,
-    model: "sonnet",
-  });
-  const verdict = raw ? normalizeVerdict(raw.verdict) : "quarantined";
+  const adjudication = await adjudicateCode(code);
+  const innocence_verdict = {
+    verdict: adjudication.verdict,
+    changes_proposed:
+      adjudication.verdict === "quarantined"
+        ? [adjudication.category || "unresolvable_source_pointer"]
+        : [],
+    notes:
+      `runner-side normalization of the member D1/D5/D2 pipeline (adjudicateCode) result — ` +
+      `concordant=${adjudication.concordant}, divergent=${adjudication.divergent}`,
+  };
   return {
-    code,
+    ...adjudication,
     innocenceControl: true,
     innocence: true,
-    innocence_verdict: raw,
-    verdict,
-    quarantined: verdict === "quarantined",
-    seatInvocations: 1,
+    innocence_verdict,
   };
 }
 
@@ -656,6 +715,36 @@ function diffD1D5(d1c, d5c) {
   };
 }
 
+// CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory — see
+// research/operations/2026-07-19-kbli-batch-a-lot6-conductor-gate.md §3.4/§5.3): the certification
+// path used to let a "certified" verdict through the moment D1/D5 agreed on {mapping_type,
+// licensing_inherits, problem_found} — it never checked whether the record's OWN client-facing
+// facts (risk tier, timeframe, scope, fiktif_positif, and the license the frontend DERIVES from
+// risk when perizinan is empty, apps/mouth/src/lib/kbli-derive.ts:25 licenseForRisk) actually
+// carry a verifiable source. For 80190, licensing_inherits=false meant the compound D2 guard just
+// below (`preD2Verdict==="certified" && d1.licensing_inherits===true` — UNCHANGED by this patch,
+// D2 itself is not touched) never fired at all, and the record's four Tinggi/7-day/security-scope
+// tiers were certified with zero provenance. factsInventoryUnverified() is a SECOND, INDEPENDENT
+// gate: it runs on every preliminary "certified" verdict regardless of licensing_inherits, and
+// regardless of whether pp28_sources is empty — the circular "N/A because pp28_sources is empty"
+// read is exactly what let 80190 through, and an empty pp28_sources array is NEVER, by itself, a
+// reason to skip this check. D5 (the blind refuter, already reading canonical.json + evidence for
+// every code) is the one seat asked to inventory every exposed fact with a verified/absent
+// per-entry provenance tag (D5_SCHEMA.exposed_facts_inventory, required — see above); this
+// function's ONLY job is to refuse certification the moment ANY entry is not "verified". A
+// genuinely empty per_skala legitimately returns an empty inventory (nothing to verify) — the ONE
+// case this gate treats as vacuously fine, matching the gate's own corollary that "the certifiable
+// class" is not "codes that assert nothing" but "codes whose every exposed fact carries a verified
+// locator+vintage".
+function factsInventoryUnverified(d5) {
+  const inventory =
+    d5 && Array.isArray(d5.exposed_facts_inventory)
+      ? d5.exposed_facts_inventory
+      : null;
+  if (inventory === null) return true; // missing entirely -> fail-closed, cannot certify
+  return inventory.some((entry) => !entry || entry.status !== "verified");
+}
+
 async function adjudicateCode(code) {
   leaseGuardWarn(code);
 
@@ -683,6 +772,13 @@ async function adjudicateCode(code) {
   // an out-of-scope-facet claim from EITHER seat overrides the diff outright — "the visible facts
   // agree" is a weaker claim than "this needs evidence we don't have this pass" (plan §8 A-1).
   const preD2Verdict = abstainNeeded ? "abstained" : diff.verdict;
+
+  // CERTIFICATION-CONTRACT PATCH (Lot 6 gate BLOCKER 2) — independent of D2/licensing_inherits,
+  // gated purely on D5's own exposed_facts_inventory (see factsInventoryUnverified() above).
+  // Computed here (before D2 dispatch) but only ever DEMOTES the final verdict below, never
+  // promotes one — certification becomes STRICTER only.
+  const factsInventoryFailed =
+    preD2Verdict === "certified" && factsInventoryUnverified(d5);
 
   let d2 = null;
   if (preD2Verdict === "certified" && d1 && d1.licensing_inherits === true) {
@@ -714,12 +810,15 @@ async function adjudicateCode(code) {
       !Array.isArray(d2.per_skala_rows) ||
       d2.per_skala_rows.length === 0);
 
-  const verdict = d2SelfConfirmFailed ? "quarantined" : preD2Verdict;
+  const verdict =
+    d2SelfConfirmFailed || factsInventoryFailed ? "quarantined" : preD2Verdict;
   const quarantined = verdict === "quarantined";
   const category = quarantined
     ? d2SelfConfirmFailed
       ? "unresolvable_source_pointer"
-      : diff.category
+      : factsInventoryFailed
+        ? "source_absent_in_vault"
+        : diff.category
     : null;
 
   return {
@@ -736,6 +835,7 @@ async function adjudicateCode(code) {
     divergent: diff.divergent,
     category_mismatch: diff.category_mismatch,
     d2_self_confirm_failed: d2SelfConfirmFailed,
+    facts_inventory_failed: factsInventoryFailed,
     seatInvocations: d2 ? 3 : 2,
   };
 }

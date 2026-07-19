@@ -1,0 +1,664 @@
+{
+  "_meta": {
+    "generated_by": "gold-layer contamination cure session (goldcure)",
+    "date": "2026-07-19",
+    "source_table": "scripts/kbli_gold_remap_table.json",
+    "scope": "63 apply:false entries (unresolved as of table creation)",
+    "method": "MECHANICAL classification only (existence + count checks against current KBLI-2025 canonical); does NOT adjudicate which successor to pick for ambiguous/SPLIT cases — that is conductor-eye BPS-crosswalk work per kbli-navigator corner discipline (context beats title).",
+    "fate_distribution": {
+      "multiple_verified_successors_ambiguous": 8,
+      "unmapped_no_verified_candidate": 48,
+      "single_verified_successor_exists": 7
+    }
+  },
+  "entries": {
+    "01130": {
+      "judul_2020": "Pertanian Hortikultura Sayuran dan Buah-buahan",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": ["01131", "01132", "01133"],
+      "n_verified_candidates": 3,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "01310": {
+      "judul_2020": "Pembibitan Tanaman Perkebunan Semusim",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "01401": {
+      "judul_2020": "Pembibitan Ternak Sapi",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10110": {
+      "judul_2020": "Kegiatan Rumah Potong dan Pengepakan Daging Bukan Unggas",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": ["10111", "10112", "10119"],
+      "n_verified_candidates": 3,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "10122": {
+      "judul_2020": "Industri Pemotongan dan Pengemasan Daging Unggas",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10130": {
+      "judul_2020": "Industri Pengolahan dan Pengawetan Produk Daging dan Daging Unggas",
+      "mapping_type": "DIRECT",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10131": {
+      "judul_2020": "Industri Penggilingan Padi dan Penyosohan Beras",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10192": {
+      "judul_2020": "Industri Pengolahan dan Pengawetan Daging",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10200": {
+      "judul_2020": "Industri Pengolahan dan Pengawetan Ikan dan Biota Air Lainnya (Bukan Udang)",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10390": {
+      "judul_2020": "Industri Pengolahan dan Pengawetan Buah-buahan dan Sayuran Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10720": {
+      "judul_2020": "Industri Pembuatan Batubara Briket dan Produk Batubara Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "10730": {
+      "judul_2020": "Industri Kakao, Cokelat dan Kembang Gula",
+      "mapping_type": "SPLIT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["10731"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "10909": {
+      "judul_2020": "Industri Produk Makanan Lainnya YTDL",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "21001": {
+      "judul_2020": "Industri Bahan Baku Farmasi",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "21002": {
+      "judul_2020": "Industri Farmasi, Produk Obat Kimia, dan Obat Tradisional",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "25930": {
+      "judul_2020": "Industri Peralatan Logam / Perkakas Tangan",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "31001": {
+      "judul_2020": "Industri Furnitur dari Kayu",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "38120": {
+      "judul_2020": "Pengumpulan Limbah Berbahaya",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": ["38121", "38122"],
+      "n_verified_candidates": 2,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "38210": {
+      "judul_2020": "Pengelolaan dan Pembuangan Limbah Tidak Berbahaya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "42119": {
+      "judul_2020": "Konstruksi Bangunan Sipil Lainnya Yang Tidak Terklasifikasi (YTDL)",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "42410": {
+      "judul_2020": "Konstruksi Bangunan Sipil",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "46336": {
+      "judul_2020": "Perdagangan Besar Minuman",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "46390": {
+      "judul_2020": "Perdagangan Besar Berbagai Macam Barang",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "46471": {
+      "judul_2020": "Perdagangan Besar Peralatan dan Perlengkapan Rumah Tangga / Alat Tulis",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "46590": {
+      "judul_2020": "Perdagangan Besar Mesin dan Peralatan Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "46610": {
+      "judul_2020": "Perdagangan Besar Bahan Bakar Padat, Cair dan Gas dan Produk YBDI",
+      "mapping_type": "DIRECT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["46710"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "47190": {
+      "judul_2020": "Perdagangan Eceran Berbagai Macam Barang",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "47231": {
+      "judul_2020": "Perdagangan Eceran Minuman Beralkohol",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "47291": {
+      "judul_2020": "Perdagangan Eceran Hasil Perikanan / Makanan Lainnya di Toko",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "47412": {
+      "judul_2020": "Perdagangan Eceran Peralatan Video Game Dan Sejenisnya",
+      "mapping_type": "DIRECT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["47402"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "47529": {
+      "judul_2020": "Perdagangan Eceran Bahan dan Barang Konstruksi Lainnya",
+      "mapping_type": "SPLIT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["47523"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "47719": {
+      "judul_2020": "Perdagangan Eceran Khusus Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "47919": {
+      "judul_2020": "Perdagangan Eceran Melalui Media Untuk Berbagai Macam Barang Lainnya",
+      "mapping_type": "SPLIT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["47192"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "49239": {
+      "judul_2020": "Angkutan Darat Bukan Untuk Umum Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "51200": {
+      "judul_2020": "Angkutan Udara Kargo / Barang",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "52110": {
+      "judul_2020": "Pergudangan dan Penyimpanan",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "55110": {
+      "judul_2020": "Hotel Bintang",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": [
+        "55101",
+        "55102",
+        "55103",
+        "55104",
+        "55105"
+      ],
+      "n_verified_candidates": 5,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "56209": {
+      "judul_2020": "Aktivitas Penyediaan Jasa Boga",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "62010": {
+      "judul_2020": "Aktivitas Pemrograman Komputer",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "62020": {
+      "judul_2020": "Aktivitas Konsultasi Komputer",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "63120": {
+      "judul_2020": "Portal Web dan/atau Platform Digital dengan Tujuan Komersial",
+      "mapping_type": "SPLIT",
+      "final_confidence": "unresolved-contextual",
+      "successor_candidates_verified": ["63900"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "63122": {
+      "judul_2020": "Portal Web dan/atau Platform Digital dengan Tujuan Komersial",
+      "mapping_type": "SPLIT",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [
+        "47901",
+        "55400",
+        "56400",
+        "85610",
+        "86910"
+      ],
+      "n_verified_candidates": 5,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "66290": {
+      "judul_2020": "Aktivitas Pendukung Lainnya dari Asuransi dan Dana Pensiun",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "68130": {
+      "judul_2020": "Real Estate Atas Dasar Balas Jasa atau Kontrak",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "68200": {
+      "judul_2020": "Real estat atas dasar balas jasa (fee) atau kontrak",
+      "mapping_type": "SPLIT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["68291", "68292", "68299"],
+      "n_verified_candidates": 3,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "69100": {
+      "judul_2020": "Aktivitas Hukum",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": ["69101", "69102", "69103", "69104"],
+      "n_verified_candidates": 4,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "69200": {
+      "judul_2020": "Aktivitas Akuntansi, Pembukuan dan Pemeriksaan; Konsultasi Pajak",
+      "mapping_type": "SPLIT",
+      "final_confidence": "medium",
+      "successor_candidates_verified": ["69201"],
+      "n_verified_candidates": 1,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "single_verified_successor_exists"
+    },
+    "71200": {
+      "judul_2020": "Analisis dan Uji Teknis / Jasa Teknik",
+      "mapping_type": "SPLIT",
+      "final_confidence": "split-needs-context",
+      "successor_candidates_verified": [
+        "71201",
+        "71202",
+        "71203",
+        "71204",
+        "71209"
+      ],
+      "n_verified_candidates": 5,
+      "verified_candidates_exist_in_current_2025_catalog": true,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "multiple_verified_successors_ambiguous"
+    },
+    "73110": {
+      "judul_2020": "Aktivitas Periklanan (Diduga typo dari 73100)",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "74100": {
+      "judul_2020": "Aktivitas Desain Khusus",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "74101": {
+      "judul_2020": "Jasa Desain Grafis",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "74901": {
+      "judul_2020": "Aktivitas Jasa Desain Spesialis",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "77110": {
+      "judul_2020": "Penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Mobil, Bus, Truk",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "77319": {
+      "judul_2020": "Penyewaan Mesin dan Peralatan Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "79120": {
+      "judul_2020": "Aktivitas Biro Perjalanan Wisata",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "79900": {
+      "judul_2020": "Jasa Reservasi",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "85421": {
+      "judul_2020": "Pendidikan Tinggi Swasta",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "85600": {
+      "judul_2020": "Jasa Penunjang Pendidikan",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "86909": {
+      "judul_2020": "Aktivitas Pelayanan Kesehatan Manusia Lainnya YTDL",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "90003": {
+      "judul_2020": "Aktivitas Kesenian Lainnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "96093": {
+      "judul_2020": "Tidak Ditemukan / Bukan Kode KBLI",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "96120": {
+      "judul_2020": "Aktivitas Kebugaran / Jasa Perorangan",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    },
+    "96130": {
+      "judul_2020": "Aktivitas Sauna, Pemandian Uap, Fasilitas Pijat dan Sejenisnya",
+      "mapping_type": "UNMAPPED",
+      "final_confidence": "unmapped",
+      "successor_candidates_verified": [],
+      "n_verified_candidates": 0,
+      "verified_candidates_exist_in_current_2025_catalog": null,
+      "key_itself_is_a_valid_2025_code": false,
+      "mechanical_fate": "unmapped_no_verified_candidate"
+    }
+  }
+}
