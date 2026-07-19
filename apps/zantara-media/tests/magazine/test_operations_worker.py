@@ -45,6 +45,20 @@ CLAIM: dict[str, Any] = {
     "attempt_count": 1,
 }
 
+RELEASE_CLAIM: dict[str, Any] = {
+    **CLAIM,
+    "intent_kind": "release_story",
+    "params": {
+        "story_id": "story-0123456789abcdef",
+        "story_version": 2,
+        "expected_visibility_seq": 1,
+        "release_attestation_id": "release-attestation-0123456789abcdef",
+    },
+    "target_id": "story-0123456789abcdef",
+    "target_key": "story:story-0123456789abcdef",
+    "reason_code": "gates_reverified",
+}
+
 
 class FakeTransport:
     def __init__(self, claim: Mapping[str, Any] | None = CLAIM) -> None:
@@ -68,19 +82,20 @@ class FakeTransport:
 
     async def attest_operation_intent(self, **kwargs: Any):
         self.events.append("attest")
+        claim = self.claim or CLAIM
         return {
             "ok": True,
             "attestation": {
                 "schema_version": "ops-effect-attestation.v1",
                 "authorized": self.authorized,
                 "status": "running" if self.authorized else "cancelled_revoked",
-                "intent_id": CLAIM["intent_id"],
-                "request_hash": CLAIM["request_hash"],
-                "actor_key": CLAIM["actor_key"],
-                "target_id": CLAIM["target_id"],
-                "target_key": CLAIM["target_key"],
-                "fencing_token": CLAIM["fencing_token"],
-                "target_fencing_token": CLAIM["target_fencing_token"],
+                "intent_id": claim["intent_id"],
+                "request_hash": claim["request_hash"],
+                "actor_key": claim["actor_key"],
+                "target_id": claim["target_id"],
+                "target_key": claim["target_key"],
+                "fencing_token": claim["fencing_token"],
+                "target_fencing_token": claim["target_fencing_token"],
                 "policy_version": "roles.operations.v2",
                 "effect_token": "effect-token-0123456789abcdef" if self.authorized else None,
                 "attested_at": "2026-07-19T04:30:00.000Z",
@@ -114,11 +129,16 @@ class FakeDomain:
         effect_token: str,
     ) -> Mapping[str, Any]:
         self.effects.append((kind, params, fencing_token, target_fencing_token, effect_token))
+        target_id = next(
+            value
+            for key, value in params.items()
+            if key.endswith("_id") and key not in {"collector_id", "release_attestation_id"}
+        )
         return {
             "schema_version": "ops-domain-receipt.v1",
             "code": "effect_acknowledged",
             "intent_kind": kind,
-            "target_id": CLAIM["target_id"],
+            "target_id": target_id,
             "target_key": target_key,
             "fencing_token": fencing_token,
             "target_fencing_token": target_fencing_token,
@@ -135,6 +155,88 @@ def test_worker_rejects_unknown_kinds_and_arbitrary_execution_fields(tmp_path: P
     ):
         with pytest.raises(OperationsWorkerError):
             OperationsWorker.validate_intent(contaminated)
+
+
+def test_worker_accepts_sites_valid_release_story_claim_and_rejects_schema_drift() -> None:
+    assert OperationsWorker.validate_intent(RELEASE_CLAIM)["params"] == RELEASE_CLAIM["params"]
+
+    invalid_release_attestation_ids = [None, "", "ops-intent-0123456789abcdef"]
+    for value in invalid_release_attestation_ids:
+        with pytest.raises(OperationsWorkerError):
+            OperationsWorker.validate_intent(
+                {
+                    **RELEASE_CLAIM,
+                    "params": {
+                        **RELEASE_CLAIM["params"],
+                        "release_attestation_id": value,
+                    },
+                }
+            )
+
+    with pytest.raises(OperationsWorkerError):
+        OperationsWorker.validate_intent(
+            {
+                **RELEASE_CLAIM,
+                "params": {
+                    "story_id": RELEASE_CLAIM["params"]["story_id"],
+                    "story_version": RELEASE_CLAIM["params"]["story_version"],
+                    "expected_visibility_seq": RELEASE_CLAIM["params"]["expected_visibility_seq"],
+                },
+            }
+        )
+
+    with pytest.raises(OperationsWorkerError):
+        OperationsWorker.validate_intent(
+            {
+                **RELEASE_CLAIM,
+                "params": {**RELEASE_CLAIM["params"], "attestation_id": "generic-id-0001"},
+            }
+        )
+
+    with pytest.raises(OperationsWorkerError):
+        OperationsWorker.validate_intent(
+            {
+                **CLAIM,
+                "intent_kind": "quarantine_story",
+                "reason_code": "content_safety",
+                "params": {
+                    "story_id": "story-0123456789abcdef",
+                    "story_version": 2,
+                    "expected_visibility_seq": 1,
+                    "release_attestation_id": "release-attestation-0123456789abcdef",
+                },
+                "target_id": "story-0123456789abcdef",
+                "target_key": "story:story-0123456789abcdef",
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_worker_runs_sites_valid_release_story_claim_through_effect_path(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport(RELEASE_CLAIM)
+    domain = FakeDomain()
+    worker = OperationsWorker(
+        transport=transport,
+        domain=domain,
+        journal=OperationsJournal(tmp_path / "operations.sqlite3"),
+        now=lambda: "2026-07-19T04:30:00.000Z",
+        heartbeat_interval_seconds=0.005,
+    )
+
+    assert await worker.run_once() is True
+    assert domain.effects == [
+        (
+            "release_story",
+            RELEASE_CLAIM["params"],
+            1,
+            1,
+            "effect-token-0123456789abcdef",
+        ),
+    ]
+    assert transport.results[0]["status"] == "succeeded"
+    assert transport.results[0]["receipt"]["target_id"] == RELEASE_CLAIM["target_id"]
 
 
 @pytest.mark.asyncio

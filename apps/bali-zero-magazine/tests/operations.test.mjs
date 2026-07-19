@@ -56,6 +56,13 @@ const routePaths = {
 
 const actor = "a".repeat(64);
 const policy = "roles.operations.v1";
+const operationKinds = [
+  "rerun_collector",
+  "rebuild_edition",
+  "quarantine_story",
+  "release_story",
+  "refresh_research_job",
+];
 
 function request(kind = "rerun_collector", overrides = {}) {
   const params = {
@@ -939,7 +946,7 @@ test("machine claim requires SIWC admission plus a valid HMAC envelope", async (
   assert.match(accepted.headers.get("cache-control") ?? "", /no-store/);
 });
 
-test("signed HTTP lifecycle binds claim through terminal receipt", async () => {
+test("signed HTTP lifecycle binds all five operation kinds through terminal receipt", async () => {
   const db = new SqliteD1Database();
   const baseBindings = runtimeBindings(db);
   const operatorKey = await hmacSha256Hex(
@@ -954,18 +961,6 @@ test("signed HTTP lifecycle binds claim through terminal receipt", async () => {
       operators: [operatorKey],
     }),
   };
-  await createOperationsRepository(db).createIntent({
-    actorKey: operatorKey,
-    effectiveRole: "operator",
-    policyVersion: "roles.operations.lifecycle.v1",
-    operatorActorKeys: [operatorKey],
-    request: parseOperationIntentRequest(
-      request("rerun_collector", {
-        idempotency_key: "ops-signed-lifecycle-0001",
-        expires_at: new Date(Date.now() + 3_600_000).toISOString(),
-      }),
-    ),
-  });
   const post = async (routeName, path, value, intentId = null) => {
     const { POST } = await import(routePaths[routeName]);
     const signed = await signedMachineRequest({
@@ -978,91 +973,109 @@ test("signed HTTP lifecycle binds claim through terminal receipt", async () => {
         : POST(signed, { params: Promise.resolve({ intentId }) }),
     );
   };
-  const claimResponse = await post(
-    "claim",
-    "/api/machine/operations/intents/claim",
-    {
-      schema_version: "ops-claim.v1",
-      worker_id: "worker:pro-magazine",
-      lease_seconds: 60,
-    },
-  );
-  assert.equal(claimResponse.status, 200);
-  const claim = (await claimResponse.json()).intent;
-  assert.equal(
-    (
-      await post(
-        "start",
-        `/api/machine/operations/intents/${claim.intent_id}/start`,
-        {
-          schema_version: "ops-start.v1",
-          claim_token: claim.claim_token,
-          fencing_token: claim.fencing_token,
-        },
-        claim.intent_id,
-      )
-    ).status,
-    200,
-  );
-  assert.equal(
-    (
-      await post(
-        "heartbeat",
-        `/api/machine/operations/intents/${claim.intent_id}/heartbeat`,
-        {
-          schema_version: "ops-heartbeat.v1",
-          claim_token: claim.claim_token,
-          fencing_token: claim.fencing_token,
-          lease_seconds: 60,
-        },
-        claim.intent_id,
-      )
-    ).status,
-    200,
-  );
-  const attestResponse = await post(
-    "attest",
-    `/api/machine/operations/intents/${claim.intent_id}/pre-effect-attest`,
-    {
-      schema_version: "ops-pre-effect-attest.v1",
-      claim_token: claim.claim_token,
-      fencing_token: claim.fencing_token,
-    },
-    claim.intent_id,
-  );
-  assert.equal(attestResponse.status, 200);
-  const attestation = (await attestResponse.json()).attestation;
-  const resultResponse = await post(
-    "result",
-    `/api/machine/operations/intents/${claim.intent_id}/result`,
-    {
-      schema_version: "ops-result.v1",
-      intent_id: claim.intent_id,
-      request_hash: claim.request_hash,
-      status: "succeeded",
-      completed_at: new Date().toISOString(),
-      receipt: domainReceipt(claim, attestation),
-      failure: null,
-      claim_token: claim.claim_token,
-      fencing_token: claim.fencing_token,
-      target_fencing_token: claim.target_fencing_token,
-      actor_key: claim.actor_key,
-      target_key: claim.target_key,
-      target_id: claim.target_id,
-      effect_token: attestation.effect_token,
-      attested_policy_version: attestation.policy_version,
-      attestation_expires_at: attestation.expires_at,
-    },
-    claim.intent_id,
-  );
-  assert.equal(resultResponse.status, 201);
-  assert.equal(
-    db.get(
-      "SELECT status FROM ops_intents WHERE intent_id = ?",
+  for (const kind of operationKinds) {
+    await createOperationsRepository(db).createIntent({
+      actorKey: operatorKey,
+      effectiveRole: "operator",
+      policyVersion: "roles.operations.lifecycle.v1",
+      operatorActorKeys: [operatorKey],
+      request: parseOperationIntentRequest(
+        request(kind, {
+          idempotency_key: `ops-signed-lifecycle-${kind}-0001`,
+          expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+        }),
+      ),
+    });
+    const claimResponse = await post(
+      "claim",
+      "/api/machine/operations/intents/claim",
+      {
+        schema_version: "ops-claim.v1",
+        worker_id: "worker:pro-magazine",
+        lease_seconds: 60,
+      },
+    );
+    assert.equal(claimResponse.status, 200, `${kind} claim`);
+    const claim = (await claimResponse.json()).intent;
+    assert.equal(claim.intent_kind, kind);
+    assert.equal(
+      (
+        await post(
+          "start",
+          `/api/machine/operations/intents/${claim.intent_id}/start`,
+          {
+            schema_version: "ops-start.v1",
+            claim_token: claim.claim_token,
+            fencing_token: claim.fencing_token,
+          },
+          claim.intent_id,
+        )
+      ).status,
+      200,
+      `${kind} start`,
+    );
+    assert.equal(
+      (
+        await post(
+          "heartbeat",
+          `/api/machine/operations/intents/${claim.intent_id}/heartbeat`,
+          {
+            schema_version: "ops-heartbeat.v1",
+            claim_token: claim.claim_token,
+            fencing_token: claim.fencing_token,
+            lease_seconds: 60,
+          },
+          claim.intent_id,
+        )
+      ).status,
+      200,
+      `${kind} heartbeat`,
+    );
+    const attestResponse = await post(
+      "attest",
+      `/api/machine/operations/intents/${claim.intent_id}/pre-effect-attest`,
+      {
+        schema_version: "ops-pre-effect-attest.v1",
+        claim_token: claim.claim_token,
+        fencing_token: claim.fencing_token,
+      },
       claim.intent_id,
-    ).status,
-    "succeeded",
-  );
+    );
+    assert.equal(attestResponse.status, 200, `${kind} attest`);
+    const attestation = (await attestResponse.json()).attestation;
+    const resultResponse = await post(
+      "result",
+      `/api/machine/operations/intents/${claim.intent_id}/result`,
+      {
+        schema_version: "ops-result.v1",
+        intent_id: claim.intent_id,
+        request_hash: claim.request_hash,
+        status: "succeeded",
+        completed_at: new Date().toISOString(),
+        receipt: domainReceipt(claim, attestation),
+        failure: null,
+        claim_token: claim.claim_token,
+        fencing_token: claim.fencing_token,
+        target_fencing_token: claim.target_fencing_token,
+        actor_key: claim.actor_key,
+        target_key: claim.target_key,
+        target_id: claim.target_id,
+        effect_token: attestation.effect_token,
+        attested_policy_version: attestation.policy_version,
+        attestation_expires_at: attestation.expires_at,
+      },
+      claim.intent_id,
+    );
+    assert.equal(resultResponse.status, 201, `${kind} result`);
+    assert.equal(
+      db.get(
+        "SELECT status FROM ops_intents WHERE intent_id = ?",
+        claim.intent_id,
+      ).status,
+      "succeeded",
+      `${kind} terminal status`,
+    );
+  }
 });
 
 test("all five operations lifecycle routes reject oversized signed JSON", async () => {
@@ -1092,6 +1105,13 @@ test("all five operations lifecycle routes reject oversized signed JSON", async 
     );
     assert.equal(response.status, 413, routeName);
   }
+  const effectPath = "/api/machine/operations/effects";
+  const effectSigned = await signedMachineRequest({ path: effectPath, body });
+  const { POST: postEffect } = await import(routePaths.effect);
+  const effectResponse = await runWithMagazineBindings(bindings, () =>
+    postEffect(effectSigned),
+  );
+  assert.equal(effectResponse.status, 413, "effect");
 });
 
 test("operations page labels health and keeps actions operator-only", () => {

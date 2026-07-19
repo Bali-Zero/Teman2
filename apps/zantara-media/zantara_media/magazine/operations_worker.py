@@ -56,6 +56,7 @@ _IDS = {
     "collector_run": re.compile(r"^collector-run-[a-z0-9][a-z0-9-]{15,79}$"),
     "edition": re.compile(r"^edition-[a-z0-9][a-z0-9-]{15,79}$"),
     "story": re.compile(r"^story-[a-z0-9][a-z0-9-]{15,79}$"),
+    "release_attestation": re.compile(r"^release-attestation-[a-z0-9][a-z0-9-]{15,79}$"),
     "research": re.compile(r"^research-job-[a-z0-9][a-z0-9-]{15,79}$"),
 }
 _PHASE_ORDER: dict[JournalPhase, int] = {
@@ -430,9 +431,23 @@ class OperationsWorker:
             _exact(params, {"edition_id", "expected_revision"})
             target = _identifier(params.get("edition_id"), _IDS["edition"])
             _positive_int(params.get("expected_revision"), allow_zero=True)
-        elif kind in {"quarantine_story", "release_story"}:
+        elif kind == "quarantine_story":
             _exact(params, {"story_id", "story_version", "expected_visibility_seq"})
             target = _identifier(params.get("story_id"), _IDS["story"])
+            _positive_int(params.get("story_version"))
+            _positive_int(params.get("expected_visibility_seq"), allow_zero=True)
+        elif kind == "release_story":
+            _exact(
+                params,
+                {
+                    "story_id",
+                    "story_version",
+                    "expected_visibility_seq",
+                    "release_attestation_id",
+                },
+            )
+            target = _identifier(params.get("story_id"), _IDS["story"])
+            _identifier(params.get("release_attestation_id"), _IDS["release_attestation"])
             _positive_int(params.get("story_version"))
             _positive_int(params.get("expected_visibility_seq"), allow_zero=True)
         else:

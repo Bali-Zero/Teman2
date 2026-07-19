@@ -165,3 +165,40 @@ gates, a fresh signed authority, and durable target-fence authorization. Runtime
 keys and immutable capability labels are operator-controlled and cannot be
 supplied by an intent. This work prepared the branch only; it did not push,
 merge, deploy, publish, or execute any production capability.
+
+## Release Story Remediation — 2026-07-20
+
+The second independent Task 8 review found one blocker: Sites emitted
+`release_story` claims with `release_attestation_id`, while the Python worker
+still accepted only the quarantine-shaped story parameter set. The worker
+validator now keeps `quarantine_story` and `release_story` as separate closed
+schemas, requires a valid `release-attestation-*` identifier for release, and
+continues to reject missing, invalid, generic, or extra attestation fields.
+
+Additional coverage proves that a Sites-valid `release_story` claim passes
+validation and runs through the worker effect path with the full receipt target
+binding. The signed HTTP lifecycle route test now runs claim/start/heartbeat/
+pre-effect-attest/result for all five operation kinds, and the 4 KiB machine
+body cap covers the signed `/api/machine/operations/effects` route directly.
+
+Verification:
+
+```text
+cd apps/zantara-media && .venv/bin/python -m pytest tests/magazine/test_operations_worker.py -q
+13 passed
+
+cd apps/bali-zero-magazine && npm run test:unit -- --test-name-pattern='operations'
+160 passed
+
+cd apps/zantara-media && .venv/bin/ruff check zantara_media/magazine/operations_worker.py tests/magazine/test_operations_worker.py
+All checks passed!
+
+cd apps/zantara-media && .venv/bin/ruff format --check zantara_media/magazine/operations_worker.py tests/magazine/test_operations_worker.py
+2 files already formatted
+
+cd apps/bali-zero-magazine && npx prettier --check tests/operations.test.mjs
+All matched files use Prettier code style!
+
+git diff --check
+exit 0
+```
