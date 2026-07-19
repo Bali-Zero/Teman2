@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import asyncpg
@@ -10,17 +11,70 @@ import pytest
 from backend.services.whatsapp_identity import normalize_phone, resolve_sender_identity
 
 
+def _digits(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    stripped = re.sub(r"[^0-9]", "", raw)
+    return stripped or None
+
+
 class _FakeConn:
-    def __init__(self, row: dict[str, Any] | None = None, error: Exception | None = None):
-        self._row = row
+    """Fakes asyncpg's connection.fetchrow(), routed by table name.
+
+    Re-implements (in Python) the same WHERE-clause semantics as the real
+    SQL in whatsapp_identity.py — including the ``role <> 'client'``
+    overload guard on ``team_members`` — so tests can exercise the guard
+    without a live Postgres. ``calls`` records every fetchrow invocation
+    (sql, args) so tests can assert on call count/order/args.
+    """
+
+    def __init__(
+        self,
+        team_members: list[dict[str, Any]] | None = None,
+        clients: list[dict[str, Any]] | None = None,
+        error: Exception | None = None,
+    ):
+        self._team_members = team_members or []
+        self._clients = clients or []
         self._error = error
-        self.last_args: tuple[Any, ...] | None = None
+        self.calls: list[tuple[str, tuple[Any, ...]]] = []
 
     async def fetchrow(self, sql: str, *args: Any) -> dict[str, Any] | None:
-        self.last_args = args
+        self.calls.append((sql, args))
         if self._error is not None:
             raise self._error
-        return self._row
+
+        norm = args[0]
+        candidates = {norm, "62" + norm, "0" + norm}
+
+        if "team_members" in sql:
+            for row in self._team_members:
+                if str(row.get("role", "")).strip().lower() == "client":
+                    continue  # the overload guard
+                if row.get("active") is False:
+                    continue
+                if _digits(row.get("whatsapp")) in candidates:
+                    return {
+                        "id": row["id"],
+                        "display_name": row.get("full_name") or row.get("name"),
+                        "email": row.get("email"),
+                    }
+            return None
+
+        for row in self._clients:
+            phone_hit = _digits(row.get("phone")) in candidates
+            wa_hit = _digits(row.get("whatsapp")) in candidates
+            if phone_hit or wa_hit:
+                return {
+                    "id": row["id"],
+                    "full_name": row.get("full_name"),
+                    "status": row.get("status"),
+                }
+        return None
+
+    @property
+    def last_args(self) -> tuple[Any, ...] | None:
+        return self.calls[-1][1] if self.calls else None
 
 
 class _FakeAcquire:
@@ -35,8 +89,13 @@ class _FakeAcquire:
 
 
 class _FakePool:
-    def __init__(self, row: dict[str, Any] | None = None, error: Exception | None = None):
-        self.conn = _FakeConn(row=row, error=error)
+    def __init__(
+        self,
+        team_members: list[dict[str, Any]] | None = None,
+        clients: list[dict[str, Any]] | None = None,
+        error: Exception | None = None,
+    ):
+        self.conn = _FakeConn(team_members=team_members, clients=clients, error=error)
 
     def acquire(self) -> _FakeAcquire:
         return _FakeAcquire(self.conn)
@@ -86,8 +145,117 @@ class TestResolveSenderIdentity:
         assert (await resolve_sender_identity("6282230102328", None))["role"] == "owner"
 
     @pytest.mark.asyncio
+    async def test_env_team_precedes_db_lookup(self, monkeypatch):
+        # A DB row exists for the same number too, but the env override
+        # must win AND the DB must never even be consulted.
+        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "628111000999:EnvName")
+        pool = _FakePool(
+            team_members=[
+                {
+                    "id": "tm-1",
+                    "full_name": "DB Name",
+                    "name": "DB Name",
+                    "email": "db.name@balizero.com",
+                    "role": "Tax Lead",
+                    "whatsapp": "+62 811-100-0999",
+                    "active": True,
+                }
+            ]
+        )
+        identity = await resolve_sender_identity("628111000999", pool)
+        assert identity == {"role": "team", "team_member": "EnvName"}
+        assert pool.conn.calls == []
+
+    @pytest.mark.asyncio
+    async def test_team_db_lookup_hit_with_email(self):
+        pool = _FakePool(
+            team_members=[
+                {
+                    "id": "tm-2",
+                    "full_name": "Test Member Alpha",
+                    "name": "Test Member Alpha",
+                    "email": "alpha.tester@balizero.com",
+                    "role": "Tax Lead",
+                    "whatsapp": "+62 811-100-2000",
+                    "active": True,
+                }
+            ]
+        )
+        identity = await resolve_sender_identity("+62 811-100-2000", pool)
+        assert identity == {
+            "role": "team",
+            "team_member": "Test Member Alpha",
+            "team_member_email": "alpha.tester@balizero.com",
+        }
+
+    @pytest.mark.asyncio
+    async def test_team_db_lookup_excludes_client_role(self):
+        """The overload guard: a team_members row with role='client' that
+        happens to carry a matching whatsapp number must NEVER resolve as
+        team — the 495-row portal-client overload on this table is exactly
+        the privacy incident this guard exists to prevent."""
+        pool = _FakePool(
+            team_members=[
+                {
+                    "id": "tm-ghost",
+                    "full_name": "Portal Ghost",
+                    "name": "Portal Ghost",
+                    "email": "ghost@example.com",
+                    "role": "client",
+                    "whatsapp": "+62 811-100-3000",
+                    "active": True,
+                }
+            ],
+            clients=[],
+        )
+        identity = await resolve_sender_identity("+62 811-100-3000", pool)
+        assert identity == {"role": "unknown"}
+
+    @pytest.mark.asyncio
+    async def test_team_db_lookup_excludes_inactive(self):
+        pool = _FakePool(
+            team_members=[
+                {
+                    "id": "tm-3",
+                    "full_name": "Former Member",
+                    "name": "Former Member",
+                    "email": "former@balizero.com",
+                    "role": "Consultant",
+                    "whatsapp": "+62 811-100-4000",
+                    "active": False,
+                }
+            ],
+        )
+        identity = await resolve_sender_identity("+62 811-100-4000", pool)
+        assert identity == {"role": "unknown"}
+
+    @pytest.mark.asyncio
+    async def test_team_db_lookup_miss_falls_through_to_client(self):
+        pool = _FakePool(
+            team_members=[],
+            clients=[{"id": 7, "full_name": "Some Client", "status": "active",
+                       "phone": "+62 811-100-5000"}],
+        )
+        identity = await resolve_sender_identity("+62 811-100-5000", pool)
+        assert identity == {
+            "role": "client",
+            "client_id": 7,
+            "client_name": "Some Client",
+            "client_status": "active",
+        }
+
+    @pytest.mark.asyncio
     async def test_client_lookup_hit(self):
-        pool = _FakePool(row={"id": 42, "full_name": "Marta Reyes", "status": "active"})
+        pool = _FakePool(
+            clients=[
+                {
+                    "id": 42,
+                    "full_name": "Marta Reyes",
+                    "status": "active",
+                    "phone": "+62 813-555-0001",
+                }
+            ]
+        )
         identity = await resolve_sender_identity("+62 813-555-0001", pool)
         assert identity == {
             "role": "client",
@@ -95,12 +263,12 @@ class TestResolveSenderIdentity:
             "client_name": "Marta Reyes",
             "client_status": "active",
         }
-        # The query receives the bare national digits.
+        # The client query receives the bare national digits.
         assert pool.conn.last_args == ("8135550001",)
 
     @pytest.mark.asyncio
     async def test_client_lookup_miss_is_unknown(self):
-        identity = await resolve_sender_identity("+62 813-555-0002", _FakePool(row=None))
+        identity = await resolve_sender_identity("+62 813-555-0002", _FakePool())
         assert identity == {"role": "unknown"}
 
     @pytest.mark.asyncio

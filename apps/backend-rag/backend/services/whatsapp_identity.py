@@ -12,8 +12,19 @@ Sources, in precedence order:
 1. owner — env ``WHATSAPP_OWNER_NUMBERS`` (comma-separated). Defaults to
    Zero's personal number, which is already public in the lead-capture
    wa.me fallback.
-2. team — env ``WHATSAPP_TEAM_NUMBERS`` (``"628...:Name,628...:Name"``).
-3. client — read-only lookup on ``clients.phone`` / ``clients.whatsapp``
+2. team (env override) — env ``WHATSAPP_TEAM_NUMBERS``
+   (``"628...:Name,628...:Name"``). Checked before the DB so an operator
+   can override/patch a roster entry without a deploy.
+3. team (DB) — read-only lookup on ``team_members.whatsapp``, exact
+   normalized match ONLY (no fuzzy/suffix match — same discipline as the
+   client lookup below). ``team_members`` is overloaded: ~495 of its rows
+   are portal-client identities with ``role = 'client'`` (verified
+   2026-07-19: 488 of those also carry a ``linked_client_id``, but 7 do
+   not — so ``role <> 'client'`` is the correct guard, NOT
+   ``linked_client_id IS NULL``, which would both let those 7 slip through
+   AND wrongly exclude real team rows that happen to carry a
+   ``linked_client_id`` e.g. some "Specialist Advisor" rows).
+4. client — read-only lookup on ``clients.phone`` / ``clients.whatsapp``
    with conservative exact normalized matching (NO fuzzy/suffix match —
    a wrong identity match is a privacy incident).
 
@@ -36,6 +47,19 @@ logger = get_logger(__name__)
 _DIGITS_RE = re.compile(r"[^\d]")
 
 _DEFAULT_OWNER_NUMBERS = "6282230102328"
+
+# NOTE: `role <> 'client'` (not `linked_client_id IS NULL`) — see module
+# docstring point 3 for why the latter is unsafe on this table.
+_TEAM_DB_LOOKUP_SQL = """
+SELECT id, COALESCE(full_name, name) AS display_name, email
+  FROM team_members
+ WHERE LOWER(COALESCE(role, '')) <> 'client'
+   AND COALESCE(active, TRUE) IS TRUE
+   AND NULLIF(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), '')
+       IN ($1, '62' || $1, '0' || $1)
+ ORDER BY id
+ LIMIT 1
+"""
 
 _CLIENT_LOOKUP_SQL = """
 SELECT id, full_name, status
@@ -103,7 +127,9 @@ async def resolve_sender_identity(
 
     Returns one of:
     - ``{"role": "owner"}``
-    - ``{"role": "team", "team_member": "<Name>"}``
+    - ``{"role": "team", "team_member": "<Name>"}`` (env-resolved — no email)
+    - ``{"role": "team", "team_member": "<Name>", "team_member_email": "<Email>"}``
+      (DB-resolved via ``team_members``)
     - ``{"role": "client", "client_id": int, "client_name": str | None,
         "client_status": str | None}``
     - ``{"role": "unknown"}``
@@ -122,6 +148,14 @@ async def resolve_sender_identity(
 
         if db_pool is not None:
             async with db_pool.acquire() as conn:
+                team_row = await conn.fetchrow(_TEAM_DB_LOOKUP_SQL, norm)
+                if team_row:
+                    return {
+                        "role": "team",
+                        "team_member": team_row["display_name"],
+                        "team_member_email": team_row["email"],
+                    }
+
                 row = await conn.fetchrow(_CLIENT_LOOKUP_SQL, norm)
             if row:
                 return {

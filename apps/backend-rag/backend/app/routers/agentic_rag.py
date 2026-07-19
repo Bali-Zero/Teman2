@@ -257,6 +257,14 @@ class AgenticQueryRequest(BaseModel):
         None  # Direct history from frontend
     )
     channel: str | None = None  # Channel overlay: "website", "webapp", "whatsapp", etc.
+    # WA team-assistant V1 (additive, optional): a caller that has already
+    # resolved the sender's identity out-of-band (e.g. wa_inbox_bot.py via
+    # backend/services/whatsapp_identity.py) can pass it here so the
+    # orchestrator's is_creator/is_team persona check
+    # (prompt_builder.py build_system_prompt) sees it explicitly — see
+    # research/operations/2026-07-19-wa-bot-team-assistant-v1.md. Absent for
+    # every other caller today; None is a complete no-op end to end.
+    profile: dict[str, Any] | None = None
 
 
 class WorkspaceQueryRequest(BaseModel):
@@ -395,6 +403,9 @@ async def query_agentic_rag(
         }
         if conversation_history:
             query_kwargs["conversation_history"] = conversation_history
+        if request.profile:
+            # WA team-assistant V1 — see AgenticQueryRequest.profile docstring.
+            query_kwargs["profile"] = request.profile
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so

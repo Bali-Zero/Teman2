@@ -173,6 +173,85 @@ async def test_check_gates_and_cache_returns_gate_before_cache() -> None:
 
 
 @pytest.mark.asyncio
+async def test_process_query_core_merges_caller_profile_into_user_context() -> None:
+    """WA team-assistant V1: a caller-supplied `profile` override must land
+    in user_context["profile"] (merged on top of whatever the DB-keyed
+    context lookup found) BEFORE gates/cache/ReAct ever see it — the gate
+    call is the earliest observation point, so short-circuit there."""
+    core = make_core()
+    core._query_planner = None
+    core.prepare_query_context = AsyncMock(
+        return_value=(
+            {"profile": {"id": "db-id", "email": "stale@example.com"}, "facts": []},
+            [],
+            {},
+            "",
+            None,
+        ),
+    )
+    seen_user_context: dict = {}
+
+    def _capture_gates(**kwargs):
+        seen_user_context.update(kwargs["user_context"])
+        return SimpleNamespace(triggered=True)
+
+    sentinel = CoreResult(answer="gated", model_used="gate")
+    core.query_gates = SimpleNamespace(
+        run_all_gates=_capture_gates,
+        gate_result_to_core_result=lambda *a, **kw: sentinel,
+    )
+
+    result = await core.process_query_core(
+        query="hello",
+        user_id="whatsapp_628111000222",
+        conversation_history=None,
+        start_time=0.0,
+        profile={"role": "team", "name": "Test Member Alpha"},
+    )
+
+    assert result is sentinel
+    # Caller-supplied fields win; fields the DB lookup found (and the
+    # caller didn't override, e.g. "id") survive the merge.
+    assert seen_user_context["profile"] == {
+        "id": "db-id",
+        "email": "stale@example.com",
+        "role": "team",
+        "name": "Test Member Alpha",
+    }
+
+
+@pytest.mark.asyncio
+async def test_process_query_core_no_profile_is_a_no_op() -> None:
+    """Every existing caller passes profile=None — user_context["profile"]
+    must be exactly what prepare_query_context returned, untouched."""
+    core = make_core()
+    core._query_planner = None
+    core.prepare_query_context = AsyncMock(
+        return_value=({"profile": None, "facts": []}, [], {}, "", None),
+    )
+    seen_user_context: dict = {}
+
+    def _capture_gates(**kwargs):
+        seen_user_context.update(kwargs["user_context"])
+        return SimpleNamespace(triggered=True)
+
+    sentinel = CoreResult(answer="gated", model_used="gate")
+    core.query_gates = SimpleNamespace(
+        run_all_gates=_capture_gates,
+        gate_result_to_core_result=lambda *a, **kw: sentinel,
+    )
+
+    await core.process_query_core(
+        query="hello",
+        user_id="anonymous",
+        conversation_history=None,
+        start_time=0.0,
+    )
+
+    assert seen_user_context["profile"] is None
+
+
+@pytest.mark.asyncio
 async def test_prepare_react_execution_stamps_agent_role_and_channel(monkeypatch) -> None:
     state = AgentState(query="question")
     core = make_core()
