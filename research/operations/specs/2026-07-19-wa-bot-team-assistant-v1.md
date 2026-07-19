@@ -2,6 +2,9 @@
 date: 2026-07-19
 domain: operations
 client_case: none
+adversarial_review: codex
+adversarial_review_date: 2026-07-20
+adversarial_review_verdict: "FAIL on first pass -> fixed, re-verified independently by the orchestrator (Fable), see §7"
 sources:
   - apps/backend-rag/backend/app/routers/whatsapp_chat.py
   - apps/backend-rag/backend/services/integrations/wa_inbox_bot.py
@@ -215,3 +218,68 @@ diff, the tests, or the PR body — tests use fabricated numbers
 `team_members` schema/role-distribution facts above are aggregate counts
 only (verified via read-only Postgres MCP), never individual identifying
 rows.
+
+## Adversarial review
+
+Reviewer: Codex (`gpt-5.6-terra`, cross-family, read-only sandbox), 2026-07-20 — R1 gate.
+
+The R1 "generator != grader" gate requires a reviewer distinct from the
+diff's author (Sonnet) before merge. Codex (`gpt-5.6-terra`, read-only
+sandbox) reviewed the diff independently against 4 questions (backing
+citations, the innocence-contract claim, the overload-guard filter, and
+whether the profile-merge precedence could let a malicious caller
+self-escalate). **Verdict: FAIL** — one real, exploitable finding; three
+lower-severity notes. All four addressed by the orchestrator (Fable) this
+pass, independently re-verified against the live code (never taken on the
+refuter's word alone — standing "even the refuter hallucinates" rule):
+
+1. **[CONFIRMED, FIXED] Privilege escalation via request body.**
+   `AgenticQueryRequest.profile` (added router-wide by this PR, not
+   scoped to the WA path) was forwarded to the orchestrator unconditionally
+   whenever present — `agentic_rag.py` pre-fix: `if request.profile:
+   query_kwargs["profile"] = request.profile`. Since `/api/agentic-rag/query`
+   accepts **optional** auth (`get_current_user_optional` — anonymous
+   callers get `current_user=None`, not a 401), and the endpoint is the
+   same one the website/webapp chat widget hits, ANY caller — anonymous or
+   a logged-in client — could POST `{"query": "...", "profile":
+   {"role": "creator"}}` directly and receive CREATOR_PERSONA/TEAM_PERSONA
+   framing (internal-clearance tone, no sales pitch) with zero real
+   identity resolution. **Fix**: `profile` is now only honored when
+   `current_user.get("role") in ("internal", "admin")` — traced the actual
+   trust chain: the WA bot authenticates its RAG hop via `X-Internal-Key`
+   (`wa_inbox_bot.py::_rag_client_headers`), which `HybridAuthMiddleware`
+   (`middleware/hybrid_auth.py:376-384`) maps to a `role="internal"`
+   pseudo-user on `request.state.user`, which `get_current_user`
+   (`app/deps/auth.py:47-48`) reads before falling through to JWT. Every
+   other caller's `profile` is now silently dropped (matches the PR's own
+   additive/optional contract — not a new error surface). 5 new tests in
+   `test_agentic_rag_router.py::TestProfileFieldPrivilegeGuard` (2 guilt:
+   internal/admin role forwards; 3 innocence: regular authenticated user,
+   anonymous caller, and profile-absent — all assert `profile` never
+   reaches `orchestrator.process_query`).
+2. **[CONFIRMED, HARDENED] Overload-guard fail-open on blank role.**
+   `LOWER(COALESCE(role,'')) <> 'client'` classifies NULL/whitespace-only
+   roles as "team" (only excludes the literal string `'client'`). Verified
+   live: zero rows currently have a blank role (all 17 distinct role
+   values are non-empty), so this was not an active hole — but it's a
+   silent trap for future data entry. **Fix**: added a
+   `NULLIF(BTRIM(...), '') IS NOT NULL` clause requiring a genuinely
+   non-blank role, on top of the existing `<> 'client'` exclusion. New test
+   `test_team_db_lookup_excludes_blank_role` (NULL and whitespace-only
+   role, both must resolve `unknown`).
+3. **[NOTED, not a code defect] Innocence-test framing was imprecise.**
+   The original test named "client/unknown byte-identical" actually only
+   exercised the DB-miss (`unknown`) path, not a genuinely DB-resolved
+   `client` row. The code path is identical either way (both produce
+   `identity["role"]` outside `{"owner","team"}`, so `_profile_from_identity`
+   returns `None` for both) — re-verified by inspection, no behavior gap —
+   but the test suite's own coverage claim overstated what it proved. Not
+   fixed in this pass (pre-existing test, out of the R1 fix's blast
+   radius); flagged for whoever next touches `test_wa_inbox_bot.py`.
+4. **[NOTED, citation precision] §1's Path-B claim.** The cited
+   `whatsapp_chat.py:1281-1316` shows the dispatch decision (routes to
+   `process_meta_inbox_payload`) but not the full downstream chain to
+   `wa_inbox_bot.py`. The downstream chain itself IS independently verified
+   elsewhere in this spec (§1, wa_outbox_worker → wa_inbox_bot references)
+   and in the bot corner (`.claude/skills/bot/` §2 established truth #1) —
+   this is a citation-completeness nit, not an unverified claim. No change.

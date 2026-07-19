@@ -760,3 +760,223 @@ class TestAgenticQueryResponse:
 
             with pytest.raises(HTTPException):
                 get_optional_database_pool(mock_request)
+
+
+class TestProfileFieldPrivilegeGuard:
+    """Adversarial-review fix (2026-07-20): `request.profile` must only be
+    honored for the WA bot's server-to-server hop (role="internal") or an
+    admin — never for an arbitrary/anonymous caller who could otherwise
+    self-declare role="team"/"creator" and get internal-clearance persona
+    framing. See agentic_rag.py::query_agentic_rag, the `if request.profile`
+    block."""
+
+    @staticmethod
+    def _base_kwargs(mock_orchestrator, current_user, profile):
+        request_data = AgenticQueryRequest(query="Any question", profile=profile)
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+        return request_data, mock_ab_manager
+
+    @pytest.mark.asyncio
+    async def test_internal_role_profile_is_forwarded(self, mock_orchestrator):
+        """Guilt: the WA bot's internal-key pseudo-user (role='internal')
+        legitimately sets profile — it resolved sender identity itself,
+        out-of-band, against Postgres. Must reach the orchestrator."""
+        internal_user = {
+            "role": "internal",
+            "email": "wa-mirror-internal@balizero.com",
+            "user_id": "wa-mirror-internal",
+        }
+        profile = {"role": "team", "name": "Ari", "email": "ari@balizero.com"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, internal_user, profile
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert call_kwargs.get("profile") == profile
+
+    @pytest.mark.asyncio
+    async def test_admin_role_profile_is_forwarded(self, mock_orchestrator):
+        """Guilt: an admin caller may also set profile."""
+        admin_user = {"role": "admin", "email": "admin@internal", "user_id": "admin"}
+        profile = {"role": "creator"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, admin_user, profile
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=admin_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=admin_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert call_kwargs.get("profile") == profile
+
+    @pytest.mark.asyncio
+    async def test_regular_authenticated_user_profile_is_dropped(self, mock_orchestrator):
+        """Innocence (the actual vulnerability this fix closes): a normal
+        logged-in client cannot self-declare role='creator'/'team' by
+        putting it in the request body — profile must be silently dropped,
+        not forwarded to the orchestrator/persona layer."""
+        regular_user = {"email": "client@example.com", "user_id": "client-1"}
+        profile = {"role": "creator"}  # attempted escalation
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, regular_user, profile
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=regular_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=regular_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "profile" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_anonymous_caller_profile_is_dropped(self, mock_orchestrator):
+        """Innocence: an unauthenticated caller (current_user=None) — the
+        worst case for the escalation vector — must also have profile
+        silently dropped."""
+        profile = {"role": "team"}  # attempted escalation
+        request_data, mock_ab_manager = self._base_kwargs(mock_orchestrator, None, profile)
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=None,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "profile" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_no_profile_in_request_is_still_a_no_op(self, mock_orchestrator):
+        """Innocence: the pre-existing, non-WA callers (profile absent
+        entirely) must remain completely unaffected by this guard."""
+        internal_user = {"role": "internal", "email": "wa-mirror-internal@balizero.com"}
+        request_data, mock_ab_manager = self._base_kwargs(mock_orchestrator, internal_user, None)
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "profile" not in call_kwargs

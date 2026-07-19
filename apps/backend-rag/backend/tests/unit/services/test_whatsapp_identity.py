@@ -23,7 +23,9 @@ class _FakeConn:
 
     Re-implements (in Python) the same WHERE-clause semantics as the real
     SQL in whatsapp_identity.py — including the ``role <> 'client'``
-    overload guard on ``team_members`` — so tests can exercise the guard
+    overload guard AND the blank/NULL-role hardening (adversarial review,
+    2026-07-20: a NULL/whitespace-only role must NOT classify as team,
+    same as ``role='client'`` does not) — so tests can exercise the guard
     without a live Postgres. ``calls`` records every fetchrow invocation
     (sql, args) so tests can assert on call count/order/args.
     """
@@ -49,7 +51,10 @@ class _FakeConn:
 
         if "team_members" in sql:
             for row in self._team_members:
-                if str(row.get("role", "")).strip().lower() == "client":
+                role_norm = str(row.get("role") or "").strip().lower()
+                if not role_norm:
+                    continue  # blank/NULL-role hardening
+                if role_norm == "client":
                     continue  # the overload guard
                 if row.get("active") is False:
                     continue
@@ -210,6 +215,41 @@ class TestResolveSenderIdentity:
         )
         identity = await resolve_sender_identity("+62 811-100-3000", pool)
         assert identity == {"role": "unknown"}
+
+    @pytest.mark.asyncio
+    async def test_team_db_lookup_excludes_blank_role(self):
+        """Adversarial-review hardening (2026-07-20): a NULL/whitespace-only
+        role must NOT classify as team, same as role='client' does not.
+        `<> 'client'` alone is fail-OPEN for a blank role — this is the gap
+        Codex's cross-family review found. No real row is blank today
+        (verified live), but the guard must not silently rely on that."""
+        pool = _FakePool(
+            team_members=[
+                {
+                    "id": "tm-blank",
+                    "full_name": "Data-Quality Gap",
+                    "name": "Data-Quality Gap",
+                    "email": "gap@example.com",
+                    "role": None,
+                    "whatsapp": "+62 811-100-3500",
+                    "active": True,
+                },
+                {
+                    "id": "tm-whitespace",
+                    "full_name": "Data-Quality Gap 2",
+                    "name": "Data-Quality Gap 2",
+                    "email": "gap2@example.com",
+                    "role": "   ",
+                    "whatsapp": "+62 811-100-3600",
+                    "active": True,
+                },
+            ],
+            clients=[],
+        )
+        identity_null = await resolve_sender_identity("+62 811-100-3500", pool)
+        identity_whitespace = await resolve_sender_identity("+62 811-100-3600", pool)
+        assert identity_null == {"role": "unknown"}
+        assert identity_whitespace == {"role": "unknown"}
 
     @pytest.mark.asyncio
     async def test_team_db_lookup_excludes_inactive(self):

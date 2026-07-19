@@ -49,11 +49,16 @@ _DIGITS_RE = re.compile(r"[^\d]")
 _DEFAULT_OWNER_NUMBERS = "6282230102328"
 
 # NOTE: `role <> 'client'` (not `linked_client_id IS NULL`) — see module
-# docstring point 3 for why the latter is unsafe on this table.
+# docstring point 3 for why the latter is unsafe on this table. Also requires
+# a non-blank role (adversarial review, 2026-07-20): the live data has zero
+# NULL/blank roles today (verified), but `<> 'client'` alone is fail-OPEN —
+# a future NULL/whitespace-only role would silently classify as "team". The
+# NULLIF/BTRIM clause below closes that without narrowing any real role.
 _TEAM_DB_LOOKUP_SQL = """
 SELECT id, COALESCE(full_name, name) AS display_name, email
   FROM team_members
- WHERE LOWER(COALESCE(role, '')) <> 'client'
+ WHERE NULLIF(BTRIM(LOWER(COALESCE(role, ''))), '') IS NOT NULL
+   AND LOWER(BTRIM(COALESCE(role, ''))) <> 'client'
    AND COALESCE(active, TRUE) IS TRUE
    AND NULLIF(regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g'), '')
        IN ($1, '62' || $1, '0' || $1)

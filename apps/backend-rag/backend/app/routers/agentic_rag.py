@@ -405,7 +405,20 @@ async def query_agentic_rag(
             query_kwargs["conversation_history"] = conversation_history
         if request.profile:
             # WA team-assistant V1 — see AgenticQueryRequest.profile docstring.
-            query_kwargs["profile"] = request.profile
+            # SECURITY (adversarial review, 2026-07-20): `profile` is caller-
+            # supplied JSON and picks the TEAM_PERSONA/CREATOR_PERSONA prompt
+            # overlay downstream — trusting it from an arbitrary requester
+            # would let ANY caller of this endpoint self-declare
+            # role="team"/"creator" and get internal-clearance framing.
+            # Only the WA bot's server-to-server hop (authenticated via
+            # X-Internal-Key -> HybridAuthMiddleware role="internal", see
+            # wa_inbox_bot.py::_rag_client_headers) is allowed to set it —
+            # it resolved the sender's identity itself, out-of-band, against
+            # Postgres. A real admin caller is allowed too. Every other
+            # caller's `profile` field is silently ignored (not an error —
+            # matches the existing optional-field, additive-only contract).
+            if current_user and current_user.get("role") in ("internal", "admin"):
+                query_kwargs["profile"] = request.profile
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
