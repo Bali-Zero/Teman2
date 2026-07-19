@@ -362,6 +362,35 @@ export const auditStreamHeads = sqliteTable(
   ],
 );
 
+export const publicationAuditBindings = sqliteTable(
+  "publication_audit_bindings",
+  {
+    operation: text("operation").notNull(),
+    packetId: text("packet_id").notNull(),
+    eventId: text("event_id")
+      .notNull()
+      .unique()
+      .references(() => auditEvents.eventId),
+    streamId: text("stream_id").notNull(),
+    streamSeq: integer("stream_seq").notNull(),
+    eventHash: text("event_hash").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.operation, table.packetId] }),
+    unique("publication_audit_stream_seq_unique").on(
+      table.streamId,
+      table.streamSeq,
+    ),
+    check(
+      "publication_audit_operation_check",
+      sql`${table.operation} in ('edition.publish', 'breaking.publish')`,
+    ),
+    check("publication_audit_seq_check", sql`${table.streamSeq} > 0`),
+    check("publication_audit_hash_check", sha256Check("event_hash")),
+  ],
+);
+
 export const storyVisibilityEvents = sqliteTable(
   "story_visibility_events",
   {
@@ -789,11 +818,81 @@ export const auditAnchorReceipts = sqliteTable(
       table.streamId,
       table.streamSeq,
     ),
+    unique("audit_anchor_previous_hash_unique").on(
+      table.streamId,
+      table.previousAnchorHash,
+    ),
+    check("audit_anchor_seq_check", sql`${table.streamSeq} > 0`),
     check("audit_anchor_event_hash_check", sha256Check("event_hash")),
     check(
       "audit_anchor_previous_hash_check",
       sha256Check("previous_anchor_hash"),
     ),
     check("audit_anchor_hash_check", sha256Check("anchor_hash")),
+  ],
+);
+
+export const auditAnchorHeads = sqliteTable(
+  "audit_anchor_heads",
+  {
+    streamId: text("stream_id").primaryKey(),
+    streamSeq: integer("stream_seq").notNull(),
+    eventHash: text("event_hash").notNull(),
+    anchorHash: text("anchor_hash").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    check("audit_anchor_heads_seq_check", sql`${table.streamSeq} > 0`),
+    check("audit_anchor_heads_event_hash_check", sha256Check("event_hash")),
+    check("audit_anchor_heads_anchor_hash_check", sha256Check("anchor_hash")),
+  ],
+);
+
+export const auditPromotionBlock = sqliteTable(
+  "audit_promotion_block",
+  {
+    singletonId: integer("singleton_id").primaryKey(),
+    blocked: integer("blocked", { mode: "boolean" }).notNull(),
+    reason: text("reason").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    check(
+      "audit_promotion_block_singleton_check",
+      sql`${table.singletonId} = 1`,
+    ),
+    check("audit_promotion_block_value_check", sql`${table.blocked} in (0, 1)`),
+  ],
+);
+
+export const auditPromotionPermits = sqliteTable(
+  "audit_promotion_permits",
+  {
+    operation: text("operation").notNull(),
+    packetId: text("packet_id").notNull(),
+    streamId: text("stream_id").notNull(),
+    streamSeq: integer("stream_seq").notNull(),
+    eventHash: text("event_hash").notNull(),
+    anchorHash: text("anchor_hash").notNull(),
+    status: text("status").notNull(),
+    createdAt: createdAt(),
+    consumedAt: text("consumed_at"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.operation, table.packetId] }),
+    check(
+      "audit_promotion_permit_operation_check",
+      sql`${table.operation} in ('edition.publish', 'breaking.publish')`,
+    ),
+    check("audit_promotion_permit_seq_check", sql`${table.streamSeq} > 0`),
+    check("audit_promotion_permit_event_hash_check", sha256Check("event_hash")),
+    check(
+      "audit_promotion_permit_anchor_hash_check",
+      sha256Check("anchor_hash"),
+    ),
+    check(
+      "audit_promotion_permit_status_check",
+      sql`${table.status} in ('permitted', 'consumed')`,
+    ),
   ],
 );

@@ -47,10 +47,18 @@ const routePaths = {
     import.meta.url,
   ),
   asset: new URL("../app/api/machine/assets/route.ts", import.meta.url),
+  auditAnchor: new URL(
+    "../app/api/machine/audit-anchor/route.ts",
+    import.meta.url,
+  ),
+  auditEvents: new URL(
+    "../app/api/machine/audit-events/v1/route.ts",
+    import.meta.url,
+  ),
 };
 const routesExist = Object.values(routePaths).every(existsSync);
 
-test("machine ingress exposes all four protected routes", () => {
+test("machine ingress exposes all six protected routes", () => {
   for (const [name, path] of Object.entries(routePaths)) {
     assert.ok(existsSync(path), `missing ${name} machine route`);
   }
@@ -73,6 +81,47 @@ async function loadRoutes() {
 
 async function invoke(handler, request, bindings) {
   return runWithMagazineBindings(bindings, () => handler(request));
+}
+
+async function publishWithIntegrationPermit({
+  handler,
+  path,
+  body,
+  db,
+  bindings,
+  operation,
+  packetId,
+}) {
+  const stagedRequest = await signedMachineRequest({ path, body });
+  const staged = await invoke(handler, stagedRequest, bindings);
+  assert.equal(staged.status, 409);
+  assert.deepEqual(await staged.json(), {
+    ok: false,
+    error: "promotion_blocked",
+    operation,
+    packet_id: packetId,
+  });
+  const binding = db.get(
+    `SELECT stream_id, stream_seq, event_hash
+     FROM publication_audit_bindings
+     WHERE operation = ? AND packet_id = ?`,
+    operation,
+    packetId,
+  );
+  db.execute(
+    `INSERT INTO audit_promotion_permits(
+       operation, packet_id, stream_id, stream_seq,
+       event_hash, anchor_hash, status
+     ) VALUES (?, ?, ?, ?, ?, ?, 'permitted')`,
+    operation,
+    packetId,
+    binding.stream_id,
+    binding.stream_seq,
+    binding.event_hash,
+    "a".repeat(64),
+  );
+  const promotedRequest = await signedMachineRequest({ path, body });
+  return invoke(handler, promotedRequest, bindings);
 }
 
 test(
@@ -249,12 +298,17 @@ test(
           ? "/api/machine/publications/editions"
           : "/api/machine/publications/breaking";
       const body = JSON.stringify(packet);
-      const created = await signedMachineRequest({ path, body });
-      const createdResponse = await invoke(
-        routes[target],
-        created,
-        runtimeBindings(db),
-      );
+      const bindings = runtimeBindings(db);
+      const createdResponse = await publishWithIntegrationPermit({
+        handler: routes[target],
+        path,
+        body,
+        db,
+        bindings,
+        operation:
+          target === "edition" ? "edition.publish" : "breaking.publish",
+        packetId: packet.packet_id,
+      });
       assert.equal(createdResponse.status, 201, target);
       assert.deepEqual(await createdResponse.json(), {
         ok: true,
@@ -262,11 +316,7 @@ test(
       });
 
       const replay = await signedMachineRequest({ path, body });
-      const replayResponse = await invoke(
-        routes[target],
-        replay,
-        runtimeBindings(db),
-      );
+      const replayResponse = await invoke(routes[target], replay, bindings);
       assert.equal(replayResponse.status, 200, target);
       assert.deepEqual(await replayResponse.json(), {
         ok: true,
@@ -300,13 +350,18 @@ test(
     const conflictDb = new SqliteD1Database();
     const conflictStory = storyVersion({ suffix: "conflict" });
     const initialPacket = breakingPacket(conflictStory);
-    const first = await signedMachineRequest({
-      path: "/api/machine/publications/breaking",
-      body: JSON.stringify(initialPacket),
-    });
     assert.equal(
-      (await invoke(routes.breaking, first, runtimeBindings(conflictDb)))
-        .status,
+      (
+        await publishWithIntegrationPermit({
+          handler: routes.breaking,
+          path: "/api/machine/publications/breaking",
+          body: JSON.stringify(initialPacket),
+          db: conflictDb,
+          bindings: runtimeBindings(conflictDb),
+          operation: "breaking.publish",
+          packetId: initialPacket.packet_id,
+        })
+      ).status,
       201,
     );
     const changed = await signedMachineRequest({
@@ -405,12 +460,19 @@ test(
       suffix: "asset-provenance",
       assetDigest: createdResult.canonical_sha256,
     });
-    const publication = await signedMachineRequest({
-      path: "/api/machine/publications/breaking",
-      body: JSON.stringify(breakingPacket(story)),
-    });
+    const publicationPacket = breakingPacket(story);
     assert.equal(
-      (await invoke(routes.breaking, publication, bindings)).status,
+      (
+        await publishWithIntegrationPermit({
+          handler: routes.breaking,
+          path: "/api/machine/publications/breaking",
+          body: JSON.stringify(publicationPacket),
+          db,
+          bindings,
+          operation: "breaking.publish",
+          packetId: publicationPacket.packet_id,
+        })
+      ).status,
       201,
     );
     const detail = await runWithMagazineBindings(bindings, () =>

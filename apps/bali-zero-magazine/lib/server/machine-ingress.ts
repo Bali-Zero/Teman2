@@ -160,3 +160,18 @@ export function machineFailure(status: 400 | 401 | 409 | 413): Response {
     { status, headers: privateNoStoreHeaders() },
   );
 }
+
+export function machinePromotionBlocked(
+  operation: "edition.publish" | "breaking.publish",
+  packetId: string,
+): Response {
+  return Response.json(
+    {
+      ok: false,
+      error: "promotion_blocked",
+      operation,
+      packet_id: packetId,
+    },
+    { status: 409, headers: privateNoStoreHeaders() },
+  );
+}
