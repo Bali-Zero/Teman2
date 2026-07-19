@@ -1281,80 +1281,24 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 
   "68112": {
     whatItMeans:
-      "Leasing or renting out NON-RESIDENTIAL property that YOU OWN or lease — commercial spaces, offices, shops (toko), warehouses, industrial units, coworking spaces. This is for the LANDLORD/PROPERTY OWNER who rents out commercial property. NOT for tenants renting space, NOT for real estate agents (that's 68200). You own the building or hold the lease, and you rent it out to businesses. Excludes residential property (that's 68120).",
-    whatYouNeed: `**All scales (Mikro/Kecil/Menengah/Besar)**: Low risk (Rendah). NIB only, issued **automatically** (Otomatis) via OSS.
+      "Leasing and operating RESIDENTIAL real estate that you own or lease — apartments, houses, or residential land rented out as long-term housing. This is for the LANDLORD/PROPERTY OWNER who rents residential property as someone's home. NOT for short-term/tourist stays (that's 55203 villa or 55201 homestay), NOT for non-residential/commercial property (that's 68129), NOT for real estate agents intermediating deals (that's 68210).",
+    whatYouNeed: `**Registration:** Register the activity via NIB on OSS (oss.go.id), selecting code 68112.
 
-**Post-issuance obligations:**
-- Submit periodic business activity reports (Laporan kegiatan usaha)
+**⚠️ Licensing not yet defined in OSS for this code:** OSS has not published a risk-based standard (Sertifikat Standar / standar usaha) for 68112 under KBLI 2025 (ruang-lingkup returns 404). The risk level and licensing steps shown here previously were a **code-number collision** — they belonged to a *different* activity, MICE-venue rental ("Penyewaan Venue Penyelenggaraan Aktifitas MICE dan Event Khusus"), which carried the number 68112 under PP 28/2025's older classification (Lampiran I.L, Sektor Pariwisata). They do **not** apply to residential leasing and have been removed from this page.
 
-**Step-by-step to operate legally (PT PMA):**
-1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks, IDR 8–15M notary fees)
-2. **Property ownership/lease documentation** — PPJB (Perjanjian Pengikatan Jual Beli) or AJB (Akta Jual Beli) if you own; or long-term lease agreement (Hak Sewa) if you lease the property
-3. **PBG (Persetujuan Bangunan Gedung)** — building permit must be valid for commercial use (not residential); verify zoning compliance (KKPR)
-4. **NIB via OSS** — register on oss.go.id, select 68112, auto-issued (1–3 days)
-5. **Rental agreements** — draft commercial lease contracts with tenants (notarized recommended)
-6. **Tax compliance** — PPh Pasal 4(2) 10% final tax on rental income; PPN 11% if annual revenue > IDR 4.8B
-7. **Ongoing compliance** — submit periodic reports, maintain PBG validity, renew property lease if applicable
+**Closest published reference:** KBLI 68111 (residential property development, Sektor PUPR) requires KKPR and SK Pengesahan — the nearest comparable authority chain, not a substitute risk tier for 68112 itself.
 
-**Typical total timeline:** 2–4 weeks (fastest property leasing path).
-**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).
+**PMA:** Open nationally to 100% foreign ownership (Perpres 10/2021, 49/2021). Whether PMA registration is available at a Bali address is unresolved — the earlier "blocked" verdict depended on the same collision-derived risk tier and has been detached, so it is unresolved rather than lifted.
 
-**Authority:** OSS Pusat (central OSS system) — automatic issuance, no Bupati/Walikota review.
-**PMA:** Fully open (Terbuka) — 100% foreign ownership. No local partner required.`,
+Confirm current OSS requirements and Bali registrability with the Bali Zero team before filing.`,
     whatChanged:
-      "NEW code in KBLI 2025 — separates NON-RESIDENTIAL property leasing (68112) from RESIDENTIAL property leasing (68120). Previously both were lumped under a single code. This separation clarifies commercial vs. residential landlord activities. CRITICAL: 68112 is for the PROPERTY OWNER/LANDLORD, not for tenants or agents.",
-    baliContext: `**🏢 The Bali Commercial Property Market (Reality Check)**
-- **Coworking spaces:** Canggu, Seminyak, Ubud — massive demand from digital nomads; spaces like Dojo Bali, Outpost, Tropical Nomad operate under 68112
-- **Shop lots (toko):** Seminyak, Kuta, Ubud — retail spaces for F&B, fashion, wellness; rental rates IDR 50M–500M/year depending on location
-- **Warehouses:** Mengwi, Tabanan — logistics, e-commerce fulfillment, manufacturing storage; growing demand from online retail boom
-- **Office buildings:** Denpasar, Sanur — corporate offices, agency headquarters; rental rates IDR 200K–800K/m²/month
-- Typical investment: IDR 5B–50B for commercial property acquisition or long-term lease (25–30 years Hak Sewa)
-- Revenue model: Monthly/annual rent (IDR 20M–500M/month depending on size/location), service charges, utilities markup
-
----
-
-**⚠ CRITICAL: 68112 Is for LANDLORDS, Not Tenants**
-- **You are the PROPERTY OWNER** — you own the building or hold the long-term lease (Hak Sewa), and you rent it out
-- **You are NOT the tenant** — if you're renting office space for your own business, you don't need 68112; your business uses its own KBLI code
-- **You are NOT a real estate agent** — if you're intermediating property transactions for commission, you need 68200 (Real Estate Agency)
-- **Example:**
-  - PT PMA owns coworking building in Canggu, rents desks to freelancers = 68112 ✓
-  - PT PMA rents office space for its own software development business = NO 68112 (use 62199 for software dev) ✗
-  - PT PMA brokers commercial property deals for commission = 68200 (NOT 68112) ✗
-
----
-
-**⚠ CRITICAL: Property Ownership Structure for PMA**
-- **HGB (Hak Guna Bangunan) over HM (Hak Milik)** — most common structure for PMA in Bali
-  - PT PMA holds HGB (building rights, 30+20 years renewable)
-  - Land remains HM (freehold) owned by Indonesian citizen (WNI)
-  - Notaris wajib — all HGB agreements must be notarized and registered at BPN (Badan Pertanahan Nasional)
-- **Hak Sewa (Leasehold)** — alternative for PMA: long-term lease (25–30 years) from WNI landowner
-  - Lower upfront cost than HGB
-  - Renewal risk at end of lease term
-  - Must be registered at notaris
-- **Nominee arrangements** — ILLEGAL; BPN and PPATK (anti-money laundering) increased scrutiny since 2023
-
----
-
-**⚠ CRITICAL: PBG Must Match Commercial Use**
-- **PBG (Persetujuan Bangunan Gedung)** — building permit must specify commercial use (kantor, toko, gudang)
-- **Common mistake:** Building has residential PBG, owner tries to rent as commercial space = zoning violation
-- **KKPR (Kesesuaian Kegiatan Pemanfaatan Ruang)** — spatial conformity certificate from ATR/BPN; verify zoning allows commercial activity
-- **Enforcement:** DPMPTSP Bali has increased inspections since 2024; non-compliant buildings face closure orders
-
----
-
-**⚠ Common Mistakes in Bali Commercial Property Leasing**
-- **Operating without NIB** — many small landlords rent out shop lots informally; PT PMA requires NIB for legal operation
-- **Confusing 68112 with 68120** — commercial (68112) vs. residential (68120); different codes, different tax treatment
-- **Mixing landlord activity with tenant activity** — if your PT PMA operates a business AND rents out space, you need BOTH codes (e.g., 68112 + 62199 for software dev)
-- **Ignoring tax obligations** — PPh Pasal 4(2) 10% final tax on rental income is mandatory; PPN 11% if revenue > IDR 4.8B/year
-- **Poor lease documentation** — commercial leases should be notarized; verbal agreements lead to disputes`,
+      "Direct match from KBLI 2020 (MATCH_LANGSUNG) — residential leasing is unchanged. Note: the risk/licensing data previously shown on this page was a code-number collision with a different PP28/2025 activity (MICE-venue rental) — corrected 2026-07-16, image-verified (see 'What You Need' above).",
+    baliContext:
+      "Long-term residential rental is a growing market in Bali, especially with the digital nomad influx — Canggu, Sanur, and Ubud see strong demand for monthly and yearly house/apartment rentals. This code is for residential-purpose rentals only: if you're doing short-term tourist stays, you need 55203 (villa) or 55201 (homestay) instead. Many property owners in Bali operate without proper KBLI codes, but enforcement is increasing. The specific risk tier, processing time, and authority for 68112 are not yet published by OSS (see 'What You Need' above) — confirm current requirements before committing to a structure.",
     youllAlsoNeed:
-      "- **68111** — If you also develop/build the commercial property (not just lease it out)\n- **68200** — If you also act as a real estate agent/broker (intermediating deals for commission)\n- **68310** — If you offer property consultancy services (due diligence, market research)\n- **68292** — If you manage other people's properties on a fee/contract basis (property management)\n- **41012** — If your PT PMA also constructs the commercial building itself",
+      "- **68111** — If you're also developing/building the residential property (not just leasing it out)\n- **68210** — If you also act as a real estate agent/broker (intermediating deals for commission)\n- **68129** — If you also rent non-residential property\n- **55203** — If any units are rented short-term to tourists (villa — different code entirely)\n- **55201** — If any units are rented short-term as homestay",
     zantaraOpener:
-      "Own commercial property in Bali and want to rent it out? 68112 is the NEW dedicated code for NON-RESIDENTIAL property leasing — separates commercial from residential landlord activities. CRITICAL: this is for PROPERTY OWNERS/LANDLORDS, not tenants or agents. Let me walk you through the licensing path and the HGB/Hak Sewa structure.",
+      "Renting out residential property in Bali? 68112 is your code for long-term leasing — different from villa/tourist accommodation (55203/55201). The risk tier and licensing steps aren't yet published by OSS for this new code, so let me walk you through what's confirmed and what to verify before you file.",
     tkaInfo: {
       categoryId: 2,
       categoryName: "Real Estate",
@@ -43734,16 +43678,29 @@ Social science research involving human subjects (surveys, interviews, ethnograp
 
   "49213": {
     whatItMeans:
-      "Urban passenger transport — operating scheduled or chartered buses, minibuses, and shuttle services within and between cities. This includes: city buses and urban transit, airport shuttle services, resort/hotel charter transfers, and inter-city regular routes (AKDP — Antar Kota Dalam Provinsi). The code covers the vehicle operation business itself, whether scheduled (trayek) or unscheduled (non-trayek) charter. Critical PMA distinction: the ride-hailing app model (Gojek, Grab, InDriver for ride orders via app) is explicitly reserved for Indonesian MSMEs and cannot be operated by a PT PMA. The PMA-accessible opportunity is the transport operation itself — charter fleets, shuttle services, hotel/resort transfers, and formal bus routes.",
-    whatYouNeed: `**All scales**: Low risk (Rendah). NIB issued **automatically** (Otomatis). Authority: **Bupati/Walikota**.\n\nThe NIB is auto-issued, but actual operations require additional transport-specific permits:\n\n**Step-by-step for a PT PMA urban/charter transport operator:**\n1. **PT PMA incorporation** — notary deed, AHU registration; transport sector minimum IDR 10B stated (~3–5 weeks)\n2. **NIB via OSS** — register on oss.go.id, select 49213, Rendah path; auto-issued (1–3 days)\n3. **Izin Usaha Angkutan** — operational transport license from Dinas Perhubungan Kabupaten/Kota; requires vehicle list (STNK), driver credentials, operational base (pool/garasi)\n4. **Izin Trayek** (for fixed routes) — route permit from Dishub if operating scheduled routes between specific points. Bali routes (Denpasar–Ubud, Denpasar–Canggu, airport shuttles) require route-specific permits\n5. **KIR (Uji Berkala Kendaraan Bermotor)** — roadworthiness test mandatory every **6 months** for all commercial passenger vehicles. Performed at Dishub balai uji; vehicles without valid KIR cannot legally operate\n6. **STNK atas nama PT** — all fleet vehicles must be registered under the PT PMA name\n7. **Asuransi Jasa Raharja** — mandatory passenger liability insurance (automatically included for registered vehicles)\n8. **Driver AKAP/AKDP competency** — drivers on inter-city routes require specific Dishub certification\n9. **Laporan operasi berkala** — periodic operational reports to Dishub\n\n**For AKAP routes (inter-provincial, e.g. Bali to Java):**\n- Additional **Izin Usaha Angkutan AKAP** from Kementerian Perhubungan (Menteri level)\n- Bali–Java ferry coordination (ASDP Indonesia Ferry) for Bali–Ketapang (Banyuwangi) crossing\n\n**Typical total timeline:** 2–4 months from PT PMA to first legally operating vehicle.\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**PMA note:** Ride-hailing apps (Gojek, Grab, InDriver passenger model) are **TERTUTUP** for PMA — reserved for Indonesian UMKM. PMA can operate the vehicles and drivers but cannot build/operate the consumer ride-hailing app platform for passengers.\n\n**Authority:** Bupati/Walikota.\n**PMA:** Fully open (Terbuka) — 100% foreign ownership (for charter/shuttle operations).`,
+      "Scheduled or chartered urban passenger transport WITHIN a single city or urban area, moving people on a fixed route (trayek) — city buses, minibuses, and shuttle services operating inside an urban zone. This is INTRA-city only: it excludes rail-based urban transit (49211) and rural passenger transport, and it is a DIFFERENT regulatory basis from inter-city/inter-provincial transport (AKDP/AKAP). Airport shuttles, resort/hotel transfers, and organized charter fleets operating inside a single urban area fall under this code.",
+    whatYouNeed: `**Risk & licensing (image-verified, restored 2026-07-18 from the correct PP28/2025 urban-transport rows):** Medium-High risk (**Menengah Tinggi**) across all business scales (Mikro/Kecil/Menengah/Besar). License: **NIB dan Sertifikat Standar**, issued within **5 Hari**. Authority: **Bupati/Wali Kota** (city-bus and other-in-trayek scopes) or **Wali Kota** (non-bus urban transit scope).
+
+**⚠️ What was corrected:** The risk tier and licensing shown here earlier were carried over from KBLI-2020's inter-city AKDP transport (a different regulatory basis under the older classification) — a code-number collision. That data has been detached and is no longer shown. The figures above are restored from the 3 PP28/2025 urban-transport rows that actually match this intra-city activity, each image-verified on the official government PDF.
+
+**Not yet transcribed:** the specific persyaratan (requirements) and kewajiban (post-issuance obligations) bullet lists for these rows have not yet been extracted from the source document — treat the general compliance items below (Izin Trayek, KIR, driver certification) as background regulatory context under UU LLAJ 22/2009, not as confirmed PP28/2025-specific requirements for 49213 until independently verified.
+
+**General transport compliance (UU LLAJ 22/2009, not code-specific):**
+- Izin Usaha Angkutan (operational transport license) from Dinas Perhubungan Kabupaten/Kota
+- KIR (Uji Berkala Kendaraan Bermotor) roadworthiness test, mandatory periodically for commercial passenger vehicles
+- STNK registered under the PT PMA name; Asuransi Jasa Raharja passenger liability insurance
+
+**PMA:** Open nationally (Perpres 10/2021, 49/2021) — 100% foreign ownership for the transport-operation activity itself. Ride-hailing app platforms (Gojek/Grab/InDriver-style consumer apps) are a separate, TERTUTUP activity reserved for Indonesian MSMEs — a PT PMA can operate vehicles/drivers under a charter or shuttle model but cannot build/operate the consumer ride-hailing app.
+
+Confirm current requirements with the Bali Zero team before committing to a route or fleet plan.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). Urban transport classification is stable. PP 28/2025 adds the formal OSS pathway; KIR and trayek requirements are governed by UU LLAJ 22/2009 and are unchanged.",
+      "Direct match from KBLI 2020 (MATCH_LANGSUNG) — urban transport classification is stable. Note: the risk/licensing data previously shown on this page was a code-number collision with KBLI-2020's inter-city AKDP transport — corrected 2026-07-18 with per-ancestor restored data from the correct intra-city PP28/2025 rows (see 'What You Need' above).",
     baliContext:
-      "**🚌 Bali Transport: The Real PMA Opportunity**\n- The mass ride-hailing market (Gojek, Grab) is UMKM territory — PMA cannot operate a competing app\n- The actual PMA opportunity is in **organized charter and shuttle operations** serving the tourism economy\n\n**High-demand corridors (2025):**\n- **Airport–Canggu / Airport–Seminyak:** Kuta taxis still dominate but corporate shuttle contracts for hotels are underserved\n- **Denpasar–Ubud:** One of the most traveled tourist routes; no quality scheduled service with Western UX exists\n- **Resort shuttle circuits:** Large Nusa Dua and Uluwatu resorts pay IDR 2–4M/day for dedicated charter vehicles\n- **AKAP Bali–Surabaya / Bali–Malang:** Long-haul overnight coaches via Ketapang ferry; underserved quality tier\n\n**EV fleet opportunity:**\n- Government incentives for electric commercial vehicles (2024 Perpres 55/2019 and amendments)\n- An EV shuttle fleet (Tesla vans are too expensive; Hiace/BYD electric conversions are feasible) serving premium Bali hotels is a genuine white space\n\n**ITDP/BRT tender:**\n- Bali Provincial Government has received World Bank/ITDP support for Bus Rapid Transit planning. Formal tender processes for BRT operation could open B2G opportunities for PMA transport companies\n\n**⚠ KIR is real enforcement:**\n- Dishub does conduct roadside checks in Bali, especially in peak season (July–August, December)\n- Expired KIR = vehicle impounded. 6-month cycle is non-negotiable for commercial operators",
+      "**🚌 Bali Transport: The Real PMA Opportunity**\n- The mass ride-hailing market (Gojek, Grab) is UMKM territory — PMA cannot operate a competing app\n- The actual PMA opportunity is in **organized charter and shuttle operations** serving the tourism economy, within a single urban area\n\n**High-demand corridors (2025):**\n- **Airport–Canggu / Airport–Seminyak:** Kuta taxis still dominate but corporate shuttle contracts for hotels are underserved\n- **Denpasar–Ubud:** One of the most traveled tourist routes; no quality scheduled service with Western UX exists\n- **Resort shuttle circuits:** Large Nusa Dua and Uluwatu resorts pay IDR 2–4M/day for dedicated charter vehicles\n\n**EV fleet opportunity:**\n- Government incentives for electric commercial vehicles (2024 Perpres 55/2019 and amendments)\n- An EV shuttle fleet (Tesla vans are too expensive; Hiace/BYD electric conversions are feasible) serving premium Bali hotels is a genuine white space\n\n**ITDP/BRT tender:**\n- Bali Provincial Government has received World Bank/ITDP support for Bus Rapid Transit planning. Formal tender processes for BRT operation could open B2G opportunities for PMA transport companies\n\n**⚠ KIR is real enforcement:**\n- Dishub does conduct roadside checks in Bali, especially in peak season (July–August, December)\n- Expired KIR = vehicle impounded, though the exact renewal cycle for this code is general UU LLAJ context, not yet confirmed against the restored PP28/2025 rows above",
     youllAlsoNeed:
-      "- **49231** — Freight transport by road — if you also carry goods for hotels/resorts alongside passengers\n- **77100** — Vehicle rental (self-drive) — if you also offer undriven vehicle hire\n- **79110** — Travel agency / biro perjalanan wisata — if you bundle transport within tour packages\n- **49214** — Special shuttle transport (AKAP) — if you operate inter-provincial scheduled routes\n- **52219** — Other transport support activities — if you add dispatch/coordination services",
+      "- **49231** — Freight transport by road — if you also carry goods for hotels/resorts alongside passengers\n- **77100** — Vehicle rental (self-drive) — if you also offer undriven vehicle hire\n- **79110** — Travel agency / biro perjalanan wisata — if you bundle transport within tour packages\n- **52219** — Other transport support activities — if you add dispatch/coordination services",
     zantaraOpener:
-      "Charter shuttle service, hotel transfers, or organized transport in Bali? 49213 gives you the NIB automatically — but don't overlook KIR every 6 months, Izin Trayek for fixed routes, and the PMA restriction on ride-hailing apps. Let me map out the right structure.",
+      "Charter shuttle service, hotel transfers, or organized urban transport in Bali? 49213 covers INTRA-city routes with Medium-High risk licensing (NIB + Sertifikat Standar, Bupati/Wali Kota, 5 Hari) — different from inter-city AKDP/AKAP. Let me walk you through what's confirmed and what to verify before you commit to a fleet plan.",
     tkaInfo: {
       categoryId: 17,
       categoryName: "Transportasi & Pergudangan",
