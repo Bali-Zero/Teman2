@@ -55,7 +55,9 @@ class TestExactCoverage:
     def test_single_rule_covering_exactly_the_declared_purposes_supports(self) -> None:
         product_id = B.new_uuid()
         src_id = B.new_uuid()
-        prod = B.product(product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY"])
+        prod = B.product(
+            product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY"]
+        )
         rule = B.rule(
             rule_id="el.exact",
             stage="ELIGIBILITY",
@@ -87,7 +89,9 @@ class TestSupersetCoverage:
         product_id = B.new_uuid()
         src_id = B.new_uuid()
         prod = B.product(
-            product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY", "MEDICAL"]
+            product_id=product_id,
+            source_id=src_id,
+            covered_purposes=["TOURISM", "STUDY", "MEDICAL"],
         )
         rule = B.rule(
             rule_id="el.superset",
@@ -129,7 +133,11 @@ class TestUnionAcrossMultipleSupportRules:
             scope="PRODUCTS",
             product_version_ids=[product_id],
             when={"op": "eq", "fact": "intent.stay_days", "value": 30},
-            effect={"type": "SUPPORT", "reason_code": "TOURISM_HALF", "covered_purposes": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "TOURISM_HALF",
+                "covered_purposes": ["TOURISM"],
+            },
             source_id=src_id,
             required_facts=["intent.stay_days"],
         )
@@ -160,7 +168,10 @@ class TestUnionAcrossMultipleSupportRules:
         proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
         assert proof.status is ProductProofStatus.SUPPORTED
         assert proof.covered_purposes == frozenset({"TOURISM", "STUDY"})
-        assert {rule.rule_id for rule in proof.support_rules} == {"el.tourism-half", "el.study-half"}
+        assert {rule.rule_id for rule in proof.support_rules} == {
+            "el.tourism-half",
+            "el.study-half",
+        }
 
 
 class TestPartialCoverageIsUnsupportedNotSupported:
@@ -194,7 +205,22 @@ class TestPartialCoverageIsUnsupportedNotSupported:
         assert proof.status is ProductProofStatus.UNSUPPORTED
         assert proof.missing_purposes == frozenset({"TOURISM"})
 
-    def test_missing_purpose_with_unknown_rule_that_could_cover_it_blocks(self) -> None:
+    def test_missing_purpose_permanently_uncoverable_by_anything_is_unsupported_even_with_an_unrelated_unknown(
+        self,
+    ) -> None:
+        """Gate round 1 P0-A fix (2026-07-19, Codex gate on PR5): the
+        WRONG expectation this test previously encoded — asserting
+        ``BLOCKED_UNKNOWN`` here — is exactly the bug the gate caught. TOURISM
+        is never covered by ANY rule on this product, known or unknown — no
+        future fact could ever change that, so resolving the STUDY-only
+        unknown favorably would STILL leave TOURISM missing. The product must
+        be definitively ``UNSUPPORTED`` right now, not deferred to
+        ``BLOCKED_UNKNOWN`` (which would rank as ``NEEDS_INPUT`` globally — a
+        BETTER state than the correct ``NO_SUPPORTED_PATH``, backwards from
+        "UNKNOWN never increases eligibility"). Contrast with the differential
+        test below, where the same shape of unknown genuinely CAN close the
+        whole gap and BLOCKED_UNKNOWN is the right answer.
+        """
         product_id = B.new_uuid()
         src_id = B.new_uuid()
         prod = B.product(
@@ -216,15 +242,76 @@ class TestPartialCoverageIsUnsupportedNotSupported:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        # study.admission_confirmed UNKNOWN: if it resolves TRUE it would
-        # cover STUDY, one of the two missing purposes (TOURISM never
-        # covered by any rule here either — still correctly blocked, not
-        # silently declared UNSUPPORTED, because the STUDY half is still
-        # genuinely undetermined).
+        # study.admission_confirmed UNKNOWN: even if it resolves TRUE, only
+        # STUDY becomes covered — TOURISM is never covered by any rule on
+        # this product at all, so full coverage is permanently impossible
+        # regardless of this unknown's resolution.
         facts = _facts({"study.admission_confirmed": _unknown()})
         proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
+        assert proof.status is ProductProofStatus.UNSUPPORTED
+        assert proof.missing_purposes == frozenset({"TOURISM"})
+
+    def test_missing_purpose_genuinely_coverable_via_the_unknown_blocks(self) -> None:
+        """Differential counterpart (gate round 1 P0-A, 2026-07-19): the SAME
+        product also has a second, UNKNOWN rule that (if TRUE) would cover the
+        one remaining gap-purpose no other rule covers — here resolving every
+        unknown favorably WOULD fully close the coverage gap, so
+        ``BLOCKED_UNKNOWN`` (worth asking) is the correct answer, unlike the
+        permanently-uncoverable case above.
+        """
+        product_id = B.new_uuid()
+        src_id = B.new_uuid()
+        prod = B.product(
+            product_id=product_id, source_id=src_id, covered_purposes=["TOURISM", "STUDY"]
+        )
+        rule_study = B.rule(
+            rule_id="el.study-only",
+            stage="ELIGIBILITY",
+            scope="PRODUCTS",
+            product_version_ids=[product_id],
+            when={"op": "eq", "fact": "study.admission_confirmed", "value": True},
+            effect={"type": "SUPPORT", "reason_code": "STUDY_ONLY", "covered_purposes": ["STUDY"]},
+            source_id=src_id,
+            required_facts=["study.admission_confirmed"],
+        )
+        rule_tourism_unknown = B.rule(
+            rule_id="el.tourism-unknown",
+            stage="ELIGIBILITY",
+            scope="PRODUCTS",
+            product_version_ids=[product_id],
+            when={"op": "eq", "fact": "study.sponsor_confirmed", "value": True},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "TOURISM_UNKNOWN",
+                "covered_purposes": ["TOURISM"],
+            },
+            source_id=src_id,
+            required_facts=["study.sponsor_confirmed"],
+        )
+        payload = B.rule_pack_payload(
+            rules=[rule_study, rule_tourism_unknown],
+            products=[prod],
+            source_records=[B.source_record(source_id=src_id)],
+        )
+        pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
+        compiled = build_compiled_pack(pack)
+
+        # Both study.admission_confirmed (covers STUDY) and
+        # study.sponsor_confirmed (covers TOURISM) are UNKNOWN — resolving
+        # BOTH favorably would fully cover {TOURISM, STUDY}, so this is worth
+        # asking about (BLOCKED_UNKNOWN), unlike the permanently-uncoverable
+        # case above.
+        facts = _facts(
+            {
+                "study.admission_confirmed": _unknown(),
+                "study.sponsor_confirmed": _unknown(),
+            }
+        )
+        proof = _proof(compiled, product_id, facts, frozenset({"TOURISM", "STUDY"}))
         assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
-        assert FactPath.STUDY_ADMISSION_CONFIRMED in proof.missing_facts
+        assert proof.missing_facts == frozenset(
+            {FactPath.STUDY_ADMISSION_CONFIRMED, FactPath.STUDY_SPONSOR_CONFIRMED}
+        )
 
     def test_missing_purpose_with_unknown_rule_that_could_not_cover_it_is_unsupported(self) -> None:
         """An UNKNOWN support rule whose covered_purposes does NOT intersect
