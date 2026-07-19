@@ -5,9 +5,9 @@ The SAFE SLICE of the SOTA meta-dev-loop's GOVERN piece. This module READS the
 already-shipped cost ledger (Postgres ``llm_cost_events`` migration 117, or the
 JSONL fallback ``${LLM_COST_JSONL_ROOT:-/data}/llm_cost_log.{date}.jsonl``) and
 TRIGGERS the already-shipped cascade fallback (claude_oauth -> gemini ->
-deepseek -> ollama). It NEVER spends, NEVER calls a paid endpoint, NEVER sees
-client PII — it only sums ``cost_usd`` per provider over a time window and emits
-a verdict.
+kimi -> openrouter -> ollama). It NEVER spends, NEVER calls a paid endpoint,
+NEVER sees client PII — it only sums ``cost_usd`` per provider over a time
+window and emits a verdict.
 
 Design (gate map):
 - G1: in the ALLOW (normal) state it pushes ZERO notifications.
@@ -71,24 +71,28 @@ logger = logging.getLogger("cost_breaker")
 # Cascade topology (mirrors the regulatory-watcher-run.sh tier order)
 # ---------------------------------------------------------------------------
 
-# claude_oauth -> gemini -> deepseek -> openrouter -> ollama -> None (terminal).
+# claude_oauth -> gemini -> kimi -> openrouter -> ollama -> None (terminal).
 # ollama is local/$0 — it has NO budget and is the floor of the cascade.
+# kimi is a flat-subscription seat (Moonshot Allegro plan) — zero marginal
+# cost, same posture as ollama, so it is ALSO unguarded (deepseek RETIRED
+# 2026-07-19, owner order, pre-auth revoked — never top up; its $5.00 budget
+# slot is not carried forward, kimi does not need one).
 # openrouter is a PAID per-token path with no flat subscription, so it is the
 # last PAID tier before the free floor and it carries a conservative budget.
 CASCADE_ORDER: tuple[str, ...] = (
     "claude_oauth",
     "gemini",
-    "deepseek",
+    "kimi",
     "openrouter",
     "ollama",
 )
 
 # Providers that carry a money cost and therefore a budget (G6 coverage set).
-# ollama is excluded on purpose: local inference is free, nothing to break.
+# ollama and kimi are excluded on purpose: local inference and Kimi's flat
+# subscription are both free at the margin — nothing to break.
 GUARDED_PROVIDERS: tuple[str, ...] = (
     "claude_oauth",
     "gemini",
-    "deepseek",
     "openrouter",
 )
 
@@ -97,7 +101,6 @@ GUARDED_PROVIDERS: tuple[str, ...] = (
 _DEFAULT_BUDGET_USD: dict[str, Decimal] = {
     "claude_oauth": Decimal("20.00"),
     "gemini": Decimal("10.00"),
-    "deepseek": Decimal("5.00"),
     "openrouter": Decimal("5.00"),
 }
 
@@ -115,20 +118,20 @@ _PROVIDER_ALIASES: dict[str, str] = {
     "claude": "claude_oauth",
     "gemini": "gemini",
     "google": "gemini",
-    "deepseek": "deepseek",
+    "kimi": "kimi",
     "openrouter": "openrouter",
     "ollama": "ollama",
 }
 
 # Canonical providers whose model-suffixed variants (``<prefix>-<model>`` or
 # ``<prefix>_<model>`` or ``<prefix>/<model>``) fold onto the prefix, e.g.
-# ``gemini-2.0`` / ``deepseek-v4-pro`` / ``claude-3-5-sonnet``.
+# ``gemini-2.0`` / ``kimi-code/k3`` / ``claude-3-5-sonnet``.
 _PROVIDER_PREFIXES: tuple[str, ...] = (
     "claude_oauth",
     "claude",
     "anthropic",
     "gemini",
-    "deepseek",
+    "kimi",
     "openrouter",
     "ollama",
 )
@@ -212,7 +215,7 @@ class BreakerConfig:
     def from_env(cls, env: Mapping[str, str] | None = None) -> BreakerConfig:
         """Build a config from environment overrides.
 
-        - COST_BREAKER_BUDGET_CLAUDE_OAUTH_USD / _GEMINI_USD / _DEEPSEEK_USD
+        - COST_BREAKER_BUDGET_CLAUDE_OAUTH_USD / _GEMINI_USD / _OPENROUTER_USD
         - COST_BREAKER_THRESHOLD_FRACTION
         - COST_BREAKER_WINDOW_SECONDS
         Invalid values fall back to the conservative defaults (never crash the
@@ -295,7 +298,7 @@ def _normalize_provider(raw: Any) -> str:
     - case-insensitive, whitespace-stripped
     - exact alias hits first (``anthropic`` -> ``claude_oauth``)
     - else strip a model suffix on a known prefix (``gemini-flash`` ->
-      ``gemini``, ``deepseek-v4-pro`` -> ``deepseek``, ``claude-3-5-sonnet`` ->
+      ``gemini``, ``kimi-code/k3`` -> ``kimi``, ``claude-3-5-sonnet`` ->
       ``claude_oauth`` via the ``claude`` prefix alias)
     - else return the lower-cased token unchanged (an unknown provider stays
       unknown; the caller decides how to treat it — never silently ALLOW a paid
@@ -323,8 +326,8 @@ def _normalize_provider(raw: Any) -> str:
 def next_tier(provider: str) -> str | None:
     """Return the next cascade tier after ``provider``, or None at the floor.
 
-    claude_oauth -> gemini -> deepseek -> ollama -> None. An unknown provider
-    yields None (no safe downgrade we can assert).
+    claude_oauth -> gemini -> kimi -> openrouter -> ollama -> None. An unknown
+    provider yields None (no safe downgrade we can assert).
     """
     try:
         idx = CASCADE_ORDER.index(provider)
