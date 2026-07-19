@@ -24,7 +24,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
       <button
         type="button"
         onClick={onClose}
-        className="hover:opacity-70 focus-ring rounded"
+        className="hover:opacity-70 focus-ring rounded p-1"
         aria-label="Close"
         title="Close"
       >
