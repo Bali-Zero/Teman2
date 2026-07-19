@@ -235,6 +235,228 @@ def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> No
     assert counts == {"SOME_NEW_CLASS": 1}
 
 
+def test_inline_final_answer_on_same_line_as_label_is_captured(tmp_path: Path) -> None:
+    """Curated-cache cantiere postmortem (2026-07-19, Wave 1/2 dossiers):
+    8 of 14 real dossiers write the answer INLINE, right after the label
+    on the same physical line, rather than starting on the next line —
+    e.g. `**FINAL (client-facing):** The standard rate is 22%...`. The
+    original regex silently produced answer="" for every such row
+    (162/272 rows across the cantiere) instead of raising — a quiet
+    data-loss bug caught only downstream in curated_qa_review_pack.py's
+    generated packs. This must never regress."""
+    path = tmp_path / "inline.md"
+    path.write_text(
+        "### Q1. What corporate income tax rate applies?\n\n"
+        "**FINAL (client-facing):** The standard rate is 22% of net taxable "
+        "income, with two narrow carve-outs described below.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**INTERNAL:**\nSourced from DJP article, fetched 2026-07-19.\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- pajak.go.id/en/node/94054\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["answer"] == (
+        "The standard rate is 22% of net taxable income, with two narrow "
+        "carve-outs described below."
+    )
+
+
+def test_bare_law_refs_label_without_qualifier_is_captured(tmp_path: Path) -> None:
+    """Same postmortem: 9 of 14 real dossiers write `**LAW REFS:**` (no
+    "(source-cited, unverified)" qualifier). The original regex required
+    the qualifier literally, so every such row silently got law_refs=[]
+    instead of the refs the dossier actually cited."""
+    path = tmp_path / "bare-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:**\n- UU PPh No. 36/2008 Pasal 17\n- Permenkumham 22/2023\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU PPh No. 36/2008 Pasal 17",
+        "Permenkumham 22/2023",
+    ]
+
+
+def test_inline_final_and_bare_law_refs_combined_matches_real_dossier_shape(
+    tmp_path: Path,
+) -> None:
+    """Both variants together — the actual shape of e.g.
+    tax-corporate/FINAL-v2.md and company-compliance/FINAL.md in the
+    curated-cache cantiere. Two questions to also confirm the LAW REFS
+    block boundary (`(?=\\n### Q\\d+\\.|...)`) still stops at the next
+    question header rather than swallowing it."""
+    path = tmp_path / "real-shape.md"
+    path.write_text(
+        "### Q1. First question?\n\n"
+        "**FINAL (client-facing):** Inline answer for Q1.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:**\n- ref-for-q1\n\n"
+        "---\n\n"
+        "### Q2. Second question?\n\n"
+        "**FINAL (client-facing):** Inline answer for Q2.\n\n"
+        "**CONFIDENCE:** BERSYARAT\n\n"
+        "**LAW REFS:**\n- ref-for-q2\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert len(rows) == 2
+    assert rows[0]["answer"] == "Inline answer for Q1."
+    assert rows[0]["law_refs"] == ["ref-for-q1"]
+    assert rows[1]["answer"] == "Inline answer for Q2."
+    assert rows[1]["law_refs"] == ["ref-for-q2"]
+
+
+def test_horizontal_rule_separator_is_not_mistaken_for_a_dash_bullet(
+    tmp_path: Path,
+) -> None:
+    """A bare `---` markdown horizontal rule between Q blocks is common
+    real-dossier formatting (visual separator before the next `### Q`).
+    Confirmed live on all 5 originally-clean Wave 1/2 dossiers
+    (visa-golden-investor, visa-business-multientry, visa-student,
+    company-kbli-signed-lots — near-100% of rows; tax-pmk37 uses no `---`
+    convention): the old per-line scan treated `stripped.startswith("-")`
+    as a bullet, so `---` became a bogus `"--"` entry appended to almost
+    every row's law_refs. Must be filtered, never emitted as a ref."""
+    path = tmp_path / "hr-separator.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n"
+        "- a real ref\n"
+        "- another real ref\n\n"
+        "---\n\n"
+        "### Q2. Trailing question just to anchor the boundary?\n\n"
+        "**FINAL (client-facing):**\nAnother answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- ref-2\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == ["a real ref", "another real ref"]
+    assert "--" not in rows[0]["law_refs"]
+
+
+def test_inline_semicolon_separated_law_refs_prose_is_split_into_discrete_refs(
+    tmp_path: Path,
+) -> None:
+    """The tax-corporate/FINAL-v2.md real shape: `**LAW REFS:**` followed
+    immediately by ONE prose sentence with semicolon-separated citations,
+    no bullets at all. Must split into per-citation entries, matching the
+    granularity the bulleted convention gives, not collapse to []."""
+    path = tmp_path / "prose-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** UU PPh No. 36/2008 Pasal 17(1)(b); Pasal 17(2b) "
+        "(19% public-company rate); Pasal 31E (small-turnover discount). "
+        "Source: pajak.go.id/en/node/94054 (fetched 2026-07-19).\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="tax", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU PPh No. 36/2008 Pasal 17(1)(b)",
+        "Pasal 17(2b) (19% public-company rate)",
+        "Pasal 31E (small-turnover discount). Source: pajak.go.id/en/node/94054 "
+        "(fetched 2026-07-19).",
+    ]
+
+
+def test_hard_wrapped_multiline_law_refs_prose_is_rejoined_before_splitting(
+    tmp_path: Path,
+) -> None:
+    """The visa-kitap/FINAL-v2.md real shape: inline prose LAW REFS whose
+    physical lines are hard-wrapped (editor line width), not one bullet
+    per line. Must rejoin wrapped lines into a continuous sentence before
+    semicolon-splitting, not leave a stray line-break embedded mid-ref."""
+    path = tmp_path / "wrapped-law-refs.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** UU 6/2011 jo. UU 63/2024, Pasal 59 "
+        "(https://www.imigrasi.go.id/uu_imigrasi/bab-5,\n"
+        "fetched 2026-07-19); Permenkumham 22/2023 Pasal 184-185 (Golden "
+        "Visa/investment).\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["law_refs"] == [
+        "UU 6/2011 jo. UU 63/2024, Pasal 59 "
+        "(https://www.imigrasi.go.id/uu_imigrasi/bab-5, fetched 2026-07-19)",
+        "Permenkumham 22/2023 Pasal 184-185 (Golden Visa/investment).",
+    ]
+
+
+def test_last_question_law_refs_do_not_swallow_trailing_document_sections(
+    tmp_path: Path,
+) -> None:
+    """Real bug found live on 7 of 14 curated-cache cantiere Wave 1/2
+    dossiers (company-compliance/FINAL.md Q20 being the clearest case):
+    the LAST question's `block` runs to EOF, and real dossiers append
+    document-level trailing sections after the last question — e.g.
+    "## Self-check pass", "## Arbiter verification pass" — which are NOT
+    spelled "## Section" (the only trailing-boundary spelling the old
+    regex recognized). Before the fix, the last question's LAW REFS block
+    engulfed those trailing sections whole, including any "- " bulleted
+    line inside them — leaking INTERNAL-adjacent reviewer-facing text into
+    curated_qa_review_pack.py packs. Any "## " heading must stop the
+    capture, not just ones literally starting with "## Section"."""
+    path = tmp_path / "trailing-sections.md"
+    path.write_text(
+        "### Q1. Last question in the file?\n\n"
+        "**FINAL (client-facing):** Some answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS:** N/A (see other rows).\n\n"
+        "---\n\n"
+        "## Self-check pass\n\n"
+        "- **Some internal note**: this must never appear in law_refs.\n"
+        "- **Another internal note**: neither must this.\n\n"
+        "## Arbiter verification pass (2026-07-19)\n\n"
+        "More internal-only commentary that must not leak.\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["law_refs"] == ["N/A (see other rows)."]
+    joined = "; ".join(rows[0]["law_refs"])
+    assert "internal note" not in joined
+    assert "Arbiter verification" not in joined
+
+
 def test_missing_generated_date_header_requires_explicit_source_date(tmp_path: Path) -> None:
     path = tmp_path / "no-header.md"
     path.write_text(
