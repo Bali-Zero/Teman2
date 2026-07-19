@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Repo canon. Pro-only LaunchAgent: drains qualified Breaking candidates every 10 minutes or less. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.magazine.breaking</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/wrappers/bali-zero-magazine-publish.sh breaking</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>600</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/bali-zero-magazine-breaking.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/bali-zero-magazine-breaking.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
