@@ -100,7 +100,7 @@ def strong_id_lock_value(kind: str, raw: object) -> str:
     """Canonical lock-key projection for one strong-id value.
 
     EVERY lock participant must project the value the same way, or two
-    formatting-equivalent strings ("2C-123.456/AB" vs "2C123456AB") hash to
+    formatting-equivalent strings ("2X-123.456/YZ" vs "2X123456YZ") hash to
     DIFFERENT advisory keys and silently miss each other's lock (Codex
     2026-07-19 round 4, F2). Mirrors the matcher normalization per kind:
     npwp → ASCII digits; passport/kitas → separator-stripped upper-case.
