@@ -808,6 +808,7 @@ def _facts_fingerprint(facts: ApplicantFacts) -> Fingerprint:
 
 def _deterministic_ids(
     *,
+    assessment_id: uuid.UUID,
     rule_pack_id: uuid.UUID,
     sequence: int,
     facts_digest: str,
@@ -815,13 +816,28 @@ def _deterministic_ids(
 ) -> tuple[uuid.UUID, str]:
     """``public_id`` NOTE (Kimi gate round 1, 2026-07-19): this is a
     deterministic SHA-256 of otherwise-guessable inputs
-    (``rule_pack_id``/``sequence``/``facts_digest``/``effective_at``) — it is
-    NEVER, itself, an access-control capability or secret, even once the
-    surrounding fingerprint stops being a placeholder. Whatever consumes
-    ``public_id`` downstream (STEP-6c) must gate access via the
-    session-exchange mechanism (spec §6.3), never via ``public_id`` secrecy.
+    (``assessment_id``/``rule_pack_id``/``sequence``/``facts_digest``/
+    ``effective_at``) — it is NEVER, itself, an access-control capability or
+    secret, even once the surrounding fingerprint stops being a placeholder.
+    Whatever consumes ``public_id`` downstream (STEP-6c) must gate access via
+    the session-exchange mechanism (spec §6.3), never via ``public_id``
+    secrecy.
+
+    ``assessment_id`` binding (round-3 graft from the sibling
+    ``visa-evaluator-hardening`` PR, 2026-07-20): without it, two DISTINCT
+    assessments (different ``ApplicantFacts.assessment_id``) that happen to
+    carry byte-identical ``ApplicantFactsData`` + the same rule pack +
+    ``effective_at`` collided on ``decision_id``/``public_id`` — the same
+    identity handed out for two different assessments. ``facts_digest``
+    alone can never distinguish them because ``canonical_fact_payload``
+    (``fact_registry.py``) fingerprints only ``facts.facts``, by design,
+    never ``facts.assessment_id``. Folding ``assessment_id`` into this seed
+    (not into ``facts_fingerprint`` — that digest legitimately stays
+    assessment-agnostic, it fingerprints the DATA) restores the invariant
+    that every assessment gets its own decision identity even when its
+    answers are identical to another one's.
     """
-    seed = f"{rule_pack_id}:{sequence}:{facts_digest}:{effective_at.isoformat()}"
+    seed = f"{assessment_id}:{rule_pack_id}:{sequence}:{facts_digest}:{effective_at.isoformat()}"
     decision_id = uuid.uuid5(_DECISION_ID_NAMESPACE, seed)
     public_id = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:20]
     return decision_id, public_id
@@ -872,6 +888,7 @@ def _placeholder_identity_provider(
         )
     facts_fingerprint = _facts_fingerprint(facts)
     decision_id, public_id = _deterministic_ids(
+        assessment_id=facts.assessment_id,
         rule_pack_id=rule_pack_ref.rule_pack_id,
         sequence=rule_pack_ref.sequence,
         facts_digest=facts_fingerprint.digest,
