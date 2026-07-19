@@ -1,6 +1,7 @@
 ---
 date: 2026-07-19
 domain: operations
+adversarial_review: kimi-k3
 client_case: none — infrastructure strategic audit (TRACK GUARDIANI, Twin-Fable Pro leg)
 sources:
   - "Workflow run wf_7574ebc1-893: 20 agents, 5 domains, 2,417,907 subagent tokens, 510 tool calls, 0 agent errors (~17.5 min wall)"
@@ -213,6 +214,23 @@ rigorously than against false calm — and false calm is the fatal direction.
   Legge-5 product decision, not a bug.
 - Everything else in the cure plan is session-executable (no phantom-operator
   lines; wave items carry owners in PENDING-ARMS).
+
+## Adversarial review
+
+Seat: **Kimi K3** (`kimi-code/k3`, Moonshot — cross-family vs the Claude-family
+author and reader lanes, per W100). 15 top findings refuted on fresh context:
+12 inside the workflow run (one per-domain verify lane, top-3 per domain) and
+3 re-run by the final gate after placeholder detection (see §Run defects).
+Outcome: 14 SOUND (several sharpened with additional evidence — e.g. the
+proprioception drop-path `:353`, exact gates.yaml line ranges, `exit_drift`
+appearing only in a summary counter at `:585`), **1 FLAWED** — the bridge
+finding's "all three branches identically" claim was refuted and replaced with
+the per-branch corrected version now in the table (daemon `ok iff pid`,
+non-daemon `ok iff exit==0`, interval_job `ok iff pid OR exit==0`). One
+honest scoping note on the SIGKILL finding (a killed job with heartbeat
+tracking could still escalate later via the `starved` axis) is recorded in
+the finding as-is. Verdicts were treated as leads: every line the review
+attacked or blessed was re-read on disk by the author before signing (W65).
 
 ## Run defects (meta-honesty — the orchestration's own scars)
 
