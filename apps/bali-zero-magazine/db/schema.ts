@@ -834,35 +834,103 @@ export const researchAuditEvents = sqliteTable(
   ],
 );
 
-export const opsIntents = sqliteTable("ops_intents", {
-  intentId: text("intent_id").primaryKey(),
-  idempotencyKey: text("idempotency_key").notNull().unique(),
-  intentType: text("intent_type").notNull(),
-  payloadJson: text("payload_json").notNull(),
-  payloadHash: text("payload_hash").notNull(),
-  actorKey: text("actor_key").notNull(),
-  policyVersion: text("policy_version").notNull(),
-  status: text("status").notNull(),
-  attemptLimit: integer("attempt_limit").notNull(),
-  expiresAt: text("expires_at").notNull(),
-  claimToken: text("claim_token"),
-  fencingToken: integer("fencing_token").notNull().default(0),
-  heartbeatAt: text("heartbeat_at"),
-  leaseDeadline: text("lease_deadline"),
-  createdAt: createdAt(),
-});
+export const opsIntents = sqliteTable(
+  "ops_intents",
+  {
+    intentId: text("intent_id").primaryKey(),
+    actorKey: text("actor_key").notNull(),
+    effectiveRole: text("effective_role").notNull(),
+    policyVersion: text("policy_version").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    intentKind: text("intent_kind").notNull(),
+    paramsJson: text("params_json").notNull(),
+    requestHash: text("request_hash").notNull(),
+    reasonCode: text("reason_code").notNull(),
+    status: text("status").notNull(),
+    attemptLimit: integer("attempt_limit").notNull().default(3),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    workerId: text("worker_id"),
+    claimToken: text("claim_token"),
+    fencingToken: integer("fencing_token").notNull().default(0),
+    heartbeatAt: text("heartbeat_at"),
+    leaseDeadline: text("lease_deadline"),
+    effectToken: text("effect_token"),
+    preEffectAttestedAt: text("pre_effect_attested_at"),
+    attestedPolicyVersion: text("attested_policy_version"),
+    expiresAt: text("expires_at").notNull(),
+    startedAt: text("started_at"),
+    completedAt: text("completed_at"),
+    failureCode: text("failure_code"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    unique("ops_intents_actor_idempotency_unique").on(
+      table.actorKey,
+      table.idempotencyKey,
+    ),
+    index("ops_intents_claim_idx").on(
+      table.status,
+      table.expiresAt,
+      table.leaseDeadline,
+      table.createdAt,
+    ),
+    check("ops_intents_role_check", sql`${table.effectiveRole} = 'operator'`),
+    check(
+      "ops_intents_kind_check",
+      sql`${table.intentKind} in ('rerun_collector', 'rebuild_edition', 'quarantine_story', 'release_story', 'refresh_research_job')`,
+    ),
+    check(
+      "ops_intents_status_check",
+      sql`${table.status} in ('queued', 'claimed', 'running', 'succeeded', 'failed', 'cancelled_revoked', 'outcome_unknown')`,
+    ),
+    check("ops_intents_request_hash_check", sha256Check("request_hash")),
+  ],
+);
 
-export const opsReceipts = sqliteTable("ops_receipts", {
-  receiptId: text("receipt_id").primaryKey(),
-  intentId: text("intent_id")
-    .notNull()
-    .references(() => opsIntents.intentId),
-  status: text("status").notNull(),
-  payloadJson: text("payload_json").notNull(),
-  payloadHash: text("payload_hash").notNull(),
-  fencingToken: integer("fencing_token").notNull(),
-  createdAt: createdAt(),
-});
+export const opsReceipts = sqliteTable(
+  "ops_receipts",
+  {
+    receiptId: text("receipt_id").primaryKey(),
+    intentId: text("intent_id")
+      .notNull()
+      .unique()
+      .references(() => opsIntents.intentId),
+    status: text("status").notNull(),
+    receiptJson: text("receipt_json").notNull(),
+    receiptHash: text("receipt_hash").notNull(),
+    requestHash: text("request_hash").notNull(),
+    keyId: text("key_id").notNull(),
+    bodyHash: text("body_hash").notNull(),
+    fencingToken: integer("fencing_token").notNull(),
+    attestedPolicyVersion: text("attested_policy_version"),
+    createdAt: createdAt(),
+  },
+  () => [
+    check("ops_receipts_hash_check", sha256Check("receipt_hash")),
+    check("ops_receipts_request_hash_check", sha256Check("request_hash")),
+    check("ops_receipts_body_hash_check", sha256Check("body_hash")),
+  ],
+);
+
+export const opsAuditEvents = sqliteTable(
+  "ops_audit_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    intentId: text("intent_id")
+      .notNull()
+      .references(() => opsIntents.intentId),
+    eventType: text("event_type").notNull(),
+    actorKey: text("actor_key"),
+    workerId: text("worker_id"),
+    status: text("status").notNull(),
+    failureCode: text("failure_code"),
+    fencingToken: integer("fencing_token"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("ops_audit_intent_idx").on(table.intentId, table.createdAt),
+  ],
+);
 
 export const ingestNonces = sqliteTable(
   "ingest_nonces",

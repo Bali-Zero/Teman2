@@ -43,6 +43,13 @@
       "when": 1784453114916,
       "tag": "0005_wakeful_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784476800000,
+      "tag": "0006_operations_control_plane",
+      "breakpoints": true
     }
   ]
 }

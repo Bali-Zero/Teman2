@@ -28,7 +28,7 @@ export function MagazineShell({
           <nav aria-label="Magazine sections">
             <Link href="/">Magazine</Link>
             <Link href="/research">Research</Link>
-            <span aria-disabled="true">Operations</span>
+            <Link href="/operations">Operations</Link>
           </nav>
         </div>
       </header>

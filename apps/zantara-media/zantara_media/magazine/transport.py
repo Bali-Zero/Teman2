@@ -137,9 +137,7 @@ class MagazineTransport:
             timeout=config.timeout_seconds,
         )
         if journal is None and client is None:
-            raise ValueError(
-                "production transport requires an explicit durable journal"
-            )
+            raise ValueError("production transport requires an explicit durable journal")
         self._journal = journal or InMemoryOutcomeJournal()
         self._reconcile = reconcile
         self._release_gate = release_gate
@@ -228,9 +226,7 @@ class MagazineTransport:
         )
         if replay is not None:
             return self._replay_response(path, replay)
-        await self._record(
-            operation_id, path, body_digest, OutcomeState.pending, response=None
-        )
+        await self._record(operation_id, path, body_digest, OutcomeState.pending, response=None)
         for attempt in range(1, self._config.max_attempts + 1):
             headers = self._signed_headers(
                 method="POST",
@@ -252,9 +248,7 @@ class MagazineTransport:
                 result = await self._reconcile_outcome(operation_id, path, body_digest)
                 if result.state == OutcomeState.completed:
                     if result.response is None:
-                        raise OutcomeUnknownError(
-                            "completed reconciliation omitted response"
-                        )
+                        raise OutcomeUnknownError("completed reconciliation omitted response")
                     await self._record(
                         operation_id,
                         path,
@@ -284,9 +278,7 @@ class MagazineTransport:
                 result = await self._reconcile_outcome(operation_id, path, body_digest)
                 if result.state == OutcomeState.completed:
                     if result.response is None:
-                        raise OutcomeUnknownError(
-                            "completed reconciliation omitted response"
-                        )
+                        raise OutcomeUnknownError("completed reconciliation omitted response")
                     await self._record(
                         operation_id,
                         path,
@@ -316,9 +308,7 @@ class MagazineTransport:
                 payload = response.json()
                 if payload != dict(staged_response):
                     response.raise_for_status()
-                    raise RuntimeError(
-                        "unreachable invalid staged publication response"
-                    )
+                    raise RuntimeError("unreachable invalid staged publication response")
                 await self._record(
                     operation_id,
                     path,
@@ -377,13 +367,9 @@ class MagazineTransport:
             )
             return result.response
         if result.state == OutcomeState.absent:
-            await self._record(
-                operation_id, path, body_digest, OutcomeState.absent, response=None
-            )
+            await self._record(operation_id, path, body_digest, OutcomeState.absent, response=None)
             return None
-        raise OutcomeUnknownError(
-            f"remote outcome_unknown for operation {operation_id}"
-        )
+        raise OutcomeUnknownError(f"remote outcome_unknown for operation {operation_id}")
 
     async def _record(
         self,
@@ -438,13 +424,9 @@ class MagazineTransport:
             "/api/machine/publications/breaking",
         }:
             if self._release_gate is None:
-                raise ReleaseBlockedError(
-                    "publication transport has no audit release interlock"
-                )
+                raise ReleaseBlockedError("publication transport has no audit release interlock")
             if release_binding is None:
-                raise ReleaseBlockedError(
-                    "publication transport has no release binding"
-                )
+                raise ReleaseBlockedError("publication transport has no release binding")
             self._release_gate.require_release_allowed(release_binding)
         body = json.dumps(
             packet,
@@ -598,6 +580,118 @@ class MagazineTransport:
         payload = response.json()
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             raise RuntimeError("invalid research result response")
+        return payload
+
+    async def claim_operation_intent(
+        self, *, worker_id: str, lease_seconds: int
+    ) -> Mapping[str, Any] | None:
+        """Claim one Sites-owned typed operation intent."""
+        path = "/api/machine/operations/intents/claim"
+        packet = {
+            "schema_version": "ops-claim.v1",
+            "worker_id": worker_id,
+            "lease_seconds": lease_seconds,
+        }
+        body = json.dumps(packet, sort_keys=True, separators=(",", ":")).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{secrets.token_hex(16)}",
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid operation claim response")
+        intent = payload.get("intent")
+        if intent is not None and not isinstance(intent, dict):
+            raise RuntimeError("invalid operation claim intent")
+        return intent
+
+    async def _operation_lease_request(
+        self,
+        *,
+        intent_id: str,
+        suffix: str,
+        schema_version: str,
+        claim_token: str,
+        fencing_token: int,
+        lease_seconds: int | None = None,
+    ) -> Mapping[str, Any]:
+        path = f"/api/machine/operations/intents/{intent_id}/{suffix}"
+        packet: dict[str, Any] = {
+            "schema_version": schema_version,
+            "claim_token": claim_token,
+            "fencing_token": fencing_token,
+        }
+        if lease_seconds is not None:
+            packet["lease_seconds"] = lease_seconds
+        body = json.dumps(packet, sort_keys=True, separators=(",", ":")).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{fencing_token}:{hashlib.sha256(body).hexdigest()}",
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid operation lease response")
+        return payload
+
+    async def start_operation_intent(
+        self, *, intent_id: str, claim_token: str, fencing_token: int
+    ) -> Mapping[str, Any]:
+        return await self._operation_lease_request(
+            intent_id=intent_id,
+            suffix="start",
+            schema_version="ops-start.v1",
+            claim_token=claim_token,
+            fencing_token=fencing_token,
+        )
+
+    async def heartbeat_operation_intent(
+        self,
+        *,
+        intent_id: str,
+        claim_token: str,
+        fencing_token: int,
+        lease_seconds: int,
+    ) -> Mapping[str, Any]:
+        return await self._operation_lease_request(
+            intent_id=intent_id,
+            suffix="heartbeat",
+            schema_version="ops-heartbeat.v1",
+            claim_token=claim_token,
+            fencing_token=fencing_token,
+            lease_seconds=lease_seconds,
+        )
+
+    async def attest_operation_intent(
+        self, *, intent_id: str, claim_token: str, fencing_token: int
+    ) -> Mapping[str, Any]:
+        return await self._operation_lease_request(
+            intent_id=intent_id,
+            suffix="pre-effect-attest",
+            schema_version="ops-pre-effect-attest.v1",
+            claim_token=claim_token,
+            fencing_token=fencing_token,
+        )
+
+    async def submit_operation_result(
+        self, *, intent_id: str, result: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        """Submit one closed receipt without replaying an ambiguous effect."""
+        path = f"/api/machine/operations/intents/{intent_id}/result"
+        body = json.dumps(result, sort_keys=True, separators=(",", ":")).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{hashlib.sha256(body).hexdigest()}",
+            retry_unknown=False,
+        )
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise RuntimeError("invalid operation result response")
         return payload
 
     async def publish_breaking(

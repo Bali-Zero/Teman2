@@ -40,6 +40,7 @@ garuda-gc = "zantara_media.cli.garuda_gc:main"
 garuda-bootstrap = "zantara_media.cli.garuda_bootstrap:main"
 magazine-publish = "zantara_media.cli.magazine_publish:main"
 magazine-research-worker = "zantara_media.cli.magazine_research_worker:main"
+magazine-operations-worker = "zantara_media.cli.magazine_operations_worker:main"
 
 [build-system]
 requires = ["setuptools>=68"]
