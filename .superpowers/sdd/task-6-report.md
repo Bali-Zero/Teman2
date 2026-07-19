@@ -26,6 +26,12 @@ Task 6 review were addressed.
   and head independently from an exact target binding; the publisher verifies all
   returned events but signs only the contiguous prefix ending at that target.
   A receipt for a later candidate can therefore never unlock an earlier packet.
+- **Sequential concurrent promotion:** the real Sites routes and SQLite-backed D1
+  harness now stage edition A at audit sequence 1 and edition B at sequence 2,
+  prove B remains blocked without its exact receipt, promote A, resume the feed
+  from A's checkpoint, and then promote B. Both finalizations return `201` in
+  audit order. The earlier persistent B `409` was a stale fixture: B must bind the
+  future edition and Breaking pointer revisions (`1`), not A's genesis values.
 - **Closed release proof:** each durable unlock row binds the stream, sequence,
   event hash, operation ID, packet ID, and accepted receipt hash. Restart checks
   re-verify the complete JSONL history and cross-check the signed receipt against
@@ -130,7 +136,7 @@ From `apps/bali-zero-magazine`:
 
 ```text
 npm run test:unit
-122 passed, 0 failed
+123 passed, 0 failed
 
 npm run typecheck
 exit 0

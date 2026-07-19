@@ -318,6 +318,171 @@ test(
 );
 
 test(
+  "concurrent staged editions finalize in audit order from the prior checkpoint",
+  { skip: !routesExist },
+  async () => {
+    const db = new SqliteD1Database();
+    const routes = await loadRoutes();
+    const runtime = bindings(db);
+    const firstStory = storyVersion({
+      suffix: `audit-concurrent-a-${crypto.randomUUID()}`,
+    });
+    const secondStory = storyVersion({
+      suffix: `audit-concurrent-b-${crypto.randomUUID()}`,
+    });
+    const firstPacket = editionPacket(firstStory);
+    const secondPacket = editionPacket(secondStory, {
+      edition_revision: 2,
+      expected_current_revision: 1,
+      expected_breaking_revision: 1,
+    });
+    const firstBody = JSON.stringify(firstPacket);
+    const secondBody = JSON.stringify(secondPacket);
+
+    for (const [packet, body] of [
+      [firstPacket, firstBody],
+      [secondPacket, secondBody],
+    ]) {
+      const request = await signedMachineRequest({
+        path: "/api/machine/publications/editions",
+        body,
+      });
+      const response = await invoke(routes.edition, request, runtime);
+      assert.equal(response.status, 409);
+      assert.deepEqual(await response.json(), {
+        ok: false,
+        error: "promotion_blocked",
+        operation: "edition.publish",
+        packet_id: packet.packet_id,
+      });
+    }
+
+    const firstFeedRequest = await signedFeedRequest({
+      operation: "edition.publish",
+      packetId: firstPacket.packet_id,
+    });
+    const firstFeedResponse = await invoke(
+      routes.feed,
+      firstFeedRequest,
+      runtime,
+    );
+    assert.equal(firstFeedResponse.status, 200);
+    const firstFeed = await firstFeedResponse.json();
+    assert.equal(firstFeed.events.length, 2);
+    assert.deepEqual(firstFeed.promotion_target, {
+      operation: "edition.publish",
+      packet_id: firstPacket.packet_id,
+      stream_seq: firstFeed.events[0].stream_seq,
+      event_hash: firstFeed.events[0].event_hash,
+    });
+
+    const secondBeforeFirstAnchor = await signedMachineRequest({
+      path: "/api/machine/publications/editions",
+      body: secondBody,
+    });
+    assert.equal(
+      (await invoke(routes.edition, secondBeforeFirstAnchor, runtime)).status,
+      409,
+    );
+
+    const firstReceipt = makeReceipt({
+      ...firstFeed.promotion_target,
+      stream_id: STREAM_ID,
+    });
+    const firstAnchorRequest = await signedMachineRequest({
+      path: "/api/machine/audit-anchor",
+      body: JSON.stringify(firstReceipt),
+    });
+    assert.equal(
+      (await invoke(routes.anchor, firstAnchorRequest, runtime)).status,
+      201,
+    );
+    const firstFinalizeRequest = await signedMachineRequest({
+      path: "/api/machine/publications/editions",
+      body: firstBody,
+    });
+    assert.equal(
+      (await invoke(routes.edition, firstFinalizeRequest, runtime)).status,
+      201,
+    );
+
+    const secondBeforeOwnAnchor = await signedMachineRequest({
+      path: "/api/machine/publications/editions",
+      body: secondBody,
+    });
+    const stillBlocked = await invoke(
+      routes.edition,
+      secondBeforeOwnAnchor,
+      runtime,
+    );
+    assert.equal(stillBlocked.status, 409);
+    assert.deepEqual(await stillBlocked.json(), {
+      ok: false,
+      error: "promotion_blocked",
+      operation: "edition.publish",
+      packet_id: secondPacket.packet_id,
+    });
+
+    const secondFeedRequest = await signedFeedRequest({
+      afterSeq: firstFeed.promotion_target.stream_seq,
+      checkpointHash: firstFeed.promotion_target.event_hash,
+      operation: "edition.publish",
+      packetId: secondPacket.packet_id,
+    });
+    const secondFeedResponse = await invoke(
+      routes.feed,
+      secondFeedRequest,
+      runtime,
+    );
+    assert.equal(secondFeedResponse.status, 200);
+    const secondFeed = await secondFeedResponse.json();
+    assert.equal(secondFeed.events.length, 1);
+    assert.deepEqual(secondFeed.promotion_target, {
+      operation: "edition.publish",
+      packet_id: secondPacket.packet_id,
+      stream_seq: secondFeed.events[0].stream_seq,
+      event_hash: secondFeed.events[0].event_hash,
+    });
+    const secondReceipt = makeReceipt(
+      { ...secondFeed.promotion_target, stream_id: STREAM_ID },
+      { body: { previous_anchor_hash: firstReceipt.anchor_hash } },
+    );
+    const secondAnchorRequest = await signedMachineRequest({
+      path: "/api/machine/audit-anchor",
+      body: JSON.stringify(secondReceipt),
+    });
+    assert.equal(
+      (await invoke(routes.anchor, secondAnchorRequest, runtime)).status,
+      201,
+    );
+    const secondFinalizeRequest = await signedMachineRequest({
+      path: "/api/machine/publications/editions",
+      body: secondBody,
+    });
+    assert.equal(
+      (await invoke(routes.edition, secondFinalizeRequest, runtime)).status,
+      201,
+    );
+
+    for (const packet of [firstPacket, secondPacket]) {
+      assert.equal(
+        db.get(
+          "SELECT publication_state FROM publication_packets WHERE packet_id = ?",
+          packet.packet_id,
+        ).publication_state,
+        "published",
+      );
+    }
+    assert.equal(
+      db.get(
+        "SELECT current_revision FROM edition_pointer WHERE singleton_id = 1",
+      ).current_revision,
+      2,
+    );
+  },
+);
+
+test(
   "receipt exact replay survives a fresh route import and changed reuse conflicts",
   { skip: !routesExist },
   async () => {
