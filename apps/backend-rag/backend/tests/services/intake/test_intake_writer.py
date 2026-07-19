@@ -1283,6 +1283,109 @@ async def test_delivery_resolves_by_selected_client_phone_not_sender(pool, seed,
     assert out["status"] == "identity_unresolved"
 
 
+async def test_delivery_refuses_phone_shared_by_another_live_local_client(pool, seed, monkeypatch):
+    """Round-7 F11 guilt: the selected client's phone is shared (same canonical
+    digits, different formatting) with ANOTHER live local client. Fly may know
+    only the other owner and report matched_count=1 — invisible ambiguity. The
+    local uniqueness gate must fail CLOSED: no resolution phone flows."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            # Insert via `phone`: the trg_normalize_phone trigger computes
+            # phone_normalized (digits) exactly as production does — a direct
+            # phone_normalized INSERT would be silently wiped by that trigger.
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-owner-{uuid.uuid4().hex[:8]}",
+                "+62 " + shared[2:],
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # fail closed, never resolve by a shared phone
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_soft_deleted_phone_duplicate_does_not_block(pool, seed, monkeypatch):
+    """Round-7 F11 innocence: a phone duplicate that is SOFT-DELETED is not a
+    live owner — the selected client is the sole live owner and resolution
+    must proceed with their phone."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone, deleted_at) "
+                "VALUES ($1,$2,NOW()) RETURNING id",
+                f"dup-archived-{uuid.uuid4().hex[:8]}",
+                shared,
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11b")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] == shared
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
 async def test_delivery_fails_closed_when_selected_client_has_no_phone(pool, seed, monkeypatch):
     """Round-6 F5 innocence: selected client with NO phone on the card → the
     push receives sender_phone=None and delivery fails closed downstream —

@@ -84,7 +84,38 @@ async def deliver_committed_to_crm(
                     client_full_name = _name
                 _phone = (crow["phone_normalized"] or "").strip()
                 if _phone:
-                    resolution_phone = _phone
+                    # F11 (Codex round-7): phone-based Fly resolution is only
+                    # sound when the selected client is the SOLE live local
+                    # owner of these digits — live duplicate-phone groups are a
+                    # real population (migration 246 recorded 622 at authoring;
+                    # 41 in the post-dedup dev book, probed 2026-07-19) and the
+                    # schema deliberately has no phone uniqueness constraint.
+                    # With a shared phone, Fly may know only the
+                    # OTHER owner, report matched_count=1 (no ambiguity visible
+                    # on the Fly side) and silently attach this client's
+                    # document to them. Digits-canonical comparison is stricter
+                    # than Fly's exact-string match on purpose: formatting
+                    # variants of the same number also fail CLOSED.
+                    dup_owners = await conn.fetchval(
+                        """
+                        SELECT COUNT(*) FROM clients
+                        WHERE deleted_at IS NULL
+                          AND id <> $1
+                          AND regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g')
+                              = regexp_replace($2, '[^0-9]', '', 'g')
+                        """,
+                        int(plan.client_id),
+                        _phone,
+                    )
+                    if dup_owners:
+                        logger.warning(
+                            "intake.delivery.local_phone_ambiguous queue=%s client=%s shared_with=%s",
+                            queue_id,
+                            plan.client_id,
+                            dup_owners,
+                        )
+                    else:
+                        resolution_phone = _phone
         if result.doc_id is not None:
             already = await conn.fetchrow(
                 "SELECT file_id, file_url FROM documents WHERE id = $1", result.doc_id

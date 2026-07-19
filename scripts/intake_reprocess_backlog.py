@@ -2136,8 +2136,7 @@ async def run_reroute_npwp(
 
 
 UNDELIVERED_REPORT_SQL = """
-SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id,
-       a.committed_by, a.committed_at
+SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id
   FROM intake_commit_audit a
  WHERE a.outcome = 'committed'
    AND a.dry_run = false
@@ -2157,16 +2156,16 @@ async def run_report_undelivered(pool: asyncpg.Pool) -> dict[str, int]:
     """
     async with pool.acquire() as conn:
         rows = await conn.fetch(UNDELIVERED_REPORT_SQL)
+    # Integer ids ONLY (Law 2): committed_by carries the reviewer's e-mail on
+    # HITL commits — it must never reach report/log output (Codex r7 F8-NIT).
     for r in rows:
         logger.info(
-            "[report-undelivered] audit=%s proposal=%s queue=%s client=%s doc=%s by=%s at=%s",
+            "[report-undelivered] audit=%s proposal=%s queue=%s client=%s doc=%s",
             r["audit_id"],
             r["proposal_id"],
             r["queue_id"],
             r["client_id"],
             r["doc_id"],
-            r["committed_by"],
-            r["committed_at"],
         )
     logger.info("[report-undelivered] total=%d (full list, no display cap)", len(rows))
     return {"undelivered": len(rows)}
