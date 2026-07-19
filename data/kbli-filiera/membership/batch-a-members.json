@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "798170b3ebbb69c9bb008dc3a1c96d11ee801016",
-  "canonical_sha256": "1ce3060de421030e00447e29ed135aeda72ea600e8d235f4bbdd4c01e815d757",
+  "canonical_revision": "6d1367d9c8b480838e966cd389c99cae882a6466",
+  "canonical_sha256": "cf27ab0397d1a22fcbb70357f8f284a1307bd98716ac5349e29a49c3701517e0",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,10 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 159,
-    "A-serving/pp28": 61,
+    "A-empty/gap": 172,
+    "A-serving/pp28": 48,
     "A-serving/orphan": 1,
-    "_in_scope_total": 62,
+    "_in_scope_total": 49,
     "_total": 221
   },
   "members": [
@@ -609,8 +609,8 @@
     },
     {
       "kode_kbli_2025": "66192",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penitipan dan Pengelolaan Berdasarkan Perjanjian Trust",
       "pp28_sources": [
@@ -619,8 +619,8 @@
     },
     {
       "kode_kbli_2025": "66197",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pendukung di Pasar Uang dan Pasar Valuta Asing",
       "pp28_sources": [
@@ -629,8 +629,8 @@
     },
     {
       "kode_kbli_2025": "66211",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penilai Risiko Asuransi",
       "pp28_sources": [
@@ -639,8 +639,8 @@
     },
     {
       "kode_kbli_2025": "66224",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Agen Penjaminan",
       "pp28_sources": [
@@ -649,8 +649,8 @@
     },
     {
       "kode_kbli_2025": "66292",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pengawasan Jasa Keuangan Asuransi dan Dana Pensiun",
       "pp28_sources": [
@@ -659,8 +659,8 @@
     },
     {
       "kode_kbli_2025": "66299",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penunjang Lainnya untuk Asuransi, Penjamian, dan Dana Pensiun YTDL",
       "pp28_sources": [
@@ -669,8 +669,8 @@
     },
     {
       "kode_kbli_2025": "66309",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Manajemen Dana Lainnya",
       "pp28_sources": [
@@ -689,8 +689,8 @@
     },
     {
       "kode_kbli_2025": "68123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pengelolaan Kawasan Ekonomi Khusus",
       "pp28_sources": [
@@ -699,8 +699,8 @@
     },
     {
       "kode_kbli_2025": "68125",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Pengelolaan Pusat Perbelanjaan",
       "pp28_sources": [
@@ -710,8 +710,8 @@
     },
     {
       "kode_kbli_2025": "68126",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Penyewaan Gudang dan Fasilitas Penyimpanan Mandiri",
       "pp28_sources": [
@@ -720,8 +720,8 @@
     },
     {
       "kode_kbli_2025": "68127",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Pengelolaan Gedung Perkantoran",
       "pp28_sources": [
@@ -730,8 +730,8 @@
     },
     {
       "kode_kbli_2025": "68129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.G",
       "judul": "Aktivitas Real Estat (Bangunan dan Lahan) Nonhunian Lainnya Milik Sendiri atau Sewa",
       "pp28_sources": [
@@ -740,8 +740,8 @@
     },
     {
       "kode_kbli_2025": "70100",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Kantor Pusat",
       "pp28_sources": [
