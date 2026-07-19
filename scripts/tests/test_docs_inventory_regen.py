@@ -209,3 +209,89 @@ def test_organ_flag_passes_as_of_today_not_gate_consistent(tmp_path):
     as_of_value = captured[captured.index("--as-of") + 1]
     today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
     assert as_of_value == today, (as_of_value, today)
+
+
+# ============================================================================
+# Strict arg validation (R1 red-team, PR #2863, 2026-07-20): the FIRST
+# version of the wrapper's arg parsing only ever inspected `${1:-}` — any
+# OTHER argument (an unknown flag, `--organ` misplaced as $2, a typo) fell
+# through to ORGAN_MODE=false SILENTLY, meaning a misconfigured caller got
+# gate-consistent mode instead of organ mode (or vice versa) with zero
+# error signal — the exact "footgun via silent default" class this whole
+# script exists to cure, one layer up at the CLI-parsing level. These tests
+# prove the fix: anything other than zero args or exactly one `--organ` is
+# now a hard, explicit exit-2 usage error, and MUST NOT reach the point of
+# invoking docs_audit.py at all (no captured_argv.txt is even written).
+# ============================================================================
+
+
+def test_unknown_single_arg_is_rejected_not_silently_gate_consistent(tmp_path):
+    """GUILT: a single unrecognized argument (e.g. a typo, or an unrelated
+    flag like --quiet) must be a hard usage error, not a silent fall-through
+    to gate-consistent mode.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo, None, "--quiet")
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "unknown argument" in result.stderr, result.stderr
+    assert not (fake_repo / "scripts" / "captured_argv.txt").exists(), (
+        "docs_audit.py must never be invoked when arg parsing fails"
+    )
+
+
+def test_organ_as_second_arg_is_rejected_not_silently_ignored(tmp_path):
+    """GUILT: `--organ` passed as a SECOND argument (with something else as
+    $1) must be a hard usage error, not silently treated as "no args" (the
+    original bug: only `${1:-}` was ever inspected, so `script foo --organ`
+    would silently run gate-consistent mode with --organ completely
+    ignored).
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo, None, "foo", "--organ")
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "too many arguments" in result.stderr, result.stderr
+    assert not (fake_repo / "scripts" / "captured_argv.txt").exists()
+
+
+def test_organ_plus_extra_arg_is_rejected(tmp_path):
+    """GUILT: `--organ` followed by anything else (`script --organ typo`)
+    must also be rejected — the fix is not just "check $1", it validates
+    the COMPLETE argument list.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo, None, "--organ", "typo")
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "too many arguments" in result.stderr, result.stderr
+    assert not (fake_repo / "scripts" / "captured_argv.txt").exists()
+
+
+def test_no_args_still_works_after_strict_validation(tmp_path):
+    """INNOCENCE: the strict validation must not break the ordinary
+    zero-args call — still gate-consistent, still exit 0.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = (fake_repo / "scripts" / "captured_argv.txt").read_text()
+    assert "--gate-consistent" in captured.split("\n"), captured
+
+
+def test_organ_alone_still_works_after_strict_validation(tmp_path):
+    """INNOCENCE: the strict validation must not break the ordinary
+    single `--organ` call — still dated/as-of mode, still exit 0.
+    """
+    fake_repo = _make_fake_repo(
+        tmp_path, sync_exit=_STUB_SYNC_OK, audit_exit=_STUB_AUDIT_CAPTURE_ARGV
+    )
+    result = _run_regen(fake_repo, None, "--organ")
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = (fake_repo / "scripts" / "captured_argv.txt").read_text()
+    assert "--as-of" in captured.split("\n"), captured

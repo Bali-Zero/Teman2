@@ -1107,6 +1107,80 @@ def test_p3prime_innocence_gate_consistent_regen_committed_on_branch_passes_chec
     )
 
 
+def test_p3prime_gate_consistent_ignores_forged_local_flip_uses_trusted_ref(tmp_path):
+    """GUILT/mechanism proof (R1 red-team, PR #2863, 2026-07-20): the two
+    tests above prove --gate-consistent's END-TO-END round-trip (write then
+    --check) is green, but neither one distinguishes "provenance came from
+    origin/main" from "provenance came from the local working tree" — in
+    both, local and trusted happened to already agree before the write
+    ran, so a --gate-consistent that had REGRESSED to
+    parse_prev_flipped(old_content) (the local file, exactly what --check's
+    own BLOCKER-2 fix forbids) instead of read_trusted_prev_flipped(...)
+    would have passed those tests for the wrong reason.
+
+    This test forces local and trusted to DISAGREE: origin/main records a
+    genuine organ flip (ARCHIVED), then a candidate checkout hand-forges
+    its OWN local docs/DOCS_INVENTORY.md to delete that flip (status LIVE,
+    orphan_flipped_on cleared) — the identical forge shape as
+    test_redteam_blocker2_forged_candidate_deletes_flip_caught_red, just
+    exercised against --gate-consistent's WRITE path instead of --check's
+    read-only path. If --gate-consistent honors read_trusted_prev_flipped()
+    like it's supposed to, the freshly written inventory must reproduce the
+    TRUSTED (ARCHIVED, real flip date) state, overwriting the local forgery
+    — never render the forged LIVE state back out.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    probe = json.loads(
+        _run_audit(repo, "--orphan-days", "90", "--check", "--json").stdout
+    )
+    eligible_on = date.fromisoformat(
+        {f["path"]: f for f in probe["files"]}["docs/OLD_DOC.md"]["orphan_eligible_on"]
+    )
+    late_as_of = (eligible_on + timedelta(days=10)).isoformat()
+    _run_audit(repo, "--orphan-days", "90", "--as-of", late_as_of)
+    _commit_and_push(repo, "organ flip")  # this becomes the TRUSTED main
+
+    candidate = _clone_origin(repo, tmp_path / "candidate")
+    inv_path = candidate / "docs" / "DOCS_INVENTORY.md"
+    cells = _row_cells(inv_path.read_text(), "docs/OLD_DOC.md")
+    assert cells[2].strip() == "ARCHIVED", f"test setup sanity failed: {cells}"
+    trusted_flip_date = cells[6].strip()
+    assert trusted_flip_date != "—", "test setup sanity failed: no flip date recorded"
+
+    # Forge the candidate's LOCAL working tree only (never pushed): flip
+    # removed, status reset to LIVE — same shape as the BLOCKER-2 forgery
+    # test, but this time the forged file is what --gate-consistent's WRITE
+    # step will see as "old_content" if it (incorrectly) reads local state.
+    cells[2] = " LIVE "
+    cells[6] = " — "
+    cells[11] = " — "
+    forged_row = "|".join(cells)
+    lines = inv_path.read_text().splitlines()
+    lines = [
+        forged_row if line.startswith("| docs/OLD_DOC.md |") else line
+        for line in lines
+    ]
+    inv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = _run_audit(candidate, "--orphan-days", "90", "--gate-consistent")
+    assert result.returncode in (0, 1), (
+        f"unexpected crash: {result.stdout}{result.stderr}"
+    )
+    rewritten = (candidate / "docs" / "DOCS_INVENTORY.md").read_text()
+    row = _row_cells(rewritten, "docs/OLD_DOC.md")
+    assert row[2].strip() == "ARCHIVED", (
+        "--gate-consistent must reproduce the TRUSTED (origin/main) "
+        "ARCHIVED state, not the locally-forged LIVE state — a regression "
+        "to local-file provenance would silently resurrect the doc: "
+        + rewritten
+    )
+    assert row[6].strip() == trusted_flip_date, (
+        "--gate-consistent must reproduce origin/main's ORIGINAL flip "
+        f"date ({trusted_flip_date!r}), not invent a new one or keep the "
+        f"forged blank: got {row[6].strip()!r}"
+    )
+
+
 def test_p3prime_guilt_last_touched_date_inconsistent_with_git_history(tmp_path):
     """GUILT ('date incoerenti con la storia git -> rosso'): hand-mutating
     last_touched_date to a value that disagrees with the actual git commit

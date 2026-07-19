@@ -81,16 +81,44 @@
 #                                                      refresh organ ONLY)
 #        DOCS_AUDIT_STATS_JSON=/path/to/out.json scripts/docs_inventory_regen.sh [--organ]
 #          (also writes the --json stats payload to that path)
+#
+# Arg parsing is STRICT (R1 review, 2026-07-20): anything other than zero
+# args or exactly `--organ` (unknown flag, `--organ` misplaced as $2, a
+# typo) exits 2 with an explicit error — it never silently falls through to
+# gate-consistent mode.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Strict arg validation (R1 red-team, 2026-07-20, PR #2863 review): the
+# original version only ever inspected `${1:-}` — any OTHER argument
+# (typo'd flag, `--organ` passed as $2, an unrelated flag like `--quiet`)
+# silently fell through to the ORGAN_MODE=false branch with zero error,
+# meaning a misconfigured caller silently got gate-consistent mode instead
+# of organ mode (or vice versa) with no signal anything was wrong — the
+# same "footgun via silent default" class this script exists to cure, just
+# one layer up at the CLI-parsing level. Now: accept ONLY zero args or
+# exactly one arg that is literally `--organ`; anything else is a hard
+# usage error (exit 2), never a silent fallback.
 ORGAN_MODE=false
-if [[ "${1:-}" == "--organ" ]]; then
-  ORGAN_MODE=true
-fi
+case "$#" in
+  0)
+    ;;
+  1)
+    if [[ "$1" == "--organ" ]]; then
+      ORGAN_MODE=true
+    else
+      echo "docs_inventory_regen.sh: unknown argument '$1' (only '--organ' is accepted, or no arguments at all)" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "docs_inventory_regen.sh: too many arguments — only a single optional '--organ' is accepted, got: $*" >&2
+    exit 2
+    ;;
+esac
 
 if [[ "$ORGAN_MODE" == "true" ]]; then
   TIME_MODE_ARGS=(--as-of "$(date -u +%Y-%m-%d)")
