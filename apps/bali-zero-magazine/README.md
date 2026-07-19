@@ -1,8 +1,9 @@
-# vinext-starter
+# Bali Zero Magazine
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Private editorial observatory for Bali Zero, built on
+[vinext](https://github.com/cloudflare/vinext) and OpenAI Sites. It publishes a
+morning edition plus breaking updates from the existing intelligence collectors,
+with Research and Operations rooms nested behind the magazine front page.
 
 ## Prerequisites
 
@@ -20,12 +21,11 @@ This starter does not use `wrangler.jsonc`.
 
 ## Included Shape
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- `app/` contains the editorial, research, operations, and machine-ingress routes
+- `.openai/hosting.json` binds the private Sites project to D1 and R2
+- `db/schema.ts` and `drizzle/` define the publication and control-plane model
+- `worker/` applies response-security headers at the edge
+- `vite.config.ts` simulates the Sites bindings for local development
 
 ## Workspace Auth Headers
 
@@ -89,7 +89,7 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - `npm run dev`: start local development
 - `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
+- `npm test`: run the full build and unit-test gate
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
 ## Learn More

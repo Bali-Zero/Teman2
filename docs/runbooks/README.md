@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 46 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 47 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -16,6 +16,7 @@
 | [`auth-sentinel.md`](auth-sentinel.md) | auth-sentinel — runbook |
 | [`autonomous-agents-decision-sheet.md`](autonomous-agents-decision-sheet.md) | Tier-1 "Autonomous" Agents — arm-or-retire decision sheet (TAC-2 A13) |
 | [`autonomous-lab-runtime-placement.md`](autonomous-lab-runtime-placement.md) | Autonomous Lab Runtime Placement |
+| [`bali-zero-magazine.md`](bali-zero-magazine.md) | Bali Zero Magazine internal rollout |
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
 | [`dropbox-intake.md`](dropbox-intake.md) | Dropbox → Google Drive Intake |
