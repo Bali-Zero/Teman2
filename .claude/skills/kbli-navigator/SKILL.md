@@ -176,6 +176,35 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
   `DATA_PLANE_GUARD_OFF=1`. (gold `kbli-gold-all.json` is NOT yet registered — editable, but pin
   every change with a regression test, cf. the 49213/50115 gold cure.)
 
+**CHATKB cantiere `company-kbli-signed-lots` — 3-seat review (GLM+Claude+Codex), ARBITER-verified
+(2026-07-19).** Dossier on M5:
+`~/Desktop/CHATKB-CANTIERE-2026-07-19/company-kbli-signed-lots/{FINAL.md,gate-verdict.md,contested.md}`
+(not shipped to `curated_qa` yet). **Established truth added to §2 below**: PP 28/2025
+primary-verified via BPK registry `peraturan.bpk.go.id/Details/319773` ("Mencabut: PP No. 5 Tahun
+2021") — the current in-force licensing instrument, GLM-live-checked. **Open follow-ups for this
+corner (flagged only, nothing fixed here):**
+
+1. **HIGH-PRIORITY unresolved**: 78109 and 80190 "TERBUKA 100%" ownership claims flagged against
+   historical precedent (78xx labour-placement family; BUJP private-security regime) — two
+   independent web passes found neither confirmation nor refutation. Needs a direct DPI-annex
+   (Perpres 10/2021 jo. 49/2021 lampiran) read before either claim is committed client-facing.
+2. **PROD self-contradiction risk**: live `inspect_kbli`/`chat_kbli` still serve the disproven
+   contaminated payloads for 78109 (LPK-mixed, `risk_profile: "Menengah Tinggi"`, 16 license rows
+   incl. the disproven LPK block) and 80190 (`risk_profile: "Tinggi"`) — KG/Qdrant resync pending.
+   A live tool call mid-conversation can still contradict the cured dossier answer for either code.
+3. **85321 crosswalk parent implausible**: the dossier's claimed true crosswalk parent {51108
+   "Angkutan Udara Bukan Niaga" air-transport} is flagged implausible for a vocational-education
+   code — re-check the BPS Vol.2 Lampiran 5 p.193 render. Confirmed separately: 85321's own title is
+   "...Pemerintah" (government-operated type only); the private route is sibling code **85322**,
+   whose ownership status is NOT yet verified.
+4. **70100 ≠ passive holding**: the official OSS scope note for 70100 (Aktivitas Kantor Pusat)
+   explicitly EXCLUDES passive holding-company activity → redirects to KBLI **64200**, whose
+   ownership status is NOT yet verified.
+5. **Q14/39001 provenance gap**: the dossier cites "BPS Vol.2 Lampiran 5 p.170, image-verified" for
+   39001 with NO Lot number / workflow run-ID (every other code in this dossier cites one) — confirm
+   the real Lot number for 39001 from `cure_specs`/workflow records before this row ships to
+   `curated_qa`.
+
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
 1. **68112 = code-number collision** (image-verified 3× on official BPK PDFs): PP 28/2025 Lampiran
@@ -219,6 +248,10 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
     takes precedence over intel_2026 for editorial fields on /kbli/<code>** (kbli-data.server.ts
     merges gold first; LicensingSection.tsx parses gold.whatYouNeed DIRECTLY) — so a canonical fix
     is invisible on a gold code until gold is cured too (49213/50115 lesson, 2026-07-17).
+11. **PP 28/2025 is primary-source-verified as the current in-force licensing instrument**: BPK
+    registry `peraturan.bpk.go.id/Details/319773` ("Mencabut: PP No. 5 Tahun 2021"), GLM-live-checked
+    2026-07-19 during the CHATKB `company-kbli-signed-lots` 3-seat review. Supersedes any lingering
+    "PP 28/2019" reference — the correct current-instrument citation for this corner.
 
 ## 3. ARTIFACTS & ACCESS (verified paths — check before use, cf. anti-hallucination)
 

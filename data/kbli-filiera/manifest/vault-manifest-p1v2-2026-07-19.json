@@ -1,0 +1,121 @@
+{
+  "wave": "p1v2",
+  "description": "GARUDA-FILIERA P1-v2 second vault wave — vintage-2020-axis regulatory instruments for pma_status/l4_bali/TKA facet grounding. Evidence-acquisition only: no canonical data edits, no facet lifts in this PR.",
+  "corner_pr_claim": "https://github.com/Balizero1987/Teman2/pull/2808",
+  "generated_at": "2026-07-19T07:50:00Z",
+  "vault_host": "Mini (ssh mini, /Users/nuzantara/nuzantara-vault/p1v2/)",
+  "blobs": [
+    {
+      "rel_path": "p1v2/perpres10-2021/Perpres_10_2021.pdf",
+      "sha256": "aef350461440b4231fb22ac4d5e66cbcbef4d6ba55284f51318a53c45dcb3440",
+      "bytes": 560232,
+      "source_url": "https://peraturan.bpk.go.id/Download/154474/Perpres%20Nomor%2010%20Tahun%202021.pdf",
+      "fetched_at": "2026-07-19T07:42:00Z",
+      "instrument": "perpres10-2021",
+      "provenance_note": "Main regulation text, 13pp, fetched from JDIH BPK RI official Download endpoint (Details page https://peraturan.bpk.go.id/Details/161806/perpres-no-10-tahun-2021). WAF returns 403 to the default WebFetch client UA; resolved with curl --noproxy '*' + browser UA header."
+    },
+    {
+      "rel_path": "p1v2/perpres10-2021/Perpres_10_2021_Lampiran.zip",
+      "sha256": "64f52d98ace90c4d022591ca98816cc61b00be5bee49f6ea99c2559ad04bccba",
+      "bytes": 3489269,
+      "source_url": "https://peraturan.bpk.go.id/Download/154475/Perpres%20Nomor%2010%20Tahun%202021%20-%20Lampiran.zip",
+      "fetched_at": "2026-07-19T07:42:01Z",
+      "instrument": "perpres10-2021",
+      "provenance_note": "Full annex bundle (investment list, ZIP) from same BPK Details page as the main text. NOT unzipped/extracted this pass (acquisition-only, no data processing)."
+    },
+    {
+      "rel_path": "p1v2/perpres49-2021/Perpres_49_2021.pdf",
+      "sha256": "ea8eb182a88a1276d988fc81dee3a2a91f5c3be63253b53ff082b47ee6edaab4",
+      "bytes": 313905,
+      "source_url": "https://peraturan.bpk.go.id/Download/161562/Perpres%20Nomor%2049%20Tahun%202021.pdf",
+      "fetched_at": "2026-07-19T07:42:03Z",
+      "instrument": "perpres49-2021",
+      "provenance_note": "Amendment text, 6pp, fetched from JDIH BPK RI Download endpoint (Details page https://peraturan.bpk.go.id/Details/168534/perpres-no-49-tahun-2021)."
+    },
+    {
+      "rel_path": "p1v2/perpres49-2021/Perpres_49_2021_Lampiran_I.pdf",
+      "sha256": "a1969d087b977544493bfe8ca3d975ea720492015c0adb5c83bd7e0d3c736d8e",
+      "bytes": 2523482,
+      "source_url": "https://peraturan.bpk.go.id/Download/161563/Perpres%20Nomor%2049%20Tahun%202021%20-%20Lampiran%20I.pdf",
+      "fetched_at": "2026-07-19T07:42:04Z",
+      "instrument": "perpres49-2021",
+      "provenance_note": "Annex I (revised investment list), 69pp."
+    },
+    {
+      "rel_path": "p1v2/perpres49-2021/Perpres_49_2021_Lampiran_II.pdf",
+      "sha256": "0fccda0cfa9c1202037fb878d209f3100c91a547d90a23b39364cf12c033ad2b",
+      "bytes": 967280,
+      "source_url": "https://peraturan.bpk.go.id/Download/161564/Perpres%20Nomor%2049%20Tahun%202021%20-%20Lampiran%20II.pdf",
+      "fetched_at": "2026-07-19T07:42:05Z",
+      "instrument": "perpres49-2021",
+      "provenance_note": "Annex II, 1pp."
+    },
+    {
+      "rel_path": "p1v2/perpres49-2021/Perpres_49_2021_Lampiran_III.pdf",
+      "sha256": "d5574e58bb4beb298203faa7188fca8c645517a3aaef8ce39988d9f0627eff95",
+      "bytes": 192893,
+      "source_url": "https://peraturan.bpk.go.id/Download/161565/Perpres%20Nomor%2049%20Tahun%202021%20-%20Lampiran%20III.pdf",
+      "fetched_at": "2026-07-19T07:42:06Z",
+      "instrument": "perpres49-2021",
+      "provenance_note": "Annex III, 4pp."
+    },
+    {
+      "rel_path": "p1v2/kepmenaker228-2019/Kepmen_228_2019.pdf",
+      "sha256": "107380830580ae0f3af77927a63b4aebf5c757f6397330fea477a4697516729a",
+      "bytes": 27333996,
+      "source_url": "https://tka-online.kemnaker.go.id/pdf/Kepmen_228_2019.pdf",
+      "fetched_at": "2026-07-19T07:43:00Z",
+      "instrument": "kepmenaker228-2019",
+      "provenance_note": "146pp TKA position list. Fetched from tka-online.kemnaker.go.id direct PDF endpoint (last-modified 2021-06-15 per server header, i.e. a stable long-lived copy, not regenerated at fetch time). Mirror path also exists at jdih.kemnaker.go.id/download.php?id=1609 (JDIH detail page: https://jdih.kemnaker.go.id/peraturan/detail/1609/keputusan-menaker-nomor-228-tahun-2019) — not separately fetched to avoid a duplicate blob; recorded here as an alternate official source for future cross-check."
+    },
+    {
+      "rel_path": "p1v2/bali/surat-gubernur-penutupan-kbli-70209.pdf",
+      "sha256": "decd49f97bda6db01cdaa89daba813d2884c199b7d86494837341cbb4e057c54",
+      "bytes": 408256,
+      "source_url": "https://dpmptsp.bulelengkab.go.id/informasi/download/94_surat-gubernur-bali-terkait-penutupan-kbli-70209_2026-02-18-10-51-51.pdf",
+      "fetched_at": "2026-07-19T07:42:08Z",
+      "instrument": "bali-gubernur-letter",
+      "provenance_note": "IMPORTANT CAVEAT (F12, honest-gap discipline): this is NOT confirmed to be the B.27.000/642/PM/DPMPTSP letter named in the mandate. It is a genuinely official-government-published (Kabupaten Buleleng DPMPTSP announcement page, published 2026-02-18) scanned copy of A Governor-of-Bali letter on the topic 'Penutupan KBLI 70209' (KBLI 70209 closure). Producer metadata = Epson Scan 2, scan timestamp 2025-12-12, 2 pages, IMAGE-ONLY (zero embedded fonts / no text layer via pdffonts+pdftotext probe) — the actual nomor surat printed on the letterhead could not be read without OCR, which is explicitly out of scope for this acquisition-only wave. Archived as a distinct, separately-provenanced candidate artifact pending a future OCR/verification pass, NOT asserted to equal or supersede the named letter."
+    }
+  ],
+  "status_snapshots": [
+    {
+      "instrument": "perpres10-2021",
+      "title": "Peraturan Presiden Nomor 10 Tahun 2021 tentang Bidang Usaha Penanaman Modal",
+      "vintage_kbli2020_axis": "Enacted Feb 2021 — pre-dates the BPS KBLI-2025 revision; sits on the KBLI-2020 axis (the classification edition in force when this Perpres was drafted and still the edition GARUDA-FILIERA's pma_status facet targets).",
+      "in_force_status_as_of_2026_07_19": "Berlaku (in force)",
+      "evidence_seen": "peraturan.bpk.go.id Details page (https://peraturan.bpk.go.id/Details/161806/perpres-no-10-tahun-2021), fetched 2026-07-19: field 'Status' = 'Berlaku'; 'Tanggal Penetapan'/'Tanggal Pengundangan' = 02 Februari 2021; 'Tanggal Berlaku' = 04 Maret 2021; 'Mencabut' = Perpres No. 44 Tahun 2016; 'Diubah dengan' = Perpres No. 49 Tahun 2021; Sumber = LN.2021/No.61.",
+      "notes": "Amended (not repealed) by Perpres 49/2021 — both instruments must be read together for the current investment-list text. This wave archives both."
+    },
+    {
+      "instrument": "perpres49-2021",
+      "title": "Peraturan Presiden Nomor 49 Tahun 2021 tentang Perubahan atas Peraturan Presiden Nomor 10 Tahun 2021 tentang Bidang Usaha Penanaman Modal",
+      "vintage_kbli2020_axis": "Enacted May 2021, amends Perpres 10/2021 (Pasal 2, Pasal 6, and the Lampiran/annex investment list) — same KBLI-2020 axis as its parent instrument.",
+      "in_force_status_as_of_2026_07_19": "Berlaku (in force)",
+      "evidence_seen": "peraturan.bpk.go.id Details page (https://peraturan.bpk.go.id/Details/168534/perpres-no-49-tahun-2021), fetched 2026-07-19: field 'Status' = 'Berlaku'; 'Tanggal Penetapan' = 24 Mei 2021; 'Tanggal Pengundangan'/'Tanggal Berlaku' = 25 Mei 2021; 'Mengubah' = Perpres No. 10 Tahun 2021; Sumber = LN.2021/No.128.",
+      "notes": "This is the amendment, not a standalone instrument — the annex PDFs (Lampiran I/II/III) are the corrected/replacement investment-list pages, superseding the corresponding pages of the Perpres 10/2021 lampiran."
+    },
+    {
+      "instrument": "kepmenaker228-2019",
+      "title": "Keputusan Menteri Ketenagakerjaan Nomor 228 Tahun 2019 tentang Jabatan Tertentu yang Dapat Diduduki oleh Tenaga Kerja Asing",
+      "vintage_kbli2020_axis": "Enacted 27 Agustus 2019 — PRE-DATES KBLI-2020 entirely (KBLI-2020 was published by BPS in 2020, effective in OSS RBA from 2021). Its position list is organized by sektor/jabatan description across 18 industry sectors, not by KBLI-2020 code. A future TKA-facet unlock therefore needs an explicit sektor-to-KBLI-2020 crosswalk step before this instrument can ground per-code facets directly — flagged here, not built in this wave (acquisition-only).",
+      "in_force_status_as_of_2026_07_19": "Berlaku (Active/In Force)",
+      "evidence_seen": "jdih.kemnaker.go.id detail page (https://jdih.kemnaker.go.id/peraturan/detail/1609/keputusan-menaker-nomor-228-tahun-2019), fetched 2026-07-19: field 'Status' = 'Berlaku'; enactment date 27 Agustus 2019. Consolidates/supersedes 19 prior ministerial decisions issued 2011-2015 (per page abstract).",
+      "notes": "146pp position list covering 18 sectors incl. construction, real estate, IT/telecom, professional/scientific/technical services. Directly relevant to the TKA facet once the KBLI-2020 crosswalk exists."
+    },
+    {
+      "instrument": "bali-gubernur-letter-B27000-642-PM-DPMPTSP",
+      "title": "Surat Gubernur Bali No. B.27.000/642/PM/DPMPTSP (2026-05-13 moratorium letter, per corner claim) — Low-Risk/Medium-Low-Risk PT PMA KBLI closure + virtual-office-as-domicile ban for Bali",
+      "vintage_kbli2020_axis": "Referenced as targeting the low-risk / medium-low-risk KBLI-2020 risk tiers registrable via OSS RBA (secondary sources name 9 codes incl. 70209, 77100, 77311, 79121 as the most-registered, with the block later confirmed whole-class per research/compliance/2026-06-09-bali-pma-kbli-moratorium-low-risk-block.md).",
+      "in_force_status_as_of_2026_07_19": "NOT VERIFIABLE THIS PASS AGAINST AN OFFICIAL PUBLICATION OF THE NAMED DOCUMENT — status is asserted only by secondary/consultant sources (InvestinAsia, sasbali, Emerhub, TraceWorthy, BaliVillaRealty, etc.), which is consistent with the existing repo research file's own sourcing. Bali Zero's downstream OSS-behavior observation (block active, effective ~13 May 2026) is independently corroborated in research/compliance/2026-06-09-bali-pma-kbli-moratorium-low-risk-block.md, but that corroborates the POLICY EFFECT, not this manifest's ability to archive the LETTER ITSELF.",
+      "evidence_seen": "Searched (2026-07-19): peraturan.bpk.go.id (no hit for 'B.27.000/642/PM/DPMPTSP' or 'Gubernur Bali' + this reference), peraturan.go.id (not searched directly — BPK mirrors national instruments only, provincial surat are out of its scope by design), jdih.baliprov.go.id 'Surat Edaran Gubernur Bali' listing + site-scoped search (no matching entry found for this reference number or subject in the pages surfaced), dpmptsp.baliprov.go.id (landing page only, no document index reachable this pass). A WebSearch synthesis claims the letter was 'signed by Governor Wayan Koster, urgent status, 28 January 2026, addressed to the Minister of Investment/BKPM' — this claim traces to the same secondary sources already cited in the repo's compliance research, NOT to a document this session opened and read directly; recorded here as an unverified secondary claim per the anti-hallucination discipline (never assert a tool output — web or file — that wasn't actually retrieved and read in this pass).",
+      "notes": "STATUS: referenced-not-archived for the exact named document. PARTIAL RELATED FIND: this wave DID retrieve and vault-archive an official-government-published (Kabupaten Buleleng DPMPTSP mirror, https://dpmptsp.bulelengkab.go.id/informasi/detail/pengumuman/94_surat-gubernur-bali-terkait-penutupan-kbli-70209, published 2026-02-18) scanned PDF of A Bali Governor letter on the same subject (KBLI 70209 closure) — see blob p1v2/bali/surat-gubernur-penutupan-kbli-70209.pdf. Because the PDF is a flat scan (Epson Scan 2, no text layer) and OCR is out of scope for this acquisition-only wave, this session could NOT read the letterhead to confirm or deny it is the same B.27.000/642/PM/DPMPTSP letter, an earlier/later companion letter (the compliance research separately references an 'earlier 10 Dec 2025' letter and a '28 Jan 2026' letter — the scan timestamp of 2025-12-12 on this PDF is at least consistent with, though not proof of, the earlier-letter timeline), or an unrelated regional echo. Recommend a follow-up OCR pass (qwen2.5vl:7b per CLAUDE.md vision-model rule) before any facet unlock leans on this specific blob."
+    }
+  ],
+  "declared_residuals": [
+    "Tigris mirror of these 8 blobs: SKIPPED this wave (batch-0 pattern included it, but it's a follow-up per Zero GO scope) — vault-on-Mini + this manifest's sha256 rows are the durable record for now.",
+    "Bali Gubernur letter B.27.000/642/PM/DPMPTSP: NOT archived under its own confirmed identity this pass — see status_snapshots entry 'bali-gubernur-letter-B27000-642-PM-DPMPTSP'. A partial candidate (Buleleng DPMPTSP scanned mirror on the same KBLI-70209-closure subject) IS archived but unconfirmed pending OCR.",
+    "Kepmenaker 228/2019 sektor/jabatan-to-KBLI-2020 crosswalk: NOT built this wave — flagged in status_snapshots as a precondition for a TKA facet unlock, acquisition-only scope excludes it.",
+    "Perpres 10/2021 + 49/2021 Lampiran ZIP/PDFs: fetched whole, NOT unzipped/parsed/extracted this pass (acquisition-only; no per-code KBLI facet lift performed or implied by this manifest)."
+  ]
+}

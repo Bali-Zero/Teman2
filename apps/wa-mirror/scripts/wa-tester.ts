@@ -43,11 +43,13 @@ import {
   buildQuestionResult,
   buildTranscript,
   extractMessageText,
+  isPairedFromCreds,
   parseMessageTimestampMs,
   shouldReconnect,
   transcriptHasZeroReplyQuestion,
   validateBattery,
   type QuestionResult,
+  type StoredCreds,
 } from "./wa-tester-core.js";
 
 const logger = pino({
@@ -75,8 +77,9 @@ async function ensureStateDir(): Promise<void> {
 async function isPaired(): Promise<boolean> {
   try {
     const raw = await readFile(path.join(STATE_DIR, "creds.json"), "utf8");
-    const creds = JSON.parse(raw) as { registered?: boolean };
-    return creds.registered === true;
+    const creds = JSON.parse(raw) as StoredCreds;
+    // QR-companion pairing sets creds.me, not creds.registered (pairing-code flow only)
+    return isPairedFromCreds(creds);
   } catch {
     return false;
   }
