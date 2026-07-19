@@ -30,8 +30,10 @@ PKCS8 PEM files, `chmod 0600`, containing directory `chmod 0700`, at:
 
 on **M5** (`Air-M5`, user `balizero`) **only**. Not in Keychain, not on
 Pro/Mini, never committed to the repo, never pasted into transcripts or logs
-(cicatrix family #4 — Secret in the clear). Operator backup: this directory
-is included in the M5 encrypted backup routine.
+(cicatrix family #4 — Secret in the clear). Off-machine backup: AES-256
+encrypted dmg at `gdrive:nuzantara-backups/visa-signing/visa-signing-backup-2026-07-19.dmg`
+(139776 bytes, uploaded 2026-07-19 via Pro rclone; passphrase held by the
+operator only). Local Desktop copy removed after verified upload.
 
 ## Trust-store JSON (verbatim, public)
 
