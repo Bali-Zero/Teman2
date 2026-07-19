@@ -1,4 +1,31 @@
-# AGENTS.md - Nuzantara Project Context for Codex
+# AGENTS.md - Nuzantara Project Context for AI coding agents (Codex · Kimi · Gemini · …)
+
+> Read by every AGENTS.md-standard agent: Codex CLI, **Kimi (kimi-code CLI + Kimi Desktop
+> work-mode, whose workspace is this repo)**, Antigravity/agy, and others. "Codex" below
+> generalizes to "you, the external agent" unless a rule names a specific tool.
+
+## 0.0. External-agent contract (READ FIRST — Kimi/Codex/agy alike)
+
+1. **You build — a Claude session verifies.** Your work product is a branch/diff/artifact
+   that an interactive Claude session independently reviews, tests and merges
+   (generator≠grader). **Never merge your own work, never push to `main`, never arm
+   auto-merge, never deploy.** Prepare; don't ship.
+2. **Legge 5 (absolute):** never publish anything outward — no Instagram, no email, no
+   WhatsApp, no client-facing sends. Editorial drafts stop at `drafted` in the review
+   queue; the owner publishes.
+3. **PII boundary (UU PDP / SYMBIOSIS Law 2, non-negotiable):** client PII (KTP, passport,
+   NPWP, akta, CRM records, OSINT) must never be transcribed into cloud outputs, logs,
+   artifacts or prompts. DB access is read-only (`nuzantara_readonly`); if a task seems to
+   need client rows, STOP and surface it.
+4. **Worktree discipline applies to YOU** (§0.5): the Claude-side hooks do NOT bind you —
+   the convention does. Mutations happen in `.worktrees/<lane>-<task>/`, never in the main
+   checkout. Kimi Desktop: ask the operator to point the workspace at a worktree lane.
+5. **Off-limits files:** `zantara_core.py` (edit only via its own rules), `fly.toml`,
+   `.env*`, `alembic/env.py`, curated datasets (data-plane guard), the WR2 queue JSONs
+   (canonical writers only).
+6. **Scope tightly, don't improvise.** If the task is ambiguous, state your assumption in
+   one line and take the narrowest reading — do NOT invent adjacent work (this is aimed
+   especially at K3's known over-proactivity).
 
 ## 0. Machine Identification (IMPORTANT)
 
@@ -69,7 +96,7 @@ M5 has **no `ollama`** by design. Never `ollama pull` or `brew install ollama` o
 | OCR / vision (`qwen2.5vl`) | `ssh pro` — Ollama binds `127.0.0.1:11434`, **closed** to M5 |
 | embed batch (`bge-m3`) | `ssh pro` / `ssh mini` |
 
-Lightweight **cloud** LLM clients **are** fine on M5 (they're already set up): `agy` (Gemini), `codex` (you), `nlm` (NotebookLM), DeepSeek API. Use them directly.
+Lightweight **cloud** LLM clients **are** fine on M5 (they're already set up): `agy` (Gemini), `codex`, `kimi` (`~/.kimi-code/bin/kimi`, armed M5+Pro+Mini), `nlm` (NotebookLM). Use them directly. (DeepSeek API RETIRED 2026-07-19 — never route to it; local `deepseek-r1:32b` Ollama weights on Pro/Mini are unrelated and stay.)
 
 ### HARD RULE R3 — DB & vector store: exact access per service
 
@@ -225,7 +252,7 @@ Use only for emergency / hotfix / cicatrix-fix.
 - **Vector Collections:** 11 canonical logical collections (`backend/core/collection_registry.py`), 104,154 documents
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
-## 2. Codex Behavior Rules (IMPORTANT)
+## 2. Agent Behavior Rules (IMPORTANT)
 
 **DO NOT ask the user to write code.** You are authorized to edit, write, and execute code directly.
 
@@ -615,7 +642,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-07-19 (external-agent contract + Kimi onboarding; was 2026-03-28)
 **Maintained by:** Bali Zero AI Team
 
 ---
