@@ -72,7 +72,7 @@ and minor finding is individually dispositioned in the changelog.
 | # | Finding (one-line) | Action in REV-2 |
 |---|---|---|
 | B1 | "Independent" L5↔L10 check is counterfeit independence — same-source agreement can reproduce a shared upstream error | **Renamed** to "same-source consistency check" throughout (§1.4). Every adjudicated code, all tiers, now keeps a genuinely independent, image-grounded cross-family seat on the RAW page render (§4) — the parser output gates *which pages/rows* get pulled, it never substitutes for the independent read. |
-| B2 | `pp28_sources` has no stable operational meaning — the detector flags the cure convention itself | **New §2, typed-field split.** Additive `bps_2020_ancestors` field becomes the sole source of truth for full BPS crosswalk ancestry; `pp28_sources` keeps its existing (now precisely documented) role. Grep-verified consumer-map, backfill policy, migration plan, and an empirical demonstration that the *current* program already treats `pp28_sources` inconsistently across sibling cures (§2.1) — stronger evidence than REV-1 had. |
+| B2 | `pp28_sources` has no stable operational meaning — the detector flags the cure convention itself | **New §2, typed-field split.** Additive `bps_2020_ancestors` field becomes the sole source of truth for full BPS crosswalk ancestry; `pp28_sources` keeps its existing (now precisely documented) role. Grep-verified consumer-map, backfill policy, migration plan. §2.1 corrected mid-review (team-lead, 2026-07-19): 46100/52101 were NOT structurally identical findings treated inconsistently — 46100's pointer was true-but-incomplete, 52101's was outright false, and both were handled consistently under a real ruling ("correct FALSITY; record incompleteness in `_data_note`"). The still-damning fact, kept: that ruling lives only in PR prose, never in the schema — a reader can't tell verified-narrow from falsely-incomplete from the field alone, which is exactly what the typed split fixes. |
 | B3 | `m2′` left deliberately gameable — undefined direction/denominator/floor-vs-ceiling | **§3.2**, full frozen formula: per-stratum defect-rate, denominator = adjudicated codes only (abstentions/parser-failures reported separately, never in denominator), floor ≥0.10 for Tier 1/2 (yield), ceiling for Tier 4 — numbers proposed and marked CONDUCTOR-PROPOSED/Zero-ratified, not silently assumed. |
 | B4 | The promised census quietly becomes sampling | **§1.5 reframed**: the Phase-0 parser pass *is* the census (every one of 1,338 gets a mechanical entry). Adjudication is tiered; Tier-4 clean-parse codes get an honest, distinct verdict class (`machine-consistent, not eye-adjudicated`) instead of an implied full validation. Every "code-by-code eye validation" claim for Tier 4 removed. |
 | B5 | Parser evidence nowhere near validation-grade; 82%→"~99%" jump was invented; missingness is differential, not random | **§1.4 Phase-0 gate**: adopts Codex's acceptance-criteria list verbatim (frozen row counts, edge-level precision/recall on a stratified manual truth sample incl. wrapped/N:M rows, digests+locators, fail-closed unanchored rows, zero unexplained L5↔L10 diffs) + Gemini's $m_P$ metric. The "~99%" claim is deleted; differential-missingness risk (multi-parent rows disproportionately wrapped) is named explicitly and routed to Tier 2.5, never silently absorbed into Tier 3/4. |
@@ -202,15 +202,30 @@ checking the two cured Tier-1-shaped codes against the *current* canonical —
 
 - **46100** (post-cure): `status_mapping=MATCH_CON_AGGREGAZIONE`, `pp28_sources=['46100']`
   (unchanged, len 1) → this **is** the Tier-1 detector shape (`MATCH_CON_AGGREGAZIONE` +
-  `len(pp28_sources)==1`), even though the record is now *correct* (the true 2-parent ancestry
-  lives only in prose, `pp28_sources` deliberately left narrow per the "no independent re-hunt"
-  caution in its own cure spec). A structural detector keyed on this shape flags its own cure.
-- **52101** (post-*residual*-cure): `pp28_sources` was changed from the deliberately-narrow
-  `['52101']` to the *full* 5-parent list `['03143','03241','03243','03263','52108']` (len 5) —
-  a **different** convention than 46100's sibling cure, shipped one day apart, under the same
-  compiler. This is new evidence (not in REV-1): the program has *already*, in practice, used
-  `pp28_sources` two incompatible ways on two structurally-identical findings — proof there is no
-  stable operational definition today, independent of Codex's abstract argument. §2 fixes this.
+  `len(pp28_sources)==1`), even though the record is now *correct*: 2020-code 46100 genuinely
+  **is** one of its two true parents (`{46100, 63122}`) — the pointer is TRUE, merely incomplete,
+  and stays untouched by design, its missing co-parent recorded only in prose. A structural
+  detector keyed on this shape flags its own *correct* cure.
+- **52101** (post-*residual*-cure): `pp28_sources` was changed from `['52101']` to the *full*
+  5-parent list `['03143','03241','03243','03263','52108']` (len 5) — because, unlike 46100,
+  2020-code 52101 was never actually one of the five true parents; the original self-referencing
+  pointer was FALSE, not merely incomplete.
+  **Self-correction (team-lead review, 2026-07-19):** REV-1 called these two "structurally
+  identical findings" treated "two incompatible ways" — that mis-recorded history on two counts.
+  First, the findings were not identical: 46100's pointer was true-but-incomplete, 52101's was
+  outright false — a substantive difference, not an arbitrary split. Second, the two treatments
+  are *consistent* under a single ruling — "correct FALSITY in `pp28_sources`; record
+  incompleteness in `_data_note`" — stated in the #2777 conductor comment and the #2786 PR body,
+  though formalized only *after* #2777 itself had already shipped (which is why 46100, shipped
+  inside #2777, and 52101's residual fix, shipped afterward, look superficially inconsistent at
+  a glance when they are not).
+  **What remains true, and is the actual, still-damning point:** that ruling exists only in
+  out-of-band PR prose. Looking at `pp28_sources=['46100']` and the pre-residual
+  `pp28_sources=['52101']` side by side, both are self-referencing singleton pointers — a reader
+  or a downstream compiler cannot tell, from the field alone, which is "verified-narrow, correctly
+  left as-is" and which is "falsely incomplete, needs correcting" without reading the PR history.
+  §2 fixes exactly this: making the distinction a structural, machine-readable property of the
+  record, not an artifact of prose archaeology.
 
 **Stratum 1 — `MATCH_CON_AGGREGAZIONE` with `len(pp28_sources) == 1`: 46 codes.** Candidate seed
 list for Tier 1 (§1.5). First 15 for illustration (the full 46 lives only in the compiler-emitted
@@ -378,11 +393,15 @@ have processed last.
 ### 2.1 The problem, stated precisely
 
 `pp28_sources` is asked to mean two different things depending on which population a code
-belongs to, and — as just shown empirically (§1.3) — even *within* Batch B's own population the
-program has already used it two incompatible ways on structurally identical findings (46100 vs.
-52101, one day apart, same compiler). There is no schema distinction encoding which meaning
-applies to a given record; a reader (human or downstream compiler) cannot tell, from the field
-alone, whether its value is "the licensing basis" or "a possibly-incomplete crosswalk pointer."
+belongs to. Even setting that aside, §1.3's 46100/52101 pair shows the deeper problem precisely:
+a real, principled ruling governs when a pointer is corrected versus left narrow ("correct
+FALSITY in `pp28_sources`; record incompleteness in `_data_note`") — but that ruling lives only
+in PR prose, never in the schema itself. A reader (human or downstream compiler) looking at two
+self-referencing singleton pointers cannot tell, from the field alone, which one the ruling says
+to leave alone (verified-narrow, true-but-incomplete) and which one it says to correct
+(falsely-incomplete). That is precisely why a typed split is required — not because the program
+applied its own rule inconsistently (it didn't, per the correction above), but because the
+rule's output is invisible in the data it governs.
 
 ### 2.2 `bps_2020_ancestors` — new additive field
 
