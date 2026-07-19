@@ -35,6 +35,7 @@ from backend.app.core.exceptions import (
 )
 from backend.app.utils.crm_utils import AvatarUrl
 from backend.app.utils.error_sanitizer import sanitize_error_message
+from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.cache_query import (
     CRMQueryOptimizer,
@@ -686,7 +687,12 @@ class EnhancedCRMService:
                     {"existing_id": existing},
                 )
 
-            async with self.db_pool.acquire() as conn:
+            async with self.db_pool.acquire() as conn, conn.transaction():
+                # Phone and whatsapp are OWNERSHIP columns (Codex 2026-07-19
+                # rounds 9-10 F12, round 15 F21): every writer introducing a
+                # core must be cooperative with the 'phonecore:' advisory-lock
+                # window, same protocol as create_client_with_details.
+                await lock_phone_cores(conn, validated.phone, validated.whatsapp)
                 query = """
                     INSERT INTO clients (
                         full_name, email, phone, whatsapp, nationality,
@@ -789,7 +795,57 @@ class EnhancedCRMService:
                     RETURNING *
                 """
 
-                row = await conn.fetchrow(query, *values)
+                if {"phone", "whatsapp"} & updates.keys():
+                    # Phone AND whatsapp are OWNERSHIP columns (Codex
+                    # 2026-07-19 rounds 9-10 F12; round 15 F21): any writer
+                    # touching either must hold the 'phonecore:' advisory
+                    # locks for the new values AND the row's current cores,
+                    # with a re-read-under-lock convergence loop (the earlier
+                    # old_data read was on another connection and can be
+                    # stale). Fail CLOSED on non-convergence.
+                    async with conn.transaction():
+                        _locked: set[str] = set()
+                        _converged = False
+                        for _ in range(3):
+                            _cur = await conn.fetchrow(
+                                "SELECT phone, phone_normalized, whatsapp"
+                                "  FROM clients WHERE id = $1",
+                                client_id,
+                            )
+                            _cur_vals = (
+                                [_cur["phone"], _cur["phone_normalized"], _cur["whatsapp"]]
+                                if _cur is not None
+                                else []
+                            )
+                            _want = {
+                                c
+                                for c in (
+                                    phone_core(v)
+                                    for v in (
+                                        updates.get("phone"),
+                                        updates.get("whatsapp"),
+                                        *_cur_vals,
+                                    )
+                                )
+                                if c is not None
+                            }
+                            if _want <= _locked:
+                                _converged = True
+                                break
+                            _locked |= await lock_phone_cores(
+                                conn,
+                                updates.get("phone"),
+                                updates.get("whatsapp"),
+                                *_cur_vals,
+                            )
+                        if not _converged:
+                            raise DatabaseError(
+                                "phone_lock_convergence_failed — concurrent phone writers, retry",
+                                operation="update",
+                            )
+                        row = await conn.fetchrow(query, *values)
+                else:
+                    row = await conn.fetchrow(query, *values)
                 result = dict(row)
 
             invalidate_client_cache(client_id)
@@ -806,6 +862,10 @@ class EnhancedCRMService:
             return result
 
         except ResourceNotFoundError:
+            raise
+        except DatabaseError:
+            # e.g. phone_lock_convergence_failed — keep the specific,
+            # retryable message instead of re-wrapping it generically.
             raise
         except (ValidationError, PydanticValidationError) as e:
             logger.warning(f"Failed to update client (validation): {sanitize_error_message(e)}")

@@ -135,6 +135,24 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-19 — PERSON-NPWP STRONG-ID LIVE (m248, PR #2775 merged) + BACKLOG REROUTED + WIRE PROVEN:**
+  `routing._match_person_strong` now matches `clients.npwp` (exactly 15/16 ASCII digits, dup→AMBIGUOUS,
+  cross-table collision with `companies.npwp_company`→AMBIGUOUS/unknown; 5 Codex adversarial rounds →
+  CLEAN). Backlog reroute executed (`--reroute-npwp --apply`, `pipeline_version='v2.3-npwp'`, worker
+  restarted from `~/nuzantara-deploy` first): **129 full-npwp review_pending docs** superseded+rerouted,
+  drained <1min. BEFORE→AFTER: NO_MATCH 54→79 (25 noise→quarantine via LEVA-1), AMBIGUOUS 48→33,
+  LINK 20→16, AUTO_ATTACH 5→1. **npwp method fired on 3 proposals: 1 unique match (161274→client 10659) + 2 dup groups (161316: 7042/10353; 161330: 4558/10715) correctly AMBIGUOUS.** The auto-commit
+  tier is PROVEN wired to npwp presence: both LEVA gates evaluated 161274 and correctly HELD it —
+  phone matches no client, doc subject name overlap 0.00 vs the candidate (trigram 0.000, 23-char
+  readable name): affirmative contradiction → human review is the right terminal (data-quality lead:
+  either client 10659's npwp is mis-entered or the doc belongs to an uncatalogued person). never-auto
+  held: 0 auto commits, audit count unchanged. **Honest sizing: deterministic-drain population book-wide
+  = 3 proposals only** (1 held + 2 dup groups); the 611 LINK_CANDIDATE "score 1.0" rows are
+  `fuzzy_full_name` trigram-perfect, NOT strong-id (W88 proxy trap — measure by METHOD, never score).
+  **npwp backfill fuel: 32 pending single-candidate docs carry a full npwp; 25 point at 16 distinct
+  clients LACKING a valid npwp** — each human confirm now compounds the key book via `client_enricher`
+  (npwp write fragment-gated 15/16 ASCII since this change; a partial OCR read is dropped, never stored).
+
 - **2026-07-18 late night — LOCAL SNAPSHOT REFRESHED (safe method — NOT the stock script):**
   `nuz_db_refresh.sh` does `dropdb nuzantara_dev` — on the Pro that would DESTROY the
   local-authoritative intake state (247k `intake_queue` rows whose `stage_output` is the ONLY OCR
