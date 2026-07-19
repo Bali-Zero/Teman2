@@ -133,8 +133,9 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
   precondition**; cure PR + cross-family GLM in flight)**. **In-scope remainder after L7 apply:
   23** (of 221 total, invariant) → **~2 lots to finish** (L8-L9: 13+10; L8 gated on refinement
   #2). Surfaces: L1-L4 + L6 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
-  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surface apply
-  not independently re-proven — verify the L5 13 alongside the L7 surfaces pass**. Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
+  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces INDEPENDENTLY RE-PROVEN
+  2026-07-19** (prod KG query: 13/13 zero REQUIRES edges + `PENDING_REGULATION` + disputed
+  archived; live `inspect/66192` returns risk "Not classified", licenses []). Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
   salt "v3", POS 8, `pos_preverification_required`, burned-set 16.
 - **Per-lot cycle (proven 5×, ~2h):** lane Workflow (launcher `/tmp/kbli-conductor-a1-0718/
 lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fence) → conductor
