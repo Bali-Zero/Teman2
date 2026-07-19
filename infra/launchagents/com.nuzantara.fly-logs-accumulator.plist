@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <!-- Fly logs accumulator (O0-P1, approved by Zero 2026-07-19).
-         Long-running follower: KeepAlive IS correct here (unlike one-shot
-         crons — see W67: KeepAlive+one-shot = crash-loop signature).
-         The script self-rotates daily and prunes >14d. Kill switch:
-         launchctl bootout gui/$(id -u)/com.nuzantara.fly-logs-accumulator -->
+         Long-running follower: KeepAlive.SuccessfulExit=false restarts only on
+         crash — a clean exit 0 (G5 kill switch FLY_LOGS_ACCUMULATOR_ENABLED=false)
+         stays stopped by design. The script self-rotates daily and prunes >14d.
+         Emergency stop: launchctl bootout gui/$(id -u)/com.nuzantara.fly-logs-accumulator -->
     <key>Label</key>
     <string>com.nuzantara.fly-logs-accumulator</string>
     <key>ProgramArguments</key>
@@ -17,7 +17,10 @@
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/fly-logs-accumulator.launchd.log</string>
     <key>StandardErrorPath</key>
