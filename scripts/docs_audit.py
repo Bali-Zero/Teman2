@@ -126,10 +126,37 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Override 'today' for the orphan-eligibility TIME-CROSSING decision "
             "in write modes (--regen-only/--apply/default); defaults to the real "
-            "date when omitted. Deterministic-testing knob only — mutually "
-            "exclusive with --check, which NEVER consults wall-clock (P3-prime: "
-            "the merge gate verifies only tree-deterministic facts — the "
-            "scheduled refresh organ owns the time-crossing decision)."
+            "date when omitted (see --gate-consistent for a safer omitted-case "
+            "default in PR-side contexts). Deterministic-testing knob only — "
+            "mutually exclusive with --check, which NEVER consults wall-clock "
+            "(P3-prime: the merge gate verifies only tree-deterministic facts — "
+            "the scheduled refresh organ owns the time-crossing decision), and "
+            "with --gate-consistent (pick one: a specific date, or 'never "
+            "invent one')."
+        ),
+    )
+    p.add_argument(
+        "--gate-consistent",
+        action="store_true",
+        help=(
+            "Write-mode (--regen-only/--apply/default) opt-in that reproduces "
+            "--check's exact verdict-producing computation (as_of=None, "
+            "provenance from --trusted-ref) but WRITES the result instead of "
+            "comparing — i.e. 'regenerate exactly what the gate itself expects', "
+            "never a fresh wall-clock-driven flip. Footgun fix (2026-07-19, PR "
+            "#2626 landing incident): a write-mode regen run with NO --as-of "
+            "used to silently default to real 'today', so a contributor running "
+            "the plain PR-side regen path could commit fresh orphan_flipped_on "
+            "stamps that --check (always as_of=None) would then reject as drift "
+            "on the SAME PR. scripts/docs_inventory_regen.sh now passes this by "
+            "default; the scheduled refresh organ (docs-inventory-refresh.yml) "
+            "opts OUT via its own --organ flag, which passes --as-of instead — "
+            "it is the one caller that IS supposed to invent fresh flips from "
+            "real wall-clock. Mutually exclusive with --check (already "
+            "definitionally this) and --as-of (pick one). docs_audit.py's own "
+            "bare CLI default is UNCHANGED by this flag's existence — "
+            "scripts/docs_guardian.sh and any other direct caller that doesn't "
+            "pass it keeps the pre-existing real-'today' behavior."
         ),
     )
     p.add_argument(
@@ -160,9 +187,10 @@ def parse_args() -> argparse.Namespace:
             "--check mode: that file IS the PR candidate's own content, so a "
             "PR could forge or delete orphan_flipped_on markers and a gate "
             "that only re-derives its own self-consistency would pass. "
-            "Ignored outside --check (write modes trust the local working "
-            "tree, which in the organ's context is a fresh checkout of main "
-            "anyway). Default origin/main; override only for testing."
+            "Ignored outside --check/--gate-consistent (plain write modes "
+            "trust the local working tree, which in the organ's context is "
+            "a fresh checkout of main anyway). Default origin/main; override "
+            "only for testing."
         ),
     )
     args = p.parse_args()
@@ -179,6 +207,20 @@ def parse_args() -> argparse.Namespace:
             "wall-clock (P3-prime), so overriding 'today' for it is a contradiction "
             "in terms — it would smuggle a time-crossing decision back into the "
             "merge gate. Use --as-of only with a write mode."
+        )
+    if args.check and args.gate_consistent:
+        raise SystemExit(
+            "--check and --gate-consistent are mutually exclusive: --check "
+            "already IS the gate-consistent computation (as_of=None, "
+            "trusted-ref provenance) — --gate-consistent is the write-mode "
+            "counterpart that reproduces the same thing but writes the file."
+        )
+    if args.as_of and args.gate_consistent:
+        raise SystemExit(
+            "--as-of and --gate-consistent are mutually exclusive: pick a "
+            "specific date to invent fresh flips from (--as-of), or 'never "
+            "invent one, carry forward from --trusted-ref' (--gate-consistent) "
+            "— not both."
         )
     if args.as_of:
         try:
@@ -225,8 +267,11 @@ def print_check_delta(
 ) -> None:
     """Emit a compact diff when --check finds inventory drift."""
     print(
-        "docs_audit: docs/DOCS_INVENTORY.md is out of date; "
-        f"regenerate with python {Path(__file__).as_posix()}",
+        "docs_audit: docs/DOCS_INVENTORY.md is out of date; regenerate with "
+        "bash scripts/docs_inventory_regen.sh (gate-consistent by default — "
+        "safe to run and commit on a PR branch; see --gate-consistent's "
+        f"--help text for why a bare `python {Path(__file__).as_posix()}` "
+        "invocation without it can commit content this same gate then rejects).",
         file=sys.stderr,
     )
     diff = list(
@@ -1013,25 +1058,34 @@ def main() -> int:
     # provenance from a ref the PR branch does not control
     # (read_trusted_prev_flipped, fail-closed — see its docstring). Write
     # modes keep trusting the local working tree (the organ's own fresh
-    # checkout of main, already equal to the trusted ref at this point).
-    if args.check:
-        prev_flipped = read_trusted_prev_flipped(repo, args.trusted_ref)
-    else:
-        prev_flipped = parse_prev_flipped(old_content)
-
-    # `as_of` is the ONLY place `main()` decides whether "today" may be
+    # checkout of main, already equal to the trusted ref at this point) —
+    # UNLESS --gate-consistent asks for the same trusted-ref provenance
+    # --check itself uses (footgun fix, 2026-07-19: see --gate-consistent's
+    # own --help text and PENDING-ARMS.md for the PR #2626 incident this
+    # cures).
+    #
+    # `as_of` is the OTHER place `main()` decides whether "today" may be
     # consulted at all. `--check` is the merge gate: it NEVER gets an as_of,
     # full stop — structurally incapable of inventing a fresh orphan flip
     # (parse_args() already rejects `--check --as-of` as a contradiction).
-    # Write modes get either the caller's `--as-of` override (deterministic
-    # testing) or the real date (production default).
+    # `--gate-consistent` is the write-mode twin of that same guarantee:
+    # deliberately, explicitly opted INTO (never a silent default swap for
+    # EVERY write-mode caller — see docs_guardian.sh, which never asked for
+    # this and must keep its pre-existing real-'today' behavior byte-for-
+    # byte). Plain write modes with neither flag get either the caller's
+    # `--as-of` override (deterministic testing / the scheduled organ) or
+    # the real date (unchanged production default for any caller that
+    # predates/doesn't know about --gate-consistent).
     as_of: date | None
-    if args.check:
+    if args.check or args.gate_consistent:
         as_of = None
+        prev_flipped = read_trusted_prev_flipped(repo, args.trusted_ref)
     elif args.as_of:
         as_of = date.fromisoformat(args.as_of)
+        prev_flipped = parse_prev_flipped(old_content)
     else:
         as_of = datetime.now(tz=timezone.utc).date()
+        prev_flipped = parse_prev_flipped(old_content)
 
     docs = walk_docs(repo)
     rows = [
