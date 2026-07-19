@@ -119,11 +119,11 @@ crosswalk page/row locators and/or ABSENT scan counts. All quarantines are fail-
 
 | # | Metric | Lot 5 | Limit | Status |
 | --- | --- | --- | --- | --- |
-| m1 | cross-family | Runner same-family tuple-concordance **4/13 = 0.308** = declared runner-proxy breach (same artifact as Lots 3/4); problem-bit agreement **10/13 = 0.769**. TRUE cross-family GLM pass ⏸ (§5). | ≥0.75 | ❌ runner-proxy breach DECLARED · true cross-family ⏸ |
+| m1 | cross-family | Runner same-family tuple-concordance **4/13 = 0.308** = declared runner-proxy breach (same artifact as Lots 3/4); problem-bit agreement **10/13 = 0.769**. TRUE cross-family GLM pass ⏸ (§5). | ≥0.75 | ✅ cross-family 1.00 (Appendix A) · runner-proxy breach stays DECLARED |
 | m2 | certification rate | **0.000** (0/13) | [0.20, 0.85] | ❌ BREACH (declared; same object-level adjudication as Lots 1-4) |
 | m3 | categories | 3 seen, all closed-7 | closed list | ✅ |
 | m4 | tokens/dossier | **avg 200,574.54 (≈200,575)** (2,607,469 / 13 in-scope; controls' 99,797 + 115,058 excluded from numerator AND denominator) · **max 228,839 (66192)** — computed from workflowProgress | ≤400k | ✅ |
-| m5 | gold-set | not run in-lane | ==1.00 | ⏸ cross-family pass (§5) — POS leg UNBLOCKED (#2777 merged post-run) with the conductor exposed-codes screen |
+| m5 | gold-set | NEG spot **3/3 HIT** (cross-family blind, Appendix A) · POS **0/2 valid — 2/2 DISQUALIFIED** (01629, 71204: real metadata defects in the "verified" pool — Appendix A) | ==1.00 | ✅ NEG 3/3 · POS unmeasurable (pool contaminated, declared) |
 
 ## 5. Open before the Lot 5 cure ships
 
@@ -176,6 +176,56 @@ crosswalk page/row locators and/or ABSENT scan counts. All quarantines are fail-
 | Render p.208 (by-eye) | sha256 `b59863d35c5c3f66a595c0a06cd699b2c952b83e56cf64dea4fa2261dc56e493` |
 | Render p.209 (by-eye) | sha256 `db9fe59065cecca8f464e96d764cbea7a4bb2aeb12d277864d4b1b01d963b2aa` |
 | Red-team transcript | `/tmp/kbli-conductor-a1-0718/lot5-redteam.txt` (full-output capture, no tail — W97) |
+
+## Appendix A — cross-family adjudication (conductor, post-GLM pass)
+
+Source: `/tmp/kbli-conductor-a1-0718/lot5-conductor-crossfamily-report.md` (GLM 5.2 vision
+via `run-lot5-conductor.sh`, 10/10 rc=0 first attempt, zero retry, zero fallback, blind
+sha256-shuffled order salt `shuffle-lot5-conductor`, ~33 min PAR=3).
+
+**m1 (5 codes: 66192, 66292, 68123, 68126, 70100) = 5/5 = 1.00 verdict-level AND 5/5
+category-exact — ADJUDICATED PASS.** Cleanest cross-family reading of the program so far
+(Lot 4 had 1/5 nuanced): GLM blind-confirmed payload_cross_contamination on 66192/66292,
+mapping_metadata_false on 68123/68126, source_absent_in_vault on 70100 — categories
+verbatim. Clears the ≥0.75 floor with full margin; the runner-proxy 0.308 stays declared
+(§4), superseded as the m1 reading by the true cross-family measure (Lot 2-4 precedent).
+
+**m5-NEG (42999 L2, 60103 L3, 64996 L4 — fresh picks, none reused, pre-detach snapshots
+verified vs origin/main DETACHED state) = 3/3 HIT — ADJUDICATED PASS.** Strong category
+concordance on all three; 42999 re-derives BOTH faces of its documented defect
+(merge-undercount + source-absence).
+
+**m5-POS (FIRST POS run of the program, v3 registry via #2777): 0/2 valid — 2/2
+DISQUALIFIED, adjudicated per the 10433 precedent (Lot 2 Appendix A).** Derivation
+integrity verified: the pass re-derived the v3 eligibility pool (1337→1329→1321) and its
+8 low-order digests matched the committed `batchA-calibration-v3.json` byte-for-byte;
+exposure screen (5 gate reports + pilot report + kbli-navigator corner) passed on all 8
+candidates; first two non-exposed drawn: **01629, 71204**. BOTH returned
+`needs_quarantine=true` from GLM — and the defects are REAL, not GLM misses:
+
+- **71204 — CONDUCTOR-VERIFIED BY EYE (two renders, THIS session):** Lampiran 10 p.406
+  row 1 shows `2025-71204 "Jasa Pengujian Teknis" ← 2020-71209 "Analisis Dan Uji Teknis
+  Lainnya"`, and Lampiran 5 p.193 shows `2020-51108 "Angkutan Udara Bukan Niaga" →
+  2025-71204` — the 2025 code is MULTI-PARENT (≥{71209, 51108}), so canonical's
+  `MATCH_LANGSUNG` (same-digit continuity) is FALSE. The pass's more specific parent-set
+  reading ({71202,71205,71208}) is NOT confirmed on the renders the conductor read and is
+  recorded as an unconfirmed detail — the disqualification rests only on the eye-verified
+  multi-parent fact (structured mapping readings are soft; verdict-relevant facts are the
+  load-bearing signal — Lot 4 meta-note).
+- **01629**: canonical `status_mapping="MATCH_CON_AGGREGAZIONE"` with no aggregation on
+  either crosswalk direction + `pp28_sources` including 01623 ("Jasa Penetasan Telur",
+  egg hatching — foreign activity). Adjudicated on the pass's declared double-direction
+  eye reading; the conductor did not independently re-read these renders — final
+  confirmation gates the cure spec for this code (fail-safe: the code is NOT used as a
+  control either way).
+
+**Consequences (program-level):** (1) 01629 + 71204 enter the standalone metadata
+cure-list (metadata_fixes pattern, dedicated spec+PR, evidence-gated); (2) the v3 POS
+pool burns +2 (both now exposed AND defective) — burn-list update due at the next
+registry emission; (3) **the FATAL-4 evidence hardens materially: the first draw from
+the 1,336 "verified" OSS-native pool produced 2/2 codes with false crosswalk metadata.**
+m5-POS remains UNMEASURABLE until the pool is credible — `pos_preverification_required`
+is now proven load-bearing (it caught both), not ceremonial.
 
 ## Adversarial review
 
