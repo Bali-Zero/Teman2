@@ -206,6 +206,9 @@ data/qdrant_production_snapshots/
 data/flyio-export-*/
 data/kg_production_export/
 data/hgt_coordinator/
+# NUZANTARA-LEX corpus cache (Phase 0, apps/nuzantara-lex/scripts/fetch_norms.py) —
+# regulation PDFs never enter git, only the manifest with sha256 provenance does.
+data/nuzantara-lex/
 benchmark_results/
 carousel-bali-traffic/output/
 carousel-bali-traffic/images/

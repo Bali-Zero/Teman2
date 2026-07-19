@@ -1,0 +1,185 @@
+name: cron - docs-inventory-refresh liveness (every 6h)
+
+# P3-prime (2026-07-17, research/operations/2026-07-17-push-pipeline-optimization-spec.md
+# §P3): liveness guardian for .github/workflows/docs-inventory-refresh.yml — the
+# scheduled organ that owns the ONE wall-clock-sensitive decision left in the docs-
+# guardian pipeline (has a doc's orphan_eligible_on passed?). GLM's panel review of
+# the rejected `as_of`-pin design named the exact failure this guards against: a
+# scheduler that silently stops running (expired credentials, disabled workflow,
+# quota exhaustion) while the now-deterministic PR gate stays green forever,
+# certifying a docs/DOCS_INVENTORY.md that quietly rots — cicatrix superscar #2,
+# "Esiste != Armato". See scripts/docs_inventory_refresh_liveness.py's module
+# docstring for the heartbeat-MECHANISM rationale in full (short version: `gh run
+# list` — GitHub's own execution ledger, already authoritative and free — not a
+# committed sidecar file, which is the right choice for a long-running Pro-side
+# daemon but would be the WRONG one here: it would need a real commit on every
+# no-drift run just to prove liveness, doubling this organ's PR-noise for no
+# benefit run history already provides for free).
+#
+# Threshold: 24h = 2x docs-inventory-refresh.yml's own 12h schedule interval
+# (07:00 + 19:00 UTC), per the mandate's explicit "2x l'intervallo" — see the
+# liveness script's SCHEDULE_INTERVAL_HOURS constant (single source of truth,
+# not duplicated as a bare number here).
+#
+# Mirrors the established cron-fly-restart-detector.yml pattern: schedule +
+# Telegram alert via repo secrets (TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID,
+# already provisioned per CLAUDE.md §13) + actions/cache-based cooldown so a
+# persistently-overdue organ pages once per window, not once every 6h.
+#
+# EXPECTED one-time bootstrap noise: docs-inventory-refresh.yml has never had a
+# successful run as of this workflow's introduction (its first schedule fire is
+# up to 12h after merge) — this liveness check's very first run(s) will
+# correctly report "NEVER completed successfully" and send ONE real Telegram
+# alert before the organ's first natural run lands. That is not a bug: it is
+# this workflow proving its own alert path is armed (the same principle as the
+# `--test` ping in scripts/intake_review_reader_liveness.sh), and it
+# self-resolves the moment docs-inventory-refresh.yml succeeds once.
+#
+# BLOCKER-4 EFFECT-check (red-team 2026-07-18, added same day): a WORKFLOW RUN
+# reporting success is necessary but not sufficient — the run can complete
+# green while its actual effect (the flip landing on main) never happens, if
+# the "Open refresh PR" step's `gh pr merge --auto` arm silently fails. This
+# guardian now ALSO asks `gh pr list` whether the organ has a bot-authored
+# flip-PR (branch prefix docs/auto-sync-inventory-) sitting OPEN past
+# --pr-max-age-hours (default 48h) and alarms on that independently of the
+# workflow-run check above — see docs_inventory_refresh_liveness.py's
+# check_stuck_prs() docstring.
+#
+# MAJOR-8 (red-team 2026-07-18, ACCEPTED WITH NOTE, not fixed here): this
+# guardian and the organ it watches run on the SAME scheduler (GitHub
+# Actions) — a common-mode outage (GH Actions region incident, org-level
+# Actions disablement, billing lapse) silently takes both down together, and
+# neither can page the other. No in-repo fix for this exists today; the
+# durable cure is an OUT-OF-BAND receptor (a Pro-side heartbeat poll, the
+# "organism healer" being the natural home per cicatrix-superscar #2's own
+# antidote pattern) that watches GitHub from OUTSIDE GitHub Actions.
+# Deliberately deferred, not silently dropped — tracked in
+# .claude/skills/modus/PENDING-ARMS.md.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6h, :17 offset to dodge the top-of-hour stampede
+  workflow_dispatch: {}
+
+concurrency:
+  group: docs-inventory-refresh-liveness
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read # BLOCKER-4 EFFECT-check: `gh pr list` for stuck organ flip-PRs
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COOLDOWN_KEY: docs-inventory-refresh-liveness-cooldown-v1
+      COOLDOWN_SECONDS: "21600" # 6h — one alert per still-overdue window, not one per run
+
+    steps:
+      - uses: actions/checkout@v7
+        # No fetch-depth: 0 — this script never touches git history, only
+        # `gh run list` (unlike docs_audit.py, which needs full history).
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Restore cooldown state
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/cooldown.state
+          key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.COOLDOWN_KEY }}-
+
+      - name: Check docs-inventory-refresh liveness
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO_SLUG: ${{ github.repository }}
+        run: |
+          set +e
+          OUT=$(python3 scripts/docs_inventory_refresh_liveness.py \
+            --repo "$REPO_SLUG" \
+            --workflow docs-inventory-refresh.yml \
+            --max-age-hours 24 \
+            --pr-max-age-hours 48 2>&1)
+          RC=$?
+          set -e
+          echo "$OUT"
+          {
+            echo "message<<LIVENESS_MSG_EOF"
+            echo "$OUT"
+            echo "LIVENESS_MSG_EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "overdue=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "overdue=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cooldown gate
+        id: cooldown
+        if: steps.check.outputs.overdue == 'true'
+        run: |
+          set -uo pipefail
+          STATE="$RUNNER_TEMP/cooldown.state"
+          touch "$STATE"
+          NOW=$(date +%s)
+          KEY="overdue"
+          LAST=$(grep "^${KEY}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2)
+          if [ -n "${LAST:-}" ]; then
+            AGE=$(( NOW - LAST ))
+            if [ "$AGE" -lt "$COOLDOWN_SECONDS" ]; then
+              echo "send=false" >> "$GITHUB_OUTPUT"
+              echo "cooldown active (${AGE}s < ${COOLDOWN_SECONDS}s) — alert suppressed"
+              exit 0
+            fi
+          fi
+          grep -v "^${KEY}:" "$STATE" > "${STATE}.tmp" 2>/dev/null || true
+          echo "${KEY}:${NOW}" >> "${STATE}.tmp"
+          mv "${STATE}.tmp" "$STATE"
+          echo "send=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save cooldown state
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/cooldown.state
+          key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
+
+      - name: Telegram alert
+        if: steps.check.outputs.overdue == 'true' && steps.cooldown.outputs.send == 'true'
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          MESSAGE: ${{ steps.check.outputs.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # MAJOR-6 fix (red-team 2026-07-18): both failure paths below used
+          # to `exit 0` / `|| true` — a missing secret or a failed curl made
+          # the ALARM ITSELF silently vanish while this workflow run stayed
+          # green, exactly the "esiste != armato" disease this guardian
+          # exists to catch, now inflicted on its own alert path. Both paths
+          # now fail this run for real: GitHub's own Actions-tab red state
+          # becomes the last-resort visible signal when Telegram delivery
+          # itself is what's broken.
+          set -uo pipefail
+          if [ -z "${BOT:-}" ] || [ -z "${CHAT:-}" ]; then
+            echo "::error::Telegram secrets missing — the docs-inventory-refresh OVERDUE alert could NOT be delivered (message: $MESSAGE). Failing this run so a missing alert path is itself visible (MAJOR-6)." >&2
+            exit 1
+          fi
+          TEXT="docs-inventory-refresh OVERDUE (P3-prime liveness guardian)
+          ${MESSAGE}
+          Run: ${RUN_URL}"
+          if ! curl -sS -f -m 10 -X POST \
+              "https://api.telegram.org/bot${BOT}/sendMessage" \
+              -d "chat_id=${CHAT}" \
+              --data-urlencode "text=${TEXT}" \
+              >/dev/null; then
+            echo "::error::Telegram sendMessage failed — the docs-inventory-refresh OVERDUE alert could NOT be delivered. Failing this run so a broken alert path is itself visible (MAJOR-6)." >&2
+            exit 1
+          fi
