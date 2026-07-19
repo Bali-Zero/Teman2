@@ -499,6 +499,55 @@ def test_probe_agy_missing_binary_not_installed(monkeypatch):
     assert status == ap.NOT_INSTALLED
 
 
+def test_probe_kimi_pong_is_live(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "• PONG\n", ""))
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_kimi_missing_binary_not_installed(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.NOT_INSTALLED
+
+
+def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
+    # guilt: the unauthenticated kimi-code shape has no 401 marker, only prose
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(
+        ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(1, "No providers configured.\n", "")
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_kimi_pong_with_provider_prose_stays_live(monkeypatch):
+    # innocence: a LIVE answer that happens to mention providers/login in prose
+    # must never be reclassified as a credential death
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, "PONG (managed provider kimi-code, logged in)\n", ""),
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_kimi_uses_devnull_stdin(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_kimi(timeout=5)
+    assert captured.get("stdin") == ap.subprocess.DEVNULL
+
+
 def test_probe_codex_uses_devnull_stdin(monkeypatch):
     captured = {}
 
