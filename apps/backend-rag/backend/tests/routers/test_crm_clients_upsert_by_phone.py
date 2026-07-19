@@ -259,17 +259,21 @@ def test_reject_ambiguous_refuses_before_any_mutation(
         "recap_applied": False,
         "was_archived": False,
     }
-    # ONLY the advisory-lock execute ran — no UPDATE, no INSERT.
-    assert conn.execute.await_count == 1
+    # ONLY the advisory-lock executes ran (legacy digits key + phonecore key) —
+    # no UPDATE, no INSERT.
+    executed = [str(c.args[0]) for c in conn.execute.await_args_list]
+    assert conn.execute.await_count == 2
+    assert all("pg_advisory_xact_lock" in s for s in executed)
     assert conn.fetchval.await_count == 0
 
 
-def test_archived_sole_match_reported_and_not_restored(
+def test_archived_sole_match_readonly_and_reported(
     client: TestClient, write_enabled: None, mock_db_pool
 ) -> None:
-    """Round-8 F11 archive gap: with restore disabled, a sole ARCHIVED match is
-    NOT resurrected and the response says so (`was_archived: true`) — identity
-    resolvers (intake delivery) fail closed on that flag."""
+    """Round-9 F14: with restore disabled, an ARCHIVED match is READ-ONLY —
+    no restore, no rename, no notes/recap (the caller's local identity may not
+    be this card's person) — and the response says so (`was_archived: true`,
+    action `skipped_archived`) so identity resolvers fail closed on it."""
     _pool, conn = mock_db_pool
     conn.fetch.return_value = [
         {"id": 5, "full_name": "Archived Person", "notes": "", "deleted_at": "2026-01-01",
@@ -279,6 +283,7 @@ def test_archived_sole_match_reported_and_not_restored(
         "/api/crm/clients/upsert-by-phone",
         json={
             "phone_normalized": "6281234567",
+            "full_name": "Wrong Local Identity",
             "notes_append": "x",
             "restore_if_archived": False,
         },
@@ -288,11 +293,13 @@ def test_archived_sole_match_reported_and_not_restored(
     body = resp.json()
     assert body["was_archived"] is True
     assert body["client_id"] == 5
-    # No restore: no executed UPDATE may clear deleted_at.
-    update_sqls = [
-        str(c.args[0]) for c in conn.execute.await_args_list if "UPDATE clients" in str(c.args[0])
-    ]
-    assert all("deleted_at = NULL" not in s for s in update_sqls)
+    assert body["action"] == "skipped_archived"
+    # ZERO mutations: the only executes are the 2 advisory locks (legacy digits
+    # key + canonical phonecore key) — no UPDATE of any kind.
+    executed = [str(c.args[0]) for c in conn.execute.await_args_list]
+    assert conn.execute.await_count == 2
+    assert all("pg_advisory_xact_lock" in s for s in executed)
+    assert conn.fetchval.await_count == 0  # no INSERT either
 
 
 def test_reject_ambiguous_single_match_still_enriches(

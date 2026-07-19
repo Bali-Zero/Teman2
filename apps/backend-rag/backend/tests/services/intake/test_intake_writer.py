@@ -1441,6 +1441,125 @@ async def test_delivery_blocks_on_stale_normalized_phone_duplicate(pool, seed, m
                 await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
 
 
+async def test_delivery_blocks_on_trunk_prefix_variant_duplicate(pool, seed, monkeypatch):
+    """Round-9 F13 guilt: a co-owner stored with the 0-trunk form (`0812…`)
+    of the selected client's 62-form number (`62812…`) is the SAME identity
+    per the official CRM dedup — the sole-owner gate must block it."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    tail = str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", "62" + tail, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-trunk-{uuid.uuid4().hex[:8]}",
+                "0" + tail,  # trunk-prefix variant of the SAME number
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f13")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # 0812… and 62812… are one owner
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_refuses_diverged_phone_columns(pool, seed, monkeypatch):
+    """Round-9 F11 gap-1 guilt: the SELECTED client's own card carries a stale
+    non-null phone_normalized that disagrees with raw `phone` — neither value
+    can prove the identity, so resolution must fail CLOSED."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    raw_phone = "62" + str(uuid.uuid4().int)[:9]
+    stale_norm = "62" + str(uuid.uuid4().int + 31)[:9]
+    async with pool.acquire() as conn:
+        # First set raw phone (trigger aligns phone_normalized)…
+        await conn.execute(
+            "UPDATE clients SET phone=$1 WHERE id=$2", "+" + raw_phone, seed["cid_a"]
+        )
+        # …then simulate the historical stale card: phone_normalized diverges
+        # (direct update — the trigger fires only ON UPDATE OF phone).
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11d")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # diverged card ⇒ fail closed
+
+
+def test_phone_core_parity_with_crm_dedup():
+    """The delivery gate's `_phone_core` MUST stay behaviourally identical to
+    the official CRM dedup `_normalize_phone_digits` (round-9 F13): a drift
+    between the two silently re-opens the prefix-equivalence hole."""
+    from backend.app.routers.crm_clients import _normalize_phone_digits
+    from backend.services.intake.crm_delivery import _phone_core
+
+    corpus = [
+        "+62 821-3454-721",
+        "0821 3454721",
+        "8213454721",
+        "62812345678",
+        "0812345678",
+        "812345678",
+        "+62 (0)",
+        "12345",  # <6 after strip → None
+        "",
+        None,
+    ]
+    for value in corpus:
+        assert _phone_core(value) == _normalize_phone_digits(value), value
+    # And the equivalence class itself:
+    assert _phone_core("0821 3454721") == _phone_core("+62 821-3454-721")
+
+
 async def test_delivery_holds_phone_advisory_lock_during_push(pool, seed, monkeypatch):
     """Round-8 F12: the resolve→push window must hold the LOCAL phone advisory
     lock (same hashtext key the upsert-by-phone endpoint takes) so
@@ -1459,6 +1578,13 @@ async def test_delivery_holds_phone_advisory_lock_during_push(pool, seed, monkey
                     "SELECT pg_try_advisory_xact_lock(hashtext($1))", client_phone
                 )
                 lock_free_during_push.append(bool(got))
+                # The canonical core key must be held too (round-9 F12/F13:
+                # this is the key prefix-variant writers converge on).
+                got_core = await probe_conn.fetchval(
+                    "SELECT pg_try_advisory_xact_lock(hashtext($1))",
+                    "phonecore:" + client_phone[2:],
+                )
+                lock_free_during_push.append(bool(got_core))
         return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
 
     monkeypatch.setattr(crm_push, "push_committed_document", _probe_push)
@@ -1481,7 +1607,7 @@ async def test_delivery_holds_phone_advisory_lock_during_push(pool, seed, monkey
         plan=plan,
         result=SimpleNamespace(doc_id=None, audit_id=None),
     )
-    assert lock_free_during_push == [False]  # held by delivery while push runs
+    assert lock_free_during_push == [False, False]  # both keys held during push
 
     # And released afterwards:
     async with pool.acquire() as conn:

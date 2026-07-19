@@ -25,18 +25,44 @@ def crm_write_key_from_env() -> str | None:
     return None
 
 
+def _phone_core(raw: object) -> str | None:
+    """Canonical dedup core of a phone: ASCII digits with the Indonesian
+    country/trunk prefix (leading ``62`` or ``0``) removed; None when fewer
+    than 6 digits remain. MUST stay behaviourally identical to the official
+    CRM dedup helper ``crm_clients._normalize_phone_digits`` (parity is
+    test-pinned): the sole-owner gate must consider ``0812…`` and ``62812…``
+    the SAME owner, exactly as the CRM dedup does (Codex round 9, F13).
+    """
+    if raw is None:
+        return None
+    digits = re.sub(r"[^0-9]", "", str(raw))
+    if digits.startswith("62"):
+        digits = digits[2:]
+    elif digits.startswith("0"):
+        digits = digits[1:]
+    return digits if len(digits) >= 6 else None
+
+
 # Sole-owner gate over BOTH phone columns (Codex round-8, F11 gaps): historical
 # rows carry stale/missing phone_normalized (the CRM dedup code coalesces raw
 # `phone` for the same reason), and ARCHIVED rows count too — the Fly resolver
 # searches archived rows and can restore one, so a soft-deleted local duplicate
-# is still a reachable wrong-attach vector. $2 is the canonical digit string.
+# is still a reachable wrong-attach vector. Comparison is on the CORE (trunk/
+# country prefix stripped, mirroring ``_phone_core``): ``0812…`` and ``62812…``
+# are the same owner (round-9 F13). $2 is the selected client's core.
 _PHONE_DUP_OWNERS_SQL = """
-SELECT COUNT(*) FROM clients
- WHERE id <> $1
-   AND (
-     regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') = $2
-     OR regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') = $2
-   )
+SELECT COUNT(*) FROM (
+  SELECT regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') AS dn,
+         regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr
+    FROM clients
+   WHERE id <> $1
+) t
+ WHERE CASE WHEN t.dn LIKE '62%' THEN substr(t.dn, 3)
+            WHEN t.dn LIKE '0%'  THEN substr(t.dn, 2)
+            ELSE t.dn END = $2
+    OR CASE WHEN t.dr LIKE '62%' THEN substr(t.dr, 3)
+            WHEN t.dr LIKE '0%'  THEN substr(t.dr, 2)
+            ELSE t.dr END = $2
 """
 
 
@@ -80,11 +106,12 @@ async def _resolve_and_push_locked(
     resolution_phone: str | None = None
     client_full_name: str | None = None
     phone_digits: str | None = None
+    phone_core: str | None = None
     async with pool.acquire() as conn:
         async with conn.transaction():
             if plan.client_id is not None:
                 crow = await conn.fetchrow(
-                    "SELECT full_name, phone_normalized FROM clients WHERE id = $1",
+                    "SELECT full_name, phone_normalized, phone FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 if crow is not None:
@@ -92,24 +119,61 @@ async def _resolve_and_push_locked(
                     if _name and not _name.lower().startswith("lead "):
                         client_full_name = _name
                     digits = re.sub(r"[^0-9]", "", crow["phone_normalized"] or "")
-                    if digits:
-                        await conn.execute(
-                            "SELECT pg_advisory_xact_lock(hashtext($1))", digits
+                    core_norm = _phone_core(crow["phone_normalized"])
+                    core_raw = _phone_core(crow["phone"])
+                    # Round-9 F11 gap 1: the selected client's OWN card must be
+                    # internally consistent — a stale non-null phone_normalized
+                    # diverging from raw `phone` means neither value can prove
+                    # the identity; resolving with either could deliver to that
+                    # number's actual Fly owner. Fail CLOSED on divergence, and
+                    # on a raw phone whose normalized companion is unusable.
+                    reason: str | None = None
+                    if core_norm is None or not digits:
+                        if (crow["phone"] or "").strip():
+                            reason = "unusable_normalized_phone"
+                        # else: plain no-phone card → silent fail-closed (as before)
+                    elif core_raw is not None and core_raw != core_norm:
+                        reason = "phone_columns_diverged"
+                    if reason is not None:
+                        logger.warning(
+                            "intake.delivery.local_phone_ambiguous queue=%s client=%s "
+                            "reason=%s",
+                            queue_id,
+                            plan.client_id,
+                            reason,
                         )
-                        # Re-read under the lock: the pre-lock read may be stale.
-                        fresh = await conn.fetchval(
-                            "SELECT phone_normalized FROM clients WHERE id = $1",
+                    elif core_norm is not None and digits:
+                        # Two lock keys, lexicographic order (digits key sorts
+                        # before 'phonecore:…' — deadlock-safe total order shared
+                        # by every participant): the exact-digits key converges
+                        # with upsert-by-phone's legacy lock; the canonical
+                        # 'phonecore:' key converges with prefix-variant writers
+                        # (PATCH phone updates, 0812… payloads) — round-9 F12/F13.
+                        for _key in sorted([digits, f"phonecore:{core_norm}"]):
+                            await conn.execute(
+                                "SELECT pg_advisory_xact_lock(hashtext($1))", _key
+                            )
+                        # Re-read BOTH columns under the lock: pre-lock reads may
+                        # be stale.
+                        fresh = await conn.fetchrow(
+                            "SELECT phone_normalized, phone FROM clients WHERE id = $1",
                             int(plan.client_id),
                         )
-                        stable = re.sub(r"[^0-9]", "", fresh or "") == digits
+                        stable = (
+                            fresh is not None
+                            and re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "")
+                            == digits
+                            and _phone_core(fresh["phone"]) in (None, core_norm)
+                        )
                         dup_owners = 0
                         if stable:
                             dup_owners = await conn.fetchval(
-                                _PHONE_DUP_OWNERS_SQL, int(plan.client_id), digits
+                                _PHONE_DUP_OWNERS_SQL, int(plan.client_id), core_norm
                             )
                         if stable and not dup_owners:
-                            resolution_phone = (crow["phone_normalized"] or "").strip()
+                            resolution_phone = digits
                             phone_digits = digits
+                            phone_core = core_norm
                         else:
                             logger.warning(
                                 "intake.delivery.local_phone_ambiguous queue=%s client=%s "
@@ -134,19 +198,24 @@ async def _resolve_and_push_locked(
                 sender_phone=resolution_phone,
                 client_full_name=client_full_name,
             )
-            if phone_digits is not None:
+            if phone_digits is not None and phone_core is not None:
                 # Divergence detection for lock-BYPASSING writers: if ownership
                 # changed between the gate and the upload, the upload may have
                 # landed on a resolution that no longer holds — it cannot be
                 # unwound here, so flag loudly for HITL review (ids only).
-                fresh = await conn.fetchval(
-                    "SELECT phone_normalized FROM clients WHERE id = $1",
+                fresh = await conn.fetchrow(
+                    "SELECT phone_normalized, phone FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 dup_after = await conn.fetchval(
-                    _PHONE_DUP_OWNERS_SQL, int(plan.client_id), phone_digits
+                    _PHONE_DUP_OWNERS_SQL, int(plan.client_id), phone_core
                 )
-                if re.sub(r"[^0-9]", "", fresh or "") != phone_digits or dup_after:
+                changed = (
+                    fresh is None
+                    or re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "") != phone_digits
+                    or _phone_core(fresh["phone"]) not in (None, phone_core)
+                )
+                if changed or dup_after:
                     logger.error(
                         "intake.delivery.phone_owner_diverged_post_upload queue=%s "
                         "client=%s push_status=%s — review this delivery",

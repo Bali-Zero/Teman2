@@ -67,6 +67,18 @@ def _normalize_phone_digits(raw: str | None) -> str | None:
     return digits if len(digits) >= 6 else None
 
 
+def _row_str(row: object, key: str) -> str | None:
+    """Subscript a DB row (asyncpg Record / dict) for a string column,
+    tolerating missing keys and non-string test doubles."""
+    if row is None:
+        return None
+    try:
+        value = row[key]  # type: ignore[index]
+    except (KeyError, TypeError):
+        return None
+    return value if isinstance(value, str) else None
+
+
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
 
@@ -1315,6 +1327,17 @@ async def upsert_client_by_phone(
             # Serialize concurrent upserts for THIS phone (insert-race proof without a
             # unique index, which is infeasible: 51 live shared-phone groups exist).
             await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", phone)
+            _core = _normalize_phone_digits(phone)
+            if _core:
+                # Canonical phone-core lock: converges with the intake-delivery
+                # resolution window and the PATCH phone writer even when the
+                # stored formats/prefixes differ (0812… vs 62812…) — round-9
+                # F12/F13. Acquisition order is lexicographic (the digits key
+                # above always sorts before 'phonecore:…'), giving every
+                # participant the same total order: deadlock-safe.
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext($1))", f"phonecore:{_core}"
+                )
 
             rows = await conn.fetch(
                 """
@@ -1344,6 +1367,20 @@ async def upsert_client_by_phone(
                 row = rows[0]
                 cid: int = row["id"]
                 was_archived = row["deleted_at"] is not None
+                if was_archived and not payload.restore_if_archived:
+                    # Archived rows are READ-ONLY when restore is disabled: an
+                    # identity-resolution caller must never rename/annotate an
+                    # archived card ahead of its own rejection — the local
+                    # identity it sends may not be this card's person (Codex
+                    # 2026-07-19 round 9, F14). No restore, no name/notes/recap.
+                    return {
+                        "client_id": cid,
+                        "was_created": False,
+                        "action": "skipped_archived",
+                        "matched_count": matched_count,
+                        "recap_applied": False,
+                        "was_archived": True,
+                    }
                 set_parts: list[str] = []
                 params: list[Any] = []
                 pi = 1
@@ -1611,7 +1648,32 @@ async def update_client(
             """
             params.append(client_id)
 
-            row = await conn.fetchrow(query, *params)  # nosemgrep
+            if updates.phone is not None:
+                # Phone is an identity-resolution key: intake delivery resolves
+                # the Fly identity by it while holding 'phonecore:' advisory
+                # locks. Changing a phone must be COOPERATIVE with that window
+                # (Codex 2026-07-19 round 9, F12): take the canonical core
+                # locks for both the OLD and NEW values inside one transaction,
+                # in sorted order (same total order as every other participant —
+                # deadlock-safe), so a mid-delivery phone reassignment blocks
+                # until the delivery window closes instead of racing it.
+                async with conn.transaction():
+                    _old = await conn.fetchrow(
+                        "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                        client_id,
+                    )
+                    _cores = {
+                        _normalize_phone_digits(updates.phone),
+                        _normalize_phone_digits(_row_str(_old, "phone")),
+                        _normalize_phone_digits(_row_str(_old, "phone_normalized")),
+                    }
+                    for _key in sorted(f"phonecore:{c}" for c in _cores if c):
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtext($1))", _key
+                        )
+                    row = await conn.fetchrow(query, *params)  # nosemgrep
+            else:
+                row = await conn.fetchrow(query, *params)  # nosemgrep
 
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
