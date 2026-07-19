@@ -479,3 +479,22 @@ async def test_archived_fly_match_fails_closed(mock_client, blob):
     assert result.ok is False
     assert result.status == "identity_unresolved"
     assert [r.url.path for r in requests] == ["/api/crm/clients/upsert-by-phone"]
+
+
+async def test_upload_carries_expected_phone_core_ownership_token(mock_client, blob):
+    """Round-12 F12 gap 3: the resolve and the upload are separate requests —
+    the upload body must carry the resolved phone core so the Fly endpoint can
+    re-prove ownership atomically with its documents INSERT."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"success": True, "document_id": 1, "file_url": None},
+        )
+
+    requests = mock_client(_serve_upsert(handler))
+    await crm_push.push_committed_document(**_push_kwargs(blob))
+
+    body = json.loads(requests[1].content)
+    # "+62 812-3456-7890" → digits 6281234567890 → core (62 stripped)
+    assert body["expected_phone_core"] == "81234567890"

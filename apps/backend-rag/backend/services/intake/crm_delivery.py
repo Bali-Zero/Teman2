@@ -43,7 +43,12 @@ def _raw_phone_state(raw: object) -> tuple[str, str | None]:
     s = ("" if raw is None else str(raw)).strip()
     if not s:
         return ("absent", None)
-    if not re.search(r"[0-9]", s):
+    # Digit-SIGNAL detection is Unicode-aware on purpose (Codex round 12, F11
+    # Unicode variant): a raw of Arabic-Indic/full-width digits is a phone
+    # CLAIM even though `phone_core` (deliberately ASCII-only, mirroring the
+    # SQL [^0-9] projections) can extract no core from it — that combination
+    # must land in `unusable` (fail closed), never `absent`.
+    if not re.search(r"\d", s):
         return ("absent", None)
     core = _phone_core(s)
     if core is None:

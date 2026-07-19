@@ -201,3 +201,46 @@ async def test_get_profile_data_returns_empty_when_client_missing() -> None:
     result = await service._get_profile_data(mock_conn, client_id=404)
 
     assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_update_profile_phone_lock_fails_closed_on_nonconvergence():
+    """Round-12 F12 gap 2 guilt: a phone value oscillating across concurrent
+    cooperative writers for all 3 convergence rounds must abort the update
+    (fail CLOSED), never proceed while the row's current core is unlocked."""
+    service, mock_conn = _make_service()
+    # Every re-read shows a DIFFERENT phone (fresh core each time) — the lock
+    # set can never cover the row's current cores.
+    mock_conn.fetchrow.side_effect = [
+        {**_PROFILE_ROW, "phone": "+62811111111", "phone_normalized": "62811111111"},
+        {**_PROFILE_ROW, "phone": "+62822222222", "phone_normalized": "62822222222"},
+        {**_PROFILE_ROW, "phone": "+62833333333", "phone_normalized": "62833333333"},
+    ]
+
+    with pytest.raises(RuntimeError, match="phone_lock_convergence_failed"):
+        await service.update_profile(
+            client_id=1,
+            fields={"phone": "+6281234567890"},
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    # The UPDATE never ran: every execute call was an advisory lock.
+    for call in mock_conn.execute.call_args_list:
+        assert "pg_advisory_xact_lock" in call[0][0]
+
+
+@pytest.mark.asyncio
+async def test_update_profile_phone_lock_converges_on_stable_row():
+    """Round-12 F12 gap 2 innocence: a stable row converges on the second
+    read and the update proceeds normally."""
+    service, mock_conn = _make_service()
+
+    result = await service.update_profile(
+        client_id=1,
+        fields={"phone": "+6281234567890"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+    assert result is not None
+    update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
+    assert update_sqls  # the write DID happen

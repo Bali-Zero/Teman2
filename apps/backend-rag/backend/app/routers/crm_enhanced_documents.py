@@ -25,6 +25,7 @@ from backend.app.routers.crm_enhanced import (
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
+from backend.phone_lock import lock_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -547,6 +548,13 @@ class DocumentUploadBase64(BaseModel):
     family_member_id: int | None = None
     practice_id: int | None = None
     company_id: int | None = None
+    # Ownership token (Codex 2026-07-19 round 12, F12 gap 3): intake delivery
+    # resolves the target client BY PHONE in a separate earlier request; this
+    # carries the resolved phone core into the upload so the handler can prove,
+    # atomically with the documents INSERT, that the target row still owns that
+    # phone. Optional — human/frontend uploads address a reviewed client id and
+    # don't send it.
+    expected_phone_core: str | None = None
 
 
 @router.post("/clients/{client_id}/documents/upload")
@@ -589,12 +597,33 @@ async def upload_document_base64(
 
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
-                "SELECT id, full_name, google_drive_folder_id, client_type FROM clients WHERE id = $1",
+                "SELECT id, full_name, google_drive_folder_id, client_type,"
+                "       phone, phone_normalized"
+                "  FROM clients WHERE id = $1",
                 client_id,
             )
 
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+
+            def _owns_expected_core(row: Any) -> bool:
+                cores = {
+                    c
+                    for c in (phone_core(row["phone"]), phone_core(row["phone_normalized"]))
+                    if c is not None
+                }
+                return data.expected_phone_core in cores
+
+            if data.expected_phone_core and not _owns_expected_core(client):
+                # Fast pre-check (Codex round 12, F12 gap 3): the caller
+                # resolved this client id BY PHONE in an earlier request; if
+                # the row no longer owns that core, uploading would attach the
+                # document to a different identity. Refuse before any Drive
+                # work. The authoritative check re-runs under lock at INSERT.
+                raise HTTPException(
+                    status_code=409,
+                    detail="phone_ownership_changed — re-resolve the client before upload",
+                )
 
             if data.company_id is not None:
                 company_link = await conn.fetchrow(
@@ -763,31 +792,57 @@ async def upload_document_base64(
                     status_code=500, detail=f"Failed to upload to drive: {e}"
                 ) from e
 
-            # Create Document Record
-            doc_id = await conn.fetchval(
-                """
-                INSERT INTO documents (
-                    client_id, document_type, document_category,
-                    file_name, file_id, file_url, google_drive_file_url,
-                    status, storage_type, notes, subfolder, expiry_date, content_hash,
-                    family_member_id, practice_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
-                RETURNING id
-                """,
-                client_id,
-                data.document_type,
-                category,
-                data.file_name,
-                upload_result["id"],
-                upload_result.get("webViewLink"),
-                upload_result.get("webViewLink"),
-                data.notes,
-                subfolder_value,
-                _parse_date_or_none(data.expiry_date),
-                content_hash,
-                data.family_member_id,
-                data.practice_id,
-            )
+            # Create Document Record. When the caller sent an ownership token,
+            # the INSERT commits ATOMICALLY with a re-verification under the
+            # cooperative phonecore lock (Codex round 12, F12 gap 3): a
+            # cooperative writer moving this phone blocks on the lock until we
+            # commit; a non-cooperative move is caught by the locked re-read.
+            # The Drive file already exists either way — an orphaned Drive file
+            # is recoverable noise, a mis-attached document is not.
+            async with conn.transaction():
+                if data.expected_phone_core:
+                    await lock_cores(
+                        conn,
+                        data.expected_phone_core,
+                        phone_core(client["phone"]),
+                        phone_core(client["phone_normalized"]),
+                    )
+                    _recheck = await conn.fetchrow(
+                        "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                        client_id,
+                    )
+                    if _recheck is None or not _owns_expected_core(_recheck):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                "phone_ownership_changed during upload — "
+                                "document NOT attached, re-resolve the client"
+                            ),
+                        )
+                doc_id = await conn.fetchval(
+                    """
+                    INSERT INTO documents (
+                        client_id, document_type, document_category,
+                        file_name, file_id, file_url, google_drive_file_url,
+                        status, storage_type, notes, subfolder, expiry_date, content_hash,
+                        family_member_id, practice_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
+                    RETURNING id
+                    """,
+                    client_id,
+                    data.document_type,
+                    category,
+                    data.file_name,
+                    upload_result["id"],
+                    upload_result.get("webViewLink"),
+                    upload_result.get("webViewLink"),
+                    data.notes,
+                    subfolder_value,
+                    _parse_date_or_none(data.expiry_date),
+                    content_hash,
+                    data.family_member_id,
+                    data.practice_id,
+                )
 
             company_document_id = None
             if data.company_id is not None:

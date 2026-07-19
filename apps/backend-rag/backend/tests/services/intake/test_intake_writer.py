@@ -1614,6 +1614,90 @@ async def test_delivery_digitfree_raw_phone_is_absent(pool, seed, monkeypatch):
     assert captured["sender_phone"] == valid
 
 
+async def test_delivery_unicode_digit_raw_phone_is_unusable(pool, seed, monkeypatch):
+    """Round-12 F11 Unicode variant guilt: a raw phone made of NON-ASCII digits
+    (Arabic-Indic '١٢٣٤٥') is a phone CLAIM that yields no ASCII core — it must
+    classify `unusable` and fail delivery closed, never `absent` (which would
+    let a valid-but-stale phone_normalized resolve unchecked)."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+    from backend.services.intake.crm_delivery import _raw_phone_state
+
+    # Unit-level guilt+innocence for the classifier itself.
+    assert _raw_phone_state("١٢٣٤٥") == ("unusable", None)
+    assert _raw_phone_state("０８１２３") == ("unusable", None)  # full-width
+    assert _raw_phone_state("n/a") == ("absent", None)  # digit-free stays absent
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    stale_norm = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        # Raw with Unicode digits (trigger's [^0-9] SQL strip empties it →
+        # normalized recomputed empty), then a stale-valid normalized via
+        # direct update (trigger fires only ON UPDATE OF phone).
+        await conn.execute("UPDATE clients SET phone='١٢٣٤٥' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11u")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # unicode-digit raw ⇒ unusable ⇒ closed
+
+
+async def test_upsert_match_sql_finds_raw_only_owner(pool):
+    """Round-12 F15: a historical row with a RAW phone and NULL/stale
+    phone_normalized must still match by core — the predicate covers BOTH
+    columns. Executed against the real SQL; the raw-only shape is built by
+    nulling phone_normalized directly (the trigger fires only ON UPDATE OF
+    phone, so the NULL sticks)."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"rawonly-{uuid.uuid4().hex[:6]}",
+                "0" + tail,
+            )
+            await conn.execute(
+                "UPDATE clients SET phone_normalized = NULL WHERE id=$1", cid
+            )
+            check = await conn.fetchrow(
+                "SELECT phone, phone_normalized FROM clients WHERE id=$1", cid
+            )
+            assert check["phone_normalized"] is None  # raw-only shape is real
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            assert cid in {r["id"] for r in rows}  # found via the raw column leg
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
 async def test_upsert_match_sql_equates_prefix_variants(pool):
     """Round-10 F15: the upsert-by-phone matcher must recognize 0812… and
     62812… as ONE identity — executed against the REAL matcher SQL, so a

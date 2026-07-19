@@ -18,6 +18,14 @@ from fastapi import HTTPException
 # ============================================================
 
 
+class _Tx:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+
 @pytest.fixture
 def mock_db_pool():
     pool = MagicMock()
@@ -26,6 +34,9 @@ def mock_db_pool():
     acquire_cm.__aenter__ = AsyncMock(return_value=conn)
     acquire_cm.__aexit__ = AsyncMock(return_value=False)
     pool.acquire = MagicMock(return_value=acquire_cm)
+    # conn.transaction() must be an async CM, not a coroutine (the document
+    # INSERT commits inside a TX since round-12 F12 gap 3).
+    conn.transaction = MagicMock(return_value=_Tx())
     pool._mock_conn = conn
     return pool
 
@@ -882,3 +893,187 @@ async def test_internal_upload_reuses_base64_upload_with_preverified_access(mock
     assert kwargs["pool"] is mock_db_pool
     assert kwargs["access_already_verified"] is True
     assert kwargs["current_user"]["email"] == "wa-mirror-crm-writer@balizero.com"
+
+
+# ============================================================
+# Round-12 F12 gap 3 — expected_phone_core ownership token
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_upload_refuses_when_expected_phone_core_not_owned(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Guilt (pre-check): the caller resolved the client BY PHONE; if the row
+    no longer owns that core the upload must 409 BEFORE any Drive work."""
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",
+        "phone_normalized": "6281234567890",
+    }
+    drive_ctor = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            new=drive_ctor,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    expected_phone_core="99998888777",  # NOT this row's core
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 409
+    assert "phone_ownership_changed" in exc_info.value.detail
+    drive_ctor.assert_not_called()  # refused before any Drive work
+
+
+@pytest.mark.asyncio
+async def test_upload_recheck_under_lock_catches_midflight_phone_move(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Guilt (atomic re-check): ownership held at the pre-check but the phone
+    moved during the Drive upload — the locked re-read must 409 and the
+    documents INSERT must never run."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        {  # initial read: row owns the expected core
+            "id": 1,
+            "full_name": "Client One",
+            "google_drive_folder_id": "root",
+            "client_type": "individual",
+            "phone": "+62 812-3456-7890",
+            "phone_normalized": "6281234567890",
+        },
+        {  # locked re-read: ownership moved mid-flight
+            "phone": "+62 899-0000-111",
+            "phone_normalized": "628990000111",
+        },
+    ]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    document_category="immigration",
+                    expected_phone_core="81234567890",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                background_tasks=BackgroundTasks(),
+            )
+
+    assert exc_info.value.status_code == 409
+    assert "phone_ownership_changed" in exc_info.value.detail
+    # The INSERT never ran.
+    for call in conn.fetchval.await_args_list:
+        assert "INSERT INTO documents" not in call.args[0]
+
+
+@pytest.mark.asyncio
+async def test_upload_with_owned_expected_core_proceeds(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Innocence: a matching, stable ownership token lets the upload complete
+    normally (the gate never blocks the legitimate path)."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    row = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",
+        "phone_normalized": "6281234567890",
+    }
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [row, {"phone": row["phone"], "phone_normalized": row["phone_normalized"]}]
+    conn.fetchval.side_effect = [701]  # documents.id
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        result = await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="passport.pdf",
+                document_type="passport",
+                document_category="immigration",
+                expected_phone_core="81234567890",
+            ),
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result["success"] is True

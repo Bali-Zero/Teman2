@@ -42,6 +42,22 @@ def phone_core(raw: object) -> str | None:
     return digits if len(digits) >= 6 else None
 
 
+async def lock_cores(conn: asyncpg.Connection, *cores: str | None) -> set[str]:
+    """Take transaction-scoped advisory locks on ALREADY-canonical cores.
+
+    For callers that hold a core (not a raw phone) — e.g. an ownership token
+    carried across an HTTP boundary. ``phone_core`` is NOT idempotent (a core
+    that itself starts with ``62``/``0`` would be re-stripped), so re-deriving
+    from a core would lock the WRONG key; this primitive locks the given cores
+    verbatim. None/empty entries are skipped. Same keyspace, same sorted-order
+    acquisition, same in-transaction requirement as :func:`lock_phone_cores`.
+    """
+    wanted = {c for c in cores if c}
+    for key in sorted(f"phonecore:{c}" for c in wanted):
+        await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", key)
+    return wanted
+
+
 async def lock_phone_cores(conn: asyncpg.Connection, *values: object) -> set[str]:
     """Take transaction-scoped advisory locks on the cores of ``values``.
 
@@ -52,7 +68,4 @@ async def lock_phone_cores(conn: asyncpg.Connection, *values: object) -> set[str
     transaction — ``pg_advisory_xact_lock`` outside one releases at statement
     end, silently disarming the protocol.
     """
-    cores = {c for v in values if (c := phone_core(v)) is not None}
-    for key in sorted(f"phonecore:{c}" for c in cores):
-        await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", key)
-    return cores
+    return await lock_cores(conn, *(phone_core(v) for v in values))

@@ -1133,3 +1133,34 @@ class TestGetClientWaCaseIntelligence:
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
+
+
+class TestUpdateClientPhoneLockConvergence:
+    """Round-12 F12 gap 1: the PATCH phone convergence loop must fail CLOSED."""
+
+    def test_patch_phone_nonconvergence_returns_409(self, client, mock_db_pool):
+        """Guilt: a row whose phone shows a FRESH core on every re-read never
+        converges — after 3 rounds the PATCH must 409, never UPDATE while the
+        current core is unlocked."""
+        pool, conn = mock_db_pool
+
+        conn.execute = AsyncMock()
+        # Every read shows a FRESH phone core (surrounding reads — e.g. the
+        # audit decorator's previous-state fetch — consume from the same
+        # sequence, hence the generous supply).
+        oscillating = [
+            {"phone": f"+628{n}{n}{n}{n}{n}{n}{n}{n}", "phone_normalized": f"628{n}" * 4}
+            for n in range(1, 9)
+        ]
+        conn.fetchrow = AsyncMock(side_effect=oscillating)
+
+        response = client.patch(
+            "/api/crm/clients/1?updated_by=test@example.com",
+            json={"phone": "+6281234567890"},
+        )
+
+        assert response.status_code == 409
+        assert "phone_lock_convergence_failed" in response.json()["detail"]
+        # The UPDATE ... RETURNING never ran — every execute was a lock.
+        for call in conn.execute.call_args_list:
+            assert "UPDATE clients" not in call[0][0]

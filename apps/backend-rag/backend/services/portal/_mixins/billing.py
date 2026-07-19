@@ -12,7 +12,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
-from backend.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
 from backend.services.portal._rbac import ClientContext, require_client_access
 
@@ -275,24 +275,49 @@ class PortalBillingMixin:
                         # resolves the Fly identity by it under 'phonecore:'
                         # advisory locks (Codex 2026-07-19 round 10, F12) — a
                         # portal self-serve phone change must be cooperative
-                        # with that window, never race it.
-                        _old = await conn.fetchrow(
-                            "SELECT phone, phone_normalized FROM clients WHERE id = $1",
-                            client_id,
-                        )
-
+                        # with that window, never race it. Re-read-under-lock
+                        # CONVERGENCE loop (round 12, F12 gap 2): the pre-lock
+                        # read can be stale, so keep re-reading and additively
+                        # locking until the row's cores are covered by locks we
+                        # hold — and fail CLOSED if that never converges.
                         def _val(row: Any, key: str) -> Any:
                             try:
                                 return row[key]
                             except (KeyError, TypeError):
                                 return None
 
-                        await lock_phone_cores(
-                            conn,
-                            safe_fields.get("phone"),
-                            _val(_old, "phone") if _old else None,
-                            _val(_old, "phone_normalized") if _old else None,
-                        )
+                        _locked: set[str] = set()
+                        _converged = False
+                        for _ in range(3):
+                            _old = await conn.fetchrow(
+                                "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                                client_id,
+                            )
+                            _want = {
+                                c
+                                for c in (
+                                    phone_core(safe_fields.get("phone")),
+                                    phone_core(_val(_old, "phone") if _old else None),
+                                    phone_core(
+                                        _val(_old, "phone_normalized") if _old else None
+                                    ),
+                                )
+                                if c is not None
+                            }
+                            if _want <= _locked:
+                                _converged = True
+                                break
+                            _locked |= await lock_phone_cores(
+                                conn,
+                                safe_fields.get("phone"),
+                                _val(_old, "phone") if _old else None,
+                                _val(_old, "phone_normalized") if _old else None,
+                            )
+                        if not _converged:
+                            raise RuntimeError(
+                                "phone_lock_convergence_failed — concurrent phone "
+                                "writers, retry the profile update"
+                            )
                     await conn.execute(
                         f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
                         *params,

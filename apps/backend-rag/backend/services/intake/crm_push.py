@@ -35,6 +35,8 @@ from typing import Any
 
 import httpx
 
+from backend.phone_lock import phone_core
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://nuzantara-rag.fly.dev"
@@ -347,6 +349,15 @@ async def push_committed_document(
             detail="phone-upsert could not resolve an UNAMBIGUOUS Fly client id",
         )
     target_client_id = fly_cid
+
+    # Ownership token (Codex round 12, F12 gap 3): the resolve and the upload
+    # are SEPARATE HTTP requests — a Fly-side phone move in between would land
+    # the document on a card that no longer owns the resolved phone. Carry the
+    # resolved core so the upload endpoint re-proves ownership atomically with
+    # its documents INSERT (409 on mismatch -> delivery fails closed).
+    _expected_core = phone_core(sender_phone)
+    if _expected_core:
+        payload["expected_phone_core"] = _expected_core
 
     url, headers = _build_request(target_client_id)
     client = _get_client()

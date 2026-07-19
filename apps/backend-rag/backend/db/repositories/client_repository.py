@@ -5,9 +5,31 @@ from typing import Any
 import asyncpg
 
 from backend.db.base_repository import BaseRepository
-from backend.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
 from backend.utils.query_builder import QueryBuilder
+
+
+class DuplicatePhoneError(Exception):
+    """A live client already owns this phone core (Codex round 12, F16).
+
+    Raised by ``create_client_with_details`` when the under-lock dedup
+    re-check finds an owner the router's pre-transaction check missed (two
+    concurrent creates both pass the pre-check, then serialize on the
+    phonecore advisory lock — the second must fail, not double-insert).
+    """
+
+    def __init__(
+        self,
+        *,
+        existing_client_id: int,
+        existing_full_name: str | None,
+        existing_assigned_to: str | None,
+    ) -> None:
+        super().__init__(f"duplicate phone core owner: client {existing_client_id}")
+        self.existing_client_id = existing_client_id
+        self.existing_full_name = existing_full_name
+        self.existing_assigned_to = existing_assigned_to
 
 logger = logging.getLogger(__name__)
 
@@ -116,10 +138,18 @@ class ClientRepository(BaseRepository):
         client_data: dict[str, Any],
         company_data: dict[str, Any] | None = None,
         existing_company_id: int | None = None,
+        *,
+        enforce_unique_phone_core: bool = False,
     ) -> asyncpg.Record:
         """
         2) ATOMICITÀ: Crea un cliente e, opzionalmente, la sua azienda associata.
         Avvolge l'intera operazione in un blocco transazionale esplicito.
+
+        ``enforce_unique_phone_core`` (round 12, F16): re-run the phone dedup
+        check UNDER the phonecore advisory lock and raise
+        :class:`DuplicatePhoneError` on a hit. An explicit parameter, not a
+        client_data key — the service layer's ``ClientValidator`` round-trip
+        drops unknown keys, so a smuggled flag would silently disarm.
         """
         async with self.db_pool.acquire() as conn, conn.transaction():
             # Garantisce che, se la creazione dell'azienda o del link fallisce,
@@ -164,7 +194,46 @@ class ClientRepository(BaseRepository):
                 # 10, F12): creating a client with a phone adds an owner of
                 # that core — take the cooperative lock inside this TX so the
                 # insert cannot race an intake-delivery resolution window.
-                await lock_phone_cores(conn, client_data.get("phone"))
+                await lock_phone_cores(
+                    conn, client_data.get("phone"), client_data.get("whatsapp")
+                )
+                if enforce_unique_phone_core:
+                    # Round 12, F16: the router's dedup pre-check runs BEFORE
+                    # this transaction — two concurrent creates can both pass
+                    # it and serialize on the lock above one after the other.
+                    # Re-check under the held lock so the second one fails
+                    # instead of inserting a duplicate owner of the core.
+                    _core = phone_core(
+                        client_data.get("phone") or client_data.get("whatsapp")
+                    )
+                    if _core:
+                        _dup = await conn.fetchrow(
+                            """
+                            WITH norm AS (
+                                SELECT id, full_name, assigned_to, updated_at,
+                                       REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
+                                                      '\\D', '', 'g') AS digits
+                                FROM clients
+                                WHERE deleted_at IS NULL
+                            )
+                            SELECT id, full_name, assigned_to
+                            FROM norm
+                            WHERE CASE
+                                    WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
+                                    WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
+                                    ELSE digits
+                                  END = $1
+                            ORDER BY updated_at DESC NULLS LAST
+                            LIMIT 1
+                            """,
+                            _core,
+                        )
+                        if _dup:
+                            raise DuplicatePhoneError(
+                                existing_client_id=_dup["id"],
+                                existing_full_name=_dup["full_name"],
+                                existing_assigned_to=_dup["assigned_to"],
+                            )
                 client_record = await conn.fetchrow(
                     client_query,
                     client_data.get("full_name"),

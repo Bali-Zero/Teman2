@@ -42,7 +42,7 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
-from backend.db.repositories.client_repository import ClientRepository
+from backend.db.repositories.client_repository import ClientRepository, DuplicatePhoneError
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
@@ -74,10 +74,13 @@ def _row_str(row: object, key: str) -> str | None:
 
 
 # Core-equivalence matcher for upsert-by-phone: matches every stored row whose
-# phone_normalized collapses to the same canonical core as the payload — 0812…
-# and 62812… are ONE identity (Codex 2026-07-19 round 10, F15: exact-string
-# matching let intake delivery mint duplicate cards for prefix variants). $1 is
-# the payload's core. SQL CASE mirrors backend.phone_lock.phone_core.
+# phone columns collapse to the same canonical core as the payload — 0812… and
+# 62812… are ONE identity (Codex 2026-07-19 round 10, F15). The predicate
+# covers BOTH columns (round 12): historical rows exist with a raw `phone` and
+# a NULL/stale `phone_normalized` (the trigger only recomputes on UPDATE OF
+# phone), and matching only the normalized column would let the INSERT path
+# mint a duplicate card for a raw-only owner. $1 is the payload's core. SQL
+# CASE mirrors backend.phone_lock.phone_core.
 UPSERT_MATCH_SQL = """
 SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
 FROM clients
@@ -86,6 +89,11 @@ WHERE CASE WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'
            WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') LIKE '0%'
            THEN substr(regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'), 2)
            ELSE regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') END = $1
+   OR CASE WHEN regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') END = $1
 ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
 FOR UPDATE
 """
@@ -660,12 +668,37 @@ async def create_client(
                 if nib:
                     company_data["nib"] = nib
 
-        # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
-        created_record = await client_service.create_client(
-            client_data=client_data,
-            company_data=company_data,
-            existing_company_id=existing_company_id,
-        )
+        # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors).
+        # enforce_unique_phone_core (round 12, F16): the dedup pre-check above
+        # runs OUTSIDE the create transaction — arm the repository's
+        # under-lock re-check so two concurrent creates cannot both pass it
+        # and double-insert.
+        try:
+            created_record = await client_service.create_client(
+                client_data=client_data,
+                company_data=company_data,
+                existing_company_id=existing_company_id,
+                enforce_unique_phone_core=not allow_dup_phone,
+            )
+        except DuplicatePhoneError as dup_err:
+            logger.info(
+                "create_client phone dedup hit under lock: existing client id=%s",
+                dup_err.existing_client_id,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "duplicate_phone",
+                    "message": (
+                        "A client with this phone already exists. Open the "
+                        "existing record, or resend with allow_duplicate_phone "
+                        "to add a separate person on a shared number."
+                    ),
+                    "existing_client_id": dup_err.existing_client_id,
+                    "existing_full_name": dup_err.existing_full_name,
+                    "existing_assigned_to": dup_err.existing_assigned_to,
+                },
+            ) from dup_err
 
         new_client = dict(created_record)
 
@@ -1675,6 +1708,7 @@ async def update_client(
                 # until the row's cores are fully covered by locks we hold.
                 async with conn.transaction():
                     _locked: set[str] = set()
+                    _converged = False
                     for _ in range(3):
                         _cur = await conn.fetchrow(
                             "SELECT phone, phone_normalized FROM clients WHERE id = $1",
@@ -1690,12 +1724,23 @@ async def update_client(
                             if c is not None
                         }
                         if _want <= _locked:
+                            _converged = True
                             break
                         _locked |= await lock_phone_cores(
                             conn,
                             updates.phone,
                             _row_str(_cur, "phone"),
                             _row_str(_cur, "phone_normalized"),
+                        )
+                    if not _converged:
+                        # Fail CLOSED (Codex round 12, F12 gap 1): a value
+                        # oscillating across concurrent writers for 3 rounds
+                        # means we would UPDATE while the row's CURRENT core is
+                        # not among the locks we hold — retryable contention,
+                        # never a silent race.
+                        raise HTTPException(
+                            status_code=409,
+                            detail="phone_lock_convergence_failed — concurrent phone writers, retry",
                         )
                     row = await conn.fetchrow(query, *params)  # nosemgrep
             else:
