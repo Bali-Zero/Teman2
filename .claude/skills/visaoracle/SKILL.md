@@ -133,6 +133,39 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   py/non-iterable-in-for-loop is a required-check failure class (S3 cured it on their tree in
   commit 1a4360dc1b; A-tree tests should adopt the same pattern in PR1b).
 
+- 2026-07-19: **TRACK A PR1b ARBITRATION RESOLVED + STAGE_ORDER CORRECTED.** The 2026-07-18 line
+  126-134 WARNING above ("the two trees disagree on ELIGIBILITY vs HUMAN_REVIEW precedence —
+  arbitrate against the round-2 spec") was itself resolved WRONG the first time: the M5 lane's PR1b
+  attempt (worktree `backend-rag-visa-engine-pr1b`) arbitrated to the enum-DECLARATION order
+  (HARD_FILTER→ELIGIBILITY→HUMAN_REVIEW→RANKING, matching enums.py's literal source order + the
+  spec's JSON Schema enum listing) — flagged **P0 by tri-LLM review on its own PR #2781** and
+  independently re-verified by re-reading the spec's §4.2 `evaluate_product` ALGORITHM pseudocode
+  directly: the correct order is **HARD_FILTER→HUMAN_REVIEW→ELIGIBILITY→RANKING**, exactly what
+  sibling PR #2773 already shipped (commit message: "the prior docstring's 'evaluated in this strict
+  order' claim was wrong"). Declaration order ≠ processing order — do not re-litigate this without
+  re-reading §4.2 fresh. Meanwhile a sibling S3 lane had independently re-shipped the whole PR1b
+  port-list as **PR #2745 MERGED 2026-07-18T14:17:49Z** (after hotfix #2739, before PR2b #2757 and
+  PR3 #2773 — all 4 verified MERGED via `gh pr view` against `Balizero1987/Teman2`), making the M5
+  lane's #2781 a twin-race casualty: **CLOSED 2026-07-19T02:33:58Z**, no merge attempted, full
+  investigative writeup on the PR. Items 1 (canonical date literals) and 3 (StrictBool) were also
+  redundant against #2745's more mature equivalents. Only 2 of the original 5 port-list items were
+  genuinely still unclaimed after a fresh `origin/main` content grep (no merged commit, no open
+  PR/branch): CodeQL `list(Enum)` pattern (7 sites) and the JSON-Schema-vs-StrictInt integer-parity
+  documentation+pin (line 130-131's "common residual" above) — both shipped via branch
+  `agent/air-m5/backend-rag/visa-engine-pr1b-residual` (commit `fc24dc7913`, 492/492 suite green,
+  ruff clean, docs_sync clean).
+- 2026-07-19: **LEDGER GAP FLAGGED (not backfilled here — respecting "whoever changes state updates
+  this file")**: lines 116-118 above narrate Track A only through "STEP 3 (PR2 signed bundle) in
+  flight" — PR2b (#2757, merged 2026-07-18T17:45:52Z) and PR3 (#2773, strong-Kleene evaluator +
+  2-seat fixes, merged 2026-07-18T19:34:19Z) both already landed on main since then but have no
+  LIVE STATE entry recording it. Track A's own next-lane session should backfill STEP 4/5 entries.
+  **Verified standing blocker**: Ed25519 key ceremony remains explicitly operator-side and undone —
+  `bundle.py:269`'s own comment ("the key ceremony (generating...") plus the STEP-2/3 entry's
+  "FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD)" both confirm
+  signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
+  is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
+  is done.
+
 ## TRACKS — parallel work groups (multi-session coordination)
 
 The v2 program runs as separate tracks, one per surface, coordinated ONLY through this skill. Any

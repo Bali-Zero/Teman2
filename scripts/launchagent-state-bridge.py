@@ -49,6 +49,12 @@ class BridgedLaunchAgent:
     organ_id: str
     daemon: bool
     legacy_job_id: str = ""
+    # StartInterval jobs legitimately sit pid=None ("exited") between ticks, and
+    # launchctl's exit column is sticky across restarts. Neither daemon=True
+    # (pid-required → false-failed between ticks) nor daemon=False (sticky
+    # exit-required → false-failed while a run is live) fits them: an interval
+    # job is healthy when it is running NOW or its last run exited clean.
+    interval_job: bool = False
 
 
 @dataclass(frozen=True)
@@ -80,12 +86,15 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
     BridgedLaunchAgent(
         label="com.balizero.post-publish-poller",
         organ_id="pro.post_publish_poller",
-        # daemon=True: this is a long-running KeepAlive poller with a live pid,
-        # not a scheduled one-shot. With daemon=False the receipt was derived
-        # from launchctl's sticky "last exit code" column (=1 after any past
-        # crash/restart), reporting status=failed while ps proved the process
-        # alive and actively opening PRs (observed live 2026-07-18).
-        daemon=True,
+        # interval_job: the plist is StartInterval=300 (verified via plutil
+        # 2026-07-19), NOT KeepAlive. This spec has now produced BOTH false
+        # verdicts: daemon=False false-failed on the sticky exit=1 while a run
+        # was live (observed 2026-07-18, flipped to daemon=True by #2715), then
+        # daemon=True false-failed "daemon not running" between ticks while the
+        # log showed clean 5-min runs (observed 2026-07-19). interval_job
+        # covers both: alive-now OR last-run-clean = ok.
+        daemon=False,
+        interval_job=True,
         legacy_job_id="post_publish_poller",
     ),
     BridgedLaunchAgent(
@@ -592,7 +601,14 @@ def build_receipt(
     pid = agent.get("pid")
     exit_code = agent.get("exit_code", 0)
 
-    if spec.daemon:
+    if spec.interval_job:
+        # Alive-now OR last-run-clean = ok. Only idle-AND-crashed-last-run is a
+        # real failure for a StartInterval job (see the dataclass field note).
+        if pid is not None or exit_code in HEALTHY_EXIT_CODES:
+            status, last_error = "ok", ""
+        else:
+            status, last_error = "failed", f"exit code {exit_code}"
+    elif spec.daemon:
         status = "ok" if pid is not None else "failed"
         last_error = "" if pid is not None else "daemon not running"
     else:
