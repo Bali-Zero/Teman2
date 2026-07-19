@@ -50,6 +50,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      - name: Runner probe (temporary, day-0)
+        run: |
+          echo "arch=$(uname -m) nproc=$(nproc)"
+          grep -m1 'model name' /proc/cpuinfo || true
+          echo "image=$ImageOS/$ImageVersion"
+          free -h | head -2; df -h / | tail -1
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
