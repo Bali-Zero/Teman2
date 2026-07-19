@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "4d2d6cba598f3a75d84a3a752aca01c73a4ddaa7",
-  "canonical_sha256": "e47dc63a9191e6a43fe513ca99a24622e6d88460c6396a0c6ce8815046e3f531",
+  "canonical_revision": "978530a7ecaa4c5a216a237cf7ce6bf364092d8d",
+  "canonical_sha256": "03e3116a5d6bddd30d1d154842a30024396512c81b9ccfe28e0a0f813047fc02",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,9 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 172,
-    "A-serving/pp28": 48,
-    "A-serving/orphan": 1,
-    "_in_scope_total": 49,
+    "A-empty/gap": 185,
+    "A-serving/pp28": 36,
+    "_in_scope_total": 36,
     "_total": 221
   },
   "members": [
@@ -750,8 +749,8 @@
     },
     {
       "kode_kbli_2025": "72101",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Alam",
       "pp28_sources": [
@@ -760,8 +759,8 @@
     },
     {
       "kode_kbli_2025": "72103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Kedokteran dan Kesehatan",
       "pp28_sources": [
@@ -770,8 +769,8 @@
     },
     {
       "kode_kbli_2025": "72105",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Pertanian dan Kedokteran Hewan",
       "pp28_sources": [
@@ -796,8 +795,8 @@
     },
     {
       "kode_kbli_2025": "75001",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Personel Kesehatan Hewan Mandiri",
       "pp28_sources": [
@@ -806,8 +805,8 @@
     },
     {
       "kode_kbli_2025": "75002",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Pengelolaan Sarana Kesehatan Hewan",
       "pp28_sources": [
@@ -816,8 +815,8 @@
     },
     {
       "kode_kbli_2025": "75009",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Pengelolaan Kesehatan Hewan Lainnya",
       "pp28_sources": [
@@ -826,8 +825,8 @@
     },
     {
       "kode_kbli_2025": "77397",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.G",
       "judul": "Penyewaan dan Sewa Guna Usaha Mesin dan Peralatan Radiasi",
       "pp28_sources": [
@@ -836,8 +835,8 @@
     },
     {
       "kode_kbli_2025": "78109",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penempatan Tenaga Kerja Lainnya",
       "pp28_sources": [
@@ -854,16 +853,16 @@
     },
     {
       "kode_kbli_2025": "80190",
-      "reason_code": "A-serving/orphan",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Aktivitas Keamanan YTDL",
       "pp28_sources": []
     },
     {
       "kode_kbli_2025": "82911",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Aktivitas Agen Penagihan",
       "pp28_sources": [
@@ -1232,8 +1231,8 @@
     },
     {
       "kode_kbli_2025": "85321",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pendidikan Menengah Kejuruan Umum Pemerintah",
       "pp28_sources": [
@@ -1242,8 +1241,8 @@
     },
     {
       "kode_kbli_2025": "85323",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Pendidikan Menengah Kejuruan Keagamaan Islam",
       "pp28_sources": [
@@ -1252,8 +1251,8 @@
     },
     {
       "kode_kbli_2025": "85324",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Pendidikan Menengah Kejuruan Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
       "pp28_sources": [

@@ -230,6 +230,24 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
             "if": {"properties": {"status": {"const": "AVAILABLE"}}},
             "then": {
                 "properties": {
+                    # PR1b item 5 (residual, twin-race adjudication 2026-07-19):
+                    # JSON Schema 2020-12 "type": "integer" is defined as "a
+                    # number with a zero fractional part" and therefore
+                    # ACCEPTS a float like 2.0 as a valid integer instance.
+                    # PriceQuote.amount is `Annotated[int, Field(strict=True)]`
+                    # on the Pydantic side, and pydantic-core's strict-int mode
+                    # REJECTS any float, including whole-valued ones. This
+                    # divergence is inexpressible in pure JSON Schema (no
+                    # "reject non-int-typed floats" primitive exists) and is
+                    # therefore intentional, not a defect — pinned in both
+                    # directions by
+                    # TestIntegerParityDivergencePinned in
+                    # test_schema_contracts.py (via Rule.priority, same
+                    # strict-int shape). Every other strict-int field in this
+                    # engine (e.g. Rule.priority) shares the identical gap;
+                    # this comment lives here because this is the one place
+                    # in schema_export.py that hand-writes an integer type
+                    # literal — the rest are Pydantic-auto-generated.
                     "amount": {"type": "integer", "minimum": 0},
                     "catalog_version": {"type": "string"},
                     "catalog_sha256": _SHA256_HEX_INLINE,
