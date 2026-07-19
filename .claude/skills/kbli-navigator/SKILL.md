@@ -26,7 +26,24 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-19 — keep current)
+## 1. LIVE STATE (last update 2026-07-20 — keep current)
+
+**Lot 8 — pre-launch, D0 DONE (2026-07-20):** membership post-L7 confirms in-scope remainder =
+**23** (matches the invariant). Split: **Lot 8 (13 members)** = 91425 + the whole division-93
+sport cluster (93111–93126 excl. the L9 tail); **Lot 9 (10 members, next-next)** =
+93127,93128,93129,93191,93192,93193,93194,93195,93197,93199. D0 dossiers 15/15 complete
+(`/tmp/kbli-conductor-a1-0718/evid-lot8/`): 7/13 members PP28-ABSENT honest on full 21/21-file
+scan (93113,93115,93122,93123,93124,93125,93126 — the whole "Klub" sub-family, same shape as
+L7's 86xxx); 1 suspected FALSE POSITIVE on 93121 (Lampiran I.F p.761, blank code/judul columns —
+a "hot trap page" that ALSO caught the 63101 control hunt on the identical page, code_hunted
+matcher magnet); real hits image-verified on 91425/93111/93119. **Fresh controls selected by the
+conductor: 63101 (multi-source diff-cite) + 73100 (self-cite, Rendah, clean pattern) — 51101
+EXCLUDED (division 51 = the 51108 residual-bucket fan/collision-factory territory, same judgment
+class as L7's 62110 exclusion)**; both control dossiers complete, 73100 clean, 63101 has the
+same hot-trap-page FP. Burn-list formalized+extended (119+ codes: all L1-L8 members + every code
+named in any signed Appendix A NEG/POS pool + conductor exclusions). Pins:
+`/tmp/kbli-conductor-a1-0718/lot8-prelaunch-pins.md`. **Lane launch is the next action** — needs
+a fresh canonical/membership fence pin (post-L7-apply sha `873f8fb4f9b5…`) at launch time.
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -146,8 +163,8 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
 
 **Batch-A SWEEP PROGRESS — Lots 1-5 (dense recap 2026-07-19, MANDATO S2 continuous run; supersedes the Lot-1-only block above for current state):**
 
-- **91/114 original in-scope adjudicated across 7 lots — 91/91 QUARANTINED, 0 certified**
-  (L7's 13 pending cure-PR apply; cured-and-live cumulative 78/1,559 incl. pilot).
+- **91/114 original in-scope adjudicated across 7 lots — 91/91 QUARANTINED, 0 certified.
+  L7 fully applied+surfaced (cured-and-live cumulative 91/1,559 incl. pilot).**
   Census by lot: L1 13 (div 01→39, gate report 2026-07-18-...lot1..., cure applied+surfaced) ·
   L2 13 (#2753 gate, #2761 cure) · L3 13 (#2768 gate, #2769 cure) · L4 13 (#2774 gate, #2776
   cure incl. runner innocence-PROMPT fix; 64955 wrong-parent flagship; ALL TEN 66xxx carry the
@@ -156,19 +173,27 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
   incl. the 80190 certification REVOKED→re-quarantined, W100-L6 rule "conductor's eyes on the
   FULL canonical record for every certification"; #2800 cure incl. certification-contract gen-2:
   `exposed_facts_inventory` REQUIRED + fail-closed `factsInventoryUnverified`; surfaces 13/13
-  PROVEN-LIVE, spot-check 80190)** · **L7 13 (gate SECOND-SIGNED on `kbli/lot7-lane`
-  4089afe76d: 6 source_absent {85403,85404,86109,86201,86202,86203} / 4 payload {85330
-  aviation PAGE-BLEED, 85401 51108-fan, 86102, 91212} / 1 collision {90111, ISO-9001
-  matcher-trap} / 1 illegitimate-inheritance {91222} / 1 unresolvable {91424}; red-team BLOCKER
-  cured — 41013 control stays QUARANTINED on the corrected legal base Pasal 225(1) MT / 230
-  Tinggi / 124(4) derived-license; **contract refinement #2 (derived-fact rule) is the Lot-8
-  precondition**; cure PR + cross-family GLM in flight)**. **In-scope remainder after L7 apply:
-  23** (of 221 total, invariant) → **~2 lots to finish** (L8-L9: 13+10; L8 gated on refinement
-  #2). Surfaces: L1-L4 + L6 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
-  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces INDEPENDENTLY RE-PROVEN
-  2026-07-19** (prod KG query: 13/13 zero REQUIRES edges + `PENDING_REGULATION` + disputed
-  archived; live `inspect/66192` returns risk "Not classified", licenses []). Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
-  salt "v3", POS 8, `pos_preverification_required`, burned-set 16.
+  PROVEN-LIVE, spot-check 80190)** · **L7 13 CLOSED end-to-end (gate #2837, cure spec+contract
+  #2831, data-apply #2878, surfaces PROVEN-LIVE 2026-07-20 — conductor spot-check on the largest
+  cluster 86201/27 disputed-edges + 86203/91424, independent of the applier's own report): 6
+  source_absent {85403,85404,86109,86201,86202,86203} / 4 payload {85330 aviation PAGE-BLEED,
+  85401 51108-fan, 86102, 91212} / 1 collision {90111, ISO-9001 matcher-trap} / 1
+  illegitimate-inheritance {91222} / 1 unresolvable {91424}; Appendix A cross-family GLM
+  adjudicated (m1 5/5 no verdict overturned, NEG surfaced 2 real editorial-layer deviations on
+  52239/68127 — FILED, POS 2/2 clean); 41013 control re-run LIVE post-refinement (wf_644964d5-783):
+  refinement #2 (derived-fact rule, Pasal 225(1) MT / 230 Tinggi / 124(4) derived-license)
+  VALIDATED, 41013 converts to "contract artifact" but stays quarantined pending refinement #3
+  (tier-label join, FILED). 96 KG REQUIRES edges removed (86201 alone = 27), Qdrant risk cleared,
+  13 cache keys busted, `kbli_documents` 4th surface applied (13/99 cumulative, whole-table
+  builder still missing). **In-scope remainder: 23** (of 221 total, invariant) → **2 lots to
+  finish** (L8 12+1/L9 10 — see membership split below; L8 gated on refinement #2, now shipped).
+  Surfaces: L1-L4 + L6 + L7 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
+  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces
+  INDEPENDENTLY RE-PROVEN 2026-07-19** (prod KG query: 13/13 zero REQUIRES edges +
+  `PENDING_REGULATION` + disputed archived; live `inspect/66192` returns risk "Not classified",
+  licenses []). Governance: calibration **v3\*\* on main (#2777, supersedes conflicted #2772) — NEG
+  47 salt "v3", POS 8, `pos_preverification_required`, burned-set 16 (extended to 119+ post-L7 D0
+  back-reconstruction, see Lot 8 pins).
 - **Per-lot cycle (proven 5×, ~2h):** lane Workflow (launcher `/tmp/kbli-conductor-a1-0718/
 lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fence) → conductor
   D6 gate + by-eye renders → FIRST signing → codex sol xhigh red-team (FULL-output capture, W97)
@@ -372,9 +397,12 @@ corner (flagged only, nothing fixed here):**
    of TEXT, never of DIGITS.
 6. **Consumer-map before scoping any data fix**: canonical → mouth `/kbli/<code>` SSR · **gold →
    same pages, and gold WINS over intel_2026** · KG/Qdrant → WA/webchat via `inspect_kbli` ·
-   intel_2026/editorial → baked prose · `kbli_documents` Postgres table → injected verbatim into
-   `chat_kbli` LLM context, cured 2026-07-19 (#2796) · `apps/kbli-navigator` app
-   (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
+   **`kbli_documents` (Postgres) → `chat_kbli` LLM context via
+   `_fetch_parent_documents_from_kbli_table()` + direct 5-digit lookup
+   (`apps/backend-rag/backend/app/routers/kbli_notebook_chat.py:635,699`) — the 4th surface,
+   cured for the 73 quarantined rows by `kbli_documents_cure.py` (#2796, 2026-07-19), whole-table
+   builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
+   app (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
    `data/kbli-2025.json` fork (stale, cure in flight) AND its own `lib/kbli-gold-content.ts`
    override layer (OPEN, task #19) · NB sources. Fix the class across ALL consumers or explicitly
    park the rest; "merged" ≠ "live" ≠ "every surface".
