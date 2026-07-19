@@ -424,11 +424,11 @@ async function test_already_quarantined_path_is_unaffected_by_the_patch() {
 async function test_sha256Hex_known_answer_vectors() {
   const sha256Hex = loadSha256Hex();
   const vectors = [
-    ["", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"],
-    ["abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
+    ["", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"], // pragma: allowlist secret
+    ["abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"], // pragma: allowlist secret
     [
       "kbli 2025 é",
-      "eb5e8c9602e2ec94939ad06cf393c1fae7baf7442f8ed201887c54b0a4b201a7",
+      "eb5e8c9602e2ec94939ad06cf393c1fae7baf7442f8ed201887c54b0a4b201a7", // pragma: allowlist secret
     ],
   ];
   for (const [input, expected] of vectors) {

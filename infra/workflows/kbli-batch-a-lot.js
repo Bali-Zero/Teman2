@@ -345,7 +345,7 @@ function sha256Hex(message) {
 // lease-guard SKIP) and falls back to the last self-pinned literal, which by construction can lag
 // the file's true current bytes by any edit made since the pin was last refreshed by hand.
 const RUNNER_BLOB_SHA256_LAST_PINNED =
-  "9bb3870fe5bae3c977c8e1ab5895d098e7be86a604d54c0c9f4a6be6a103a609";
+  "9bb3870fe5bae3c977c8e1ab5895d098e7be86a604d54c0c9f4a6be6a103a609"; // pragma: allowlist secret
 const runnerBlobSha256 =
   typeof A.runnerBlobSha256 === "string" && A.runnerBlobSha256.trim()
     ? A.runnerBlobSha256.trim()
