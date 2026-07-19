@@ -194,9 +194,11 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
         "UPDATE meta_inbox_messages" in s and "delivered" in str(a) for s, a in conn.executed
     )
     assert conn.sql_contains("DELETE FROM wa_status_pending")
-    # advisory lock taken + released for the winning thread
+    # advisory lock taken + released for the winning thread. Args must be str
+    # (P0 2026-07-19): the SQL concatenates '... || $1::text', so asyncpg
+    # types $1 as TEXT — passing the raw int thread_id raises DataError.
     assert conn.sql_contains("pg_try_advisory_lock")
-    assert any(7 in a for _, a in conn.sql_with_args("pg_advisory_unlock"))
+    assert any("7" in a for _, a in conn.sql_with_args("pg_advisory_unlock"))
 
 
 @pytest.mark.asyncio
@@ -470,11 +472,13 @@ async def test_advisory_lock_skips_candidate_whose_thread_is_locked() -> None:
     result = await process_outbox_once(pool, svc, _bot_gen)
 
     assert result == "sent"
-    # exactly two lock-try attempts, for both candidate threads in order
+    # exactly two lock-try attempts, for both candidate threads in order.
+    # Args must be str (P0 2026-07-19): the SQL concatenates '... || $1::text',
+    # so asyncpg types $1 as TEXT — passing the raw int thread_id raises DataError.
     lock_tries = conn.sql_with_args("pg_try_advisory_lock")
     assert len(lock_tries) == 2
-    assert lock_tries[0][1] == (99,)
-    assert lock_tries[1][1] == (7,)
+    assert lock_tries[0][1] == ("99",)
+    assert lock_tries[1][1] == ("7",)
     # the row that actually got claimed is id=31 (thread 7), never id=30
     claim_updates = conn.sql_with_args("SET status = 'claimed'")
     assert len(claim_updates) == 1
@@ -482,7 +486,7 @@ async def test_advisory_lock_skips_candidate_whose_thread_is_locked() -> None:
     # released the WON thread's lock (7), not the skipped one (99)
     unlock_calls = conn.sql_with_args("pg_advisory_unlock")
     assert len(unlock_calls) == 1
-    assert unlock_calls[0][1] == (7,)
+    assert unlock_calls[0][1] == ("7",)
 
 
 @pytest.mark.asyncio
@@ -502,6 +506,69 @@ async def test_idle_when_every_candidate_thread_is_locked() -> None:
     # call was made either — the lock was never acquired for anything.
     assert not conn.sql_with_args("SET status = 'claimed'")
     assert not conn.sql_with_args("pg_advisory_unlock")
+
+
+# ── P0 2026-07-19: advisory-lock thread id must be str, not int ────────────
+
+
+class _TypeCheckedConn(ScriptedConn):
+    """A ScriptedConn whose fetchval/execute enforce the same type contract
+    Postgres does for ``hashtext('...' || $1::text)``: $1 must arrive as str.
+    Mirrors the production DataError asyncpg raises for a bare int (P0
+    2026-07-19: ``asyncpg.exceptions.DataError: invalid input for query
+    argument $1: 77 (expected str, got int)``)."""
+
+    async def fetchval(self, sql: str, *args: Any) -> Any:
+        if "pg_try_advisory_lock" in sql and args:
+            assert isinstance(args[0], str), (
+                f"advisory-lock arg must be str, got {type(args[0]).__name__} "
+                "(asyncpg.DataError: expected str, got int)"
+            )
+        return await super().fetchval(sql, *args)
+
+    async def execute(self, sql: str, *args: Any) -> str:
+        if "pg_advisory_unlock" in sql and args:
+            assert isinstance(args[0], str), (
+                f"advisory-unlock arg must be str, got {type(args[0]).__name__} "
+                "(asyncpg.DataError: expected str, got int)"
+            )
+        return await super().execute(sql, *args)
+
+
+@pytest.mark.asyncio
+async def test_advisory_lock_args_are_str_not_int() -> None:
+    """``_THREAD_LOCK_KEY_SQL`` concatenates ``'...' || $1::text``, so
+    Postgres/asyncpg types $1 as TEXT. ``wa_outbox.thread_id`` is a bigint
+    column — passing the raw int crashed every tick with a due row
+    (asyncpg.exceptions.DataError), which backed off the scheduler forever
+    and muted the bot. Guilt: ``_TypeCheckedConn`` type-checks the lock args
+    the way Postgres does — a reverted fix (bare int) fails this test the
+    same shape prod failed. Innocence: str args flow through to completion."""
+    candidate = _candidate(50, thread_id=77, message_id=5000, needs_generation=False)
+    conn = _TypeCheckedConn(
+        fetchrow_results=[
+            _thread_row(thread_id=77, human_handling=False),
+            {"body": "hi"},
+            {"id": 50},  # pre-send fence RETURNING
+            {"id": 50},  # final commit RETURNING
+            None,  # no staged receipt
+        ],
+        fetchval_results=[
+            True,  # advisory lock TRY for thread 77
+            True,  # window_open
+        ],
+        fetch_results=[[candidate]],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.TYPE.1"}]})
+
+    result = await process_outbox_once(pool, svc, _bot_gen)
+
+    assert result == "sent"
+    lock_tries = conn.sql_with_args("pg_try_advisory_lock")
+    assert lock_tries and lock_tries[0][1] == ("77",)
+    unlock_calls = conn.sql_with_args("pg_advisory_unlock")
+    assert unlock_calls and unlock_calls[0][1] == ("77",)
 
 
 # ── P4: fencing abort — takeover mid-generation must result in NO send ─────

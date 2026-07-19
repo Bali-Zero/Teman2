@@ -120,13 +120,17 @@ class TestMainHostGuard:
         assert "infra.qdrant_pro.json" in written
 
 
-class TestPostPublishPollerDaemonReceipt:
-    """post-publish-poller must be bridged by pid-liveness, not exit code.
+class TestPostPublishPollerIntervalReceipt:
+    """post-publish-poller is a StartInterval=300 job (plutil-verified
+    2026-07-19), and its spec has now produced BOTH false verdicts:
 
-    2026-07-18: with daemon=False the receipt read launchctl's sticky
-    "last exit code" column (=1 after any past restart) and reported
-    status=failed while ps proved the poller alive and opening PRs.
-    Guilt+innocence per cicatrix family #3.
+    - 2026-07-18 (daemon=False): sticky "last exit code"=1 while ps proved
+      the poller alive and opening PRs → false failed.
+    - 2026-07-19 (daemon=True, the #2715 cure): pid=None between ticks
+      while the log showed clean 5-min runs → false "daemon not running".
+
+    interval_job semantics cover both: alive-now OR last-run-clean = ok;
+    only idle-AND-crashed is failed. Guilt+innocence per cicatrix family #3.
     """
 
     def _spec(self, bridge):
@@ -135,8 +139,10 @@ class TestPostPublishPollerDaemonReceipt:
         assert len(specs) == 1
         return specs[0]
 
-    def test_flag_is_daemon(self, bridge):
-        assert self._spec(bridge).daemon is True
+    def test_flag_is_interval_job(self, bridge):
+        spec = self._spec(bridge)
+        assert spec.interval_job is True
+        assert spec.daemon is False
 
     def test_alive_with_sticky_exit_is_ok(self, bridge):
         """Innocence: live pid + stale exit 1 → ok (the 2026-07-18 case)."""
@@ -149,8 +155,8 @@ class TestPostPublishPollerDaemonReceipt:
         )
         assert receipt["status"] == "ok"
 
-    def test_dead_daemon_is_failed(self, bridge):
-        """Guilt: no pid → failed, even with exit_code 0."""
+    def test_idle_between_ticks_with_clean_exit_is_ok(self, bridge):
+        """Innocence: pid=None + exit 0 → ok (the 2026-07-19 case)."""
         spec = self._spec(bridge)
         receipt = bridge.build_receipt(
             spec,
@@ -158,4 +164,33 @@ class TestPostPublishPollerDaemonReceipt:
             now=1_700_000_000,
             host="pro",
         )
+        assert receipt["status"] == "ok"
+        assert "last_error" not in receipt
+
+    def test_idle_and_crashed_last_run_is_failed(self, bridge):
+        """Guilt: pid=None + exit 1 → failed (the only honest death shape)."""
+        spec = self._spec(bridge)
+        receipt = bridge.build_receipt(
+            spec,
+            {spec.label: {"pid": None, "exit_code": 1}},
+            now=1_700_000_000,
+            host="pro",
+        )
         assert receipt["status"] == "failed"
+        assert receipt["last_error"] == "exit code 1"
+
+    def test_true_daemons_keep_pid_required_semantics(self, bridge):
+        """Innocence for the daemon class: the webhook (KeepAlive) still
+        reports failed on pid=None even with exit 0 — interval_job must not
+        leak into real daemons."""
+        specs = [s for s in bridge.BRIDGED_LABELS
+                 if s.label == "com.balizero.post-publish-webhook"]
+        assert len(specs) == 1 and specs[0].daemon is True
+        receipt = bridge.build_receipt(
+            specs[0],
+            {specs[0].label: {"pid": None, "exit_code": 0}},
+            now=1_700_000_000,
+            host="pro",
+        )
+        assert receipt["status"] == "failed"
+        assert receipt["last_error"] == "daemon not running"

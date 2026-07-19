@@ -206,6 +206,9 @@ data/qdrant_production_snapshots/
 data/flyio-export-*/
 data/kg_production_export/
 data/hgt_coordinator/
+# NUZANTARA-LEX corpus cache (Phase 0, apps/nuzantara-lex/scripts/fetch_norms.py) —
+# regulation PDFs never enter git, only the manifest with sha256 provenance does.
+data/nuzantara-lex/
 benchmark_results/
 carousel-bali-traffic/output/
 carousel-bali-traffic/images/
@@ -702,8 +705,13 @@ docs/team-guides/*.pdf
 
 # KBLI JSON duplicates (keep only source_documents canonical)
 apps/mouth/data/KBLI_2025_FINAL_CLEAN.json
-apps/kbli-navigator/data/kbli-2025.json
 apps/backend-rag/source_documents/
+# apps/kbli-navigator/data/kbli-2025.json is NOT ignored (scar #1 HOME-fork cure,
+# 2026-07-19): it used to be untracked here, which let it silently rot to a
+# 2026-03-28 snapshot while balizero.com/kbli moved on. It is now a tracked,
+# byte-identical mirror of canonical kept in sync by scripts/sync_kbli_dataset.sh
+# + CI check-kbli-dataset-sync — same discipline as the mouth copy above.
+!apps/kbli-navigator/data/kbli-2025.json
 
 # Generated/state JSON files
 apps/backend-rag/coverage_report.json

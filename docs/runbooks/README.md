@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 45 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 46 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -42,6 +42,7 @@
 | [`repomap-and-branch-cleanup.md`](repomap-and-branch-cleanup.md) | Repomap auto-injection + Branch graveyard cleanup |
 | [`review-gate.md`](review-gate.md) | Runbook — Review-gate (Pro-side tri-LLM review-only) |
 | [`runtime-dev-checkout-split.md`](runtime-dev-checkout-split.md) | Runtime/Dev checkout split — runbook (P0 shipped, P1/P2 operator-gated) |
+| [`secret-rotation.md`](secret-rotation.md) | Runbook: Secret Rotation & Fleet Propagation |
 | [`sota-loop-90gg-operations.md`](sota-loop-90gg-operations.md) | SOTA Social Loop 90gg — Operations Runbook |
 | [`synthetic-probe-cleanup.md`](synthetic-probe-cleanup.md) | Runbook — Synthetic probe cleanup emergency |
 | [`telegram-notification-gateway.md`](telegram-notification-gateway.md) | Telegram notification gateway — tg_notify / tg_digest_flush / lint |

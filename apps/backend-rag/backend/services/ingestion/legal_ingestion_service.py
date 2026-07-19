@@ -1016,9 +1016,7 @@ Return ONLY valid JSON, no markdown."""
                         from google import genai
 
                         creds_json = settings.google_credentials_json
-                        project_id = os.environ.get(
-                            "GOOGLE_PROJECT_ID", "gen-lang-client-0498009027"
-                        )
+                        project_id = os.environ.get("GOOGLE_PROJECT_ID", "nuzantara")
                         location = os.environ.get("GOOGLE_LOCATION", "us-central1")
 
                         if creds_json:

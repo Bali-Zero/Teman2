@@ -10,6 +10,11 @@ name: Cron — KG staging promotion
 #   2. repo variable KG_PROMOTION_MODE=apply (changes schedule behavior)
 # Runs are chunked short transactions + advisory-lock singleton, so a dropped
 # ssh session costs at most one ~25-row rollback and the next run resumes.
+#
+# SCAR (2026-07-19, first scheduled run failed): do NOT prefix the command with
+# `PYTHONPATH=.` — on the Fly image it shadows the interpreter's site-packages
+# and `import asyncpg` dies (same class as the Wave-4 migration scar; plain
+# `cd /app && python -m ...` is the only correct form).
 
 on:
   schedule:
@@ -46,7 +51,7 @@ jobs:
           flyctl ssh console \
             --app nuzantara-rag \
             --process-group api \
-            --command "/bin/sh -c 'cd /app && PYTHONPATH=. python -m backend.scripts.kg_staging_promotion --${MODE}'" 2>&1 | tee promotion.log
+            --command "/bin/sh -c 'cd /app && python -m backend.scripts.kg_staging_promotion --${MODE}'" 2>&1 | tee promotion.log
 
       - name: Upload run report
         if: always()
