@@ -733,6 +733,7 @@ class LLMGateway:
                 contents.append({"role": "user", "parts": current_content_parts})
 
             # 3. Call model with full history (with timeout to avoid hang)
+            _llm_call_t0 = time.perf_counter()
             response = await asyncio.wait_for(
                 client._client.aio.models.generate_content(
                     model=model_name,
@@ -788,6 +789,31 @@ class LLMGateway:
                     getattr(response.usage_metadata, "candidates_token_count", 0) or 0
                 )
 
+            # Indestructible cost ledger (see
+            # backend/services/observability/llm_cost_recorder.py). This call
+            # goes straight to the raw SDK (client._client.aio.models.
+            # generate_content) instead of GenAIClient.generate_content(), so
+            # it bypasses that method's own recording — record here to avoid
+            # undercounting the llm_cost_events ledger. Fail-open: recorder
+            # errors never break the chat response.
+            try:
+                from backend.services.llm_clients.pricing import calculate_cost
+                from backend.services.observability import record_llm_call
+
+                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model_name)
+                await record_llm_call(
+                    provider="gemini",
+                    model=model_name,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    cost_usd=cost_usd,
+                    success=True,
+                    latency_ms=round((time.perf_counter() - _llm_call_t0) * 1000),
+                    endpoint="rag.gateway.chat",
+                )
+            except Exception as rec_exc:
+                logger.warning("llm_cost recorder failed for gateway: %s", rec_exc)
+
             token_usage = create_token_usage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
@@ -816,6 +842,7 @@ class LLMGateway:
             if has_images:
                 logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
 
+            _llm_call_t0 = time.perf_counter()
             response = await asyncio.wait_for(
                 client._client.aio.models.generate_content(
                     model=model_name,
@@ -833,6 +860,28 @@ class LLMGateway:
                 completion_tokens = (
                     getattr(response.usage_metadata, "candidates_token_count", 0) or 0
                 )
+
+            # Indestructible cost ledger (see
+            # backend/services/observability/llm_cost_recorder.py). Same raw
+            # SDK bypass as the chat-history branch above — record here so
+            # the llm_cost_events ledger doesn't undercount. Fail-open.
+            try:
+                from backend.services.llm_clients.pricing import calculate_cost
+                from backend.services.observability import record_llm_call
+
+                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model_name)
+                await record_llm_call(
+                    provider="gemini",
+                    model=model_name,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    cost_usd=cost_usd,
+                    success=True,
+                    latency_ms=round((time.perf_counter() - _llm_call_t0) * 1000),
+                    endpoint="rag.gateway.chat",
+                )
+            except Exception as rec_exc:
+                logger.warning("llm_cost recorder failed for gateway: %s", rec_exc)
 
             token_usage = create_token_usage(
                 prompt_tokens=prompt_tokens,

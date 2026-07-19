@@ -56,6 +56,17 @@ class FakeConn:
         self.execute_calls.append((query, args))
         return self.execute_result
 
+    def transaction(self):
+        # Async CM for the phone-core lock TX (round-10 F12).
+        class _Tx:
+            async def __aenter__(self_tx):
+                return self_tx
+
+            async def __aexit__(self_tx, *a):
+                return False
+
+        return _Tx()
+
 
 def test_normalize_phone_delegates_to_canonical_e164_normalizer() -> None:
     assert normalize_phone(None) is None

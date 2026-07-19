@@ -26,33 +26,29 @@ data/logic separation):
   ``visa_rule_packs_immutable`` trigger rejects any later UPDATE/DELETE —
   this repository never attempts either).
 
-PR4 SCOPE — no activation WRITER (2026-07-19): a fourth cross-family
-adversarial round found that the activation WRITER (the bitemporal
-supersession — closing every still-open, legal-period-overlapping prior
-activation for a triple and inserting the new one at one shared instant) is
-**un-closeable** at the layer this repository lives in. The raw-SQL
-``system_period``-timestamp backdating and partial-overlap bypass this
-method used to guard against (a Python method's close-then-insert pair,
-plus migration 250's ``BEFORE INSERT``/``BEFORE UPDATE`` triggers) cannot
-give the same caller-independent atomicity guarantee a single
-``SECURITY DEFINER`` DB function can: that function —
-``visa_activate_rule_pack(...)`` — plus a GRANT model that ``REVOKE``s
-direct ``INSERT``/``UPDATE``/``DELETE`` on ``visa_ruleset_activations``
-from the runtime role and grants only ``EXECUTE`` on the function, is
-**STEP 6**.
-This module therefore ships **no activation writer at all** in PR4 — only
-the read substrate (:meth:`load_active_rule_pack`) and the signed-pack
-insert (:meth:`insert_rule_pack`) above. What it DOES ship from day 1 are
-migration 250's ledger structural triggers
-(``reject_visa_activation_insert`` — scope/hash-chain/sequence-monotonicity
-binding — and ``reject_visa_activation_mutation`` — append-only-with-close):
-these are exactly the caller-independent guards STEP-6's ``SECURITY
-DEFINER`` function will itself run under, so they are correct and
-load-bearing defense-in-depth from the moment this migration lands, not
-something STEP-6 introduces later. Any INSERT into
-``visa_ruleset_activations`` before STEP-6 ships (e.g. from a script or a
-test) must go in raw, through those same triggers — this repository offers
-no wrapper for it, by design.
+STEP-6a SCOPE — the activation WRITER (2026-07-19): PR4 shipped no writer at
+all (see the git history of this docstring for why: a fourth cross-family
+adversarial round found the raw-SQL ``system_period``-timestamp backdating
+and partial-overlap bypass a Python close-then-insert pair could not
+foreclose, no matter how carefully paired with migration 250's ``BEFORE``
+triggers — only a single ``SECURITY DEFINER`` DB function running the whole
+supersession under one transaction/one clock/one advisory lock can).
+Migration 251 (STEP-6a) now ships exactly that function —
+``public.visa_activate_rule_pack(rule_pack_id, activated_by,
+activation_reason)`` — and :meth:`activate_rule_pack` below is a thin,
+one-statement wrapper around it: this repository still does **no**
+supersession logic itself, no lock, no clock read — all of that lives in
+the SQL function, which is also where 250's structural triggers
+(``reject_visa_activation_insert``/``reject_visa_activation_mutation``,
+migration-251-hardened with schema-qualified ``search_path`` isolation and
+an unforgeable ``activated_by_principal`` stamp) run as defense-in-depth
+underneath it. Migration 251's own header comment documents in full why the
+GRANT model that makes this function the runtime's *only* ledger write path
+is still an Option-1 scaffold (role-guarded, no-op until an operator
+provisioning script moves table ownership) — :meth:`activate_rule_pack` is
+functionally correct today regardless of that provisioning state; it is the
+*security boundary* around it (nothing else can write the ledger) that is
+still pending.
 
 Envelope reconstruction detail: ``visa_rule_packs.protected_header`` and
 ``.payload`` are stored as JSONB and come back from asyncpg either as a
@@ -135,9 +131,10 @@ JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dic
 #: SQL filter values (a WHERE clause cannot lean on a column DEFAULT the way
 #: an INSERT can) — belt-and-suspenders scoping even though every row is
 #: constitutionally ``ID``/``IMMIGRATION_VISA`` today (see that method's own
-#: docstring, "P0-2 latent"). PR4 ships no activation WRITER (deferred to
-#: STEP 6 — see the module docstring's "PR4 SCOPE" note above), so these
-#: constants no longer also double as a lock-key/scope-derivation input here.
+#: docstring, "P0-2 latent"). The activation WRITER (STEP-6a, migration 251)
+#: resolves scope from the pack row entirely inside the SQL function — see
+#: the module docstring's "STEP-6a SCOPE" note above — so these constants
+#: never double as a lock-key/scope-derivation input here either.
 _JURISDICTION = "ID"
 _DECISION_DOMAIN = "IMMIGRATION_VISA"
 
@@ -171,13 +168,16 @@ class VisaEngineRepository(BaseRepository):
     """Data access for ``visa_rule_packs`` + ``visa_ruleset_activations``.
 
     Pure persistence: no signature verification, no rule evaluation, no
-    business-meaning inspection of ``payload``. Callers (the PR2b/PR4
-    service layer) own everything downstream of what this class returns.
+    business-meaning inspection of ``payload``. Callers (the PR2b/PR4/
+    STEP-6a service layer) own everything downstream of what this class
+    returns.
 
-    PR4 ships only the two methods below (read + signed-pack insert) — no
-    activation writer. See the module docstring's "PR4 SCOPE — no
-    activation WRITER" note for why: the bitemporal supersession is
-    deferred to STEP 6's ``SECURITY DEFINER`` DB function.
+    Three methods: the bitemporal read (:meth:`load_active_rule_pack`), the
+    signed-pack insert (:meth:`insert_rule_pack`), and the activation writer
+    (:meth:`activate_rule_pack`, STEP-6a) — a thin wrapper around migration
+    251's ``SECURITY DEFINER`` DB function. See the module docstring's
+    "STEP-6a SCOPE" note for why the actual bitemporal supersession logic
+    lives in SQL, not here.
     """
 
     # ── Bitemporal read ──────────────────────────────────────────────────
@@ -320,3 +320,64 @@ class VisaEngineRepository(BaseRepository):
             signing_key_id,
             signed_at,
         )
+
+    # ── Activation writer (STEP-6a) ──────────────────────────────────────
+
+    async def activate_rule_pack(
+        self,
+        *,
+        rule_pack_id: UUID,
+        activated_by: str,
+        activation_reason: str,
+    ) -> UUID:
+        """Activate a pack via the ``SECURITY DEFINER`` DB function
+        ``public.visa_activate_rule_pack`` (migration 251) — the ONLY
+        ledger write path this repository offers, and (once the operator
+        role-provisioning migration 251's header describes has run) the
+        only ledger write path the runtime role can reach at all.
+
+        The function performs the WHOLE bitemporal supersession — partial-
+        legal-overlap reject, close every covered still-open prior
+        activation, insert the new one — atomically, under one
+        ``clock_timestamp()`` read and one advisory lock; this method is a
+        thin, single-statement wrapper with no logic of its own (see this
+        module's docstring, "STEP-6a SCOPE").
+
+        The caller (service layer) MUST have already run
+        ``bundle.verify_rule_pack`` + ``bundle.validate_activation``
+        (crypto/anti-rollback pre-gate, entirely out of this repository's
+        scope) before calling this — the DB triggers re-enforce
+        sequence-monotonicity/hash-chain under the lock as the final,
+        caller-independent authority, but they are defense-in-depth, not a
+        substitute for the service layer's own verification.
+
+        ``activated_by``/``activation_reason`` are free-text audit
+        NARRATIVE (the function itself rejects blank or oversized values —
+        see migration 251, F6(a)); they are NOT the identity guarantee —
+        the DB stamps the actual, unforgeable actor as
+        ``activated_by_principal`` (``session_user``, migration 251, F6(b))
+        as a side effect, independent of anything this method passes in.
+
+        Returns the new activation's ``id``. Raises whatever
+        ``asyncpg.PostgresError`` the function/triggers raise (unknown
+        ``rule_pack_id``, blank/oversized actor/reason, partial legal-period
+        overlap, sequence rollback, hash-chain break) — this method does
+        not translate or swallow those, by design (Golden Rule #7: this
+        repository is data access, not business logic).
+        """
+        row = await self.fetchrow_safe(
+            "SELECT public.visa_activate_rule_pack($1, $2, $3) AS activation_id",
+            rule_pack_id,
+            activated_by,
+            activation_reason,
+        )
+        if row is None:
+            # fetchrow_safe/asyncpg.fetchrow only returns None when the
+            # query produces zero rows — a scalar-returning function call
+            # like `SELECT f(...)` always produces exactly one row (or the
+            # function itself raises, which fetchrow_safe re-raises rather
+            # than swallowing). This is therefore unreachable in practice;
+            # the guard exists so a None is never silently coerced into a
+            # UUID-shaped crash deeper in a caller.
+            raise RuntimeError("visa_activate_rule_pack returned no row")
+        return row["activation_id"]

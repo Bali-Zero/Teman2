@@ -9,7 +9,8 @@ sources:
   - .claude/skills/visaoracle/SKILL.md (ENFORCE-GATE)
 author: Kimi K3 (kimi-code/k3, UI/UX titolare per decisione Zero 2026-07-19) — orchestrated by S3 session
 status: LEAD (W65) — cross-family reviewed; the 8 findings below are BINDING constraints on the implementation lane
-adversarial_review: codex-gpt-5.6-sol (high effort, 2026-07-19) — verdict FIX-FIRST as implementation spec, valid as design lead; 2 P0 + 5 P1 + 1 P2, all recorded with dispositions in the final section
+adversarial_review: codex
+adversarial_review_note: gpt-5.6-sol high effort, 2026-07-19 — verdict FIX-FIRST as implementation spec, valid as design lead; 2 P0 + 5 P1 + 1 P2, all recorded with dispositions in the final section
 ---
 
 # Visa Oracle v2 — UI/UX Adaptation Spec (design-only pass, zero writes)
