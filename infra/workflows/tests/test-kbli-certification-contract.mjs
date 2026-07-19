@@ -46,6 +46,26 @@ function compileRunner() {
   return new AsyncFunction("args", "agent", "log", "phase", "parallel", src);
 }
 
+/**
+ * Extract the ACTUAL sha256Hex(message) function out of the runner source (text-sliced, not
+ * re-typed) and compile it standalone so it can be exercised with FIPS/shasum known-answer
+ * vectors directly — conductor gate cure #2 (2026-07-19): the shape-only check
+ * (/^[0-9a-f]{64}$/) used elsewhere in this file proves NOTHING about correctness — a
+ * deterministically WRONG hash function (e.g. all-zero, or a broken bit-rotation) would still
+ * produce a 64-hex-char string and pass every shape assertion, silently making every
+ * seat_provenance.*.promptSha256/schemaSha256 useless to a real audit (a future `shasum -a 256`
+ * cross-check would mismatch). This loads the REAL function, never a re-implementation.
+ */
+function loadSha256Hex() {
+  const src = readFileSync(RUNNER_PATH, "utf8");
+  const match = src.match(/function sha256Hex\(message\) \{[\s\S]*?\n\}/);
+  if (!match) {
+    throw new Error("could not locate sha256Hex(message) in the runner source");
+  }
+  // eslint-disable-next-line no-new-func
+  return new Function(`"use strict";\n${match[0]}\nreturn sha256Hex;`)();
+}
+
 function makeAgentStub(answers) {
   const calls = [];
   return async function agent(_prompt, opts) {
@@ -389,6 +409,43 @@ async function test_already_quarantined_path_is_unaffected_by_the_patch() {
 }
 
 // ---------------------------------------------------------------------------
+// TEST (conductor gate cure #2 on PR #2831, 2026-07-19): sha256Hex known-answer test vectors.
+// Every vector below was independently cross-checked THIS session against FOUR separate
+// implementations before being pinned here — `printf '<s>' | shasum -a 256`, `printf '<s>' |
+// openssl dgst -sha256`, Node's own `crypto.createHash("sha256")`, and Python's `hashlib.sha256`
+// — all four agreed exactly, so these are treated as ground truth, not transcribed from memory.
+//   printf ''            | shasum -a 256 -> e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+//   printf 'abc'         | shasum -a 256 -> ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+//   printf 'kbli 2025 é' | shasum -a 256 -> eb5e8c9602e2ec94939ad06cf393c1fae7baf7442f8ed201887c54b0a4b201a7
+//   (UTF-8 multibyte case: 'é' is U+00E9, 2 bytes 0xC3 0xA9 in UTF-8 — exercises the
+//   encodeURIComponent/unescape byte-expansion path in sha256Hex, not just plain ASCII.)
+// ---------------------------------------------------------------------------
+
+async function test_sha256Hex_known_answer_vectors() {
+  const sha256Hex = loadSha256Hex();
+  const vectors = [
+    ["", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"],
+    ["abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
+    [
+      "kbli 2025 é",
+      "eb5e8c9602e2ec94939ad06cf393c1fae7baf7442f8ed201887c54b0a4b201a7",
+    ],
+  ];
+  for (const [input, expected] of vectors) {
+    const got = sha256Hex(input);
+    assert.equal(
+      got,
+      expected,
+      `sha256Hex(${JSON.stringify(input)}) expected ${expected}, got ${got} — a shape-only ` +
+        `check (/^[0-9a-f]{64}$/) would NOT have caught this`,
+    );
+  }
+  console.log(
+    "PASS: sha256Hex matches FIPS/shasum/openssl/hashlib known-answer vectors, incl. UTF-8 multibyte",
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TESTS 6-9 (contract refinement #2, Lot 7 gate §3.5/§5.4): the derived-fact certification rule.
 // A rule-DERIVED entry (fiktif_positif / derived_license) can never carry its own page/row locator
 // — it is a legal consequence, not a printed fact — so status="verified" alone must not be
@@ -526,6 +583,101 @@ async function test_derived_fact_fully_verified_and_correctly_cited_can_certify(
 }
 
 // ---------------------------------------------------------------------------
+// TESTS (conductor gate cure #1 on PR #2831, 2026-07-19): derivationCitationValid must require
+// EXACT article equality after normalization — a bare substring `.includes()` check would let a
+// citation naming MULTIPLE articles at once, or a near-digit false friend, validate for a tier it
+// should not (scar family #3, guard-over-match — "an escape-clause that tolerates too much").
+// ---------------------------------------------------------------------------
+
+async function test_derivation_citation_listing_multiple_articles_does_not_validate_either_tier() {
+  // GUILT: a citation naming BOTH articles at once ("225(1), 230") must not validate for EITHER
+  // tier via substring inclusion — it must name exactly one, unambiguously.
+  for (const riskValue of ["Menengah Tinggi", "Tinggi"]) {
+    const result = await runLot({
+      code: "41013",
+      d1: d1Clean(),
+      d5: d5Clean({
+        exposedFactsInventory: derivedFactInventory({
+          tier: "Besar",
+          riskValue,
+          baseFactsVerified: true,
+          fiktifStatus: "verified",
+          fiktifCitation: { ...VALID_MT_CITATION, article: "225(1), 230" },
+        }),
+      }),
+      d2: null,
+    });
+    assert.equal(
+      result.verdict,
+      "quarantined",
+      `expected quarantined for riskValue=${riskValue} (a citation listing both articles must ` +
+        `not validate via substring match), got ${result.verdict}`,
+    );
+    assert.equal(result.facts_inventory_failed, true);
+  }
+  console.log(
+    'PASS: derivation_citation.article="225(1), 230" (both articles at once) does not validate for either tier',
+  );
+}
+
+async function test_derivation_citation_digit_false_friend_does_not_validate() {
+  // GUILT: article="1230" must NOT validate for expectedArticle="230" — a bare `.includes("230")`
+  // would have matched "1230" as a substring; exact-equality-after-normalization must reject it.
+  const result = await runLot({
+    code: "80190",
+    d1: d1Clean(),
+    d5: d5Clean({
+      exposedFactsInventory: derivedFactInventory({
+        tier: "Besar",
+        riskValue: "Tinggi",
+        baseFactsVerified: true,
+        fiktifStatus: "verified",
+        fiktifCitation: { ...VALID_MT_CITATION, article: "1230" },
+      }),
+    }),
+    d2: null,
+  });
+  assert.equal(
+    result.verdict,
+    "quarantined",
+    `expected quarantined (article="1230" is a digit false-friend for "230", not an exact match), got ${result.verdict}`,
+  );
+  assert.equal(result.facts_inventory_failed, true);
+  console.log(
+    'PASS: derivation_citation.article="1230" does not validate as "230" (digit false-friend rejected)',
+  );
+}
+
+async function test_derivation_citation_pasal_prefix_normalizes_and_validates() {
+  // INNOCENCE: article="Pasal 230" (with the natural-language "Pasal " prefix a seat would
+  // plausibly write) MUST validate for a Tinggi tier after normalization — the exact-equality
+  // fix must not become so strict it rejects a legitimately-cited, merely-prefixed article.
+  const result = await runLot({
+    code: "80190",
+    d1: d1Clean(),
+    d5: d5Clean({
+      exposedFactsInventory: derivedFactInventory({
+        tier: "Besar",
+        riskValue: "Tinggi",
+        baseFactsVerified: true,
+        fiktifStatus: "verified",
+        fiktifCitation: { ...VALID_MT_CITATION, article: "Pasal 230" },
+      }),
+    }),
+    d2: null,
+  });
+  assert.equal(
+    result.verdict,
+    "certified",
+    `expected certified (article="Pasal 230" must normalize to "230" and validate for a Tinggi tier), got ${result.verdict}`,
+  );
+  assert.equal(result.facts_inventory_failed, false);
+  console.log(
+    'PASS: derivation_citation.article="Pasal 230" normalizes (prefix stripped) and validates',
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TESTS 10-11 (Lot 7 gate adversarial MINOR #5, §5.6b): journal provenance. Every seat result
 // must carry a per-seat provenance record (label, prompt sha256, schema sha256, runner blob
 // sha256); a control's provenance is tagged control_tag_applied_after=true ONLY after the
@@ -633,10 +785,14 @@ const tests = [
   test_genuinely_empty_inventory_is_vacuously_fine,
   test_missing_inventory_fails_closed,
   test_already_quarantined_path_is_unaffected_by_the_patch,
+  test_sha256Hex_known_answer_vectors,
   test_derived_fact_verified_without_citation_blocks_certification,
   test_derived_fact_base_facts_absent_blocks_certification_even_with_citation,
   test_derived_fact_wrong_article_for_base_risk_tier_blocks_certification,
   test_derived_fact_fully_verified_and_correctly_cited_can_certify,
+  test_derivation_citation_listing_multiple_articles_does_not_validate_either_tier,
+  test_derivation_citation_digit_false_friend_does_not_validate,
+  test_derivation_citation_pasal_prefix_normalizes_and_validates,
   test_seat_provenance_present_and_shaped_on_every_result,
   test_control_tag_applied_after_only_tags_innocence_control_results,
 ];

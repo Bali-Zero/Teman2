@@ -336,12 +336,14 @@ function sha256Hex(message) {
 // has no fs primitive to read its own bytes, and a literal pinned to "the hash of this exact
 // file" is a fixed-point problem (inserting the computed hash changes the file, which changes the
 // hash). Exactly like args.membership (see the membership-gate header note above), the CALLER
-// supplies it — `git hash-object infra/workflows/kbli-batch-a-lot.js`, computed immediately before
-// dispatch, which the conductor already does per-lot for every cure spec's `_provenance` field;
-// this wires that existing practice into the args contract instead of leaving it undiscoverable
-// from inside a run. Absent input WARNs (observability only, same class as the lease-guard SKIP)
-// and falls back to the last self-pinned literal, which by construction can lag the file's true
-// current bytes by any edit made since the pin was last refreshed by hand.
+// supplies it — `shasum -a 256 infra/workflows/kbli-batch-a-lot.js` (a PLAIN sha256 of the file's
+// bytes, the same value every cure spec's `_provenance` field already pins as "sha256 ..." —
+// NOT `git hash-object`, which computes a git-blob SHA-1 over a different, header-prefixed input
+// and would never match this constant or args.runnerBlobSha256), computed immediately before
+// dispatch; this wires that existing practice into the args contract instead of leaving it
+// undiscoverable from inside a run. Absent input WARNs (observability only, same class as the
+// lease-guard SKIP) and falls back to the last self-pinned literal, which by construction can lag
+// the file's true current bytes by any edit made since the pin was last refreshed by hand.
 const RUNNER_BLOB_SHA256_LAST_PINNED =
   "9bb3870fe5bae3c977c8e1ab5895d098e7be86a604d54c0c9f4a6be6a103a609";
 const runnerBlobSha256 =
@@ -349,11 +351,12 @@ const runnerBlobSha256 =
     ? A.runnerBlobSha256.trim()
     : (() => {
         log(
-          `WARN lot ${lotId} did not supply args.runnerBlobSha256 (git hash-object ` +
+          `WARN lot ${lotId} did not supply args.runnerBlobSha256 (shasum -a 256 ` +
             `infra/workflows/kbli-batch-a-lot.js, computed by the CALLER before dispatch — this ` +
-            `script cannot read its own file, no fs primitive) — falling back to the last ` +
-            `self-pinned literal ${RUNNER_BLOB_SHA256_LAST_PINNED}, which may be STALE relative ` +
-            `to this run's actual file bytes. Observability WARN only, not an enforced gate.`,
+            `script cannot read its own file, no fs primitive; NOT git hash-object, which produces ` +
+            `a different SHA-1 git-blob value) — falling back to the last self-pinned literal ` +
+            `${RUNNER_BLOB_SHA256_LAST_PINNED}, which may be STALE relative to this run's actual ` +
+            `file bytes. Observability WARN only, not an enforced gate.`,
         );
         return RUNNER_BLOB_SHA256_LAST_PINNED;
       })();
@@ -929,7 +932,7 @@ function diffD1D5(d1c, d5c) {
 // automatically once its BASE facts are known (UU Cipta Kerja 6/2023's silenzio-assenso flip,
 // codified PP 28/2025 Pasal 225(1) for Menengah Tinggi / Pasal 230 for Tinggi; Pasal 124(4) is the
 // SEPARATE derived-license rule — scripts/derive_fiktif_positif.py encodes the exact boolean rule,
-// reused here BY REFERENCE in prose/citation form, never re-implemented independently). The Lot 6
+// reused here BY REFERENCE in prose/citation form, never re-implemented independently). The Lot 7
 // gate's fail-closed demotion of the 41013 innocence control (§3.5, adversarial BLOCKER, corrected
 // legal base) proved the PRE-refinement contract had no way to EVER certify a record honestly
 // asserting this fact — every "verified" fiktif_positif/derived_license entry would need a
@@ -972,12 +975,25 @@ function expectedArticleFor(field, riskValue) {
   return null; // neither eligible tier -> no derivation rule applies at all (guilt path below)
 }
 
+// Conductor gate cure #1 (2026-07-19, scar family #3 guard-over-match — anti cite-everything):
+// a bare `.includes(expectedArticle)` substring check validates a citation that lists MULTIPLE
+// articles at once ("225(1), 230" would satisfy BOTH tiers' expectedArticle via substring) and
+// false near-matches ("1230" contains "230" as a substring). Normalize the article (strip a
+// leading "Pasal " prefix, case-insensitive, then trim) and require EXACT equality with
+// expectedArticle — a citation must name ONE article, unambiguously, matching the base risk
+// tier's actual rule, never a superset or a substring collision.
+function normalizeArticle(article) {
+  return String(article || "")
+    .replace(/^\s*pasal\s+/i, "")
+    .trim();
+}
+
 function derivationCitationValid(entry, expectedArticle) {
   const c = entry && entry.derivation_citation;
   if (!c || typeof c !== "object") return false;
   if (c.script !== "scripts/derive_fiktif_positif.py") return false;
   if (!/28\s*\/\s*2025/.test(String(c.instrument || ""))) return false;
-  if (!expectedArticle || !String(c.article || "").includes(expectedArticle))
+  if (!expectedArticle || normalizeArticle(c.article) !== expectedArticle)
     return false;
   if (!String(c.vintage || "").trim()) return false;
   return true;
