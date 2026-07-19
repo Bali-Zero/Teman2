@@ -6,8 +6,11 @@ import asyncio
 import fcntl
 import json
 import os
+import hashlib
+from contextlib import asynccontextmanager
 from enum import StrEnum
 from pathlib import Path
+from collections.abc import AsyncIterator
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -15,6 +18,7 @@ from pydantic import BaseModel, ConfigDict
 
 class OutcomeState(StrEnum):
     pending = "pending"
+    staged = "staged"
     completed = "completed"
     absent = "absent"
     unknown = "outcome_unknown"
@@ -51,6 +55,8 @@ class ReconcileResult(BaseModel):
 
 
 class OutcomeJournal(Protocol):
+    def claim(self, operation_id: str) -> AsyncIterator[None]: ...
+
     async def record(self, record: OutcomeRecord) -> None: ...
 
     async def get(self, operation_id: str) -> OutcomeRecord | None: ...
@@ -62,6 +68,13 @@ class InMemoryOutcomeJournal:
     def __init__(self) -> None:
         self._records: dict[str, OutcomeRecord] = {}
         self._lock = asyncio.Lock()
+        self._claim_locks: dict[str, asyncio.Lock] = {}
+
+    @asynccontextmanager
+    async def claim(self, operation_id: str) -> AsyncIterator[None]:
+        lock = self._claim_locks.setdefault(operation_id, asyncio.Lock())
+        async with lock:
+            yield
 
     async def record(self, record: OutcomeRecord) -> None:
         async with self._lock:
@@ -80,6 +93,24 @@ class DurableOutcomeJournal:
     def __init__(self, path: Path) -> None:
         self._path = path
         self._lock = asyncio.Lock()
+        self._claim_locks: dict[str, asyncio.Lock] = {}
+
+    @asynccontextmanager
+    async def claim(self, operation_id: str) -> AsyncIterator[None]:
+        """Hold one operation lease across preflight, send and durable outcome write."""
+
+        local = self._claim_locks.setdefault(operation_id, asyncio.Lock())
+        async with local:
+            lock_name = hashlib.sha256(operation_id.encode()).hexdigest() + ".lock"
+            lock_path = self._path.parent / f"{self._path.name}.claims" / lock_name
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            try:
+                await asyncio.to_thread(fcntl.flock, descriptor, fcntl.LOCK_EX)
+                yield
+            finally:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+                os.close(descriptor)
 
     async def record(self, record: OutcomeRecord) -> None:
         row = (

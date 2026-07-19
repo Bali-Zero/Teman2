@@ -8,6 +8,7 @@ import base64
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, Sequence
@@ -15,12 +16,19 @@ from typing import Any, Literal, Sequence
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pydantic import BaseModel, ConfigDict
 
-from zantara_media.magazine.assets import AssetIntentManifestV1, bind_canonical_assets
+from zantara_media.magazine.assets import (
+    AssetIntentManifestV1,
+    bind_canonical_assets,
+    validate_asset_intent_targets,
+)
 from zantara_media.magazine.audit_anchor import (
     AuditAnchorService,
     AuditEventRecord,
     AuditReleaseInterlock,
     DurableAnchorLedger,
+    ZERO_HASH,
+    verify_audit_feed_page,
+    verify_audit_stream,
 )
 from zantara_media.magazine.composer import ComposerConfig, compose_breaking, compose_edition
 from zantara_media.magazine.loaders import load_named_projection
@@ -29,6 +37,10 @@ from zantara_media.magazine.reconciler import DurableOutcomeJournal
 from zantara_media.magazine.transport import MagazineTransport, TransportConfig
 
 logger = logging.getLogger(__name__)
+
+_UTC_TIMESTAMP = re.compile(
+    r"^(?P<second>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<fraction>\d+))?Z$"
+)
 
 
 class ProjectionInput(BaseModel):
@@ -93,7 +105,7 @@ def _mode_flags(parser: argparse.ArgumentParser) -> None:
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--publish", action="store_true")
     parser.add_argument("--asset-manifest", type=Path)
-    parser.add_argument("--audit-events", type=Path)
+    parser.add_argument("--offline-audit-events", type=Path)
 
 
 async def _read_json(path: Path) -> dict[str, Any]:
@@ -126,6 +138,18 @@ def _cutoff(value: str) -> datetime:
     return parsed
 
 
+def _millisecond_timestamp(value: str) -> str:
+    match = _UTC_TIMESTAMP.fullmatch(value)
+    if match is None:
+        raise ValueError("timestamp must be a valid UTC instant ending in Z")
+    try:
+        datetime.fromisoformat(f"{match.group('second')}+00:00")
+    except ValueError as exc:
+        raise ValueError("timestamp must be a valid UTC instant ending in Z") from exc
+    fraction = (match.group("fraction") or "").ljust(3, "0")[:3]
+    return f"{match.group('second')}.{fraction}Z"
+
+
 def _transport_config() -> TransportConfig:
     names = {
         "base_url": "MAGAZINE_BASE_URL",
@@ -152,7 +176,6 @@ async def _publish(
     *,
     breaking: bool,
     asset_manifest_path: Path,
-    audit_events_path: Path,
 ) -> dict[str, Any]:
     journal_path = Path(
         os.environ.get(
@@ -161,42 +184,29 @@ async def _publish(
         )
     )
     state_dir = journal_path.parent
-    interlock = AuditReleaseInterlock(state_dir / "audit-release.jsonl")
+    key_raw = os.environ.get("MAGAZINE_AUDIT_PRIVATE_KEY_B64")
+    if key_raw is None:
+        raise RuntimeError("missing publisher environment: MAGAZINE_AUDIT_PRIVATE_KEY_B64")
+    try:
+        private_key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(key_raw))
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("invalid audit private key") from exc
+    ledger = DurableAnchorLedger(state_dir / "audit-anchors.jsonl")
+    interlock = AuditReleaseInterlock(
+        state_dir / "audit-release.jsonl",
+        ledger=ledger,
+        public_key=private_key.public_key(),
+    )
     transport = MagazineTransport(
         _transport_config(),
         journal=DurableOutcomeJournal(journal_path),
         release_gate=interlock,
     )
     try:
-        key_raw = os.environ.get("MAGAZINE_AUDIT_PRIVATE_KEY_B64")
-        if key_raw is None:
-            raise RuntimeError("missing publisher environment: MAGAZINE_AUDIT_PRIVATE_KEY_B64")
-        try:
-            private_key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(key_raw))
-        except (ValueError, TypeError) as exc:
-            raise RuntimeError("invalid audit private key") from exc
-        events_raw = json.loads(await asyncio.to_thread(audit_events_path.read_bytes))
-        if not isinstance(events_raw, list):
-            raise ValueError("audit event input must be an array")
-        events = tuple(AuditEventRecord.model_validate(item) for item in events_raw)
-        service = AuditAnchorService(
-            key_id=os.environ.get("MAGAZINE_AUDIT_KEY_ID", "pro-anchor-1"),
-            private_key=private_key,
-            ledger=DurableAnchorLedger(state_dir / "audit-anchors.jsonl"),
-            interlock=interlock,
-        )
-        observed_at = str(packet["verified_at"])
-        if not observed_at.endswith(".000Z"):
-            observed_at = observed_at.replace("Z", ".000Z")
-        await service.anchor_and_submit(
-            events,
-            observed_at=observed_at,
-            submit=transport.submit_audit_anchor,
-        )
-
         asset_manifest = AssetIntentManifestV1.model_validate_json(
             await asyncio.to_thread(asset_manifest_path.read_bytes)
         )
+        validate_asset_intent_targets(packet, asset_manifest, breaking=breaking)
         canonical: dict[str, str] = {}
         for intent in asset_manifest.intents:
             source_bytes = await asyncio.to_thread(intent.source_path.read_bytes)
@@ -207,10 +217,77 @@ async def _publish(
         bound = bind_canonical_assets(
             packet, asset_manifest, canonical, breaking=breaking
         )
-        if breaking:
-            await transport.publish_breaking(bound)
+        operation: Literal["edition.publish", "breaking.publish"] = (
+            "breaking.publish" if breaking else "edition.publish"
+        )
+        staged = await transport.stage_publication(bound, breaking=breaking)
+        if staged.get("ok") is True:
+            return bound
+
+        receipts = await ledger.read_all(private_key.public_key())
+        prior = next(
+            (
+                item
+                for item in reversed(receipts)
+                if item.body.stream_id == "magazine-publication.v1"
+            ),
+            None,
+        )
+        sequence = int(prior.body.stream_seq) if prior is not None else 0
+        checkpoint_hash = prior.body.event_hash if prior is not None else ZERO_HASH
+        events: list[AuditEventRecord] = []
+        target_verified = False
+        release_binding = None
+        for _ in range(100):
+            page = await transport.fetch_audit_feed_page(
+                stream_id="magazine-publication.v1",
+                after_seq=sequence,
+                checkpoint_hash=checkpoint_hash,
+                limit=100,
+                operation=operation,
+                packet_id=str(bound["packet_id"]),
+            )
+            verified = verify_audit_feed_page(
+                page,
+                expected_stream_id="magazine-publication.v1",
+                expected_sequence=sequence,
+                expected_hash=checkpoint_hash,
+                expected_operation=operation,
+                expected_packet_id=str(bound["packet_id"]),
+            )
+            events.extend(verified.events)
+            target_verified = target_verified or verified.target_verified
+            sequence = verified.next_sequence
+            checkpoint_hash = verified.next_hash
+            release_binding = verified.binding
+            if not verified.has_more:
+                break
         else:
-            await transport.post_json("/api/machine/publications/editions", bound)
+            raise RuntimeError("canonical audit feed exceeded pagination safety limit")
+        if release_binding is None or not target_verified:
+            raise RuntimeError("canonical audit feed did not prove publication target")
+        service = AuditAnchorService(
+            key_id=os.environ.get("MAGAZINE_AUDIT_KEY_ID", "pro-anchor-1"),
+            private_key=private_key,
+            ledger=ledger,
+            interlock=interlock,
+        )
+        await service.anchor_and_submit(
+            tuple(events),
+            observed_at=_millisecond_timestamp(str(bound["verified_at"])),
+            submit=transport.submit_audit_anchor,
+            release_binding=release_binding,
+        )
+        if breaking:
+            await transport.publish_breaking(
+                bound, release_binding=release_binding
+            )
+        else:
+            await transport.post_json(
+                "/api/machine/publications/editions",
+                bound,
+                release_binding=release_binding,
+            )
         return bound
     finally:
         await transport.aclose()
@@ -278,16 +355,27 @@ async def async_main(argv: Sequence[str] | None = None) -> int:
         else await _breaking(args, manifest)
     )
     if args.publish:
-        if args.asset_manifest is None or args.audit_events is None:
-            raise ValueError("publish requires --asset-manifest and --audit-events")
+        if args.asset_manifest is None:
+            raise ValueError("publish requires --asset-manifest")
+        if args.offline_audit_events is not None:
+            raise ValueError("offline audit fixtures cannot unlock production publish")
         packet = await _publish(
             packet,
             breaking=args.command == "breaking",
             asset_manifest_path=args.asset_manifest,
-            audit_events_path=args.audit_events,
         )
         logger.info("packet published packet_id=%s target=%s", packet["packet_id"], args.command)
     else:
+        if args.offline_audit_events is not None:
+            events_raw = json.loads(
+                await asyncio.to_thread(args.offline_audit_events.read_bytes)
+            )
+            if not isinstance(events_raw, list):
+                raise ValueError("offline audit fixture must be an array")
+            verify_audit_stream(
+                tuple(AuditEventRecord.model_validate(item) for item in events_raw)
+            )
+            logger.info("offline audit fixture verified; production unlock disabled")
         logger.info("dry run complete packet_id=%s target=%s", packet["packet_id"], args.command)
     await _write_packet(args.output, packet)
     return 0

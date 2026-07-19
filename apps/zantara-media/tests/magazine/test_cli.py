@@ -11,7 +11,7 @@ import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from zantara_media.cli.magazine_publish import async_main
+from zantara_media.cli.magazine_publish import _millisecond_timestamp, _publish, async_main
 from zantara_media.magazine.audit_anchor import build_audit_event_hash
 
 
@@ -149,6 +149,19 @@ async def test_morning_dry_run_is_deterministic_and_never_logs_payload_or_secret
     assert packet["edition_kind"] == "quiet"
     assert secret_marker not in caplog.text
     assert "private_note" not in caplog.text
+    with pytest.raises(ValueError, match="cannot unlock production"):
+        await async_main(
+            [
+                *common[:-1],
+                "--output",
+                str(first),
+                "--publish",
+                "--asset-manifest",
+                str(source),
+                "--offline-audit-events",
+                str(first),
+            ]
+        )
 
 
 def test_cli_requires_explicit_publish_flag_for_network() -> None:
@@ -157,8 +170,93 @@ def test_cli_requires_explicit_publish_flag_for_network() -> None:
     assert "--publish" not in ["morning", "--input", str(source), "--dry-run"]
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("2026-07-19T00:00:00Z", "2026-07-19T00:00:00.000Z"),
+        ("2026-07-19T00:00:00.123Z", "2026-07-19T00:00:00.123Z"),
+        ("2026-07-19T00:00:00.123987Z", "2026-07-19T00:00:00.123Z"),
+    ],
+)
+def test_anchor_timestamp_is_canonical_millisecond_utc(
+    source: str, expected: str
+) -> None:
+    assert _millisecond_timestamp(source) == expected
+
+
 @pytest.mark.asyncio
-async def test_cli_publish_is_audit_then_upload_then_edition_without_network(
+async def test_unknown_asset_story_is_rejected_before_first_upload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image = tmp_path / "hero.png"
+    image.write_bytes(PNG)
+    manifest = tmp_path / "assets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "asset-intents.v1",
+                "intents": [
+                    {
+                        "asset_id": "hero-1",
+                        "source_path": str(image),
+                        "story_ids": ["unknown-story"],
+                        "captured_at": "2026-07-19T00:00:00Z",
+                        "alt_text": "Editorial hero",
+                        "source": "Bali Zero editorial desk",
+                        "source_url": None,
+                        "rights_basis": "internal-owned",
+                        "rights_status": "approved",
+                        "usage_status": "approved",
+                        "dlp_status": "passed",
+                        "sanitization_status": "passed",
+                        "perceptual_dedup_status": "unique",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    calls = 0
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(500)
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "zantara_media.magazine.transport.httpx.AsyncClient",
+        lambda **_: real_client(transport=httpx.MockTransport(handler)),
+    )
+    key = Ed25519PrivateKey.generate()
+    env = {
+        "MAGAZINE_BASE_URL": "https://magazine.example",
+        "MAGAZINE_SIWC_BEARER_TOKEN": "token",
+        "MAGAZINE_HMAC_KEY_ID": "hmac-1",
+        "MAGAZINE_HMAC_SECRET": "secret",
+        "MAGAZINE_HMAC_AUDIENCE": "magazine",
+        "MAGAZINE_AUDIT_PRIVATE_KEY_B64": base64.b64encode(
+            key.private_bytes_raw()
+        ).decode(),
+        "MAGAZINE_OUTCOME_JOURNAL": str(tmp_path / "state" / "outcomes.jsonl"),
+    }
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError, match="unknown story"):
+        await _publish(
+            {
+                "packet_id": "edition-1",
+                "verified_at": "2026-07-19T00:00:00Z",
+                "stories": [{"story_id": "known-story"}],
+            },
+            breaking=False,
+            asset_manifest_path=manifest,
+        )
+    assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
     tmp_path: Path,
     story_factory: Callable[..., dict[str, Any]],
     monkeypatch: pytest.MonkeyPatch,
@@ -208,27 +306,12 @@ async def test_cli_publish_is_audit_then_upload_then_edition_without_network(
         ),
         encoding="utf-8",
     )
-    payload = {"event": "ready"}
-    event_hash = build_audit_event_hash("publication:main", 1, "0" * 64, payload)
-    audit = tmp_path / "audit.json"
-    audit.write_text(
-        json.dumps(
-            [
-                {
-                    "schema_version": "audit-event.v1",
-                    "stream_id": "publication:main",
-                    "stream_seq": 1,
-                    "previous_event_hash": "0" * 64,
-                    "event_hash": event_hash,
-                    "payload": payload,
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
     order: list[str] = []
+    staged_packet_id = ""
+    publication_calls = 0
 
     async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal publication_calls, staged_packet_id
         body = await request.aread()
         order.append(request.url.path)
         if request.url.path == "/api/machine/assets":
@@ -244,6 +327,88 @@ async def test_cli_publish_is_audit_then_upload_then_edition_without_network(
                     "canonical_byte_count": len(body),
                     "width": 1,
                     "height": 1,
+                },
+            )
+        if request.url.path == "/api/machine/publications/editions":
+            publication_calls += 1
+            packet = json.loads(body)
+            staged_packet_id = packet["packet_id"]
+            if publication_calls == 1:
+                return httpx.Response(
+                    409,
+                    headers={"cache-control": "no-store"},
+                    json={
+                        "ok": False,
+                        "error": "promotion_blocked",
+                        "operation": "edition.publish",
+                        "packet_id": staged_packet_id,
+                    },
+                )
+            return httpx.Response(201, json={"ok": True, "status": "created"})
+        if request.url.path == "/api/machine/audit-events/v1":
+            unrelated_payload = {
+                "schema_version": "publication-operation.v1",
+                "operation": "breaking.publish",
+                "packet_id": "breaking-prior",
+            }
+            first_hash = build_audit_event_hash(
+                "magazine-publication.v1", 1, "0" * 64, unrelated_payload
+            )
+            payload = {
+                "schema_version": "publication-operation.v1",
+                "operation": "edition.publish",
+                "packet_id": staged_packet_id,
+            }
+            event_hash = build_audit_event_hash(
+                "magazine-publication.v1", 2, first_hash, payload
+            )
+            second_page = request.url.params["after_seq"] == "1"
+            event = (
+                {
+                    "schema_version": "audit-event.v1",
+                    "stream_id": "magazine-publication.v1",
+                    "stream_seq": "2",
+                    "previous_event_hash": first_hash,
+                    "event_hash": event_hash,
+                    "payload": payload,
+                }
+                if second_page
+                else {
+                    "schema_version": "audit-event.v1",
+                    "stream_id": "magazine-publication.v1",
+                    "stream_seq": "1",
+                    "previous_event_hash": "0" * 64,
+                    "event_hash": first_hash,
+                    "payload": unrelated_payload,
+                }
+            )
+            return httpx.Response(
+                200,
+                headers={"cache-control": "no-store"},
+                json={
+                    "schema_version": "audit-feed.v1",
+                    "stream_id": "magazine-publication.v1",
+                    "checkpoint": {
+                        "stream_seq": "1" if second_page else "0",
+                        "event_hash": first_hash if second_page else "0" * 64,
+                    },
+                    "head": {"stream_seq": "2", "event_hash": event_hash},
+                    "events": [event],
+                    "promotion_target": (
+                        {
+                            "operation": "edition.publish",
+                            "packet_id": staged_packet_id,
+                            "stream_seq": "2",
+                            "event_hash": event_hash,
+                        }
+                        if second_page
+                        else None
+                    ),
+                    "next_cursor": {
+                        "after_seq": "2" if second_page else "1",
+                        "checkpoint_hash": event_hash if second_page else first_hash,
+                    },
+                    "has_more": not second_page,
                 },
             )
         return httpx.Response(201, json={"ok": True, "status": "created"})
@@ -271,12 +436,15 @@ async def test_cli_publish_is_audit_then_upload_then_edition_without_network(
             "morning", "--input", str(source), "--output", str(output),
             "--cutoff", "2026-07-17T22:15:00Z", "--required-system-id",
             "regulatory-watcher", "--asset-manifest", str(assets),
-            "--audit-events", str(audit), "--publish",
+            "--publish",
         ]
     ) == 0
     assert order == [
-        "/api/machine/audit-anchor",
         "/api/machine/assets",
+        "/api/machine/publications/editions",
+        "/api/machine/audit-events/v1",
+        "/api/machine/audit-events/v1",
+        "/api/machine/audit-anchor",
         "/api/machine/publications/editions",
     ]
     packet = json.loads(output.read_text(encoding="utf-8"))

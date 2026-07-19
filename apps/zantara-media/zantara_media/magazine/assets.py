@@ -52,6 +52,33 @@ class AssetIntentManifestV1(BaseModel):
         return self
 
 
+def validate_asset_intent_targets(
+    packet: dict[str, object],
+    manifest: AssetIntentManifestV1,
+    *,
+    breaking: bool,
+) -> None:
+    """Reject unknown story references before any source bytes are uploaded."""
+
+    if breaking:
+        story = packet.get("story")
+        if not isinstance(story, dict) or "story_id" not in story:
+            raise ValueError("breaking packet has no canonical story target")
+        known = {str(story["story_id"])}
+    else:
+        stories = packet.get("stories")
+        if not isinstance(stories, list):
+            raise ValueError("edition packet has no canonical story targets")
+        known = {
+            str(story["story_id"])
+            for story in stories
+            if isinstance(story, dict) and "story_id" in story
+        }
+    referenced = {story_id for intent in manifest.intents for story_id in intent.story_ids}
+    if referenced - known:
+        raise ValueError("asset intent references an unknown story")
+
+
 def bind_canonical_assets(
     packet: dict[str, object],
     manifest: AssetIntentManifestV1,
@@ -59,6 +86,7 @@ def bind_canonical_assets(
     *,
     breaking: bool,
 ) -> dict[str, object]:
+    validate_asset_intent_targets(packet, manifest, breaking=breaking)
     if set(canonical) != {item.asset_id for item in manifest.intents}:
         raise ValueError("canonical asset response set does not match manifest")
     story_assets: dict[str, set[str]] = {}

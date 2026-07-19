@@ -11,7 +11,8 @@ import secrets
 import struct
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
+from urllib.parse import urlencode
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -21,7 +22,11 @@ from zantara_media.magazine.contracts import (
     AssetUploadMetadataV2,
     AssetUploadResponseV2,
 )
-from zantara_media.magazine.audit_anchor import ReleaseBlockedError
+from zantara_media.magazine.audit_anchor import (
+    AuditFeedPageV1,
+    ReleaseBinding,
+    ReleaseBlockedError,
+)
 from zantara_media.magazine.reconciler import (
     InMemoryOutcomeJournal,
     OutcomeBindingError,
@@ -41,7 +46,7 @@ PacketFactory = Callable[[dict[str, str]], Mapping[str, Any]]
 
 
 class ReleaseGate(Protocol):
-    def require_release_allowed(self) -> None: ...
+    def require_release_allowed(self, binding: ReleaseBinding) -> None: ...
 
 
 class TransportConfig(BaseModel):
@@ -74,11 +79,43 @@ def _image_metadata(body: bytes) -> tuple[str, int, int]:
                 width = int.from_bytes(body[index + 7 : index + 9], "big")
                 return "image/jpeg", width, height
             index += 2 + length
-    if body.startswith(b"RIFF") and body[8:12] == b"WEBP" and len(body) >= 30:
-        chunk = body[12:16]
-        if chunk == b"VP8X":
-            width = 1 + int.from_bytes(body[24:27], "little")
-            height = 1 + int.from_bytes(body[27:30], "little")
+    if body.startswith(b"RIFF") and len(body) >= 20 and body[8:12] == b"WEBP":
+        if int.from_bytes(body[4:8], "little") + 8 != len(body):
+            raise ValueError("unsupported or malformed image source")
+        offset = 12
+        width = 0
+        height = 0
+        saw_image = False
+        while offset < len(body):
+            if offset + 8 > len(body):
+                raise ValueError("unsupported or malformed image source")
+            chunk = body[offset : offset + 4]
+            length = int.from_bytes(body[offset + 4 : offset + 8], "little")
+            data_offset = offset + 8
+            end = data_offset + length
+            if end > len(body) or chunk in {b"ANIM", b"ANMF"}:
+                raise ValueError("unsupported or malformed image source")
+            data = body[data_offset:end]
+            if chunk == b"VP8X":
+                if length != 10 or data[0] & 0x02:
+                    raise ValueError("unsupported or malformed image source")
+                width = 1 + int.from_bytes(data[4:7], "little")
+                height = 1 + int.from_bytes(data[7:10], "little")
+            elif chunk == b"VP8L":
+                if length < 5 or data[0] != 0x2F:
+                    raise ValueError("unsupported or malformed image source")
+                packed = int.from_bytes(data[1:5], "little")
+                width = (packed & 0x3FFF) + 1
+                height = ((packed >> 14) & 0x3FFF) + 1
+                saw_image = True
+            elif chunk == b"VP8 ":
+                if length < 10 or data[3:6] != b"\x9d\x01\x2a":
+                    raise ValueError("unsupported or malformed image source")
+                width = int.from_bytes(data[6:8], "little") & 0x3FFF
+                height = int.from_bytes(data[8:10], "little") & 0x3FFF
+                saw_image = True
+            offset = end + (length & 1)
+        if offset == len(body) and saw_image and width > 0 and height > 0:
             return "image/webp", width, height
     raise ValueError("unsupported or malformed image source")
 
@@ -156,6 +193,27 @@ class MagazineTransport:
         content_type: str,
         operation_id: str,
         signed_headers: Mapping[str, str] | None = None,
+        staged_response: Mapping[str, Any] | None = None,
+    ) -> httpx.Response:
+        async with self._journal.claim(operation_id):
+            return await self._post_raw_claimed(
+                path,
+                body,
+                content_type=content_type,
+                operation_id=operation_id,
+                signed_headers=signed_headers,
+                staged_response=staged_response,
+            )
+
+    async def _post_raw_claimed(
+        self,
+        path: str,
+        body: bytes,
+        *,
+        content_type: str,
+        operation_id: str,
+        signed_headers: Mapping[str, str] | None = None,
+        staged_response: Mapping[str, Any] | None = None,
     ) -> httpx.Response:
         body_digest = hashlib.sha256(body).hexdigest()
         replay = await self._preflight(operation_id, path, body_digest)
@@ -237,6 +295,19 @@ class MagazineTransport:
                         operation_id, path, body_digest, OutcomeState.pending, response=None
                     )
                     continue
+            if response.status_code == 409 and staged_response is not None:
+                payload = response.json()
+                if payload != dict(staged_response):
+                    response.raise_for_status()
+                    raise RuntimeError("unreachable invalid staged publication response")
+                await self._record(
+                    operation_id,
+                    path,
+                    body_digest,
+                    OutcomeState.staged,
+                    response=payload,
+                )
+                return response
             response.raise_for_status()
             payload = response.json()
             if not isinstance(payload, dict):
@@ -264,6 +335,8 @@ class MagazineTransport:
                 raise OutcomeUnknownError("completed journal record omitted response")
             return previous.response
         if previous.state == OutcomeState.absent:
+            return None
+        if previous.state == OutcomeState.staged:
             return None
         result = await self._reconcile_outcome(operation_id, path, body_digest)
         if result.state == OutcomeState.completed:
@@ -333,6 +406,8 @@ class MagazineTransport:
         self,
         path: str,
         packet: Mapping[str, Any],
+        *,
+        release_binding: ReleaseBinding | None = None,
     ) -> dict[str, Any]:
         if path in {
             "/api/machine/publications/editions",
@@ -340,7 +415,9 @@ class MagazineTransport:
         }:
             if self._release_gate is None:
                 raise ReleaseBlockedError("publication transport has no audit release interlock")
-            self._release_gate.require_release_allowed()
+            if release_binding is None:
+                raise ReleaseBlockedError("publication transport has no release binding")
+            self._release_gate.require_release_allowed(release_binding)
         body = json.dumps(
             packet,
             ensure_ascii=False,
@@ -403,19 +480,116 @@ class MagazineTransport:
         self,
         factory: PacketFactory,
         assets: Sequence[tuple[bytes, AssetProvenanceV2]],
+        *,
+        release_binding: ReleaseBinding,
     ) -> dict[str, Any]:
         canonical: dict[str, str] = {}
         for source, provenance in assets:
             result = await self.upload_asset_bytes(source, provenance)
             canonical[provenance.asset_id] = result.canonical_sha256
         packet = factory(canonical)
-        return await self.post_json("/api/machine/publications/editions", packet)
+        return await self.post_json(
+            "/api/machine/publications/editions",
+            packet,
+            release_binding=release_binding,
+        )
 
     async def submit_collector_run(self, packet: Mapping[str, Any]) -> dict[str, Any]:
         return await self.post_json("/api/machine/collector-runs", packet)
 
-    async def publish_breaking(self, packet: Mapping[str, Any]) -> dict[str, Any]:
-        return await self.post_json("/api/machine/publications/breaking", packet)
+    async def publish_breaking(
+        self, packet: Mapping[str, Any], *, release_binding: ReleaseBinding
+    ) -> dict[str, Any]:
+        return await self.post_json(
+            "/api/machine/publications/breaking",
+            packet,
+            release_binding=release_binding,
+        )
 
     async def submit_audit_anchor(self, packet: Mapping[str, Any]) -> dict[str, Any]:
         return await self.post_json("/api/machine/audit-anchor", packet)
+
+    async def stage_publication(
+        self,
+        packet: Mapping[str, Any],
+        *,
+        breaking: bool,
+    ) -> dict[str, Any]:
+        path = (
+            "/api/machine/publications/breaking"
+            if breaking
+            else "/api/machine/publications/editions"
+        )
+        operation: Literal["edition.publish", "breaking.publish"] = (
+            "breaking.publish" if breaking else "edition.publish"
+        )
+        body = json.dumps(
+            packet,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        packet_id = str(packet["packet_id"])
+        expected = {
+            "ok": False,
+            "error": "promotion_blocked",
+            "operation": operation,
+            "packet_id": packet_id,
+        }
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{packet_id}",
+            staged_response=expected,
+        )
+        payload = response.json()
+        if response.status_code == 409:
+            if response.headers.get("cache-control") != "no-store":
+                raise RuntimeError("publication stage response must be no-store")
+            return payload
+        if payload.get("ok") is True and payload.get("status") in {"created", "replay"}:
+            return payload
+        raise RuntimeError("publication stage returned an invalid response")
+
+    async def fetch_audit_feed_page(
+        self,
+        *,
+        stream_id: str,
+        after_seq: int,
+        checkpoint_hash: str,
+        limit: int,
+        operation: Literal["edition.publish", "breaking.publish"],
+        packet_id: str,
+    ) -> AuditFeedPageV1:
+        path = "/api/machine/audit-events/v1"
+        query = urlencode(
+            [
+                ("stream_id", stream_id),
+                ("after_seq", str(after_seq)),
+                ("checkpoint_hash", checkpoint_hash),
+                ("limit", str(limit)),
+                ("operation", operation),
+                ("packet_id", packet_id),
+            ]
+        )
+        signed_path = f"{path}?{query}"
+        headers = self._signed_headers(
+            method="GET",
+            path=signed_path,
+            content_type="application/json",
+            body=b"",
+        )
+        response = await self._client.request(
+            "GET",
+            f"{self._config.base_url.rstrip('/')}{signed_path}",
+            content=b"",
+            headers=headers,
+        )
+        response.raise_for_status()
+        if response.headers.get("cache-control") != "no-store":
+            raise RuntimeError("audit feed response must be no-store")
+        try:
+            return AuditFeedPageV1.model_validate(response.json())
+        except (ValidationError, ValueError, TypeError) as exc:
+            raise RuntimeError(f"invalid canonical audit feed response: {exc}") from exc

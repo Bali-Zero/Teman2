@@ -14,7 +14,12 @@ from zantara_media.magazine.reconciler import (
     OutcomeState,
     OutcomeUnknownError,
 )
-from zantara_media.magazine.transport import MagazineTransport, TransportConfig
+from zantara_media.magazine.audit_anchor import ReleaseBinding, ZERO_HASH, build_audit_event_hash
+from zantara_media.magazine.transport import (
+    MagazineTransport,
+    TransportConfig,
+    _image_metadata,
+)
 
 
 PNG = bytes.fromhex(
@@ -24,7 +29,7 @@ PNG = bytes.fromhex(
 
 
 class _AllowRelease:
-    def require_release_allowed(self) -> None:
+    def require_release_allowed(self, _: ReleaseBinding) -> None:
         return None
 
 
@@ -54,6 +59,21 @@ def provenance() -> AssetProvenanceV2:
         dlp_status="passed",
         sanitization_status="passed",
         perceptual_dedup_status="unique",
+    )
+
+
+def release_binding(packet_id: str, *, breaking: bool = False) -> ReleaseBinding:
+    path = (
+        "/api/machine/publications/breaking"
+        if breaking
+        else "/api/machine/publications/editions"
+    )
+    return ReleaseBinding(
+        stream_id="magazine-publication.v1",
+        stream_seq=1,
+        event_hash="a" * 64,
+        packet_id=packet_id,
+        operation_id=f"{path}:{packet_id}",
     )
 
 
@@ -188,7 +208,11 @@ async def test_assets_are_uploaded_before_packet_factory_receives_canonical_dige
     def factory(digests: dict[str, str]) -> dict[str, Any]:
         return {"packet_id": "edition-1", "asset_digests": [digests["asset-1"]]}
 
-    await transport.publish_edition_with_assets(factory, ((PNG, provenance()),))
+    await transport.publish_edition_with_assets(
+        factory,
+        ((PNG, provenance()),),
+        release_binding=release_binding("edition-1"),
+    )
     assert order == ["asset", "edition"]
     await transport.aclose()
 
@@ -217,7 +241,11 @@ async def test_outcome_unknown_is_reconciled_before_retry() -> None:
         reconcile=reconcile,
         release_gate=_AllowRelease(),
     )
-    await transport.post_json("/api/machine/publications/editions", {"packet_id": "p1"})
+    await transport.post_json(
+        "/api/machine/publications/editions",
+        {"packet_id": "p1"},
+        release_binding=release_binding("p1"),
+    )
     assert calls == 2
     assert reconciliations == 1
     await transport.aclose()
@@ -239,5 +267,141 @@ async def test_unknown_remote_outcome_blocks_automatic_retry() -> None:
         release_gate=_AllowRelease(),
     )
     with pytest.raises(OutcomeUnknownError):
-        await transport.post_json("/api/machine/publications/breaking", {"packet_id": "p2"})
+        await transport.post_json(
+            "/api/machine/publications/breaking",
+            {"packet_id": "p2"},
+            release_binding=release_binding("p2", breaking=True),
+        )
     await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_canonical_audit_feed_get_signs_exact_query_and_empty_body() -> None:
+    payload = {
+        "schema_version": "publication-operation.v1",
+        "operation": "edition.publish",
+        "packet_id": "edition-1",
+    }
+    event_hash = build_audit_event_hash(
+        "magazine-publication.v1", 1, ZERO_HASH, payload
+    )
+    captured: dict[str, Any] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = await request.aread()
+        captured.update(path=request.url.raw_path.decode(), body=body, headers=request.headers)
+        return httpx.Response(
+            200,
+            headers={"cache-control": "no-store"},
+            json={
+                "schema_version": "audit-feed.v1",
+                "stream_id": "magazine-publication.v1",
+                "checkpoint": {"stream_seq": "0", "event_hash": ZERO_HASH},
+                "head": {"stream_seq": "1", "event_hash": event_hash},
+                "events": [
+                    {
+                        "schema_version": "audit-event.v1",
+                        "stream_id": "magazine-publication.v1",
+                        "stream_seq": "1",
+                        "previous_event_hash": ZERO_HASH,
+                        "event_hash": event_hash,
+                        "payload": payload,
+                    }
+                ],
+                "promotion_target": {
+                    "operation": "edition.publish",
+                    "packet_id": "edition-1",
+                    "stream_seq": "1",
+                    "event_hash": event_hash,
+                },
+                "next_cursor": {"after_seq": "1", "checkpoint_hash": event_hash},
+                "has_more": False,
+            },
+        )
+
+    transport = MagazineTransport(
+        config(),
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        release_gate=_AllowRelease(),
+    )
+    page = await transport.fetch_audit_feed_page(
+        stream_id="magazine-publication.v1",
+        after_seq=0,
+        checkpoint_hash=ZERO_HASH,
+        limit=100,
+        operation="edition.publish",
+        packet_id="edition-1",
+    )
+    assert page.head.stream_seq == "1"
+    assert captured["body"] == b""
+    assert captured["path"] == (
+        "/api/machine/audit-events/v1?stream_id=magazine-publication.v1&after_seq=0&"
+        f"checkpoint_hash={ZERO_HASH}&limit=100&operation=edition.publish&packet_id=edition-1"
+    )
+    assert captured["headers"]["content-type"] == "application/json"
+    assert captured["headers"]["x-magazine-signature"]
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_publication_stage_requires_private_no_store_response() -> None:
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            409,
+            json={
+                "ok": False,
+                "error": "promotion_blocked",
+                "operation": "edition.publish",
+                "packet_id": "edition-1",
+            },
+        )
+
+    transport = MagazineTransport(
+        config(),
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        journal=InMemoryOutcomeJournal(),
+        release_gate=_AllowRelease(),
+    )
+    with pytest.raises(RuntimeError, match="must be no-store"):
+        await transport.stage_publication({"packet_id": "edition-1"}, breaking=False)
+    await transport.aclose()
+
+
+def _webp(*chunks: tuple[bytes, bytes]) -> bytes:
+    encoded = b"".join(
+        chunk
+        + len(data).to_bytes(4, "little")
+        + data
+        + (b"\x00" if len(data) & 1 else b"")
+        for chunk, data in chunks
+    )
+    body = b"WEBP" + encoded
+    return b"RIFF" + len(body).to_bytes(4, "little") + body
+
+
+@pytest.mark.parametrize(
+    ("source", "size"),
+    [
+        (_webp((b"VP8 ", b"\x00\x00\x00\x9d\x01\x2a\x07\x00\x05\x00")), (7, 5)),
+        (
+            _webp(
+                (
+                    b"VP8L",
+                    b"\x2f" + (((7 - 1) | ((5 - 1) << 14))).to_bytes(4, "little"),
+                )
+            ),
+            (7, 5),
+        ),
+        (
+            _webp(
+                (b"VP8X", b"\x00\x00\x00\x00\x06\x00\x00\x04\x00\x00"),
+                (b"VP8 ", b"\x00\x00\x00\x9d\x01\x2a\x07\x00\x05\x00"),
+            ),
+            (7, 5),
+        ),
+    ],
+)
+def test_all_sites_supported_webp_variants_are_accepted(
+    source: bytes, size: tuple[int, int]
+) -> None:
+    assert _image_metadata(source) == ("image/webp", *size)

@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import multiprocessing
+import time
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from zantara_media.magazine.reconciler import (
     ReconcileResult,
 )
 from zantara_media.magazine.transport import MagazineTransport, TransportConfig
+from zantara_media.magazine.audit_anchor import ReleaseBinding
 
 
 PATH = "/api/machine/publications/editions"
@@ -28,8 +30,17 @@ OPERATION_ID = f"{PATH}:p-restart"
 
 
 class _AllowRelease:
-    def require_release_allowed(self) -> None:
+    def require_release_allowed(self, _: ReleaseBinding) -> None:
         return None
+
+
+RELEASE_BINDING = ReleaseBinding(
+    stream_id="magazine-publication.v1",
+    stream_seq=1,
+    event_hash="a" * 64,
+    packet_id="p-restart",
+    operation_id=OPERATION_ID,
+)
 
 
 def _config() -> TransportConfig:
@@ -70,6 +81,37 @@ def _seed_in_separate_process(path: Path, state: OutcomeState) -> None:
     assert process.exitcode == 0
 
 
+def _claim_process(path: str, active: Any, maximum: Any) -> None:
+    async def run() -> None:
+        journal = DurableOutcomeJournal(Path(path))
+        async with journal.claim(OPERATION_ID):
+            with active.get_lock():
+                active.value += 1
+                maximum.value = max(maximum.value, active.value)
+            time.sleep(0.1)
+            with active.get_lock():
+                active.value -= 1
+
+    asyncio.run(run())
+
+
+def test_durable_operation_claim_is_exclusive_across_processes(tmp_path: Path) -> None:
+    context = multiprocessing.get_context("spawn")
+    active = context.Value("i", 0)
+    maximum = context.Value("i", 0)
+    path = str(tmp_path / "outcomes.jsonl")
+    processes = [
+        context.Process(target=_claim_process, args=(path, active, maximum))
+        for _ in range(2)
+    ]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join(timeout=10)
+        assert process.exitcode == 0
+    assert maximum.value == 1
+
+
 @pytest.mark.asyncio
 async def test_restart_reconciles_durable_unknown_before_any_send(tmp_path: Path) -> None:
     journal_path = tmp_path / "outcomes.jsonl"
@@ -96,7 +138,7 @@ async def test_restart_reconciles_durable_unknown_before_any_send(tmp_path: Path
         reconcile=reconcile,
         release_gate=_AllowRelease(),
     )
-    result = await transport.post_json(PATH, PACKET)
+    result = await transport.post_json(PATH, PACKET, release_binding=RELEASE_BINDING)
     assert result["status"] == "replay"
     assert sends == 0
     assert reconciliations == [(OPERATION_ID, PATH, BODY_SHA256)]
@@ -124,7 +166,9 @@ async def test_restart_retries_only_after_reconcile_proves_absent(tmp_path: Path
         reconcile=reconcile,
         release_gate=_AllowRelease(),
     )
-    assert (await transport.post_json(PATH, PACKET))["status"] == "created"
+    assert (
+        await transport.post_json(PATH, PACKET, release_binding=RELEASE_BINDING)
+    )["status"] == "created"
     assert sends == 1
     persisted = await DurableOutcomeJournal(journal_path).get(OPERATION_ID)
     assert persisted is not None
@@ -156,7 +200,7 @@ async def test_journal_rejects_operation_id_reuse_with_changed_body(tmp_path: Pa
         release_gate=_AllowRelease(),
     )
     with pytest.raises(OutcomeBindingError, match="operation binding mismatch"):
-        await transport.post_json(PATH, changed)
+        await transport.post_json(PATH, changed, release_binding=RELEASE_BINDING)
     await transport.aclose()
 
 

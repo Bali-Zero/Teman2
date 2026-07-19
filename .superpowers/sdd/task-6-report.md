@@ -14,11 +14,25 @@ was performed.
 All three critical, nine important, and three minor findings from the independent
 Task 6 review were addressed.
 
+- **Canonical two-phase promotion:** production publication no longer accepts an
+  arbitrary local audit-event file. It first stages the exact packet, then walks
+  the authenticated cursor-bound `GET /api/machine/audit-events/v1` feed from the
+  last durable Pro checkpoint, verifies every event/hash/cursor/head and the exact
+  operation + packet target, submits the signed receipt to
+  `POST /api/machine/audit-anchor`, and finally retries the byte-identical packet.
+  `--offline-audit-events` is fixture-only and cannot unlock `--publish`.
+- **Closed release proof:** each durable unlock row binds the stream, sequence,
+  event hash, operation ID, packet ID, and accepted receipt hash. Restart checks
+  re-verify the complete JSONL history and cross-check the signed receipt against
+  the anchor ledger; forged, truncated, stale, or target-mismatched rows remain
+  blocked. Every anchor attempt persists + fsyncs a blocked row before work and
+  re-blocks on every exception or non-exact Sites response.
 - **Restart-safe mutation reconciliation:** the durable outcome record binds the
   operation ID, route, body SHA-256, state, and response. Preflight runs before a
   send; completed responses replay locally; pending/unknown outcomes require a
   reconciliation result; retry occurs only after a proven `absent` result.
-  Strict, fsynced JSONL and cross-process locking reject torn or conflicting rows.
+  Strict, fsynced JSONL and an operation-scoped `flock` held across the complete
+  request lifecycle reject torn/conflicting rows and concurrent duplicate sends.
 - **Persistent audit release interlock:** audit receipt history is signature/hash
   verified and chained under one exclusive read/append/fsync lock. The persistent
   gate starts blocked, unlocks only after Sites accepts an anchor receipt, and is
@@ -27,7 +41,8 @@ Task 6 review were addressed.
   publication. Upstream asset digests are rejected, each source is uploaded first,
   request/response identity is bound to packet ID + asset ID + source digest, the
   20-asset limit is enforced, and only returned canonical PNG digests enter the
-  publication packet.
+  publication packet. Every intent must reference a story carried by the packet,
+  and that invariant is checked before the first HTTP mutation.
 - **Boundary DLP:** adapters recursively reject contaminated keys and values,
   including UUID/source identifiers, credentials, raw-OSINT markers, and Indonesian
   PII. Errors expose value-free codes and never silently sanitize a contaminated row.
@@ -44,8 +59,8 @@ Task 6 review were addressed.
   invalid port).
 - **Named read-only loaders:** Intel Lake, MATA GARUDA, NotebookLM, and Regulatory
   Watcher each use an explicitly named `.public.json` loader with a closed envelope,
-  source schema/version, system ID, cutoff, watermark, collector-run validation,
-  and no raw-store access.
+  source-specific schema/version, system ID, cutoff, watermark, collector-run
+  validation, real-instant cutoff comparison, and no raw-store access.
 - **Versioned ranking:** immutable `rules.v1` data separates novelty from recency,
   applies deterministic tie-breaks, computes edition diversity, prioritizes core
   domains, and enforces a per-domain cap.
@@ -56,8 +71,9 @@ Task 6 review were addressed.
 - **Closed/durable wire details:** audit event versions are `Literal`-closed,
   sequence values are bounded to the safe unsigned wire domain, production
   transport requires an explicit durable journal, and publisher input schema
-  discriminators are closed literals. File reads in the async CLI/loader path run
-  off the event loop.
+  discriminators are closed literals. Canonical timestamps always use millisecond
+  UTC precision; WebP inspection parses VP8, VP8L, and VP8X dimensions and rejects
+  animation. File reads in the async CLI/loader path run off the event loop.
 
 ## Delivered Components
 
@@ -86,30 +102,34 @@ Task 6 review were addressed.
 
 ## Final Gates
 
-From `apps/zantara-media` with its project `.venv` activated:
+From the repository root with `apps/zantara-media/.venv` activated:
 
 ```text
-python -m pytest tests/magazine -q
-44 passed in 7.10s
+PYTHONPATH=apps/zantara-media pytest -q \
+  apps/zantara-media/tests/magazine apps/zantara-media/tests/test_dlp.py
+77 passed in 2.97s
 
-python -m pytest tests/magazine tests/test_dlp.py -q
-58 passed in 2.03s
-
-ruff check zantara_media/magazine zantara_media/cli/magazine_publish.py tests/magazine
+ruff check apps/zantara-media/zantara_media/magazine \
+  apps/zantara-media/zantara_media/cli/magazine_publish.py \
+  apps/zantara-media/tests/magazine
 All checks passed!
 
-python -m compileall -q zantara_media/magazine zantara_media/cli/magazine_publish.py
+python -m compileall -q apps/zantara-media/zantara_media/magazine \
+  apps/zantara-media/zantara_media/cli/magazine_publish.py
 exit 0
 ```
 
 From `apps/bali-zero-magazine`:
 
 ```text
-node --test --experimental-strip-types \
-  tests/contracts.test.mjs \
-  tests/publication-repository.test.mjs \
-  tests/magazine-render.test.mjs
-60 passed, 0 failed
+npm run test:unit
+122 passed, 0 failed
+
+npm run typecheck
+exit 0
+
+npm run build
+Build complete (including /api/machine/audit-events/v1 and /api/machine/audit-anchor)
 ```
 
 Repository hygiene:
