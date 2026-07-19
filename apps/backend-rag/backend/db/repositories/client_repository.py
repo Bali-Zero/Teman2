@@ -5,7 +5,7 @@ from typing import Any
 import asyncpg
 
 from backend.db.base_repository import BaseRepository
-from backend.db.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.utils.query_builder import QueryBuilder
 

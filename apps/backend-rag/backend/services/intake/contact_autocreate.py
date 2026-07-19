@@ -42,7 +42,7 @@ from dataclasses import dataclass
 
 import asyncpg
 
-from backend.db.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores
 from backend.services.intake.auto_attach import _is_internal_sender_phone
 from backend.services.intake.routing import normalize_sender_phone
 

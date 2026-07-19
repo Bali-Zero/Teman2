@@ -11,9 +11,9 @@ from typing import Any
 import asyncpg
 
 # The canonical projection is SHARED with the CRM dedup and every phone writer
-# (backend.db.phone_lock) — "the same phone" has exactly one definition, so the
+# (backend.phone_lock) — "the same phone" has exactly one definition, so the
 # round-9 F13 parity requirement holds by construction, not by mirroring.
-from backend.db.phone_lock import phone_core as _phone_core
+from backend.phone_lock import phone_core as _phone_core
 from backend.services.intake import crm_push
 from backend.services.intake import writer as intake_writer
 

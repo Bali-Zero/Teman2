@@ -42,8 +42,8 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
-from backend.db.phone_lock import lock_phone_cores, phone_core
 from backend.db.repositories.client_repository import ClientRepository
+from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
 
@@ -53,7 +53,7 @@ logger = get_logger(__name__)
 def _normalize_phone_digits(raw: str | None) -> str | None:
     """Reduce a phone to a comparable digit tail for dedup.
 
-    Delegates to the SINGLE canonical projection ``backend.db.phone_lock
+    Delegates to the SINGLE canonical projection ``backend.phone_lock
     .phone_core`` (digits, one leading ``62``/``0`` prefix stripped, ≥6) —
     shared with the intake-delivery gate and every phone writer, so "the same
     phone" has exactly one definition (Codex 2026-07-19 round 10).
@@ -77,7 +77,7 @@ def _row_str(row: object, key: str) -> str | None:
 # phone_normalized collapses to the same canonical core as the payload — 0812…
 # and 62812… are ONE identity (Codex 2026-07-19 round 10, F15: exact-string
 # matching let intake delivery mint duplicate cards for prefix variants). $1 is
-# the payload's core. SQL CASE mirrors backend.db.phone_lock.phone_core.
+# the payload's core. SQL CASE mirrors backend.phone_lock.phone_core.
 UPSERT_MATCH_SQL = """
 SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
 FROM clients

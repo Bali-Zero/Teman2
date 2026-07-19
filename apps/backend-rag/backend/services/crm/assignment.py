@@ -19,7 +19,7 @@ import asyncpg as _asyncpg
 from langgraph.graph import END, StateGraph
 
 from backend.core.cache import invalidate_crm_stats
-from backend.db.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.validators import normalize_phone_e164
 

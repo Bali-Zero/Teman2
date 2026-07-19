@@ -12,7 +12,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
-from backend.db.phone_lock import lock_phone_cores
+from backend.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.services.portal._rbac import ClientContext, require_client_access
 
