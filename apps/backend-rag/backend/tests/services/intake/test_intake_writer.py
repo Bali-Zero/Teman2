@@ -2039,3 +2039,65 @@ async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeyp
         )
     assert written.get("passport_number") == "YC9999999"
     assert "passport_expiry" not in written
+
+
+async def test_dup_owner_sql_sees_raw_phone_behind_stale_normalized(pool):
+    """Round-13 F16 guilt 1: with raw phone=A and a stale non-null
+    phone_normalized=B, the old COALESCE hid A entirely — DUP_OWNER_SQL must
+    find the owner via the raw column independently."""
+    from backend.db.repositories.client_repository import (
+        DUP_OWNER_SQL,
+        incoming_phone_cores,
+    )
+
+    tail_a = str(uuid.uuid4().int)[:9]
+    stale_b = "62" + str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"stalemask-{uuid.uuid4().hex[:6]}",
+                "0" + tail_a,
+            )
+            # Stale divergent normalized via direct update (trigger fires only
+            # ON UPDATE OF phone, so the bogus value sticks).
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_b, cid
+            )
+            cores = incoming_phone_cores("62" + tail_a, None)
+            assert cores == [tail_a]
+            dup = await conn.fetchrow(DUP_OWNER_SQL, cores)
+            assert dup is not None and dup["id"] == cid  # raw leg found it
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
+async def test_dup_owner_sql_finds_whatsapp_only_owner(pool):
+    """Round-13 F16 guilt 2: an owner known ONLY by whatsapp was invisible to
+    the dedup search — the query must examine the whatsapp column too, and
+    the incoming whatsapp core must participate in the lookup."""
+    from backend.db.repositories.client_repository import (
+        DUP_OWNER_SQL,
+        incoming_phone_cores,
+    )
+
+    tail = str(uuid.uuid4().int)[:9]
+    cid = None
+    try:
+        async with pool.acquire() as conn:
+            cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, whatsapp) VALUES ($1,$2) RETURNING id",
+                f"waonly-{uuid.uuid4().hex[:6]}",
+                "+62 " + tail,
+            )
+            # Incoming payload duplicates the number in the WHATSAPP field.
+            cores = incoming_phone_cores(None, "0" + tail)
+            dup = await conn.fetchrow(DUP_OWNER_SQL, cores)
+            assert dup is not None and dup["id"] == cid
+    finally:
+        async with pool.acquire() as conn:
+            if cid is not None:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)

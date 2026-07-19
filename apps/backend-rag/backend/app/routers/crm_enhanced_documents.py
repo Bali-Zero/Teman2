@@ -607,12 +607,17 @@ async def upload_document_base64(
                 raise HTTPException(status_code=404, detail="Client not found")
 
             def _owns_expected_core(row: Any) -> bool:
+                # Column CONSISTENCY, not membership (Codex round 13, F12g3):
+                # ownership is proven only when the row's phone columns agree
+                # on EXACTLY the expected core. A divergent row (phone=A,
+                # phone_normalized=B) is the same untrustworthy stale state the
+                # delivery gate fails closed on — expected∈{A,B} must refuse.
                 cores = {
                     c
                     for c in (phone_core(row["phone"]), phone_core(row["phone_normalized"]))
                     if c is not None
                 }
-                return data.expected_phone_core in cores
+                return cores == {data.expected_phone_core}
 
             if data.expected_phone_core and not _owns_expected_core(client):
                 # Fast pre-check (Codex round 12, F12 gap 3): the caller
@@ -807,11 +812,27 @@ async def upload_document_base64(
                         phone_core(client["phone"]),
                         phone_core(client["phone_normalized"]),
                     )
+                    # FOR UPDATE (round 13, F12g3): the advisory locks stop
+                    # only COOPERATIVE writers — the row lock makes the
+                    # re-check atomic with the INSERT against direct writers
+                    # too (any concurrent UPDATE blocks until we commit).
                     _recheck = await conn.fetchrow(
-                        "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                        "SELECT phone, phone_normalized FROM clients"
+                        " WHERE id = $1 FOR UPDATE",
                         client_id,
                     )
                     if _recheck is None or not _owns_expected_core(_recheck):
+                        # F17: the Drive file already exists and has no
+                        # documents row — log the id as a structured
+                        # reconciliation marker (no delete API on the service;
+                        # an orphaned file is recoverable noise, a
+                        # mis-attached document is not).
+                        logger.error(
+                            "orphaned_drive_file file_id=%s client_id=%s "
+                            "reason=phone_ownership_changed",
+                            upload_result.get("id"),
+                            client_id,
+                        )
                         raise HTTPException(
                             status_code=409,
                             detail=(

@@ -9,6 +9,42 @@ from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
 from backend.utils.query_builder import QueryBuilder
 
+# Duplicate-phone owner search — the ONE query both the router pre-check and
+# the under-lock repository re-check run (round 13, F16). Each column is
+# examined INDEPENDENTLY: the earlier COALESCE(phone_normalized, phone) let a
+# stale non-null phone_normalized HIDE the raw phone entirely, and whatsapp
+# was never searched at all (an owner known only by whatsapp was invisible).
+# $1 is the array of canonical cores derived from the incoming phone AND
+# whatsapp values.
+DUP_OWNER_SQL = """
+WITH norm AS (
+    SELECT id, full_name, assigned_to, updated_at,
+           regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') AS dn,
+           regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr,
+           regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') AS dw
+    FROM clients
+    WHERE deleted_at IS NULL
+)
+SELECT id, full_name, assigned_to
+FROM norm
+WHERE CASE WHEN dn LIKE '62%' THEN substr(dn, 3)
+           WHEN dn LIKE '0%'  THEN substr(dn, 2)
+           ELSE dn END = ANY($1::text[])
+   OR CASE WHEN dr LIKE '62%' THEN substr(dr, 3)
+           WHEN dr LIKE '0%'  THEN substr(dr, 2)
+           ELSE dr END = ANY($1::text[])
+   OR CASE WHEN dw LIKE '62%' THEN substr(dw, 3)
+           WHEN dw LIKE '0%'  THEN substr(dw, 2)
+           ELSE dw END = ANY($1::text[])
+ORDER BY updated_at DESC NULLS LAST
+LIMIT 1
+"""
+
+
+def incoming_phone_cores(phone: object, whatsapp: object) -> list[str]:
+    """Canonical cores of BOTH incoming contact numbers, deduped."""
+    return sorted({c for c in (phone_core(phone), phone_core(whatsapp)) if c})
+
 
 class DuplicatePhoneError(Exception):
     """A live client already owns this phone core (Codex round 12, F16).
@@ -201,33 +237,15 @@ class ClientRepository(BaseRepository):
                     # Round 12, F16: the router's dedup pre-check runs BEFORE
                     # this transaction — two concurrent creates can both pass
                     # it and serialize on the lock above one after the other.
-                    # Re-check under the held lock so the second one fails
+                    # Re-check under the held lock (round 13: EVERY incoming
+                    # core — phone AND whatsapp — against ALL three stored
+                    # columns via DUP_OWNER_SQL) so the second one fails
                     # instead of inserting a duplicate owner of the core.
-                    _core = phone_core(
-                        client_data.get("phone") or client_data.get("whatsapp")
+                    _cores = incoming_phone_cores(
+                        client_data.get("phone"), client_data.get("whatsapp")
                     )
-                    if _core:
-                        _dup = await conn.fetchrow(
-                            """
-                            WITH norm AS (
-                                SELECT id, full_name, assigned_to, updated_at,
-                                       REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
-                                                      '\\D', '', 'g') AS digits
-                                FROM clients
-                                WHERE deleted_at IS NULL
-                            )
-                            SELECT id, full_name, assigned_to
-                            FROM norm
-                            WHERE CASE
-                                    WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
-                                    WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
-                                    ELSE digits
-                                  END = $1
-                            ORDER BY updated_at DESC NULLS LAST
-                            LIMIT 1
-                            """,
-                            _core,
-                        )
+                    if _cores:
+                        _dup = await conn.fetchrow(DUP_OWNER_SQL, _cores)
                         if _dup:
                             raise DuplicatePhoneError(
                                 existing_client_id=_dup["id"],

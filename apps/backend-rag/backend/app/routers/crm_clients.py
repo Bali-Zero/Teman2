@@ -42,7 +42,12 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
-from backend.db.repositories.client_repository import ClientRepository, DuplicatePhoneError
+from backend.db.repositories.client_repository import (
+    DUP_OWNER_SQL,
+    ClientRepository,
+    DuplicatePhoneError,
+    incoming_phone_cores,
+)
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
@@ -584,38 +589,17 @@ async def create_client(
         # for legitimate shared-phone people (spouses / reused numbers — 51 live
         # groups). The auto-promote path already dedups via upsert_client_by_phone;
         # this closes the manual-create hole.
-        phone_norm = _normalize_phone_digits(client.phone or client.whatsapp)
-        if phone_norm and not allow_dup_phone:
-            # Match on digits-only on BOTH sides: the table stores phone in two
-            # inconsistent shapes (E.164 `+62…` in `phone`, bare digits in
-            # `phone_normalized`), and that drift is part of why duplicates slip
-            # through. Compare normalized-to-digits to catch either shape.
+        incoming_cores = incoming_phone_cores(client.phone, client.whatsapp)
+        if incoming_cores and not allow_dup_phone:
+            # DUP_OWNER_SQL is the SAME query the repository re-runs under the
+            # phonecore lock (round 13, F16): every incoming core (phone AND
+            # whatsapp) against ALL three stored columns independently — the
+            # earlier COALESCE let a stale non-null phone_normalized hide the
+            # raw phone, and whatsapp-only owners were invisible. Keeping
+            # pre-check and re-check on one constant is load-bearing: if they
+            # drift, the gate silently diverges (false safety).
             async with db_pool.acquire() as conn:
-                # Mirror `_normalize_phone_digits` IN SQL: strip non-digits, then
-                # drop a leading `62` or `0` so both sides collapse to the same
-                # tail. Keeping these two normalizers identical is load-bearing —
-                # if they drift, the gate silently never matches (false safety).
-                dup = await conn.fetchrow(
-                    """
-                    WITH norm AS (
-                        SELECT id, full_name, assigned_to, updated_at,
-                               REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
-                                              '\\D', '', 'g') AS digits
-                        FROM clients
-                        WHERE deleted_at IS NULL
-                    )
-                    SELECT id, full_name, assigned_to
-                    FROM norm
-                    WHERE CASE
-                            WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
-                            WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
-                            ELSE digits
-                          END = $1
-                    ORDER BY updated_at DESC NULLS LAST
-                    LIMIT 1
-                    """,
-                    phone_norm,
-                )
+                dup = await conn.fetchrow(DUP_OWNER_SQL, incoming_cores)
             if dup:
                 # Do NOT log the raw phone (UU PDP / Law 2: no PII in clear text —
                 # CodeQL clear-text-logging gate). The existing client id is a

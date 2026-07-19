@@ -1077,3 +1077,118 @@ async def test_upload_with_owned_expected_core_proceeds(
         )
 
     assert result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_upload_refuses_diverged_phone_columns_even_if_expected_matches_one(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Round-13 F12g3 guilt: ownership is column CONSISTENCY, not membership.
+    A row whose phone and phone_normalized collapse to DIFFERENT cores is the
+    same stale/ambiguous state the delivery gate fails closed on — the token
+    matching ONE of the two must still refuse."""
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",  # core 81234567890
+        "phone_normalized": "628990000111",  # core 8990000111 — DIVERGED
+    }
+    drive_ctor = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            new=drive_ctor,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    expected_phone_core="81234567890",  # matches phone only
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 409
+    drive_ctor.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_upload_recheck_locks_client_row_for_update(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Round-13 F12g3: the pre-INSERT re-check must take the ROW lock —
+    advisory locks stop only cooperative writers; FOR UPDATE makes the check
+    atomic against direct writers too."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    row = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",
+        "phone_normalized": "6281234567890",
+    }
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        row,
+        {"phone": row["phone"], "phone_normalized": row["phone_normalized"]},
+    ]
+    conn.fetchval.side_effect = [701]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="passport.pdf",
+                document_type="passport",
+                document_category="immigration",
+                expected_phone_core="81234567890",
+            ),
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+            background_tasks=BackgroundTasks(),
+        )
+
+    recheck_sql = conn.fetchrow.call_args_list[1][0][0]
+    assert "FOR UPDATE" in recheck_sql
