@@ -256,7 +256,7 @@ async def test_unknown_asset_story_is_rejected_before_first_upload(
 
 
 @pytest.mark.asyncio
-async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
+async def test_cli_publish_anchors_exact_target_before_later_verified_head(
     tmp_path: Path,
     story_factory: Callable[..., dict[str, Any]],
     monkeypatch: pytest.MonkeyPatch,
@@ -309,9 +309,11 @@ async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
     order: list[str] = []
     staged_packet_id = ""
     publication_calls = 0
+    permit_a = False
+    anchor_sequence = ""
 
     async def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal publication_calls, staged_packet_id
+        nonlocal anchor_sequence, permit_a, publication_calls, staged_packet_id
         body = await request.aread()
         order.append(request.url.path)
         if request.url.path == "/api/machine/assets":
@@ -344,43 +346,25 @@ async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
                         "packet_id": staged_packet_id,
                     },
                 )
+            if not permit_a:
+                return httpx.Response(409, json={"error": "promotion_blocked"})
             return httpx.Response(201, json={"ok": True, "status": "created"})
         if request.url.path == "/api/machine/audit-events/v1":
-            unrelated_payload = {
-                "schema_version": "publication-operation.v1",
-                "operation": "breaking.publish",
-                "packet_id": "breaking-prior",
-            }
-            first_hash = build_audit_event_hash(
-                "magazine-publication.v1", 1, "0" * 64, unrelated_payload
-            )
-            payload = {
+            payload_a = {
                 "schema_version": "publication-operation.v1",
                 "operation": "edition.publish",
                 "packet_id": staged_packet_id,
             }
-            event_hash = build_audit_event_hash(
-                "magazine-publication.v1", 2, first_hash, payload
+            hash_a = build_audit_event_hash(
+                "magazine-publication.v1", 1, "0" * 64, payload_a
             )
-            second_page = request.url.params["after_seq"] == "1"
-            event = (
-                {
-                    "schema_version": "audit-event.v1",
-                    "stream_id": "magazine-publication.v1",
-                    "stream_seq": "2",
-                    "previous_event_hash": first_hash,
-                    "event_hash": event_hash,
-                    "payload": payload,
-                }
-                if second_page
-                else {
-                    "schema_version": "audit-event.v1",
-                    "stream_id": "magazine-publication.v1",
-                    "stream_seq": "1",
-                    "previous_event_hash": "0" * 64,
-                    "event_hash": first_hash,
-                    "payload": unrelated_payload,
-                }
+            payload_b = {
+                "schema_version": "publication-operation.v1",
+                "operation": "breaking.publish",
+                "packet_id": "breaking-later",
+            }
+            hash_b = build_audit_event_hash(
+                "magazine-publication.v1", 2, hash_a, payload_b
             )
             return httpx.Response(
                 200,
@@ -388,29 +372,43 @@ async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
                 json={
                     "schema_version": "audit-feed.v1",
                     "stream_id": "magazine-publication.v1",
-                    "checkpoint": {
-                        "stream_seq": "1" if second_page else "0",
-                        "event_hash": first_hash if second_page else "0" * 64,
-                    },
-                    "head": {"stream_seq": "2", "event_hash": event_hash},
-                    "events": [event],
-                    "promotion_target": (
+                    "checkpoint": {"stream_seq": "0", "event_hash": "0" * 64},
+                    "head": {"stream_seq": "2", "event_hash": hash_b},
+                    "events": [
                         {
-                            "operation": "edition.publish",
-                            "packet_id": staged_packet_id,
+                            "schema_version": "audit-event.v1",
+                            "stream_id": "magazine-publication.v1",
+                            "stream_seq": "1",
+                            "previous_event_hash": "0" * 64,
+                            "event_hash": hash_a,
+                            "payload": payload_a,
+                        },
+                        {
+                            "schema_version": "audit-event.v1",
+                            "stream_id": "magazine-publication.v1",
                             "stream_seq": "2",
-                            "event_hash": event_hash,
-                        }
-                        if second_page
-                        else None
-                    ),
-                    "next_cursor": {
-                        "after_seq": "2" if second_page else "1",
-                        "checkpoint_hash": event_hash if second_page else first_hash,
+                            "previous_event_hash": hash_a,
+                            "event_hash": hash_b,
+                            "payload": payload_b,
+                        },
+                    ],
+                    "promotion_target": {
+                        "operation": "edition.publish",
+                        "packet_id": staged_packet_id,
+                        "stream_seq": "1",
+                        "event_hash": hash_a,
                     },
-                    "has_more": not second_page,
+                    "next_cursor": {"after_seq": "2", "checkpoint_hash": hash_b},
+                    "has_more": False,
                 },
             )
+        if request.url.path == "/api/machine/audit-anchor":
+            receipt = json.loads(body)
+            anchor_sequence = receipt["body"]["stream_seq"]
+            if anchor_sequence != "1":
+                return httpx.Response(409, json={"error": "wrong_target_receipt"})
+            permit_a = True
+            return httpx.Response(201, json={"ok": True, "status": "created"})
         return httpx.Response(201, json={"ok": True, "status": "created"})
 
     real_client = httpx.AsyncClient
@@ -443,10 +441,10 @@ async def test_cli_publish_uses_two_phase_canonical_audit_feed_without_network(
         "/api/machine/assets",
         "/api/machine/publications/editions",
         "/api/machine/audit-events/v1",
-        "/api/machine/audit-events/v1",
         "/api/machine/audit-anchor",
         "/api/machine/publications/editions",
     ]
+    assert anchor_sequence == "1"
     packet = json.loads(output.read_text(encoding="utf-8"))
     assert packet["asset_digests"] == ["d" * 64]
     assert packet["stories"][0]["asset_digests"] == ["d" * 64]

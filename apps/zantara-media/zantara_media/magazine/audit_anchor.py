@@ -229,8 +229,7 @@ class AuditFeedPageV1(FrozenModel):
 
 class VerifiedAuditFeedPage(FrozenModel):
     events: tuple[AuditEventRecord, ...]
-    binding: ReleaseBinding
-    target_verified: bool
+    target_binding: ReleaseBinding | None
     next_sequence: int
     next_hash: str
     has_more: bool
@@ -292,21 +291,25 @@ def verify_audit_feed_page(
         raise AuditChainMismatch("audit feed terminal head mismatch")
     if int(page.head.stream_seq) < head.stream_seq:
         raise AuditChainMismatch("audit feed head precedes verified range")
+    target_event = matching[0] if matching else None
     return VerifiedAuditFeedPage(
         events=events,
-        binding=ReleaseBinding(
-            stream_id=expected_stream_id,
-            stream_seq=head.stream_seq,
-            event_hash=head.event_hash,
-            packet_id=expected_packet_id,
-            operation_id=(
-                "/api/machine/publications/editions:"
-                if expected_operation == "edition.publish"
-                else "/api/machine/publications/breaking:"
+        target_binding=(
+            ReleaseBinding(
+                stream_id=expected_stream_id,
+                stream_seq=target_event.stream_seq,
+                event_hash=target_event.event_hash,
+                packet_id=expected_packet_id,
+                operation_id=(
+                    "/api/machine/publications/editions:"
+                    if expected_operation == "edition.publish"
+                    else "/api/machine/publications/breaking:"
+                )
+                + expected_packet_id,
             )
-            + expected_packet_id,
+            if target_event is not None
+            else None
         ),
-        target_verified=bool(matching),
         next_sequence=head.stream_seq,
         next_hash=head.event_hash,
         has_more=page.has_more,

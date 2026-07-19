@@ -21,6 +21,11 @@ Task 6 review were addressed.
   operation + packet target, submits the signed receipt to
   `POST /api/machine/audit-anchor`, and finally retries the byte-identical packet.
   `--offline-audit-events` is fixture-only and cannot unlock `--publish`.
+- **Target receipt is not page head:** concurrent candidates can make the target
+  event precede the verified page head. The verifier now returns the page cursor
+  and head independently from an exact target binding; the publisher verifies all
+  returned events but signs only the contiguous prefix ending at that target.
+  A receipt for a later candidate can therefore never unlock an earlier packet.
 - **Closed release proof:** each durable unlock row binds the stream, sequence,
   event hash, operation ID, packet ID, and accepted receipt hash. Restart checks
   re-verify the complete JSONL history and cross-check the signed receipt against
@@ -98,7 +103,9 @@ Task 6 review were addressed.
   legal-effect annotation.
 - Remediation RED/GREEN cycles added durable restart reconciliation, persistent
   audit blocking, upload-first CLI orchestration, shared parser parity, source
-  loaders, and real no-network E2E coverage.
+  loaders, and real no-network E2E coverage. A final concurrency RED reproduced
+  candidates A+B in one feed page and proved that a head-B receipt cannot unlock
+  target A; GREEN binds and signs A exactly while still verifying head B.
 
 ## Final Gates
 
@@ -107,7 +114,7 @@ From the repository root with `apps/zantara-media/.venv` activated:
 ```text
 PYTHONPATH=apps/zantara-media pytest -q \
   apps/zantara-media/tests/magazine apps/zantara-media/tests/test_dlp.py
-77 passed in 2.97s
+79 passed in 2.97s
 
 ruff check apps/zantara-media/zantara_media/magazine \
   apps/zantara-media/zantara_media/cli/magazine_publish.py \

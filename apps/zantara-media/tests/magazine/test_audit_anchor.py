@@ -307,7 +307,8 @@ def test_feed_page_verifies_checkpoint_head_events_and_target_binding() -> None:
         expected_operation="edition.publish",
         expected_packet_id="edition-1",
     )
-    assert verified.binding.stream_seq == 1
+    assert verified.target_binding is not None
+    assert verified.target_binding.stream_seq == 1
 
     forged = page.model_copy(
         update={
@@ -346,3 +347,75 @@ def test_feed_page_verifies_checkpoint_head_events_and_target_binding() -> None:
             expected_operation="edition.publish",
             expected_packet_id="edition-1",
         )
+
+
+@pytest.mark.parametrize(
+    ("target_packet_id", "target_sequence"),
+    (("edition-a", 1), ("edition-b", 2)),
+)
+def test_feed_page_separates_verified_head_from_exact_promotion_target(
+    target_packet_id: str,
+    target_sequence: int,
+) -> None:
+    payload_a = {
+        "schema_version": "publication-operation.v1",
+        "operation": "edition.publish",
+        "packet_id": "edition-a",
+    }
+    hash_a = build_audit_event_hash(
+        "magazine-publication.v1", 1, ZERO_HASH, payload_a
+    )
+    payload_b = {**payload_a, "packet_id": "edition-b"}
+    hash_b = build_audit_event_hash(
+        "magazine-publication.v1", 2, hash_a, payload_b
+    )
+    target_hash = hash_a if target_sequence == 1 else hash_b
+    page = AuditFeedPageV1.model_validate(
+        {
+            "schema_version": "audit-feed.v1",
+            "stream_id": "magazine-publication.v1",
+            "checkpoint": {"stream_seq": "0", "event_hash": ZERO_HASH},
+            "head": {"stream_seq": "2", "event_hash": hash_b},
+            "events": [
+                {
+                    "schema_version": "audit-event.v1",
+                    "stream_id": "magazine-publication.v1",
+                    "stream_seq": "1",
+                    "previous_event_hash": ZERO_HASH,
+                    "event_hash": hash_a,
+                    "payload": payload_a,
+                },
+                {
+                    "schema_version": "audit-event.v1",
+                    "stream_id": "magazine-publication.v1",
+                    "stream_seq": "2",
+                    "previous_event_hash": hash_a,
+                    "event_hash": hash_b,
+                    "payload": payload_b,
+                },
+            ],
+            "promotion_target": {
+                "operation": "edition.publish",
+                "packet_id": target_packet_id,
+                "stream_seq": str(target_sequence),
+                "event_hash": target_hash,
+            },
+            "next_cursor": {"after_seq": "2", "checkpoint_hash": hash_b},
+            "has_more": False,
+        }
+    )
+
+    verified = verify_audit_feed_page(
+        page,
+        expected_stream_id="magazine-publication.v1",
+        expected_sequence=0,
+        expected_hash=ZERO_HASH,
+        expected_operation="edition.publish",
+        expected_packet_id=target_packet_id,
+    )
+
+    assert verified.next_sequence == 2
+    assert verified.next_hash == hash_b
+    assert verified.target_binding is not None
+    assert verified.target_binding.stream_seq == target_sequence
+    assert verified.target_binding.event_hash == target_hash

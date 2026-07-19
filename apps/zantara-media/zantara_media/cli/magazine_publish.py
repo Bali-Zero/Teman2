@@ -236,7 +236,6 @@ async def _publish(
         sequence = int(prior.body.stream_seq) if prior is not None else 0
         checkpoint_hash = prior.body.event_hash if prior is not None else ZERO_HASH
         events: list[AuditEventRecord] = []
-        target_verified = False
         release_binding = None
         for _ in range(100):
             page = await transport.fetch_audit_feed_page(
@@ -256,16 +255,30 @@ async def _publish(
                 expected_packet_id=str(bound["packet_id"]),
             )
             events.extend(verified.events)
-            target_verified = target_verified or verified.target_verified
+            if (
+                verified.target_binding is not None
+                and release_binding is not None
+                and verified.target_binding != release_binding
+            ):
+                raise RuntimeError("canonical audit feed returned conflicting targets")
+            release_binding = verified.target_binding or release_binding
             sequence = verified.next_sequence
             checkpoint_hash = verified.next_hash
-            release_binding = verified.binding
             if not verified.has_more:
                 break
         else:
             raise RuntimeError("canonical audit feed exceeded pagination safety limit")
-        if release_binding is None or not target_verified:
+        if release_binding is None:
             raise RuntimeError("canonical audit feed did not prove publication target")
+        target_events = tuple(
+            item for item in events if item.stream_seq <= release_binding.stream_seq
+        )
+        if (
+            not target_events
+            or target_events[-1].stream_seq != release_binding.stream_seq
+            or target_events[-1].event_hash != release_binding.event_hash
+        ):
+            raise RuntimeError("canonical audit feed target is outside verified range")
         service = AuditAnchorService(
             key_id=os.environ.get("MAGAZINE_AUDIT_KEY_ID", "pro-anchor-1"),
             private_key=private_key,
@@ -273,7 +286,7 @@ async def _publish(
             interlock=interlock,
         )
         await service.anchor_and_submit(
-            tuple(events),
+            target_events,
             observed_at=_millisecond_timestamp(str(bound["verified_at"])),
             submit=transport.submit_audit_anchor,
             release_binding=release_binding,
