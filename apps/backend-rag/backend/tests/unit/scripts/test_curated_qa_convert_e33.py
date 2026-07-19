@@ -205,11 +205,44 @@ def test_every_row_matches_the_shared_curated_qa_schema(synthetic_e33_file: Path
             "confidence_class",
             "law_refs",
             "source_priority",
+            "verbatim_eligible",
+            "client_specific",
         }
         assert row["domain"] == "visa"
         assert row["lang"] == "en"
         assert row["source_priority"] == 80
         assert isinstance(row["answer"], str) and row["answer"]
+
+
+def test_verbatim_eligible_true_only_for_jelas_class(synthetic_e33_file: Path) -> None:
+    """The synthetic fixture has BERSYARAT/BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA
+    rows — none JELAS — so verbatim_eligible must be False on all three (this
+    is the converter's own best-effort value; the harvester re-derives it
+    independently and never trusts this one)."""
+    rows, _ = converter.parse_e33_markdown_file(
+        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+    )
+
+    assert all(r["verbatim_eligible"] is False for r in rows)
+    assert all(r["client_specific"] is False for r in rows)
+
+
+def test_verbatim_eligible_true_for_jelas_row(tmp_path: Path) -> None:
+    path = tmp_path / "jelas.md"
+    path.write_text(
+        "### Q1. Some settled question?\n\n"
+        "**FINAL (client-facing):**\nA settled answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- ref\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-15",
+    )
+
+    assert rows[0]["verbatim_eligible"] is True
+    assert rows[0]["client_specific"] is False
 
 
 def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> None:
@@ -306,6 +339,8 @@ def test_golden_yaml_mode_produces_question_only_rows(tmp_path: Path) -> None:
     assert all(r["confidence_class"] == "UNSCORED" for r in rows)
     assert all(r["law_refs"] == [] for r in rows)
     assert all("golden_answers_questions.yaml" in r["source_ref"] for r in rows)
+    assert all(r["verbatim_eligible"] is False for r in rows)  # no answer, never eligible
+    assert all(r["client_specific"] is False for r in rows)
 
 
 def test_golden_yaml_mode_matches_shared_schema(tmp_path: Path) -> None:
@@ -332,6 +367,8 @@ def test_golden_yaml_mode_matches_shared_schema(tmp_path: Path) -> None:
         "confidence_class",
         "law_refs",
         "source_priority",
+        "verbatim_eligible",
+        "client_specific",
     }
 
 
@@ -355,6 +392,8 @@ def test_prewarm_mode_produces_question_only_rows() -> None:
     assert len(rows) == 3
     assert all(r["answer"] is None for r in rows)
     assert all(r["confidence_class"] == "UNSCORED" for r in rows)
+    assert all(r["verbatim_eligible"] is False for r in rows)  # no answer, never eligible
+    assert all(r["client_specific"] is False for r in rows)
     assert {r["question"] for r in rows} == {
         "What are the KITAS requirements for 2026?",
         "How to renew a KITAS?",
@@ -416,6 +455,8 @@ def test_prewarm_mode_matches_shared_schema() -> None:
         "confidence_class",
         "law_refs",
         "source_priority",
+        "verbatim_eligible",
+        "client_specific",
     }
 
 

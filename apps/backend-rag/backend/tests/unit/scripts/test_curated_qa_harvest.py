@@ -116,16 +116,23 @@ class FakeEmbedder:
 
 
 def _row(**overrides: Any) -> dict:
+    """Default row is FAQ-ELIGIBLE (JELAS, non-price, non-client-specific) —
+    most tests below exercise the write MECHANICS (domain scoping, collision
+    policy, purge, ...), which requires an eligible row by default.
+    Eligibility-gate tests (guilt/innocence) override confidence_class,
+    client_specific, or answer explicitly."""
     base = {
         "question": "What is the E33 deposit amount?",
-        "answer": "USD 130,000 in a state-owned bank.",
+        "answer": "The deposit must be held in a state-owned bank account.",
         "domain": "visa",
         "lang": "en",
         "source_ref": "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1",
         "source_date": "2026-07-15",
-        "confidence_class": "BERSYARAT",
+        "confidence_class": "JELAS",
         "law_refs": ["Permenkumham 22/2023"],
         "source_priority": 80,
+        "verbatim_eligible": True,
+        "client_specific": False,
     }
     base.update(overrides)
     return base
@@ -191,6 +198,8 @@ def test_load_jsonl_rows_skips_blank_lines(tmp_path: Path) -> None:
         "confidence_class",
         "law_refs",
         "source_priority",
+        "verbatim_eligible",
+        "client_specific",
     ],
 )
 def test_validate_row_flags_missing_required_key(missing_key: str) -> None:
@@ -231,7 +240,7 @@ async def test_harvest_to_faq_writes_domain_scoped_entries(faq_cache: NotebookLM
     assert stats.faq_written == 2
     got = await faq_cache.get("Q1", notebook_id=domain_scope_id("visa"))
     assert got is not None
-    assert got["answer"] == "USD 130,000 in a state-owned bank."
+    assert got["answer"] == "The deposit must be held in a state-owned bank account."
     assert got["metadata"]["source_priority"] == 80
     assert await faq_cache.get("Q1") is None  # legacy unscoped lookup: MISS
 
@@ -301,6 +310,146 @@ async def test_harvest_to_faq_respects_collision_policy(faq_cache: NotebookLMCac
     assert got["answer"] == "high prio"
 
 
+# ── FAQ-sink eligibility gate (FATAL 3: verbatim_eligible) ──────────────────
+
+
+def test_derive_verbatim_eligible_true_for_jelas_clean_row() -> None:
+    row = _row(confidence_class="JELAS", client_specific=False, answer="No figures here.")
+    assert harvest._derive_verbatim_eligible(row) is True
+
+
+def test_derive_verbatim_eligible_false_for_non_jelas_class() -> None:
+    row = _row(confidence_class="BERSYARAT")
+    assert harvest._derive_verbatim_eligible(row) is False
+
+
+def test_derive_verbatim_eligible_false_for_client_specific() -> None:
+    row = _row(confidence_class="JELAS", client_specific=True)
+    assert harvest._derive_verbatim_eligible(row) is False
+
+
+def test_derive_verbatim_eligible_false_for_price_bearing_answer() -> None:
+    row = _row(confidence_class="JELAS", answer="The deposit is USD 130,000.")
+    assert harvest._derive_verbatim_eligible(row) is False
+
+
+def test_derive_verbatim_eligible_never_trusts_stored_value() -> None:
+    """A row that LIES about its own eligibility (stored True but actually
+    BERSYARAT) must still derive False — the stored value is never read for
+    the decision."""
+    row = _row(confidence_class="BERSYARAT", verbatim_eligible=True)
+    assert harvest._derive_verbatim_eligible(row) is False
+
+    row2 = _row(confidence_class="JELAS", verbatim_eligible=False)
+    assert harvest._derive_verbatim_eligible(row2) is True
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_bersyarat_row_is_ineligible_skipped(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — a conditional (BERSYARAT) row must never reach the FAQ sink,
+    counted as routine ineligibility (not an error)."""
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 0
+    assert stats.faq_ineligible_skipped == 1
+    assert stats.faq_price_rejected == 0
+    assert await faq_cache.get("Conditional Q") is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_client_specific_jelas_row_is_ineligible_skipped(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — a JELAS row marked client_specific must never reach the FAQ
+    sink even though its confidence class alone would qualify."""
+    rows = [_row(question="Specific Q", confidence_class="JELAS", client_specific=True)]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 0
+    assert stats.faq_ineligible_skipped == 1
+    assert await faq_cache.get("Specific Q") is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_price_bearing_jelas_row_is_hard_refused(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — a would-be-eligible JELAS row whose answer states a price
+    figure is REFUSED as a distinct hard-error class, not routine
+    ineligibility (a price in a JELAS FINAL answer is an authoring defect,
+    not expected policy like a BERSYARAT row)."""
+    rows = [
+        _row(
+            question="Price Q",
+            confidence_class="JELAS",
+            answer="The processing fee is Rp 5.000.000.",
+        ),
+    ]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 0
+    assert stats.faq_price_rejected == 1
+    assert stats.faq_ineligible_skipped == 0
+    assert await faq_cache.get("Price Q") is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_jelas_clean_row_flows_to_faq_sink(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """INNOCENCE — a genuinely eligible JELAS/non-price/non-client-specific
+    row DOES reach the FAQ sink (the gate isn't a blanket refusal)."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Clean Q", confidence_class="JELAS")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False)
+
+    assert stats.faq_written == 1
+    got = await faq_cache.get("Clean Q", notebook_id=domain_scope_id("visa"))
+    assert got is not None
+    assert got["metadata"]["verbatim_eligible"] is True
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_and_qdrant_jelas_clean_row_flows_to_both_sinks() -> None:
+    """INNOCENCE (combined) — a JELAS clean row lands in BOTH sinks; Qdrant
+    is never gated by eligibility (grounding always gets all answerable
+    rows)."""
+    faq = NotebookLMCacheService()
+    faq.redis_client = FakeAsyncRedis()
+    qdrant_client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [_row(question="Clean Q", confidence_class="JELAS")]
+
+    faq_stats = await harvest.harvest_to_faq(rows, faq, dry_run=False)
+    qdrant_stats = await harvest.harvest_to_qdrant(rows, qdrant_client, embedder, dry_run=False)
+
+    assert faq_stats.faq_written == 1
+    assert qdrant_stats.qdrant_written == 1
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_qdrant_bersyarat_row_still_written() -> None:
+    """INNOCENCE — Qdrant is grounding-only, not eligibility-gated: a
+    BERSYARAT row that is FAQ-ineligible still lands in Qdrant."""
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
+
+    stats = await harvest.harvest_to_qdrant(rows, client, embedder, dry_run=False)
+
+    assert stats.qdrant_written == 1
+    (point,) = client.points.values()
+    assert point["payload"]["verbatim_eligible"] is False
+
+
 # ── ensure_qdrant_collection ─────────────────────────────────────────────────
 
 
@@ -339,7 +488,7 @@ async def test_harvest_to_qdrant_embeds_question_and_writes_flat_payload() -> No
     assert embedder.calls == [["What is the E33 deposit amount?"]]
     (point,) = client.points.values()
     assert point["payload"]["text"] == "What is the E33 deposit amount?"
-    assert point["payload"]["answer"] == "USD 130,000 in a state-owned bank."
+    assert point["payload"]["answer"] == "The deposit must be held in a state-owned bank account."
     assert point["payload"]["domain"] == "visa"
     assert "metadata" not in point["payload"]  # flat, not nested
 

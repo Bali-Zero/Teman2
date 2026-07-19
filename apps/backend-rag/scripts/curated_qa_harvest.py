@@ -22,6 +22,12 @@ vetted answer yet) are silently SKIPPED for BOTH sinks: an FAQ/curated_qa
 entry with no answer is meaningless and would violate the provenance
 contract. They are still counted in the stats for coverage analysis.
 
+FAQ-sink eligibility (Phase-0 safety rail FATAL 3): only rows that
+independently RE-DERIVE (never a stored `verbatim_eligible` value) as
+`confidence_class == "JELAS"` AND non-price AND non-`client_specific` are
+written to the FAQ sink. Qdrant gets ALL answerable rows regardless of
+eligibility (grounding-only for the rest). See `_derive_verbatim_eligible`.
+
 Usage:
     cd apps/backend-rag
     source .venv/bin/activate
@@ -63,7 +69,16 @@ REQUIRED_ROW_KEYS: tuple[str, ...] = (
     "confidence_class",
     "law_refs",
     "source_priority",
+    "verbatim_eligible",
+    "client_specific",
 )
+
+# Phase-0 safety rail (FATAL 3): the confidence class that alone permits
+# verbatim FAQ serving. BERSYARAT/BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA/
+# DINAMIS rows are grounding-only forever — a "depends on your case" answer
+# served verbatim with zero per-request reasoning is a wrong answer waiting
+# for the wrong client.
+_JELAS_CONFIDENCE_CLASS = "JELAS"
 
 
 @dataclass
@@ -78,6 +93,8 @@ class HarvestStats:
     faq_answerless_skipped: int = 0
     faq_collision_refused: int = 0
     faq_failed: int = 0
+    faq_ineligible_skipped: int = 0
+    faq_price_rejected: int = 0
 
     qdrant_written: int = 0
     qdrant_answerless_skipped: int = 0
@@ -93,11 +110,19 @@ class HarvestStats:
             f"total_rows={self.total_rows} invalid_rows={self.invalid_rows} "
             f"malformed_lines={self.malformed_lines}",
         ]
-        if self.faq_written or self.faq_answerless_skipped or self.faq_failed:
+        if (
+            self.faq_written
+            or self.faq_answerless_skipped
+            or self.faq_failed
+            or self.faq_ineligible_skipped
+            or self.faq_price_rejected
+        ):
             lines.append(
                 f"FAQ: written={self.faq_written} "
                 f"answerless_skipped={self.faq_answerless_skipped} "
                 f"collision_refused={self.faq_collision_refused} "
+                f"ineligible_skipped={self.faq_ineligible_skipped} "
+                f"price_rejected={self.faq_price_rejected} "
                 f"failed={self.faq_failed}",
             )
         if self.qdrant_written or self.qdrant_answerless_skipped or self.qdrant_failed:
@@ -152,14 +177,39 @@ def validate_row(row: dict) -> str | None:
     return None
 
 
-def _row_provenance_metadata(row: dict) -> dict[str, Any]:
-    return {
+def _derive_verbatim_eligible(row: dict) -> bool:
+    """Independently RE-DERIVE FAQ-sink eligibility — Phase-0 safety rail
+    (FATAL 3). NEVER trusts `row.get("verbatim_eligible")`; a stored value
+    (converter best-effort guess, or a hand-edited JSONL) is informational
+    only and is ignored here by construction. Eligibility =
+    confidence_class == JELAS AND NOT client_specific AND the answer text
+    is pricing-clean (FATAL 13 detector).
+    """
+    from backend.services.misc.curated_qa_pricing_detector import has_price_content
+
+    if row.get("confidence_class") != _JELAS_CONFIDENCE_CLASS:
+        return False
+    if row.get("client_specific"):
+        return False
+    return not has_price_content(row.get("answer"))
+
+
+def _row_provenance_metadata(row: dict, *, batch_id: str | None = None) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
         "source_ref": row["source_ref"],
         "source_date": row["source_date"],
         "domain": row["domain"],
         "confidence_class": row["confidence_class"],
         "source_priority": row["source_priority"],
+        "client_specific": bool(row.get("client_specific", False)),
+        # RE-DERIVED, not the row's own stored value (see
+        # _derive_verbatim_eligible docstring) — this is what actually
+        # gated the FAQ-sink write for this row.
+        "verbatim_eligible": _derive_verbatim_eligible(row),
     }
+    if batch_id is not None:
+        metadata["batch_id"] = batch_id
+    return metadata
 
 
 # ── FAQ sink ─────────────────────────────────────────────────────────────────
@@ -180,6 +230,16 @@ async def harvest_to_faq(
     Answer-less rows (question-only seeds) are skipped — an FAQ entry with no
     answer would violate NotebookLMCacheService.set()'s provenance contract
     and is meaningless to serve.
+
+    FATAL 3 (verbatim_eligible): only rows that RE-DERIVE (never the row's
+    own stored value) as eligible — confidence_class == JELAS, not
+    client_specific, and pricing-clean — are written here. A row that would
+    otherwise be eligible except for a detected price in its answer is a
+    hard error (the E33 "FINAL (client-facing)" text is meant to route
+    prices through PricingTool, never state one) — logged at ERROR with the
+    offending question, counted separately from routine ineligibility
+    (BERSYARAT/DINAMIS/etc rows, which are Qdrant-only by design, not an
+    error).
     """
     from backend.services.caching.notebooklm_cache_service import domain_scope_id
 
@@ -187,6 +247,36 @@ async def harvest_to_faq(
     for row in rows:
         if row.get("answer") is None:
             stats.faq_answerless_skipped += 1
+            continue
+
+        stored_eligible = row.get("verbatim_eligible")
+        derived_eligible = _derive_verbatim_eligible(row)
+        if stored_eligible is not None and bool(stored_eligible) != derived_eligible:
+            logger.warning(
+                "verbatim_eligible drift for '%.60s': stored=%r derived=%r "
+                "— using DERIVED value (never trust a stored eligibility "
+                "value, FATAL 3).",
+                row.get("question"),
+                stored_eligible,
+                derived_eligible,
+            )
+
+        if not derived_eligible:
+            is_price_bearing = (
+                row.get("confidence_class") == _JELAS_CONFIDENCE_CLASS
+                and not row.get("client_specific")
+            )
+            if is_price_bearing:
+                stats.faq_price_rejected += 1
+                logger.error(
+                    "FAQ sink REFUSED (price-bearing JELAS row): '%.80s' "
+                    "(source_ref=%s) — prices must come from PricingTool "
+                    "only, never a cached verbatim answer.",
+                    row.get("question"),
+                    row.get("source_ref"),
+                )
+            else:
+                stats.faq_ineligible_skipped += 1
             continue
 
         metadata = _row_provenance_metadata(row)
@@ -331,6 +421,12 @@ async def harvest_to_qdrant(
                 "confidence_class": r["confidence_class"],
                 "law_refs": r["law_refs"],
                 "source_priority": r["source_priority"],
+                "client_specific": bool(r.get("client_specific", False)),
+                # RE-DERIVED (FATAL 3) — Qdrant gets ALL answerable rows
+                # regardless of eligibility (grounding-only for
+                # BERSYARAT/DINAMIS/etc), but the flag travels with the
+                # payload for audit/filtering.
+                "verbatim_eligible": _derive_verbatim_eligible(r),
             }
             for r in batch
         ]

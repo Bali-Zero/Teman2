@@ -3,7 +3,7 @@
 Converts three source formats into the shared curated_qa JSONL schema
 (apps/backend-rag/data/curated_qa/README.md):
 {question, answer, domain, lang, source_ref, source_date, confidence_class,
-law_refs, source_priority}.
+law_refs, source_priority, verbatim_eligible, client_specific}.
 
 Modes (mutually exclusive):
 
@@ -103,7 +103,23 @@ _SHARED_SCHEMA_KEYS = (
     "confidence_class",
     "law_refs",
     "source_priority",
+    "verbatim_eligible",
+    "client_specific",
 )
+
+# Phase-0 safety rail (FATAL 3, research/operations/2026-07-17-full-domain-
+# cache-design.md §8): `verbatim_eligible` gates whether a row may enter the
+# exact-match FAQ (Redis) sink, which bypasses the abstain gate on every
+# hit. The converter's value here is a BEST-EFFORT first pass only —
+# curated_qa_harvest.py NEVER trusts a stored `verbatim_eligible` value; it
+# independently re-derives eligibility from confidence_class +
+# client_specific + a pricing-content scan at harvest time and uses ONLY
+# that recomputed value to gate the FAQ write. `client_specific` requires
+# domain judgment no converter/regex can supply — it defaults False here
+# because the E33 markdown format has no such marker yet; a future dossier
+# format or hand-edited JSONL may set it explicitly, and the harvester
+# trusts THAT field (unlike verbatim_eligible).
+_JELAS_CONFIDENCE_CLASS = "JELAS"
 
 # ── E33 markdown parsing ─────────────────────────────────────────────────────
 
@@ -198,6 +214,12 @@ def parse_e33_markdown_file(
                 "confidence_class": confidence_class,
                 "law_refs": law_refs,
                 "source_priority": source_priority,
+                # Best-effort only — curated_qa_harvest.py re-derives this at
+                # harvest time and never trusts this stored value (FATAL 3).
+                "verbatim_eligible": confidence_class == _JELAS_CONFIDENCE_CLASS,
+                # No client-specific marker exists in the E33 format yet —
+                # defaults False; a future dossier format may set it.
+                "client_specific": False,
             },
         )
 
@@ -232,6 +254,9 @@ def convert_golden_yaml(yaml_path: Path) -> list[dict[str, Any]]:
                 "confidence_class": _QUESTION_ONLY_CONFIDENCE_CLASS,
                 "law_refs": [],
                 "source_priority": _QUESTION_ONLY_SOURCE_PRIORITY,
+                # Question-only rows have no answer — never eligible.
+                "verbatim_eligible": False,
+                "client_specific": False,
             },
         )
     return rows
@@ -261,6 +286,9 @@ def convert_prewarm(prewarm_questions: dict[str, dict[str, Any]]) -> list[dict[s
                     "confidence_class": _QUESTION_ONLY_CONFIDENCE_CLASS,
                     "law_refs": [],
                     "source_priority": _QUESTION_ONLY_SOURCE_PRIORITY,
+                    # Question-only rows have no answer — never eligible.
+                    "verbatim_eligible": False,
+                    "client_specific": False,
                 },
             )
     return rows

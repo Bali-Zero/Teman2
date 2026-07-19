@@ -23,7 +23,9 @@ Files are produced by the converters in `scripts/curated_qa_convert_e33.py`
   "source_date": "string — ISO date (YYYY-MM-DD) the source content was authored/reconciled",
   "confidence_class": "string — the source's own confidence label (e.g. BERSYARAT, JELAS, BELUM_DIATUR_PUBLIK, KEBIJAKAN_PENYEDIA, DINAMIS) or 'UNSCORED' for question-only seeds",
   "law_refs": ["array of strings — verbatim law/citation references, [] if none"],
-  "source_priority": "int — collision-policy rank for the FAQ cache; higher wins, never silently overwritten by a lower-priority write. Callers of curated_qa_harvest.py choose this per corpus/batch."
+  "source_priority": "int — collision-policy rank for the FAQ cache; higher wins, never silently overwritten by a lower-priority write. Callers of curated_qa_harvest.py choose this per corpus/batch.",
+  "verbatim_eligible": "bool — Phase-0 safety rail (FATAL 3). BEST-EFFORT ONLY as written by a converter/author — curated_qa_harvest.py NEVER trusts this stored value; it independently RE-DERIVES eligibility at harvest time (confidence_class == 'JELAS' AND non-price AND non-client_specific) and uses ONLY that recomputed value to gate the FAQ (Redis) sink write. A stored value that disagrees with the derived one is logged as drift, not honored.",
+  "client_specific": "bool — Phase-0 safety rail (FATAL 3). Converter/author-set (default false) — requires domain judgment no detector can supply, so the harvester TRUSTS this field (unlike verbatim_eligible). true means the answer is specific to one client's situation and must never be served verbatim."
 }
 ```
 
@@ -32,6 +34,16 @@ the shape before writing to either sink. This is a flat schema (no nested
 metadata dict) so it maps directly onto the FAQ cache's `metadata` argument
 and onto a **flat Qdrant payload** for the `curated_qa` collection (data
 invariant: Qdrant payloads are never nested).
+
+### FAQ-sink eligibility (verbatim_eligible)
+
+Only `JELAS`-classed, non-price, non-`client_specific` rows may ever reach
+the exact-match FAQ (Redis) sink — that sink bypasses the abstain gate on
+every hit, so a conditional ("depends on your case") answer served verbatim
+with zero reasoning is a wrong answer waiting for the wrong client.
+`BERSYARAT` / `BELUM_DIATUR_PUBLIK` / `KEBIJAKAN_PENYEDIA` / `DINAMIS` rows
+are grounding-only (Qdrant `curated_qa` collection) forever — see
+`curated_qa_harvest.py::_derive_verbatim_eligible`.
 
 ## Question-only seeds (`answer: null`)
 
@@ -49,9 +61,12 @@ still have no curated answer yet").
 
 ## Sinks
 
-- `--faq`: writes to the Redis FAQ cache (`NotebookLMCacheService`), **unscoped
-  keys** (no `notebook_id`) — this is what `orchestrator_core.check_faq_cache()`
-  reads via `faq_cache.get(query)`.
+- `--faq`: writes to the Redis FAQ cache (`NotebookLMCacheService`),
+  **domain-scoped keys** (`notebook_id=domain_scope_id(domain)`, Phase-0
+  safety rail FATAL 1) — this is what `orchestrator_core.check_faq_cache()`
+  reads via `faq_cache.get(query, notebook_id=domain_scope_id(classified_domain))`,
+  with a dual-read fallback to the legacy unscoped key for pre-Phase-0
+  entries (only served when the stored domain matches).
 - `--qdrant`: writes to the `curated_qa` Qdrant collection (logical name
   registered in `backend/core/collection_registry.py`), embedding the
   **question** with the frozen `text-embedding-3-small` model. Used by the
