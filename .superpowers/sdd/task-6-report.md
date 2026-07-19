@@ -44,10 +44,21 @@ Task 6 review were addressed.
   reconciliation result; retry occurs only after a proven `absent` result.
   Strict, fsynced JSONL and an operation-scoped `flock` held across the complete
   request lifecycle reject torn/conflicting rows and concurrent duplicate sends.
-- **Persistent audit release interlock:** audit receipt history is signature/hash
-  verified and chained under one exclusive read/append/fsync lock. The persistent
-  gate starts blocked, unlocks only after Sites accepts an anchor receipt, and is
-  checked on every edition and Breaking promotion across restarts.
+  Audit-anchor receipts are the deliberate exception: because Sites provides
+  exact replay semantics, an unknown durable outcome is safely resent with the
+  identical body and then committed locally from the replay response.
+- **Two-phase durable audit acceptance:** a signed receipt is first fsynced to a
+  separate pending journal and does not advance canonical Pro history. Only an
+  exact Sites `created` or `replay` response promotes it to the accepted ledger;
+  explicit rejection closes the pending receipt without advancing history, while
+  an unknown transport outcome preserves it for byte-identical restart replay.
+  Accepted/rejected receipt identities are terminal and cannot be reopened.
+- **Persistent audit release interlock:** accepted receipt history is
+  signature/hash verified and chained under exclusive locks. A stream-scoped
+  filesystem lock serializes prepare, submit, and promotion across processes;
+  local promotion independently enforces the exact next sequence. The persistent
+  gate starts blocked, unlocks only after durable acceptance, and is checked on
+  every edition and Breaking promotion across restarts.
 - **Upload-first assets:** a closed `asset-intents.v1` manifest is required for
   publication. Upstream asset digests are rejected, each source is uploaded first,
   request/response identity is bound to packet ID + asset ID + source digest, the
@@ -112,6 +123,12 @@ Task 6 review were addressed.
   loaders, and real no-network E2E coverage. A final concurrency RED reproduced
   candidates A+B in one feed page and proved that a head-B receipt cannot unlock
   target A; GREEN binds and signs A exactly while still verifying head B.
+- Cross-runtime RED reproduced the pre-POST accepted-ledger write: an explicit
+  B-first Sites rejection left B as the local canonical head and prevented A.
+  GREEN now keeps B only in the pending journal, accepts A normally, resumes an
+  unknown pending receipt byte-for-byte after restart, commits exact replay once,
+  and rejects terminal receipt reopening, binding drift, and anomalous sequence
+  gaps even if a fixture claims `created`.
 
 ## Final Gates
 
@@ -120,7 +137,7 @@ From the repository root with `apps/zantara-media/.venv` activated:
 ```text
 PYTHONPATH=apps/zantara-media pytest -q \
   apps/zantara-media/tests/magazine apps/zantara-media/tests/test_dlp.py
-79 passed in 2.97s
+85 passed in 1.76s
 
 ruff check apps/zantara-media/zantara_media/magazine \
   apps/zantara-media/zantara_media/cli/magazine_publish.py \
@@ -136,7 +153,7 @@ From `apps/bali-zero-magazine`:
 
 ```text
 npm run test:unit
-123 passed, 0 failed
+124 passed, 0 failed
 
 npm run typecheck
 exit 0

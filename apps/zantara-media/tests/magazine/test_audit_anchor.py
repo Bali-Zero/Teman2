@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 from pathlib import Path
@@ -9,6 +10,7 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from zantara_media.magazine.audit_anchor import (
+    AuditAnchorReceiptV1,
     AuditAnchorService,
     AuditChainMismatch,
     AuditEventRecord,
@@ -38,13 +40,31 @@ def event(sequence: int, previous: str, payload: dict[str, object]) -> AuditEven
     )
 
 
-def binding(first: AuditEventRecord) -> ReleaseBinding:
+def binding(first: AuditEventRecord, packet_id: str = "edition-1") -> ReleaseBinding:
     return ReleaseBinding(
         stream_id=first.stream_id,
         stream_seq=first.stream_seq,
         event_hash=first.event_hash,
-        packet_id="edition-1",
-        operation_id="/api/machine/publications/editions:edition-1",
+        packet_id=packet_id,
+        operation_id=f"/api/machine/publications/editions:{packet_id}",
+    )
+
+
+async def accept_anchor(
+    service: AuditAnchorService,
+    events: tuple[AuditEventRecord, ...],
+    *,
+    observed_at: str,
+    release_binding: ReleaseBinding,
+) -> AuditAnchorReceiptV1:
+    async def accept(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": True, "status": "created"}
+
+    return await service.anchor_and_submit(
+        events,
+        observed_at=observed_at,
+        submit=accept,
+        release_binding=release_binding,
     )
 
 
@@ -85,7 +105,12 @@ async def test_anchor_receipt_is_byte_exact_ed25519_and_ledger_is_append_only(
     ledger = DurableAnchorLedger(tmp_path / "anchors.jsonl")
     service = AuditAnchorService(key_id="pro-anchor-1", private_key=key, ledger=ledger)
     first = event(1, ZERO_HASH, {"event": "published"})
-    receipt = await service.anchor((first,), observed_at="2026-07-19T00:00:00.000Z")
+    receipt = await accept_anchor(
+        service,
+        (first,),
+        observed_at="2026-07-19T00:00:00.000Z",
+        release_binding=binding(first),
+    )
     verify_anchor_receipt(receipt, key.public_key())
     assert "=" not in receipt.signature
     signature = base64.urlsafe_b64decode(receipt.signature + "==")
@@ -108,11 +133,21 @@ async def test_same_sequence_replay_verifies_complete_event(tmp_path: Path) -> N
     ledger = DurableAnchorLedger(tmp_path / "anchors.jsonl")
     service = AuditAnchorService(key_id="pro-anchor-1", private_key=key, ledger=ledger)
     first = event(1, ZERO_HASH, {"event": "publication-ready"})
-    await service.anchor((first,), observed_at="2026-07-19T00:00:00.000Z")
+    await accept_anchor(
+        service,
+        (first,),
+        observed_at="2026-07-19T00:00:00.000Z",
+        release_binding=binding(first),
+    )
 
     tampered = first.model_copy(update={"payload": {"event": "forged"}})
     with pytest.raises(AuditChainMismatch, match="event hash mismatch"):
-        await service.anchor((tampered,), observed_at="2026-07-19T00:00:01.000Z")
+        await accept_anchor(
+            service,
+            (tampered,),
+            observed_at="2026-07-19T00:00:01.000Z",
+            release_binding=binding(tampered),
+        )
 
 
 @pytest.mark.asyncio
@@ -124,10 +159,20 @@ async def test_checkpoint_conflict_blocks_later_release(tmp_path: Path) -> None:
         ledger=DurableAnchorLedger(tmp_path / "anchors.jsonl"),
     )
     first = event(1, ZERO_HASH, {"event": "published"})
-    await service.anchor((first,), observed_at="2026-07-19T00:00:00.000Z")
+    await accept_anchor(
+        service,
+        (first,),
+        observed_at="2026-07-19T00:00:00.000Z",
+        release_binding=binding(first),
+    )
     rewritten = first.model_copy(update={"event_hash": "f" * 64})
     with pytest.raises(AuditChainMismatch):
-        await service.anchor((rewritten,), observed_at="2026-07-19T00:01:00.000Z")
+        await accept_anchor(
+            service,
+            (rewritten,),
+            observed_at="2026-07-19T00:01:00.000Z",
+            release_binding=binding(rewritten),
+        )
     assert service.release_blocked is True
 
     restarted = AuditAnchorService(
@@ -139,7 +184,9 @@ async def test_checkpoint_conflict_blocks_later_release(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_release_unlocks_only_after_anchor_submission_acceptance(tmp_path: Path) -> None:
+async def test_release_unlocks_only_after_anchor_submission_acceptance(
+    tmp_path: Path,
+) -> None:
     key = Ed25519PrivateKey.generate()
     ledger = DurableAnchorLedger(tmp_path / "anchors.jsonl")
     interlock = AuditReleaseInterlock(
@@ -166,6 +213,23 @@ async def test_release_unlocks_only_after_anchor_submission_acceptance(tmp_path:
         )
     with pytest.raises(ReleaseBlockedError):
         interlock.require_release_allowed(target)
+    assert await ledger.read_all(key.public_key()) == ()
+
+    calls = 0
+
+    async def must_not_reopen(_: dict[str, object]) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"ok": True, "status": "created"}
+
+    with pytest.raises(AuditChainMismatch, match="terminal pending receipt"):
+        await service.anchor_and_submit(
+            (first,),
+            observed_at="2026-07-19T00:00:00.000Z",
+            submit=must_not_reopen,
+            release_binding=target,
+        )
+    assert calls == 0
 
     async def accept_with_extra(_: dict[str, object]) -> dict[str, object]:
         return {"ok": True, "status": "replay", "unexpected": True}
@@ -173,7 +237,7 @@ async def test_release_unlocks_only_after_anchor_submission_acceptance(tmp_path:
     with pytest.raises(ReleaseBlockedError):
         await service.anchor_and_submit(
             (first,),
-            observed_at="2026-07-19T00:00:00.000Z",
+            observed_at="2026-07-19T00:00:00.001Z",
             submit=accept_with_extra,
             release_binding=target,
         )
@@ -183,11 +247,202 @@ async def test_release_unlocks_only_after_anchor_submission_acceptance(tmp_path:
 
     await service.anchor_and_submit(
         (first,),
-        observed_at="2026-07-19T00:00:00.000Z",
+        observed_at="2026-07-19T00:00:00.002Z",
         submit=accept,
         release_binding=target,
     )
     interlock.require_release_allowed(target)
+
+
+@pytest.mark.asyncio
+async def test_rejected_later_anchor_does_not_advance_before_earlier_acceptance(
+    tmp_path: Path,
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    ledger = DurableAnchorLedger(tmp_path / "anchors.jsonl")
+    service = AuditAnchorService(key_id="pro-anchor-1", private_key=key, ledger=ledger)
+    first = event(1, ZERO_HASH, {"event": "edition-a"})
+    second = event(2, first.event_hash, {"event": "edition-b"})
+
+    async def reject(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": False, "status": "rejected"}
+
+    with pytest.raises(ReleaseBlockedError, match="not accepted"):
+        await service.anchor_and_submit(
+            (first, second),
+            observed_at="2026-07-19T00:00:01.000Z",
+            submit=reject,
+            release_binding=binding(second, "edition-b"),
+        )
+    assert await ledger.read_all(key.public_key()) == ()
+
+    async def accept(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": True, "status": "created"}
+
+    receipt = await service.anchor_and_submit(
+        (first,),
+        observed_at="2026-07-19T00:00:00.000Z",
+        submit=accept,
+        release_binding=binding(first, "edition-a"),
+    )
+    assert await ledger.read_all(key.public_key()) == (receipt,)
+
+
+@pytest.mark.asyncio
+async def test_created_response_cannot_promote_a_sequence_gap(tmp_path: Path) -> None:
+    key = Ed25519PrivateKey.generate()
+    ledger = DurableAnchorLedger(tmp_path / "anchors.jsonl")
+    service = AuditAnchorService(key_id="pro-anchor-1", private_key=key, ledger=ledger)
+    first = event(1, ZERO_HASH, {"event": "edition-a"})
+    second = event(2, first.event_hash, {"event": "edition-b"})
+
+    async def anomalous_created(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": True, "status": "created"}
+
+    with pytest.raises(AuditChainMismatch, match="sequence conflict"):
+        await service.anchor_and_submit(
+            (first, second),
+            observed_at="2026-07-19T00:00:01.000Z",
+            submit=anomalous_created,
+            release_binding=binding(second, "edition-b"),
+        )
+    assert await ledger.read_all(key.public_key()) == ()
+
+
+@pytest.mark.asyncio
+async def test_unknown_submission_restarts_with_identical_pending_receipt(
+    tmp_path: Path,
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    ledger_path = tmp_path / "anchors.jsonl"
+    first = event(1, ZERO_HASH, {"event": "edition-a"})
+    target = binding(first, "edition-a")
+    submitted: list[dict[str, object]] = []
+
+    async def lose_response(packet: dict[str, object]) -> dict[str, object]:
+        submitted.append(packet)
+        raise RuntimeError("response lost")
+
+    first_service = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(ledger_path),
+    )
+    with pytest.raises(RuntimeError, match="response lost"):
+        await first_service.anchor_and_submit(
+            (first,),
+            observed_at="2026-07-19T00:00:00.000Z",
+            submit=lose_response,
+            release_binding=target,
+        )
+    assert await DurableAnchorLedger(ledger_path).read_all(key.public_key()) == ()
+
+    async def replay(packet: dict[str, object]) -> dict[str, object]:
+        submitted.append(packet)
+        return {"ok": True, "status": "replay"}
+
+    restarted = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(ledger_path),
+    )
+    receipt = await restarted.anchor_and_submit(
+        (first,),
+        observed_at="2026-07-19T00:01:00.000Z",
+        submit=replay,
+        release_binding=target,
+    )
+    assert submitted == [receipt.model_dump(mode="json")] * 2
+    assert await DurableAnchorLedger(ledger_path).read_all(key.public_key()) == (
+        receipt,
+    )
+
+    calls = 0
+
+    async def must_not_resubmit(_: dict[str, object]) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"ok": True, "status": "replay"}
+
+    duplicate = await restarted.anchor_and_submit(
+        (first,),
+        observed_at="2026-07-19T00:02:00.000Z",
+        submit=must_not_resubmit,
+        release_binding=target,
+    )
+    assert duplicate == receipt
+    assert calls == 0
+    assert await DurableAnchorLedger(ledger_path).read_all(key.public_key()) == (
+        receipt,
+    )
+
+    with pytest.raises(AuditChainMismatch, match="release binding mismatch"):
+        await restarted.anchor_and_submit(
+            (first,),
+            observed_at="2026-07-19T00:03:00.000Z",
+            submit=must_not_resubmit,
+            release_binding=binding(first, "edition-forged"),
+        )
+    assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_filesystem_stream_lock_serializes_independent_services(
+    tmp_path: Path,
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    ledger_path = tmp_path / "anchors.jsonl"
+    first_event = event(1, ZERO_HASH, {"event": "edition-a"})
+    target = binding(first_event, "edition-a")
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+    second_submits = 0
+
+    async def hold_first(_: dict[str, object]) -> dict[str, object]:
+        first_entered.set()
+        await release_first.wait()
+        return {"ok": True, "status": "created"}
+
+    async def must_not_submit(_: dict[str, object]) -> dict[str, object]:
+        nonlocal second_submits
+        second_submits += 1
+        return {"ok": True, "status": "replay"}
+
+    first_service = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(ledger_path),
+    )
+    second_service = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(ledger_path),
+    )
+    first_task = asyncio.create_task(
+        first_service.anchor_and_submit(
+            (first_event,),
+            observed_at="2026-07-19T00:00:00.000Z",
+            submit=hold_first,
+            release_binding=target,
+        )
+    )
+    await first_entered.wait()
+    second_task = asyncio.create_task(
+        second_service.anchor_and_submit(
+            (first_event,),
+            observed_at="2026-07-19T00:00:01.000Z",
+            submit=must_not_submit,
+            release_binding=target,
+        )
+    )
+    await asyncio.sleep(0.01)
+    assert second_task.done() is False
+    assert second_submits == 0
+
+    release_first.set()
+    first_receipt, second_receipt = await asyncio.gather(first_task, second_task)
+    assert second_receipt == first_receipt
+    assert second_submits == 0
 
 
 @pytest.mark.asyncio
@@ -223,12 +478,14 @@ async def test_submit_exception_reblocks_previous_unlock_and_binds_target(
     async def explode(_: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("network down")
 
+    second = event(2, first.event_hash, {"event": "publication-followup"})
+    second_target = binding(second, "edition-2")
     with pytest.raises(RuntimeError, match="network down"):
         await service.anchor_and_submit(
-            (first,),
+            (second,),
             observed_at="2026-07-19T00:00:01.000Z",
             submit=explode,
-            release_binding=target,
+            release_binding=second_target,
         )
     with pytest.raises(ReleaseBlockedError):
         interlock.require_release_allowed(target)
@@ -362,13 +619,9 @@ def test_feed_page_separates_verified_head_from_exact_promotion_target(
         "operation": "edition.publish",
         "packet_id": "edition-a",
     }
-    hash_a = build_audit_event_hash(
-        "magazine-publication.v1", 1, ZERO_HASH, payload_a
-    )
+    hash_a = build_audit_event_hash("magazine-publication.v1", 1, ZERO_HASH, payload_a)
     payload_b = {**payload_a, "packet_id": "edition-b"}
-    hash_b = build_audit_event_hash(
-        "magazine-publication.v1", 2, hash_a, payload_b
-    )
+    hash_b = build_audit_event_hash("magazine-publication.v1", 2, hash_a, payload_b)
     target_hash = hash_a if target_sequence == 1 else hash_b
     page = AuditFeedPageV1.model_validate(
         {

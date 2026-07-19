@@ -10,8 +10,9 @@ import json
 import os
 import re
 import unicodedata
+from contextlib import asynccontextmanager
 from pathlib import Path
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from typing import Any, Literal
 
 import rfc8785
@@ -23,9 +24,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
-_MILLISECOND_TIMESTAMP = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$"
-)
+_MILLISECOND_TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 _UNSIGNED_DECIMAL = re.compile(r"^(?:0|[1-9]\d*)$")
 ZERO_HASH = "0" * 64
 
@@ -36,6 +35,10 @@ class AuditChainMismatch(RuntimeError):
 
 class ReleaseBlockedError(RuntimeError):
     """Publication promotion is fail-closed after an audit incident."""
+
+
+class AuditAnchorRejectedError(RuntimeError):
+    """Sites explicitly rejected a submitted anchor receipt."""
 
 
 class FrozenModel(BaseModel):
@@ -79,7 +82,9 @@ class AuditAnchorBodyV1(FrozenModel):
     @classmethod
     def validate_observed_at(cls, value: str) -> str:
         if not _MILLISECOND_TIMESTAMP.fullmatch(value):
-            raise ValueError("observed_at must have exactly three fractional digits and Z")
+            raise ValueError(
+                "observed_at must have exactly three fractional digits and Z"
+            )
         return value
 
 
@@ -111,6 +116,21 @@ class ReleaseBinding(FrozenModel):
         if not _SHA256.fullmatch(value):
             raise ValueError("release event_hash must be lowercase SHA-256")
         return value
+
+
+class PendingAnchorRecordV1(FrozenModel):
+    """Durable receipt state kept outside the canonical accepted ledger."""
+
+    schema_version: Literal["audit-anchor-pending.v1"] = "audit-anchor-pending.v1"
+    state: Literal["pending", "rejected", "accepted"]
+    receipt: AuditAnchorReceiptV1
+    release_binding: ReleaseBinding
+
+
+class PreparedAnchor(FrozenModel):
+    receipt: AuditAnchorReceiptV1
+    release_binding: ReleaseBinding
+    state: Literal["pending", "accepted"]
 
 
 class PublicationOperationPayloadV1(FrozenModel):
@@ -278,7 +298,9 @@ def verify_audit_feed_page(
             and item.payload.get("packet_id") == expected_packet_id
         )
         if len(matching) != 1:
-            raise AuditChainMismatch("promotion target is absent from verified feed range")
+            raise AuditChainMismatch(
+                "promotion target is absent from verified feed range"
+            )
     if (
         page.next_cursor.after_seq != str(head.stream_seq)
         or page.next_cursor.checkpoint_hash != head.event_hash
@@ -455,15 +477,43 @@ def verify_anchor_receipt(
 
 
 class DurableAnchorLedger:
-    """Append-only, fsynced receipt ledger; never truncates or rewrites."""
+    """Accepted receipts plus a separate durable pre-submission journal."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, pending_path: Path | None = None) -> None:
         self._path = path
+        self._pending_path = pending_path or path.with_suffix(".pending.jsonl")
         self._lock = asyncio.Lock()
+        self._stream_locks: dict[str, asyncio.Lock] = {}
 
     @property
     def path(self) -> Path:
         return self._path
+
+    @property
+    def pending_path(self) -> Path:
+        return self._pending_path
+
+    @asynccontextmanager
+    async def claim_stream(self, stream_id: str) -> AsyncIterator[None]:
+        """Serialize prepare, submit, and commit across processes per stream."""
+
+        normalized = unicodedata.normalize("NFC", stream_id)
+        if not normalized:
+            raise ValueError("audit stream id must not be empty")
+        local = self._stream_locks.setdefault(normalized, asyncio.Lock())
+        async with local:
+            digest = hashlib.sha256(normalized.encode()).hexdigest()
+            lock_path = (
+                self._path.parent / f"{self._path.name}.streams" / f"{digest}.lock"
+            )
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            try:
+                await asyncio.to_thread(fcntl.flock, descriptor, fcntl.LOCK_EX)
+                yield
+            finally:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+                os.close(descriptor)
 
     async def read_all(
         self, public_key: Ed25519PublicKey | None = None
@@ -474,24 +524,44 @@ class DurableAnchorLedger:
         self._verify_history(receipts, public_key)
         return receipts
 
-    async def anchor_atomic(
+    async def prepare_pending(
         self,
         events: tuple[AuditEventRecord, ...],
         *,
         observed_at: str,
         key_id: str,
         private_key: Ed25519PrivateKey,
-    ) -> AuditAnchorReceiptV1:
-        """Verify history, create, append and fsync under one exclusive file lock."""
+        release_binding: ReleaseBinding,
+    ) -> PreparedAnchor:
+        """Create or resume one fsynced pending receipt without advancing accepted."""
 
         async with self._lock:
             return await asyncio.to_thread(
-                self._anchor_sync,
+                self._prepare_pending_sync,
                 events,
                 observed_at,
                 key_id,
                 private_key,
+                release_binding,
             )
+
+    async def accept_pending(
+        self,
+        prepared: PreparedAnchor,
+        public_key: Ed25519PublicKey,
+    ) -> Literal["created", "replay"]:
+        async with self._lock:
+            return await asyncio.to_thread(
+                self._accept_pending_sync, prepared, public_key
+            )
+
+    async def reject_pending(
+        self,
+        prepared: PreparedAnchor,
+        public_key: Ed25519PublicKey,
+    ) -> None:
+        async with self._lock:
+            await asyncio.to_thread(self._reject_pending_sync, prepared, public_key)
 
     @staticmethod
     def _verify_history(
@@ -507,57 +577,99 @@ class DurableAnchorLedger:
                 verify_anchor_receipt(receipt, public_key)
             prior_by_stream[receipt.body.stream_id] = receipt.anchor_hash
 
-    def _anchor_sync(
+    def _prepare_pending_sync(
         self,
         events: tuple[AuditEventRecord, ...],
         observed_at: str,
         key_id: str,
         private_key: Ed25519PrivateKey,
-    ) -> AuditAnchorReceiptV1:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(self._path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+        release_binding: ReleaseBinding,
+    ) -> PreparedAnchor:
+        if not events:
+            raise AuditChainMismatch("audit stream is empty")
+        stream_id = events[0].stream_id
+        if release_binding.stream_id != stream_id:
+            raise ReleaseBlockedError(
+                "release binding stream does not match audit events"
+            )
+        accepted_descriptor, pending_descriptor = self._open_locked_ledgers()
         try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX)
-            raw = self._read_descriptor(descriptor)
+            raw = self._read_descriptor(accepted_descriptor)
             receipts = tuple(AuditAnchorReceiptV1.model_validate(item) for item in raw)
             self._verify_history(receipts, private_key.public_key())
-            stream_id = events[0].stream_id if events else ""
             stream_receipts = tuple(
                 item for item in receipts if item.body.stream_id == stream_id
             )
             previous_receipt = stream_receipts[-1] if stream_receipts else None
-            if previous_receipt is not None:
-                previous_sequence = int(previous_receipt.body.stream_seq)
-                if events and events[-1].stream_seq == previous_sequence:
-                    if len(events) != 1:
-                        raise AuditChainMismatch("checkpoint replay must contain one event")
-                    replay = events[0]
-                    if replay.stream_id != previous_receipt.body.stream_id:
-                        raise AuditChainMismatch("checkpoint replay stream mismatch")
-                    if replay.stream_seq != previous_sequence:
-                        raise AuditChainMismatch("checkpoint replay sequence mismatch")
-                    if replay.stream_seq == 1 and replay.previous_event_hash != ZERO_HASH:
-                        raise AuditChainMismatch("genesis replay previous hash mismatch")
-                    expected_hash = build_audit_event_hash(
-                        replay.stream_id,
-                        replay.stream_seq,
-                        replay.previous_event_hash,
-                        replay.payload,
+            pending_rows = self._read_pending_descriptor(pending_descriptor)
+            active = self._verify_pending_history(
+                pending_rows, private_key.public_key()
+            ).get(stream_id)
+            terminal_hashes = {
+                row.receipt.anchor_hash
+                for row in pending_rows
+                if row.state in {"accepted", "rejected"}
+            }
+
+            head, accepted_replay = self._verify_events_against_accepted(
+                events, previous_receipt
+            )
+            if active is not None:
+                if active.release_binding != release_binding:
+                    raise AuditChainMismatch(
+                        "unresolved pending anchor has a different release binding"
                     )
-                    if replay.event_hash != expected_hash:
-                        raise AuditChainMismatch("audit stream event hash mismatch")
-                    if replay.event_hash != previous_receipt.body.event_hash:
-                        raise AuditChainMismatch("checkpoint conflicts with prior Pro anchor")
-                    return previous_receipt
-                head = verify_audit_stream(
-                    events,
-                    expected_sequence=previous_sequence + 1,
-                    expected_previous_hash=previous_receipt.body.event_hash,
+                if (
+                    active.receipt.body.stream_seq != str(head.stream_seq)
+                    or active.receipt.body.event_hash != head.event_hash
+                ):
+                    raise AuditChainMismatch(
+                        "unresolved pending anchor conflicts with audit events"
+                    )
+                if active.receipt in receipts:
+                    self._append_pending_row(
+                        pending_descriptor,
+                        active.model_copy(update={"state": "accepted"}),
+                    )
+                    return PreparedAnchor(
+                        receipt=active.receipt,
+                        release_binding=release_binding,
+                        state="accepted",
+                    )
+                return PreparedAnchor(
+                    receipt=active.receipt,
+                    release_binding=release_binding,
+                    state="pending",
                 )
-                previous_anchor_hash = previous_receipt.anchor_hash
-            else:
-                head = verify_audit_stream(events)
-                previous_anchor_hash = ZERO_HASH
+
+            if accepted_replay:
+                assert previous_receipt is not None
+                self._validate_receipt_binding(previous_receipt, release_binding)
+                accepted_terminal = next(
+                    (
+                        row
+                        for row in reversed(pending_rows)
+                        if row.state == "accepted"
+                        and row.receipt.anchor_hash == previous_receipt.anchor_hash
+                    ),
+                    None,
+                )
+                if (
+                    accepted_terminal is None
+                    or accepted_terminal.release_binding != release_binding
+                ):
+                    raise AuditChainMismatch("accepted anchor release binding mismatch")
+                return PreparedAnchor(
+                    receipt=previous_receipt,
+                    release_binding=release_binding,
+                    state="accepted",
+                )
+
+            previous_anchor_hash = (
+                previous_receipt.anchor_hash
+                if previous_receipt is not None
+                else ZERO_HASH
+            )
             receipt = _build_receipt(
                 head,
                 observed_at=observed_at,
@@ -565,24 +677,278 @@ class DurableAnchorLedger:
                 previous_anchor_hash=previous_anchor_hash,
                 private_key=private_key,
             )
-            row = (
-                json.dumps(
-                    receipt.model_dump(mode="json"),
-                    ensure_ascii=True,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                ).encode()
-                + b"\n"
+            if receipt.anchor_hash in terminal_hashes:
+                raise AuditChainMismatch("terminal pending receipt cannot be reopened")
+            self._validate_receipt_binding(receipt, release_binding)
+            pending = PendingAnchorRecordV1(
+                state="pending",
+                receipt=receipt,
+                release_binding=release_binding,
             )
-            os.lseek(descriptor, 0, os.SEEK_END)
-            view = memoryview(row)
-            while view:
-                view = view[os.write(descriptor, view) :]
-            os.fsync(descriptor)
-            return receipt
+            self._append_pending_row(pending_descriptor, pending)
+            return PreparedAnchor(
+                receipt=receipt,
+                release_binding=release_binding,
+                state="pending",
+            )
         finally:
-            fcntl.flock(descriptor, fcntl.LOCK_UN)
-            os.close(descriptor)
+            self._close_locked_ledgers(accepted_descriptor, pending_descriptor)
+
+    @staticmethod
+    def _verify_events_against_accepted(
+        events: tuple[AuditEventRecord, ...],
+        previous_receipt: AuditAnchorReceiptV1 | None,
+    ) -> tuple[AuditEventRecord, bool]:
+        if previous_receipt is not None:
+            previous_sequence = int(previous_receipt.body.stream_seq)
+            if events and events[-1].stream_seq == previous_sequence:
+                if len(events) != 1:
+                    raise AuditChainMismatch("checkpoint replay must contain one event")
+                replay = events[0]
+                if replay.stream_id != previous_receipt.body.stream_id:
+                    raise AuditChainMismatch("checkpoint replay stream mismatch")
+                if replay.stream_seq != previous_sequence:
+                    raise AuditChainMismatch("checkpoint replay sequence mismatch")
+                if replay.stream_seq == 1 and replay.previous_event_hash != ZERO_HASH:
+                    raise AuditChainMismatch("genesis replay previous hash mismatch")
+                expected_hash = build_audit_event_hash(
+                    replay.stream_id,
+                    replay.stream_seq,
+                    replay.previous_event_hash,
+                    replay.payload,
+                )
+                if replay.event_hash != expected_hash:
+                    raise AuditChainMismatch("audit stream event hash mismatch")
+                if replay.event_hash != previous_receipt.body.event_hash:
+                    raise AuditChainMismatch(
+                        "checkpoint conflicts with prior Pro anchor"
+                    )
+                return replay, True
+            head = verify_audit_stream(
+                events,
+                expected_sequence=previous_sequence + 1,
+                expected_previous_hash=previous_receipt.body.event_hash,
+            )
+            return head, False
+        return verify_audit_stream(events), False
+
+    def _accept_pending_sync(
+        self,
+        prepared: PreparedAnchor,
+        public_key: Ed25519PublicKey,
+    ) -> Literal["created", "replay"]:
+        accepted_descriptor, pending_descriptor = self._open_locked_ledgers()
+        try:
+            receipts = tuple(
+                AuditAnchorReceiptV1.model_validate(item)
+                for item in self._read_descriptor(accepted_descriptor)
+            )
+            self._verify_history(receipts, public_key)
+            pending_rows = self._read_pending_descriptor(pending_descriptor)
+            active = self._verify_pending_history(pending_rows, public_key).get(
+                prepared.receipt.body.stream_id
+            )
+            matches = tuple(
+                item
+                for item in receipts
+                if item.anchor_hash == prepared.receipt.anchor_hash
+            )
+            if matches:
+                if matches != (prepared.receipt,):
+                    raise AuditChainMismatch("accepted anchor identity conflict")
+                if active is not None:
+                    self._require_active_pending(active, prepared)
+                    self._append_pending_row(
+                        pending_descriptor,
+                        active.model_copy(update={"state": "accepted"}),
+                    )
+                return "replay"
+            if active is None:
+                raise AuditChainMismatch("pending anchor is absent")
+            self._require_active_pending(active, prepared)
+            stream_receipts = tuple(
+                item
+                for item in receipts
+                if item.body.stream_id == prepared.receipt.body.stream_id
+            )
+            prior = stream_receipts[-1] if stream_receipts else None
+            if prepared.receipt.body.previous_anchor_hash != (
+                prior.anchor_hash if prior is not None else ZERO_HASH
+            ):
+                raise AuditChainMismatch("pending anchor previous hash conflict")
+            expected_sequence = (
+                int(prior.body.stream_seq) + 1 if prior is not None else 1
+            )
+            if int(prepared.receipt.body.stream_seq) != expected_sequence:
+                raise AuditChainMismatch("pending anchor sequence conflict")
+            self._append_accepted_receipt(accepted_descriptor, prepared.receipt)
+            self._append_pending_row(
+                pending_descriptor,
+                active.model_copy(update={"state": "accepted"}),
+            )
+            return "created"
+        finally:
+            self._close_locked_ledgers(accepted_descriptor, pending_descriptor)
+
+    def _reject_pending_sync(
+        self,
+        prepared: PreparedAnchor,
+        public_key: Ed25519PublicKey,
+    ) -> None:
+        accepted_descriptor, pending_descriptor = self._open_locked_ledgers()
+        try:
+            receipts = tuple(
+                AuditAnchorReceiptV1.model_validate(item)
+                for item in self._read_descriptor(accepted_descriptor)
+            )
+            self._verify_history(receipts, public_key)
+            active = self._verify_pending_history(
+                self._read_pending_descriptor(pending_descriptor), public_key
+            ).get(prepared.receipt.body.stream_id)
+            if active is None:
+                if prepared.receipt in receipts:
+                    raise AuditChainMismatch("accepted anchor cannot be rejected")
+                return
+            self._require_active_pending(active, prepared)
+            self._append_pending_row(
+                pending_descriptor,
+                active.model_copy(update={"state": "rejected"}),
+            )
+        finally:
+            self._close_locked_ledgers(accepted_descriptor, pending_descriptor)
+
+    def _open_locked_ledgers(self) -> tuple[int, int]:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._pending_path.parent.mkdir(parents=True, exist_ok=True)
+        accepted: int | None = None
+        pending: int | None = None
+        accepted_locked = False
+        pending_locked = False
+        try:
+            accepted = os.open(self._path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+            pending = os.open(
+                self._pending_path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600
+            )
+            fcntl.flock(accepted, fcntl.LOCK_EX)
+            accepted_locked = True
+            fcntl.flock(pending, fcntl.LOCK_EX)
+            pending_locked = True
+            return accepted, pending
+        except BaseException:
+            if pending is not None:
+                if pending_locked:
+                    fcntl.flock(pending, fcntl.LOCK_UN)
+                os.close(pending)
+            if accepted is not None:
+                if accepted_locked:
+                    fcntl.flock(accepted, fcntl.LOCK_UN)
+                os.close(accepted)
+            raise
+
+    @staticmethod
+    def _close_locked_ledgers(accepted: int, pending: int) -> None:
+        fcntl.flock(pending, fcntl.LOCK_UN)
+        fcntl.flock(accepted, fcntl.LOCK_UN)
+        os.close(pending)
+        os.close(accepted)
+
+    @staticmethod
+    def _validate_receipt_binding(
+        receipt: AuditAnchorReceiptV1, binding: ReleaseBinding
+    ) -> None:
+        if (
+            receipt.body.stream_id != binding.stream_id
+            or receipt.body.stream_seq != str(binding.stream_seq)
+            or receipt.body.event_hash != binding.event_hash
+        ):
+            raise ReleaseBlockedError("anchor receipt does not match release binding")
+
+    @staticmethod
+    def _require_active_pending(
+        active: PendingAnchorRecordV1, prepared: PreparedAnchor
+    ) -> None:
+        if (
+            active.receipt != prepared.receipt
+            or active.release_binding != prepared.release_binding
+        ):
+            raise AuditChainMismatch("pending anchor identity conflict")
+
+    @staticmethod
+    def _append_accepted_receipt(
+        descriptor: int, receipt: AuditAnchorReceiptV1
+    ) -> None:
+        row = (
+            json.dumps(
+                receipt.model_dump(mode="json"),
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
+        DurableAnchorLedger._append_row(descriptor, row)
+
+    @staticmethod
+    def _append_pending_row(descriptor: int, record: PendingAnchorRecordV1) -> None:
+        row = (
+            json.dumps(
+                record.model_dump(mode="json"),
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
+        DurableAnchorLedger._append_row(descriptor, row)
+
+    @staticmethod
+    def _append_row(descriptor: int, row: bytes) -> None:
+        os.lseek(descriptor, 0, os.SEEK_END)
+        view = memoryview(row)
+        while view:
+            view = view[os.write(descriptor, view) :]
+        os.fsync(descriptor)
+
+    @staticmethod
+    def _verify_pending_history(
+        rows: tuple[PendingAnchorRecordV1, ...],
+        public_key: Ed25519PublicKey,
+    ) -> dict[str, PendingAnchorRecordV1]:
+        active: dict[str, PendingAnchorRecordV1] = {}
+        terminal_hashes: set[str] = set()
+        for row in rows:
+            verify_anchor_receipt(row.receipt, public_key)
+            DurableAnchorLedger._validate_receipt_binding(
+                row.receipt, row.release_binding
+            )
+            stream_id = row.receipt.body.stream_id
+            previous = active.get(stream_id)
+            if row.state == "pending":
+                if row.receipt.anchor_hash in terminal_hashes:
+                    raise AuditChainMismatch("terminal pending receipt was reopened")
+                if previous is not None:
+                    raise AuditChainMismatch("pending anchor history overlaps")
+                active[stream_id] = row
+                continue
+            if previous is None:
+                raise AuditChainMismatch("pending anchor terminal state has no origin")
+            if (
+                previous.receipt != row.receipt
+                or previous.release_binding != row.release_binding
+            ):
+                raise AuditChainMismatch("pending anchor terminal identity conflict")
+            terminal_hashes.add(row.receipt.anchor_hash)
+            del active[stream_id]
+        return active
+
+    @staticmethod
+    def _read_pending_descriptor(
+        descriptor: int,
+    ) -> tuple[PendingAnchorRecordV1, ...]:
+        return tuple(
+            PendingAnchorRecordV1.model_validate(item)
+            for item in DurableAnchorLedger._read_descriptor(descriptor)
+        )
 
     def _read_sync(self) -> list[dict[str, Any]]:
         if not self._path.exists():
@@ -689,7 +1055,9 @@ class AuditReleaseInterlock:
         }
         actual = state.model_dump(mode="json", include=set(expected))
         if actual != expected:
-            raise ReleaseBlockedError("release unlock does not match publication target")
+            raise ReleaseBlockedError(
+                "release unlock does not match publication target"
+            )
         self._verify_unlock(state)
 
     def block(self, reason_code: str) -> None:
@@ -711,7 +1079,10 @@ class AuditReleaseInterlock:
 
     def _append(self, row: Mapping[str, str]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        encoded = json.dumps(dict(row), sort_keys=True, separators=(",", ":")).encode() + b"\n"
+        encoded = (
+            json.dumps(dict(row), sort_keys=True, separators=(",", ":")).encode()
+            + b"\n"
+        )
         descriptor = os.open(self._path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX)
@@ -739,7 +1110,9 @@ class AuditReleaseInterlock:
         if data and not data.endswith(b"\n"):
             raise ReleaseBlockedError("release interlock journal is truncated")
         if any(not line for line in data.splitlines()):
-            raise ReleaseBlockedError("release interlock journal contains a blank record")
+            raise ReleaseBlockedError(
+                "release interlock journal contains a blank record"
+            )
         try:
             parsed = [json.loads(line) for line in data.splitlines()]
             rows: list[ReleaseRecordV1] = []
@@ -764,10 +1137,14 @@ class AuditReleaseInterlock:
             receipts = tuple(AuditAnchorReceiptV1.model_validate(item) for item in raw)
             self._ledger._verify_history(receipts, self._public_key)
         except (AuditChainMismatch, ValidationError, OSError, ValueError) as exc:
-            raise ReleaseBlockedError("trusted anchor ledger validation failed") from exc
+            raise ReleaseBlockedError(
+                "trusted anchor ledger validation failed"
+            ) from exc
         matches = [item for item in receipts if item.anchor_hash == row.receipt_hash]
         if len(matches) != 1:
-            raise ReleaseBlockedError("release receipt hash is absent from anchor ledger")
+            raise ReleaseBlockedError(
+                "release receipt hash is absent from anchor ledger"
+            )
         receipt = matches[0]
         if (
             receipt.body.stream_id != row.stream_id
@@ -802,23 +1179,6 @@ class AuditAnchorService:
     def require_release_allowed(self, binding: ReleaseBinding) -> None:
         self._interlock.require_release_allowed(binding)
 
-    async def anchor(
-        self,
-        events: tuple[AuditEventRecord, ...],
-        *,
-        observed_at: str,
-    ) -> AuditAnchorReceiptV1:
-        try:
-            return await self._ledger.anchor_atomic(
-                events,
-                observed_at=observed_at,
-                key_id=self._key_id,
-                private_key=self._private_key,
-            )
-        except (AuditChainMismatch, OSError, ValueError):
-            self._interlock.block("audit-chain-conflict")
-            raise
-
     async def anchor_and_submit(
         self,
         events: tuple[AuditEventRecord, ...],
@@ -827,23 +1187,45 @@ class AuditAnchorService:
         submit: Callable[[Mapping[str, Any]], Awaitable[dict[str, Any]]],
         release_binding: ReleaseBinding,
     ) -> AuditAnchorReceiptV1:
-        self._interlock.block("audit-anchor-attempt")
-        try:
-            receipt = await self.anchor(events, observed_at=observed_at)
-            if (
-                receipt.body.stream_id != release_binding.stream_id
-                or receipt.body.stream_seq != str(release_binding.stream_seq)
-                or receipt.body.event_hash != release_binding.event_hash
-            ):
-                raise ReleaseBlockedError("anchor receipt does not match release binding")
-            response = await submit(receipt.model_dump(mode="json"))
-            if response not in (
-                {"ok": True, "status": "created"},
-                {"ok": True, "status": "replay"},
-            ):
-                raise ReleaseBlockedError("audit anchor submission was not accepted")
-            self._interlock.unlock(release_binding, receipt.anchor_hash)
-            return receipt
-        except BaseException:
+        if not events:
             self._interlock.block("audit-anchor-attempt-failed")
-            raise
+            raise AuditChainMismatch("audit stream is empty")
+        async with self._ledger.claim_stream(events[0].stream_id):
+            self._interlock.block("audit-anchor-attempt")
+            try:
+                prepared = await self._ledger.prepare_pending(
+                    events,
+                    observed_at=observed_at,
+                    key_id=self._key_id,
+                    private_key=self._private_key,
+                    release_binding=release_binding,
+                )
+                receipt = prepared.receipt
+                if prepared.state == "accepted":
+                    self._interlock.unlock(release_binding, receipt.anchor_hash)
+                    return receipt
+                try:
+                    response = await submit(receipt.model_dump(mode="json"))
+                except AuditAnchorRejectedError:
+                    await self._ledger.reject_pending(
+                        prepared, self._private_key.public_key()
+                    )
+                    raise
+                if response not in (
+                    {"ok": True, "status": "created"},
+                    {"ok": True, "status": "replay"},
+                ):
+                    await self._ledger.reject_pending(
+                        prepared, self._private_key.public_key()
+                    )
+                    raise ReleaseBlockedError(
+                        "audit anchor submission was not accepted"
+                    )
+                await self._ledger.accept_pending(
+                    prepared, self._private_key.public_key()
+                )
+                self._interlock.unlock(release_binding, receipt.anchor_hash)
+                return receipt
+            except BaseException:
+                self._interlock.block("audit-anchor-attempt-failed")
+                raise

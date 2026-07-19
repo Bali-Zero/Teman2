@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -10,11 +11,17 @@ import pytest
 
 from zantara_media.magazine.contracts import AssetProvenanceV2
 from zantara_media.magazine.reconciler import (
+    DurableOutcomeJournal,
     InMemoryOutcomeJournal,
     OutcomeState,
     OutcomeUnknownError,
 )
-from zantara_media.magazine.audit_anchor import ReleaseBinding, ZERO_HASH, build_audit_event_hash
+from zantara_media.magazine.audit_anchor import (
+    AuditAnchorRejectedError,
+    ReleaseBinding,
+    ZERO_HASH,
+    build_audit_event_hash,
+)
 from zantara_media.magazine.transport import (
     MagazineTransport,
     TransportConfig,
@@ -83,7 +90,9 @@ async def test_transport_signs_exact_raw_body_and_metadata_header() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         body = await request.aread()
-        captured.update(body=body, headers=request.headers, path=request.url.raw_path.decode())
+        captured.update(
+            body=body, headers=request.headers, path=request.url.raw_path.decode()
+        )
         source_hash = hashlib.sha256(body).hexdigest()
         return httpx.Response(
             201,
@@ -119,15 +128,18 @@ async def test_transport_signs_exact_raw_body_and_metadata_header() -> None:
             f"x-magazine-asset-metadata:{metadata}",
         ]
     )
-    assert captured["headers"]["x-magazine-signature"] == hmac.new(
-        b"hmac-secret", signed.encode(), hashlib.sha256
-    ).hexdigest()
+    assert (
+        captured["headers"]["x-magazine-signature"]
+        == hmac.new(b"hmac-secret", signed.encode(), hashlib.sha256).hexdigest()
+    )
     assert json.loads(metadata)["source_sha256"] == hashlib.sha256(PNG).hexdigest()
     await transport.aclose()
 
 
 @pytest.mark.asyncio
-async def test_asset_upload_rejects_source_mismatch_or_missing_canonical_digest() -> None:
+async def test_asset_upload_rejects_source_mismatch_or_missing_canonical_digest() -> (
+    None
+):
     responses = [
         {
             "ok": True,
@@ -173,7 +185,9 @@ async def test_asset_upload_rejects_source_mismatch_or_missing_canonical_digest(
 
 
 @pytest.mark.asyncio
-async def test_assets_are_uploaded_before_packet_factory_receives_canonical_digests() -> None:
+async def test_assets_are_uploaded_before_packet_factory_receives_canonical_digests() -> (
+    None
+):
     order: list[str] = []
 
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -276,6 +290,73 @@ async def test_unknown_remote_outcome_blocks_automatic_retry() -> None:
 
 
 @pytest.mark.asyncio
+async def test_unknown_anchor_outcome_retries_exact_receipt_after_restart(
+    tmp_path: Path,
+) -> None:
+    journal = DurableOutcomeJournal(tmp_path / "outcomes.jsonl")
+    receipt = {
+        "body": {
+            "schema_version": "audit-anchor.v1",
+            "anchor_id": "anchor-1",
+            "stream_id": "magazine-publication.v1",
+            "stream_seq": "1",
+            "event_hash": "a" * 64,
+            "previous_anchor_hash": ZERO_HASH,
+            "observed_at": "2026-07-19T00:00:00.000Z",
+            "key_id": "pro-anchor-1",
+        },
+        "signature": "signature",
+        "anchor_hash": "b" * 64,
+    }
+    bodies: list[bytes] = []
+
+    async def lose_response(request: httpx.Request) -> httpx.Response:
+        bodies.append(await request.aread())
+        raise httpx.ReadError("connection dropped after send")
+
+    first_config = config().model_copy(update={"max_attempts": 1})
+    first = MagazineTransport(
+        first_config,
+        client=httpx.AsyncClient(transport=httpx.MockTransport(lose_response)),
+        journal=journal,
+    )
+    with pytest.raises(OutcomeUnknownError):
+        await first.submit_audit_anchor(receipt)
+    await first.aclose()
+
+    async def replay(request: httpx.Request) -> httpx.Response:
+        bodies.append(await request.aread())
+        return httpx.Response(200, json={"ok": True, "status": "replay"})
+
+    restarted = MagazineTransport(
+        first_config,
+        client=httpx.AsyncClient(transport=httpx.MockTransport(replay)),
+        journal=DurableOutcomeJournal(tmp_path / "outcomes.jsonl"),
+    )
+    assert await restarted.submit_audit_anchor(receipt) == {
+        "ok": True,
+        "status": "replay",
+    }
+    await restarted.aclose()
+    assert len(bodies) == 2
+    assert bodies[0] == bodies[1]
+
+
+@pytest.mark.asyncio
+async def test_explicit_anchor_rejection_is_distinct_from_unknown_outcome() -> None:
+    async def reject(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json={"ok": False, "error": "sequence_gap"})
+
+    transport = MagazineTransport(
+        config(),
+        client=httpx.AsyncClient(transport=httpx.MockTransport(reject)),
+    )
+    with pytest.raises(AuditAnchorRejectedError, match="explicitly rejected"):
+        await transport.submit_audit_anchor({"anchor_hash": "b" * 64})
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
 async def test_canonical_audit_feed_get_signs_exact_query_and_empty_body() -> None:
     payload = {
         "schema_version": "publication-operation.v1",
@@ -289,7 +370,9 @@ async def test_canonical_audit_feed_get_signs_exact_query_and_empty_body() -> No
 
     async def handler(request: httpx.Request) -> httpx.Response:
         body = await request.aread()
-        captured.update(path=request.url.raw_path.decode(), body=body, headers=request.headers)
+        captured.update(
+            path=request.url.raw_path.decode(), body=body, headers=request.headers
+        )
         return httpx.Response(
             200,
             headers={"cache-control": "no-store"},
@@ -387,7 +470,7 @@ def _webp(*chunks: tuple[bytes, bytes]) -> bytes:
             _webp(
                 (
                     b"VP8L",
-                    b"\x2f" + (((7 - 1) | ((5 - 1) << 14))).to_bytes(4, "little"),
+                    b"\x2f" + ((7 - 1) | ((5 - 1) << 14)).to_bytes(4, "little"),
                 )
             ),
             (7, 5),

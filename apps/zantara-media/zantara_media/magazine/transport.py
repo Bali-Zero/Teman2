@@ -23,6 +23,7 @@ from zantara_media.magazine.contracts import (
     AssetUploadResponseV2,
 )
 from zantara_media.magazine.audit_anchor import (
+    AuditAnchorRejectedError,
     AuditFeedPageV1,
     ReleaseBinding,
     ReleaseBlockedError,
@@ -39,9 +40,7 @@ from zantara_media.magazine.reconciler import (
 
 logger = logging.getLogger(__name__)
 
-Reconcile = Callable[
-    [str, str, str], Awaitable[ReconcileResult | OutcomeState]
-]
+Reconcile = Callable[[str, str, str], Awaitable[ReconcileResult | OutcomeState]]
 PacketFactory = Callable[[dict[str, str]], Mapping[str, Any]]
 
 
@@ -138,7 +137,9 @@ class MagazineTransport:
             timeout=config.timeout_seconds,
         )
         if journal is None and client is None:
-            raise ValueError("production transport requires an explicit durable journal")
+            raise ValueError(
+                "production transport requires an explicit durable journal"
+            )
         self._journal = journal or InMemoryOutcomeJournal()
         self._reconcile = reconcile
         self._release_gate = release_gate
@@ -194,6 +195,7 @@ class MagazineTransport:
         operation_id: str,
         signed_headers: Mapping[str, str] | None = None,
         staged_response: Mapping[str, Any] | None = None,
+        retry_unknown: bool = False,
     ) -> httpx.Response:
         async with self._journal.claim(operation_id):
             return await self._post_raw_claimed(
@@ -203,6 +205,7 @@ class MagazineTransport:
                 operation_id=operation_id,
                 signed_headers=signed_headers,
                 staged_response=staged_response,
+                retry_unknown=retry_unknown,
             )
 
     async def _post_raw_claimed(
@@ -214,9 +217,15 @@ class MagazineTransport:
         operation_id: str,
         signed_headers: Mapping[str, str] | None = None,
         staged_response: Mapping[str, Any] | None = None,
+        retry_unknown: bool = False,
     ) -> httpx.Response:
         body_digest = hashlib.sha256(body).hexdigest()
-        replay = await self._preflight(operation_id, path, body_digest)
+        replay = await self._preflight(
+            operation_id,
+            path,
+            body_digest,
+            retry_unknown=retry_unknown,
+        )
         if replay is not None:
             return self._replay_response(path, replay)
         await self._record(
@@ -243,7 +252,9 @@ class MagazineTransport:
                 result = await self._reconcile_outcome(operation_id, path, body_digest)
                 if result.state == OutcomeState.completed:
                     if result.response is None:
-                        raise OutcomeUnknownError("completed reconciliation omitted response")
+                        raise OutcomeUnknownError(
+                            "completed reconciliation omitted response"
+                        )
                     await self._record(
                         operation_id,
                         path,
@@ -273,7 +284,9 @@ class MagazineTransport:
                 result = await self._reconcile_outcome(operation_id, path, body_digest)
                 if result.state == OutcomeState.completed:
                     if result.response is None:
-                        raise OutcomeUnknownError("completed reconciliation omitted response")
+                        raise OutcomeUnknownError(
+                            "completed reconciliation omitted response"
+                        )
                     await self._record(
                         operation_id,
                         path,
@@ -292,14 +305,20 @@ class MagazineTransport:
                 if attempt < self._config.max_attempts:
                     await self._backoff(attempt)
                     await self._record(
-                        operation_id, path, body_digest, OutcomeState.pending, response=None
+                        operation_id,
+                        path,
+                        body_digest,
+                        OutcomeState.pending,
+                        response=None,
                     )
                     continue
             if response.status_code == 409 and staged_response is not None:
                 payload = response.json()
                 if payload != dict(staged_response):
                     response.raise_for_status()
-                    raise RuntimeError("unreachable invalid staged publication response")
+                    raise RuntimeError(
+                        "unreachable invalid staged publication response"
+                    )
                 await self._record(
                     operation_id,
                     path,
@@ -323,7 +342,12 @@ class MagazineTransport:
         raise RuntimeError("retry loop exhausted")
 
     async def _preflight(
-        self, operation_id: str, path: str, body_digest: str
+        self,
+        operation_id: str,
+        path: str,
+        body_digest: str,
+        *,
+        retry_unknown: bool = False,
     ) -> dict[str, Any] | None:
         previous = await self._journal.get(operation_id)
         if previous is None:
@@ -337,6 +361,8 @@ class MagazineTransport:
         if previous.state == OutcomeState.absent:
             return None
         if previous.state == OutcomeState.staged:
+            return None
+        if retry_unknown:
             return None
         result = await self._reconcile_outcome(operation_id, path, body_digest)
         if result.state == OutcomeState.completed:
@@ -355,7 +381,9 @@ class MagazineTransport:
                 operation_id, path, body_digest, OutcomeState.absent, response=None
             )
             return None
-        raise OutcomeUnknownError(f"remote outcome_unknown for operation {operation_id}")
+        raise OutcomeUnknownError(
+            f"remote outcome_unknown for operation {operation_id}"
+        )
 
     async def _record(
         self,
@@ -376,15 +404,11 @@ class MagazineTransport:
             )
         )
 
-    def _replay_response(
-        self, path: str, payload: Mapping[str, Any]
-    ) -> httpx.Response:
+    def _replay_response(self, path: str, payload: Mapping[str, Any]) -> httpx.Response:
         return httpx.Response(
             200,
             json=dict(payload),
-            request=httpx.Request(
-                "POST", f"{self._config.base_url.rstrip('/')}{path}"
-            ),
+            request=httpx.Request("POST", f"{self._config.base_url.rstrip('/')}{path}"),
         )
 
     async def _reconcile_outcome(
@@ -414,9 +438,13 @@ class MagazineTransport:
             "/api/machine/publications/breaking",
         }:
             if self._release_gate is None:
-                raise ReleaseBlockedError("publication transport has no audit release interlock")
+                raise ReleaseBlockedError(
+                    "publication transport has no audit release interlock"
+                )
             if release_binding is None:
-                raise ReleaseBlockedError("publication transport has no release binding")
+                raise ReleaseBlockedError(
+                    "publication transport has no release binding"
+                )
             self._release_gate.require_release_allowed(release_binding)
         body = json.dumps(
             packet,
@@ -461,8 +489,7 @@ class MagazineTransport:
             source,
             content_type=mime_type,
             operation_id=(
-                f"/api/machine/assets:{provenance.packet_id}:"
-                f"{provenance.asset_id}:{source_digest}"
+                f"/api/machine/assets:{provenance.packet_id}:{provenance.asset_id}:{source_digest}"
             ),
             signed_headers={"x-magazine-asset-metadata": metadata_raw},
         )
@@ -507,7 +534,32 @@ class MagazineTransport:
         )
 
     async def submit_audit_anchor(self, packet: Mapping[str, Any]) -> dict[str, Any]:
-        return await self.post_json("/api/machine/audit-anchor", packet)
+        path = "/api/machine/audit-anchor"
+        body = json.dumps(
+            packet,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        operation_id = f"{path}:{hashlib.sha256(body).hexdigest()}"
+        try:
+            response = await self._post_raw(
+                path,
+                body,
+                content_type="application/json",
+                operation_id=operation_id,
+                retry_unknown=True,
+            )
+        except httpx.HTTPStatusError as exc:
+            if 400 <= exc.response.status_code < 500:
+                raise AuditAnchorRejectedError(
+                    "Sites explicitly rejected the audit anchor"
+                ) from exc
+            raise
+        result = response.json()
+        if not isinstance(result, dict):
+            raise RuntimeError("machine endpoint returned a non-object response")
+        return result
 
     async def stage_publication(
         self,
