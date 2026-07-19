@@ -46,6 +46,7 @@ connection below — never touches ``nuzantara_dev``/``nuzantara_test``):
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import uuid
 from collections.abc import AsyncIterator
@@ -167,6 +168,10 @@ def _open_range(lower: datetime) -> asyncpg.Range:
     return asyncpg.Range(lower, None, lower_inc=True, upper_inc=False)
 
 
+def _closed_range(lower: datetime, upper: datetime) -> asyncpg.Range:
+    return asyncpg.Range(lower, upper, lower_inc=True, upper_inc=False)
+
+
 def _parse_utc(value: str) -> datetime:
     return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -214,6 +219,64 @@ async def _insert_rule_pack(pool: asyncpg.Pool) -> uuid.UUID:
     return rule_pack_id
 
 
+async def _fetch_pack(pool: asyncpg.Pool, rule_pack_id: uuid.UUID) -> asyncpg.Record:
+    """Read back a seeded pack's own environment/jurisdiction/decision_domain/
+    legal_period/payload_sha256 -- used to build a MATCHING (or deliberately
+    mismatching) ``visa_ruleset_activations`` row / decision row without
+    hand-duplicating ``minimal_valid_envelope()``'s constants."""
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT environment, jurisdiction, decision_domain, legal_period, payload_sha256
+            FROM visa_rule_packs WHERE id = $1
+            """,
+            rule_pack_id,
+        )
+    assert row is not None
+    return row
+
+
+async def _insert_activation(
+    pool: asyncpg.Pool,
+    *,
+    rule_pack_id: uuid.UUID,
+    legal_period: asyncpg.Range | None = None,
+    system_period: asyncpg.Range | None = None,
+    activated_by: str = "w6b-test",
+    activation_reason: str = "w6b write-substrate test activation",
+) -> uuid.UUID:
+    """Seed exactly one ``visa_ruleset_activations`` row (migration 250) for
+    the given pack, satisfying migration 250's own
+    ``reject_visa_activation_insert`` trigger (scope/legal_period must equal
+    the pack's own; bootstrap sequence/hash-chain requires this be the FIRST
+    activation for the triple, true for every throwaway DB this file uses).
+    """
+
+    pack = await _fetch_pack(pool, rule_pack_id)
+    legal_period = legal_period or pack["legal_period"]
+    system_period = system_period or _open_range(GOLD_EVALUATED_AT)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO visa_ruleset_activations (
+                rule_pack_id, environment, jurisdiction, decision_domain,
+                legal_period, system_period, activated_by, activation_reason
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id
+            """,
+            rule_pack_id,
+            pack["environment"],
+            pack["jurisdiction"],
+            pack["decision_domain"],
+            legal_period,
+            system_period,
+            activated_by,
+            activation_reason,
+        )
+    return row["id"]
+
+
 async def _insert_decision(
     conn: asyncpg.Connection,
     *,
@@ -222,10 +285,13 @@ async def _insert_decision(
     engine_surface: str = "MATCH",
     engine_mode: str = "SHADOW",
     rule_pack_id: uuid.UUID | None,
+    ruleset_activation_id: uuid.UUID | None = None,
     rule_pack_sha256: bytes | None = None,
     verdict: str = "NEEDS_INPUT",
     citations: str = "[]",
     engine_version: str = "0.1.0-test",
+    effective_at: datetime | None = None,
+    observed_at: datetime | None = None,
     evaluated_at: datetime | None = None,
 ) -> uuid.UUID:
     decision_id = decision_id or uuid.uuid4()
@@ -233,9 +299,9 @@ async def _insert_decision(
         """
         INSERT INTO visa_decisions (
             decision_id, environment, engine_surface, engine_mode,
-            rule_pack_id, rule_pack_sha256, verdict, citations,
-            engine_version, evaluated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+            rule_pack_id, ruleset_activation_id, rule_pack_sha256, verdict,
+            citations, engine_version, effective_at, observed_at, evaluated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13)
         RETURNING id
         """,
         decision_id,
@@ -243,10 +309,13 @@ async def _insert_decision(
         engine_surface,
         engine_mode,
         rule_pack_id,
+        ruleset_activation_id,
         rule_pack_sha256,
         verdict,
         citations,
         engine_version,
+        effective_at or GOLD_EVALUATED_AT,
+        observed_at or GOLD_EVALUATED_AT,
         evaluated_at or GOLD_EVALUATED_AT,
     )
     return row["id"]
@@ -291,8 +360,13 @@ async def _insert_source_record(
     source_id: uuid.UUID | None = None,
     source_key: str = "test-source",
     version: int = 1,
+    title: str = "Test Source Title",
+    publisher: str = "Test Publisher",
+    canonical_url: str = "https://example.com/source",
+    locators: str = "[]",
     legal_period: asyncpg.Range | None = None,
     recorded_period: asyncpg.Range | None = None,
+    supersedes_source_record_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     source_id = source_id or uuid.uuid4()
     legal_period = legal_period or _open_range(GOLD_EVALUATED_AT)
@@ -315,19 +389,19 @@ async def _insert_source_record(
         "PRIMARY_LAW",
         "VERIFIED",
         "ID",
-        "Test Source Title",
-        "Test Publisher",
-        "https://example.com/source",
+        title,
+        publisher,
+        canonical_url,
         "en",
         None,
-        "[]",
+        locators,
         hashlib.sha256(b"source-content").digest(),
         legal_period,
         recorded_period,
         GOLD_EVALUATED_AT,
         GOLD_EVALUATED_AT,
         "test-verifier",
-        None,
+        supersedes_source_record_id,
     )
     return source_id
 
@@ -360,13 +434,46 @@ async def test_forward_creates_all_objects(w6b_conn: asyncpg.Connection) -> None
     )
     trigger_pairs = {(r["event_object_table"], r["trigger_name"]) for r in triggers}
     assert ("visa_decisions", "visa_decisions_immutable") in trigger_pairs
-    assert ("visa_decision_payloads", "visa_decision_payloads_immutable") in trigger_pairs
-    assert ("visa_source_records", "visa_source_records_immutable") in trigger_pairs
+    assert ("visa_decisions", "visa_decisions_pack_binding") in trigger_pairs
+    # Renamed from *_immutable to *_guard (STEP-6b FIX-FIRST P1/P2): these two
+    # tables are no longer strictly immutable (legal_hold-only update + expiry
+    # delete on payloads; recorded_period-close-only update on source
+    # records) -- a lying trigger name is its own bug class.
+    assert ("visa_decision_payloads", "visa_decision_payloads_guard") in trigger_pairs
+    assert ("visa_source_records", "visa_source_records_guard") in trigger_pairs
+    assert ("visa_source_records", "visa_source_records_supersedes_binding") in trigger_pairs
+
+    # information_schema.triggers does NOT list TRUNCATE triggers (documented
+    # Postgres limitation -- empirically confirmed: a bare BEFORE TRUNCATE ...
+    # FOR EACH STATEMENT trigger is invisible there but present in pg_trigger).
+    # Query pg_trigger directly for the three *_no_wipe TRUNCATE guards.
+    truncate_triggers = await w6b_conn.fetch(
+        """
+        SELECT c.relname AS table_name, t.tgname AS trigger_name
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE NOT t.tgisinternal
+          AND c.relname IN ('visa_decisions', 'visa_decision_payloads', 'visa_source_records')
+          AND t.tgname LIKE '%_no_wipe'
+        """
+    )
+    truncate_pairs = {(r["table_name"], r["trigger_name"]) for r in truncate_triggers}
+    assert ("visa_decisions", "visa_decisions_no_wipe") in truncate_pairs
+    assert ("visa_decision_payloads", "visa_decision_payloads_no_wipe") in truncate_pairs
+    assert ("visa_source_records", "visa_source_records_no_wipe") in truncate_pairs
 
     fn = await w6b_conn.fetchval(
         "SELECT 1 FROM pg_proc WHERE proname = 'reject_visa_write_substrate_mutation'"
     )
     assert fn == 1
+    for fn_name in (
+        "reject_visa_decision_pack_binding",
+        "reject_visa_decision_payloads_mutation",
+        "reject_visa_source_records_mutation",
+        "reject_visa_source_record_supersedes_mismatch",
+    ):
+        fn = await w6b_conn.fetchval("SELECT 1 FROM pg_proc WHERE proname = $1", fn_name)
+        assert fn == 1, f"missing function {fn_name}"
 
 
 # ---------------------------------------------------------------------------
@@ -460,11 +567,19 @@ async def test_visa_source_records_delete_guilt(w6b_conn: asyncpg.Connection) ->
 # ---------------------------------------------------------------------------
 # 3. FK guilt — a decision referencing an unknown pack, and a payload
 #    referencing an unknown decision, both raise.
+#
+#    NOTE (STEP-6b FIX-FIRST): the decision case now raises via
+#    reject_visa_decision_pack_binding()'s own existence check rather than
+#    the bare FK — that BEFORE INSERT trigger runs before Postgres's
+#    IMMEDIATE FK check and gives an earlier, clearer error for the exact
+#    same "unknown rule_pack_id" condition. Intentional, disclosed behavior
+#    change (not a regression): the FK still exists as defense-in-depth for
+#    any future insert path that might bypass the trigger.
 # ---------------------------------------------------------------------------
 
 
 async def test_decision_unknown_rule_pack_fk_guilt(w6b_conn: asyncpg.Connection) -> None:
-    with pytest.raises(asyncpg.exceptions.ForeignKeyViolationError):
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="unknown rule_pack_id"):
         await _insert_decision(w6b_conn, rule_pack_id=uuid.uuid4(), verdict="NEEDS_INPUT")
 
 
@@ -617,7 +732,462 @@ async def test_pii_structural_tripwire(w6b_conn: asyncpg.Connection) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. Rollback drops cleanly, FK-safe, and leaves migration 250 untouched.
+# 8. visa_source_records GiST EXCLUDE (source_key WITH =, legal_period
+#    WITH &&, recorded_period WITH &&) — STEP-6b verify-round P2 coverage
+#    gap: the '-infinity' guard was tested above, but the EXCLUDE constraint
+#    itself (the whole point of the bitemporal design — no two rows may
+#    claim overlapping legal+recorded periods for the same source_key) was
+#    never proven to actually reject an overlapping pair.
+# ---------------------------------------------------------------------------
+
+
+async def test_source_record_exclude_overlapping_pair_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    shared_key = "exclude-guilt-source"
+    overlapping_legal = _closed_range(GOLD_EVALUATED_AT, GOLD_EVALUATED_AT + timedelta(days=365))
+    overlapping_recorded = _open_range(GOLD_EVALUATED_AT)
+    await _insert_source_record(
+        w6b_conn,
+        source_key=shared_key,
+        version=1,
+        legal_period=overlapping_legal,
+        recorded_period=overlapping_recorded,
+    )
+    with pytest.raises(asyncpg.exceptions.ExclusionViolationError):
+        await _insert_source_record(
+            w6b_conn,
+            source_key=shared_key,
+            version=2,
+            legal_period=overlapping_legal,
+            recorded_period=overlapping_recorded,
+        )
+
+
+async def test_source_record_exclude_disjoint_legal_period_innocence(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    shared_key = "exclude-innocence-source"
+    first_legal = _closed_range(GOLD_EVALUATED_AT, GOLD_EVALUATED_AT + timedelta(days=365))
+    second_legal = _open_range(GOLD_EVALUATED_AT + timedelta(days=365))
+    # recorded_period stays open-ended (overlapping) for both rows — EXCLUDE
+    # only fires when source_key AND legal_period AND recorded_period all
+    # overlap simultaneously, so a disjoint legal_period alone is enough to
+    # prove innocence even with everything else identical.
+    await _insert_source_record(w6b_conn, source_key=shared_key, version=1, legal_period=first_legal)
+    second_id = await _insert_source_record(
+        w6b_conn, source_key=shared_key, version=2, legal_period=second_legal
+    )
+    assert second_id is not None
+
+
+# ---------------------------------------------------------------------------
+# 9. visa_decision_payloads UNIQUE (encryption_key_id, nonce) — STEP-6b
+#    FIX-FIRST P0: an AEAD nonce must never repeat under the same key
+#    (nonce reuse breaks GCM's confidentiality guarantee outright).
+# ---------------------------------------------------------------------------
+
+
+async def test_payload_duplicate_key_and_nonce_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id_1 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    decision_id_2 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    shared_nonce = os.urandom(12)
+    await _insert_decision_payload(
+        w6b_conn, decision_id=decision_id_1, encryption_key_id="shared-kek", nonce=shared_nonce
+    )
+    with pytest.raises(asyncpg.exceptions.UniqueViolationError):
+        await _insert_decision_payload(
+            w6b_conn, decision_id=decision_id_2, encryption_key_id="shared-kek", nonce=shared_nonce
+        )
+
+
+async def test_payload_same_key_different_nonce_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id_1 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    decision_id_2 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id_1, encryption_key_id="shared-kek-2")
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id_2, encryption_key_id="shared-kek-2")
+    count = await w6b_conn.fetchval(
+        "SELECT count(*) FROM visa_decision_payloads WHERE encryption_key_id = 'shared-kek-2'"
+    )
+    assert count == 2
+
+
+# ---------------------------------------------------------------------------
+# 10. Decision <-> rule_pack scope binding (STEP-6b FIX-FIRST P0/P1) — a
+#     decision can never claim a scope/hash its referenced pack does not
+#     have. Skips entirely when rule_pack_id IS NULL, already proven by
+#     test_decision_temporarily_unavailable_allows_null_rule_pack_innocence
+#     above.
+# ---------------------------------------------------------------------------
+
+
+async def test_decision_pack_binding_environment_mismatch_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)  # pack environment == "TEST"
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="does not match referenced rule_pack"):
+        await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id, environment="PRODUCTION")
+
+
+async def test_decision_pack_binding_wrong_sha_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    wrong_sha = hashlib.sha256(b"not-the-real-pack-bytes").digest()
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="does not match referenced rule_pack"):
+        await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id, rule_pack_sha256=wrong_sha)
+
+
+async def test_decision_pack_binding_correct_sha_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    pack = await _fetch_pack(w6b_pool, rule_pack_id)
+    decision_id = await _insert_decision(
+        w6b_conn, rule_pack_id=rule_pack_id, rule_pack_sha256=pack["payload_sha256"]
+    )
+    assert decision_id is not None
+
+
+# ---------------------------------------------------------------------------
+# 11. Decision <-> ruleset_activation containment (STEP-6b FIX-FIRST P1) —
+#     when ruleset_activation_id is set, effective_at must fall within that
+#     activation's legal_period and observed_at within its system_period.
+# ---------------------------------------------------------------------------
+
+
+async def test_decision_activation_containment_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    activation_id = await _insert_activation(w6b_pool, rule_pack_id=rule_pack_id)
+    decision_id = await _insert_decision(
+        w6b_conn,
+        rule_pack_id=rule_pack_id,
+        ruleset_activation_id=activation_id,
+        effective_at=GOLD_EVALUATED_AT,
+        observed_at=GOLD_EVALUATED_AT,
+    )
+    assert decision_id is not None
+
+
+async def test_decision_activation_effective_at_outside_legal_period_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    activation_id = await _insert_activation(w6b_pool, rule_pack_id=rule_pack_id)
+    before_legal_period = GOLD_EVALUATED_AT - timedelta(days=3650)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="outside referenced activation"):
+        await _insert_decision(
+            w6b_conn,
+            rule_pack_id=rule_pack_id,
+            ruleset_activation_id=activation_id,
+            effective_at=before_legal_period,
+            observed_at=GOLD_EVALUATED_AT,
+        )
+
+
+async def test_decision_activation_observed_at_outside_system_period_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    activation_id = await _insert_activation(w6b_pool, rule_pack_id=rule_pack_id)
+    before_system_period = GOLD_EVALUATED_AT - timedelta(days=3650)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="outside referenced activation"):
+        await _insert_decision(
+            w6b_conn,
+            rule_pack_id=rule_pack_id,
+            ruleset_activation_id=activation_id,
+            effective_at=GOLD_EVALUATED_AT,
+            observed_at=before_system_period,
+        )
+
+
+async def test_decision_unknown_ruleset_activation_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="unknown ruleset_activation_id"):
+        await _insert_decision(
+            w6b_conn, rule_pack_id=rule_pack_id, ruleset_activation_id=uuid.uuid4()
+        )
+
+
+# ---------------------------------------------------------------------------
+# 12. visa_decision_payloads guard carve-out (STEP-6b FIX-FIRST P1/P2) — the
+#     ONLY legal UPDATE flips legal_hold; the ONLY legal DELETE requires an
+#     elapsed purge_after AND legal_hold=false.
+# ---------------------------------------------------------------------------
+
+
+async def test_payload_legal_hold_only_update_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id)
+    await w6b_conn.execute(
+        "UPDATE visa_decision_payloads SET legal_hold = TRUE WHERE decision_id = $1", decision_id
+    )
+    legal_hold = await w6b_conn.fetchval(
+        "SELECT legal_hold FROM visa_decision_payloads WHERE decision_id = $1", decision_id
+    )
+    assert legal_hold is True
+
+
+async def test_payload_update_other_column_alongside_legal_hold_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="legal_hold-only carve-out"):
+        await w6b_conn.execute(
+            "UPDATE visa_decision_payloads SET legal_hold = TRUE, encryption_key_id = 'rotated' "
+            "WHERE decision_id = $1",
+            decision_id,
+        )
+
+
+async def test_payload_delete_after_purge_elapsed_and_no_legal_hold_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    past_purge = datetime.now(timezone.utc) - timedelta(days=1)
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id, purge_after=past_purge)
+    await w6b_conn.execute("DELETE FROM visa_decision_payloads WHERE decision_id = $1", decision_id)
+    count = await w6b_conn.fetchval(
+        "SELECT count(*) FROM visa_decision_payloads WHERE decision_id = $1", decision_id
+    )
+    assert count == 0
+
+
+async def test_payload_delete_with_legal_hold_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    past_purge = datetime.now(timezone.utc) - timedelta(days=1)
+    await _insert_decision_payload(w6b_conn, decision_id=decision_id, purge_after=past_purge)
+    await w6b_conn.execute(
+        "UPDATE visa_decision_payloads SET legal_hold = TRUE WHERE decision_id = $1", decision_id
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="append-only"):
+        await w6b_conn.execute(
+            "DELETE FROM visa_decision_payloads WHERE decision_id = $1", decision_id
+        )
+
+
+# ---------------------------------------------------------------------------
+# 13. visa_source_records guard carve-out (STEP-6b FIX-FIRST P1/P2) — the
+#     ONLY legal UPDATE closes an open recorded_period (upper NULL -> finite)
+#     with every other column, including the lower bound, unchanged.
+# ---------------------------------------------------------------------------
+
+
+async def test_source_record_close_recorded_period_innocence(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    source_id = await _insert_source_record(w6b_conn)
+    closed_at = GOLD_EVALUATED_AT + timedelta(days=1)
+    await w6b_conn.execute(
+        """
+        UPDATE visa_source_records
+        SET recorded_period = tstzrange(lower(recorded_period), $2, '[)')
+        WHERE id = $1
+        """,
+        source_id,
+        closed_at,
+    )
+    upper = await w6b_conn.fetchval(
+        "SELECT upper(recorded_period) FROM visa_source_records WHERE id = $1", source_id
+    )
+    assert upper == closed_at
+
+
+async def test_source_record_reclose_guilt(w6b_conn: asyncpg.Connection) -> None:
+    source_id = await _insert_source_record(w6b_conn)
+    closed_at = GOLD_EVALUATED_AT + timedelta(days=1)
+    await w6b_conn.execute(
+        """
+        UPDATE visa_source_records
+        SET recorded_period = tstzrange(lower(recorded_period), $2, '[)')
+        WHERE id = $1
+        """,
+        source_id,
+        closed_at,
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="already closed"):
+        await w6b_conn.execute(
+            """
+            UPDATE visa_source_records
+            SET recorded_period = tstzrange(lower(recorded_period), $2, '[)')
+            WHERE id = $1
+            """,
+            source_id,
+            closed_at + timedelta(days=1),
+        )
+
+
+async def test_source_record_close_must_be_finite_guilt(w6b_conn: asyncpg.Connection) -> None:
+    source_id = await _insert_source_record(w6b_conn)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="finite recorded_period"):
+        await w6b_conn.execute(
+            "UPDATE visa_source_records SET recorded_period = recorded_period WHERE id = $1",
+            source_id,
+        )
+
+
+async def test_source_record_shift_recorded_period_lower_bound_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    source_id = await _insert_source_record(w6b_conn)
+    shifted_lower = GOLD_EVALUATED_AT + timedelta(days=1)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="recorded_period-close carve-out"):
+        await w6b_conn.execute(
+            "UPDATE visa_source_records SET recorded_period = tstzrange($2, NULL, '[)') WHERE id = $1",
+            source_id,
+            shifted_lower,
+        )
+
+
+# ---------------------------------------------------------------------------
+# 14. supersedes_source_record_id integrity (STEP-6b FIX-FIRST P2) — self-
+#     reference rejected, a genuinely missing referent rejected (by the
+#     trigger's own existence check, which runs BEFORE Postgres's IMMEDIATE
+#     FK check since this is a BEFORE INSERT row trigger), and a
+#     cross-source_key supersession rejected. Valid same-lineage supersession
+#     succeeds.
+# ---------------------------------------------------------------------------
+
+
+async def test_source_record_supersedes_self_reference_guilt(w6b_conn: asyncpg.Connection) -> None:
+    self_id = uuid.uuid4()
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="cannot reference its own row"):
+        await _insert_source_record(w6b_conn, source_id=self_id, supersedes_source_record_id=self_id)
+
+
+async def test_source_record_supersedes_missing_referent_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="does not reference an existing row"):
+        await _insert_source_record(w6b_conn, supersedes_source_record_id=uuid.uuid4())
+
+
+async def test_source_record_supersedes_cross_source_key_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    original_id = await _insert_source_record(w6b_conn, source_key="lineage-a")
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="must share the same source_key"):
+        await _insert_source_record(
+            w6b_conn, source_key="lineage-b", supersedes_source_record_id=original_id
+        )
+
+
+async def test_source_record_supersedes_same_source_key_innocence(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    # Disjoint legal_period on the new row -- same source_key + overlapping
+    # legal_period would instead trip the EXCLUDE constraint (section 8
+    # above), which is a DIFFERENT guard than the one this test targets.
+    first_legal = _closed_range(GOLD_EVALUATED_AT, GOLD_EVALUATED_AT + timedelta(days=365))
+    second_legal = _open_range(GOLD_EVALUATED_AT + timedelta(days=365))
+    original_id = await _insert_source_record(
+        w6b_conn, source_key="lineage-c", version=1, legal_period=first_legal
+    )
+    new_id = await _insert_source_record(
+        w6b_conn,
+        source_key="lineage-c",
+        version=2,
+        legal_period=second_legal,
+        supersedes_source_record_id=original_id,
+    )
+    assert new_id != original_id
+
+
+# ---------------------------------------------------------------------------
+# 15. Cheap CHECKs mirroring models.py::SourceRecord's own Pydantic bounds,
+#     plus encryption_algorithm pinning and the recorded_period -infinity
+#     guard (STEP-6b FIX-FIRST P2).
+# ---------------------------------------------------------------------------
+
+
+async def test_payload_encryption_algorithm_check_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    decision_id = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await w6b_conn.execute(
+            """
+            INSERT INTO visa_decision_payloads (
+                decision_id, encryption_algorithm, encryption_key_id, nonce,
+                ciphertext, aad, ciphertext_sha256, purge_after
+            ) VALUES ($1, 'AES-256-CBC', 'test-kek-1', $2, $3, $4, $5, $6)
+            """,
+            decision_id,
+            os.urandom(12),
+            b"opaque-ciphertext-bytes-only",
+            b"decision-id-binding-context",
+            hashlib.sha256(b"opaque-ciphertext-bytes-only").digest(),
+            GOLD_EVALUATED_AT + timedelta(days=90),
+        )
+
+
+async def test_source_record_recorded_period_infinity_guard_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    bad_range = asyncpg.Range(None, None, lower_inc=True, upper_inc=False)
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, recorded_period=bad_range)
+
+
+async def test_source_record_title_too_long_guilt(w6b_conn: asyncpg.Connection) -> None:
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, title="x" * 513)
+
+
+async def test_source_record_title_empty_guilt(w6b_conn: asyncpg.Connection) -> None:
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, title="")
+
+
+async def test_source_record_publisher_too_long_guilt(w6b_conn: asyncpg.Connection) -> None:
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, publisher="x" * 257)
+
+
+async def test_source_record_canonical_url_too_long_guilt(w6b_conn: asyncpg.Connection) -> None:
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, canonical_url="https://example.com/" + "x" * 2048)
+
+
+async def test_source_record_locators_too_many_guilt(w6b_conn: asyncpg.Connection) -> None:
+    too_many = json.dumps([{"page": i} for i in range(65)])
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, locators=too_many)
+
+
+async def test_source_record_locators_at_limit_innocence(w6b_conn: asyncpg.Connection) -> None:
+    at_limit = json.dumps([{"page": i} for i in range(64)])
+    source_id = await _insert_source_record(w6b_conn, locators=at_limit)
+    assert source_id is not None
+
+
+async def test_source_record_version_upper_bound_guilt(w6b_conn: asyncpg.Connection) -> None:
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await _insert_source_record(w6b_conn, version=9_007_199_254_740_992)
+
+
+# ---------------------------------------------------------------------------
+# 16. Rollback drops cleanly, FK-safe, and leaves migration 250 untouched.
 # ---------------------------------------------------------------------------
 
 
@@ -650,6 +1220,14 @@ async def test_rollback_drops_cleanly_fk_safe(w6b_pool: asyncpg.Pool, w6b_schema
             "SELECT 1 FROM pg_proc WHERE proname = 'reject_visa_write_substrate_mutation'"
         )
         assert fn is None
+        for fn_name in (
+            "reject_visa_decision_pack_binding",
+            "reject_visa_decision_payloads_mutation",
+            "reject_visa_source_records_mutation",
+            "reject_visa_source_record_supersedes_mismatch",
+        ):
+            dropped = await conn.fetchval("SELECT 1 FROM pg_proc WHERE proname = $1", fn_name)
+            assert dropped is None, f"{fn_name} should have been dropped by rollback"
 
         # Migration 250's own objects must be completely untouched.
         still_there = await conn.fetch(

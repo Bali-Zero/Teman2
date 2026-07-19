@@ -174,6 +174,91 @@
 --     visa_decisions.rule_pack_id's FK to 250's visa_rule_packs — that
 --     dependency is implicit in migration numbering, same as every other
 --     migration in this directory).
+--
+-- STEP-6b FIX-FIRST round amendments (2026-07-19/20 -- cross-family verify
+--   round, 9 findings; 2 explicitly deferred to PENDING-ARMS; 2 explicitly
+--   rejected):
+--   * P0 -- visa_decision_payloads gains UNIQUE (encryption_key_id, nonce):
+--     an AEAD nonce must never repeat under the same key (nonce reuse
+--     breaks GCM's confidentiality guarantee outright) -- the DB now
+--     enforces this structurally rather than trusting the (not-yet-built)
+--     writer alone.
+--   * P0/P1 -- visa_decisions gains a search_path-pinned, public.-qualified
+--     BEFORE INSERT trigger (reject_visa_decision_pack_binding) resolving
+--     rule_pack_id (when NOT NULL) and enforcing: decision.environment/
+--     jurisdiction/decision_domain equal the referenced pack's own values,
+--     and decision.rule_pack_sha256 (when provided) equals the pack's
+--     payload_sha256 -- mirrors migration 250's own payload-binding-trigger
+--     style. A TEMPORARILY_UNAVAILABLE row with a NULL rule_pack_id skips
+--     the whole check (there is no pack to bind against).
+--   * P1 -- visa_decisions gains ruleset_activation_id (nullable FK to
+--     migration 250's visa_ruleset_activations) plus effective_at/
+--     observed_at (Decision.effective_at/observed_at in models.py -- the
+--     evaluator's own two independent clocks, distinct from evaluated_at,
+--     which is wall-clock "when the engine ran"). The same binding trigger
+--     additionally enforces, ONLY when ruleset_activation_id IS NOT NULL:
+--     the referenced activation's rule_pack_id equals the decision's own,
+--     its legal_period contains effective_at, and its system_period
+--     contains observed_at -- a decision can never claim to have been
+--     evaluated against an activation window it falls outside of.
+--   * P1/P2 -- per-table mutation-guard redesign (separate functions per
+--     table rather than one shared TG_TABLE_NAME-branching function, now
+--     that two of the three tables need real conditional bodies):
+--       - visa_decisions stays blanket append-only (pure audit log, no
+--         legitimate update/delete path) -- unchanged, still
+--         reject_visa_write_substrate_mutation().
+--       - visa_decision_payloads (reject_visa_decision_payloads_mutation):
+--         the ONLY legal UPDATE flips legal_hold with every other column
+--         (including the decision_id primary key) unchanged; the ONLY
+--         legal DELETE requires purge_after < now() AND legal_hold = FALSE
+--         -- the retention/purge worker's entire contract, enforced at the
+--         DB layer independent of the worker's own correctness.
+--       - visa_source_records (reject_visa_source_records_mutation): the
+--         ONLY legal UPDATE closes an open recorded_period (upper NULL ->
+--         finite) with every other column, including the lower bound and
+--         primary key, unchanged -- mirrors migration 250's
+--         reject_visa_activation_mutation() close carve-out exactly, and
+--         is what makes the supersession flow real (INSERT the new row
+--         with supersedes_source_record_id set, THEN close the superseded
+--         row's recorded_period). DELETE stays always-forbidden (no
+--         legitimate reason to erase a superseded-but-still-historical
+--         source record). The triggers driving these two functions were
+--         renamed from *_immutable to *_guard (the tables are no longer
+--         strictly immutable -- a lying trigger name is its own bug class).
+--   * P2 -- visa_source_records gains a search_path-pinned, public.-
+--     qualified BEFORE INSERT trigger
+--     (reject_visa_source_record_supersedes_mismatch) requiring, when
+--     supersedes_source_record_id IS NOT NULL: it does not equal the new
+--     row's own id (self-reference -- the bare FK alone cannot catch this,
+--     since IMMEDIATE FK checks run at end-of-statement, after the new row
+--     already exists), and the referenced row exists AND shares the same
+--     source_key (a supersession is a same-lineage correction, never a
+--     cross-source relabeling).
+--   * P2 -- cheap CHECKs mirroring models.py::SourceRecord's own Pydantic
+--     bounds (title/publisher/canonical_url length, locators array length,
+--     version upper bound) plus encryption_algorithm pinned to the single
+--     value the column defaults to, plus recorded_period gains the same
+--     "lower bound is never -infinity" guard legal_period already has.
+--   * DEFERRED to PENDING-ARMS (not resolved here -- see
+--     .claude/skills/modus/PENDING-ARMS.md): (1) visa_decisions.citations
+--     array elements are still not validated to reference real
+--     visa_source_records rows -- that needs the STEP-6c writer/repository
+--     layer, not a DDL-only migration; (2) migration 250's own trigger
+--     functions still have no SET search_path pinned -- 250 stays
+--     off-limits to edit (sibling isolation), so hardening those 4
+--     functions is a dedicated follow-up migration, never a silent
+--     piggyback here.
+--   * REJECTED (reviewed, deliberately NOT implemented): (1) narrowing
+--     engine_mode's CHECK to drop 'ENFORCE' -- this migration's whole point
+--     is that the SAME schema serves SHADOW today and ENFORCE once
+--     PENDING-ARMS task #15 flips, with no later ALTER needed; narrowing it
+--     now would just re-widen it later for no safety benefit. (2) a DB-side
+--     CHECK/trigger recomputing ciphertext_sha256 via pgcrypto's digest()
+--     -- this migration deliberately keeps cryptographic verification out
+--     of SQL (same precedent as migration 250 leaving payload_sha256/
+--     signature verification to the Python layer); ciphertext_sha256 here
+--     is a caller-supplied integrity marker the application layer checks,
+--     not a DB-computed one.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
@@ -206,6 +291,14 @@ CREATE TABLE public.visa_decisions (
     engine_mode          TEXT NOT NULL
         CHECK (engine_mode IN ('SHADOW', 'ENFORCE')),
     rule_pack_id         UUID REFERENCES public.visa_rule_packs (id),
+    -- STEP-6b FIX-FIRST P1: the specific bitemporal activation (migration
+    -- 250's visa_ruleset_activations) this decision was evaluated against,
+    -- when known. Nullable — a TEMPORARILY_UNAVAILABLE row has neither a
+    -- pack nor an activation to bind against, and even a pack-bearing row
+    -- may come from a caller that does not thread the activation id
+    -- through; the binding trigger below only checks containment when
+    -- this column is set.
+    ruleset_activation_id UUID REFERENCES public.visa_ruleset_activations (id),
     -- Denormalized for audit (spec section 5's own phrase for this exact
     -- field) — lets an auditor confirm which signed pack bytes produced
     -- this verdict without trusting rule_pack_id to still resolve to the
@@ -234,6 +327,15 @@ CREATE TABLE public.visa_decisions (
     -- The running engine build/release identity (distinct from the pack's
     -- own engine_contract_version/engine_min_version/engine_max_version).
     engine_version       TEXT NOT NULL,
+    -- STEP-6b FIX-FIRST P1: Decision.effective_at/observed_at (models.py) —
+    -- the evaluator's own two independent bitemporal clocks ("as of when is
+    -- this legally true" vs "as of when did the system consider it true"),
+    -- distinct from evaluated_at below (wall-clock "when the engine
+    -- actually ran"). Bound against ruleset_activation_id's own
+    -- legal_period/system_period by the binding trigger when that column
+    -- is set.
+    effective_at         TIMESTAMPTZ NOT NULL,
+    observed_at          TIMESTAMPTZ NOT NULL,
     evaluated_at         TIMESTAMPTZ NOT NULL,
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Mirrors migration 250's own visa_decisions CHECK from the spec:
@@ -265,7 +367,11 @@ CREATE INDEX idx_visa_decisions_evaluated_at
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.visa_decision_payloads (
     decision_id          UUID PRIMARY KEY REFERENCES public.visa_decisions (id),
-    encryption_algorithm TEXT NOT NULL DEFAULT 'AES-256-GCM',
+    -- STEP-6b FIX-FIRST P2: pinned to the single value the column defaults
+    -- to — this migration does not (yet) support a second AEAD algorithm,
+    -- so a row claiming otherwise is a bug, not a future-proofing choice.
+    encryption_algorithm TEXT NOT NULL DEFAULT 'AES-256-GCM'
+        CHECK (encryption_algorithm = 'AES-256-GCM'),
     encryption_key_id    TEXT NOT NULL,
     nonce                BYTEA NOT NULL CHECK (octet_length(nonce) = 12),
     -- The encrypted payload itself (task's "encrypted_payload BYTEA" ==
@@ -275,7 +381,12 @@ CREATE TABLE public.visa_decision_payloads (
     ciphertext_sha256    BYTEA NOT NULL CHECK (octet_length(ciphertext_sha256) = 32),
     purge_after          TIMESTAMPTZ NOT NULL,
     legal_hold           BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- STEP-6b FIX-FIRST P0: an AEAD nonce must never repeat under the same
+    -- key — reusing (key, nonce) breaks GCM's confidentiality guarantee
+    -- outright. Structural enforcement here, independent of whether the
+    -- (not-yet-built) writer gets nonce generation right.
+    UNIQUE (encryption_key_id, nonce)
 );
 
 -- Companion index for the (not-yet-built, STEP-6c+) retention/purge worker —
@@ -314,7 +425,12 @@ CREATE INDEX idx_visa_decision_payloads_purge
 CREATE TABLE public.visa_source_records (
     id                          UUID PRIMARY KEY,
     source_key                  TEXT NOT NULL,
-    version                     BIGINT NOT NULL CHECK (version > 0),
+    -- STEP-6b FIX-FIRST P2: upper bound mirrors
+    -- models.py::SourceRecord.version (Field(ge=1, le=9_007_199_254_740_991,
+    -- strict=True)) -- BIGINT's own range is wider than the model allows,
+    -- so without this a value the model would reject could still land via
+    -- a raw INSERT bypassing Pydantic.
+    version                     BIGINT NOT NULL CHECK (version > 0 AND version <= 9007199254740991),
     authority_type               TEXT NOT NULL
         CHECK (
             authority_type IN (
@@ -330,14 +446,24 @@ CREATE TABLE public.visa_source_records (
         CHECK (status IN ('VERIFIED', 'SUPERSEDED', 'REVOKED', 'UNAVAILABLE')),
     jurisdiction                 CHAR(2) NOT NULL DEFAULT 'ID'
         CHECK (jurisdiction = 'ID'),
-    title                        TEXT NOT NULL,
-    publisher                    TEXT NOT NULL,
-    canonical_url                TEXT NOT NULL,
+    -- STEP-6b FIX-FIRST P2: length bounds mirror
+    -- models.py::SourceRecord's own Field constraints (min_length=1,
+    -- max_length=512/256 respectively) so a raw INSERT bypassing Pydantic
+    -- cannot smuggle a shape the model would reject.
+    title                        TEXT NOT NULL
+        CHECK (char_length(title) BETWEEN 1 AND 512),
+    publisher                    TEXT NOT NULL
+        CHECK (char_length(publisher) BETWEEN 1 AND 256),
+    -- models.py caps canonical_url at max_length=2048 with no lower bound
+    -- (mirrored exactly -- no minimum added beyond the existing NOT NULL).
+    canonical_url                TEXT NOT NULL
+        CHECK (char_length(canonical_url) <= 2048),
     language                     TEXT NOT NULL
         CHECK (language ~ '^[a-z]{2}(-[A-Z]{2})?$'),
     document_number              TEXT,
+    -- models.py caps locators at max_length=64.
     locators                     JSONB NOT NULL DEFAULT '[]'::jsonb
-        CHECK (jsonb_typeof(locators) = 'array'),
+        CHECK (jsonb_typeof(locators) = 'array' AND jsonb_array_length(locators) <= 64),
     content_sha256               BYTEA NOT NULL CHECK (octet_length(content_sha256) = 32),
     legal_period                 TSTZRANGE NOT NULL,
     recorded_period               TSTZRANGE NOT NULL DEFAULT tstzrange(now(), NULL, '[)'),
@@ -352,10 +478,13 @@ CREATE TABLE public.visa_source_records (
         AND NOT upper_inc(legal_period)
         AND lower(legal_period) <> '-infinity'::timestamptz
     ),
+    -- STEP-6b FIX-FIRST P2: recorded_period gains the same "lower bound is
+    -- never -infinity" guard legal_period already has above.
     CHECK (
         NOT isempty(recorded_period)
         AND lower_inc(recorded_period)
         AND NOT upper_inc(recorded_period)
+        AND lower(recorded_period) <> '-infinity'::timestamptz
     ),
     UNIQUE (source_key, version),
     EXCLUDE USING gist (
@@ -388,19 +517,247 @@ CREATE TRIGGER visa_decisions_immutable
 BEFORE UPDATE OR DELETE ON public.visa_decisions
 FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
-CREATE TRIGGER visa_decision_payloads_immutable
-BEFORE UPDATE OR DELETE ON public.visa_decision_payloads
-FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+-- ---------------------------------------------------------------------------
+-- STEP-6b FIX-FIRST P0/P1: decision-pack scope binding. Mirrors migration
+-- 250's reject_visa_pack_payload_mismatch() binding-trigger style. Skips
+-- entirely when rule_pack_id IS NULL (the only legal case:
+-- TEMPORARILY_UNAVAILABLE, which has no pack to bind against). See the
+-- header amendment above for the full rationale.
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION public.reject_visa_decision_pack_binding()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    pack RECORD;
+    activation RECORD;
+BEGIN
+    IF NEW.rule_pack_id IS NULL THEN
+        RETURN NEW;
+    END IF;
 
-CREATE TRIGGER visa_source_records_immutable
+    SELECT environment, jurisdiction, decision_domain, payload_sha256
+        INTO pack
+        FROM public.visa_rule_packs
+        WHERE id = NEW.rule_pack_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'visa_decisions references unknown rule_pack_id %', NEW.rule_pack_id;
+    END IF;
+
+    IF NEW.environment IS DISTINCT FROM pack.environment
+       OR NEW.jurisdiction IS DISTINCT FROM pack.jurisdiction
+       OR NEW.decision_domain IS DISTINCT FROM pack.decision_domain THEN
+        RAISE EXCEPTION 'visa_decisions scope (env=% jur=% domain=%) does not match referenced rule_pack % (env=% jur=% domain=%)',
+            NEW.environment, NEW.jurisdiction, NEW.decision_domain,
+            NEW.rule_pack_id, pack.environment, pack.jurisdiction, pack.decision_domain;
+    END IF;
+
+    IF NEW.rule_pack_sha256 IS NOT NULL AND NEW.rule_pack_sha256 IS DISTINCT FROM pack.payload_sha256 THEN
+        RAISE EXCEPTION 'visa_decisions.rule_pack_sha256 does not match referenced rule_pack % payload_sha256',
+            NEW.rule_pack_id;
+    END IF;
+
+    IF NEW.ruleset_activation_id IS NOT NULL THEN
+        SELECT rule_pack_id, legal_period, system_period
+            INTO activation
+            FROM public.visa_ruleset_activations
+            WHERE id = NEW.ruleset_activation_id;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'visa_decisions references unknown ruleset_activation_id %', NEW.ruleset_activation_id;
+        END IF;
+        IF activation.rule_pack_id IS DISTINCT FROM NEW.rule_pack_id THEN
+            RAISE EXCEPTION 'visa_decisions.ruleset_activation_id % belongs to a different rule_pack than rule_pack_id %',
+                NEW.ruleset_activation_id, NEW.rule_pack_id;
+        END IF;
+        IF NOT (activation.legal_period @> NEW.effective_at) THEN
+            RAISE EXCEPTION 'visa_decisions.effective_at % is outside referenced activation % legal_period %',
+                NEW.effective_at, NEW.ruleset_activation_id, activation.legal_period;
+        END IF;
+        IF NOT (activation.system_period @> NEW.observed_at) THEN
+            RAISE EXCEPTION 'visa_decisions.observed_at % is outside referenced activation % system_period %',
+                NEW.observed_at, NEW.ruleset_activation_id, activation.system_period;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visa_decisions_pack_binding
+BEFORE INSERT ON public.visa_decisions
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_decision_pack_binding();
+
+-- ---------------------------------------------------------------------------
+-- STEP-6b FIX-FIRST P1/P2: visa_decision_payloads dedicated guard (replaces
+-- the blanket reject_visa_write_substrate_mutation() this table used
+-- before). The ONLY legal UPDATE flips legal_hold (every other column,
+-- including the decision_id primary key, must be unchanged); the ONLY
+-- legal DELETE requires purge_after < now() AND legal_hold = FALSE. Trigger
+-- renamed from *_immutable to *_guard -- the table is no longer strictly
+-- immutable, and a lying trigger name is its own bug class.
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION public.reject_visa_decision_payloads_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        IF OLD.purge_after IS NOT NULL AND OLD.purge_after < now() AND OLD.legal_hold = FALSE THEN
+            RETURN OLD;
+        END IF;
+        RAISE EXCEPTION 'visa_decision_payloads is append-only (delete requires purge_after elapsed and legal_hold=false)';
+    END IF;
+
+    IF OLD.decision_id IS DISTINCT FROM NEW.decision_id
+       OR OLD.encryption_algorithm IS DISTINCT FROM NEW.encryption_algorithm
+       OR OLD.encryption_key_id IS DISTINCT FROM NEW.encryption_key_id
+       OR OLD.nonce IS DISTINCT FROM NEW.nonce
+       OR OLD.ciphertext IS DISTINCT FROM NEW.ciphertext
+       OR OLD.aad IS DISTINCT FROM NEW.aad
+       OR OLD.ciphertext_sha256 IS DISTINCT FROM NEW.ciphertext_sha256
+       OR OLD.purge_after IS DISTINCT FROM NEW.purge_after
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+        RAISE EXCEPTION 'visa_decision_payloads is append-only outside the legal_hold-only carve-out';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visa_decision_payloads_guard
+BEFORE UPDATE OR DELETE ON public.visa_decision_payloads
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_decision_payloads_mutation();
+
+-- ---------------------------------------------------------------------------
+-- STEP-6b FIX-FIRST P1/P2: visa_source_records dedicated guard (replaces
+-- the blanket reject_visa_write_substrate_mutation() this table used
+-- before). The ONLY legal UPDATE closes an open recorded_period (upper
+-- NULL -> finite), mirroring migration 250's reject_visa_activation_mutation()
+-- close carve-out exactly -- this is what makes the supersession flow real
+-- (INSERT the new row with supersedes_source_record_id set, THEN close the
+-- superseded row's recorded_period). DELETE stays always-forbidden. Trigger
+-- renamed from *_immutable to *_guard for the same lying-name reason as
+-- visa_decision_payloads above.
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION public.reject_visa_source_records_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'visa_source_records is append-only (delete is never permitted)';
+    END IF;
+
+    IF OLD.id IS DISTINCT FROM NEW.id
+       OR OLD.source_key IS DISTINCT FROM NEW.source_key
+       OR OLD.version IS DISTINCT FROM NEW.version
+       OR OLD.authority_type IS DISTINCT FROM NEW.authority_type
+       OR OLD.status IS DISTINCT FROM NEW.status
+       OR OLD.jurisdiction IS DISTINCT FROM NEW.jurisdiction
+       OR OLD.title IS DISTINCT FROM NEW.title
+       OR OLD.publisher IS DISTINCT FROM NEW.publisher
+       OR OLD.canonical_url IS DISTINCT FROM NEW.canonical_url
+       OR OLD.language IS DISTINCT FROM NEW.language
+       OR OLD.document_number IS DISTINCT FROM NEW.document_number
+       OR OLD.locators IS DISTINCT FROM NEW.locators
+       OR OLD.content_sha256 IS DISTINCT FROM NEW.content_sha256
+       OR OLD.legal_period IS DISTINCT FROM NEW.legal_period
+       OR OLD.retrieved_at IS DISTINCT FROM NEW.retrieved_at
+       OR OLD.verified_at IS DISTINCT FROM NEW.verified_at
+       OR OLD.verified_by IS DISTINCT FROM NEW.verified_by
+       OR OLD.supersedes_source_record_id IS DISTINCT FROM NEW.supersedes_source_record_id
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at
+       OR lower(OLD.recorded_period) IS DISTINCT FROM lower(NEW.recorded_period) THEN
+        RAISE EXCEPTION 'visa_source_records is append-only outside the recorded_period-close carve-out';
+    END IF;
+    IF upper(OLD.recorded_period) IS NOT NULL THEN
+        RAISE EXCEPTION 'visa_source_records recorded_period already closed, cannot re-close';
+    END IF;
+    IF upper(NEW.recorded_period) IS NULL THEN
+        RAISE EXCEPTION 'visa_source_records close must set a finite recorded_period upper bound';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visa_source_records_guard
 BEFORE UPDATE OR DELETE ON public.visa_source_records
-FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_source_records_mutation();
+
+-- ---------------------------------------------------------------------------
+-- STEP-6b FIX-FIRST P2: supersedes_source_record_id integrity. Requires,
+-- when set: it does not equal the new row's own id (self-reference -- the
+-- bare FK alone cannot catch this, since IMMEDIATE FK checks run at
+-- end-of-statement, after the new row already exists), and the referenced
+-- row exists AND shares the same source_key (a supersession is a
+-- same-lineage correction, never a cross-source relabeling).
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION public.reject_visa_source_record_supersedes_mismatch()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    prior RECORD;
+BEGIN
+    IF NEW.supersedes_source_record_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    IF NEW.supersedes_source_record_id = NEW.id THEN
+        RAISE EXCEPTION 'visa_source_records.supersedes_source_record_id cannot reference its own row (id=%)', NEW.id;
+    END IF;
+    SELECT source_key INTO prior
+        FROM public.visa_source_records
+        WHERE id = NEW.supersedes_source_record_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'visa_source_records.supersedes_source_record_id % does not reference an existing row', NEW.supersedes_source_record_id;
+    END IF;
+    IF prior.source_key IS DISTINCT FROM NEW.source_key THEN
+        RAISE EXCEPTION 'visa_source_records supersession must share the same source_key (superseded=% new=%)',
+            prior.source_key, NEW.source_key;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visa_source_records_supersedes_binding
+BEFORE INSERT ON public.visa_source_records
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_source_record_supersedes_mismatch();
+
+-- ---------------------------------------------------------------------------
+-- BEFORE TRUNCATE guards (P2 fix, verify-round finding): Postgres row-level
+-- triggers (FOR EACH ROW, above) do NOT fire on the TRUNCATE statement -- any
+-- role holding TRUNCATE privilege on these tables could otherwise wipe the
+-- SHADOW audit trail in a single statement with zero trigger enforcement.
+-- Postgres only fires STATEMENT-level triggers for that statement, so these
+-- are FOR EACH STATEMENT, reusing the same
+-- reject_visa_write_substrate_mutation() function -- its body
+-- (`RAISE EXCEPTION '% is append-only', TG_TABLE_NAME`) references only the
+-- built-in TG_TABLE_NAME variable, never NEW/OLD, so it is already valid for
+-- statement-level invocation on that DDL trigger event with no body change
+-- required. Deliberately still the BLANKET reject for all three tables --
+-- the row-level carve-outs above are narrow by design and do not extend to
+-- a bulk statement-level wipe.
+-- ---------------------------------------------------------------------------
+CREATE TRIGGER visa_decisions_no_wipe
+BEFORE TRUNCATE ON public.visa_decisions
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+
+CREATE TRIGGER visa_decision_payloads_no_wipe
+BEFORE TRUNCATE ON public.visa_decision_payloads
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+
+CREATE TRIGGER visa_source_records_no_wipe
+BEFORE TRUNCATE ON public.visa_source_records
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
 -- === ROLLBACK ===
 -- Drop tables first (their triggers/indexes/EXCLUDE constraint drop with
 -- them). visa_decision_payloads references visa_decisions, so it must drop
 -- first; visa_source_records self-references only, so its order relative to
--- the other two does not matter. Then drop the trigger function this
+-- the other two does not matter. Then drop the trigger functions this
 -- migration owns. Does NOT touch migration 250's visa_rule_packs/
 -- visa_ruleset_activations/reject_visa_immutable_mutation() or btree_gist
 -- (shared extension) — none of those are this migration's to drop.
@@ -408,3 +765,7 @@ DROP TABLE IF EXISTS public.visa_decision_payloads;
 DROP TABLE IF EXISTS public.visa_decisions;
 DROP TABLE IF EXISTS public.visa_source_records;
 DROP FUNCTION IF EXISTS public.reject_visa_write_substrate_mutation();
+DROP FUNCTION IF EXISTS public.reject_visa_decision_pack_binding();
+DROP FUNCTION IF EXISTS public.reject_visa_decision_payloads_mutation();
+DROP FUNCTION IF EXISTS public.reject_visa_source_records_mutation();
+DROP FUNCTION IF EXISTS public.reject_visa_source_record_supersedes_mismatch();
