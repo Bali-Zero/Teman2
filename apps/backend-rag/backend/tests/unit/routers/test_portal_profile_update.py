@@ -25,10 +25,20 @@ _PROFILE_ROW = {
 }
 
 
+class _Tx:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+
 def _make_service(fetchrow_return: dict | None = None) -> tuple["PortalService", AsyncMock]:
     mock_conn = AsyncMock()
     mock_conn.execute.return_value = None
     mock_conn.fetchrow.return_value = fetchrow_return or _PROFILE_ROW
+    # conn.transaction() must be an async CM, not a coroutine (phone-lock TX).
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -54,19 +64,23 @@ async def test_update_profile_updates_allowed_fields():
 
     assert result is not None
 
-    # Three execute calls: UPDATE, notification_alerts, portal_messages
-    assert mock_conn.execute.call_count == 3
+    # Four execute calls: phone-core advisory lock (F12), UPDATE,
+    # notification_alerts, portal_messages
+    assert mock_conn.execute.call_count == 4
 
-    update_sql = mock_conn.execute.call_args_list[0][0][0]
+    lock_sql = mock_conn.execute.call_args_list[0][0][0]
+    assert "pg_advisory_xact_lock" in lock_sql
+
+    update_sql = mock_conn.execute.call_args_list[1][0][0]
     assert "phone" in update_sql
     assert "whatsapp" in update_sql
     assert "address" in update_sql
 
-    alert_sql = mock_conn.execute.call_args_list[1][0][0]
+    alert_sql = mock_conn.execute.call_args_list[2][0][0]
     assert "notification_alerts" in alert_sql
     assert "portal_profile_update" in alert_sql
 
-    msg_sql = mock_conn.execute.call_args_list[2][0][0]
+    msg_sql = mock_conn.execute.call_args_list[3][0][0]
     assert "portal_messages" in msg_sql
     assert "client_to_team" in msg_sql
 
@@ -115,13 +129,17 @@ async def test_update_profile_notification_failure_does_not_raise():
     """If notification_alerts INSERT fails, update_profile still returns profile (graceful degradation)."""
     mock_conn = AsyncMock()
     mock_conn.fetchrow.return_value = _PROFILE_ROW
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     call_count = 0
 
     async def execute_side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        if call_count == 2:  # notification_alerts INSERT
+        # Call order with the F12 phone-core lock: #1 advisory lock (the OLD
+        # row's phone yields a core even though "+62888" does not), #2 UPDATE,
+        # #3 notification_alerts INSERT.
+        if call_count == 3:  # notification_alerts INSERT
             raise Exception("DB constraint error")
         return None
 
@@ -146,13 +164,16 @@ async def test_update_profile_message_failure_does_not_raise() -> None:
     """If portal_messages insert fails, update_profile still returns the profile."""
     mock_conn = AsyncMock()
     mock_conn.fetchrow.return_value = _PROFILE_ROW
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     call_count = 0
 
     async def execute_side_effect(*args: object, **kwargs: object) -> None:
         nonlocal call_count
         call_count += 1
-        if call_count == 3:  # portal_messages INSERT
+        # With the F12 lock as call #1 (old row's phone core), portal_messages
+        # is now call #4 (#2 UPDATE, #3 notification_alerts).
+        if call_count == 4:  # portal_messages INSERT
             raise Exception("message insert failed")
 
     mock_conn.execute.side_effect = execute_side_effect

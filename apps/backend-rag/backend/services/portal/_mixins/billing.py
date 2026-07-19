@@ -12,6 +12,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.db.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.services.portal._rbac import ClientContext, require_client_access
 
@@ -268,10 +269,34 @@ class PortalBillingMixin:
                 params.append(client_id)
                 set_clause = ", ".join(set_parts)
 
-                await conn.execute(
-                    f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
-                    *params,
-                )
+                async with conn.transaction():
+                    if "phone" in safe_fields:
+                        # Phone is an identity-resolution key: intake delivery
+                        # resolves the Fly identity by it under 'phonecore:'
+                        # advisory locks (Codex 2026-07-19 round 10, F12) — a
+                        # portal self-serve phone change must be cooperative
+                        # with that window, never race it.
+                        _old = await conn.fetchrow(
+                            "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                            client_id,
+                        )
+
+                        def _val(row: Any, key: str) -> Any:
+                            try:
+                                return row[key]
+                            except (KeyError, TypeError):
+                                return None
+
+                        await lock_phone_cores(
+                            conn,
+                            safe_fields.get("phone"),
+                            _val(_old, "phone") if _old else None,
+                            _val(_old, "phone_normalized") if _old else None,
+                        )
+                    await conn.execute(
+                        f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
+                        *params,
+                    )
 
                 logger.info(
                     f"Portal profile updated for client {client_id}: {list(safe_fields.keys())}"

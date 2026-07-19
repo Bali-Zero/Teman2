@@ -10,6 +10,10 @@ from typing import Any
 
 import asyncpg
 
+# The canonical projection is SHARED with the CRM dedup and every phone writer
+# (backend.db.phone_lock) — "the same phone" has exactly one definition, so the
+# round-9 F13 parity requirement holds by construction, not by mirroring.
+from backend.db.phone_lock import phone_core as _phone_core
 from backend.services.intake import crm_push
 from backend.services.intake import writer as intake_writer
 
@@ -25,22 +29,26 @@ def crm_write_key_from_env() -> str | None:
     return None
 
 
-def _phone_core(raw: object) -> str | None:
-    """Canonical dedup core of a phone: ASCII digits with the Indonesian
-    country/trunk prefix (leading ``62`` or ``0``) removed; None when fewer
-    than 6 digits remain. MUST stay behaviourally identical to the official
-    CRM dedup helper ``crm_clients._normalize_phone_digits`` (parity is
-    test-pinned): the sole-owner gate must consider ``0812…`` and ``62812…``
-    the SAME owner, exactly as the CRM dedup does (Codex round 9, F13).
+def _raw_phone_state(raw: object) -> tuple[str, str | None]:
+    """Classify the raw ``phone`` column for the consistency gate.
+
+    Returns ``('absent', None)`` when the value is empty or contains no digits
+    at all (free-text garbage is not a phone CLAIM); ``('usable', core)`` when
+    it yields a valid core; ``('unusable', None)`` when digits are present but
+    below the core threshold — a present-but-garbage phone claim that CANNOT
+    cross-check the normalized value, so resolution must fail closed rather
+    than trust a possibly-stale phone_normalized (Codex round 10, F11 gap 1
+    residual: a raw ``"12345"`` must not be treated as raw-absent).
     """
-    if raw is None:
-        return None
-    digits = re.sub(r"[^0-9]", "", str(raw))
-    if digits.startswith("62"):
-        digits = digits[2:]
-    elif digits.startswith("0"):
-        digits = digits[1:]
-    return digits if len(digits) >= 6 else None
+    s = ("" if raw is None else str(raw)).strip()
+    if not s:
+        return ("absent", None)
+    if not re.search(r"[0-9]", s):
+        return ("absent", None)
+    core = _phone_core(s)
+    if core is None:
+        return ("unusable", None)
+    return ("usable", core)
 
 
 # Sole-owner gate over BOTH phone columns (Codex round-8, F11 gaps): historical
@@ -120,18 +128,21 @@ async def _resolve_and_push_locked(
                         client_full_name = _name
                     digits = re.sub(r"[^0-9]", "", crow["phone_normalized"] or "")
                     core_norm = _phone_core(crow["phone_normalized"])
-                    core_raw = _phone_core(crow["phone"])
-                    # Round-9 F11 gap 1: the selected client's OWN card must be
-                    # internally consistent — a stale non-null phone_normalized
-                    # diverging from raw `phone` means neither value can prove
-                    # the identity; resolving with either could deliver to that
-                    # number's actual Fly owner. Fail CLOSED on divergence, and
-                    # on a raw phone whose normalized companion is unusable.
+                    raw_state, core_raw = _raw_phone_state(crow["phone"])
+                    # Round-9/10 F11 gap 1: the selected client's OWN card must
+                    # be internally consistent — a stale non-null
+                    # phone_normalized diverging from raw `phone` means neither
+                    # value can prove the identity. Fail CLOSED on divergence,
+                    # on an unusable normalized value with a raw present, AND on
+                    # a present-but-unusable raw (short/garbage digits cannot
+                    # cross-check the normalized value — round-10 residual).
                     reason: str | None = None
                     if core_norm is None or not digits:
-                        if (crow["phone"] or "").strip():
+                        if raw_state != "absent":
                             reason = "unusable_normalized_phone"
                         # else: plain no-phone card → silent fail-closed (as before)
+                    elif raw_state == "unusable":
+                        reason = "unusable_raw_phone"
                     elif core_raw is not None and core_raw != core_norm:
                         reason = "phone_columns_diverged"
                     if reason is not None:
@@ -159,11 +170,17 @@ async def _resolve_and_push_locked(
                             "SELECT phone_normalized, phone FROM clients WHERE id = $1",
                             int(plan.client_id),
                         )
+                        _f_state, _f_core = (
+                            _raw_phone_state(fresh["phone"])
+                            if fresh is not None
+                            else ("absent", None)
+                        )
                         stable = (
                             fresh is not None
                             and re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "")
                             == digits
-                            and _phone_core(fresh["phone"]) in (None, core_norm)
+                            and _f_state != "unusable"
+                            and _f_core in (None, core_norm)
                         )
                         dup_owners = 0
                         if stable:
@@ -210,10 +227,14 @@ async def _resolve_and_push_locked(
                 dup_after = await conn.fetchval(
                     _PHONE_DUP_OWNERS_SQL, int(plan.client_id), phone_core
                 )
+                _p_state, _p_core = (
+                    _raw_phone_state(fresh["phone"]) if fresh is not None else ("absent", None)
+                )
                 changed = (
                     fresh is None
                     or re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "") != phone_digits
-                    or _phone_core(fresh["phone"]) not in (None, phone_core)
+                    or _p_state == "unusable"
+                    or _p_core not in (None, phone_core)
                 )
                 if changed or dup_after:
                     logger.error(

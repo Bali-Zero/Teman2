@@ -42,6 +42,7 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
+from backend.db.phone_lock import lock_phone_cores, phone_core
 from backend.db.repositories.client_repository import ClientRepository
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
@@ -52,19 +53,12 @@ logger = get_logger(__name__)
 def _normalize_phone_digits(raw: str | None) -> str | None:
     """Reduce a phone to a comparable digit tail for dedup.
 
-    Strips every non-digit, then drops the Indonesian country/trunk prefix
-    (`62` or a leading `0`) so `+62 821-3454-721`, `0821 3454721` and
-    `8213454721` all collapse to the same key. Returns None for empty/too-short
-    input (a 1-2 digit fragment is never a usable dedup key).
+    Delegates to the SINGLE canonical projection ``backend.db.phone_lock
+    .phone_core`` (digits, one leading ``62``/``0`` prefix stripped, ≥6) —
+    shared with the intake-delivery gate and every phone writer, so "the same
+    phone" has exactly one definition (Codex 2026-07-19 round 10).
     """
-    if not raw:
-        return None
-    digits = re.sub(r"\D", "", raw)
-    if digits.startswith("62"):
-        digits = digits[2:]
-    elif digits.startswith("0"):
-        digits = digits[1:]
-    return digits if len(digits) >= 6 else None
+    return phone_core(raw)
 
 
 def _row_str(row: object, key: str) -> str | None:
@@ -78,6 +72,23 @@ def _row_str(row: object, key: str) -> str | None:
         return None
     return value if isinstance(value, str) else None
 
+
+# Core-equivalence matcher for upsert-by-phone: matches every stored row whose
+# phone_normalized collapses to the same canonical core as the payload — 0812…
+# and 62812… are ONE identity (Codex 2026-07-19 round 10, F15: exact-string
+# matching let intake delivery mint duplicate cards for prefix variants). $1 is
+# the payload's core. SQL CASE mirrors backend.db.phone_lock.phone_core.
+UPSERT_MATCH_SQL = """
+SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
+FROM clients
+WHERE CASE WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') LIKE '62%'
+           THEN substr(regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'), 3)
+           WHEN regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') LIKE '0%'
+           THEN substr(regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g'), 2)
+           ELSE regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') END = $1
+ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
+FOR UPDATE
+"""
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
@@ -1339,16 +1350,20 @@ async def upsert_client_by_phone(
                     "SELECT pg_advisory_xact_lock(hashtext($1))", f"phonecore:{_core}"
                 )
 
-            rows = await conn.fetch(
-                """
-                SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
-                FROM clients
-                WHERE phone_normalized = $1
-                ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
-                FOR UPDATE
-                """,
-                phone,
-            )
+            if _core:
+                rows = await conn.fetch(UPSERT_MATCH_SQL, _core)
+            else:
+                # Payload too short to yield a core — legacy exact match.
+                rows = await conn.fetch(
+                    """
+                    SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
+                    FROM clients
+                    WHERE phone_normalized = $1
+                    ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
+                    FOR UPDATE
+                    """,
+                    phone,
+                )
             matched_count = len(rows)
 
             if payload.reject_ambiguous and matched_count > 1:
@@ -1652,24 +1667,35 @@ async def update_client(
                 # Phone is an identity-resolution key: intake delivery resolves
                 # the Fly identity by it while holding 'phonecore:' advisory
                 # locks. Changing a phone must be COOPERATIVE with that window
-                # (Codex 2026-07-19 round 9, F12): take the canonical core
-                # locks for both the OLD and NEW values inside one transaction,
-                # in sorted order (same total order as every other participant —
-                # deadlock-safe), so a mid-delivery phone reassignment blocks
-                # until the delivery window closes instead of racing it.
+                # (Codex 2026-07-19 rounds 9-10, F12): lock the canonical cores
+                # of the NEW value plus everything the row currently holds,
+                # with a re-read-under-lock CONVERGENCE loop — the pre-lock
+                # read can be stale (a racing PATCH may land between our read
+                # and our locks), so keep re-reading and additively locking
+                # until the row's cores are fully covered by locks we hold.
                 async with conn.transaction():
-                    _old = await conn.fetchrow(
-                        "SELECT phone, phone_normalized FROM clients WHERE id = $1",
-                        client_id,
-                    )
-                    _cores = {
-                        _normalize_phone_digits(updates.phone),
-                        _normalize_phone_digits(_row_str(_old, "phone")),
-                        _normalize_phone_digits(_row_str(_old, "phone_normalized")),
-                    }
-                    for _key in sorted(f"phonecore:{c}" for c in _cores if c):
-                        await conn.execute(
-                            "SELECT pg_advisory_xact_lock(hashtext($1))", _key
+                    _locked: set[str] = set()
+                    for _ in range(3):
+                        _cur = await conn.fetchrow(
+                            "SELECT phone, phone_normalized FROM clients WHERE id = $1",
+                            client_id,
+                        )
+                        _want = {
+                            c
+                            for c in (
+                                phone_core(updates.phone),
+                                phone_core(_row_str(_cur, "phone")),
+                                phone_core(_row_str(_cur, "phone_normalized")),
+                            )
+                            if c is not None
+                        }
+                        if _want <= _locked:
+                            break
+                        _locked |= await lock_phone_cores(
+                            conn,
+                            updates.phone,
+                            _row_str(_cur, "phone"),
+                            _row_str(_cur, "phone_normalized"),
                         )
                     row = await conn.fetchrow(query, *params)  # nosemgrep
             else:

@@ -16,6 +16,7 @@ from typing import Any, TypeVar
 
 import asyncpg
 
+from backend.db.phone_lock import lock_phone_cores
 from backend.services.common.background import spawn
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,10 @@ class CRMQueryOptimizer:
             RETURNING id
         """
         async with self.db_pool.acquire() as conn, conn.transaction():
+            # Phone is an identity-resolution key (Codex 2026-07-19 round 10,
+            # F12): batch-created owners must be cooperative with the intake
+            # delivery lock window (keys sorted inside the helper).
+            await lock_phone_cores(conn, *[c.get("phone") for c in clients])
             rows = await conn.fetch(query, *all_params)
             return [row["id"] for row in rows]
 

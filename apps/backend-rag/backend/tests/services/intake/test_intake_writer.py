@@ -1535,6 +1535,115 @@ async def test_delivery_refuses_diverged_phone_columns(pool, seed, monkeypatch):
     assert captured["sender_phone"] is None  # diverged card ⇒ fail closed
 
 
+async def test_delivery_refuses_unusable_raw_phone(pool, seed, monkeypatch):
+    """Round-10 F11 gap-1 residual guilt: raw phone PRESENT but UNUSABLE
+    ("12345" — digits below the core threshold) cannot cross-check the
+    normalized value; a possibly-stale phone_normalized must NOT be trusted."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    stale_norm = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        # Raw first (trigger aligns normalized to '12345'), then the stale-valid
+        # normalized via direct update (trigger fires only ON UPDATE OF phone).
+        await conn.execute("UPDATE clients SET phone='12345' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", stale_norm, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11e")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] is None  # unusable raw ⇒ cannot cross-check ⇒ closed
+
+
+async def test_delivery_digitfree_raw_phone_is_absent(pool, seed, monkeypatch):
+    """Round-10 F11 gap-1 innocence: a digit-free raw value ("n/a") is not a
+    phone CLAIM — normalized-only resolution proceeds."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    valid = "62" + str(uuid.uuid4().int)[:9]
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE clients SET phone='n/a' WHERE id=$1", seed["cid_a"])
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", valid, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11f")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert captured["sender_phone"] == valid
+
+
+async def test_upsert_match_sql_equates_prefix_variants(pool):
+    """Round-10 F15: the upsert-by-phone matcher must recognize 0812… and
+    62812… as ONE identity — executed against the REAL matcher SQL, so a
+    regression to exact-string matching fails here."""
+    from backend.app.routers.crm_clients import UPSERT_MATCH_SQL, _normalize_phone_digits
+
+    tail = str(uuid.uuid4().int)[:9]
+    ids: list[int] = []
+    try:
+        async with pool.acquire() as conn:
+            for variant in ("0" + tail, "62" + tail):
+                ids.append(
+                    await conn.fetchval(
+                        "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                        f"variant-{variant[:2]}-{uuid.uuid4().hex[:6]}",
+                        variant,
+                    )
+                )
+            core = _normalize_phone_digits("62" + tail)
+            assert core == tail
+            async with conn.transaction():
+                rows = await conn.fetch(UPSERT_MATCH_SQL, core)
+            found = {r["id"] for r in rows}
+            assert set(ids) <= found  # both prefix variants are the same identity
+    finally:
+        async with pool.acquire() as conn:
+            for cid in ids:
+                await conn.execute("DELETE FROM clients WHERE id=$1", cid)
+
+
 def test_phone_core_parity_with_crm_dedup():
     """The delivery gate's `_phone_core` MUST stay behaviourally identical to
     the official CRM dedup `_normalize_phone_digits` (round-9 F13): a drift

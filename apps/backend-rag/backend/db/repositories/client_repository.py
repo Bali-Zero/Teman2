@@ -5,6 +5,7 @@ from typing import Any
 import asyncpg
 
 from backend.db.base_repository import BaseRepository
+from backend.db.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.utils.query_builder import QueryBuilder
 
@@ -159,6 +160,11 @@ class ClientRepository(BaseRepository):
                     )
                     RETURNING *
                 """
+                # Phone is an identity-resolution key (Codex 2026-07-19 round
+                # 10, F12): creating a client with a phone adds an owner of
+                # that core — take the cooperative lock inside this TX so the
+                # insert cannot race an intake-delivery resolution window.
+                await lock_phone_cores(conn, client_data.get("phone"))
                 client_record = await conn.fetchrow(
                     client_query,
                     client_data.get("full_name"),
