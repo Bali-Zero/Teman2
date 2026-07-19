@@ -676,6 +676,27 @@ class MagazineTransport:
             fencing_token=fencing_token,
         )
 
+    async def apply_operation_effect(self, effect: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Apply one code-owned story visibility effect under signed transport."""
+        path = "/api/machine/operations/effects"
+        body = json.dumps(effect, sort_keys=True, separators=(",", ":")).encode()
+        response = await self._post_raw(
+            path,
+            body,
+            content_type="application/json",
+            operation_id=f"{path}:{hashlib.sha256(body).hexdigest()}",
+            retry_unknown=False,
+        )
+        payload = response.json()
+        receipt = payload.get("receipt") if isinstance(payload, dict) else None
+        if (
+            not isinstance(payload, dict)
+            or payload.get("ok") is not True
+            or not isinstance(receipt, dict)
+        ):
+            raise RuntimeError("invalid operation effect response")
+        return receipt
+
     async def submit_operation_result(
         self, *, intent_id: str, result: Mapping[str, Any]
     ) -> Mapping[str, Any]:

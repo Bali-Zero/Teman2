@@ -12,6 +12,7 @@ export type MagazineRuntimeBindings = Readonly<{
   MACHINE_HMAC_CURRENT_KEY_JSON?: string;
   MACHINE_HMAC_NEXT_KEY_JSON?: string;
   AUDIT_ANCHOR_KEY_REGISTRY_JSON?: string;
+  RELEASE_ATTESTATION_KEY_REGISTRY_JSON?: string;
   RESEARCH_CATALOG_JSON?: string;
 }>;
 

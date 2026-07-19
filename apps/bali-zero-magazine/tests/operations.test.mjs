@@ -4,9 +4,14 @@ import test from "node:test";
 
 import {
   createOperationsRepository,
+  parseOperationEffect,
   parseOperationIntentRequest,
   parseOperationResult,
 } from "../lib/server/operations-repository.ts";
+import {
+  buildReleaseAttestationSignaturePreimage,
+  canonicalizeReleaseAttestationBody,
+} from "../lib/contracts/release-attestation.ts";
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
 import { hmacSha256Hex } from "../lib/server/security.ts";
 import {
@@ -41,6 +46,10 @@ const routePaths = {
     "../app/api/machine/operations/intents/[intentId]/result/route.ts",
     import.meta.url,
   ),
+  effect: new URL(
+    "../app/api/machine/operations/effects/route.ts",
+    import.meta.url,
+  ),
   page: new URL("../app/operations/page.tsx", import.meta.url),
   board: new URL("../components/operations-board.tsx", import.meta.url),
 };
@@ -67,6 +76,7 @@ function request(kind = "rerun_collector", overrides = {}) {
       story_id: "story-0123456789abcdef",
       story_version: 2,
       expected_visibility_seq: 7,
+      release_attestation_id: "release-attestation-0123456789abcdef",
     },
     refresh_research_job: {
       research_job_id: "research-job-0123456789abcdef",
@@ -87,6 +97,19 @@ function request(kind = "rerun_collector", overrides = {}) {
     expires_at: "2026-07-19T05:00:00.000Z",
     params: params[kind],
     ...overrides,
+  };
+}
+
+function domainReceipt(claim, attestation) {
+  return {
+    schema_version: "ops-domain-receipt.v1",
+    code: "effect_acknowledged",
+    intent_kind: claim.intent_kind,
+    target_id: claim.target_id,
+    target_key: claim.target_key,
+    fencing_token: claim.fencing_token,
+    target_fencing_token: claim.target_fencing_token,
+    effect_token: attestation.effect_token,
   };
 }
 
@@ -287,7 +310,7 @@ test("claim start attest result is fenced, terminal, and receipt-only", async ()
     request_hash: claim.request_hash,
     status: "succeeded",
     completed_at: "2026-07-19T04:01:00.000Z",
-    receipt: { code: "effect_acknowledged", target_id: claim.target_id },
+    receipt: domainReceipt(claim, attestation),
     failure: null,
     claim_token: claim.claim_token,
     fencing_token: claim.fencing_token,
@@ -319,6 +342,171 @@ test("claim start attest result is fenced, terminal, and receipt-only", async ()
   assert.doesNotMatch(
     db.get("SELECT receipt_json FROM ops_receipts").receipt_json,
     /actor|idempotency|params|passport/i,
+  );
+});
+
+test("release effect verifies and consumes one signed attestation with visibility CAS", async () => {
+  const instant = "2026-07-19T04:00:00.000Z";
+  const db = new SqliteD1Database();
+  const repository = createOperationsRepository(db, { now: () => instant });
+  const releaseRequest = parseOperationIntentRequest(
+    request("release_story", {
+      idempotency_key: "ops-release-effect-cas-0001",
+      params: {
+        story_id: "story-0123456789abcdef",
+        story_version: 2,
+        expected_visibility_seq: 1,
+        release_attestation_id: "release-attestation-0123456789abcdef",
+      },
+    }),
+  );
+  db.execute(
+    "INSERT INTO stories(story_id, slug, current_version) VALUES (?, ?, ?)",
+    "story-0123456789abcdef",
+    "release-effect-story",
+    2,
+  );
+  db.execute(
+    `INSERT INTO audit_events(
+       event_id, stream_id, stream_seq, payload_json,
+       previous_event_hash, event_hash
+     ) VALUES (?, ?, 1, '{}', ?, ?)`,
+    "audit-quarantine-0123456789abcdef",
+    "operations.visibility.v1",
+    "0".repeat(64),
+    "1".repeat(64),
+  );
+  db.execute(
+    "INSERT INTO audit_stream_heads(stream_id, stream_seq, event_hash) VALUES (?, 1, ?)",
+    "operations.visibility.v1",
+    "1".repeat(64),
+  );
+  db.execute(
+    `INSERT INTO story_visibility_events(
+       story_id, visibility_seq, story_version, intent_id,
+       desired_quarantined, audit_event_id
+     ) VALUES (?, 1, 2, ?, 1, ?)`,
+    "story-0123456789abcdef",
+    "historical-quarantine-intent",
+    "audit-quarantine-0123456789abcdef",
+  );
+  await repository.createIntent({
+    actorKey: actor,
+    effectiveRole: "operator",
+    policyVersion: policy,
+    operatorActorKeys: [actor],
+    request: releaseRequest,
+  });
+  const claim = await repository.claimNext({
+    workerId: "worker:pro-magazine",
+    leaseSeconds: 60,
+    operatorActorKeys: [actor],
+    policyVersion: policy,
+  });
+  await repository.start(claim);
+  const attestation = await repository.attestPreEffect(claim, {
+    operatorActorKeys: [actor],
+    policyVersion: policy,
+  });
+  assert.equal(attestation.authorized, true);
+
+  const keyPair = await crypto.subtle.generateKey("Ed25519", true, [
+    "sign",
+    "verify",
+  ]);
+  const body = {
+    schema_version: "release-attestation.v1",
+    attestation_id: "release-attestation-0123456789abcdef",
+    story_id: claim.target_id,
+    story_version: 2,
+    evidence_bundle_hash: "2".repeat(64),
+    asset_set_hash: "3".repeat(64),
+    key_id: "release-key-1",
+    expires_at: "2026-07-19T04:05:00.000Z",
+  };
+  const signature = Buffer.from(
+    await crypto.subtle.sign(
+      "Ed25519",
+      keyPair.privateKey,
+      buildReleaseAttestationSignaturePreimage(
+        canonicalizeReleaseAttestationBody(body),
+      ),
+    ),
+  ).toString("base64url");
+  db.execute(
+    `INSERT INTO release_attestations(
+       attestation_id, story_id, story_version, evidence_bundle_hash,
+       asset_set_hash, key_id, signature, expires_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    body.attestation_id,
+    body.story_id,
+    body.story_version,
+    body.evidence_bundle_hash,
+    body.asset_set_hash,
+    body.key_id,
+    signature,
+    body.expires_at,
+  );
+  const registry = JSON.stringify({
+    registry_version: "release-keys.v1",
+    keys: [
+      {
+        key_id: body.key_id,
+        public_key: Buffer.from(
+          await crypto.subtle.exportKey("raw", keyPair.publicKey),
+        ).toString("base64url"),
+        not_before: "2026-07-19T03:00:00.000Z",
+        not_after: "2026-07-19T05:00:00.000Z",
+        status: "active",
+      },
+    ],
+  });
+  const effect = parseOperationEffect({
+    schema_version: "ops-domain-effect.v1",
+    intent_kind: claim.intent_kind,
+    target_id: claim.target_id,
+    target_key: claim.target_key,
+    params: releaseRequest.params,
+    fencing_token: claim.fencing_token,
+    target_fencing_token: claim.target_fencing_token,
+    effect_token: attestation.effect_token,
+  });
+
+  db.execute(
+    "UPDATE release_attestations SET signature = ? WHERE attestation_id = ?",
+    Buffer.alloc(64).toString("base64url"),
+    body.attestation_id,
+  );
+  await assert.rejects(
+    repository.applyStoryEffect(effect, registry),
+    /release attestation|signature/,
+  );
+  db.execute(
+    "UPDATE release_attestations SET signature = ? WHERE attestation_id = ?",
+    signature,
+    body.attestation_id,
+  );
+  assert.equal(
+    (await repository.applyStoryEffect(effect, registry)).code,
+    "effect_acknowledged",
+  );
+  assert.equal(
+    db.get(
+      "SELECT desired_quarantined FROM story_visibility_events WHERE intent_id = ?",
+      claim.intent_id,
+    ).desired_quarantined,
+    0,
+  );
+  assert.equal(
+    db.get(
+      "SELECT consumed_at FROM release_attestations WHERE attestation_id = ?",
+      body.attestation_id,
+    ).consumed_at,
+    instant,
+  );
+  assert.deepEqual(
+    await repository.applyStoryEffect(effect, registry),
+    domainReceipt(claim, attestation),
   );
 });
 
@@ -500,6 +688,97 @@ test("state and audit transition roll back together on audit failure", async () 
   );
 });
 
+test("polling an active running intent never advances its target fence or audit", async () => {
+  const db = new SqliteD1Database();
+  const repository = createOperationsRepository(db, {
+    now: () => "2026-07-19T04:00:00.000Z",
+  });
+  await repository.createIntent({
+    actorKey: actor,
+    effectiveRole: "operator",
+    policyVersion: policy,
+    operatorActorKeys: [actor],
+    request: parseOperationIntentRequest(request()),
+  });
+  const claim = await repository.claimNext({
+    workerId: "worker:pro-magazine",
+    leaseSeconds: 60,
+    operatorActorKeys: [actor],
+    policyVersion: policy,
+  });
+  await repository.start(claim);
+  const beforeFence = db.get(
+    "SELECT next_fencing_token FROM ops_target_fences WHERE target_key = ?",
+    claim.target_key,
+  ).next_fencing_token;
+  const beforeAudits = db.get(
+    "SELECT count(*) AS count FROM ops_audit_events WHERE intent_id = ?",
+    claim.intent_id,
+  ).count;
+
+  assert.equal(
+    await repository.claimNext({
+      workerId: "worker:pro-magazine",
+      leaseSeconds: 60,
+      operatorActorKeys: [actor],
+      policyVersion: policy,
+    }),
+    null,
+  );
+  assert.equal(
+    db.get(
+      "SELECT next_fencing_token FROM ops_target_fences WHERE target_key = ?",
+      claim.target_key,
+    ).next_fencing_token,
+    beforeFence,
+  );
+  assert.equal(
+    db.get(
+      "SELECT count(*) AS count FROM ops_audit_events WHERE intent_id = ?",
+      claim.intent_id,
+    ).count,
+    beforeAudits,
+  );
+  assert.equal(
+    (
+      await repository.attestPreEffect(claim, {
+        operatorActorKeys: [actor],
+        policyVersion: policy,
+      })
+    ).authorized,
+    true,
+  );
+});
+
+test("zero-row start CAS cannot persist a second audit transition", async () => {
+  const db = new SqliteD1Database();
+  const repository = createOperationsRepository(db, {
+    now: () => "2026-07-19T04:00:00.000Z",
+  });
+  await repository.createIntent({
+    actorKey: actor,
+    effectiveRole: "operator",
+    policyVersion: policy,
+    operatorActorKeys: [actor],
+    request: parseOperationIntentRequest(request()),
+  });
+  const claim = await repository.claimNext({
+    workerId: "worker:pro-magazine",
+    leaseSeconds: 60,
+    operatorActorKeys: [actor],
+    policyVersion: policy,
+  });
+  await repository.start(claim);
+  await assert.rejects(repository.start(claim), /lease lost|terminal/);
+  assert.equal(
+    db.get(
+      "SELECT count(*) AS count FROM ops_audit_events WHERE intent_id = ? AND event_type = 'started'",
+      claim.intent_id,
+    ).count,
+    1,
+  );
+});
+
 test("revocation at final attestation prevents the effect", async () => {
   const db = new SqliteD1Database();
   const repository = createOperationsRepository(db, {
@@ -660,22 +939,159 @@ test("machine claim requires SIWC admission plus a valid HMAC envelope", async (
   assert.match(accepted.headers.get("cache-control") ?? "", /no-store/);
 });
 
-test("operations machine routes reject oversized signed JSON while assets keep their cap", async () => {
+test("signed HTTP lifecycle binds claim through terminal receipt", async () => {
+  const db = new SqliteD1Database();
+  const baseBindings = runtimeBindings(db);
+  const operatorKey = await hmacSha256Hex(
+    baseBindings.ACTOR_KEY_SECRET,
+    "operator@balizero.com",
+  );
+  const bindings = {
+    ...baseBindings,
+    ROLE_ALLOWLIST_JSON: JSON.stringify({
+      version: "roles.operations.lifecycle.v1",
+      analysts: [],
+      operators: [operatorKey],
+    }),
+  };
+  await createOperationsRepository(db).createIntent({
+    actorKey: operatorKey,
+    effectiveRole: "operator",
+    policyVersion: "roles.operations.lifecycle.v1",
+    operatorActorKeys: [operatorKey],
+    request: parseOperationIntentRequest(
+      request("rerun_collector", {
+        idempotency_key: "ops-signed-lifecycle-0001",
+        expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+    ),
+  });
+  const post = async (routeName, path, value, intentId = null) => {
+    const { POST } = await import(routePaths[routeName]);
+    const signed = await signedMachineRequest({
+      path,
+      body: JSON.stringify(value),
+    });
+    return runWithMagazineBindings(bindings, () =>
+      intentId === null
+        ? POST(signed)
+        : POST(signed, { params: Promise.resolve({ intentId }) }),
+    );
+  };
+  const claimResponse = await post(
+    "claim",
+    "/api/machine/operations/intents/claim",
+    {
+      schema_version: "ops-claim.v1",
+      worker_id: "worker:pro-magazine",
+      lease_seconds: 60,
+    },
+  );
+  assert.equal(claimResponse.status, 200);
+  const claim = (await claimResponse.json()).intent;
+  assert.equal(
+    (
+      await post(
+        "start",
+        `/api/machine/operations/intents/${claim.intent_id}/start`,
+        {
+          schema_version: "ops-start.v1",
+          claim_token: claim.claim_token,
+          fencing_token: claim.fencing_token,
+        },
+        claim.intent_id,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await post(
+        "heartbeat",
+        `/api/machine/operations/intents/${claim.intent_id}/heartbeat`,
+        {
+          schema_version: "ops-heartbeat.v1",
+          claim_token: claim.claim_token,
+          fencing_token: claim.fencing_token,
+          lease_seconds: 60,
+        },
+        claim.intent_id,
+      )
+    ).status,
+    200,
+  );
+  const attestResponse = await post(
+    "attest",
+    `/api/machine/operations/intents/${claim.intent_id}/pre-effect-attest`,
+    {
+      schema_version: "ops-pre-effect-attest.v1",
+      claim_token: claim.claim_token,
+      fencing_token: claim.fencing_token,
+    },
+    claim.intent_id,
+  );
+  assert.equal(attestResponse.status, 200);
+  const attestation = (await attestResponse.json()).attestation;
+  const resultResponse = await post(
+    "result",
+    `/api/machine/operations/intents/${claim.intent_id}/result`,
+    {
+      schema_version: "ops-result.v1",
+      intent_id: claim.intent_id,
+      request_hash: claim.request_hash,
+      status: "succeeded",
+      completed_at: new Date().toISOString(),
+      receipt: domainReceipt(claim, attestation),
+      failure: null,
+      claim_token: claim.claim_token,
+      fencing_token: claim.fencing_token,
+      target_fencing_token: claim.target_fencing_token,
+      actor_key: claim.actor_key,
+      target_key: claim.target_key,
+      target_id: claim.target_id,
+      effect_token: attestation.effect_token,
+      attested_policy_version: attestation.policy_version,
+      attestation_expires_at: attestation.expires_at,
+    },
+    claim.intent_id,
+  );
+  assert.equal(resultResponse.status, 201);
+  assert.equal(
+    db.get(
+      "SELECT status FROM ops_intents WHERE intent_id = ?",
+      claim.intent_id,
+    ).status,
+    "succeeded",
+  );
+});
+
+test("all five operations lifecycle routes reject oversized signed JSON", async () => {
   const db = new SqliteD1Database();
   const bindings = runtimeBindings(db);
-  const { POST } = await import(routePaths.claim);
   const body = JSON.stringify({
-    schema_version: "ops-claim.v1",
-    worker_id: "worker:pro-magazine",
-    lease_seconds: 60,
     padding: "x".repeat(5_000),
   });
-  const signed = await signedMachineRequest({
-    path: "/api/machine/operations/intents/claim",
-    body,
-  });
-  const response = await runWithMagazineBindings(bindings, () => POST(signed));
-  assert.equal(response.status, 413);
+  for (const [routeName, suffix] of [
+    ["claim", "claim"],
+    ["start", "ops-intent-0123456789abcdef/start"],
+    ["heartbeat", "ops-intent-0123456789abcdef/heartbeat"],
+    ["attest", "ops-intent-0123456789abcdef/pre-effect-attest"],
+    ["result", "ops-intent-0123456789abcdef/result"],
+  ]) {
+    const path = `/api/machine/operations/intents/${suffix}`;
+    const signed = await signedMachineRequest({ path, body });
+    const { POST } = await import(routePaths[routeName]);
+    const response = await runWithMagazineBindings(bindings, () =>
+      routeName === "claim"
+        ? POST(signed)
+        : POST(signed, {
+            params: Promise.resolve({
+              intentId: "ops-intent-0123456789abcdef",
+            }),
+          }),
+    );
+    assert.equal(response.status, 413, routeName);
+  }
 });
 
 test("operations page labels health and keeps actions operator-only", () => {
@@ -690,4 +1106,59 @@ test("operations page labels health and keeps actions operator-only", () => {
   assert.doesNotMatch(source, /const numeric = 0|story_version: 1/);
   assert.match(source, /action_targets/);
   assert.match(source, /disabled=.*precondition|precondition.*disabled/s);
+  assert.match(source, /Review and confirm/);
+  assert.match(source, /Confirm and queue/);
+});
+
+test("story action targets are filtered by quarantine and release eligibility", async () => {
+  const db = new SqliteD1Database();
+  const repository = createOperationsRepository(db, {
+    now: () => "2026-07-19T04:00:00.000Z",
+  });
+  db.execute(
+    "INSERT INTO stories(story_id, slug, current_version) VALUES (?, ?, 2)",
+    "story-0123456789abcdef",
+    "operation-target-eligibility",
+  );
+  let targets = await repository.actionTargets();
+  assert.equal(targets.quarantine_story.length, 1);
+  assert.equal(targets.release_story.length, 0);
+  db.execute(
+    `INSERT INTO audit_events(
+       event_id, stream_id, stream_seq, payload_json,
+       previous_event_hash, event_hash
+     ) VALUES (?, 'operations.visibility.v1', 1, '{}', ?, ?)`,
+    "audit-target-eligibility-0001",
+    "0".repeat(64),
+    "4".repeat(64),
+  );
+  db.execute(
+    `INSERT INTO story_visibility_events(
+       story_id, visibility_seq, story_version, intent_id,
+       desired_quarantined, audit_event_id
+     ) VALUES (?, 1, 2, ?, 1, ?)`,
+    "story-0123456789abcdef",
+    "historical-target-eligibility",
+    "audit-target-eligibility-0001",
+  );
+  db.execute(
+    `INSERT INTO release_attestations(
+       attestation_id, story_id, story_version, evidence_bundle_hash,
+       asset_set_hash, key_id, signature, expires_at
+     ) VALUES (?, ?, 2, ?, ?, ?, ?, ?)`,
+    "release-attestation-target-eligibility",
+    "story-0123456789abcdef",
+    "5".repeat(64),
+    "6".repeat(64),
+    "release-key-1",
+    Buffer.alloc(64).toString("base64url"),
+    "2026-07-19T04:05:00.000Z",
+  );
+  targets = await repository.actionTargets();
+  assert.equal(targets.quarantine_story.length, 0);
+  assert.equal(targets.release_story.length, 1);
+  assert.equal(
+    targets.release_story[0].params.release_attestation_id,
+    "release-attestation-target-eligibility",
+  );
 });

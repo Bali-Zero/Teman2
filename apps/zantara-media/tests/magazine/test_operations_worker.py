@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -18,7 +17,7 @@ from zantara_media.magazine.operations_worker import (
 )
 from zantara_media.magazine.operations_runtime import (
     CapabilityUnavailableError,
-    FixedOperationsDomainService,
+    CodeOwnedOperationsDomainService,
     OperationsRuntimeConfigError,
     build_operations_domain_service,
 )
@@ -109,12 +108,22 @@ class FakeDomain:
         kind: str,
         params: Mapping[str, Any],
         *,
+        target_key: str,
         fencing_token: int,
         target_fencing_token: int,
         effect_token: str,
-    ) -> str:
+    ) -> Mapping[str, Any]:
         self.effects.append((kind, params, fencing_token, target_fencing_token, effect_token))
-        return "effect_acknowledged"
+        return {
+            "schema_version": "ops-domain-receipt.v1",
+            "code": "effect_acknowledged",
+            "intent_kind": kind,
+            "target_id": CLAIM["target_id"],
+            "target_key": target_key,
+            "fencing_token": fencing_token,
+            "target_fencing_token": target_fencing_token,
+            "effect_token": effect_token,
+        }
 
 
 def test_worker_rejects_unknown_kinds_and_arbitrary_execution_fields(tmp_path: Path) -> None:
@@ -202,10 +211,11 @@ async def test_possible_effect_crash_becomes_outcome_unknown_without_replay(
             kind: str,
             params: Mapping[str, Any],
             *,
+            target_key: str,
             fencing_token: int,
             target_fencing_token: int,
             effect_token: str,
-        ) -> str:
+        ) -> Mapping[str, Any]:
             self.effects.append((kind, params, fencing_token, target_fencing_token, effect_token))
             raise TimeoutError("private downstream detail")
 
@@ -264,25 +274,38 @@ async def test_journal_rejects_same_fence_phase_regression(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_production_factory_runs_only_exact_fixed_json_commands() -> None:
-    kinds = (
-        "rerun_collector",
-        "rebuild_edition",
-        "quarantine_story",
-        "release_story",
-        "refresh_research_job",
-    )
-    command_program = (
-        "import json,sys; payload=json.load(sys.stdin); "
-        "assert set(payload)=={'schema_version','intent_kind','target_id','params','authority'}; "
-        "assert payload['schema_version']=='ops-domain-command.v1'; "
-        "assert payload['intent_kind']==sys.argv[1]; "
-        "assert payload['authority']=={'fencing_token':1,'target_fencing_token':2,"
-        "'effect_token':'effect-token-0123456789abcdef'}; "
-        "print(json.dumps({'schema_version':'ops-domain-receipt.v1',"
-        "'code':'effect_acknowledged','target_id':payload['target_id']}))"
-    )
-    commands = {kind: [sys.executable, "-c", command_program, kind] for kind in kinds}
+async def test_production_factory_dispatches_five_code_owned_effects_with_full_authority() -> None:
+    class Runner:
+        def __init__(self) -> None:
+            self.labels: list[str] = []
+
+        async def kickstart(self, label: str) -> None:
+            self.labels.append(label)
+
+    class EffectTransport:
+        def __init__(self) -> None:
+            self.effects: list[Mapping[str, Any]] = []
+
+        async def apply_operation_effect(self, effect: Mapping[str, Any]) -> Mapping[str, Any]:
+            self.effects.append(effect)
+            return {
+                "schema_version": "ops-domain-receipt.v1",
+                "code": "effect_acknowledged",
+                **{
+                    key: effect[key]
+                    for key in (
+                        "intent_kind",
+                        "target_id",
+                        "target_key",
+                        "fencing_token",
+                        "target_fencing_token",
+                        "effect_token",
+                    )
+                },
+            }
+
+    runner = Runner()
+    transport = EffectTransport()
     cases: dict[str, Mapping[str, Any]] = {
         "rerun_collector": CLAIM["params"],
         "rebuild_edition": {
@@ -298,41 +321,51 @@ async def test_production_factory_runs_only_exact_fixed_json_commands() -> None:
             "story_id": "story-0123456789abcdef",
             "story_version": 2,
             "expected_visibility_seq": 1,
+            "release_attestation_id": "release-attestation-0123456789abcdef",
         },
         "refresh_research_job": {"research_job_id": "research-job-0123456789abcdef"},
     }
-    service = build_operations_domain_service(json.dumps(commands))
+    service = build_operations_domain_service(transport=transport, runner=runner)
     for kind, params in cases.items():
         await service.prepare(kind, params)
-        assert (
-            await service.execute(
-                kind,
-                params,
-                fencing_token=1,
-                target_fencing_token=2,
-                effect_token="effect-token-0123456789abcdef",
-            )
-            == "effect_acknowledged"
+        receipt = await service.execute(
+            kind,
+            params,
+            target_key=f"{'collector' if kind == 'rerun_collector' else 'edition' if kind == 'rebuild_edition' else 'research' if kind == 'refresh_research_job' else 'story'}:{next(value for key, value in params.items() if key.endswith('_id') and key != 'collector_id' and key != 'release_attestation_id')}",
+            fencing_token=1,
+            target_fencing_token=2,
+            effect_token="effect-token-0123456789abcdef",
         )
+        assert receipt == {
+            "schema_version": "ops-domain-receipt.v1",
+            "code": "effect_acknowledged",
+            "intent_kind": kind,
+            "target_id": next(
+                value
+                for key, value in params.items()
+                if key.endswith("_id") and key != "collector_id" and key != "release_attestation_id"
+            ),
+            "target_key": f"{'collector' if kind == 'rerun_collector' else 'edition' if kind == 'rebuild_edition' else 'research' if kind == 'refresh_research_job' else 'story'}:{next(value for key, value in params.items() if key.endswith('_id') and key != 'collector_id' and key != 'release_attestation_id')}",
+            "fencing_token": 1,
+            "target_fencing_token": 2,
+            "effect_token": "effect-token-0123456789abcdef",
+        }
+
+    assert runner.labels == [
+        "com.balizero.regulatory-watcher.daily",
+        "com.balizero.magazine.publisher",
+        "com.balizero.magazine.research-worker",
+    ]
+    assert [effect["intent_kind"] for effect in transport.effects] == [
+        "quarantine_story",
+        "release_story",
+    ]
 
     with pytest.raises(CapabilityUnavailableError):
         await service.prepare("rerun_collector", {**CLAIM["params"], "command": "forbidden"})
 
-    for invalid in (None, "{}", json.dumps({kind: commands[kind] for kind in kinds[:-1]})):
-        with pytest.raises(OperationsRuntimeConfigError):
-            build_operations_domain_service(invalid)
-
     with pytest.raises(OperationsRuntimeConfigError):
-        FixedOperationsDomainService(
-            {
-                "rerun_collector": lambda: None,
-                "rebuild_edition": lambda: None,
-                "quarantine_story": lambda: None,
-                "release_story": lambda: None,
-                "refresh_research_job": lambda: None,
-                "shell": lambda: None,
-            }
-        )
+        CodeOwnedOperationsDomainService(transport=transport, runner=None)
 
 
 @pytest.mark.asyncio

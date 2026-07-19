@@ -100,10 +100,11 @@ class OperationsDomainService(Protocol):
         kind: str,
         params: Mapping[str, Any],
         *,
+        target_key: str,
         fencing_token: int,
         target_fencing_token: int,
         effect_token: str,
-    ) -> str: ...
+    ) -> Mapping[str, Any]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -572,20 +573,28 @@ class OperationsWorker:
                 )
                 await self.journal.record(**binding, phase="effect_started", result=None)
                 try:
-                    code = await self._domain.execute(
+                    domain_receipt = await self._domain.execute(
                         kind,
                         params,
+                        target_key=target_key,
                         fencing_token=cast(int, intent["fencing_token"]),
                         target_fencing_token=cast(int, intent["target_fencing_token"]),
                         effect_token=effect_token,
                     )
-                    if code != "effect_acknowledged":
+                    expected_receipt = {
+                        "schema_version": "ops-domain-receipt.v1",
+                        "code": "effect_acknowledged",
+                        "intent_kind": kind,
+                        "target_id": intent["target_id"],
+                        "target_key": target_key,
+                        "fencing_token": intent["fencing_token"],
+                        "target_fencing_token": intent["target_fencing_token"],
+                        "effect_token": effect_token,
+                    }
+                    if dict(domain_receipt) != expected_receipt:
                         raise RuntimeError("invalid domain receipt")
                     status = "succeeded"
-                    receipt: Mapping[str, Any] | None = {
-                        "code": "effect_acknowledged",
-                        "target_id": intent["target_id"],
-                    }
+                    receipt: Mapping[str, Any] | None = expected_receipt
                     failure = None
                 except Exception:
                     status = "outcome_unknown"

@@ -1,5 +1,11 @@
 import type { D1DatabaseLike } from "./publication-repository.ts";
 import { sha256Hex } from "./security.ts";
+import { canonicalizeAuditPayload, hashAuditEvent } from "./audit-chain.ts";
+import { AUDIT_ZERO_HASH } from "../contracts/audit-anchor.ts";
+import {
+  verifyReleaseAttestation,
+  type ReleaseAttestationBodyV1,
+} from "../contracts/release-attestation.ts";
 
 export const OPERATION_INTENT_KINDS = [
   "rerun_collector",
@@ -39,16 +45,19 @@ type EditionParams = Readonly<{
   edition_id: string;
   expected_revision: number;
 }>;
-type StoryParams = Readonly<{
+type QuarantineStoryParams = Readonly<{
   story_id: string;
   story_version: number;
   expected_visibility_seq: number;
 }>;
+type ReleaseStoryParams = QuarantineStoryParams &
+  Readonly<{ release_attestation_id: string }>;
 type ResearchParams = Readonly<{ research_job_id: string }>;
 export type OperationParams =
   | CollectorParams
   | EditionParams
-  | StoryParams
+  | QuarantineStoryParams
+  | ReleaseStoryParams
   | ResearchParams;
 
 export type OperationIntentRequest = Readonly<{
@@ -85,8 +94,14 @@ export type OperationResult = Readonly<{
   status: "succeeded" | "failed" | "outcome_unknown";
   completed_at: string;
   receipt: Readonly<{
+    schema_version: "ops-domain-receipt.v1";
     code: "effect_acknowledged";
+    intent_kind: OperationIntentKind;
     target_id: string;
+    target_key: string;
+    fencing_token: number;
+    target_fencing_token: number;
+    effect_token: string;
   }> | null;
   failure: Readonly<{
     code:
@@ -109,6 +124,17 @@ export type OperationResult = Readonly<{
   effect_token: string;
   attested_policy_version: string;
   attestation_expires_at: string;
+}>;
+
+export type OperationEffect = Readonly<{
+  schema_version: "ops-domain-effect.v1";
+  intent_kind: "quarantine_story" | "release_story";
+  target_id: string;
+  target_key: string;
+  params: QuarantineStoryParams | ReleaseStoryParams;
+  fencing_token: number;
+  target_fencing_token: number;
+  effect_token: string;
 }>;
 
 type IntentRow = Readonly<{
@@ -234,12 +260,30 @@ function paramsFor(kind: OperationIntentKind, raw: unknown): OperationParams {
       expected_revision: integer(value.expected_revision),
     };
   }
-  if (kind === "quarantine_story" || kind === "release_story") {
+  if (kind === "quarantine_story") {
     exact(value, ["story_id", "story_version", "expected_visibility_seq"]);
     return {
       story_id: text(value.story_id, IDS.story, 96),
       story_version: integer(value.story_version, 1),
       expected_visibility_seq: integer(value.expected_visibility_seq),
+    };
+  }
+  if (kind === "release_story") {
+    exact(value, [
+      "story_id",
+      "story_version",
+      "expected_visibility_seq",
+      "release_attestation_id",
+    ]);
+    return {
+      story_id: text(value.story_id, IDS.story, 96),
+      story_version: integer(value.story_version, 1),
+      expected_visibility_seq: integer(value.expected_visibility_seq),
+      release_attestation_id: text(
+        value.release_attestation_id,
+        /^release-attestation-[a-z0-9][a-z0-9-]{15,79}$/,
+        100,
+      ),
     };
   }
   exact(value, ["research_job_id"]);
@@ -314,13 +358,32 @@ export function parseOperationResult(raw: unknown): OperationResult {
   let failure: OperationResult["failure"] = null;
   if (status === "succeeded") {
     const item = record(value.receipt);
-    exact(item, ["code", "target_id"]);
-    if (item.code !== "effect_acknowledged" || value.failure !== null) {
+    exact(item, [
+      "schema_version",
+      "code",
+      "intent_kind",
+      "target_id",
+      "target_key",
+      "fencing_token",
+      "target_fencing_token",
+      "effect_token",
+    ]);
+    if (
+      item.schema_version !== "ops-domain-receipt.v1" ||
+      item.code !== "effect_acknowledged" ||
+      value.failure !== null
+    ) {
       throw new TypeError("invalid operation result");
     }
     receipt = {
+      schema_version: "ops-domain-receipt.v1",
       code: "effect_acknowledged",
+      intent_kind: enumValue(item.intent_kind, OPERATION_INTENT_KINDS),
       target_id: text(item.target_id, /^[a-z][a-z0-9-]{15,95}$/, 96),
+      target_key: text(item.target_key, /^[a-z]+:[a-z][a-z0-9-]{15,95}$/, 112),
+      fencing_token: integer(item.fencing_token, 1),
+      target_fencing_token: integer(item.target_fencing_token, 1),
+      effect_token: text(item.effect_token, TOKEN),
     };
   } else {
     if (value.receipt !== null) throw new TypeError("invalid operation result");
@@ -361,6 +424,49 @@ export function parseOperationResult(raw: unknown): OperationResult {
       96,
     ),
     attestation_expires_at: iso(value.attestation_expires_at),
+  };
+}
+
+export function parseOperationEffect(raw: unknown): OperationEffect {
+  const value = record(raw);
+  exact(value, [
+    "schema_version",
+    "intent_kind",
+    "target_id",
+    "target_key",
+    "params",
+    "fencing_token",
+    "target_fencing_token",
+    "effect_token",
+  ]);
+  if (value.schema_version !== "ops-domain-effect.v1") {
+    throw new TypeError("invalid operation effect");
+  }
+  const intentKind = enumValue(value.intent_kind, [
+    "quarantine_story",
+    "release_story",
+  ] as const);
+  const params = paramsFor(intentKind, value.params) as
+    | QuarantineStoryParams
+    | ReleaseStoryParams;
+  const target = text(value.target_id, IDS.story, 96);
+  const key = text(
+    value.target_key,
+    /^story:story-[a-z0-9][a-z0-9-]{15,79}$/,
+    112,
+  );
+  if (target !== params.story_id || key !== `story:${params.story_id}`) {
+    throw new TypeError("invalid operation effect");
+  }
+  return {
+    schema_version: "ops-domain-effect.v1",
+    intent_kind: intentKind,
+    target_id: target,
+    target_key: key,
+    params,
+    fencing_token: integer(value.fencing_token, 1),
+    target_fencing_token: integer(value.target_fencing_token, 1),
+    effect_token: text(value.effect_token, TOKEN),
   };
 }
 
@@ -415,7 +521,7 @@ function targetId(kind: OperationIntentKind, params: OperationParams): string {
   if (kind === "rebuild_edition") return (params as EditionParams).edition_id;
   if (kind === "refresh_research_job")
     return (params as ResearchParams).research_job_id;
-  return (params as StoryParams).story_id;
+  return (params as QuarantineStoryParams).story_id;
 }
 
 function targetKey(kind: OperationIntentKind, params: OperationParams): string {
@@ -426,8 +532,30 @@ function targetKey(kind: OperationIntentKind, params: OperationParams): string {
   return `story:${id}`;
 }
 
+function effectReceipt(
+  effect: OperationEffect,
+): NonNullable<OperationResult["receipt"]> {
+  return {
+    schema_version: "ops-domain-receipt.v1",
+    code: "effect_acknowledged",
+    intent_kind: effect.intent_kind,
+    target_id: effect.target_id,
+    target_key: effect.target_key,
+    fencing_token: effect.fencing_token,
+    target_fencing_token: effect.target_fencing_token,
+    effect_token: effect.effect_token,
+  };
+}
+
 function changes(result: { meta?: Readonly<{ changes?: number }> }): number {
   return result.meta?.changes ?? 0;
+}
+
+function isGuardedCasMiss(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /ops_transition_guard_ok_check|transition_ok = 1/.test(error.message)
+  );
 }
 
 function intentView(row: IntentRow) {
@@ -488,6 +616,21 @@ export function createOperationsRepository(
         row.fencing_token,
         now(),
       );
+  const requirePriorChange = (
+    row: Pick<IntentRow, "intent_id" | "fencing_token">,
+    transitionKind: string,
+  ) =>
+    db
+      .prepare(
+        "INSERT INTO ops_transition_guards(guard_id, intent_id, transition_kind, fencing_token, transition_ok, created_at) VALUES (?, ?, ?, ?, changes(), ?)",
+      )
+      .bind(
+        id("ops-guard"),
+        row.intent_id,
+        transitionKind,
+        row.fencing_token,
+        now(),
+      );
 
   const terminalize = async (
     row: IntentRow,
@@ -504,31 +647,37 @@ export function createOperationsRepository(
     });
     const receiptHash = await sha256Hex(ENCODER.encode(receiptJson));
     const terminal = { ...row, status, failure_code: failureCode };
-    const results = await db.batch([
-      db
-        .prepare(
-          "UPDATE ops_intents SET status = ?, completed_at = ?, failure_code = ? WHERE intent_id = ? AND status IN ('queued', 'claimed', 'running')",
-        )
-        .bind(status, completedAt, failureCode, row.intent_id),
-      db
-        .prepare(
-          "INSERT INTO ops_receipts(receipt_id, intent_id, status, receipt_json, receipt_hash, request_hash, key_id, body_hash, fencing_token, attested_policy_version, created_at) VALUES (?, ?, ?, ?, ?, ?, 'server-terminal', ?, ?, ?, ?)",
-        )
-        .bind(
-          id("ops-receipt"),
-          row.intent_id,
-          status,
-          receiptJson,
-          receiptHash,
-          row.request_hash,
-          receiptHash,
-          row.fencing_token,
-          row.attested_policy_version,
-          completedAt,
-        ),
-      audit(terminal, eventType, status, failureCode),
-    ]);
-    return changes(results[0] ?? {}) === 1;
+    try {
+      const results = await db.batch([
+        db
+          .prepare(
+            "UPDATE ops_intents SET status = ?, completed_at = ?, failure_code = ? WHERE intent_id = ? AND status IN ('queued', 'claimed', 'running')",
+          )
+          .bind(status, completedAt, failureCode, row.intent_id),
+        requirePriorChange(row, eventType),
+        db
+          .prepare(
+            "INSERT INTO ops_receipts(receipt_id, intent_id, status, receipt_json, receipt_hash, request_hash, key_id, body_hash, fencing_token, attested_policy_version, created_at) VALUES (?, ?, ?, ?, ?, ?, 'server-terminal', ?, ?, ?, ?)",
+          )
+          .bind(
+            id("ops-receipt"),
+            row.intent_id,
+            status,
+            receiptJson,
+            receiptHash,
+            row.request_hash,
+            receiptHash,
+            row.fencing_token,
+            row.attested_policy_version,
+            completedAt,
+          ),
+        audit(terminal, eventType, status, failureCode),
+      ]);
+      return changes(results[0] ?? {}) === 1;
+    } catch (error) {
+      if (isGuardedCasMiss(error)) return false;
+      throw error;
+    }
   };
 
   return {
@@ -752,12 +901,22 @@ export function createOperationsRepository(
             }>(),
           db
             .prepare(
-              "SELECT s.story_id, s.current_version, COALESCE((SELECT max(v.visibility_seq) FROM story_visibility_events v WHERE v.story_id = s.story_id), 0) AS visibility_seq FROM stories s WHERE s.current_version > 0 ORDER BY s.updated_at DESC LIMIT 50",
+              `SELECT s.story_id, s.current_version,
+                      COALESCE((SELECT max(v.visibility_seq) FROM story_visibility_events v WHERE v.story_id = s.story_id), 0) AS visibility_seq,
+                      COALESCE((SELECT v.desired_quarantined FROM story_visibility_events v WHERE v.story_id = s.story_id ORDER BY v.visibility_seq DESC LIMIT 1), 0) AS desired_quarantined,
+                      (SELECT a.attestation_id FROM release_attestations a WHERE a.story_id = s.story_id AND a.story_version = s.current_version AND a.consumed_at IS NULL AND a.expires_at > ? ORDER BY a.created_at DESC LIMIT 1) AS release_attestation_id
+               FROM stories s
+               WHERE s.current_version > 0
+               ORDER BY s.story_id
+               LIMIT 50`,
             )
+            .bind(now())
             .all<{
               story_id: string;
               current_version: number;
               visibility_seq: number;
+              desired_quarantined: number;
+              release_attestation_id: string | null;
             }>(),
           db
             .prepare(
@@ -766,7 +925,15 @@ export function createOperationsRepository(
             .all<{ job_id: string }>(),
         ],
       );
-      const storyTargets = (stories.results ?? []).map((row) => ({
+      const storyTarget = (
+        row: Readonly<{
+          story_id: string;
+          current_version: number;
+          visibility_seq: number;
+          desired_quarantined: number;
+          release_attestation_id: string | null;
+        }>,
+      ) => ({
         target_id: row.story_id,
         label: `${row.story_id} · version ${row.current_version} · visibility ${row.visibility_seq}`,
         params: {
@@ -774,7 +941,7 @@ export function createOperationsRepository(
           story_version: row.current_version,
           expected_visibility_seq: row.visibility_seq,
         },
-      }));
+      });
       return {
         rerun_collector: (collectorRuns.results ?? []).map((row) => ({
           target_id: row.run_id,
@@ -794,8 +961,22 @@ export function createOperationsRepository(
                   },
                 },
               ],
-        quarantine_story: storyTargets,
-        release_story: storyTargets,
+        quarantine_story: (stories.results ?? [])
+          .filter((row) => row.desired_quarantined !== 1)
+          .map(storyTarget),
+        release_story: (stories.results ?? [])
+          .filter(
+            (row) =>
+              row.desired_quarantined === 1 &&
+              row.release_attestation_id !== null,
+          )
+          .map((row) => ({
+            ...storyTarget(row),
+            params: {
+              ...storyTarget(row).params,
+              release_attestation_id: row.release_attestation_id!,
+            },
+          })),
         refresh_research_job: (researchJobs.results ?? []).map((row) => ({
           target_id: row.job_id,
           label: row.job_id,
@@ -848,6 +1029,7 @@ export function createOperationsRepository(
           );
           continue;
         }
+        if (candidate.status === "running") continue;
         const revoked =
           candidate.expires_at <= instant ||
           !input.operatorActorKeys.includes(candidate.actor_key);
@@ -898,34 +1080,42 @@ export function createOperationsRepository(
           target_fencing_token: nextTargetFence,
           status: "claimed" as const,
         };
-        const results = await db.batch([
-          db
-            .prepare(
-              "UPDATE ops_target_fences SET next_fencing_token = next_fencing_token + 1, updated_at = ? WHERE target_key = ? AND next_fencing_token = ?",
-            )
-            .bind(instant, candidate.target_key, fence.next_fencing_token),
-          db
-            .prepare(
-              "UPDATE ops_intents SET status = 'claimed', worker_id = ?, claim_token = ?, fencing_token = fencing_token + 1, target_fencing_token = ?, attempt_count = attempt_count + 1, heartbeat_at = ?, lease_deadline = ?, effect_token = NULL, pre_effect_attested_at = NULL, attested_policy_version = NULL, attestation_expires_at = NULL, effect_consumed_at = NULL WHERE intent_id = ? AND ((status = 'queued') OR (status = 'claimed' AND lease_deadline <= ?)) AND attempt_count < attempt_limit AND (SELECT next_fencing_token FROM ops_target_fences WHERE target_key = ?) = ?",
-            )
-            .bind(
-              input.workerId,
-              claimToken,
-              nextTargetFence,
-              instant,
-              leaseDeadline,
-              candidate.intent_id,
-              instant,
-              candidate.target_key,
-              nextTargetFence,
+        let results;
+        try {
+          results = await db.batch([
+            db
+              .prepare(
+                "UPDATE ops_intents SET status = 'claimed', worker_id = ?, claim_token = ?, fencing_token = fencing_token + 1, target_fencing_token = ?, attempt_count = attempt_count + 1, heartbeat_at = ?, lease_deadline = ?, effect_token = NULL, pre_effect_attested_at = NULL, attested_policy_version = NULL, attestation_expires_at = NULL, effect_consumed_at = NULL WHERE intent_id = ? AND ((status = 'queued') OR (status = 'claimed' AND lease_deadline <= ?)) AND attempt_count < attempt_limit AND (SELECT next_fencing_token FROM ops_target_fences WHERE target_key = ?) = ?",
+              )
+              .bind(
+                input.workerId,
+                claimToken,
+                nextTargetFence,
+                instant,
+                leaseDeadline,
+                candidate.intent_id,
+                instant,
+                candidate.target_key,
+                fence.next_fencing_token,
+              ),
+            requirePriorChange(predicted, "claim_intent"),
+            db
+              .prepare(
+                "UPDATE ops_target_fences SET next_fencing_token = next_fencing_token + 1, updated_at = ? WHERE target_key = ? AND next_fencing_token = ?",
+              )
+              .bind(instant, candidate.target_key, fence.next_fencing_token),
+            requirePriorChange(predicted, "claim_target"),
+            audit(
+              predicted,
+              candidate.status === "claimed" ? "reclaimed" : "claimed",
+              "claimed",
             ),
-          audit(
-            predicted,
-            candidate.status === "claimed" ? "reclaimed" : "claimed",
-            "claimed",
-          ),
-        ]);
-        if (changes(results[0] ?? {}) !== 1 || changes(results[1] ?? {}) !== 1)
+          ]);
+        } catch (error) {
+          if (isGuardedCasMiss(error)) continue;
+          throw error;
+        }
+        if (changes(results[0] ?? {}) !== 1 || changes(results[2] ?? {}) !== 1)
           continue;
         const claimed = (await load(candidate.intent_id))!;
         return {
@@ -961,20 +1151,31 @@ export function createOperationsRepository(
       const instant = now();
       const before = await load(claim.intent_id);
       if (!before) throw new Error("lease lost or terminal intent");
-      const results = await db.batch([
-        db
-          .prepare(
-            "UPDATE ops_intents SET status = 'running', started_at = COALESCE(started_at, ?) WHERE intent_id = ? AND status = 'claimed' AND claim_token = ? AND fencing_token = ? AND lease_deadline > ?",
-          )
-          .bind(
-            instant,
-            claim.intent_id,
-            claim.claim_token,
-            claim.fencing_token,
-            instant,
+      let results;
+      try {
+        results = await db.batch([
+          db
+            .prepare(
+              "UPDATE ops_intents SET status = 'running', started_at = COALESCE(started_at, ?) WHERE intent_id = ? AND status = 'claimed' AND claim_token = ? AND fencing_token = ? AND lease_deadline > ?",
+            )
+            .bind(
+              instant,
+              claim.intent_id,
+              claim.claim_token,
+              claim.fencing_token,
+              instant,
+            ),
+          requirePriorChange(
+            { ...before, fencing_token: claim.fencing_token },
+            "started",
           ),
-        audit({ ...before, status: "running" }, "started", "running"),
-      ]);
+          audit({ ...before, status: "running" }, "started", "running"),
+        ]);
+      } catch (error) {
+        if (isGuardedCasMiss(error))
+          throw new Error("lease lost or terminal intent");
+        throw error;
+      }
       if (changes(results[0] ?? {}) !== 1)
         throw new Error("lease lost or terminal intent");
       const row = (await load(claim.intent_id))!;
@@ -1074,46 +1275,55 @@ export function createOperationsRepository(
           Date.parse(row.expires_at),
         ),
       ).toISOString();
-      const results = await db.batch([
-        db
-          .prepare(
-            "UPDATE ops_target_fences SET effect_fencing_token = ?, updated_at = ? WHERE target_key = ? AND next_fencing_token = ? AND effect_fencing_token < ?",
-          )
-          .bind(
-            row.target_fencing_token,
-            instant,
-            row.target_key,
-            row.target_fencing_token,
-            row.target_fencing_token,
+      let results;
+      try {
+        results = await db.batch([
+          db
+            .prepare(
+              "UPDATE ops_intents SET effect_token = ?, pre_effect_attested_at = ?, attested_policy_version = ?, attestation_expires_at = ? WHERE intent_id = ? AND status = 'running' AND claim_token = ? AND fencing_token = ? AND target_fencing_token = ? AND lease_deadline > ? AND expires_at > ? AND effect_token IS NULL",
+            )
+            .bind(
+              effectToken,
+              instant,
+              authorization.policyVersion,
+              attestationExpiresAt,
+              row.intent_id,
+              claim.claim_token,
+              claim.fencing_token,
+              row.target_fencing_token,
+              instant,
+              instant,
+            ),
+          requirePriorChange(row, "pre_effect_intent"),
+          db
+            .prepare(
+              "UPDATE ops_target_fences SET effect_fencing_token = ?, updated_at = ? WHERE target_key = ? AND next_fencing_token = ? AND effect_fencing_token < ?",
+            )
+            .bind(
+              row.target_fencing_token,
+              instant,
+              row.target_key,
+              row.target_fencing_token,
+              row.target_fencing_token,
+            ),
+          requirePriorChange(row, "pre_effect_target"),
+          audit(
+            {
+              ...row,
+              effect_token: effectToken,
+              attested_policy_version: authorization.policyVersion,
+              attestation_expires_at: attestationExpiresAt,
+            },
+            "pre_effect_attested",
+            "running",
           ),
-        db
-          .prepare(
-            "UPDATE ops_intents SET effect_token = ?, pre_effect_attested_at = ?, attested_policy_version = ?, attestation_expires_at = ? WHERE intent_id = ? AND status = 'running' AND claim_token = ? AND fencing_token = ? AND target_fencing_token = ? AND lease_deadline > ? AND expires_at > ? AND effect_token IS NULL",
-          )
-          .bind(
-            effectToken,
-            instant,
-            authorization.policyVersion,
-            attestationExpiresAt,
-            row.intent_id,
-            claim.claim_token,
-            claim.fencing_token,
-            row.target_fencing_token,
-            instant,
-            instant,
-          ),
-        audit(
-          {
-            ...row,
-            effect_token: effectToken,
-            attested_policy_version: authorization.policyVersion,
-            attestation_expires_at: attestationExpiresAt,
-          },
-          "pre_effect_attested",
-          "running",
-        ),
-      ]);
-      if (changes(results[0] ?? {}) !== 1 || changes(results[1] ?? {}) !== 1)
+        ]);
+      } catch (error) {
+        if (isGuardedCasMiss(error))
+          throw new Error("lease lost or terminal intent");
+        throw error;
+      }
+      if (changes(results[0] ?? {}) !== 1 || changes(results[2] ?? {}) !== 1)
         throw new Error("lease lost or terminal intent");
       return {
         schema_version: "ops-effect-attestation.v1" as const,
@@ -1134,6 +1344,243 @@ export function createOperationsRepository(
         attested_at: instant,
         expires_at: attestationExpiresAt,
       };
+    },
+
+    async applyStoryEffect(
+      effect: OperationEffect,
+      releaseKeyRegistryJson: string | undefined,
+    ): Promise<NonNullable<OperationResult["receipt"]>> {
+      const instant = now();
+      const row = await db
+        .prepare("SELECT * FROM ops_intents WHERE effect_token = ?")
+        .bind(effect.effect_token)
+        .first<IntentRow>();
+      const storedParams = row
+        ? (JSON.parse(row.params_json) as OperationParams)
+        : null;
+      const expectedTarget = row
+        ? targetId(row.intent_kind, storedParams!)
+        : null;
+      if (
+        !row ||
+        !["running", "succeeded"].includes(row.status) ||
+        row.intent_kind !== effect.intent_kind ||
+        row.params_json !== JSON.stringify(effect.params) ||
+        expectedTarget !== effect.target_id ||
+        row.target_key !== effect.target_key ||
+        row.fencing_token !== effect.fencing_token ||
+        row.target_fencing_token !== effect.target_fencing_token ||
+        row.effect_token !== effect.effect_token ||
+        row.attestation_expires_at === null ||
+        row.attestation_expires_at <= instant
+      ) {
+        throw new Error("invalid or expired effect authority");
+      }
+      const targetFence = await db
+        .prepare(
+          "SELECT next_fencing_token, effect_fencing_token FROM ops_target_fences WHERE target_key = ?",
+        )
+        .bind(row.target_key)
+        .first<{
+          next_fencing_token: number;
+          effect_fencing_token: number;
+        }>();
+      if (
+        targetFence?.next_fencing_token !== effect.target_fencing_token ||
+        targetFence.effect_fencing_token !== effect.target_fencing_token
+      ) {
+        throw new Error("stale target fence");
+      }
+      const replay = await db
+        .prepare(
+          "SELECT desired_quarantined FROM story_visibility_events WHERE intent_id = ?",
+        )
+        .bind(row.intent_id)
+        .first<{ desired_quarantined: number }>();
+      const desiredQuarantined =
+        effect.intent_kind === "quarantine_story" ? 1 : 0;
+      if (replay !== null) {
+        if (replay.desired_quarantined !== desiredQuarantined) {
+          throw new Error("operation effect replay conflict");
+        }
+        return effectReceipt(effect);
+      }
+      if (row.status !== "running") {
+        throw new Error("invalid or expired effect authority");
+      }
+      const params = effect.params;
+      const story = await db
+        .prepare("SELECT current_version FROM stories WHERE story_id = ?")
+        .bind(params.story_id)
+        .first<{ current_version: number }>();
+      const visibility = await db
+        .prepare(
+          "SELECT visibility_seq, desired_quarantined FROM story_visibility_events WHERE story_id = ? ORDER BY visibility_seq DESC LIMIT 1",
+        )
+        .bind(params.story_id)
+        .first<{ visibility_seq: number; desired_quarantined: number }>();
+      const currentSequence = visibility?.visibility_seq ?? 0;
+      const currentlyQuarantined = visibility?.desired_quarantined === 1;
+      if (
+        story?.current_version !== params.story_version ||
+        currentSequence !== params.expected_visibility_seq ||
+        (effect.intent_kind === "quarantine_story" && currentlyQuarantined) ||
+        (effect.intent_kind === "release_story" && !currentlyQuarantined)
+      ) {
+        throw new Error("story visibility precondition failed");
+      }
+
+      let releaseAttestation:
+        | (ReleaseAttestationBodyV1 & {
+            signature: string;
+            consumed_at: string | null;
+          })
+        | null = null;
+      if (effect.intent_kind === "release_story") {
+        const releaseParams = params as ReleaseStoryParams;
+        releaseAttestation = await db
+          .prepare(
+            "SELECT * FROM release_attestations WHERE attestation_id = ?",
+          )
+          .bind(releaseParams.release_attestation_id)
+          .first<
+            ReleaseAttestationBodyV1 & {
+              signature: string;
+              consumed_at: string | null;
+            }
+          >();
+        if (
+          releaseAttestation === null ||
+          releaseAttestation.story_id !== params.story_id ||
+          releaseAttestation.story_version !== params.story_version ||
+          releaseAttestation.consumed_at !== null
+        ) {
+          throw new TypeError("invalid release attestation");
+        }
+        await verifyReleaseAttestation(
+          {
+            schema_version: "release-attestation.v1",
+            attestation_id: releaseAttestation.attestation_id,
+            story_id: releaseAttestation.story_id,
+            story_version: releaseAttestation.story_version,
+            evidence_bundle_hash: releaseAttestation.evidence_bundle_hash,
+            asset_set_hash: releaseAttestation.asset_set_hash,
+            key_id: releaseAttestation.key_id,
+            expires_at: releaseAttestation.expires_at,
+          },
+          releaseAttestation.signature,
+          releaseKeyRegistryJson,
+          instant,
+        );
+      }
+
+      const streamId = "operations.visibility.v1";
+      const head = await db
+        .prepare(
+          "SELECT stream_seq, event_hash FROM audit_stream_heads WHERE stream_id = ?",
+        )
+        .bind(streamId)
+        .first<{ stream_seq: number; event_hash: string }>();
+      const streamSequence = (head?.stream_seq ?? 0) + 1;
+      const previousEventHash = head?.event_hash ?? AUDIT_ZERO_HASH;
+      const auditPayload = {
+        schema_version: "story-visibility-operation.v1",
+        intent_id: row.intent_id,
+        intent_kind: effect.intent_kind,
+        story_id: params.story_id,
+        story_version: params.story_version,
+        visibility_seq: currentSequence + 1,
+        desired_quarantined: desiredQuarantined === 1,
+        fencing_token: effect.fencing_token,
+        target_fencing_token: effect.target_fencing_token,
+      } as const;
+      const auditEventId = id("audit-visibility");
+      const payloadJson = canonicalizeAuditPayload(auditPayload);
+      const eventHash = await hashAuditEvent({
+        streamId,
+        streamSeq: streamSequence,
+        previousEventHash,
+        payload: auditPayload,
+      });
+      const statements = [
+        db
+          .prepare(
+            "UPDATE ops_intents SET pre_effect_attested_at = pre_effect_attested_at WHERE intent_id = ? AND status = 'running' AND fencing_token = ? AND target_fencing_token = ? AND effect_token = ? AND attestation_expires_at > ?",
+          )
+          .bind(
+            row.intent_id,
+            effect.fencing_token,
+            effect.target_fencing_token,
+            effect.effect_token,
+            instant,
+          ),
+        requirePriorChange(row, "effect_authority"),
+      ];
+      if (releaseAttestation !== null) {
+        statements.push(
+          db
+            .prepare(
+              "UPDATE release_attestations SET consumed_at = ? WHERE attestation_id = ? AND consumed_at IS NULL AND expires_at > ?",
+            )
+            .bind(instant, releaseAttestation.attestation_id, instant),
+          requirePriorChange(row, "effect_release_attestation"),
+        );
+      }
+      statements.push(
+        db
+          .prepare(
+            "INSERT INTO audit_events(event_id, stream_id, stream_seq, payload_json, previous_event_hash, event_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(
+            auditEventId,
+            streamId,
+            streamSequence,
+            payloadJson,
+            previousEventHash,
+            eventHash,
+            instant,
+          ),
+        db
+          .prepare(
+            `INSERT INTO audit_stream_heads(stream_id, stream_seq, event_hash)
+             VALUES (?, ?, ?)
+             ON CONFLICT(stream_id) DO UPDATE SET
+               stream_seq = excluded.stream_seq,
+               event_hash = excluded.event_hash
+             WHERE audit_stream_heads.stream_seq = ?
+               AND audit_stream_heads.event_hash = ?`,
+          )
+          .bind(
+            streamId,
+            streamSequence,
+            eventHash,
+            head?.stream_seq ?? 0,
+            previousEventHash,
+          ),
+        requirePriorChange(row, "effect_audit_head"),
+        db
+          .prepare(
+            "INSERT INTO story_visibility_events(story_id, visibility_seq, story_version, intent_id, desired_quarantined, audit_event_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(
+            params.story_id,
+            currentSequence + 1,
+            params.story_version,
+            row.intent_id,
+            desiredQuarantined,
+            auditEventId,
+            instant,
+          ),
+      );
+      try {
+        await db.batch(statements);
+      } catch (error) {
+        if (isGuardedCasMiss(error)) {
+          throw new Error("operation effect CAS conflict");
+        }
+        throw error;
+      }
+      return effectReceipt(effect);
     },
 
     async complete(envelope: OperationResult, keyId: string, bodyHash: string) {
@@ -1197,6 +1644,17 @@ export function createOperationsRepository(
       ) {
         throw new Error("lease lost or terminal intent");
       }
+      if (
+        envelope.receipt !== null &&
+        (envelope.receipt.intent_kind !== row.intent_kind ||
+          envelope.receipt.target_id !== expectedTargetId ||
+          envelope.receipt.target_key !== row.target_key ||
+          envelope.receipt.fencing_token !== row.fencing_token ||
+          envelope.receipt.target_fencing_token !== row.target_fencing_token ||
+          envelope.receipt.effect_token !== row.effect_token)
+      ) {
+        throw new Error("effect receipt authority mismatch");
+      }
       const failureCode = envelope.failure?.code ?? null;
       const update = db
         .prepare(
@@ -1230,16 +1688,24 @@ export function createOperationsRepository(
           envelope.attested_policy_version,
           now(),
         );
-      const results = await db.batch([
-        update,
-        insert,
-        audit(
-          { ...row, status: envelope.status, failure_code: failureCode },
-          envelope.status,
-          envelope.status,
-          failureCode,
-        ),
-      ]);
+      let results;
+      try {
+        results = await db.batch([
+          update,
+          requirePriorChange(row, `complete_${envelope.status}`),
+          insert,
+          audit(
+            { ...row, status: envelope.status, failure_code: failureCode },
+            envelope.status,
+            envelope.status,
+            failureCode,
+          ),
+        ]);
+      } catch (error) {
+        if (isGuardedCasMiss(error))
+          throw new Error("lease lost or terminal intent");
+        throw error;
+      }
       if (changes(results[0] ?? {}) !== 1)
         throw new Error("lease lost or terminal intent");
       return { status: "created" as const };

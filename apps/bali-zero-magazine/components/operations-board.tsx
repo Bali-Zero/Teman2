@@ -62,6 +62,7 @@ export function OperationsBoard({
     action_targets.rerun_collector[0]?.target_id ?? "",
   );
   const [message, setMessage] = useState("");
+  const [reviewing, setReviewing] = useState(false);
   const targets = action_targets[kind];
   const selected = targets.find((target) => target.target_id === targetId);
 
@@ -69,6 +70,11 @@ export function OperationsBoard({
     event.preventDefault();
     if (selected === undefined) {
       setMessage("No valid target precondition is available.");
+      return;
+    }
+    if (!reviewing) {
+      setReviewing(true);
+      setMessage("Review the exact action before confirming.");
       return;
     }
     const response = await fetch("/api/operations/intents", {
@@ -84,6 +90,7 @@ export function OperationsBoard({
       }),
     });
     setMessage(response.ok ? "Intent queued." : "Intent rejected.");
+    setReviewing(false);
   }
 
   return (
@@ -146,6 +153,7 @@ export function OperationsBoard({
                   const nextKind = event.target.value as OperationIntentKind;
                   setKind(nextKind);
                   setTargetId(action_targets[nextKind][0]?.target_id ?? "");
+                  setReviewing(false);
                 })()
               }
             >
@@ -158,7 +166,10 @@ export function OperationsBoard({
             Valid target and current precondition
             <select
               value={targetId}
-              onChange={(event) => setTargetId(event.target.value)}
+              onChange={(event) => {
+                setTargetId(event.target.value);
+                setReviewing(false);
+              }}
               disabled={targets.length === 0}
             >
               {targets.map((target) => (
@@ -168,8 +179,21 @@ export function OperationsBoard({
               ))}
             </select>
           </label>
+          {reviewing && selected !== undefined ? (
+            <section aria-label="Confirm operation intent">
+              <h3>Review and confirm</h3>
+              <dl>
+                <dt>Action</dt>
+                <dd>{kind}</dd>
+                <dt>Target</dt>
+                <dd>{selected.label}</dd>
+                <dt>Reason</dt>
+                <dd>{reasonByKind[kind]}</dd>
+              </dl>
+            </section>
+          ) : null}
           <button type="submit" disabled={selected === undefined}>
-            Queue intent
+            {reviewing ? "Confirm and queue" : "Review intent"}
           </button>
           {selected === undefined ? (
             <p>No target with a current precondition is available.</p>

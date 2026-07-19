@@ -898,6 +898,28 @@ export const opsTargetFences = sqliteTable("ops_target_fences", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const opsTransitionGuards = sqliteTable(
+  "ops_transition_guards",
+  {
+    guardId: text("guard_id").primaryKey(),
+    intentId: text("intent_id")
+      .notNull()
+      .references(() => opsIntents.intentId),
+    transitionKind: text("transition_kind").notNull(),
+    fencingToken: integer("fencing_token").notNull(),
+    transitionOk: integer("transition_ok").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    unique("ops_transition_guard_unique").on(
+      table.intentId,
+      table.transitionKind,
+      table.fencingToken,
+    ),
+    check("ops_transition_guard_ok_check", sql`${table.transitionOk} = 1`),
+  ],
+);
+
 export const opsReceipts = sqliteTable(
   "ops_receipts",
   {
@@ -940,6 +962,11 @@ export const opsAuditEvents = sqliteTable(
   },
   (table) => [
     index("ops_audit_intent_idx").on(table.intentId, table.createdAt),
+    unique("ops_audit_transition_unique").on(
+      table.intentId,
+      table.eventType,
+      table.fencingToken,
+    ),
   ],
 );
 

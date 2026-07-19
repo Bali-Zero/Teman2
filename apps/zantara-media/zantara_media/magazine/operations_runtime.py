@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import re
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import ValidationError
 
@@ -46,12 +45,16 @@ _IDS = {
     "story": re.compile(r"^story-[a-z0-9][a-z0-9-]{15,79}$"),
     "research": re.compile(r"^research-job-[a-z0-9][a-z0-9-]{15,79}$"),
 }
-_MAX_CONFIG_BYTES = 32 * 1024
-_MAX_COMMAND_INPUT_BYTES = 8 * 1024
-_MAX_COMMAND_OUTPUT_BYTES = 8 * 1024
 _COMMAND_TIMEOUT_SECONDS = 120
 
-CapabilityHandler = Callable[..., Awaitable[str]]
+_COLLECTOR_LABELS = {
+    "intel-lake": "com.balizero.intel-radar-daily-digest",
+    "mata-garuda": "com.matagaruda.watcher.daily",
+    "regulatory-watcher": "com.balizero.regulatory-watcher.daily",
+    "notebooklm": "com.matagaruda.nlm-feeder-stream.hourly",
+}
+_EDITION_LABEL = "com.balizero.magazine.publisher"
+_RESEARCH_LABEL = "com.balizero.magazine.research-worker"
 
 
 def _revision(value: Any, *, allow_zero: bool = False) -> bool:
@@ -75,13 +78,33 @@ def _validated_params(kind: str, params: Mapping[str, Any]) -> dict[str, Any]:
             and _IDS["edition"].fullmatch(value["edition_id"]) is not None
             and _revision(value.get("expected_revision"), allow_zero=True)
         )
-    elif kind in {"quarantine_story", "release_story"}:
+    elif kind == "quarantine_story":
         valid = (
             set(value) == {"story_id", "story_version", "expected_visibility_seq"}
             and isinstance(value.get("story_id"), str)
             and _IDS["story"].fullmatch(value["story_id"]) is not None
             and _revision(value.get("story_version"))
             and _revision(value.get("expected_visibility_seq"), allow_zero=True)
+        )
+    elif kind == "release_story":
+        valid = (
+            set(value)
+            == {
+                "story_id",
+                "story_version",
+                "expected_visibility_seq",
+                "release_attestation_id",
+            }
+            and isinstance(value.get("story_id"), str)
+            and _IDS["story"].fullmatch(value["story_id"]) is not None
+            and _revision(value.get("story_version"))
+            and _revision(value.get("expected_visibility_seq"), allow_zero=True)
+            and isinstance(value.get("release_attestation_id"), str)
+            and re.fullmatch(
+                r"release-attestation-[a-z0-9][a-z0-9-]{15,79}",
+                value["release_attestation_id"],
+            )
+            is not None
         )
     elif kind == "refresh_research_job":
         valid = (
@@ -108,113 +131,47 @@ def _target_id(kind: str, params: Mapping[str, Any]) -> str:
     return str(value[field])
 
 
-def _safe_command_environment() -> dict[str, str]:
-    environment = {
-        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
-        "LANG": os.environ.get("LANG", "C.UTF-8"),
-        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
-    }
-    for name in ("HOME", "TMPDIR", "TZ"):
-        value = os.environ.get(name)
-        if value:
-            environment[name] = value
-    environment.update(
-        {
-            name: value
-            for name, value in os.environ.items()
-            if name.startswith("MAGAZINE_CAPABILITY_")
-        }
-    )
-    return environment
+class EffectTransport(Protocol):
+    async def apply_operation_effect(self, effect: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
 
-class FixedJsonCommand:
-    """A preconfigured argv adapter with bounded JSON stdin/stdout and no shell."""
+class EffectRunner(Protocol):
+    async def kickstart(self, label: str) -> None: ...
 
-    def __init__(self, *, kind: str, argv: tuple[str, ...]) -> None:
-        self._kind = kind
-        self._argv = argv
 
-    async def __call__(
-        self,
-        params: Mapping[str, Any],
-        *,
-        fencing_token: int,
-        target_fencing_token: int,
-        effect_token: str,
-    ) -> str:
-        if fencing_token < 1 or target_fencing_token < 1 or _TOKEN.fullmatch(effect_token) is None:
+class LaunchdEffectRunner:
+    """Kick only dispatcher-owned launchd labels; no request value reaches argv."""
+
+    async def kickstart(self, label: str) -> None:
+        if label not in {*_COLLECTOR_LABELS.values(), _EDITION_LABEL, _RESEARCH_LABEL}:
             raise CapabilityUnavailableError("operation capability unavailable")
-        safe_params = _validated_params(self._kind, params)
-        target_id = _target_id(self._kind, safe_params)
-        payload = json.dumps(
-            {
-                "schema_version": "ops-domain-command.v1",
-                "intent_kind": self._kind,
-                "target_id": target_id,
-                "params": safe_params,
-                "authority": {
-                    "fencing_token": fencing_token,
-                    "target_fencing_token": target_fencing_token,
-                    "effect_token": effect_token,
-                },
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode()
-        if len(payload) > _MAX_COMMAND_INPUT_BYTES:
-            raise CapabilityUnavailableError("operation capability unavailable")
-
         try:
             process = await asyncio.create_subprocess_exec(
-                *self._argv,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
+                "/bin/launchctl",
+                "kickstart",
+                "-k",
+                f"gui/{os.getuid()}/{label}",
+                stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
-                env=_safe_command_environment(),
-            )
-            assert process.stdin is not None and process.stdout is not None
-            process.stdin.write(payload)
-            await process.stdin.drain()
-            process.stdin.close()
-            output = await asyncio.wait_for(
-                process.stdout.read(_MAX_COMMAND_OUTPUT_BYTES + 1),
-                timeout=_COMMAND_TIMEOUT_SECONDS,
             )
             return_code = await asyncio.wait_for(process.wait(), timeout=_COMMAND_TIMEOUT_SECONDS)
         except (OSError, TimeoutError, asyncio.TimeoutError) as exc:
-            if "process" in locals() and process.returncode is None:
-                process.kill()
-                await process.wait()
             raise CapabilityUnavailableError("operation capability unavailable") from exc
-
-        if return_code != 0 or len(output) > _MAX_COMMAND_OUTPUT_BYTES:
+        if return_code != 0:
             raise CapabilityUnavailableError("operation capability unavailable")
-        try:
-            receipt = json.loads(output)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise CapabilityUnavailableError("operation capability unavailable") from exc
-        if (
-            not isinstance(receipt, dict)
-            or set(receipt) != {"schema_version", "code", "target_id"}
-            or receipt.get("schema_version") != "ops-domain-receipt.v1"
-            or receipt.get("code") != "effect_acknowledged"
-            or receipt.get("target_id") != target_id
-        ):
-            raise CapabilityUnavailableError("operation capability unavailable")
-        return "effect_acknowledged"
 
 
-class FixedOperationsDomainService:
-    """Fixed five-handler map; it cannot dispatch shell, paths, or URLs."""
+class CodeOwnedOperationsDomainService:
+    """Immutable dispatcher for the five reviewed operational effect boundaries."""
 
-    def __init__(self, handlers: Mapping[str, CapabilityHandler]) -> None:
-        if set(handlers) != set(_KINDS) or any(not callable(item) for item in handlers.values()):
+    def __init__(self, *, transport: EffectTransport, runner: EffectRunner | None) -> None:
+        if runner is None or not hasattr(transport, "apply_operation_effect"):
             raise OperationsRuntimeConfigError("invalid operations capability map")
-        self._handlers = dict(handlers)
+        self._transport = transport
+        self._runner = runner
 
     async def prepare(self, kind: str, params: Mapping[str, Any]) -> None:
-        if kind not in self._handlers:
+        if kind not in _KINDS:
             raise CapabilityUnavailableError("operation capability unavailable")
         _target_id(kind, params)
 
@@ -223,58 +180,80 @@ class FixedOperationsDomainService:
         kind: str,
         params: Mapping[str, Any],
         *,
+        target_key: str,
         fencing_token: int,
         target_fencing_token: int,
         effect_token: str,
-    ) -> str:
-        handler = self._handlers.get(kind)
-        if handler is None:
+    ) -> Mapping[str, Any]:
+        if kind not in _KINDS:
             raise CapabilityUnavailableError("operation capability unavailable")
-        result = await handler(
-            params,
-            fencing_token=fencing_token,
-            target_fencing_token=target_fencing_token,
-            effect_token=effect_token,
-        )
-        if result != "effect_acknowledged":
+        safe_params = _validated_params(kind, params)
+        target_id = _target_id(kind, safe_params)
+        expected_prefix = {
+            "rerun_collector": "collector",
+            "rebuild_edition": "edition",
+            "quarantine_story": "story",
+            "release_story": "story",
+            "refresh_research_job": "research",
+        }[kind]
+        if (
+            target_key != f"{expected_prefix}:{target_id}"
+            or fencing_token < 1
+            or target_fencing_token < 1
+            or _TOKEN.fullmatch(effect_token) is None
+        ):
             raise CapabilityUnavailableError("operation capability unavailable")
-        return result
+        authority = {
+            "schema_version": "ops-domain-effect.v1",
+            "intent_kind": kind,
+            "target_id": target_id,
+            "target_key": target_key,
+            "params": safe_params,
+            "fencing_token": fencing_token,
+            "target_fencing_token": target_fencing_token,
+            "effect_token": effect_token,
+        }
+        if kind == "rerun_collector":
+            await self._runner.kickstart(_COLLECTOR_LABELS[str(safe_params["collector_id"])])
+            result: Mapping[str, Any] = self._receipt(authority)
+        elif kind == "rebuild_edition":
+            await self._runner.kickstart(_EDITION_LABEL)
+            result = self._receipt(authority)
+        elif kind == "refresh_research_job":
+            await self._runner.kickstart(_RESEARCH_LABEL)
+            result = self._receipt(authority)
+        else:
+            result = await self._transport.apply_operation_effect(authority)
+        expected = self._receipt(authority)
+        if dict(result) != expected:
+            raise CapabilityUnavailableError("operation capability unavailable")
+        return expected
+
+    @staticmethod
+    def _receipt(authority: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "schema_version": "ops-domain-receipt.v1",
+            "code": "effect_acknowledged",
+            **{
+                key: authority[key]
+                for key in (
+                    "intent_kind",
+                    "target_id",
+                    "target_key",
+                    "fencing_token",
+                    "target_fencing_token",
+                    "effect_token",
+                )
+            },
+        }
 
 
-def _parse_capability_map(raw: str | None) -> dict[str, tuple[str, ...]]:
-    if raw is None or not raw.strip() or len(raw.encode()) > _MAX_CONFIG_BYTES:
-        raise OperationsRuntimeConfigError("invalid operations capability map")
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise OperationsRuntimeConfigError("invalid operations capability map") from exc
-    if not isinstance(value, dict) or set(value) != set(_KINDS):
-        raise OperationsRuntimeConfigError("invalid operations capability map")
-    parsed: dict[str, tuple[str, ...]] = {}
-    for kind in _KINDS:
-        argv = value.get(kind)
-        if (
-            not isinstance(argv, list)
-            or not 1 <= len(argv) <= 16
-            or any(not isinstance(item, str) or not item or len(item) > 1024 for item in argv)
-        ):
-            raise OperationsRuntimeConfigError("invalid operations capability map")
-        executable = Path(argv[0])
-        if (
-            not executable.is_absolute()
-            or not executable.is_file()
-            or not os.access(executable, os.X_OK)
-        ):
-            raise OperationsRuntimeConfigError("invalid operations capability map")
-        parsed[kind] = tuple(argv)
-    return parsed
-
-
-def build_operations_domain_service(capabilities_json: str | None) -> OperationsDomainService:
-    """Build the closed five-capability map from preconfigured executable argv values."""
-    commands = _parse_capability_map(capabilities_json)
-    return FixedOperationsDomainService(
-        {kind: FixedJsonCommand(kind=kind, argv=commands[kind]) for kind in _KINDS}
+def build_operations_domain_service(
+    *, transport: EffectTransport, runner: EffectRunner | None = None
+) -> OperationsDomainService:
+    """Build the immutable five-effect dispatcher; deployment cannot supply argv."""
+    return CodeOwnedOperationsDomainService(
+        transport=transport, runner=runner or LaunchdEffectRunner()
     )
 
 
@@ -334,9 +313,7 @@ def create_operations_runtime(*, env: Mapping[str, str] | None = None) -> Operat
         lease_seconds = _integer(environment, "MAGAZINE_OPERATIONS_LEASE_SECONDS", 120, 30, 300)
         worker = OperationsWorker(
             transport=transport,
-            domain=build_operations_domain_service(
-                _required(environment, "MAGAZINE_OPERATIONS_CAPABILITIES_JSON")
-            ),
+            domain=build_operations_domain_service(transport=transport),
             journal=OperationsJournal(_path(environment, "MAGAZINE_OPERATIONS_ACTION_JOURNAL")),
             now=_now,
             worker_id=environment.get("MAGAZINE_OPERATIONS_WORKER_ID", "worker:pro-magazine"),
