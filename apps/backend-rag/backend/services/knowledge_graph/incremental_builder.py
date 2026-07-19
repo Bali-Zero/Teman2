@@ -4,6 +4,7 @@ Integrates with AutonomousScheduler for automatic incremental KG updates
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -81,8 +82,12 @@ class KGIncrementalBuilder:
 
                 # Initialize with Google AI Studio API key
                 self._gemini_client = genai.Client(api_key=api_key)
+                # Log a non-reversible fingerprint, never the key material, so we can
+                # still verify (e.g. against the WhatsApp bot's key) WHICH key is in
+                # use without leaking it in clear text (CodeQL #4019).
+                key_fp = hashlib.sha256(api_key.encode()).hexdigest()[:8] if api_key else "none"
                 logger.info(
-                    f"✅ Gemini client initialized with Google AI Studio (API key: {api_key[:10]}...)",
+                    "✅ Gemini client initialized with Google AI Studio (key fp=%s)", key_fp
                 )
             except ImportError:
                 logger.warning("⚠️ google-genai SDK not available")
