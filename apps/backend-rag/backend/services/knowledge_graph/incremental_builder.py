@@ -63,9 +63,14 @@ class KGIncrementalBuilder:
             try:
                 from google import genai
 
-                # Use GOOGLE_API_KEY (Google AI Studio)
+                # Prefer a KG-dedicated key (KG_GOOGLE_API_KEY) so this feeder can
+                # be moved to an isolated Gemini project/key without touching the
+                # WhatsApp bot's shared GOOGLE_API_KEY. Falls back to the shared
+                # settings chain until KG_GOOGLE_API_KEY is set anywhere (additive,
+                # no behavior change until then).
                 api_key = (
-                    settings.google_api_key
+                    os.environ.get("KG_GOOGLE_API_KEY")
+                    or settings.google_api_key
                     or settings.google_ai_studio_key
                     or settings.google_imagen_api_key
                 )
