@@ -345,6 +345,7 @@ const D5_SCHEMA = {
     "licensing_inherits",
     "problem_found",
     "rationale",
+    "exposed_facts_inventory",
   ],
   properties: {
     mapping_type: {
@@ -383,6 +384,53 @@ const D5_SCHEMA = {
         "uraian-level semantic rationale for your independent conclusion",
     },
     evidence_locators: { type: "array", items: RENDER_REF },
+    // CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory — see
+    // the factsInventoryUnverified() note below, adjudication section, for the full rationale).
+    // REQUIRED on every D5 answer, for a Batch-A member and for a reused non-member code alike
+    // (adjudicateCode() is the sole dispatch path for both) — regardless of pp28_sources being
+    // empty or licensing_inherits' value: an empty pp28_sources array is NEVER, by itself, a
+    // reason to skip this inventory.
+    exposed_facts_inventory: {
+      type: "array",
+      description:
+        "Enumerate EVERY client-facing fact this code's canonical record actually asserts, across " +
+        "every per_skala tier: kategori_risiko, jangka_waktu, scope_uraian (when present), " +
+        "fiktif_positif, and the license type the frontend derives from risk when perizinan is " +
+        'empty (Tinggi -> "NIB + Izin", Menengah Tinggi/Menengah Rendah -> "NIB + Sertifikat ' +
+        'Standar", Rendah -> "NIB", per PP 28/2025 Pasal 124(4)). A record with ZERO client-facing ' +
+        "facts (e.g. a genuinely empty per_skala) returns an empty list — that is the only case an " +
+        'empty list is honest. For every fact you DO list, mark status="verified" ONLY if you can ' +
+        "cite a page/row locator AND a vintage (2020 vs 2025) for it from the rendered evidence; " +
+        'otherwise mark status="absent". Do not guess a locator to make the list look complete — ' +
+        'an "absent" entry is not a failure on your part, it is the honest answer this field ' +
+        "exists to capture.",
+      items: {
+        type: "object",
+        required: ["field", "value", "status"],
+        properties: {
+          field: {
+            type: "string",
+            description:
+              "one of kategori_risiko / jangka_waktu / scope_uraian / fiktif_positif / " +
+              "derived_license, optionally suffixed with the per_skala tier it came from (e.g. " +
+              '"kategori_risiko:Besar")',
+          },
+          value: { type: "string" },
+          source_locator: {
+            type: "string",
+            description:
+              'page/row citation from the rendered evidence when status="verified"; empty string ' +
+              "when absent",
+          },
+          vintage: {
+            type: "string",
+            description:
+              "2020 or 2025 — which vintage's row grounds this fact; empty string when absent",
+          },
+          status: { type: "string", enum: ["verified", "absent"] },
+        },
+      },
+    },
     abstain: {
       type: "object",
       description:
@@ -499,8 +547,17 @@ function d5Prompt(code) {
     `re-derive is worse than no refuter at all. If problem_found=true, set problem_category to the ONE ` +
     `closed-registry label that best fits, or the literal sentinel OTHER_NEW_CATEGORY if genuinely none ` +
     `fit (never invent a new label). If one of the three out-of-scope facets above blocks your ` +
-    `determination, set abstain={needed:true, facet:"<name>"} instead of guessing. The WORKFLOW, not ` +
-    `you, compares your conclusion against D1's — that comparison happens entirely outside your context.`
+    `determination, set abstain={needed:true, facet:"<name>"} instead of guessing. Independent of all ` +
+    `that, and regardless of whether pp28_sources is empty (an empty pp28_sources array is NEVER a ` +
+    `reason to skip this — a BPS_ONLY/empty-pp28_sources record can still carry live client-facing ` +
+    `facts), populate exposed_facts_inventory: list every kategori_risiko/jangka_waktu/scope_uraian/ ` +
+    `fiktif_positif fact this code's per_skala rows actually assert, plus the license the frontend ` +
+    `would derive from risk when perizinan is empty (Tinggi -> "NIB + Izin", Menengah Tinggi/Menengah ` +
+    `Rendah -> "NIB + Sertifikat Standar", Rendah -> "NIB"), each marked verified only when you can ` +
+    `cite a page/row locator and a vintage for it from the rendered evidence, otherwise absent. A ` +
+    `genuinely empty per_skala returns an empty list; do not guess a locator to make the list look ` +
+    `complete. The WORKFLOW, not you, compares your conclusion against D1's — that comparison happens ` +
+    `entirely outside your context.`
   );
 }
 
@@ -647,6 +704,36 @@ function diffD1D5(d1c, d5c) {
   };
 }
 
+// CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory — see
+// research/operations/2026-07-19-kbli-batch-a-lot6-conductor-gate.md §3.4/§5.3): the certification
+// path used to let a "certified" verdict through the moment D1/D5 agreed on {mapping_type,
+// licensing_inherits, problem_found} — it never checked whether the record's OWN client-facing
+// facts (risk tier, timeframe, scope, fiktif_positif, and the license the frontend DERIVES from
+// risk when perizinan is empty, apps/mouth/src/lib/kbli-derive.ts:25 licenseForRisk) actually
+// carry a verifiable source. For 80190, licensing_inherits=false meant the compound D2 guard just
+// below (`preD2Verdict==="certified" && d1.licensing_inherits===true` — UNCHANGED by this patch,
+// D2 itself is not touched) never fired at all, and the record's four Tinggi/7-day/security-scope
+// tiers were certified with zero provenance. factsInventoryUnverified() is a SECOND, INDEPENDENT
+// gate: it runs on every preliminary "certified" verdict regardless of licensing_inherits, and
+// regardless of whether pp28_sources is empty — the circular "N/A because pp28_sources is empty"
+// read is exactly what let 80190 through, and an empty pp28_sources array is NEVER, by itself, a
+// reason to skip this check. D5 (the blind refuter, already reading canonical.json + evidence for
+// every code) is the one seat asked to inventory every exposed fact with a verified/absent
+// per-entry provenance tag (D5_SCHEMA.exposed_facts_inventory, required — see above); this
+// function's ONLY job is to refuse certification the moment ANY entry is not "verified". A
+// genuinely empty per_skala legitimately returns an empty inventory (nothing to verify) — the ONE
+// case this gate treats as vacuously fine, matching the gate's own corollary that "the certifiable
+// class" is not "codes that assert nothing" but "codes whose every exposed fact carries a verified
+// locator+vintage".
+function factsInventoryUnverified(d5) {
+  const inventory =
+    d5 && Array.isArray(d5.exposed_facts_inventory)
+      ? d5.exposed_facts_inventory
+      : null;
+  if (inventory === null) return true; // missing entirely -> fail-closed, cannot certify
+  return inventory.some((entry) => !entry || entry.status !== "verified");
+}
+
 async function adjudicateCode(code) {
   leaseGuardWarn(code);
 
@@ -674,6 +761,13 @@ async function adjudicateCode(code) {
   // an out-of-scope-facet claim from EITHER seat overrides the diff outright — "the visible facts
   // agree" is a weaker claim than "this needs evidence we don't have this pass" (plan §8 A-1).
   const preD2Verdict = abstainNeeded ? "abstained" : diff.verdict;
+
+  // CERTIFICATION-CONTRACT PATCH (Lot 6 gate BLOCKER 2) — independent of D2/licensing_inherits,
+  // gated purely on D5's own exposed_facts_inventory (see factsInventoryUnverified() above).
+  // Computed here (before D2 dispatch) but only ever DEMOTES the final verdict below, never
+  // promotes one — certification becomes STRICTER only.
+  const factsInventoryFailed =
+    preD2Verdict === "certified" && factsInventoryUnverified(d5);
 
   let d2 = null;
   if (preD2Verdict === "certified" && d1 && d1.licensing_inherits === true) {
@@ -705,12 +799,15 @@ async function adjudicateCode(code) {
       !Array.isArray(d2.per_skala_rows) ||
       d2.per_skala_rows.length === 0);
 
-  const verdict = d2SelfConfirmFailed ? "quarantined" : preD2Verdict;
+  const verdict =
+    d2SelfConfirmFailed || factsInventoryFailed ? "quarantined" : preD2Verdict;
   const quarantined = verdict === "quarantined";
   const category = quarantined
     ? d2SelfConfirmFailed
       ? "unresolvable_source_pointer"
-      : diff.category
+      : factsInventoryFailed
+        ? "source_absent_in_vault"
+        : diff.category
     : null;
 
   return {
@@ -727,6 +824,7 @@ async function adjudicateCode(code) {
     divergent: diff.divergent,
     category_mismatch: diff.category_mismatch,
     d2_self_confirm_failed: d2SelfConfirmFailed,
+    facts_inventory_failed: factsInventoryFailed,
     seatInvocations: d2 ? 3 : 2,
   };
 }

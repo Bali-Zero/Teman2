@@ -286,7 +286,13 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
     """GUILT: a certified verdict whose D2 extraction failed self-confirmation
     (code_appears_in_row !== true) or came back with empty per_skala_rows MUST retro-demote to
     quarantined — the regression guard for code 38222 in Lot A-L1 (D1/D5 agreed clean, D2's
-    evidence page only had the parent code 38220, but the runner still emitted certified)."""
+    evidence page only had the parent code 38220, but the runner still emitted certified).
+
+    UPDATE (2026-07-19, Lot 6 conductor gate BLOCKER 2 — certification-contract patch): the
+    verdict line now ORs in a second independent gate, factsInventoryFailed (see
+    test_guilt_facts_inventory_failure_retro_demotes_certified below) — the regex is widened to
+    `d2SelfConfirmFailed || factsInventoryFailed ? ...` while still asserting d2SelfConfirmFailed
+    is one of the two conditions gating the demotion (never dropped)."""
     assert re.search(r"d2SelfConfirmFailed", js_source), (
         "no d2SelfConfirmFailed guard found — a failed D2 self-confirmation could still reach certified"
     )
@@ -297,9 +303,9 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
         "d2SelfConfirmFailed does not check for an empty per_skala_rows extraction"
     )
     assert re.search(
-        r'verdict\s*=\s*d2SelfConfirmFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
+        r'verdict\s*=\s*\n?\s*d2SelfConfirmFailed\s*\|\|\s*factsInventoryFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
         js_source,
-    ), "the final verdict is not gated on d2SelfConfirmFailed — retro-demote is not wired"
+    ), "the final verdict is not gated on d2SelfConfirmFailed (OR'd with factsInventoryFailed) — retro-demote is not wired"
     assert '"unresolvable_source_pointer"' in js_source
 
 
@@ -322,9 +328,14 @@ def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None
     """INNOCENCE: a SUCCESSFUL D2 extraction (self-confirmed, non-empty rows) must NOT be
     downgraded, and a code that never triggers D2 at all must be unaffected — proves the
     retro-demote fires only on a genuine D2 failure, never on every D2 call or on codes where D2
-    never ran (d2 stays null)."""
+    never ran (d2 stays null).
+
+    UPDATE (2026-07-19, Lot 6 conductor gate BLOCKER 2 — certification-contract patch): widened
+    the same way as the guilt test above — the verdict line now also ORs in factsInventoryFailed,
+    so a D2 self-confirm success alone is not sufficient to prove "stays certified" (see the
+    dedicated facts-inventory innocence test below for that half)."""
     assert re.search(
-        r'const verdict = d2SelfConfirmFailed \? "quarantined" : preD2Verdict;',
+        r'const verdict =\s*\n?\s*d2SelfConfirmFailed \|\| factsInventoryFailed \? "quarantined" : preD2Verdict;',
         js_source,
     ), "verdict computation does not fall back to preD2Verdict when D2 self-confirms successfully"
     assert re.search(r"d2SelfConfirmFailed\s*=\s*\n?\s*d2\s*!==\s*null\s*&&", js_source), (
@@ -431,4 +442,113 @@ def test_innocence_result_shape_still_reports_verdict_taxonomy(js_source: str) -
     # never interpolated into anything passed TO the seat call.
     assert re.search(r"await\s+adjudicateCode\s*\(\s*code\s*\)", body), (
         "adjudicateInnocence must await adjudicateCode(code) before doing any runner-side relabeling"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory —
+#    research/operations/2026-07-19-kbli-batch-a-lot6-conductor-gate.md §3.4/§5.3): the runner
+#    used to let a "certified" verdict through the moment D1/D5 agreed clean on
+#    {mapping_type, licensing_inherits, problem_found} — it never checked whether the record's OWN
+#    client-facing facts (risk tier, timeframe, scope, fiktif_positif, the derived license) carried
+#    a verifiable source, and D2 (the only provenance check) fired only when
+#    `licensing_inherits===true` — a BPS_ONLY/empty-pp28_sources record (exactly 80190's shape)
+#    could certify with NO provenance check at all. These textual-invariant tests complement the
+#    BEHAVIORAL regression suite at infra/workflows/tests/test-kbli-certification-contract.mjs
+#    (run: `node infra/workflows/tests/test-kbli-certification-contract.mjs`), which drives the
+#    actual diffD1D5()/factsInventoryUnverified()/adjudicateCode() logic end-to-end with a stubbed
+#    agent() — these tests instead verify the textual shape of the patch (schema field present,
+#    gate wired, category reused from the closed registry, never gates on licensing_inherits).
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_d5_schema_requires_exposed_facts_inventory(js_source: str) -> None:
+    """GUILT: D5_SCHEMA must REQUIRE exposed_facts_inventory (not merely offer it as optional) —
+    an optional field a seat can silently omit is exactly how 80190's Tinggi/7-day/scope facts
+    went unverified the first time."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    required_match = re.search(r"required:\s*\[(.*?)\]", schema_body, re.DOTALL)
+    assert required_match, "could not locate D5_SCHEMA's required array"
+    assert "exposed_facts_inventory" in required_match.group(1), (
+        "D5_SCHEMA.required does not include exposed_facts_inventory — the field must be "
+        "mandatory, not optional, or a seat can silently omit it and certification stays unsafe"
+    )
+    assert "exposed_facts_inventory: {" in schema_body, (
+        "D5_SCHEMA does not declare an exposed_facts_inventory property"
+    )
+    assert '"verified"' in schema_body and '"absent"' in schema_body, (
+        "D5_SCHEMA.exposed_facts_inventory items must enumerate status: verified|absent"
+    )
+
+
+def test_guilt_facts_inventory_failure_retro_demotes_certified(js_source: str) -> None:
+    """GUILT: factsInventoryUnverified() must exist, fail-closed on a missing/non-array inventory,
+    and flag any entry whose status is not "verified" — and the final verdict computation must be
+    gated on it (OR'd with d2SelfConfirmFailed, never replacing it)."""
+    assert re.search(r"function\s+factsInventoryUnverified\s*\(\s*d5\s*\)", js_source), (
+        "factsInventoryUnverified(d5) not found — the certification-contract patch is not wired"
+    )
+    _params, body = _function_signature_and_body(js_source, "factsInventoryUnverified")
+    assert re.search(r"return\s+true", body), (
+        "factsInventoryUnverified does not fail-closed (return true) on a missing/malformed inventory"
+    )
+    assert re.search(r'entry\.status\s*!==\s*"verified"', body), (
+        "factsInventoryUnverified does not check entry.status !== \"verified\""
+    )
+    assert re.search(
+        r"const factsInventoryFailed =\s*\n?\s*preD2Verdict === \"certified\" && factsInventoryUnverified\(d5\)",
+        js_source,
+    ), "factsInventoryFailed is not gated on preD2Verdict===\"certified\" && factsInventoryUnverified(d5)"
+    assert re.search(
+        r'verdict\s*=\s*\n?\s*d2SelfConfirmFailed\s*\|\|\s*factsInventoryFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
+        js_source,
+    ), "the final verdict is not gated on factsInventoryFailed"
+
+
+def test_innocence_facts_inventory_gate_never_promotes_a_quarantine(js_source: str) -> None:
+    """INNOCENCE: factsInventoryFailed is computed ONLY when preD2Verdict==="certified" — the gate
+    must be structurally incapable of ever promoting an already-quarantined/abstained verdict to
+    certified (certification becomes STRICTER only, never a new path TO certified)."""
+    assert re.search(
+        r'const factsInventoryFailed =\s*\n?\s*preD2Verdict === "certified"',
+        js_source,
+    ), (
+        "factsInventoryFailed must be gated on preD2Verdict===\"certified\" — otherwise it could "
+        "be evaluated (and potentially misused) on a path that was never headed to certified"
+    )
+    # the category assignment for a facts-inventory failure must reuse an EXISTING closed-registry
+    # label (source_absent_in_vault) — the patch must not grow the m3 category registry.
+    assert re.search(
+        r'factsInventoryFailed\s*\n?\s*\?\s*"source_absent_in_vault"',
+        js_source,
+    ), "a facts-inventory failure must categorize as the existing closed-registry label source_absent_in_vault"
+
+
+def test_guilt_d2_gate_condition_on_licensing_inherits_is_unchanged(js_source: str) -> None:
+    """GUILT+INNOCENCE: the D2 dispatch condition itself (`preD2Verdict==="certified" &&
+    d1.licensing_inherits===true`) must remain EXACTLY as it was — the certification-contract patch
+    adds a SECOND, independent gate rather than widening D2's own trigger, per the mandate's
+    "keep the change surgical" requirement. This is the regression guard proving the fix is a new
+    parallel check, not a rewrite of the existing (still narrower, still D2-specific) gate."""
+    assert re.search(
+        r'preD2Verdict === "certified" && d1 && d1\.licensing_inherits === true',
+        js_source,
+    ), "the D2 dispatch condition drifted — this patch must not alter it, only ADD a second gate"
+
+
+def test_innocence_d5_prompt_instructs_the_inventory_regardless_of_empty_pp28_sources(js_source: str) -> None:
+    """INNOCENCE (proves the seat-visible prompt text, not just the schema, carries the fix): d5Prompt
+    must instruct the seat to populate exposed_facts_inventory and explicitly say an empty
+    pp28_sources is not a reason to skip it — killing the circular "N/A because pp28_sources is
+    empty" read the gate's BLOCKER 2 identified."""
+    _params, body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "exposed_facts_inventory" in body, (
+        "d5Prompt does not mention exposed_facts_inventory — the seat is never told to populate it"
+    )
+    assert "pp28_sources is empty" in body, (
+        "d5Prompt does not explicitly say an empty pp28_sources is not a reason to skip the "
+        "facts inventory — the circular NOT_APPLICABLE read this patch kills is not addressed in "
+        "the prompt text a seat actually reads"
     )
