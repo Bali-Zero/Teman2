@@ -1315,18 +1315,26 @@ async def test_infinity_legal_lower_rejected(repo: VisaEngineRepository) -> None
     async with repo.db_pool.acquire() as conn:
         await conn.execute("ALTER TABLE visa_ruleset_activations DISABLE TRIGGER visa_activation_insert_guard")
         try:
+            # migration 251: activated_by_principal is NOT NULL and is
+            # normally stamped by the (here, deliberately disabled) insert-
+            # guard trigger itself — with the trigger off, this raw INSERT
+            # must supply it explicitly so the statement reaches the
+            # table's own legal_period CHECK (what this test proves) rather
+            # than failing earlier on the unrelated NOT NULL constraint.
             with pytest.raises(asyncpg.exceptions.CheckViolationError):
                 await conn.execute(
                     """
                     INSERT INTO visa_ruleset_activations
-                        (rule_pack_id, environment, legal_period, activated_by, activation_reason)
-                    VALUES ($1, $2, tstzrange('-infinity', $3, '[)'), $4, $5)
+                        (rule_pack_id, environment, legal_period, activated_by, activation_reason,
+                         activated_by_principal)
+                    VALUES ($1, $2, tstzrange('-infinity', $3, '[)'), $4, $5, $6)
                     """,
                     pack_id_valid,
                     _ENV,
                     datetime(2027, 1, 1, tzinfo=timezone.utc),
                     "tester",
                     "infinite legal lower — must raise",
+                    "tester-principal-trigger-disabled",
                 )
         finally:
             await conn.execute(
