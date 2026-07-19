@@ -8,7 +8,8 @@ sources:
   - docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md
   - .claude/skills/visaoracle/SKILL.md (ENFORCE-GATE)
 author: Kimi K3 (kimi-code/k3, UI/UX titolare per decisione Zero 2026-07-19) — orchestrated by S3 session
-status: LEAD (W65) — headline claim RecommendState==DecisionState spot-verified on disk by orchestrator; full field-level verification due at implementation
+status: LEAD (W65) — cross-family reviewed; the 8 findings below are BINDING constraints on the implementation lane
+adversarial_review: codex-gpt-5.6-sol (high effort, 2026-07-19) — verdict FIX-FIRST as implementation spec, valid as design lead; 2 P0 + 5 P1 + 1 P2, all recorded with dispositions in the final section
 ---
 
 # Visa Oracle v2 — UI/UX Adaptation Spec (design-only pass, zero writes)
@@ -16,7 +17,7 @@ status: LEAD (W65) — headline claim RecommendState==DecisionState spot-verifie
 **Author:** Kimi K3, UI/UX design lead · **Date:** 2026-07-19 · **Repo state:** worktree `mouth-visa-engine-pr1-0718`, HEAD `6419ed16cb` (PR4 bitemporal substrate + ENFORCE-GATE record)
 **Mandate honored:** the UI adapts to the engine, never the reverse. Every engine identifier below was read on disk, not invented: `apps/backend-rag/backend/services/visa_engine/{enums,models,ast,fact_registry,bundle,compiler,repository,schema_export}.py`, `apps/mouth/src/app/(visa-oracle)/visa-oracle/**`, `apps/mouth/src/lib/visa-oracle/{types,api}.ts`, `research/visa/*`, `docs/plans/2026-07-17-visa-oracle-v2/*`, `.claude/skills/visaoracle/SKILL.md`.
 
-**One-line architecture:** the shipped living-tree experience already speaks the engine's five-state vocabulary (`RecommendState` in `apps/mouth/src/lib/visa-oracle/types.ts:28-33` is byte-identical to `DecisionState` in `enums.py:41-53` — that was the PR0 freeze doing its job). The adaptation is therefore a **source swap behind a stable rendering contract**, not a redesign: same screens, same states, new provenance (citations, quotes, fingerprints) rendered first-class.
+**One-line architecture:** the shipped living-tree experience already speaks the engine's five-state vocabulary (`RecommendState` in `apps/mouth/src/lib/visa-oracle/types.ts:28-33` carries the identical five wire-value set as (a TS union vs a Python Enum — same values, same order) `DecisionState` in `enums.py:41-53` — that was the PR0 freeze doing its job). The adaptation is therefore a **source swap behind a stable rendering contract**, not a redesign: same screens, same states, new provenance (citations, quotes, fingerprints) rendered first-class.
 
 ---
 
@@ -124,7 +125,7 @@ Replace the mock's static stamp with the engine's: *"Evaluated with ruleset `{{v
 During SHADOW the UI **does not change at all** — zero visual, behavioral, or performance delta:
 
 - The rendered verdict source remains `evaluate()` in `_lib/mock-engine.ts` (pure, synchronous, bundled). No new component mounts, no flag UI, no badge changes, no copy changes.
-- The only SHADOW-era code is an **invisible fire-and-forget call**: on verdict computation, the shell POSTs the mapped `ApplicantFacts` to the shadow endpoint (step6c Option C) with `keepalive`/`sendBeacon` semantics, **response ignored, errors swallowed, never awaited by any render path**. If the endpoint 404s (pre-deployment), nothing happens. This call is the G-a volume generator and must carry no UI-observable side effect — unit test asserts the render tree is byte-identical with the endpoint reachable vs. black-holed.
+- The only SHADOW-era code is an **invisible fire-and-forget call**: on verdict computation, the shell POSTs the mapped `ApplicantFacts` to the shadow endpoint (step6c Option C) with `keepalive`/`sendBeacon` semantics, **response ignored, errors swallowed, never awaited by any render path**. If the endpoint 404s (pre-deployment), nothing happens. This call is the G-a volume generator and must carry no UI-observable side effect — unit test asserts the render tree is wire-value-identical with the endpoint reachable vs. black-holed.
 - All six `VISA_ENGINE_*_MODE` flags and the DB-mode lever are **backend-only** (they don't exist yet — step6c §2/§4b). The frontend never reads them directly (B.3).
 
 ### B.2 What switches at ENFORCE (exact enumeration)
@@ -292,3 +293,22 @@ Route root: `apps/mouth/src/app/(visa-oracle)/visa-oracle/`. KEEP = no change ne
 
 **Verification posture for this spec:** every claim above was read on disk in this worktree (HEAD `6419ed16cb`); where the engine is spec-only (evaluator PR5, flags, endpoints), the spec says so and binds the UI to the frozen JSON contracts in `backend/services/visa_engine/contracts/`, never to hoped-for fields. Nothing was written to disk.
 
+
+---
+
+## Adversarial review (cross-family, generator≠grader) — findings & dispositions
+
+Reviewer: **Codex GPT-5.6-sol (high)**, 2026-07-19, full 294-line read at `fb8896c77f` + on-disk verification of every load-bearing claim. Verdict: **valid as a design LEAD, FIX-FIRST as an implementation spec.** The findings below are **binding constraints** on the UI implementation lane — the spec body above stands as Kimi's design; where they conflict, the dispositions here win.
+
+| # | Sev | Finding (verified) | Disposition (binding) |
+|---|---|---|---|
+| 1 | **P0** | §C.2 bindings can fabricate false KNOWN facts: `tourism_duration "60+" → intent.stay_days` (a band cannot determine a canonical number without possibly altering the legal outcome); `review_gate overstay_or_blacklist → {OVERSTAY}` (conflates two distinct violations); `remote_clients` conflates `serves_indonesian_clients` and `indonesia_source_compensation` (legally distinct). | Collect exact days for the open band; split overstay vs blacklist into separate options; split clients vs compensation into separate questions. Until those interview changes land: transmit `UnknownFact`, **never a representative value**. A mapper that guesses is a wrong-answer machine. |
+| 2 | **P0** | §B.1 overclaims SHADOW invisibility: zero *visual* delta ≠ zero behavioral/performance delta (beacon is network/battery/Resource-Timing observable); `ApplicantFacts` carries sensitive PII (birth, nationality, immigration status, violations) and migration 252 explicitly defers consent/legal-basis + public-result storage. | The UI beacon does **not arm** before legal basis/consent, data minimization, retention, encryption-at-rest, no-raw-body-logging and idempotency are in place (STEP-6c + legal review). Reframe the promise as **"zero rendered-decision delta"**. Server-side SHADOW (scout-6c Option A, hook inside the existing `/api/visa/match` handler) is the first increment — no new client egress. |
+| 3 | P1 | `Reason.source_refs` has no `min_length=1` in the frozen model (`models.py:1010`) — "every reason has tappable citations" is not model-guaranteed. | Engine follow-up (PR5 verify round): the evaluator must guarantee ≥1 source for every **legal** reason; operational reasons (outage) may be uncited and the UI renders them without a citation affordance. |
+| 4 | P1 | `public_id` is not automatically PII-free: generation/persistence/sanitized-snapshot guarantees don't exist yet (public-result tables deferred). The WhatsApp change away from facts-in-URL is CORRECT (today `OutcomeSheet.tsx:53` embeds facts in the wa.me text). | Handoff receipt = server-side opaque random id, TTL/revocable, tied to a minimized DTO; treat as **pseudonymous**, not PII-free. Blocks the handoff-payload switch until the server side exists. |
+| 5 | P1 | §B.3 "`decision_id` present ⇒ engine" is invalid: an engine-produced `TEMPORARILY_UNAVAILABLE` may lack identity fields. | Explicit `mode: ENGINE \| CURATED` envelope on **every** response; dedicated test for engine-TEMP-without-decision_id. A rendered verdict changes on next evaluate/retry/refresh (no push invalidation) — stated, not implied. |
+| 6 | P1 | §A.3.2 claims CI can make the adviser-fallback unreachable — false: the live interview has ~8 questions vs 35 applicant paths; uncollected facts are COMMON. | Registry shape `FactPath → questionId \| notCollected` (exhaustive); CI asserts registry **coverage**, not fallback unreachability. Missing load-bearing questions (nationality, birth_date, …) **block ENFORCE**, not SHADOW. |
+| 7 | P1 | Chip copy "Eligible — engine-verified" overstates `SUPPORTED_CANDIDATES` (readable as government approval). Retiring the 4-tier mock chip is confirmed correct (no real engine signal lost). | Copy: **"Supported path under current rules" / "Percorso supportato dalle regole correnti"** — government approval stays explicitly separate (disclaimer block unchanged). |
+| 8 | P2 | "byte-identical" and "35-path vocabulary" literally inexact (TS union vs Python Enum; 38 FactPaths = 35 applicant + 3 derived). | Fixed inline in this document. |
+
+**Net effect on the roadmap:** SHADOW's first volume source is the **server-side hook** (Option A), not the UI beacon; the beacon + handoff-receipt + `mode` envelope + interview-question splits land with the UI implementation increment, gated on the P0/P1 dispositions above. G-a volume counting is unaffected (server-side hook produces the audit rows).
