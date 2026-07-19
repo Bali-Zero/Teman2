@@ -23,6 +23,11 @@ PNG = bytes.fromhex(
 )
 
 
+class _AllowRelease:
+    def require_release_allowed(self) -> None:
+        return None
+
+
 def config() -> TransportConfig:
     return TransportConfig(
         base_url="https://magazine.example",
@@ -104,18 +109,44 @@ async def test_transport_signs_exact_raw_body_and_metadata_header() -> None:
 @pytest.mark.asyncio
 async def test_asset_upload_rejects_source_mismatch_or_missing_canonical_digest() -> None:
     responses = [
-        {"source_sha256": "c" * 64, "canonical_sha256": "b" * 64, "canonical_mime_type": "image/png"},
-        {"source_sha256": hashlib.sha256(PNG).hexdigest(), "canonical_mime_type": "image/png"},
+        {
+            "ok": True,
+            "status": "created",
+            "asset_id": "asset-1",
+            "source_sha256": "c" * 64,
+            "canonical_sha256": "b" * 64,
+            "canonical_mime_type": "image/png",
+            "canonical_byte_count": len(PNG),
+            "width": 1,
+            "height": 1,
+        },
+        {
+            "ok": True,
+            "status": "created",
+            "asset_id": "asset-1",
+            "source_sha256": hashlib.sha256(PNG).hexdigest(),
+            "canonical_mime_type": "image/png",
+            "canonical_byte_count": len(PNG),
+            "width": 1,
+            "height": 1,
+        },
     ]
 
     async def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(201, json=responses.pop(0))
 
-    transport = MagazineTransport(
+    first_transport = MagazineTransport(
         config(), client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
     )
     with pytest.raises(RuntimeError, match="source mismatch"):
-        await transport.upload_asset_bytes(PNG, provenance())
+        await first_transport.upload_asset_bytes(PNG, provenance())
+    await first_transport.aclose()
+
+    transport = MagazineTransport(
+        config(),
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        release_gate=_AllowRelease(),
+    )
     with pytest.raises(RuntimeError, match="canonical_sha256"):
         await transport.upload_asset_bytes(PNG, provenance())
     await transport.aclose()
@@ -132,9 +163,15 @@ async def test_assets_are_uploaded_before_packet_factory_receives_canonical_dige
             return httpx.Response(
                 201,
                 json={
+                    "ok": True,
+                    "status": "created",
+                    "asset_id": "asset-1",
                     "source_sha256": hashlib.sha256(body).hexdigest(),
                     "canonical_sha256": "d" * 64,
                     "canonical_mime_type": "image/png",
+                    "canonical_byte_count": len(body),
+                    "width": 1,
+                    "height": 1,
                 },
             )
         order.append("edition")
@@ -143,7 +180,9 @@ async def test_assets_are_uploaded_before_packet_factory_receives_canonical_dige
         return httpx.Response(201, json={"ok": True, "status": "created"})
 
     transport = MagazineTransport(
-        config(), client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        config(),
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        release_gate=_AllowRelease(),
     )
 
     def factory(digests: dict[str, str]) -> dict[str, Any]:
@@ -176,6 +215,7 @@ async def test_outcome_unknown_is_reconciled_before_retry() -> None:
         client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
         journal=InMemoryOutcomeJournal(),
         reconcile=reconcile,
+        release_gate=_AllowRelease(),
     )
     await transport.post_json("/api/machine/publications/editions", {"packet_id": "p1"})
     assert calls == 2
@@ -196,6 +236,7 @@ async def test_unknown_remote_outcome_blocks_automatic_retry() -> None:
         client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
         journal=InMemoryOutcomeJournal(),
         reconcile=reconcile,
+        release_gate=_AllowRelease(),
     )
     with pytest.raises(OutcomeUnknownError):
         await transport.post_json("/api/machine/publications/breaking", {"packet_id": "p2"})

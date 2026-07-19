@@ -11,7 +11,7 @@ import secrets
 import struct
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -21,17 +21,27 @@ from zantara_media.magazine.contracts import (
     AssetUploadMetadataV2,
     AssetUploadResponseV2,
 )
+from zantara_media.magazine.audit_anchor import ReleaseBlockedError
 from zantara_media.magazine.reconciler import (
     InMemoryOutcomeJournal,
+    OutcomeBindingError,
     OutcomeJournal,
+    OutcomeRecord,
     OutcomeState,
     OutcomeUnknownError,
+    ReconcileResult,
 )
 
 logger = logging.getLogger(__name__)
 
-Reconcile = Callable[[str, str, str], Awaitable[OutcomeState]]
+Reconcile = Callable[
+    [str, str, str], Awaitable[ReconcileResult | OutcomeState]
+]
 PacketFactory = Callable[[dict[str, str]], Mapping[str, Any]]
+
+
+class ReleaseGate(Protocol):
+    def require_release_allowed(self) -> None: ...
 
 
 class TransportConfig(BaseModel):
@@ -83,14 +93,18 @@ class MagazineTransport:
         client: httpx.AsyncClient | None = None,
         journal: OutcomeJournal | None = None,
         reconcile: Reconcile | None = None,
+        release_gate: ReleaseGate | None = None,
     ) -> None:
         self._config = config
         self._client = client or httpx.AsyncClient(
             base_url=config.base_url,
             timeout=config.timeout_seconds,
         )
+        if journal is None and client is None:
+            raise ValueError("production transport requires an explicit durable journal")
         self._journal = journal or InMemoryOutcomeJournal()
         self._reconcile = reconcile
+        self._release_gate = release_gate
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -144,6 +158,12 @@ class MagazineTransport:
         signed_headers: Mapping[str, str] | None = None,
     ) -> httpx.Response:
         body_digest = hashlib.sha256(body).hexdigest()
+        replay = await self._preflight(operation_id, path, body_digest)
+        if replay is not None:
+            return self._replay_response(path, replay)
+        await self._record(
+            operation_id, path, body_digest, OutcomeState.pending, response=None
+        )
         for attempt in range(1, self._config.max_attempts + 1):
             headers = self._signed_headers(
                 method="POST",
@@ -152,7 +172,6 @@ class MagazineTransport:
                 body=body,
                 signed_headers=signed_headers,
             )
-            await self._journal.set(operation_id, OutcomeState.pending)
             try:
                 response = await self._client.post(
                     f"{self._config.base_url.rstrip('/')}{path}",
@@ -160,48 +179,168 @@ class MagazineTransport:
                     headers=headers,
                 )
             except httpx.TransportError as exc:
-                await self._journal.set(operation_id, OutcomeState.unknown)
-                state = await self._reconcile_outcome(operation_id, path, body_digest)
-                if state == OutcomeState.completed:
-                    return httpx.Response(200, json={"ok": True, "status": "replay"})
-                if state != OutcomeState.absent:
+                await self._record(
+                    operation_id, path, body_digest, OutcomeState.unknown, response=None
+                )
+                result = await self._reconcile_outcome(operation_id, path, body_digest)
+                if result.state == OutcomeState.completed:
+                    if result.response is None:
+                        raise OutcomeUnknownError("completed reconciliation omitted response")
+                    await self._record(
+                        operation_id,
+                        path,
+                        body_digest,
+                        OutcomeState.completed,
+                        response=result.response,
+                    )
+                    return self._replay_response(path, result.response)
+                if result.state != OutcomeState.absent:
                     raise OutcomeUnknownError(
                         f"remote outcome_unknown for operation {operation_id}"
                     ) from exc
-                await self._journal.set(operation_id, OutcomeState.absent)
+                await self._record(
+                    operation_id, path, body_digest, OutcomeState.absent, response=None
+                )
                 if attempt >= self._config.max_attempts:
                     raise
                 await self._backoff(attempt)
+                await self._record(
+                    operation_id, path, body_digest, OutcomeState.pending, response=None
+                )
                 continue
             if response.status_code >= 500:
-                await self._journal.set(operation_id, OutcomeState.unknown)
-                state = await self._reconcile_outcome(operation_id, path, body_digest)
-                if state != OutcomeState.absent:
+                await self._record(
+                    operation_id, path, body_digest, OutcomeState.unknown, response=None
+                )
+                result = await self._reconcile_outcome(operation_id, path, body_digest)
+                if result.state == OutcomeState.completed:
+                    if result.response is None:
+                        raise OutcomeUnknownError("completed reconciliation omitted response")
+                    await self._record(
+                        operation_id,
+                        path,
+                        body_digest,
+                        OutcomeState.completed,
+                        response=result.response,
+                    )
+                    return self._replay_response(path, result.response)
+                if result.state != OutcomeState.absent:
                     raise OutcomeUnknownError(
                         f"remote outcome_unknown for operation {operation_id}"
                     )
-                await self._journal.set(operation_id, OutcomeState.absent)
+                await self._record(
+                    operation_id, path, body_digest, OutcomeState.absent, response=None
+                )
                 if attempt < self._config.max_attempts:
                     await self._backoff(attempt)
+                    await self._record(
+                        operation_id, path, body_digest, OutcomeState.pending, response=None
+                    )
                     continue
             response.raise_for_status()
-            await self._journal.set(operation_id, OutcomeState.completed)
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise RuntimeError("machine endpoint returned a non-object response")
+            await self._record(
+                operation_id,
+                path,
+                body_digest,
+                OutcomeState.completed,
+                response=payload,
+            )
             return response
         raise RuntimeError("retry loop exhausted")
 
+    async def _preflight(
+        self, operation_id: str, path: str, body_digest: str
+    ) -> dict[str, Any] | None:
+        previous = await self._journal.get(operation_id)
+        if previous is None:
+            return None
+        if previous.path != path or previous.body_sha256 != body_digest:
+            raise OutcomeBindingError("operation binding mismatch")
+        if previous.state == OutcomeState.completed:
+            if previous.response is None:
+                raise OutcomeUnknownError("completed journal record omitted response")
+            return previous.response
+        if previous.state == OutcomeState.absent:
+            return None
+        result = await self._reconcile_outcome(operation_id, path, body_digest)
+        if result.state == OutcomeState.completed:
+            if result.response is None:
+                raise OutcomeUnknownError("completed reconciliation omitted response")
+            await self._record(
+                operation_id,
+                path,
+                body_digest,
+                OutcomeState.completed,
+                response=result.response,
+            )
+            return result.response
+        if result.state == OutcomeState.absent:
+            await self._record(
+                operation_id, path, body_digest, OutcomeState.absent, response=None
+            )
+            return None
+        raise OutcomeUnknownError(f"remote outcome_unknown for operation {operation_id}")
+
+    async def _record(
+        self,
+        operation_id: str,
+        path: str,
+        body_digest: str,
+        state: OutcomeState,
+        *,
+        response: dict[str, Any] | None,
+    ) -> None:
+        await self._journal.record(
+            OutcomeRecord(
+                operation_id=operation_id,
+                path=path,
+                body_sha256=body_digest,
+                state=state,
+                response=response,
+            )
+        )
+
+    def _replay_response(
+        self, path: str, payload: Mapping[str, Any]
+    ) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=dict(payload),
+            request=httpx.Request(
+                "POST", f"{self._config.base_url.rstrip('/')}{path}"
+            ),
+        )
+
     async def _reconcile_outcome(
         self, operation_id: str, path: str, body_digest: str
-    ) -> OutcomeState:
+    ) -> ReconcileResult:
         if self._reconcile is None:
-            return OutcomeState.unknown
-        return await self._reconcile(operation_id, path, body_digest)
+            return ReconcileResult(state=OutcomeState.unknown)
+        result = await self._reconcile(operation_id, path, body_digest)
+        if isinstance(result, OutcomeState):
+            return ReconcileResult(state=result)
+        return result
 
     async def _backoff(self, attempt: int) -> None:
         base = self._config.base_backoff_seconds * (2 ** (attempt - 1))
         jitter = base * (secrets.randbelow(1001) / 1000) if base else 0
         await asyncio.sleep(base + jitter)
 
-    async def post_json(self, path: str, packet: Mapping[str, Any]) -> dict[str, Any]:
+    async def post_json(
+        self,
+        path: str,
+        packet: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        if path in {
+            "/api/machine/publications/editions",
+            "/api/machine/publications/breaking",
+        }:
+            if self._release_gate is None:
+                raise ReleaseBlockedError("publication transport has no audit release interlock")
+            self._release_gate.require_release_allowed()
         body = json.dumps(
             packet,
             ensure_ascii=False,
@@ -244,7 +383,10 @@ class MagazineTransport:
             "/api/machine/assets",
             source,
             content_type=mime_type,
-            operation_id=f"/api/machine/assets:{provenance.packet_id}",
+            operation_id=(
+                f"/api/machine/assets:{provenance.packet_id}:"
+                f"{provenance.asset_id}:{source_digest}"
+            ),
             signed_headers={"x-magazine-asset-metadata": metadata_raw},
         )
         try:
@@ -253,6 +395,8 @@ class MagazineTransport:
             raise RuntimeError(f"invalid AssetUploadV2 response: {exc}") from exc
         if result.source_sha256 != source_digest:
             raise RuntimeError("AssetUploadV2 source mismatch")
+        if result.asset_id != provenance.asset_id:
+            raise RuntimeError("AssetUploadV2 asset identity mismatch")
         return result
 
     async def publish_edition_with_assets(

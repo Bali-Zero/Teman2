@@ -12,6 +12,7 @@ from zantara_media.magazine.audit_anchor import (
     AuditAnchorService,
     AuditChainMismatch,
     AuditEventRecord,
+    AuditReleaseInterlock,
     DurableAnchorLedger,
     ReleaseBlockedError,
     build_audit_event_hash,
@@ -104,3 +105,42 @@ async def test_checkpoint_conflict_blocks_later_release(tmp_path: Path) -> None:
     assert service.release_blocked is True
     with pytest.raises(ReleaseBlockedError):
         service.require_release_allowed()
+
+    restarted = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(tmp_path / "anchors.jsonl"),
+    )
+    with pytest.raises(ReleaseBlockedError):
+        restarted.require_release_allowed()
+
+
+@pytest.mark.asyncio
+async def test_release_unlocks_only_after_anchor_submission_acceptance(tmp_path: Path) -> None:
+    key = Ed25519PrivateKey.generate()
+    interlock = AuditReleaseInterlock(tmp_path / "release.jsonl")
+    service = AuditAnchorService(
+        key_id="pro-anchor-1",
+        private_key=key,
+        ledger=DurableAnchorLedger(tmp_path / "anchors.jsonl"),
+        interlock=interlock,
+    )
+    first = event(1, ZERO_HASH, {"event": "publication-ready"})
+
+    async def reject(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": False, "status": "rejected"}
+
+    with pytest.raises(ReleaseBlockedError):
+        await service.anchor_and_submit(
+            (first,), observed_at="2026-07-19T00:00:00.000Z", submit=reject
+        )
+    with pytest.raises(ReleaseBlockedError):
+        AuditReleaseInterlock(tmp_path / "release.jsonl").require_release_allowed()
+
+    async def accept(_: dict[str, object]) -> dict[str, object]:
+        return {"ok": True, "status": "replay"}
+
+    await service.anchor_and_submit(
+        (first,), observed_at="2026-07-19T00:00:00.000Z", submit=accept
+    )
+    AuditReleaseInterlock(tmp_path / "release.jsonl").require_release_allowed()

@@ -339,6 +339,7 @@ function story(overrides = {}) {
       {
         claim_id: "claim-1",
         claim_kind: "fact",
+        legal_effect: "changes-legal-effect",
         normalized_text: "The regulation has an effective date.",
         numeric_value: null,
         numeric_unit: null,

@@ -1,4 +1,4 @@
-"""Durable outcome states used to prevent blind mutation retries."""
+"""Durable, operation-bound outcome states for mutation reconciliation."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ import json
 import os
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Literal, Protocol
+
+from pydantic import BaseModel, ConfigDict
 
 
 class OutcomeState(StrEnum):
@@ -22,56 +24,96 @@ class OutcomeUnknownError(RuntimeError):
     """Raised when remote state cannot be proven before a retry."""
 
 
-class OutcomeJournal(Protocol):
-    async def set(self, operation_id: str, state: OutcomeState) -> None: ...
+class OutcomeBindingError(RuntimeError):
+    """Raised when an operation id is reused for different request bytes."""
 
-    async def get(self, operation_id: str) -> OutcomeState | None: ...
+
+class OutcomeRecord(BaseModel):
+    """Closed journal row binding a mutation identity to exact request bytes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal["magazine-outcome.v1"] = "magazine-outcome.v1"
+    operation_id: str
+    path: str
+    body_sha256: str
+    state: OutcomeState
+    response: dict[str, Any] | None
+
+
+class ReconcileResult(BaseModel):
+    """Server-side result for a previously attempted operation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    state: OutcomeState
+    response: dict[str, Any] | None = None
+
+
+class OutcomeJournal(Protocol):
+    async def record(self, record: OutcomeRecord) -> None: ...
+
+    async def get(self, operation_id: str) -> OutcomeRecord | None: ...
 
 
 class InMemoryOutcomeJournal:
+    """Explicit test/development journal; production must use durable storage."""
+
     def __init__(self) -> None:
-        self._states: dict[str, OutcomeState] = {}
+        self._records: dict[str, OutcomeRecord] = {}
         self._lock = asyncio.Lock()
 
-    async def set(self, operation_id: str, state: OutcomeState) -> None:
+    async def record(self, record: OutcomeRecord) -> None:
         async with self._lock:
-            self._states[operation_id] = state
+            previous = self._records.get(record.operation_id)
+            _validate_binding(previous, record)
+            self._records[record.operation_id] = record
 
-    async def get(self, operation_id: str) -> OutcomeState | None:
+    async def get(self, operation_id: str) -> OutcomeRecord | None:
         async with self._lock:
-            return self._states.get(operation_id)
+            return self._records.get(operation_id)
 
 
 class DurableOutcomeJournal:
-    """Append-only JSONL outcome journal with fsync on every transition."""
+    """Strict append-only JSONL journal with cross-process locking and fsync."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
         self._lock = asyncio.Lock()
 
-    async def set(self, operation_id: str, state: OutcomeState) -> None:
-        row = json.dumps(
-            {"operation_id": operation_id, "state": state.value},
-            ensure_ascii=True,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode() + b"\n"
+    async def record(self, record: OutcomeRecord) -> None:
+        row = (
+            json.dumps(
+                record.model_dump(mode="json"),
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
         async with self._lock:
-            await asyncio.to_thread(self._append_sync, row)
+            await asyncio.to_thread(self._append_sync, record, row)
 
-    async def get(self, operation_id: str) -> OutcomeState | None:
+    async def get(self, operation_id: str) -> OutcomeRecord | None:
         async with self._lock:
             rows = await asyncio.to_thread(self._read_sync)
         for row in reversed(rows):
-            if row.get("operation_id") == operation_id:
-                return OutcomeState(row["state"])
+            if row.operation_id == operation_id:
+                return row
         return None
 
-    def _append_sync(self, row: bytes) -> None:
+    def _append_sync(self, record: OutcomeRecord, row: bytes) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(self._path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        descriptor = os.open(self._path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX)
+            existing = self._read_descriptor(descriptor)
+            previous = next(
+                (item for item in reversed(existing) if item.operation_id == record.operation_id),
+                None,
+            )
+            _validate_binding(previous, record)
+            os.lseek(descriptor, 0, os.SEEK_END)
             view = memoryview(row)
             while view:
                 view = view[os.write(descriptor, view) :]
@@ -80,12 +122,40 @@ class DurableOutcomeJournal:
             fcntl.flock(descriptor, fcntl.LOCK_UN)
             os.close(descriptor)
 
-    def _read_sync(self) -> list[dict[str, str]]:
+    def _read_sync(self) -> list[OutcomeRecord]:
         if not self._path.exists():
             return []
-        with self._path.open("rb") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
-            try:
-                return [json.loads(line) for line in handle if line.strip()]
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        descriptor = os.open(self._path, os.O_RDONLY)
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_SH)
+            return self._read_descriptor(descriptor)
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+            os.close(descriptor)
+
+    @staticmethod
+    def _read_descriptor(descriptor: int) -> list[OutcomeRecord]:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        chunks: list[bytes] = []
+        while chunk := os.read(descriptor, 65_536):
+            chunks.append(chunk)
+        raw = b"".join(chunks)
+        if not raw:
+            return []
+        if not raw.endswith(b"\n"):
+            raise ValueError("truncated final record")
+        rows: list[OutcomeRecord] = []
+        for line in raw.splitlines():
+            if not line:
+                raise ValueError("blank journal record")
+            rows.append(OutcomeRecord.model_validate_json(line))
+        return rows
+
+
+def _validate_binding(
+    previous: OutcomeRecord | None, current: OutcomeRecord
+) -> None:
+    if previous is None:
+        return
+    if previous.path != current.path or previous.body_sha256 != current.body_sha256:
+        raise OutcomeBindingError("operation binding mismatch")

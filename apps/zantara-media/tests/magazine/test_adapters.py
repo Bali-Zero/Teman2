@@ -44,17 +44,14 @@ def candidate_payload(**overrides: Any) -> dict[str, Any]:
     "adapter",
     [IntelLakeAdapter(), MataGarudaAdapter(), RegulatoryWatcherAdapter(), NotebookLMAdapter()],
 )
-def test_adapters_never_expose_denied_nested_fields(adapter: Any) -> None:
+def test_adapters_reject_denied_nested_fields(adapter: Any) -> None:
     raw = candidate_payload(raw_payload={"passport": "A1234567"}, notebook_uuid="secret")
-    candidates = adapter.candidates([raw])
-    serialized = str(candidates)
-    assert "raw_payload" not in serialized
-    assert "notebook_uuid" not in serialized
-    assert "A1234567" not in serialized
+    with pytest.raises(SanitizationError, match="^SANITIZATION_DENIED_KEY$"):
+        adapter.candidates([raw])
 
 
 def test_adapters_reject_pii_in_allowlisted_copy() -> None:
-    with pytest.raises(SanitizationError, match="PII"):
+    with pytest.raises(SanitizationError, match="SANITIZATION_PII"):
         IntelLakeAdapter().candidates([candidate_payload(summary="Passport A1234567 changed")])
 
 
@@ -64,6 +61,7 @@ def test_adapters_reject_pii_inside_claim_or_evidence_projection() -> None:
             {
                 "claim_id": "claim-1",
                 "claim_kind": "analysis",
+                "legal_effect": "none",
                 "normalized_text": "Passport A1234567 requires review.",
                 "numeric_value": None,
                 "numeric_unit": None,
@@ -73,7 +71,7 @@ def test_adapters_reject_pii_inside_claim_or_evidence_projection() -> None:
             }
         ]
     )
-    with pytest.raises(SanitizationError, match="PII"):
+    with pytest.raises(SanitizationError, match="SANITIZATION_PII"):
         MataGarudaAdapter().candidates([raw])
 
 
@@ -117,25 +115,24 @@ def test_registry_is_closed_but_supports_explicit_extension() -> None:
         custom.register("custom-public", IntelLakeAdapter())
 
 
-def test_adapter_projects_only_closed_public_collector_health() -> None:
-    projection = IntelLakeAdapter().collector_run(
-        {
-            "schema_version": "collector-run.v1",
-            "run_id": "run-1",
-            "system_id": "wrong-private-value",
-            "collector_id": "daily",
-            "started_at": "2026-07-18T00:00:00Z",
-            "completed_at": "2026-07-18T00:01:00Z",
-            "status": "healthy",
-            "freshness": "fresh",
-            "items_seen": 10,
-            "items_eligible": 2,
-            "source_count": 3,
-            "unreachable_source_count": 0,
-            "watermark": "public-watermark",
-            "verified_at": "2026-07-18T00:01:01Z",
-            "raw_payload": {"passport": "A1234567"},
-        }
-    )
-    assert projection.system_id == "intel-lake"
-    assert "raw_payload" not in str(projection)
+def test_adapter_rejects_contaminated_collector_health() -> None:
+    with pytest.raises(SanitizationError, match="^SANITIZATION_DENIED_KEY$"):
+        IntelLakeAdapter().collector_run(
+            {
+                "schema_version": "collector-run.v1",
+                "run_id": "run-1",
+                "system_id": "wrong-private-value",
+                "collector_id": "daily",
+                "started_at": "2026-07-18T00:00:00Z",
+                "completed_at": "2026-07-18T00:01:00Z",
+                "status": "healthy",
+                "freshness": "fresh",
+                "items_seen": 10,
+                "items_eligible": 2,
+                "source_count": 3,
+                "unreachable_source_count": 0,
+                "watermark": "public-watermark",
+                "verified_at": "2026-07-18T00:01:01Z",
+                "raw_payload": {"passport": "A1234567"},
+            }
+        )

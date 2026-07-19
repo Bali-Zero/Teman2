@@ -197,6 +197,7 @@ const claimRows = [
   {
     claim_id: RAW_CLAIM_ID,
     claim_kind: "fact",
+    legal_effect: "changes-legal-effect",
     normalized_text:
       "The reviewed workflow requires supporting evidence before submission readiness is confirmed.",
     numeric_value: null,
@@ -503,6 +504,7 @@ function integrationStory({
       {
         claim_id: `claim-render-integration-${suffix}`,
         claim_kind: "fact",
+        legal_effect: "changes-legal-effect",
         normalized_text: "The current story version is the only visible one.",
         numeric_value: null,
         numeric_unit: null,

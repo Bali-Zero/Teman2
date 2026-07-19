@@ -54,6 +54,13 @@ _COPY_FIELDS = (
     "curiosity_text",
 )
 _PII = tuple(re.compile(pattern) for pattern in INDONESIAN_PII_PATTERNS.values())
+_UUID = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b"
+)
+_CREDENTIAL = re.compile(
+    r"(?i)(?:api[_-]?key|authorization|bearer\s+[a-z0-9._-]+|password\s*[:=]|secret\s*[:=])"
+)
+_RAW_MARKER = re.compile(r"(?i)(?:\[raw\]|-----begin [^-]+-----|raw[_ -](?:payload|document|content))")
 
 
 class SanitizationError(ValueError):
@@ -84,6 +91,7 @@ class StoryCandidate(BaseModel):
     asset_digests: tuple[str, ...]
     legal_effect_claim_ids: tuple[str, ...]
     novelty: float = Field(ge=0, le=1)
+    recency: float = Field(default=0.5, ge=0, le=1)
     operational_impact: float = Field(ge=0, le=1)
     adapter_version: str
     expected_current_version: int = Field(default=0, ge=0)
@@ -97,16 +105,26 @@ class CollectorAdapter(Protocol):
     def collector_run(self, manifest: Mapping[str, Any]) -> CollectorRunProjectionV1: ...
 
 
-def _sanitize_mapping(value: Any) -> Any:
+def _assert_clean_input(value: Any) -> None:
     if isinstance(value, Mapping):
-        return {
-            str(key): _sanitize_mapping(item)
-            for key, item in value.items()
-            if str(key).lower().replace("-", "_") not in _DENIED_KEYS
-        }
+        for key, item in value.items():
+            if str(key).lower().replace("-", "_") in _DENIED_KEYS:
+                raise SanitizationError("SANITIZATION_DENIED_KEY")
+            _assert_clean_input(item)
+        return
     if isinstance(value, (list, tuple)):
-        return [_sanitize_mapping(item) for item in value]
-    return value
+        for item in value:
+            _assert_clean_input(item)
+        return
+    if isinstance(value, str):
+        if _UUID.search(value):
+            raise SanitizationError("SANITIZATION_UUID")
+        if _CREDENTIAL.search(value):
+            raise SanitizationError("SANITIZATION_CREDENTIAL")
+        if _RAW_MARKER.search(value):
+            raise SanitizationError("SANITIZATION_RAW_MARKER")
+        if any(pattern.search(value) for pattern in _PII):
+            raise SanitizationError("SANITIZATION_PII")
 
 
 def _assert_public_copy(row: Mapping[str, Any]) -> None:
@@ -115,13 +133,13 @@ def _assert_public_copy(row: Mapping[str, Any]) -> None:
         if not isinstance(value, str):
             continue
         if any(pattern.search(value) for pattern in _PII):
-            raise SanitizationError(f"PII detected in allowlisted field {field}")
+            raise SanitizationError("SANITIZATION_PII")
 
 
 def _assert_projection_has_no_pii(value: Any, path: str = "candidate") -> None:
     if isinstance(value, str):
         if any(pattern.search(value) for pattern in _PII):
-            raise SanitizationError(f"PII detected in public {path}")
+            raise SanitizationError("SANITIZATION_PII")
         return
     if isinstance(value, Mapping):
         for key, item in value.items():
@@ -139,7 +157,8 @@ class BasePublicAdapter:
     adapter_version = "magazine-adapter.v1"
 
     def collector_run(self, manifest: Mapping[str, Any]) -> CollectorRunProjectionV1:
-        public = _sanitize_mapping(manifest)
+        _assert_clean_input(manifest)
+        public = manifest
         fields = (
             "schema_version",
             "run_id",
@@ -165,7 +184,8 @@ class BasePublicAdapter:
     def candidates(self, rows: Iterable[Mapping[str, Any]]) -> list[StoryCandidate]:
         result: list[StoryCandidate] = []
         for original in rows:
-            row = self._normalize(_sanitize_mapping(original))
+            _assert_clean_input(original)
+            row = self._normalize(original)
             if self._exclude(row):
                 continue
             _assert_public_copy(row)
@@ -189,6 +209,8 @@ class BasePublicAdapter:
         return False
 
     def _candidate(self, row: Mapping[str, Any]) -> StoryCandidate:
+        if row.get("asset_digests"):
+            raise SanitizationError("SANITIZATION_UNBOUND_ASSET")
         return StoryCandidate(
             public_id=row["public_id"],
             slug=row["slug"],
@@ -208,9 +230,10 @@ class BasePublicAdapter:
                 EvidenceRefV1.model_validate(item) for item in row.get("evidence_refs", ())
             ),
             contributing_system_ids=(self.system_id,),
-            asset_digests=tuple(row.get("asset_digests", ())),
+            asset_digests=(),
             legal_effect_claim_ids=tuple(row.get("legal_effect_claim_ids", ())),
             novelty=row.get("novelty", 0.5),
+            recency=row.get("recency", 0.5),
             operational_impact=row.get("operational_impact", 0.5),
             adapter_version=self.adapter_version,
             expected_current_version=row.get("expected_current_version", 0),

@@ -90,3 +90,58 @@ def test_collector_projection_is_closed_and_consistent() -> None:
     assert CollectorRunProjectionV1.model_validate(raw).model_dump(mode="json") == raw
     with pytest.raises(ValidationError, match="items_eligible"):
         CollectorRunProjectionV1.model_validate({**raw, "items_eligible": 43})
+
+
+def test_shared_python_and_typescript_contract_corpus(
+    breaking_factory: Callable[..., dict[str, Any]],
+    edition_factory: Callable[..., dict[str, Any]],
+) -> None:
+    corpus = json.loads(
+        (SITE_FIXTURES / "magazine-contract-corpus.json").read_text(encoding="utf-8")
+    )
+    collector = {
+        "schema_version": "collector-run.v1",
+        "run_id": "run-1",
+        "system_id": "intel-lake",
+        "collector_id": "daily",
+        "started_at": "2026-07-18T00:00:00Z",
+        "completed_at": "2026-07-18T00:01:00Z",
+        "status": "healthy",
+        "freshness": "fresh",
+        "items_seen": 1,
+        "items_eligible": 1,
+        "source_count": 1,
+        "unreachable_source_count": 0,
+        "watermark": "wm-1",
+        "verified_at": "2026-07-18T00:01:01Z",
+    }
+    asset = json.loads((SITE_FIXTURES / "asset-upload-v2.json").read_text(encoding="utf-8"))
+    parsers = {
+        "story": StoryPacketV1,
+        "edition": EditionPacketV1,
+        "collector": CollectorRunProjectionV1,
+        "asset": AssetUploadMetadataV2,
+    }
+    for case in corpus["cases"]:
+        if case["contract"] == "story":
+            value = breaking_factory()
+        elif case["contract"] == "edition":
+            value = edition_factory()
+        elif case["contract"] == "collector":
+            value = dict(collector)
+        else:
+            value = dict(asset)
+        if case["mutation"] == "invalid-url-port":
+            if case["contract"] == "story":
+                value["story"]["evidence_refs"][0]["canonical_url"] = case["value"]
+            else:
+                value["source_url"] = case["value"]
+        elif case["mutation"] == "missing-legal-effect":
+            del value["stories"][0]["claims"][0]["legal_effect"]
+        elif case["mutation"] == "extra-field":
+            value["raw_payload"] = "forbidden"
+        if case["accept"]:
+            parsers[case["contract"]].model_validate(value)
+        else:
+            with pytest.raises(ValidationError, match="."):
+                parsers[case["contract"]].model_validate(value)

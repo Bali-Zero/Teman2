@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import {
@@ -64,6 +65,7 @@ function story(overrides = {}) {
       {
         claim_id: "claim-1",
         claim_kind: "fact",
+        legal_effect: "changes-legal-effect",
         normalized_text: "The regulation has an effective date.",
         numeric_value: null,
         numeric_unit: null,
@@ -286,10 +288,12 @@ test("contract rejects non-monotonic story and edition versions", () => {
 
 test("contract rejects Breaking claims without a valid per-claim gate", () => {
   const noGate = breaking();
+  noGate.story.claims[0].legal_effect = "none";
   noGate.story.claims[0].breaking_gate = null;
   assert.throws(() => parseStoryPacket(noGate), /valid Breaking gate/);
 
   const fakeQuorum = breaking();
+  fakeQuorum.story.claims[0].legal_effect = "none";
   fakeQuorum.story.claims[0].breaking_gate = "two-independent-root-sources";
   assert.throws(
     () => parseStoryPacket(fakeQuorum),
@@ -335,6 +339,7 @@ test("contract collapses syndicated and dependency-linked Breaking roots", () =>
   });
   const twoSourceClaim = {
     ...story().claims[0],
+    legal_effect: "none",
     evidence_ids: ["evidence-1", "evidence-2"],
     breaking_gate: "two-independent-root-sources",
   };
@@ -380,6 +385,7 @@ test("contract rejects lineage verdicts inconsistent with Breaking eligibility",
 
 test("contract enforces per-claim gates for Breaking stories carried by an edition", () => {
   const carried = story();
+  carried.claims[0].legal_effect = "none";
   carried.claims[0].breaking_gate = null;
   assert.throws(
     () =>
@@ -492,5 +498,77 @@ test("contract collector and asset projections reject unknown fields", () => {
       () => parseAssetUploadMetadata({ ...asset, [field]: "" }),
       new RegExp(field),
     );
+  }
+});
+
+test("shared Python and TypeScript corpus has identical accept/reject outcomes", () => {
+  const corpus = JSON.parse(
+    fs.readFileSync(
+      new URL("./fixtures/magazine-contract-corpus.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const collector = {
+    schema_version: "collector-run.v1",
+    run_id: "run-1",
+    system_id: "intel-lake",
+    collector_id: "daily",
+    started_at: "2026-07-18T00:00:00Z",
+    completed_at: "2026-07-18T00:01:00Z",
+    status: "healthy",
+    freshness: "fresh",
+    items_seen: 1,
+    items_eligible: 1,
+    source_count: 1,
+    unreachable_source_count: 0,
+    watermark: "wm-1",
+    verified_at: "2026-07-18T00:01:01Z",
+  };
+  const asset = {
+    schema_version: "asset-upload.v2",
+    packet_id: "packet-1",
+    asset_id: "asset-1",
+    captured_at: "2026-07-18T00:00:00Z",
+    alt_text: "Editorial image",
+    source: "Editorial desk",
+    source_url: "https://example.com/image",
+    rights_basis: "internal-owned",
+    rights_status: "approved",
+    usage_status: "approved",
+    dlp_status: "passed",
+    sanitization_status: "passed",
+    perceptual_dedup_status: "unique",
+    source_sha256: HASH,
+    source_byte_count: 100,
+    source_mime_type: "image/png",
+    source_width: 10,
+    source_height: 10,
+  };
+  for (const item of corpus.cases) {
+    const value =
+      item.contract === "story"
+        ? breaking()
+        : item.contract === "edition"
+          ? edition()
+          : item.contract === "collector"
+            ? structuredClone(collector)
+            : structuredClone(asset);
+    if (item.mutation === "invalid-url-port") {
+      if (item.contract === "story")
+        value.story.evidence_refs[0].canonical_url = item.value;
+      else value.source_url = item.value;
+    } else if (item.mutation === "missing-legal-effect") {
+      delete value.stories[0].claims[0].legal_effect;
+    } else if (item.mutation === "extra-field") value.raw_payload = "forbidden";
+    const parser =
+      item.contract === "story"
+        ? parseStoryPacket
+        : item.contract === "edition"
+          ? parseEditionPacket
+          : item.contract === "collector"
+            ? parseCollectorRunProjection
+            : parseAssetUploadMetadata;
+    if (item.accept) assert.doesNotThrow(() => parser(value), item.id);
+    else assert.throws(() => parser(value), undefined, item.id);
   }
 });

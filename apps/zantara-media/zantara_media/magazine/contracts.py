@@ -79,9 +79,19 @@ def _sha256(value: str, field: str) -> str:
     return value
 
 
+def _parsed_url(value: str, field: str) -> Any:
+    parsed = urlsplit(value)
+    try:
+        _ = parsed.port
+    except ValueError as exc:
+        raise ValueError(f"{field} has an invalid port") from exc
+    return parsed
+
+
 class ClaimV1(FrozenModel):
     claim_id: str
     claim_kind: Literal["fact", "numeric", "analysis"]
+    legal_effect: Literal["none", "changes-legal-effect"]
     normalized_text: str
     numeric_value: str | None
     numeric_unit: str | None
@@ -141,7 +151,7 @@ class EvidenceRefV1(FrozenModel):
             _timestamp(self.published_at, "published_at")
         _unique(self.upstream_root_source_ids, "upstream_root_source_ids")
         if self.canonical_url is not None:
-            parsed = urlsplit(self.canonical_url)
+            parsed = _parsed_url(self.canonical_url, "canonical_url")
             if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
                 raise ValueError("canonical_url must be a valid HTTPS URL")
         if self.primary_document_status == "verified" and self.source_type != "official":
@@ -272,6 +282,10 @@ def validate_breaking_story(story: StoryVersionV1) -> None:
     for claim in story.claims:
         if claim.claim_kind == "analysis":
             continue
+        if claim.legal_effect == "changes-legal-effect" and claim.breaking_gate != "official-primary":
+            raise ValueError(
+                f"Breaking claim {claim.claim_id} changes legal effect and requires official-primary"
+            )
         if claim.breaking_gate is None:
             raise ValueError(f"claim {claim.claim_id} requires a valid Breaking gate")
         supporting = [by_id[item] for item in claim.evidence_ids]
@@ -435,7 +449,7 @@ class AssetProvenanceV2(FrozenModel):
     def validate_provenance(self) -> AssetProvenanceV2:
         _timestamp(self.captured_at, "captured_at")
         if self.source_url is not None:
-            parsed = urlsplit(self.source_url)
+            parsed = _parsed_url(self.source_url, "source_url")
             if (
                 parsed.scheme not in {"http", "https"}
                 or not parsed.netloc
@@ -462,7 +476,7 @@ class AssetUploadMetadataV2(AssetProvenanceV2):
         if self.source_width * self.source_height > 40_000_000:
             raise ValueError("asset decoded pixel count exceeds limit")
         if self.source_url is not None:
-            parsed = urlsplit(self.source_url)
+            parsed = _parsed_url(self.source_url, "source_url")
             if (
                 parsed.scheme not in {"http", "https"}
                 or not parsed.netloc
@@ -477,15 +491,15 @@ class AssetUploadMetadataV2(AssetProvenanceV2):
 class AssetUploadResponseV2(FrozenModel):
     """Canonical publication digest returned by the AssetUploadV2 endpoint."""
 
-    ok: StrictBool | None = None
-    status: Literal["created", "replay"] | None = None
-    asset_id: str | None = None
+    ok: StrictBool
+    status: Literal["created", "replay"]
+    asset_id: str
     source_sha256: str
     canonical_sha256: str
     canonical_mime_type: Literal["image/png"]
-    canonical_byte_count: WireInt | None = Field(default=None, ge=1)
-    width: WireInt | None = Field(default=None, ge=1)
-    height: WireInt | None = Field(default=None, ge=1)
+    canonical_byte_count: WireInt = Field(ge=1)
+    width: WireInt = Field(ge=1)
+    height: WireInt = Field(ge=1)
 
     @model_validator(mode="after")
     def validate_response(self) -> AssetUploadResponseV2:

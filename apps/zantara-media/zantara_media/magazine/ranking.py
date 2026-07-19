@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from zantara_media.magazine.adapters import StoryCandidate
 from zantara_media.magazine.contracts import EvidenceRefV1, ScoreComponentsV1
@@ -21,6 +22,23 @@ class ScoredCandidate:
     total: float
     breaking_eligible: bool
     breaking_reason: str
+
+
+SCORING_RULESETS = MappingProxyType(
+    {
+        "rules.v1": MappingProxyType(
+            {
+                "editorial": 0.15,
+                "impact": 0.30,
+                "freshness": 0.15,
+                "novelty": 0.10,
+                "evidence": 0.25,
+                "diversity": 0.05,
+                "domain_cap": 2,
+            }
+        )
+    }
+)
 
 
 def resolve_independence(evidence_refs: tuple[EvidenceRefV1, ...]) -> IndependenceResolution:
@@ -83,7 +101,7 @@ def _breaking_verdict(candidate: StoryCandidate) -> tuple[bool, str]:
             for item in claim.evidence_ids
             if item in evidence_by_id
         )
-        if claim.claim_id in candidate.legal_effect_claim_ids and not _official_primary(supporting):
+        if claim.legal_effect == "changes-legal-effect" and not _official_primary(supporting):
             return False, "legal-effect-requires-official-primary"
         if claim.breaking_gate == "official-primary":
             if not _official_primary(supporting):
@@ -107,7 +125,10 @@ def _breaking_verdict(candidate: StoryCandidate) -> tuple[bool, str]:
     return True, "official-primary" if has_official else "two-independent-root-sources"
 
 
-def score_candidate(candidate: StoryCandidate) -> ScoredCandidate:
+def score_candidate(
+    candidate: StoryCandidate, *, ruleset_version: str = "rules.v1"
+) -> ScoredCandidate:
+    rules = SCORING_RULESETS[ruleset_version]
     resolved = resolve_independence(candidate.evidence_refs)
     official = _official_primary(candidate.evidence_refs)
     evidence_score = 1.0 if official else min(1.0, resolved.independent_root_count / 2)
@@ -121,16 +142,17 @@ def score_candidate(candidate: StoryCandidate) -> ScoredCandidate:
     components = ScoreComponentsV1(
         editorial=editorial,
         impact=candidate.operational_impact,
-        freshness=candidate.novelty,
+        freshness=candidate.recency,
         evidence=evidence_score,
         diversity=0.5,
     )
     total = round(
-        components.editorial * 0.2
-        + components.impact * 0.3
-        + components.freshness * 0.2
-        + components.evidence * 0.25
-        + components.diversity * 0.05,
+        components.editorial * float(rules["editorial"])
+        + components.impact * float(rules["impact"])
+        + components.freshness * float(rules["freshness"])
+        + candidate.novelty * float(rules["novelty"])
+        + components.evidence * float(rules["evidence"])
+        + components.diversity * float(rules["diversity"]),
         8,
     )
     eligible, reason = _breaking_verdict(candidate)
@@ -141,22 +163,42 @@ def select_diverse(
     candidates: list[ScoredCandidate] | tuple[ScoredCandidate, ...],
     *,
     limit: int,
+    ruleset_version: str = "rules.v1",
 ) -> tuple[ScoredCandidate, ...]:
-    """Take one best story per core domain before filling remaining slots."""
+    """Deterministic marginal diversity selection with an explicit domain cap."""
 
-    ordered = sorted(candidates, key=lambda item: (-item.total, item.candidate.public_id))
-    core_domains = ("immigration", "company", "tax", "property", "compliance")
+    domain_cap = int(SCORING_RULESETS[ruleset_version]["domain_cap"])
+    remaining = sorted(
+        candidates, key=lambda item: (-item.total, item.candidate.public_id)
+    )
     selected: list[ScoredCandidate] = []
-    selected_ids: set[str] = set()
-    for domain in core_domains:
-        match = next((item for item in ordered if item.candidate.domain == domain), None)
+    domain_counts: dict[str, int] = {}
+    for domain in ("immigration", "company", "tax", "property", "compliance"):
+        match = next((item for item in remaining if item.candidate.domain == domain), None)
         if match is not None and len(selected) < limit:
             selected.append(match)
-            selected_ids.add(match.candidate.public_id)
-    for item in ordered:
-        if len(selected) >= limit:
+            remaining.remove(match)
+            domain_counts[domain] = 1
+    while remaining and len(selected) < limit:
+        eligible = [
+            item
+            for item in remaining
+            if domain_counts.get(item.candidate.domain, 0) < domain_cap
+        ]
+        if not eligible:
             break
-        if item.candidate.public_id not in selected_ids:
-            selected.append(item)
-            selected_ids.add(item.candidate.public_id)
+        item = min(
+            eligible,
+            key=lambda candidate: (
+                -(
+                    candidate.total
+                    + 0.05 / (1 + domain_counts.get(candidate.candidate.domain, 0))
+                ),
+                candidate.candidate.domain,
+                candidate.candidate.public_id,
+            ),
+        )
+        selected.append(item)
+        remaining.remove(item)
+        domain_counts[item.candidate.domain] = domain_counts.get(item.candidate.domain, 0) + 1
     return tuple(selected)

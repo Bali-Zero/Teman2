@@ -82,11 +82,43 @@ def compose_edition(
 ) -> EditionPacketV1:
     if cutoff.tzinfo is None:
         raise ValueError("cutoff must be timezone-aware")
-    runs = tuple(sorted(collector_runs, key=lambda item: (item.system_id, item.run_id)))
-    healthy = {item.system_id for item in runs if item.status == "healthy"}
+    cutoff_utc = cutoff.astimezone(timezone.utc)
+    eligible_runs = [
+        item
+        for item in collector_runs
+        if datetime.fromisoformat(item.completed_at.replace("Z", "+00:00")) <= cutoff_utc
+        and datetime.fromisoformat(item.verified_at.replace("Z", "+00:00")) <= cutoff_utc
+    ]
+    latest: dict[str, CollectorRunProjectionV1] = {}
+    for item in eligible_runs:
+        current = latest.get(item.system_id)
+        if current is None or (item.completed_at, item.verified_at, item.run_id) > (
+            current.completed_at,
+            current.verified_at,
+            current.run_id,
+        ):
+            latest[item.system_id] = item
+    runs = tuple(sorted(latest.values(), key=lambda item: (item.system_id, item.run_id)))
+    healthy = {
+        item.system_id
+        for item in runs
+        if item.status == "healthy" and item.freshness == "fresh"
+    }
     gaps = tuple(sorted(set(config.required_system_ids) - healthy))
-    scored = tuple(score_candidate(item) for item in candidates)
-    selected = select_diverse(scored, limit=config.story_limit)
+    eligible_candidates: list[StoryCandidate] = []
+    for item in candidates:
+        first_seen = datetime.fromisoformat(item.first_seen_at.replace("Z", "+00:00"))
+        updated = datetime.fromisoformat(item.updated_at.replace("Z", "+00:00"))
+        if first_seen > cutoff_utc or updated > cutoff_utc:
+            raise ValueError("candidate timestamp exceeds readiness cutoff")
+        eligible_candidates.append(item)
+    scored = tuple(
+        score_candidate(item, ruleset_version=config.ruleset_version)
+        for item in eligible_candidates
+    )
+    selected = select_diverse(
+        scored, limit=config.story_limit, ruleset_version=config.ruleset_version
+    )
     stories = tuple(_story(item, config.ruleset_version) for item in selected)
     edition_kind = "standard" if stories else "quiet"
     placements = tuple(
@@ -138,9 +170,14 @@ def compose_edition(
         referenced_evidence_ids=evidence_ids,
         asset_digests=asset_digests,
         coverage_gaps=gaps,
-        reader_notices=("Some required collector projections were unavailable at cutoff.",)
-        if gaps
-        else (),
+        reader_notices=tuple(
+            notice
+            for notice in (
+                "No verified material change detected." if edition_kind == "quiet" else None,
+                "Some required collector projections were unavailable at cutoff." if gaps else None,
+            )
+            if notice is not None
+        ),
     )
 
 

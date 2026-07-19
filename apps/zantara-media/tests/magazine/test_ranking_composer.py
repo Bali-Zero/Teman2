@@ -66,6 +66,7 @@ def candidate(
     claim = ClaimV1(
         claim_id=f"claim-{public_id}",
         claim_kind="fact",
+        legal_effect="changes-legal-effect",
         normalized_text="The regulation is effective.",
         numeric_value=None,
         numeric_unit=None,

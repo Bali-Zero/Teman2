@@ -1,4 +1,5 @@
 export type ClaimKind = "fact" | "numeric" | "analysis";
+export type LegalEffect = "none" | "changes-legal-effect";
 export type BreakingGate =
   | "official-primary"
   | "two-independent-root-sources"
@@ -7,6 +8,7 @@ export type BreakingGate =
 export type ClaimV1 = Readonly<{
   claim_id: string;
   claim_kind: ClaimKind;
+  legal_effect: LegalEffect;
   normalized_text: string;
   numeric_value: string | null;
   numeric_unit: string | null;
@@ -270,6 +272,7 @@ function parseClaim(value: unknown, path: string): ClaimV1 {
   const raw = requireClosedRecord(value, path, [
     "claim_id",
     "claim_kind",
+    "legal_effect",
     "normalized_text",
     "numeric_value",
     "numeric_unit",
@@ -281,6 +284,10 @@ function parseClaim(value: unknown, path: string): ClaimV1 {
     "fact",
     "numeric",
     "analysis",
+  ] as const);
+  const legalEffect = requireEnum(raw.legal_effect, `${path}.legal_effect`, [
+    "none",
+    "changes-legal-effect",
   ] as const);
   const numericValue = requireNullableString(
     raw.numeric_value,
@@ -328,6 +335,7 @@ function parseClaim(value: unknown, path: string): ClaimV1 {
   return {
     claim_id: requireString(raw.claim_id, `${path}.claim_id`),
     claim_kind: claimKind,
+    legal_effect: legalEffect,
     normalized_text: requireString(
       raw.normalized_text,
       `${path}.normalized_text`,
@@ -504,6 +512,14 @@ function validateBreakingClaims(story: StoryVersionV1): void {
   );
   for (const claim of story.claims) {
     if (claim.claim_kind === "analysis") continue;
+    if (
+      claim.legal_effect === "changes-legal-effect" &&
+      claim.breaking_gate !== "official-primary"
+    ) {
+      throw new TypeError(
+        `Breaking claim ${claim.claim_id} changes legal effect and requires official-primary`,
+      );
+    }
     if (claim.breaking_gate === null) {
       throw new TypeError(
         `claim ${claim.claim_id} requires a valid Breaking gate`,

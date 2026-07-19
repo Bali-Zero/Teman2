@@ -2,57 +2,98 @@
 
 ## Outcome
 
-Implemented the local, deterministic publisher used to turn sanitized collector
-projections into closed Magazine publication packets and deliver them through the
-dual-authenticated machine ingress. No collector, deployment, or remote endpoint
-was mutated during implementation or verification.
+Implemented and hardened the deterministic Pro-side publisher that turns named,
+sanitized collector projections into closed Magazine packets. Publication now
+anchors the audit stream, uploads asset bytes, binds only canonical Worker
+digests, and then promotes an edition or Breaking packet through the authenticated
+machine transport. No production deployment, collector mutation, or paid API call
+was performed.
 
-## Delivered
+## Review Remediation
+
+All three critical, nine important, and three minor findings from the independent
+Task 6 review were addressed.
+
+- **Restart-safe mutation reconciliation:** the durable outcome record binds the
+  operation ID, route, body SHA-256, state, and response. Preflight runs before a
+  send; completed responses replay locally; pending/unknown outcomes require a
+  reconciliation result; retry occurs only after a proven `absent` result.
+  Strict, fsynced JSONL and cross-process locking reject torn or conflicting rows.
+- **Persistent audit release interlock:** audit receipt history is signature/hash
+  verified and chained under one exclusive read/append/fsync lock. The persistent
+  gate starts blocked, unlocks only after Sites accepts an anchor receipt, and is
+  checked on every edition and Breaking promotion across restarts.
+- **Upload-first assets:** a closed `asset-intents.v1` manifest is required for
+  publication. Upstream asset digests are rejected, each source is uploaded first,
+  request/response identity is bound to packet ID + asset ID + source digest, the
+  20-asset limit is enforced, and only returned canonical PNG digests enter the
+  publication packet.
+- **Boundary DLP:** adapters recursively reject contaminated keys and values,
+  including UUID/source identifiers, credentials, raw-OSINT markers, and Indonesian
+  PII. Errors expose value-free codes and never silently sanitize a contaminated row.
+- **Legal-effect gate:** `legal_effect` is a required closed claim enum in both
+  Python and TypeScript. A claim that changes legal effect requires a verified
+  official primary source; omission cannot downgrade the gate.
+- **Readiness semantics:** composition selects the latest eligible healthy/fresh
+  run per named system at or before the cutoff, rejects late candidates, preserves
+  partial coverage, and emits the exact quiet-edition notice when there is no
+  verified material change.
+- **Cross-language parity:** one shared JSON corpus is executed through the real
+  Python and TypeScript parsers for stories, editions, collector runs, asset
+  metadata/responses, closed fields, coercion, and malformed URLs (including an
+  invalid port).
+- **Named read-only loaders:** Intel Lake, MATA GARUDA, NotebookLM, and Regulatory
+  Watcher each use an explicitly named `.public.json` loader with a closed envelope,
+  source schema/version, system ID, cutoff, watermark, collector-run validation,
+  and no raw-store access.
+- **Versioned ranking:** immutable `rules.v1` data separates novelty from recency,
+  applies deterministic tie-breaks, computes edition diversity, prioritizes core
+  domains, and enforces a per-domain cap.
+- **Real safety-path tests:** dry-run proves no network access; publish E2E uses an
+  `httpx.MockTransport` and verifies audit -> asset -> edition order plus canonical
+  substitution; Breaking dry-run, persistent release blocking, and a spawned
+  process restart/reconciliation regression are covered.
+- **Closed/durable wire details:** audit event versions are `Literal`-closed,
+  sequence values are bounded to the safe unsigned wire domain, production
+  transport requires an explicit durable journal, and publisher input schema
+  discriminators are closed literals. File reads in the async CLI/loader path run
+  off the event loop.
+
+## Delivered Components
 
 - Frozen, extra-forbidden Pydantic mirrors for collector, story, edition, claim,
-  evidence, placement, AssetUploadV2 metadata, and AssetUploadV2 canonical response
-  handoff. The Python fixtures round-trip to the same JSON shape as TypeScript.
-- Deny-by-default adapters for Intel Lake, MATA GARUDA, Regulatory Watcher, and
-  NotebookLM health/insight projections, plus an explicit extension registry.
-  Denied nested fields are stripped before validation and every emitted string is
-  checked for Indonesian PII, including claim and evidence text.
-- Deterministic lineage/syndication collapse, evidence scoring, five-domain-first
-  selection, quiet/partial morning editions, and per-claim Breaking qualification.
-  Legal-effect claims require an official resolved primary source even when two
-  journalistic roots are independent.
-- One persistent asynchronous `httpx.AsyncClient` with byte-exact body hashing and
-  HMAC headers. Asset source bytes are uploaded first; only the returned canonical
-  PNG digest is handed to the edition packet factory.
-- Append-only, fsynced outcome and audit ledgers with process locks. An ambiguous
-  side effect is marked `outcome_unknown` and reconciled before any retry; an
-  unresolved outcome blocks automatic retry.
-- RFC 8785 audit event verification and byte-exact Ed25519 anchor receipts using
-  the specified domain tags, U32/U64 lengths, unpadded base64url signatures, and
-  chained anchor hashes. Any rewrite, gap, malformed ledger row, or checkpoint
-  conflict fails closed and blocks release.
-- `magazine-publish morning` and `magazine-publish breaking` CLI commands.
-  Network publication is explicit through `--publish`; `--dry-run` remains fully
-  deterministic. Structured logs contain packet/story IDs, counts, and states,
-  never payload bodies or credentials.
+  evidence, placement, asset provenance, upload metadata, and canonical response.
+- Deny-by-default public adapters and explicit source loader registry.
+- Deterministic lineage collapse, evidence qualification, ranking, diversity,
+  readiness cutoff, quiet/partial editions, and per-claim Breaking gates.
+- One persistent `httpx.AsyncClient` with byte-exact body hashing, dual
+  authentication headers, bounded retry, and durable outcome reconciliation.
+- Append-only audit/outcome/release journals with process locks and fsync.
+- RFC 8785 event verification and byte-exact Ed25519 anchor receipts with chained
+  local history and public receipt submission.
+- `magazine-publish morning` and `magazine-publish breaking`; network mutation is
+  explicit through `--publish`, while `--dry-run` is deterministic.
 
 ## TDD Evidence
 
-- Initial RED: 5 collection errors because `zantara_media.magazine` did not exist.
-- Contract cycle: 8 passed.
-- Adapter cycle: 8/9, then 9/9 after handling the default Notebook Insight shape;
-  later RED/GREEN cycles added collector-run projection and nested claim PII denial.
-- Ranking/composer cycle: 6 passed.
-- Transport/reconciliation cycle: 5 passed.
-- Audit-anchor cycle: 4 passed.
-- CLI cycle: collection failed because `magazine_publish` did not exist, then 2 passed.
+- Original RED: five collection errors before the Magazine package existed.
+- Independent adversarial RED reproductions covered restart replay, UUID leakage,
+  invalid-port parser drift, late-run readiness, missing quiet notice, and omitted
+  legal-effect annotation.
+- Remediation RED/GREEN cycles added durable restart reconciliation, persistent
+  audit blocking, upload-first CLI orchestration, shared parser parity, source
+  loaders, and real no-network E2E coverage.
 
 ## Final Gates
 
-From `apps/zantara-media` with its Python 3.11 `.venv` activated:
+From `apps/zantara-media` with its project `.venv` activated:
 
 ```text
+python -m pytest tests/magazine -q
+44 passed in 7.10s
+
 python -m pytest tests/magazine tests/test_dlp.py -q
-50 passed in 0.42s
+58 passed in 2.03s
 
 ruff check zantara_media/magazine zantara_media/cli/magazine_publish.py tests/magazine
 All checks passed!
@@ -61,32 +102,26 @@ python -m compileall -q zantara_media/magazine zantara_media/cli/magazine_publis
 exit 0
 ```
 
-Focused Magazine-only rerun before finalization:
+From `apps/bali-zero-magazine`:
 
 ```text
-python -m pytest tests/magazine -q
-36 passed
+node --test --experimental-strip-types \
+  tests/contracts.test.mjs \
+  tests/publication-repository.test.mjs \
+  tests/magazine-render.test.mjs
+60 passed, 0 failed
 ```
 
-## Baseline Limitation
-
-The complete legacy `tests/` baseline was attempted and stopped during collection
-with three identical environment errors:
+Repository hygiene:
 
 ```text
-ModuleNotFoundError: No module named 'openai'
+git diff --check
+exit 0
 ```
 
-Affected collectors were `tests/test_atomic.py`, `tests/test_dedup.py`, and
-`tests/test_e2e_integration.py`, all through the pre-existing
-`zantara_media/indexer/embedder.py` import. The Air-M5 task venv was intentionally
-kept lightweight; installing the app's heavyweight media/ML dependency set on the
-thin client would violate machine routing policy. The directly relevant legacy DLP
-baseline passed all 14 tests.
+## Operational Boundary
 
-## Dependencies
-
-- `rfc8785>=0.1.4` for RFC 8785 JSON canonicalization.
-- `cryptography>=42.0` for exact Ed25519 signing and verification.
-
-Both are pure task dependencies and require no paid API key or external service.
+The publisher submits public receipts to the Task 5 Sites ingress target and fails
+closed unless Sites returns `created` or `replay`. This task does not deploy or
+mutate the Sites runtime; enabling the cadence still requires the normal protected
+PR/CI/deployment flow and configured environment secrets.
