@@ -101,6 +101,44 @@ async def _acquire_task_lock(task_name: str, ttl_seconds: int) -> bool:
         return True  # On error, run anyway
 
 
+# Atomic compare-and-delete: only remove the lock if it still holds THIS
+# worker's identity. A plain DEL would let a worker whose lock already
+# expired (e.g. it overran ttl_seconds) delete a *different* worker's lock
+# that has since acquired the same key.
+_RELEASE_LOCK_LUA = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+"""
+
+
+async def _release_task_lock(task_name: str) -> bool:
+    """
+    Release a distributed task lock, but ONLY if this worker still holds it.
+
+    Pairs with `_acquire_task_lock`. Callers should acquire a short-TTL lock
+    for the duration of a task and release it in a `finally` block so a
+    crashed/killed task does not hold the lock for its full TTL (still a
+    safety net, just no longer the only exit).
+
+    Returns True if this worker's lock was released, False otherwise
+    (already expired, held by another worker, or Redis unavailable).
+    """
+    client = await _get_redis()
+    if client is None:
+        return False  # No Redis = nothing to release
+
+    lock_key = f"{_LOCK_PREFIX}{task_name}"
+    try:
+        released = await client.eval(_RELEASE_LOCK_LUA, 1, lock_key, _WORKER_ID)
+        return bool(released)
+    except Exception as e:
+        logger.debug("Lock release error for %s: %s", task_name, e)
+        return False
+
+
 @dataclass
 class ScheduledTask:
     """A scheduled autonomous task"""

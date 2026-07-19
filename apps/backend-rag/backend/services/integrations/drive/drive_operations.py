@@ -9,6 +9,17 @@ from backend.services.integrations.drive.drive_audit import drive_operation
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+
+
+def _normalize_drive_file(f: dict[str, Any]) -> dict[str, Any]:
+    """Drive API v3 returns no `type` field and `size` as a string (absent for
+    folders and Google-native docs); the team_drive router contract requires
+    `type` ('file'|'folder') and an int `size` on every item."""
+    f["type"] = "folder" if f.get("mimeType") == _FOLDER_MIME_TYPE else "file"
+    f["size"] = int(f.get("size") or 0)
+    return f
+
 
 class DriveOperationsManager:
     """
@@ -69,7 +80,9 @@ class DriveOperationsManager:
         # Propaga l'errore HTTP (che verrà catturato dal decoratore @drive_operation per i log)
         response.raise_for_status()
 
-        return response.json()
+        data = response.json()
+        data["files"] = [_normalize_drive_file(f) for f in data.get("files", [])]
+        return data
 
     @drive_operation("search_files")
     async def search_files(
@@ -109,7 +122,7 @@ class DriveOperationsManager:
             params=params,
         )
         response.raise_for_status()
-        return response.json().get("files", [])
+        return [_normalize_drive_file(f) for f in response.json().get("files", [])]
 
     @drive_operation("get_file_metadata")
     async def get_file_metadata(self, user_email: str, file_id: str) -> dict[str, Any]:
@@ -130,7 +143,7 @@ class DriveOperationsManager:
         )
         response.raise_for_status()
 
-        return response.json()
+        return _normalize_drive_file(response.json())
 
     async def _token(self, user_email: str) -> str:
         token = await self.auth_manager.get_access_token(user_email)
