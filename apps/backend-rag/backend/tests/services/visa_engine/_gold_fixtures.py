@@ -52,6 +52,53 @@ their documented expected states, not to encode real Bali Zero legal advice.
   independent single-fact gates instead. ``immigration.overstay_days``
   alone is independently covered by ``review.active-overstay`` regardless
   of this rule.
+
+# Gate round 1 (2026-07-19) — per-persona distinguishing-fact influence audit
+
+The gate flagged 6 personas whose stated "distinguishing fact" did not
+actually drive their outcome (a metamorphic flip of that fact left the
+result unchanged). Disposition per persona, fixed where fixing was the
+correct/safe move and documented as intentional otherwise:
+
+- **#6 ``family.sponsor_status_code``** and **#7
+  ``family.sponsor_nationalities``**: FIXED — ``el.e31.family`` now requires
+  the CHILD branch's sponsor to hold a status in a small fixture allow-list
+  (``in(family.sponsor_status_code, ["E23","E28A"])``) and the SPOUSE
+  branch's sponsor to include Indonesian nationality
+  (``intersects(family.sponsor_nationalities, ["ID"])``). Both personas'
+  own fact values already satisfy the new constraint (no persona-6/7
+  regression); flipping either fact now genuinely changes the outcome (see
+  ``test_evaluator_gold.py``'s metamorphic differential tests).
+- **#8 "does not really replicate #7"**: FIXED — persona 8's overrides now
+  explicitly set ``family.sponsor_nationalities`` to the same
+  Indonesia-sponsor value #7 uses (previously omitted, silently falling
+  back to the shared baseline's UNKNOWN and inflating persona 8's
+  ``expected_missing`` beyond its intended single distinguishing fact,
+  ``family.marriage_registered``).
+- **#11 ``work.employer_country_code``**: NOT wired into any rule —
+  documented, not fixed. ``el.e33g.remote-work`` already gates on
+  ``work.employer_is_indonesian_entity`` (a boolean derived from the same
+  underlying fact in any real pack); adding a second, redundant condition on
+  the raw country code here would either duplicate that check pointlessly or
+  invent an untested, uncalibrated legal constraint (e.g. "which specific
+  countries count") this synthetic engine-test fixture has no basis for
+  asserting. The fact stays in persona 11's overrides as case-narrative
+  context (the persona's prose names a country), not as a rule input.
+- **#17 ``commercial.service_fee_budget_idr``**: FIXED via ``rank.budget-
+  covers-fee`` below — this fact is *supposed* to influence RANKING only,
+  never eligibility (spec §4.4, this persona's own label: "low budget never
+  filters") — wiring it into a dedicated ranking rule makes it genuinely
+  influential on ``Candidate.score`` while leaving the legal SUPPORTED/
+  UNSUPPORTED state untouched, which is a MORE precise demonstration of the
+  claim than an inert fact would be (see the differential ranking tests).
+- **#20 impossible sentinels**: NOT changed. This one was already flagged
+  and thoroughly documented above (``hf.onshore-gate``'s own paragraph) —
+  the distinguishing facts (``immigration.current_status_code``/
+  ``overstay_days``) already ARE genuinely influential (flipping either to
+  KNOWN changes the outcome away from NEEDS_INPUT, verified in the original
+  persona-20 test); the gate's concern was about the CONTRIVED MECHANISM
+  (sentinel comparisons), not about non-influence, and that limitation was
+  already called out in full above rather than silently left implicit.
 """
 
 from __future__ import annotations
@@ -355,6 +402,13 @@ def _build_rules() -> list[dict[str, Any]]:
             effect=_support("INVESTMENT_ELIGIBLE", ["INVESTMENT", "TOURISM"]),
         ),
         # --- E31 (family) ------------------------------------------------------------
+        # Gate round 1 (2026-07-19): CHILD branch now requires the sponsor to
+        # hold a status in this fixture allow-list (persona 6's
+        # ``family.sponsor_status_code`` distinguishing fact — previously
+        # unwired, see module docstring); SPOUSE branch now requires an
+        # Indonesian-national sponsor (persona 7's
+        # ``family.sponsor_nationalities`` distinguishing fact — same
+        # reason).
         _rule(
             rule_id="el.e31.family",
             stage="ELIGIBILITY",
@@ -364,11 +418,13 @@ def _build_rules() -> list[dict[str, Any]]:
                 _all(
                     _intersects("intent.purposes", ["FAMILY"]),
                     _eq("family.relation_to_sponsor", "CHILD"),
+                    _in("family.sponsor_status_code", ["E23", "E28A"]),
                     _eq("family.sponsor_confirmed", True),
                 ),
                 _all(
                     _intersects("intent.purposes", ["FAMILY"]),
                     _eq("family.relation_to_sponsor", "SPOUSE"),
+                    _intersects("family.sponsor_nationalities", ["ID"]),
                     _eq("family.marriage_registered", True),
                     _eq("family.sponsor_confirmed", True),
                 ),
@@ -426,12 +482,27 @@ def _build_rules() -> list[dict[str, Any]]:
             effect=_support("TOURISM_ELIGIBLE", ["TOURISM"]),
         ),
         # --- GLOBAL ranking (commercial budget never filters, spec §4.4) --------------
+        # Gate round 1 fix (2026-07-19): the boost must bind to the VALUE
+        # (wants a quote), not mere presence of an answer — the previous
+        # `{"op": "known", ...}` fired the boost even when the applicant had
+        # explicitly answered False, which is not "wants a quote" at all.
         _rule(
             rule_id="rank.wants-quote",
             stage="RANKING",
             scope="GLOBAL",
-            when={"op": "known", "fact": "commercial.wants_quote"},
+            when=_eq("commercial.wants_quote", True),
             effect=_add_score("WANTS_QUOTE_BOOST", 5),
+            on_unknown="NO_EFFECT",
+        ),
+        # Gate round 1 addition (2026-07-19, persona 17 fix): wires
+        # `commercial.service_fee_budget_idr` into ranking-only influence —
+        # never eligibility (see module docstring's per-persona audit).
+        _rule(
+            rule_id="rank.budget-covers-fee",
+            stage="RANKING",
+            scope="GLOBAL",
+            when=_gte("commercial.service_fee_budget_idr", 1_000_000),
+            effect=_add_score("BUDGET_COVERS_FEE", 3),
             on_unknown="NO_EFFECT",
         ),
     ]

@@ -117,6 +117,20 @@ PERSONAS: tuple[Persona, ...] = (
         overrides={
             "intent.purposes": gf.known(["FAMILY"]),
             "family.relation_to_sponsor": gf.known("SPOUSE"),
+            # Gate round 1 fix (2026-07-19): must genuinely replicate #7's
+            # facts save for the ONE deliberate difference below — this was
+            # previously omitted, silently falling back to the shared
+            # baseline's UNKNOWN and inflating expected_missing beyond the
+            # single intended distinguishing fact.
+            "family.sponsor_nationalities": gf.known(["ID"]),
+            # Also must be KNOWN (any value — irrelevant to the SPOUSE path,
+            # relation != CHILD makes that branch a definite FALSE
+            # regardless): ast.py's condition evaluator never short-circuits
+            # and unions unknown_facts over the WHOLE subtree, so leaving
+            # this at the shared baseline's UNKNOWN would leak a spurious,
+            # irrelevant missing-fact into this persona's NEEDS_INPUT
+            # result via the dead CHILD branch.
+            "family.sponsor_status_code": gf.known("E23"),
             "family.marriage_registered": gf.unknown("UNVERIFIED"),
             "family.sponsor_confirmed": gf.known(True),
         },
@@ -158,6 +172,10 @@ PERSONAS: tuple[Persona, ...] = (
     Persona(
         id=11,
         label="clean remote worker, no local footprint -> E33G",
+        # `work.employer_country_code` is deliberately NOT wired into any
+        # rule (gate round 1 audit, 2026-07-19, see _gold_fixtures.py's
+        # module docstring) — it stays here as case-narrative context only;
+        # `work.employer_is_indonesian_entity` is the actual rule input.
         overrides={
             "intent.purposes": gf.known(["REMOTE_WORK"]),
             "work.employer_country_code": gf.known("FR"),
@@ -319,3 +337,88 @@ def test_gold_persona(persona: Persona, compiled_gold_pack) -> None:
         assert candidate.source_refs
     for reason in (*decision.review_reasons, *decision.no_path_reasons):
         assert reason.source_refs, f"reason {reason.code} must carry a citation"
+
+
+# ---------------------------------------------------------------------------
+# Gate round 1 (2026-07-19): metamorphic differential tests — each of these
+# takes a gold persona's own facts and flips ONLY its previously-flagged
+# "distinguishing" fact, proving the flip actually changes the outcome (the
+# gate's ask: "make each distinguishing fact actually influential"). Personas
+# 11/20 are intentionally excluded — documented as non-influential-by-design
+# / already-influential in _gold_fixtures.py's module docstring instead.
+# ---------------------------------------------------------------------------
+
+
+def test_persona_6_sponsor_status_code_is_influential(compiled_gold_pack) -> None:
+    base_overrides = PERSONAS[5].overrides  # persona id=6
+    assert base_overrides["family.sponsor_status_code"] == gf.known("E23")
+
+    facts = gf.applicant_facts(
+        overrides={**base_overrides, "family.sponsor_status_code": gf.known("C1")}
+    )
+    decision = evaluator.evaluate(
+        facts,
+        compiled_gold_pack,
+        effective_at=gf.GOLD_EFFECTIVE_AT,
+        observed_at=gf.GOLD_EFFECTIVE_AT,
+    )
+    assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    assert decision.candidates == ()
+
+
+def test_persona_7_sponsor_nationalities_is_influential(compiled_gold_pack) -> None:
+    base_overrides = PERSONAS[6].overrides  # persona id=7
+    assert base_overrides["family.sponsor_nationalities"] == gf.known(["ID"])
+
+    facts = gf.applicant_facts(
+        overrides={**base_overrides, "family.sponsor_nationalities": gf.known(["US"])}
+    )
+    decision = evaluator.evaluate(
+        facts,
+        compiled_gold_pack,
+        effective_at=gf.GOLD_EFFECTIVE_AT,
+        observed_at=gf.GOLD_EFFECTIVE_AT,
+    )
+    assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    assert decision.candidates == ()
+
+
+def test_persona_17_service_fee_budget_influences_ranking_score_never_eligibility(
+    compiled_gold_pack,
+) -> None:
+    """Persona 17's own label: "low budget never filters". The gate round 1
+    fix wires `commercial.service_fee_budget_idr` into a dedicated ranking
+    rule (`rank.budget-covers-fee`) — this proves the fact IS influential
+    (on score) while the legal state/candidate stays identical either way,
+    which is a stronger demonstration of the persona's claim than an inert
+    fact would be.
+    """
+    base_overrides = PERSONAS[16].overrides  # persona id=17
+    assert base_overrides["commercial.service_fee_budget_idr"] == gf.known(1)
+
+    low_budget = gf.applicant_facts(overrides=base_overrides)
+    high_budget = gf.applicant_facts(
+        overrides={**base_overrides, "commercial.service_fee_budget_idr": gf.known(2_000_000)}
+    )
+
+    low_decision = evaluator.evaluate(
+        low_budget,
+        compiled_gold_pack,
+        effective_at=gf.GOLD_EFFECTIVE_AT,
+        observed_at=gf.GOLD_EFFECTIVE_AT,
+    )
+    high_decision = evaluator.evaluate(
+        high_budget,
+        compiled_gold_pack,
+        effective_at=gf.GOLD_EFFECTIVE_AT,
+        observed_at=gf.GOLD_EFFECTIVE_AT,
+    )
+
+    # Legal state/candidate identity untouched by budget either way.
+    assert low_decision.state is DecisionState.SUPPORTED_CANDIDATES
+    assert high_decision.state is DecisionState.SUPPORTED_CANDIDATES
+    assert [c.product_code for c in low_decision.candidates] == ["E28A"]
+    assert [c.product_code for c in high_decision.candidates] == ["E28A"]
+
+    # But the score IS influenced by the budget fact.
+    assert high_decision.candidates[0].score > low_decision.candidates[0].score
