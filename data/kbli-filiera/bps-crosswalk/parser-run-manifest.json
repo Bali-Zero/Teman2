@@ -53,11 +53,11 @@
   "footer_total_pages": 233,
   "footer_verified_pages": 233
  },
- "parser_run_digest": "f1bcf118127a077eb0ee166fd216fe5d1c5552ee54821fb3557ecc2d13c489a6",
+ "parser_run_digest": "23182d27700a1b7b10af6023a993ee23331c55ff84e37518b15385a15381d9eb",
  "parser_source": {
-  "git_blob": "02f65e7d00252a9defa4a02e2a5ab0f9cea5c60d",
+  "git_blob": "d141562edde70d6d12f9048fd219dd8acfbfeeed",
   "path": "scripts/kbli_filiera/parse_bps_crosswalk.py",
-  "sha256": "00e6741b616fdaa413454501534be5f42789c73b5ccab25a8b0fe93d3e022136"
+  "sha256": "41e2b6251d39df08960925ce8b5427d68a80e7da32c0dc6bf79c4e443fd55be2"
  },
  "python": {
   "implementation": "CPython",

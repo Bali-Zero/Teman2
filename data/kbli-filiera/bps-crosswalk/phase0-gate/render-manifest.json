@@ -1,0 +1,166 @@
+{
+ "render_command": "pdftoppm -f P -l P -r 300 -png <vault pdf> <prefix>",
+ "render_dir": "/Users/nuzantara/nuzantara-vault/bps/phase0-renders",
+ "renders": [
+  {
+   "file": "l5-p0135-135.png",
+   "lampiran": 5,
+   "pdf_page": 135,
+   "printed_page": 121,
+   "sha256": "c08098dfd5e528d87446928e96feee0cf60f1eada5bd4f91ee17ba484b0be963",
+   "split": "tuning"
+  },
+  {
+   "file": "l5-p0136-136.png",
+   "lampiran": 5,
+   "pdf_page": 136,
+   "printed_page": 122,
+   "sha256": "683efcc6840b439e7457afa7d418e96418fd1342fd2ef8490cd8714f6e82d5e6",
+   "split": "holdout"
+  },
+  {
+   "file": "l5-p0164-164.png",
+   "lampiran": 5,
+   "pdf_page": 164,
+   "printed_page": 150,
+   "sha256": "48c51993baf1e0cc52e1a0c89c4be12384fa96ace7697cc77a32b4e8365a7c26",
+   "split": "tuning"
+  },
+  {
+   "file": "l5-p0165-165.png",
+   "lampiran": 5,
+   "pdf_page": 165,
+   "printed_page": 151,
+   "sha256": "45fffacf5f570010ca02335e8114a822b88f368d5c48940e9e5dbfe8d23ecc6f",
+   "split": "holdout"
+  },
+  {
+   "file": "l5-p0168-168.png",
+   "lampiran": 5,
+   "pdf_page": 168,
+   "printed_page": 154,
+   "sha256": "31e4b93026c11028e6bfb9a29452787a656f13c0eadaab70737269bdb31299c9",
+   "split": "tuning"
+  },
+  {
+   "file": "l5-p0178-178.png",
+   "lampiran": 5,
+   "pdf_page": 178,
+   "printed_page": 164,
+   "sha256": "42a897f18df7d05e68976fe891bd0e06a1b299374ffd40ce7b31eaa14ba487ce",
+   "split": "holdout"
+  },
+  {
+   "file": "l5-p0183-183.png",
+   "lampiran": 5,
+   "pdf_page": 183,
+   "printed_page": 169,
+   "sha256": "5b75a93c50aa7fa85b67bf4c95be74e2837300fb857e0f06557558d79c4a49ba",
+   "split": "tuning"
+  },
+  {
+   "file": "l5-p0186-186.png",
+   "lampiran": 5,
+   "pdf_page": 186,
+   "printed_page": 172,
+   "sha256": "1475cc3abb3194d39260d2df9bb996d5a9bf75d4260047352fc27e31579865a0",
+   "split": "tuning"
+  },
+  {
+   "file": "l5-p0203-203.png",
+   "lampiran": 5,
+   "pdf_page": 203,
+   "printed_page": 189,
+   "sha256": "13f729109604b6ccff6b6d05604988e9163e1ac1cba07d549a03e0c5a7e7a79c",
+   "split": "holdout"
+  },
+  {
+   "file": "l5-p0235-235.png",
+   "lampiran": 5,
+   "pdf_page": 235,
+   "printed_page": 221,
+   "sha256": "f16ce546fb5b3fd6801914da2ea5a29d8bc11cada0b627b2180d37849a150451",
+   "split": "holdout"
+  },
+  {
+   "file": "l10-p0337-337.png",
+   "lampiran": 10,
+   "pdf_page": 337,
+   "printed_page": 323,
+   "sha256": "dd7e07b218a3c8484f10174313b84650e756cdf6a1a86c4d4999cb68ac19d147",
+   "split": "tuning"
+  },
+  {
+   "file": "l10-p0353-353.png",
+   "lampiran": 10,
+   "pdf_page": 353,
+   "printed_page": 339,
+   "sha256": "b5519be7242dea2cbcbf9b0301c7b0e8227e5b4c2afc3688736234d992091e5b",
+   "split": "holdout"
+  },
+  {
+   "file": "l10-p0373-373.png",
+   "lampiran": 10,
+   "pdf_page": 373,
+   "printed_page": 359,
+   "sha256": "f5fb08f77c12d87e721ed3898aaa0615f475a16b9783c2839c16d814e82878a0",
+   "split": "tuning"
+  },
+  {
+   "file": "l10-p0377-377.png",
+   "lampiran": 10,
+   "pdf_page": 377,
+   "printed_page": 363,
+   "sha256": "51d22e9b59b33f48cac2cf9bb8bded608f606aa35ac196f94758b588801e3383",
+   "split": "holdout"
+  },
+  {
+   "file": "l10-p0378-378.png",
+   "lampiran": 10,
+   "pdf_page": 378,
+   "printed_page": 364,
+   "sha256": "831fdb5d51c20c3eab9f6962f79ed86bca5c9d1c737481f830eef9134bf83d9b",
+   "split": "tuning"
+  },
+  {
+   "file": "l10-p0394-394.png",
+   "lampiran": 10,
+   "pdf_page": 394,
+   "printed_page": 380,
+   "sha256": "17edfc00219b6d36d67a6557ed06ee094d8fd29fc77df1a99daaaeeb65577fe7",
+   "split": "tuning"
+  },
+  {
+   "file": "l10-p0402-402.png",
+   "lampiran": 10,
+   "pdf_page": 402,
+   "printed_page": 388,
+   "sha256": "23f0c68476c327ee166b6752e7b6da92865e3457a6ee4c284087067d87a58d17",
+   "split": "tuning"
+  },
+  {
+   "file": "l10-p0410-410.png",
+   "lampiran": 10,
+   "pdf_page": 410,
+   "printed_page": 396,
+   "sha256": "7f19ce8d12dc34ca2e7473168074ac81991966fcd87bb397d61a9ad12a8098ff",
+   "split": "holdout"
+  },
+  {
+   "file": "l10-p0419-419.png",
+   "lampiran": 10,
+   "pdf_page": 419,
+   "printed_page": 405,
+   "sha256": "05d2948218a50b0b6d64d4e7564214011dcf46dda08808e2f9e8c2ca44fd3900",
+   "split": "holdout"
+  },
+  {
+   "file": "l10-p0427-427.png",
+   "lampiran": 10,
+   "pdf_page": 427,
+   "printed_page": 413,
+   "sha256": "a14b2e49e77c4e9c98c9fede1bd22c7bc6f4c4d08665a9aa7ecd2c267db1b5d0",
+   "split": "holdout"
+  }
+ ]
+}

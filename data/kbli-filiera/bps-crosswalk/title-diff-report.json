@@ -7528,6 +7528,18 @@
   },
   {
    "band": [
+    644.0,
+    669.0
+   ],
+   "code": "46593",
+   "in_match_langsung_canonical": true,
+   "lampiran": 10,
+   "pdf_page": 372,
+   "uraian_2020": "Perdagangan Besar Alat Transportasi Darat (Bukan Mobil, Sepeda Motor, Dan Sejenisnya), Suku Cadang Dan Perlengkapannya",
+   "uraian_2025": "Perdagangan Besar Alat Transportasi Darat (Bukan Mobil, Sepeda Motor, dan Sejenisnya), Suku Cadang, dan Perlengkapannya"
+  },
+  {
+   "band": [
     606.0,
     631.0
    ],
@@ -8435,7 +8447,7 @@
    "in_match_langsung_canonical": true,
    "lampiran": 10,
    "pdf_page": 395,
-   "uraian_2020": "Perdagangan Eceran Bahan Kimia, dan Aromatik/Penyegar (Minyak Atsiri), Dan Bahan Bakar Bukan",
+   "uraian_2020": "Perdagangan Eceran Bahan Kimia, dan Aromatik/Penyegar (Minyak Atsiri), Dan Bahan Bakar Bukan Bahan Bakar Untuk Kendaraan Bermotor Lainnnya",
    "uraian_2025": "Perdagangan Eceran Bahan Kimia, Aromatik/Penyegar (Minyak Asiri), dan Bahan Bakar Selain Bahan Bakar untuk Kendaraan Bermotor Lainnya"
   },
   {
@@ -10223,7 +10235,7 @@
    "in_match_langsung_canonical": true,
    "lampiran": 5,
    "pdf_page": 227,
-   "uraian_2020": "Aktivitas penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Barang",
+   "uraian_2020": "Aktivitas penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Barang Keperluan Rumah Tangga Dan Pribadi Lainnya YTDL",
    "uraian_2025": "Penyewaan Barang Pribadi dan Barang Rumah Tangga Lainnya YTDL"
   },
   {
@@ -10852,6 +10864,18 @@
   },
   {
    "band": [
+    634.0,
+    659.0
+   ],
+   "code": "84129",
+   "in_match_langsung_canonical": false,
+   "lampiran": 10,
+   "pdf_page": 427,
+   "uraian_2020": "Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan Dan Kebudayaan",
+   "uraian_2025": "Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan, dan Kebudayaan"
+  },
+  {
+   "band": [
     530.0,
     545.0
    ],
@@ -10944,7 +10968,7 @@
    "lampiran": 10,
    "pdf_page": 434,
    "uraian_2020": "Aktivitas Sosial di Dalam Panti untuk Penyandang Disabilitas Grahita",
-   "uraian_2025": "Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis"
+   "uraian_2025": "Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah"
   },
   {
    "band": [
@@ -11499,5 +11523,5 @@
    "uraian_2025": "Aktivitas Produksi Beragam Jasa oleh Rumah Tangga untuk Keperluan Sendiri"
   }
  ],
- "same_code_changed_title_count": 956
+ "same_code_changed_title_count": 958
 }

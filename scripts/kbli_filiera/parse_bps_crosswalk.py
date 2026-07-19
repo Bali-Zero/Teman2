@@ -241,6 +241,9 @@ def extract_page(page, pdf_page: int, lampiran: int) -> dict:
             if idx <= 2 and not out["rows"]:
                 b.kind = "continuation"
                 out["has_continuation_first_band"] = True
+                out["continuation_words"] = [
+                    {"text": w["text"], "x0": w["x0"], "top": w["top"]} for w in b.words
+                ]
                 out["unresolved"].append({
                     "pdf_page": pdf_page, "band": [round(b.top, 1), round(b.bottom, 1)],
                     "reason": "first_band_no_codes_possible_continuation",
@@ -351,17 +354,35 @@ def run_full(pdf_path: Path, out_dir: Path) -> int:
             boundary_guard[str(pno)] = len(rec["rows"])
 
         for lampiran, (first, last) in LAMPIRAN_SPANS.items():
-            prev_page_rows = None
-            for pno in range(first, last + 1):
-                rec = extract_page(pdf.pages[pno - 1], pno, lampiran)
-                # Cross-page title continuation: attach to the LAST row of the
-                # PREVIOUS page (deterministic, flagged; the edge itself was
-                # anchored there — fail-closed rule only guards edges, titles
-                # keep their completeness via this stitch).
-                cont = [u for u in rec["unresolved"] if u["reason"] == "first_band_no_codes_possible_continuation"]
-                if cont and prev_page_rows:
-                    prev_page_rows[-1]["continuation_text"] = cont[0]["text"]
-                    rec["unresolved"] = [u for u in rec["unresolved"] if u["reason"] != "first_band_no_codes_possible_continuation"]
+            # Phase 1: extract every page record (rows still mutable).
+            recs = [extract_page(pdf.pages[pno - 1], pno, lampiran) for pno in range(first, last + 1)]
+            # Phase 2: cross-page TITLE continuation stitch — a first band with
+            # zero codes belongs to the PREVIOUS page's last row (the row's
+            # edge is anchored there; only its title text spills over). The
+            # continuation words are split by column zone and appended to the
+            # matching title cells BEFORE edges are emitted. Fail-closed rule
+            # (spec §1.4 item 8) only guards EDGES; titles keep completeness
+            # via this deterministic stitch, flagged per row.
+            prev_with_rows = None
+            for rec in recs:
+                cont_words = rec.pop("continuation_words", None)
+                if cont_words and prev_with_rows is not None:
+                    last_row = prev_with_rows["rows"][-1]
+                    left_extra = cell_text([w for w in cont_words if COL2_MIN_X <= w["x0"] < RIGHT_CODE_ZONE[0]])
+                    right_extra = cell_text([w for w in cont_words if w["x0"] >= COL4_MIN_X])
+                    if left_extra:
+                        last_row["left_title"] = (last_row["left_title"] + " " + left_extra).strip()
+                    if right_extra:
+                        last_row["right_title"] = (last_row["right_title"] + " " + right_extra).strip()
+                    last_row["continuation_text"] = (left_extra + " || " + right_extra).strip(" |")
+                    rec["unresolved"] = [
+                        u for u in rec["unresolved"]
+                        if u["reason"] != "first_band_no_codes_possible_continuation"
+                    ]
+                if rec["rows"]:
+                    prev_with_rows = rec
+            # Phase 3: emit edges.
+            for rec in recs:
                 for row in rec["rows"]:
                     if lampiran == 5:
                         k2020, k2025 = row["left_code"], row["right_code"]
@@ -403,8 +424,6 @@ def run_full(pdf_path: Path, out_dir: Path) -> int:
                     "has_wrapped_row": any(r["n_title_lines"] >= 2 for r in rec["rows"]),
                     "max_title_lines": max((r["n_title_lines"] for r in rec["rows"]), default=0),
                 })
-                if rec["rows"]:
-                    prev_page_rows = rec["rows"]
 
     # Relation degrees -> N:M flags per page (within each lampiran's edge set).
     for lampiran in (5, 10):
@@ -450,7 +469,8 @@ def run_full(pdf_path: Path, out_dir: Path) -> int:
     seen_2025 = {}
     for e in edges[5] + edges[10]:
         if e["kbli_2020"] == e["kbli_2025"]:
-            full_2025 = (e["uraian_2025"] + (" " + e["continuation_text"] if e["title_continued_from_next_page"] and e["lampiran"] == 5 else "")).strip()
+            # titles are already stitched complete (cross-page continuation
+            # appended in the phase-2 stitch before edge emission)
             if norm_title(e["uraian_2020"]) != norm_title(e["uraian_2025"]):
                 same_code_changed_title.append({
                     "code": e["kbli_2020"],

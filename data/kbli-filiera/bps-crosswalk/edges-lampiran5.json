@@ -3439,7 +3439,7 @@
    663.0
   ],
   "code_cell_noise": [],
-  "continuation_text": "",
+  "continuation_text": "dan/atau Termasuk dalam Appendiks CITES",
   "kbli_2020": "03151",
   "kbli_2025": "03120",
   "lampiran": 5,
@@ -3448,8 +3448,8 @@
   "printed_page": 123,
   "sebagian_2020": false,
   "sebagian_2025": false,
-  "title_continued_from_next_page": false,
-  "uraian_2020": "Penangkapan/Pengambilan Ikan Bersirip (Pisces) yang Dilindungi",
+  "title_continued_from_next_page": true,
+  "uraian_2020": "Penangkapan/Pengambilan Ikan Bersirip (Pisces) yang Dilindungi dan/atau Termasuk dalam Appendiks CITES",
   "uraian_2025": "Penangkapan Ikan dan Biota Air Lainnya di Perairan Air Tawar"
  },
  {
@@ -26920,7 +26920,7 @@
    660.0
   ],
   "code_cell_noise": [],
-  "continuation_text": "",
+  "continuation_text": "Tembakau, Kimia, Farmasi, Kosmetik Dan Alat Laboratorium",
   "kbli_2020": "47911",
   "kbli_2025": "47727",
   "lampiran": 5,
@@ -26929,8 +26929,8 @@
   "printed_page": 178,
   "sebagian_2020": false,
   "sebagian_2025": false,
-  "title_continued_from_next_page": false,
-  "uraian_2020": "Perdagangan Eceran Melalui Media Untuk Komoditi Makanan, Minuman,",
+  "title_continued_from_next_page": true,
+  "uraian_2020": "Perdagangan Eceran Melalui Media Untuk Komoditi Makanan, Minuman, Tembakau, Kimia, Farmasi, Kosmetik Dan Alat Laboratorium",
   "uraian_2025": "Perdagangan Eceran Obat Tradisional untuk Hewan"
  },
  {
@@ -41176,7 +41176,7 @@
    674.0
   ],
   "code_cell_noise": [],
-  "continuation_text": "",
+  "continuation_text": "Keperluan Rumah Tangga Dan Pribadi Lainnya YTDL",
   "kbli_2020": "77299",
   "kbli_2025": "77299",
   "lampiran": 5,
@@ -41185,8 +41185,8 @@
   "printed_page": 213,
   "sebagian_2020": false,
   "sebagian_2025": false,
-  "title_continued_from_next_page": false,
-  "uraian_2020": "Aktivitas penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Barang",
+  "title_continued_from_next_page": true,
+  "uraian_2020": "Aktivitas penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Barang Keperluan Rumah Tangga Dan Pribadi Lainnya YTDL",
   "uraian_2025": "Penyewaan Barang Pribadi dan Barang Rumah Tangga Lainnya YTDL"
  },
  {
@@ -45736,7 +45736,7 @@
    673.0
   ],
   "code_cell_noise": [],
-  "continuation_text": "",
+  "continuation_text": "Fisik Berbasis Residensial oleh Pemerintah",
   "kbli_2020": "87303",
   "kbli_2025": "87301",
   "lampiran": 5,
@@ -45745,9 +45745,9 @@
   "printed_page": 224,
   "sebagian_2020": false,
   "sebagian_2025": false,
-  "title_continued_from_next_page": false,
+  "title_continued_from_next_page": true,
   "uraian_2020": "Aktivitas Sosial di Dalam Panti untuk Penyandang Disabilitas Netra",
-  "uraian_2025": "Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas"
+  "uraian_2025": "Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah"
  },
  {
   "band": [
