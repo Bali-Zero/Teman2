@@ -77,6 +77,8 @@ def mock_pool() -> tuple[MagicMock, AsyncMock]:
             pass
 
     pool.acquire = MagicMock(return_value=_Ctx())
+    # conn.transaction() must be an async CM, not a coroutine (phone-lock TX).
+    conn.transaction = MagicMock(return_value=_Ctx())
     return pool, conn
 
 

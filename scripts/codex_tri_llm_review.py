@@ -5,7 +5,9 @@ Three independent reviewers vote on a PR diff:
 
 1. **Codex** (gpt-5.5 high, OAuth Pro) — agentic coding specialist
 2. **Claude Opus 4.7 max effort** (OAuth, free) — deep reasoning
-3. **DeepSeek Reasoner v4** (~$0.01/query, allowed by hard rule)
+3. **Kimi K3** (Moonshot, flat Allegro subscription, `kimi` CLI) — cross-family
+   second opinion. Replaces the retired DeepSeek leg (2026-07-19, owner order,
+   pre-auth revoked — never top up).
 
 Voting outcome:
 - ≥2/3 GREEN + CI green → eligible for auto-merge
@@ -41,12 +43,12 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
 
 # Hard rule: NO ANTHROPIC_API_KEY. Defense-in-depth strip.
 for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_ANTHROPIC_KEY"):
@@ -77,7 +79,7 @@ logger = logging.getLogger("tri-llm-review")
 
 @dataclass
 class ReviewVerdict:
-    reviewer: str  # "codex" | "claude-opus" | "deepseek"
+    reviewer: str  # "codex" | "claude-opus" | "kimi-k3"
     verdict: str  # "green" | "yellow" | "red"
     p0_issues: list[str] = field(default_factory=list)
     p1_issues: list[str] = field(default_factory=list)
@@ -361,6 +363,25 @@ def _safe_subprocess_env() -> dict[str, str]:
     return env
 
 
+async def _communicate_or_kill(
+    proc: "asyncio.subprocess.Process", timeout: float
+) -> tuple[bytes, bytes]:
+    """communicate() with a hard kill on timeout.
+
+    ``asyncio.wait_for`` cancels the ``communicate()`` coroutine but does NOT
+    terminate the child — a hung seat CLI would linger as an orphan and
+    accumulate across panel runs (GLM R1 finding, 2026-07-19). Kill + reap
+    before re-raising so every timeout leaves zero residue.
+    """
+    try:
+        return await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        if proc.returncode is None:
+            proc.kill()
+            await proc.wait()
+        raise
+
+
 async def review_codex(prompt: str) -> ReviewVerdict:
     start = time.time()
     try:
@@ -380,7 +401,7 @@ async def review_codex(prompt: str) -> ReviewVerdict:
             stderr=asyncio.subprocess.PIPE,
             env=_safe_subprocess_env(),
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+        stdout, stderr = await _communicate_or_kill(proc, 600)
         duration = time.time() - start
         if proc.returncode != 0:
             return parse_verdict(
@@ -463,7 +484,7 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
             stderr=asyncio.subprocess.PIPE,
             env=env,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+        stdout, stderr = await _communicate_or_kill(proc, 600)
         duration = time.time() - start
         if proc.returncode != 0:
             return parse_verdict(
@@ -476,92 +497,68 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
         return parse_verdict("claude-opus", "", time.time() - start, error=str(e))
 
 
-async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
-    """DeepSeek Reasoner v4 via API (~$0.01/query — explicitly allowed).
+_KIMI_BIN_DEFAULT = str(Path.home() / ".kimi-code" / "bin" / "kimi")
 
-    The httpx.AsyncClient is owned by the caller (run_panel) and passed in
-    here. This satisfies the project's async-first rule (Golden Rule #10):
-    NEVER instantiate httpx.AsyncClient inside a method/loop — clients
-    must be persistent and closed via lifespan.
+
+def _resolve_kimi_bin() -> str | None:
+    """Resolve the ``kimi`` CLI binary defensively: env override -> the known
+    install path -> PATH lookup. Never raises."""
+    env_override = os.environ.get("KIMI_BIN")
+    if env_override and Path(env_override).exists():
+        return env_override
+    if Path(_KIMI_BIN_DEFAULT).exists():
+        return _KIMI_BIN_DEFAULT
+    return shutil.which("kimi")
+
+
+async def review_kimi(prompt: str) -> ReviewVerdict:
+    """Kimi K3 (Moonshot, flat Allegro subscription) via the local ``kimi`` CLI.
+
+    Replaces the retired DeepSeek leg (2026-07-19, owner order, pre-auth
+    revoked — never top up). Subprocess pattern (mirrors ``review_codex``),
+    NOT the httpx/API-key pattern the old DeepSeek leg used — Kimi has no
+    per-token key; it authenticates via OAuth device-code baked into the CLI
+    session, so there is no budget guard to consult here (flat sub, zero
+    marginal cost — see scripts/cost_breaker.py, kimi is an unguarded tier
+    same as ollama).
+
+    The binary is resolved defensively (``_resolve_kimi_bin``). If it cannot
+    be found, this returns an ``error`` verdict exactly like every other seat
+    does when its binary/credential is unavailable, so the W64 quorum logic
+    (``compute_outcome``) treats a missing Kimi as a dead seat — never a red
+    vote over a fixed denominator.
+
+    PII boundary (SYMBIOSIS Law 2): Kimi is a Chinese cloud — prompts must
+    never carry client PII (KTP/passport/NPWP/akta/CRM rows). This leg only
+    ever receives non-PII code diffs; keep it that way.
     """
     start = time.time()
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
-    if not api_key:
-        # Try sourcing from on-disk secret files, in priority order.
-        # ~/.openclaw/workspace/.env.master is where the key actually
-        # lives on the Pro (CLAUDE.md DeepSeek arsenal note); the older
-        # ~/.nuzantara-secrets.env is kept as a fallback. Under launchd
-        # DEEPSEEK_API_KEY is never in the env, so without reading
-        # .env.master the reviewer silently returns no_api_key (W64).
-        for secrets_path in (
-            Path.home() / ".openclaw" / "workspace" / ".env.master",
-            Path.home() / ".nuzantara-secrets.env",
-        ):
-            if not secrets_path.exists():
-                continue
-            for line in secrets_path.read_text().splitlines():
-                stripped = line.strip()
-                if stripped.startswith("export "):
-                    stripped = stripped[len("export "):]
-                if stripped.startswith("DEEPSEEK_API_KEY="):
-                    api_key = stripped.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-            if api_key:
-                break
-    if not api_key:
-        return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
-
-    # Smart-spend 2026-07-14: consult the cost breaker before spending and
-    # ledger the call after — the panel already degrades gracefully to 2-way
-    # when this seat drops, so a budget refusal is a soft seat-death, not an
-    # error. Import is lazy + best-effort: a broken guard must never kill the
-    # review panel itself.
+    binp = _resolve_kimi_bin()
+    if not binp:
+        return parse_verdict("kimi-k3", "", time.time() - start, error="kimi_binary_not_found")
     try:
-        import deepseek_client as _dsc
-
-        _decision = await _dsc.budget_verdict_async()
-        if _decision.verdict is not _dsc.cost_breaker.Verdict.ALLOW:
-            return parse_verdict(
-                "deepseek", "", time.time() - start,
-                error=f"budget_{_decision.verdict.value.lower()}",
-            )
-    except Exception as exc:  # noqa: BLE001 — guard is best-effort here
-        logger.warning("deepseek budget guard unavailable (%s) — proceeding", exc)
-        _dsc = None
-
-    try:
-        r = await http_client.post(
-            "https://api.deepseek.com/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": "deepseek-v4-pro",  # was 'deepseek-reasoner' — legacy alias silently routes to V4-Flash (cicatrix 2026-05-24)
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a strict code reviewer. Output ONLY the JSON requested, no preamble.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                "max_tokens": 8192,
-                "temperature": 0,
-            },
+        proc = await asyncio.create_subprocess_exec(
+            binp,
+            "-m",
+            "kimi-code/k3",
+            "-p",
+            prompt,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.DEVNULL,
+            env=_safe_subprocess_env(),
         )
+        stdout, stderr = await _communicate_or_kill(proc, 600)
         duration = time.time() - start
-        if r.status_code != 200:
+        if proc.returncode != 0:
             return parse_verdict(
-                "deepseek", r.text[:1000], duration, error=f"http_{r.status_code}"
+                "kimi-k3", stdout.decode(errors="replace"), duration, error=stderr.decode(errors="replace")[:500]
             )
-        data = r.json()
-        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        if _dsc is not None:
-            _dsc.log_cost_event(
-                str(data.get("model") or "deepseek-v4-pro"),
-                data.get("usage") or {},
-                purpose="tri-llm-review",
-            )
-        return parse_verdict("deepseek", content, duration)
+        return parse_verdict("kimi-k3", stdout.decode(errors="replace"), duration)
+    except asyncio.TimeoutError:
+        return parse_verdict("kimi-k3", "", time.time() - start, error="timeout")
     except Exception as e:
-        return parse_verdict("deepseek", "", time.time() - start, error=str(e))
+        return parse_verdict("kimi-k3", "", time.time() - start, error=str(e))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -572,37 +569,17 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
 async def run_panel(prompt: str) -> list[ReviewVerdict]:
     """Run all 3 reviewers in parallel, return verdicts (one per reviewer).
 
-    Creates a single persistent httpx.AsyncClient for DeepSeek (async-first
-    rule — Golden Rule #10), used only by ``review_deepseek``. The client
-    is closed via the async context manager when this coroutine exits.
+    All three legs are now subprocess-based (codex CLI, claude CLI, kimi
+    CLI) — no persistent httpx.AsyncClient is needed here anymore (the old
+    DeepSeek leg was the only httpx consumer in this function).
     """
-    logger.info("Launching tri-LLM panel (codex + claude-opus + deepseek)")
-    try:
-        import httpx  # type: ignore[import-not-found]
-    except ImportError:
-        # Without httpx, DeepSeek leg is unavailable; degrade panel to 2-way.
-        logger.warning("httpx missing — DeepSeek leg disabled, panel runs 2-way")
-        results = await asyncio.gather(
-            review_codex(prompt),
-            review_claude_opus(prompt),
-            return_exceptions=False,
-        )
-        # Synthesize a deepseek verdict to keep schema stable
-        deepseek_skip = ReviewVerdict(
-            reviewer="deepseek",
-            verdict="red",
-            duration_s=0.0,
-            error="httpx_missing",
-        )
-        results = [*results, deepseek_skip]
-    else:
-        async with httpx.AsyncClient(timeout=600.0) as http_client:
-            results = await asyncio.gather(
-                review_codex(prompt),
-                review_claude_opus(prompt),
-                review_deepseek(prompt, http_client),
-                return_exceptions=False,
-            )
+    logger.info("Launching tri-LLM panel (codex + claude-opus + kimi-k3)")
+    results = await asyncio.gather(
+        review_codex(prompt),
+        review_claude_opus(prompt),
+        review_kimi(prompt),
+        return_exceptions=False,
+    )
 
     for r in results:
         logger.info(
@@ -722,7 +699,7 @@ def post_pr_comment(decision: PanelDecision) -> bool:
     lines += [
         "",
         "---",
-        "_Automated tri-LLM review (Codex GPT-5.5 · Claude Opus · DeepSeek V4-Pro). "
+        "_Automated tri-LLM review (Codex GPT-5.5 · Claude Opus · Kimi K3). "
         "Review-only — **merge is the operator's decision** (Legge 5). "
         "This bot never labels, approves, or merges._",
     ]

@@ -85,6 +85,28 @@ findings below) + the sumber+kontak pattern.
 
 **Open wounds / next targets:**
 
+- **Adaptive-production program (2026-07-20).** Empirical DB diagnosis (30d corpus): kicker frozen
+  30/30 on "Our read:" through 2026-07-15, then 3/3 on "THE SIGNAL" post-#2544 — same
+  single-example-anchoring bug, one position over; narrative arc identical 33/33
+  (`cover → take → body×N → CTA`) regardless of domain/liveness; cover subheads formulaic (3-example
+  pool recycled); 4/9 layout families ever selected because the generator never emits the structured
+  fields the other 5 need. **The one axis that varies is the one axis with a DB lookback armed
+  (register/tone) — injected state beats stated intent, every time.** Kicker/subhead DB-lookback cure
+  (generalizing the register/tone mechanism to those 2 axes) is IN FLIGHT in worktree
+  `wr2-kicker-variety`, second red-team round as of this entry. Full 3-seat deep research (Kimi K3
+  world-class-mechanisms + Gemini 3.1 Pro OSS-harvest + Codex sol-ultra architecture-review, +
+  independent Fable visual review of the last 3 decks) archived at
+  `_research/2026-07-20-adaptive-production-3seat-research.md`, with an adoption roadmap ruled by
+  Fable as final gate: **Fase 1 (adopt now)** = typed Carousel IR (slide-shape contract:
+  prose/statement/fact_stack/qa_dialogue/status_list/stat_card/citation) + Creative Ledger
+  (per-draft decision-vector signatures, generalizing the kicker/subhead fix) + closer-contract unify;
+  **Fase 2** = arc grammar + Planner/Slot-Writer split, gated on Fase 1; **metrics-gated** (n≥200) =
+  feedback bandit + portfolio content matrix + art-direction cards; several items are **Zero-gated**
+  (Legge 5/brand — franchise slot "The Bali Zero read", all-caps body doctrine, palette rotation).
+  Codex fresh-eyes findings A-J on the live codebase: **finding A is the root cause of the CTA being
+  absent on every single rendered deck** — the generator requires the last slide to carry a CTA while
+  the `statement-bomb` layout contract explicitly forbids one and renders only a short statement;
+  constitutional split-brain, not a copy-quality bug.
 - **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR FIRED POSITIVE → WOUND CLOSED 2026-07-19 ~02:03 WITA.** The first post-patch natural nightly (`run_20260719_010004.json`, 25 articles / 15 classified) emitted **tiers {evergreen:12, developing:3}** with **distinct scores {0, 60}** — the DETERMINISTIC `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} (#2635), NOT the old additive 30/50, and NOT stuck all-evergreen. The 3 developing items score 60 ≥ 40 → they pass the `WR2_PREFER_LIVE_NEWS` filter and will fill the live pool at the next selector run (04:24/05:10; not forced — Legge-5-adjacent). #2631+#2635 chain proven end-to-end on a natural nightly (not just composition). Only remaining passive confirmation: the selector actually picking one. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
@@ -188,16 +210,16 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
 `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` → `REPO_ROOT=${WR2_REPO_ROOT:-~/nuzantara-deploy}`
 — deploy = pull BOTH `~/Desktop/nuzantara` AND `~/nuzantara-deploy`, scar #1):**
 
-| Stage         | Script                                                                                            | launchd          | Notes                                                                                                                                                                                                                                                                              |
+| Stage | Script | launchd | Notes |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
-| Topic pick    | `scripts/wr2_topic_selector.py`                                                                   | topic-selector   | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
-| Compose       | `scripts/wr2_draft_generator.py`                                                                  | draft-generator  | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
-| Hero images   | `scripts/wr2_image_generator.py`                                                                  | image-generator  | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min                                                                                                                                                                                       |
-| Facts         | `scripts/wr2_fact_extractor.py`                                                                   | fact-extractor   | gates on `fact_check_json IS NULL`                                                                                                                                                                                                                                                 |
-| Check         | fact-checker lane                                                                                 | fact-checker     | writes `fact_check_status` (currently degraded pipeline-wide)                                                                                                                                                                                                                      |
-| Render        | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply       | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender`                                                                                                                                     |
-| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py`                                | supervisor       | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked`                                                                                                                                                                                                      |
-| Reconcile     | `scripts/wr2_daily_reconciler.py`                                                                 | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness`                                                                                                                                                                                              |
+| Topic pick | `scripts/wr2_topic_selector.py` | topic-selector | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
+| Compose | `scripts/wr2_draft_generator.py` | draft-generator | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
+| Hero images | `scripts/wr2_image_generator.py` | image-generator | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min |
+| Facts | `scripts/wr2_fact_extractor.py` | fact-extractor | gates on `fact_check_json IS NULL` |
+| Check | fact-checker lane | fact-checker | writes `fact_check_status` (currently degraded pipeline-wide) |
+| Render | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender` |
+| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py` | supervisor | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked` |
+| Reconcile | `scripts/wr2_daily_reconciler.py` | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness` |
 
 **DB**: `war_room_drafts` on nuzantara-postgres. Status machine (CHECK constraint, migration 245):
 briefed → drafts → drafts_imaged → drafts_imaged_facted → drafts_imaged_checked → rendering →
@@ -326,6 +348,8 @@ cover copy measured via the metrics loop.
 - DB access RO: `mcp__postgres-nuzantara__query` / `scripts/pg.sh`; writes ONLY via backend
   code from Pro env (never MCP).
 - IG token: Pro `.env.master` — grep into env vars, never print (scar #4).
+- Adaptive-production 3-seat research (2026-07-20): `_research/2026-07-20-adaptive-production-3seat-research.md`
+  (Kimi K3 + Gemini 3.1 Pro + Codex sol-ultra, full verbatim seat reports + Fable synthesis/adoption ruling).
 
 > Chi cambia lo stato AGGIORNA la §1. Un corner stantio è peggio di nessun corner (W90: anche il
 > ground-truth invecchia).

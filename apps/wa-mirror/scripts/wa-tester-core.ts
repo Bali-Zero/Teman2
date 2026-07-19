@@ -377,3 +377,21 @@ export function transcriptHasZeroReplyQuestion(
 ): boolean {
   return transcript.summary.questions_with_zero_replies > 0;
 }
+
+// ---------------------------------------------------------------------------
+// Pairing-state detection (pure) — used by --status / --send-battery's
+// isPaired() gate in scripts/wa-tester.ts.
+// ---------------------------------------------------------------------------
+
+export type StoredCreds = { registered?: boolean; me?: { id?: string } };
+
+/**
+ * True if the on-disk creds.json indicates a paired session, under EITHER
+ * Baileys pairing flow. `registered` is set only by the pairing-CODE flow;
+ * QR-companion pairing (the flow wa-tester's `--pair` actually drives) sets
+ * `creds.me` instead and leaves `registered: false` — a session paired via
+ * QR is very much paired even though `registered` reads false.
+ */
+export function isPairedFromCreds(creds: StoredCreds): boolean {
+  return creds.registered === true || typeof creds.me?.id === "string";
+}

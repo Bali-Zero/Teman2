@@ -325,6 +325,11 @@ class EntityExtractionService:
             "e-visa",
             "evisa",
             "molina",
+            "overstay",
+            "penangkalan",
+            "deportation",
+            "deportasi",
+            "re-entry ban",
         ]
         if any(kw in query_lower for kw in visa_keywords):
             return self.DOMAIN_VISA
