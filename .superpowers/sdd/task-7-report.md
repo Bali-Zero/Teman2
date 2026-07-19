@@ -12,7 +12,10 @@ publication, collector mutation, client-data access, or paid API call occurred.
 
 ## Review Remediation
 
-Two independently confirmed authorization and lease findings were corrected.
+Two review waves corrected four independently confirmed authorization, lease,
+heartbeat-lifecycle, and DLP findings.
+
+### Wave 1 — Authorization and Server Lease Fencing
 
 - **Claim-time role revalidation:** the signed machine claim route reloads and
   validates the current role allowlist immediately before claiming work. Only
@@ -33,6 +36,26 @@ Two independently confirmed authorization and lease findings were corrected.
   result or completion audit row is written, and the machine route returns a
   conflict.
 
+### Wave 2 — Worker Lease Lifetime and Fail-Closed DLP
+
+- **End-to-end heartbeat scope:** the worker now keeps its heartbeat active from
+  the initial claim confirmation through adapter execution, projection, DLP,
+  safe failure handling, and the terminal result acknowledgement or rejection.
+- **Lease-loss cancellation:** if a heartbeat fails while terminal submission is
+  still in flight, the worker cancels and awaits that operation, raises only a
+  sanitized lease-loss error, and cannot continue into another submission path.
+  The server-side lease CAS remains the authoritative stale-write fence.
+- **Non-blocking projection:** synchronous projection runs in a worker thread so
+  a slow projection cannot starve the event loop or suppress lease heartbeats.
+- **Indeterminate DLP quarantine:** unavailable, timed-out, empty, or malformed
+  classifier outcomes are explicitly indeterminate and treated as PII-bearing.
+  Regex detection remains additive; an uncertain classifier can never downgrade
+  a regex finding or authorize persistence.
+- **Content-free failure boundary:** DLP rejection and failure receipts contain
+  only the closed `dlp_rejected` outcome. Raw research text, classifier output,
+  exception detail, and classifier-provided explanations are absent from return
+  values and logs.
+
 ## Delivered Components
 
 - Internal Research list, workbench, and structured finding detail views.
@@ -47,6 +70,8 @@ Two independently confirmed authorization and lease findings were corrected.
 
 ## TDD Evidence
 
+### Wave 1
+
 - Review RED 1 used the real signed claim route and SQLite-backed D1 harness: a
   job created by a now-revoked Analyst was returned ahead of a valid current
   Analyst job.
@@ -56,6 +81,20 @@ Two independently confirmed authorization and lease findings were corrected.
 - GREEN proves the revoked job becomes terminal with metadata-only audit, the
   later valid job is returned, and all three expired-lease mutations return
   conflict without storing a result.
+
+### Wave 2
+
+- RED added deterministic coverage before implementation and produced exactly
+  `14 failed, 19 passed`: four worker DLP uncertainty cases completed instead of
+  quarantining, the heartbeat stopped after the adapter, in-flight terminal
+  submission survived lease loss, and eight global DLP uncertainty cases failed
+  open or exposed raw diagnostic detail.
+- GREEN focused coverage is `33 passed`: an immediate adapter followed by slow
+  projection, rejecting DLP, and terminal submission emits multiple heartbeats
+  in every post-adapter phase and stops cleanly; lease failure cancels in-flight
+  submission without persistence; unavailable, timeout, malformed, and empty
+  classifier outcomes quarantine both PII-like and ordinary text without raw
+  content in results or logs.
 
 ## Final Gates
 
@@ -80,13 +119,22 @@ All matched files use Prettier code style!
 From `apps/zantara-media`:
 
 ```text
-.venv/bin/python -m pytest tests/magazine/test_research_worker.py -q
-7 passed in 0.14s
+.venv/bin/python -m pytest tests/magazine/test_research_worker.py \
+  tests/test_dlp.py -q
+33 passed in 0.24s
+
+.venv/bin/python -m pytest tests/magazine tests/test_dlp.py -q
+104 passed in 25.58s
 
 .venv/bin/ruff check zantara_media/magazine/research_worker.py \
-  zantara_media/magazine/transport.py \
-  tests/magazine/test_research_worker.py
+  zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
+  tests/test_dlp.py
 All checks passed!
+
+.venv/bin/ruff format --check zantara_media/magazine/research_worker.py \
+  zantara_media/security/dlp.py tests/magazine/test_research_worker.py \
+  tests/test_dlp.py
+4 files already formatted
 ```
 
 Repository hygiene:

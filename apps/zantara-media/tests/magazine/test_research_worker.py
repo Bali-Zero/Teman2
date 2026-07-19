@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Mapping
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from zantara_media.magazine.research_worker import (
@@ -55,7 +58,9 @@ class FakeTransport:
         self.heartbeats: list[tuple[str, str, int]] = []
         self.fail_heartbeat_at = fail_heartbeat_at
 
-    async def claim_research_job(self, *, worker_id: str, lease_seconds: int) -> Mapping[str, Any] | None:
+    async def claim_research_job(
+        self, *, worker_id: str, lease_seconds: int
+    ) -> Mapping[str, Any] | None:
         assert worker_id == "worker:pro-magazine"
         assert lease_seconds == 120
         return self.job
@@ -203,6 +208,69 @@ async def test_worker_rejects_unbound_claim_and_dlp_failure_with_safe_codes() ->
     assert transport.results[0]["failure"] == {"code": "dlp_rejected"}
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Private client Jane Doe lives at 17 Sunset Lane, Canggu.",
+        "The government announced a public tourism regulation.",
+    ],
+)
+@pytest.mark.parametrize("failure_mode", ["unavailable", "malformed"])
+async def test_default_dlp_classifier_uncertainty_posts_only_sanitized_failure(
+    text: str, failure_mode: str
+) -> None:
+    class TextAdapter:
+        async def execute(self, request: Mapping[str, Any]) -> tuple[str, list[ResearchClaim]]:
+            return (
+                text,
+                [
+                    ResearchClaim(
+                        claim_id="claim:classifier-uncertainty",
+                        kind="fact",
+                        text=text,
+                        evidence=(
+                            ResearchEvidence(
+                                evidence_id="evidence:classifier-uncertainty",
+                                publisher="Public Authority",
+                                citation="Public notice",
+                                canonical_url="https://example.org/notice",
+                                source_type="official",
+                            ),
+                        ),
+                    )
+                ],
+            )
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    if failure_mode == "unavailable":
+        mock_client.post = AsyncMock(side_effect=httpx.ConnectError("PRIVATE_CLASSIFIER_DETAIL"))
+    else:
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json.return_value = {"response": "PRIVATE_CLASSIFIER_DETAIL"}
+        mock_client.post = AsyncMock(return_value=response)
+
+    transport = FakeTransport()
+    worker = ResearchWorker(
+        transport=transport,
+        adapters={"notebook_insight": TextAdapter()},
+        now=lambda: "2026-07-19T04:30:00.000Z",
+    )
+    with patch("zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client):
+        assert await worker.run_once() is True
+
+    result = transport.results[0]
+    assert result["status"] == "failed"
+    assert result["failure"] == {"code": "dlp_rejected"}
+    assert result["summary"] is None
+    assert result["claims"] == []
+    assert text not in str(result)
+    assert "PRIVATE_CLASSIFIER_DETAIL" not in str(result)
+
+
 def test_worker_model_rejects_unknown_modes_and_private_identifiers() -> None:
     with pytest.raises(ResearchWorkerError):
         ResearchWorker.validate_job({**CLAIMED_JOB, "mode": "freeform"})
@@ -245,35 +313,87 @@ def test_numeric_claim_requires_unit_value_as_of_and_evidence() -> None:
             numeric_unit="percent",
             evidence=evidence,
         ).projection()
-    assert ResearchClaim(
-        claim_id="claim:investment-share",
-        kind="numeric",
-        text="The share is 25 percent.",
-        numeric_value="25",
-        numeric_unit="percent",
-        as_of="2026-07-19",
-        evidence=evidence,
-    ).projection()["as_of"] == "2026-07-19"
+    assert (
+        ResearchClaim(
+            claim_id="claim:investment-share",
+            kind="numeric",
+            text="The share is 25 percent.",
+            numeric_value="25",
+            numeric_unit="percent",
+            as_of="2026-07-19",
+            evidence=evidence,
+        ).projection()["as_of"]
+        == "2026-07-19"
+    )
 
 
 @pytest.mark.asyncio
-async def test_long_adapter_is_heartbeated_until_result_submission() -> None:
-    class SlowAdapter(NotebookAdapter):
-        async def execute(self, request: Mapping[str, Any]) -> tuple[str, list[ResearchClaim]]:
-            await asyncio.sleep(0.035)
-            return await super().execute(request)
+async def test_immediate_adapter_keeps_heartbeat_through_projection_dlp_and_submission() -> None:
+    phase = {"name": "claimed"}
+    heartbeat_phases: list[str] = []
 
-    transport = FakeTransport()
+    class SlowProjectionClaim:
+        def __init__(self, claim: ResearchClaim) -> None:
+            self._claim = claim
+
+        def projection(self) -> dict[str, Any]:
+            phase["name"] = "projection"
+            time.sleep(0.025)
+            return self._claim.projection()
+
+    class ImmediateAdapter(NotebookAdapter):
+        async def execute(self, request: Mapping[str, Any]) -> tuple[str, list[Any]]:
+            summary, claims = await super().execute(request)
+            return summary, [SlowProjectionClaim(claims[0])]
+
+    class SlowSubmitTransport(FakeTransport):
+        async def heartbeat_research_job(
+            self,
+            *,
+            job_id: str,
+            claim_token: str,
+            fencing_token: int,
+            lease_seconds: int,
+        ) -> Mapping[str, Any]:
+            heartbeat_phases.append(phase["name"])
+            return await super().heartbeat_research_job(
+                job_id=job_id,
+                claim_token=claim_token,
+                fencing_token=fencing_token,
+                lease_seconds=lease_seconds,
+            )
+
+        async def submit_research_result(
+            self, *, job_id: str, result: Mapping[str, Any]
+        ) -> Mapping[str, Any]:
+            phase["name"] = "submission"
+            await asyncio.sleep(0.025)
+            response = await super().submit_research_result(job_id=job_id, result=result)
+            phase["name"] = "acknowledged"
+            return response
+
+    async def slow_reject_dlp(text: str) -> bool:
+        phase["name"] = "dlp"
+        await asyncio.sleep(0.025)
+        return False
+
+    transport = SlowSubmitTransport()
     worker = ResearchWorker(
         transport=transport,
-        adapters={"notebook_insight": SlowAdapter()},
-        dlp_gate=lambda text: True,
+        adapters={"notebook_insight": ImmediateAdapter()},
+        dlp_gate=slow_reject_dlp,
         now=lambda: "2026-07-19T04:30:00.000Z",
-        heartbeat_interval_seconds=0.005,
+        heartbeat_interval_seconds=0.003,
     )
     assert await worker.run_once() is True
-    assert len(transport.heartbeats) >= 2
+    assert heartbeat_phases.count("projection") >= 2
+    assert heartbeat_phases.count("dlp") >= 2
+    assert heartbeat_phases.count("submission") >= 2
     assert len(transport.results) == 1
+    assert transport.results[0]["failure"] == {"code": "dlp_rejected"}
+    heartbeat_count = len(transport.heartbeats)
+    await asyncio.sleep(0.015)
+    assert len(transport.heartbeats) == heartbeat_count
 
 
 @pytest.mark.asyncio
@@ -299,4 +419,35 @@ async def test_cancelled_or_stale_lease_stops_adapter_and_never_submits() -> Non
     with pytest.raises(ResearchLeaseLostError):
         await worker.run_once()
     assert adapter_cancelled.is_set()
+    assert transport.results == []
+
+
+@pytest.mark.asyncio
+async def test_lease_loss_cancels_inflight_result_submission_without_stale_submit() -> None:
+    submission_started = asyncio.Event()
+    submission_cancelled = asyncio.Event()
+
+    class BlockingSubmitTransport(FakeTransport):
+        async def submit_research_result(
+            self, *, job_id: str, result: Mapping[str, Any]
+        ) -> Mapping[str, Any]:
+            submission_started.set()
+            try:
+                await asyncio.sleep(10)
+            finally:
+                submission_cancelled.set()
+            raise AssertionError("unreachable")
+
+    transport = BlockingSubmitTransport(fail_heartbeat_at=2)
+    worker = ResearchWorker(
+        transport=transport,
+        adapters={"notebook_insight": NotebookAdapter()},
+        dlp_gate=lambda text: True,
+        now=lambda: "2026-07-19T04:30:00.000Z",
+        heartbeat_interval_seconds=0.005,
+    )
+    with pytest.raises(ResearchLeaseLostError):
+        await asyncio.wait_for(worker.run_once(), timeout=0.2)
+    assert submission_started.is_set()
+    assert submission_cancelled.is_set()
     assert transport.results == []

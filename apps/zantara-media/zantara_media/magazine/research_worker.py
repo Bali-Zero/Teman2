@@ -108,9 +108,7 @@ class ResearchClaim:
 
 
 class ResearchAdapter(Protocol):
-    async def execute(
-        self, request: Mapping[str, Any]
-    ) -> tuple[str, Sequence[ResearchClaim]]: ...
+    async def execute(self, request: Mapping[str, Any]) -> tuple[str, Sequence[ResearchClaim]]: ...
 
 
 class ResearchTransport(Protocol):
@@ -138,7 +136,7 @@ Clock = Callable[[], str]
 
 async def _default_dlp_gate(text: str) -> bool:
     result = await dlp_check(text, "magazine-research-projection.json")
-    return not result.has_pii
+    return not result.has_pii and not result.indeterminate
 
 
 def _exact_keys(value: Mapping[str, Any], expected: set[str], label: str) -> None:
@@ -240,7 +238,11 @@ class ResearchWorker:
         if not topics and not entities and not tokens:
             raise ResearchWorkerError("research request has no selected subject")
         if mode == "notebook_insight":
-            if request.get("template") not in _TEMPLATES or len(topics) + len(entities) != 1 or tokens:
+            if (
+                request.get("template") not in _TEMPLATES
+                or len(topics) + len(entities) != 1
+                or tokens
+            ):
                 raise ResearchWorkerError("invalid notebook insight request")
         elif request.get("template") is not None:
             raise ResearchWorkerError("unexpected notebook template")
@@ -316,59 +318,63 @@ class ResearchWorker:
     async def _heartbeat_loop(self, job: Mapping[str, Any]) -> None:
         while True:
             await asyncio.sleep(self._heartbeat_interval_seconds)
-            await self._transport.heartbeat_research_job(
-                job_id=cast(str, job["job_id"]),
-                claim_token=cast(str, job["claim_token"]),
-                fencing_token=cast(int, job["fencing_token"]),
-                lease_seconds=self._lease_seconds,
-            )
+            await self._renew_lease(job)
 
-    async def _execute_with_heartbeat(
-        self, adapter: ResearchAdapter, job: Mapping[str, Any]
-    ) -> tuple[str, Sequence[ResearchClaim]]:
-        adapter_task = asyncio.create_task(
-            adapter.execute(cast(Mapping[str, Any], job["request"]))
-        )
-        heartbeat_task = asyncio.create_task(self._heartbeat_loop(job))
-        done, _ = await asyncio.wait(
-            {adapter_task, heartbeat_task}, return_when=asyncio.FIRST_COMPLETED
-        )
-        if heartbeat_task in done:
-            lease_error = heartbeat_task.exception()
-            adapter_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await adapter_task
-            raise ResearchLeaseLostError("research lease lost") from lease_error
-        heartbeat_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await heartbeat_task
-        return await adapter_task
-
-    async def run_once(self) -> bool:
-        raw_job = await self._transport.claim_research_job(
-            worker_id=self._worker_id,
-            lease_seconds=self._lease_seconds,
-        )
-        if raw_job is None:
-            return False
-        job = self.validate_job(raw_job)
+    async def _renew_lease(self, job: Mapping[str, Any]) -> None:
         await self._transport.heartbeat_research_job(
             job_id=cast(str, job["job_id"]),
             claim_token=cast(str, job["claim_token"]),
             fencing_token=cast(int, job["fencing_token"]),
             lease_seconds=self._lease_seconds,
         )
+
+    async def _run_with_heartbeat(
+        self, job: Mapping[str, Any], operation: Callable[[], Awaitable[None]]
+    ) -> None:
+        try:
+            await self._renew_lease(job)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise ResearchLeaseLostError("research lease lost") from exc
+
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop(job))
+        operation_task = asyncio.create_task(operation())
+        try:
+            done, _ = await asyncio.wait(
+                {operation_task, heartbeat_task}, return_when=asyncio.FIRST_COMPLETED
+            )
+            if operation_task in done:
+                await operation_task
+                return
+            try:
+                lease_error = heartbeat_task.exception()
+            except asyncio.CancelledError as exc:
+                lease_error = exc
+            operation_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await operation_task
+            raise ResearchLeaseLostError("research lease lost") from lease_error
+        finally:
+            for task in (operation_task, heartbeat_task):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(operation_task, heartbeat_task, return_exceptions=True)
+
+    async def _process_and_submit(self, job: Mapping[str, Any]) -> None:
         adapter = self._adapters.get(cast(ResearchMode, job["mode"]))
         if adapter is None:
             result = self._failure(job, "invalid_result")
         else:
             try:
-                summary, claims = await self._execute_with_heartbeat(adapter, job)
+                summary, claims = await adapter.execute(cast(Mapping[str, Any], job["request"]))
                 if not isinstance(summary, str) or not summary.strip() or len(summary) > 2000:
                     raise ResearchWorkerError("invalid research summary")
                 if len(claims) > 50:
                     raise ResearchWorkerError("too many research claims")
-                projections = [claim.projection() for claim in claims]
+                projections = await asyncio.to_thread(
+                    lambda: [claim.projection() for claim in claims]
+                )
                 candidate: dict[str, Any] = {
                     "schema_version": "research-result.v1",
                     "job_id": job["job_id"],
@@ -384,7 +390,11 @@ class ResearchWorker:
                 }
                 if len(json.dumps(candidate, ensure_ascii=False).encode("utf-8")) > 128_000:
                     raise ResearchWorkerError("research result exceeds size limit")
-                result = candidate if await self._passes_dlp(candidate) else self._failure(job, "dlp_rejected")
+                result = (
+                    candidate
+                    if await self._passes_dlp(candidate)
+                    else self._failure(job, "dlp_rejected")
+                )
             except ResearchLeaseLostError:
                 raise
             except EvidenceMissingError:
@@ -392,9 +402,20 @@ class ResearchWorker:
             except ResearchWorkerError:
                 result = self._failure(job, "invalid_result")
             except Exception:
-                # Raw adapter errors can contain private source fragments. Never log or echo them.
+                # Raw adapter or DLP errors can contain private source fragments.
                 result = self._failure(job, "source_unavailable")
-        await self._transport.submit_research_result(
-            job_id=cast(str, job["job_id"]), result=result
+        await self._transport.submit_research_result(job_id=cast(str, job["job_id"]), result=result)
+
+    async def run_once(self) -> bool:
+        raw_job = await self._transport.claim_research_job(
+            worker_id=self._worker_id,
+            lease_seconds=self._lease_seconds,
+        )
+        if raw_job is None:
+            return False
+        job = self.validate_job(raw_job)
+        await self._run_with_heartbeat(
+            job,
+            lambda: self._process_and_submit(job),
         )
         return True

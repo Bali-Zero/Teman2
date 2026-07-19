@@ -5,6 +5,7 @@ External calls (Ollama/httpx) are mocked so no real network access is needed.
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -37,11 +38,14 @@ CLEAN_SAMPLES = [
 # Helper: mock a clean Ollama response (no PII found by LLM)
 # ---------------------------------------------------------------------------
 
+
 def _mock_clean_llm_response() -> MagicMock:
     """Return a mock httpx response that says no PII found."""
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
-    mock_resp.json.return_value = {"response": '{"contains_pii": false, "reason": "No PII detected"}'}
+    mock_resp.json.return_value = {
+        "response": '{"contains_pii": false, "reason": "No PII detected"}'
+    }
     return mock_resp
 
 
@@ -58,6 +62,7 @@ def _mock_pii_llm_response() -> MagicMock:
 # ---------------------------------------------------------------------------
 # PII samples — should trigger Layer 1 or Layer 2 (no LLM needed)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_nik_number_detected():
@@ -104,6 +109,7 @@ async def test_akta_filename_trigger():
 # Clean samples — LLM is called; mock returns no PII
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("filename,text", CLEAN_SAMPLES)
 async def test_clean_samples(filename: str, text: str):
@@ -123,6 +129,7 @@ async def test_clean_samples(filename: str, text: str):
 # Layer 3 (LLM) only called when layers 1+2 find nothing
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_llm_layer_called_only_on_clean_regex():
     """Layer 3 should be invoked for clean text, and NOT for PII text."""
@@ -134,7 +141,9 @@ async def test_llm_layer_called_only_on_clean_regex():
     mock_client.__aexit__ = AsyncMock(return_value=False)
     mock_client.post = AsyncMock(return_value=_mock_clean_llm_response())
 
-    with patch("zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client) as mock_cls:
+    with patch(
+        "zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client
+    ) as mock_cls:
         await dlp_check(clean_text, clean_filename)
         # LLM should have been called
         assert mock_cls.call_count >= 1
@@ -146,7 +155,9 @@ async def test_llm_layer_called_only_on_clean_regex():
     mock_client2.__aexit__ = AsyncMock(return_value=False)
     mock_client2.post = AsyncMock(return_value=_mock_clean_llm_response())
 
-    with patch("zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client2) as mock_cls2:
+    with patch(
+        "zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client2
+    ) as mock_cls2:
         result = await dlp_check(pii_text, "some_file.txt")
         assert result.has_pii is True
         # LLM should NOT have been called (layers 1+2 caught it)
@@ -182,16 +193,47 @@ async def test_confidence_high_for_multiple_patterns():
 
 
 @pytest.mark.asyncio
-async def test_llm_timeout_fails_open():
-    """Timeout in LLM layer should fail open (has_pii=False) for clean content."""
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Private client Jane Doe lives at 17 Sunset Lane, Canggu.",
+        "The government announced a public tourism regulation.",
+    ],
+)
+@pytest.mark.parametrize("failure_mode", ["unavailable", "timeout", "malformed", "empty"])
+async def test_llm_indeterminate_fails_closed_without_raw_details(
+    text: str, failure_mode: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Classifier uncertainty quarantines both PII-like and ordinary text."""
     import httpx as real_httpx
 
     mock_client = AsyncMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
-    mock_client.post = AsyncMock(side_effect=real_httpx.TimeoutException("timeout"))
+    if failure_mode == "unavailable":
+        mock_client.post = AsyncMock(
+            side_effect=real_httpx.ConnectError("PRIVATE_CLASSIFIER_DETAIL")
+        )
+    elif failure_mode == "timeout":
+        mock_client.post = AsyncMock(
+            side_effect=real_httpx.TimeoutException("PRIVATE_CLASSIFIER_DETAIL")
+        )
+    else:
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json.return_value = {
+            "response": "PRIVATE_CLASSIFIER_DETAIL" if failure_mode == "malformed" else ""
+        }
+        mock_client.post = AsyncMock(return_value=response)
 
+    caplog.set_level(logging.DEBUG, logger="zantara_media.security.dlp")
     with patch("zantara_media.security.dlp.httpx.AsyncClient", return_value=mock_client):
-        result = await dlp_check("Some clean text with no patterns.", "notes.txt")
+        result = await dlp_check(text, "notes.txt")
 
-    assert result.has_pii is False
+    assert result.has_pii is True
+    assert result.indeterminate is True
+    assert result.patterns == ["LLM_CLASSIFIER_UNAVAILABLE"]
+    assert result.quarantine_reason == {"classifier_status": "unavailable"}
+    assert text not in repr(result)
+    assert "PRIVATE_CLASSIFIER_DETAIL" not in repr(result)
+    assert "PRIVATE_CLASSIFIER_DETAIL" not in caplog.text
