@@ -109,29 +109,106 @@ _SHARED_SCHEMA_KEYS = (
 
 _GENERATED_DATE_RE = re.compile(r"generated\s+(\d{4}-\d{2}-\d{2})")
 _QUESTION_HEADER_RE = re.compile(r"^### Q(\d+)\.\s*(.+?)\s*$", re.MULTILINE)
+# NOTE (2026-07-19, curated-cache cantiere Wave 1/2 postmortem): the answer
+# body has been observed in TWO physical layouts across real dossiers, both
+# equally valid per the spec's own prose (which never mandated a line break)
+# — (a) the label on its own line, answer starting on the next line (the
+# original E33/GARUDA convention the fixture below models), and (b) the
+# answer starting INLINE on the same line as the label ("**FINAL
+# (client-facing):** The standard..."), used by 8 of the 14 Wave 1/2
+# dossiers (company-compliance, company-ptpma-process, property-ownership,
+# property-villa-rental, tax-corporate, tax-personal, visa-kitap,
+# visa-medical-crew). The old `\s*\n` right after the label required a
+# literal newline before the answer could start, so it silently failed to
+# match (and thus silently emitted answer="") on every INLINE-style row —
+# not a crash, a quiet data-loss bug (162/272 rows empty when first
+# discovered via curated_qa_review_pack.py packs). `\s*` (no mandatory
+# `\n`) accepts either layout; `.strip()` on the caller side already
+# normalizes the leading whitespace/newline either way.
 _FINAL_RE = re.compile(
-    r"\*\*FINAL \(client-facing\):\*\*\s*\n(.*?)\n\s*\*\*CONFIDENCE:\*\*",
+    r"\*\*FINAL \(client-facing\):\*\*\s*(.*?)\n\s*\*\*CONFIDENCE:\*\*",
     re.DOTALL,
 )
 _CONFIDENCE_RE = re.compile(r"\*\*CONFIDENCE:\*\*\s*(\S+)")
+# Same postmortem, two more real-world variants beyond the header text:
+# (a) the "(source-cited, unverified)" qualifier is dropped in 9 of the 14
+#     Wave 1/2 dossiers ("**LAW REFS:**" bare) — the `(?: ...)?` makes it
+#     optional so both match;
+# (b) 6 of those 9 write the citations as INLINE PROSE (one or two
+#     semicolon-separated sentences right after the label, sometimes
+#     hard-wrapped across physical lines — e.g. visa-kitap), not a
+#     "- " bulleted list — the old mandatory `\s*\n` before the capture
+#     group required a literal newline before content could start, so it
+#     silently returned law_refs=[] for every such row (same data-loss
+#     shape as the FINAL_RE bug above). `\s*` (no mandatory `\n`) fixes it;
+#     `_extract_law_refs` below now falls back to semicolon-splitting the
+#     prose when no "- " bullet lines are present.
+# (c) THIRD real bug, independent of the two above and pre-existing in the
+#     original regex (not something the inline/prose fix introduced): the
+#     per-question `block` a caller hands in runs from this question's
+#     header to the NEXT "### Q" header, or — for the LAST question in a
+#     file — all the way to EOF (see `parse_e33_markdown_file` below). Real
+#     dossiers append document-level trailing sections after the last
+#     question ("## Self-check pass", "## Arbiter verification pass",
+#     "## Sanity checks", ...) — arbitrary text, not just "## Section...".
+#     The old boundary lookahead only recognized the literal "## Section"
+#     spelling, so on 7 of the 14 Wave 1/2 dossiers the last question's LAW
+#     REFS capture ran straight through those trailing sections to EOF,
+#     and any "- " bulleted line inside them (e.g. a "## Self-check pass"
+#     bullet list) got mis-read as one of the LAST QUESTION's own law refs
+#     — confirmed live: company-compliance Q20's rendered "Dasar hukum"
+#     line contained the dossier's ENTIRE postgate commentary, INTERNAL
+#     reasoning included, in a reviewer-facing pack. `\n## ` (ANY level-2
+#     heading, not just ones literally spelled "Section") is the correct,
+#     strictly tighter boundary — every "## Section ..." heading is also
+#     just "## " followed by more text, so this can only stop capture
+#     EARLIER/more-correctly, never later.
 _LAW_REFS_BLOCK_RE = re.compile(
-    r"\*\*LAW REFS \(source-cited, unverified\):\*\*\s*\n(.*?)(?=\n### Q\d+\.|\n## Section|\Z)",
+    r"\*\*LAW REFS(?: \(source-cited, unverified\))?:\*\*\s*(.*?)(?=\n### Q\d+\.|\n## |\Z)",
     re.DOTALL,
 )
+# A markdown horizontal rule ("---", "***", "___") used as the visual
+# separator between question blocks. Real dossiers place one right after
+# the LAW REFS content and before the next "### Q" header/EOF, so it lands
+# INSIDE the captured group above. Without filtering it out, the old
+# per-line bullet scan below (`elif stripped.startswith("-")`) mis-reads a
+# lone "---" line as a dash-bulleted ref and appends a bogus "--" entry —
+# confirmed live on every one of the 5 dossiers that otherwise parsed
+# cleanly (visa-golden-investor, visa-business-multientry, visa-student,
+# company-kbli-signed-lots: near-100% of rows; tax-pmk37: 0, no "---"
+# convention in that file). Filtered out unconditionally, both in the
+# bullet path and the prose-fallback path.
+_HR_LINE_RE = re.compile(r"^[-*_]{3,}\s*$")
 
 
 def _extract_law_refs(block: str) -> list[str]:
     match = _LAW_REFS_BLOCK_RE.search(block)
     if not match:
         return []
-    refs = []
+
+    bullet_refs: list[str] = []
+    prose_lines: list[str] = []
     for line in match.group(1).splitlines():
         stripped = line.strip()
+        if not stripped or _HR_LINE_RE.match(stripped):
+            continue
         if stripped.startswith("- "):
-            refs.append(stripped[2:].strip())
+            bullet_refs.append(stripped[2:].strip())
         elif stripped.startswith("-"):
-            refs.append(stripped[1:].strip())
-    return [r for r in refs if r]
+            bullet_refs.append(stripped[1:].strip())
+        else:
+            prose_lines.append(stripped)
+
+    if bullet_refs:
+        return [r for r in bullet_refs if r]
+    if prose_lines:
+        # Re-join hard-wrapped physical lines into one logical paragraph,
+        # then split on the "; " convention real dossiers use to separate
+        # discrete citations within a single inline LAW REFS sentence —
+        # matches the per-citation granularity the bulleted format gives.
+        prose = " ".join(prose_lines)
+        return [part.strip() for part in prose.split("; ") if part.strip()]
+    return []
 
 
 def parse_e33_markdown_file(
