@@ -99,6 +99,45 @@ actually ships now, not what an earlier draft of this module claimed.
    design otherwise expresses every real disqualifying claim as a named
    rule.
 
+# Gate round 2 (2026-07-20) — GATE: FIX-FIRST on the round-1 fix commit
+# itself, Codex GPT-5.6-sol xhigh, two EXECUTED counterexamples (not theory)
+
+1. **P0-R1 — the GLOBAL HUMAN_REVIEW pre-pass dropped UNKNOWN.** Round 1's
+   pre-pass only reacted to a definite TRUE result from a GLOBAL review
+   rule. A GLOBAL review rule whose condition evaluates UNKNOWN with
+   ``rule.on_unknown == HUMAN_REVIEW`` must ALSO contribute a review
+   reason — that is the entire meaning of ``on_unknown=HUMAN_REVIEW``
+   ("if we can't tell, a human must look"), and item 4 above already
+   established that policy for the per-product stages; the pre-pass had
+   silently not been given the same treatment. Executed counterexamples
+   (purposes UNKNOWN / zero active products / a GLOBAL hard-filter
+   excluding everything, each paired with an UNKNOWN-not-TRUE GLOBAL
+   review condition) wrongly fell through to ``NEEDS_INPUT`` or
+   ``NO_SUPPORTED_PATH`` instead of the correct ``HUMAN_REVIEW_REQUIRED``.
+   Fixed: the pre-pass now also collects UNKNOWN entries whose rule opts
+   into ``HUMAN_REVIEW``, mirroring ``_partition_unknowns_by_policy`` —
+   see ``evaluate()``'s pre-pass block.
+2. **P0-R2 — ``potential_coverage`` (round 1's own P0-A fix) unioned
+   jointly-unsatisfiable rules.** A flat union of every unknown SUPPORT
+   rule's ``covered_purposes`` is itself a Strong-Kleene violation
+   whenever two of those rules can never both be TRUE at once. Executed
+   counterexample: purposes ``{TOURISM, STUDY}``; rule A covers TOURISM
+   iff ``marital_status == MARRIED``; rule B covers STUDY iff
+   ``marital_status == SINGLE``; ``marital_status`` UNKNOWN. The union
+   claimed both purposes jointly coverable (→ ``BLOCKED_UNKNOWN``), but
+   EVERY concrete resolution of ``marital_status`` (either value) can
+   only ever satisfy one of the two rules — the true answer is
+   ``UNSUPPORTED`` right now. Fixed: ``_has_consistent_covering_subset``
+   requires at least one subset of the unknown rules that is BOTH a
+   covering set AND jointly consistent (no two rules in the subset
+   necessarily requiring the same fact path to equal two different
+   constants) — see that function and ``_jointly_consistent`` below.
+   Direction constraint (do not invert): satisfiability is
+   OVER-approximated, never under-approximated — an unanalyzable
+   condition shape, or a rule count too large to brute-force, defaults to
+   "assume consistent"/"assume coverable", because an extra
+   ``BLOCKED_UNKNOWN`` is recoverable and a wrong ``UNSUPPORTED`` is not.
+
 # Divergences from the spec text still standing (recorded here + in the PR
 # body)
 
@@ -355,6 +394,100 @@ def _dedupe_reasons(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
     return tuple(seen.values())
 
 
+#: Gate round 2 (2026-07-20) P0-R2: cap on the number of UNKNOWN support
+#: rules `_has_consistent_covering_subset` will brute-force (2**N subsets).
+#: A rule pack with more UNKNOWN ELIGIBILITY rules than this on a SINGLE
+#: product is already pathological. Beyond the cap we fall back to
+#: assuming a consistent covering subset exists (the pre-round-2 union
+#: behavior) — per the direction constraint below, an extra
+#: BLOCKED_UNKNOWN is always the safe failure mode, a wrong UNSUPPORTED
+#: never is, so an unaffordable proof must default to the favorable side.
+_MAX_SUBSET_SEARCH_RULES = 20
+
+
+def _required_equalities(
+    condition: ast_module.Condition,
+) -> tuple[tuple[FactPath, ast_module.Scalar], ...]:
+    """Conservative, purely-structural extraction of the equality
+    constraints a condition NECESSARILY requires to hold TRUE — used only
+    to detect DEFINITE cross-rule inconsistency (gate round 2 P0-R2, see
+    module docstring). Descends only through ``AllCondition`` (conjunction
+    — every child must hold, so every child's own necessary equalities are
+    also necessary for the whole) and a bare ``EqCondition`` leaf. Any
+    other node shape (``any``/``not``/every other leaf op) is NOT descended
+    into and contributes nothing: per the over-approximate-satisfiability
+    direction, an unanalyzable shape must never manufacture a false
+    inconsistency — under-reporting constraints here can only make two
+    rules look MORE compatible than they really are, never less, which is
+    exactly the safe-side error to make.
+    """
+    if isinstance(condition, ast_module.EqCondition):
+        return ((condition.fact, condition.value),)
+    if isinstance(condition, ast_module.AllCondition):
+        out: list[tuple[FactPath, ast_module.Scalar]] = []
+        for child in condition.args:
+            out.extend(_required_equalities(child))
+        return tuple(out)
+    return ()
+
+
+def _jointly_consistent(rules: Sequence[CompiledRule]) -> bool:
+    """Conservative joint-consistency check (gate round 2 P0-R2): FALSE
+    only when two rules in ``rules`` both necessarily require the SAME
+    fact path to equal two DIFFERENT constants — a definite,
+    structurally-provable contradiction (e.g. one rule requires
+    ``marital_status == MARRIED``, another requires ``marital_status ==
+    SINGLE``: no single fact resolution can ever satisfy both). Anything
+    else — including every condition shape ``_required_equalities`` cannot
+    analyze — is presumed consistent.
+    """
+    seen: dict[FactPath, ast_module.Scalar] = {}
+    for rule in rules:
+        for fact, value in _required_equalities(rule.when):
+            if fact in seen and seen[fact] != value:
+                return False
+            seen[fact] = value
+    return True
+
+
+def _has_consistent_covering_subset(
+    missing_purposes: frozenset[str], unknown_entries: Sequence[_StageResult]
+) -> bool:
+    """Gate round 2 (2026-07-20) P0-R2: does there exist a jointly
+    consistent subset of the given UNKNOWN support rules whose
+    ``covered_purposes`` union fully covers ``missing_purposes``?
+
+    The round-1 fix (see module docstring, P0-A) unioned EVERY unknown
+    support rule's ``covered_purposes`` unconditionally — wrong whenever
+    two of those rules can never both be true at once (a direct
+    Strong-Kleene violation: UNKNOWN would then be strictly MORE
+    favorable than every one of its own possible concrete resolutions).
+    This enumerates subsets rather than unioning everything, so a
+    jointly-unsatisfiable pair can no longer manufacture false coverage.
+
+    Direction constraint (do not invert): satisfiability is
+    OVER-approximated, never under-approximated. An extra
+    ``BLOCKED_UNKNOWN`` is recoverable (ask the fact, resolve correctly
+    next round); a wrong ``UNSUPPORTED`` is a definitive wrong legal
+    answer. So beyond ``_MAX_SUBSET_SEARCH_RULES`` (an unaffordable brute
+    force) this returns ``True`` — the safe, favorable default — rather
+    than attempting a proof it cannot complete.
+    """
+    if not missing_purposes:
+        return True
+    rules = tuple(rule for rule, _ in unknown_entries)
+    if len(rules) > _MAX_SUBSET_SEARCH_RULES:
+        return True
+    for mask in range(1, 1 << len(rules)):
+        subset = tuple(rule for i, rule in enumerate(rules) if mask & (1 << i))
+        subset_coverage: frozenset[str] = frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule in subset)  # type: ignore[union-attr]
+        )
+        if missing_purposes <= subset_coverage and _jointly_consistent(subset):
+            return True
+    return False
+
+
 def _underlying_applicant_facts(
     entries: Sequence[_StageResult], fact_registry: FactRegistry
 ) -> frozenset[FactPath]:
@@ -488,29 +621,49 @@ def evaluate_product(
     # check asked "does ANY unknown SUPPORT rule's covered_purposes
     # intersect ANY missing purpose" — wrong whenever one missing purpose is
     # permanently uncoverable by anything in this product while ANOTHER is
-    # potentially coverable via an unknown rule. The correct test: compute
-    # potential_coverage as covered UNION the covered_purposes of every
-    # unknown SUPPORT rule (regardless of its on_unknown policy —
-    # resolvability is a truth-value question, not a policy one), and only
-    # report BLOCKED_UNKNOWN if resolving every one of them favorably would
-    # fully cover every declared purpose. If even the best case can never
-    # cover everything, the product is definitively UNSUPPORTED right now —
-    # no future fact could ever change that.
-    potential_coverage: frozenset[str] = covered | (
+    # potentially coverable via an unknown rule. `naive_potential_coverage`
+    # below (the optimistic union, ignoring joint consistency) still answers
+    # exactly that question: any purpose it can't reach is permanently
+    # uncoverable by ANYTHING in this product, full stop, regardless of how
+    # any fact resolves — reported verbatim as `missing_purposes` here,
+    # unchanged from round 1.
+    naive_potential_coverage: frozenset[str] = covered | (
         frozenset[str]().union(
             *(frozenset(rule.effect.covered_purposes) for rule, _ in support_safety)  # type: ignore[union-attr]
         )
         if support_safety
         else frozenset()
     )
-    if not (purposes <= potential_coverage):
+    if not (purposes <= naive_potential_coverage):
         return ProductProof(
             product=product,
             status=ProductProofStatus.UNSUPPORTED,
-            missing_purposes=purposes - potential_coverage,
+            missing_purposes=purposes - naive_potential_coverage,
         )
 
-    # Every declared purpose IS potentially coverable — scope the decision
+    # Gate round 2 (2026-07-20) P0-R2: the optimistic union above says every
+    # purpose is INDIVIDUALLY reachable by some unknown rule — but it never
+    # asked whether those rules can all be TRUE at the same time. That is
+    # itself a Strong-Kleene violation whenever two of them can never both
+    # hold at once (e.g. one requires `marital_status == MARRIED` to cover
+    # TOURISM, another requires `marital_status == SINGLE` to cover STUDY:
+    # no resolution of `marital_status` ever covers both, yet the union
+    # claimed it did, making the UNKNOWN case strictly MORE favorable than
+    # every one of its own possible concrete resolutions).
+    # `_has_consistent_covering_subset` requires at least one JOINTLY
+    # CONSISTENT covering subset of the unknown rules, not just a bare
+    # union. If none exists, the product is definitively UNSUPPORTED right
+    # now — no single future resolution could ever realize the coverage the
+    # naive union promised.
+    if not _has_consistent_covering_subset(missing_purposes, support_safety):
+        return ProductProof(
+            product=product,
+            status=ProductProofStatus.UNSUPPORTED,
+            missing_purposes=missing_purposes,
+        )
+
+    # Every declared purpose IS potentially coverable by some jointly
+    # consistent combination of unknown SUPPORT rules — scope the decision
     # to the unknown SUPPORT rules that actually touch the remaining gap (an
     # unknown rule covering a purpose the applicant never declared must not
     # drive either bucket). Review-tagged relevance wins over input-tagged,
@@ -897,8 +1050,16 @@ def evaluate(
     # HUMAN_REVIEW_REQUIRED ranks above every other state this function
     # produces). This does not replace the per-product HUMAN_REVIEW stage —
     # PRODUCTS-scoped review rules, and a GLOBAL rule that resolves UNKNOWN
-    # rather than TRUE here, still flow through `evaluate_product()` below
-    # exactly as before.
+    # under `on_unknown` policies other than HUMAN_REVIEW, still flow
+    # through `evaluate_product()` below exactly as before.
+    #
+    # Gate round 2 (2026-07-20) — P0-R1: an UNKNOWN result here used to be
+    # silently dropped, so a GLOBAL review rule tagged `on_unknown=
+    # HUMAN_REVIEW` never escalated when its own condition could not be
+    # determined — precisely the case `on_unknown=HUMAN_REVIEW` exists to
+    # cover ("if we can't tell, a human must look"). Fixed by ALSO
+    # collecting UNKNOWN entries whose rule opts into HUMAN_REVIEW, exactly
+    # mirroring the per-product `_partition_unknowns_by_policy` split.
     global_review_rules = sorted(
         (
             rule
@@ -910,8 +1071,18 @@ def evaluate(
         key=lambda rule: (rule.priority, rule.rule_id),
     )
     global_review_results = _evaluate_stage(global_review_rules, snapshot)
-    if any(result.truth is TruthValue.TRUE for _, result in global_review_results):
-        review_reasons = _dedupe_reasons(_true_reasons(global_review_results))
+    global_true_entries = tuple(
+        (rule, result) for rule, result in global_review_results if result.truth is TruthValue.TRUE
+    )
+    global_unknown_review_entries = tuple(
+        (rule, result)
+        for rule, result in global_review_results
+        if result.truth is TruthValue.UNKNOWN and rule.on_unknown is OnUnknownAction.HUMAN_REVIEW
+    )
+    if global_true_entries or global_unknown_review_entries:
+        review_reasons = _dedupe_reasons(
+            _true_reasons(global_true_entries) + _unknown_reasons(global_unknown_review_entries)
+        )
         return assemble(state=DecisionState.HUMAN_REVIEW_REQUIRED, review_reasons=review_reasons)
 
     purposes_fact = snapshot.values.get(FactPath.INTENT_PURPOSES)

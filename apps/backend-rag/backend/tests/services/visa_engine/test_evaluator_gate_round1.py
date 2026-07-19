@@ -74,7 +74,9 @@ _REVIEW_FACT = "person.marital_status"  # arbitrary, unrelated to purposes/produ
 _HARD_FILTER_FACT = "immigration.currently_in_indonesia"
 
 
-def _pack_with_global_review_and_hard_filter(*, product_effective: bool) -> M.RulePack:
+def _pack_with_global_review_and_hard_filter(
+    *, product_effective: bool, review_on_unknown: str = "NEEDS_INPUT"
+) -> M.RulePack:
     source_id = B.new_uuid()
     product_id = B.new_uuid()
     src = B.source_record(source_id=source_id)
@@ -97,6 +99,7 @@ def _pack_with_global_review_and_hard_filter(*, product_effective: bool) -> M.Ru
         effect={"type": "REQUIRE_REVIEW", "reason_code": "GLOBAL_REVIEW_TRIGGER"},
         source_id=source_id,
         required_facts=[_REVIEW_FACT],
+        on_unknown=review_on_unknown,
     )
     global_hard_filter = B.rule(
         rule_id="hf.global-exclude-everything",
@@ -177,6 +180,92 @@ class TestGlobalHumanReviewPrePassCounterexamples:
         assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
         assert [r.code for r in decision.review_reasons] == ["GLOBAL_REVIEW_TRIGGER"]
         assert decision.candidates == ()
+
+    # -- Gate round 2 (2026-07-20) P0-R1: same 3 counterexamples, but the
+    # GLOBAL review rule's own condition is UNKNOWN (not TRUE) with
+    # `on_unknown=HUMAN_REVIEW` — round 1's pre-pass only reacted to TRUE
+    # and silently dropped this case, falling through to whatever the rest
+    # of `evaluate()` produced (NEEDS_INPUT / NO_SUPPORTED_PATH) instead of
+    # the correct HUMAN_REVIEW_REQUIRED.
+
+    def test_global_review_unknown_with_unknown_purposes_wins_over_needs_input(self) -> None:
+        pack = build_compiled_pack(
+            _pack_with_global_review_and_hard_filter(
+                product_effective=True, review_on_unknown="HUMAN_REVIEW"
+            )
+        )
+        facts = _facts(
+            {
+                _REVIEW_FACT: _unknown("NOT_PROVIDED"),
+                _HARD_FILTER_FACT: _known(False),
+                "intent.purposes": _unknown("NOT_PROVIDED"),
+            }
+        )
+        decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [r.code for r in decision.review_reasons] == ["GLOBAL_REVIEW_TRIGGER"]
+
+    def test_global_review_unknown_with_zero_active_products_wins_over_no_supported_path(
+        self,
+    ) -> None:
+        pack = build_compiled_pack(
+            _pack_with_global_review_and_hard_filter(
+                product_effective=False, review_on_unknown="HUMAN_REVIEW"
+            )
+        )
+        facts = _facts(
+            {
+                _REVIEW_FACT: _unknown("NOT_PROVIDED"),
+                _HARD_FILTER_FACT: _known(False),
+                "intent.purposes": _known(["TOURISM"]),
+            }
+        )
+        decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [r.code for r in decision.review_reasons] == ["GLOBAL_REVIEW_TRIGGER"]
+
+    def test_global_review_unknown_with_global_hard_filter_excluding_everything_still_wins(
+        self,
+    ) -> None:
+        pack = build_compiled_pack(
+            _pack_with_global_review_and_hard_filter(
+                product_effective=True, review_on_unknown="HUMAN_REVIEW"
+            )
+        )
+        facts = _facts(
+            {
+                _REVIEW_FACT: _unknown("NOT_PROVIDED"),
+                _HARD_FILTER_FACT: _known(True),
+                "intent.purposes": _known(["TOURISM"]),
+            }
+        )
+        decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [r.code for r in decision.review_reasons] == ["GLOBAL_REVIEW_TRIGGER"]
+        assert decision.candidates == ()
+
+    def test_global_review_unknown_with_on_unknown_needs_input_does_not_escalate(self) -> None:
+        """Innocence control: an UNKNOWN GLOBAL review rule that opts into
+        the DEFAULT ``on_unknown=NEEDS_INPUT`` (not ``HUMAN_REVIEW``) must
+        NOT be swept into the pre-pass escalation — only a rule that
+        explicitly asks for human review on an unresolved condition gets
+        that treatment; this is the counterpart proving the P0-R1 fix
+        didn't just make every UNKNOWN escalate unconditionally.
+        """
+        pack = build_compiled_pack(
+            _pack_with_global_review_and_hard_filter(
+                product_effective=True, review_on_unknown="NEEDS_INPUT"
+            )
+        )
+        facts = _facts(
+            {
+                _REVIEW_FACT: _unknown("NOT_PROVIDED"),
+                _HARD_FILTER_FACT: _known(False),
+                "intent.purposes": _known(["TOURISM"]),
+            }
+        )
+        decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        assert decision.state is not DecisionState.HUMAN_REVIEW_REQUIRED
 
 
 # ---------------------------------------------------------------------------
@@ -554,23 +643,47 @@ class TestRankingTieDeterminism:
             source_id=source_id,
             required_facts=["intent.purposes"],
         )
+        # Gate round 2 (2026-07-20) parziale item 1: a value-bound GLOBAL
+        # RANKING rule that actually FIRES on both candidates, producing a
+        # genuinely tied NON-ZERO score — the previous version of this test
+        # tied at a bare score of 0 with no ranking rule ever evaluated,
+        # which cannot distinguish "the tie-break key is correct" from "no
+        # scoring happened at all".
+        rule_ranking_boost = B.rule(
+            rule_id="rank.wants-quote-boost",
+            stage="RANKING",
+            scope="GLOBAL",
+            when={"op": "eq", "fact": "commercial.wants_quote", "value": True},
+            effect={"type": "ADD_SCORE", "reason_code": "WANTS_QUOTE_BOOST", "points": 5},
+            source_id=source_id,
+            required_facts=["commercial.wants_quote"],
+            on_unknown="NO_EFFECT",
+        )
         payload = B.rule_pack_payload(
-            rules=[rule_aaa, rule_zzz], products=[prod_aaa, prod_zzz], source_records=[src]
+            rules=[rule_aaa, rule_zzz, rule_ranking_boost],
+            products=[prod_aaa, prod_zzz],
+            source_records=[src],
         )
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        facts = _facts({"intent.purposes": _known(["TOURISM"])})
+        facts = _facts(
+            {
+                "intent.purposes": _known(["TOURISM"]),
+                "commercial.wants_quote": _known(True),
+            }
+        )
         decision = evaluate(facts, compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
 
         assert decision.state is DecisionState.SUPPORTED_CANDIDATES
-        assert [c.score for c in decision.candidates] == [0, 0]  # genuinely tied
+        assert [c.score for c in decision.candidates] == [5, 5]  # genuinely tied, NON-zero
         assert [c.product_code for c in decision.candidates] == ["AAA", "ZZZ"]
 
         # Determinism: re-running produces the identical order every time.
         decision_again = evaluate(
             facts, compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT
         )
+        assert [c.score for c in decision_again.candidates] == [5, 5]
         assert [c.product_code for c in decision_again.candidates] == ["AAA", "ZZZ"]
 
 

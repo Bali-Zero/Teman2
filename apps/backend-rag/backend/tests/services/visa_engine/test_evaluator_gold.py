@@ -115,22 +115,19 @@ PERSONAS: tuple[Persona, ...] = (
         id=8,
         label="same as #7 but marriage_registered unverified -> needs input",
         overrides={
+            # Gate round 2 (2026-07-20) parziale item 2: this is now a
+            # genuine, PURE single-fact differential from #7 — every key
+            # here except ``family.marriage_registered`` is identical to
+            # #7's own overrides. Round 1 had ALSO added an explicit
+            # ``family.sponsor_status_code`` override here to neutralize a
+            # dead-branch unknown-fact leak (see ``_gold_fixtures.py``'s
+            # persona-8 docstring for the full history); that leak is now
+            # fixed at its root (the shared baseline's own
+            # ``family.sponsor_status_code`` default), so the override is
+            # no longer needed and has been removed.
             "intent.purposes": gf.known(["FAMILY"]),
             "family.relation_to_sponsor": gf.known("SPOUSE"),
-            # Gate round 1 fix (2026-07-19): must genuinely replicate #7's
-            # facts save for the ONE deliberate difference below — this was
-            # previously omitted, silently falling back to the shared
-            # baseline's UNKNOWN and inflating expected_missing beyond the
-            # single intended distinguishing fact.
             "family.sponsor_nationalities": gf.known(["ID"]),
-            # Also must be KNOWN (any value — irrelevant to the SPOUSE path,
-            # relation != CHILD makes that branch a definite FALSE
-            # regardless): ast.py's condition evaluator never short-circuits
-            # and unions unknown_facts over the WHOLE subtree, so leaving
-            # this at the shared baseline's UNKNOWN would leak a spurious,
-            # irrelevant missing-fact into this persona's NEEDS_INPUT
-            # result via the dead CHILD branch.
-            "family.sponsor_status_code": gf.known("E23"),
             "family.marriage_registered": gf.unknown("UNVERIFIED"),
             "family.sponsor_confirmed": gf.known(True),
         },
@@ -383,6 +380,31 @@ def test_persona_7_sponsor_nationalities_is_influential(compiled_gold_pack) -> N
     assert decision.candidates == ()
 
 
+def test_persona_8_is_a_pure_single_fact_differential_from_persona_7(compiled_gold_pack) -> None:
+    """Gate round 2 (2026-07-20) parziale item 2: persona 8's own label
+    claims "same as #7 but marriage_registered unverified" — this asserts
+    that claim is now LITERALLY true at the overrides-dict level (every
+    key identical to persona 7's except ``family.marriage_registered``),
+    not just true in spirit. Round 1 had silently broken this by also
+    adding a ``family.sponsor_status_code`` override to neutralize a
+    dead-branch unknown-fact leak (see ``_gold_fixtures.py``'s persona-8
+    docstring) — fixed at the root (shared baseline default) in round 2,
+    so the override is gone and the differential is pure again.
+    """
+    persona_7_overrides = PERSONAS[6].overrides  # id=7
+    persona_8_overrides = PERSONAS[7].overrides  # id=8
+
+    differing_keys = {
+        key
+        for key in set(persona_7_overrides) | set(persona_8_overrides)
+        if persona_7_overrides.get(key) != persona_8_overrides.get(key)
+    }
+    assert differing_keys == {"family.marriage_registered"}, (
+        f"persona 8 must differ from persona 7 by exactly one fact "
+        f"(family.marriage_registered), found: {differing_keys}"
+    )
+
+
 def test_persona_17_service_fee_budget_influences_ranking_score_never_eligibility(
     compiled_gold_pack,
 ) -> None:
@@ -422,3 +444,64 @@ def test_persona_17_service_fee_budget_influences_ranking_score_never_eligibilit
 
     # But the score IS influenced by the budget fact.
     assert high_decision.candidates[0].score > low_decision.candidates[0].score
+
+
+def test_persona_20_asymmetric_influence_matrix(compiled_gold_pack) -> None:
+    """Gate round 2 (2026-07-20) parziale item 3: Codex sol xhigh's EXECUTED
+    probe found the round-1 documentation FALSE — it claimed "flipping
+    EITHER distinguishing fact to KNOWN changes the outcome away from
+    NEEDS_INPUT". The real 4-way matrix (see ``_gold_fixtures.py``'s
+    persona-20 docstring for the mechanism):
+
+    - both unknown (persona 20's own baseline) -> NEEDS_INPUT, both facts
+      missing.
+    - ``current_status_code`` known ALONE -> still NEEDS_INPUT (only
+      ``overstay_days`` remains missing) — the STATE does not change.
+    - ``overstay_days`` known ALONE (even at 0) -> SUPPORTED_CANDIDATES on
+      C1 — the STATE DOES change, with no need for ``current_status_code``
+      at all.
+    - both known -> SUPPORTED_CANDIDATES on C1 (same as overstay-only).
+    """
+    base_overrides = PERSONAS[19].overrides  # id=20
+    assert base_overrides["immigration.current_status_code"] == gf.unknown("NOT_PROVIDED")
+    assert base_overrides["immigration.overstay_days"] == gf.unknown("NOT_PROVIDED")
+
+    def _decide(overrides: dict) -> tuple[DecisionState, tuple[str, ...], tuple[str, ...]]:
+        facts = gf.applicant_facts(overrides=overrides)
+        decision = evaluator.evaluate(
+            facts,
+            compiled_gold_pack,
+            effective_at=gf.GOLD_EFFECTIVE_AT,
+            observed_at=gf.GOLD_EFFECTIVE_AT,
+        )
+        return (
+            decision.state,
+            tuple(sorted(m.value for m in decision.missing_facts)),
+            tuple(c.product_code for c in decision.candidates),
+        )
+
+    both_unknown = _decide(base_overrides)
+    status_only = _decide(
+        {**base_overrides, "immigration.current_status_code": gf.known("C1")}
+    )
+    overstay_only = _decide({**base_overrides, "immigration.overstay_days": gf.known(0)})
+    both_known = _decide(
+        {
+            **base_overrides,
+            "immigration.current_status_code": gf.known("C1"),
+            "immigration.overstay_days": gf.known(0),
+        }
+    )
+
+    assert both_unknown == (
+        DecisionState.NEEDS_INPUT,
+        ("immigration.current_status_code", "immigration.overstay_days"),
+        (),
+    )
+    assert status_only == (
+        DecisionState.NEEDS_INPUT,
+        ("immigration.overstay_days",),
+        (),
+    )
+    assert overstay_only == (DecisionState.SUPPORTED_CANDIDATES, (), ("C1",))
+    assert both_known == (DecisionState.SUPPORTED_CANDIDATES, (), ("C1",))
