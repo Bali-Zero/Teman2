@@ -1,9 +1,9 @@
 # Design: Bali Zero Magazine — Internal Federated Intelligence Site
 
-**Date:** 2026-07-18  
-**Status:** Design approved in conversation; specification awaiting operator review. Implementation is blocked until this document is approved.  
-**Branch:** `agent/air-m5/docs/sites-bali-zero-magazine-spec`  
-**Primary surface:** OpenAI Sites capability path  
+**Date:** 2026-07-18
+**Status:** Design approved in conversation; specification awaiting operator review. Implementation is blocked until this document is approved.
+**Branch:** `agent/air-m5/docs/sites-bali-zero-magazine-spec`
+**Primary surface:** OpenAI Sites capability path
 **Working title:** Bali Zero Magazine
 
 ## 1. Decision
