@@ -22,11 +22,15 @@ vetted answer yet) are silently SKIPPED for BOTH sinks: an FAQ/curated_qa
 entry with no answer is meaningless and would violate the provenance
 contract. They are still counted in the stats for coverage analysis.
 
-FAQ-sink eligibility (Phase-0 safety rail FATAL 3): only rows that
-independently RE-DERIVE (never a stored `verbatim_eligible` value) as
-`confidence_class == "JELAS"` AND non-price AND non-`client_specific` are
-written to the FAQ sink. Qdrant gets ALL answerable rows regardless of
-eligibility (grounding-only for the rest). See `_derive_verbatim_eligible`.
+FAQ-sink eligibility (Phase-0 safety rail FATAL 3): under the DEFAULT
+policy, only rows that independently RE-DERIVE (never a stored
+`verbatim_eligible` value) as `confidence_class == "JELAS"` AND non-price
+AND non-`client_specific` are written to the FAQ sink. Qdrant gets ALL
+answerable rows regardless of eligibility (grounding-only for the rest).
+`--verbatim-all` (task #27, an explicit operator business order — see
+`_derive_verbatim_eligible` and the CLI help) bypasses the
+confidence_class/client_specific half of this gate; the pricing check is
+NEVER bypassed by either policy. See `_derive_verbatim_eligible`.
 
 Batch manifest gate (Phase-0 safety rail FATAL 2, MAJOR 9/10): loading a
 file into either sink requires an APPROVED manifest to already exist at
@@ -41,10 +45,12 @@ back a single batch from both sinks without touching sibling batches in the
 same domain.
 
 Staleness rails (Phase-0 safety rail MAJOR 7/8): every FAQ-sink write gets a
-class-based TTL (JELAS=30d, DINAMIS=7d — see `_ttl_seconds_for_class`,
-though only JELAS ever reaches the FAQ sink today per FATAL 3) instead of
-the service's one-size-fits-all default, so a verbatim answer self-expires
-on a schedule matched to how settled its underlying fact is. Every Qdrant
+class-based TTL (JELAS=30d, everything else=7d — see
+`_ttl_seconds_for_class`; under the DEFAULT policy only JELAS ever reaches
+the FAQ sink per FATAL 3, so the other classes' entries matter only under
+`--verbatim-all`, task #27) instead of the service's one-size-fits-all
+default, so a verbatim answer self-expires on a schedule matched to how
+settled its underlying fact is. Every Qdrant
 point is written with `active: true, invalidated_at: null`;
 curated_qa_regen_trigger.py flips these on a regulatory-delta match, and
 orchestrator_core._inject_curated_qa_grounding()'s per-hit filter honors
@@ -100,24 +106,34 @@ REQUIRED_ROW_KEYS: tuple[str, ...] = (
 )
 
 # Phase-0 safety rail (FATAL 3): the confidence class that alone permits
-# verbatim FAQ serving. BERSYARAT/BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA/
-# DINAMIS rows are grounding-only forever — a "depends on your case" answer
-# served verbatim with zero per-request reasoning is a wrong answer waiting
-# for the wrong client.
+# verbatim FAQ serving UNDER THE DEFAULT POLICY. BERSYARAT/
+# BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA/DINAMIS rows are grounding-only by
+# default — a "depends on your case" answer served verbatim with zero
+# per-request reasoning is a wrong answer waiting for the wrong client.
+# `--verbatim-all` (task #27) is the one sanctioned exception: an explicit
+# operator business order can promote these classes too — see
+# `_derive_verbatim_eligible`.
 _JELAS_CONFIDENCE_CLASS = "JELAS"
 
 # Phase-0 safety rail (staleness, MAJOR 7): class-based TTL applied AT WRITE
 # TIME to the FAQ (Redis) sink, on top of Redis's own expiry. JELAS is
-# "settled" law/fact — 30 days. DINAMIS is "actively changing" — 7 days, so
-# a verbatim-served answer about a fast-moving fact self-expires quickly.
-# In practice, only JELAS rows ever reach the FAQ sink today (FATAL 3
-# eligibility gate refuses DINAMIS/BERSYARAT/etc outright) so the DINAMIS
-# entry is currently unreachable via harvest_to_faq — it is still defined
-# here (not left implicit) so the mapping is visible in code and a future
-# change to the eligibility gate can't silently inherit the wrong TTL.
+# "settled" law/fact — 30 days. Everything else that can reach the FAQ sink
+# under `--verbatim-all` (DINAMIS/BERSYARAT/KEBIJAKAN_PENYEDIA/
+# BELUM_DIATUR_PUBLIK — task #27) is, by the module docstring's own
+# definition above, "depends on your case" / not fully settled — none of
+# them get the 30-day "settled fact" shelf life; all four share the
+# shorter 7-day self-expiry so an override-promoted conditional answer
+# goes stale FAST rather than silently inheriting JELAS's generosity.
+# Under the DEFAULT policy (no --verbatim-all) only JELAS ever reaches
+# this sink (FATAL 3 refuses the rest outright), so this map matters only
+# once the override is in play — it is still defined explicitly (not left
+# to _DEFAULT_TTL_SECONDS) so that fact is visible in code, not implicit.
 _CLASS_TTL_SECONDS: dict[str, int] = {
     "JELAS": 30 * 24 * 3600,
     "DINAMIS": 7 * 24 * 3600,
+    "BERSYARAT": 7 * 24 * 3600,
+    "KEBIJAKAN_PENYEDIA": 7 * 24 * 3600,
+    "BELUM_DIATUR_PUBLIK": 7 * 24 * 3600,
 }
 _DEFAULT_TTL_SECONDS = 30 * 24 * 3600  # any class with no explicit entry above
 

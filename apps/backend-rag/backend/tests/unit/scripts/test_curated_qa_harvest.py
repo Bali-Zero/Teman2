@@ -622,6 +622,41 @@ async def test_harvest_to_qdrant_verbatim_all_promotes_and_stamps_provenance() -
 
 
 @pytest.mark.asyncio
+async def test_harvest_to_qdrant_verbatim_all_price_bearing_row_stays_ineligible() -> None:
+    """INNOCENCE (Qdrant side) — the negative-guard proof mirrored from the
+    FAQ sink: under verbatim_all, a price-bearing row's Qdrant payload is
+    still written (Qdrant is never eligibility-gated for STORAGE) but
+    verbatim_eligible stays False and no override provenance is stamped —
+    the pricing rail applies identically on both sinks."""
+    client = FakeQdrantClient(exists=True)
+    embedder = FakeEmbedder()
+    rows = [
+        _row(
+            question="Price Q",
+            confidence_class="BERSYARAT",
+            answer="The processing fee is Rp 5.000.000.",
+        ),
+    ]
+
+    stats = await harvest.harvest_to_qdrant(rows, client, embedder, dry_run=False, verbatim_all=True)
+
+    assert stats.qdrant_written == 1  # Qdrant stores it for grounding regardless
+    (point,) = client.points.values()
+    assert point["payload"]["verbatim_eligible"] is False
+    assert "verbatim_override" not in point["payload"]
+
+
+def test_ttl_seconds_for_class_conditional_classes_get_7_day_ttl_under_override() -> None:
+    """GUILT — BERSYARAT/KEBIJAKAN_PENYEDIA/BELUM_DIATUR_PUBLIK (the classes
+    --verbatim-all can newly promote to the FAQ sink) get the SHORT 7-day
+    TTL, not JELAS's 30-day "settled fact" shelf life — a review finding
+    (task #27 adversarial pass): a promoted conditional answer must go
+    stale fast, never silently inherit JELAS's generosity."""
+    for cls in ("BERSYARAT", "KEBIJAKAN_PENYEDIA", "BELUM_DIATUR_PUBLIK"):
+        assert harvest._ttl_seconds_for_class(cls) == 7 * 24 * 3600
+
+
+@pytest.mark.asyncio
 async def test_harvest_to_qdrant_verbatim_all_off_never_carries_override_key() -> None:
     """INNOCENCE (Qdrant side) — flag OFF: default behavior unchanged, and
     no payload ever carries the override key."""

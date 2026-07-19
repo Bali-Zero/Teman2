@@ -87,11 +87,13 @@ Every write carries a freshness signal so a cached answer can't outlive its
 source's shelf life:
 
 - **FAQ (Redis) sink**: a **class-based TTL** is set at write time —
-  `JELAS` = 30 days, `DINAMIS` = 7 days (see
-  `curated_qa_harvest.py::_ttl_seconds_for_class`; only `JELAS` ever reaches
-  this sink today per FATAL 3, so `DINAMIS`'s 7-day entry is defined but
-  currently unreachable via this path). This overrides
-  `NotebookLMCacheService`'s own one-size-fits-all default.
+  `JELAS` = 30 days, every other class (`DINAMIS`/`BERSYARAT`/
+  `KEBIJAKAN_PENYEDIA`/`BELUM_DIATUR_PUBLIK`) = 7 days (see
+  `curated_qa_harvest.py::_ttl_seconds_for_class`; under the DEFAULT policy
+  only `JELAS` ever reaches this sink per FATAL 3, so the other classes'
+  entries matter only under the `--verbatim-all` operator override,
+  task #27). This overrides `NotebookLMCacheService`'s own
+  one-size-fits-all default.
 - **Qdrant sink**: every point is written with `active: true,
   invalidated_at: null`. `scripts/curated_qa_regen_trigger.py` flips these
   to `active: false, invalidated_at: <timestamp>` (alongside
