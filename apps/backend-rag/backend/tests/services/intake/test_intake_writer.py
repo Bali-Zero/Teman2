@@ -1336,10 +1336,11 @@ async def test_delivery_refuses_phone_shared_by_another_live_local_client(pool, 
                 await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
 
 
-async def test_delivery_soft_deleted_phone_duplicate_does_not_block(pool, seed, monkeypatch):
-    """Round-7 F11 innocence: a phone duplicate that is SOFT-DELETED is not a
-    live owner — the selected client is the sole live owner and resolution
-    must proceed with their phone."""
+async def test_delivery_soft_deleted_phone_duplicate_also_blocks(pool, seed, monkeypatch):
+    """Round-8 F11 archive gap: a SOFT-DELETED phone duplicate still blocks —
+    the Fly resolver searches archived rows and (by default) can restore one,
+    so an archived local co-owner is a reachable wrong-attach vector. ANY other
+    owner of the digits, live or archived, must fail CLOSED."""
     from types import SimpleNamespace
 
     from backend.services.intake import crm_delivery, crm_push
@@ -1379,11 +1380,161 @@ async def test_delivery_soft_deleted_phone_duplicate_does_not_block(pool, seed, 
             plan=plan,
             result=SimpleNamespace(doc_id=None, audit_id=None),
         )
-        assert captured["sender_phone"] == shared
+        assert captured["sender_phone"] is None  # archived co-owner ⇒ fail closed
     finally:
         if dup_cid is not None:
             async with pool.acquire() as conn:
                 await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_blocks_on_stale_normalized_phone_duplicate(pool, seed, monkeypatch):
+    """Round-8 F11 stale-normalization gap: a historical co-owner whose
+    phone_normalized is MISSING (raw `phone` only) must still block — the CRM
+    dedup code coalesces raw phone for exactly this population."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    captured: dict = {}
+
+    async def _capture_push(**kw):
+        captured.update(kw)
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _capture_push)
+
+    shared = "62" + str(uuid.uuid4().int)[:9]
+    dup_cid: int | None = None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=$1 WHERE id=$2", shared, seed["cid_a"]
+            )
+            dup_cid = await conn.fetchval(
+                "INSERT INTO clients (full_name, phone) VALUES ($1,$2) RETURNING id",
+                f"dup-stale-{uuid.uuid4().hex[:8]}",
+                "+62 " + shared[2:],
+            )
+            # Simulate the historical stale row: wipe phone_normalized directly
+            # (trg_normalize_phone fires only ON UPDATE OF phone, so this sticks).
+            await conn.execute(
+                "UPDATE clients SET phone_normalized=NULL WHERE id=$1", dup_cid
+            )
+            locked = await conn.fetchrow(
+                "SELECT id, queue_id, doc_index, pipeline_version, status, "
+                "entity_resolution, routing, commit_gate "
+                "FROM document_routing_proposal WHERE id=$1",
+                seed["p_a"],
+            )
+            plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f11c")
+
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+        assert captured["sender_phone"] is None  # raw-phone co-owner ⇒ fail closed
+    finally:
+        if dup_cid is not None:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM clients WHERE id=$1", dup_cid)
+
+
+async def test_delivery_holds_phone_advisory_lock_during_push(pool, seed, monkeypatch):
+    """Round-8 F12: the resolve→push window must hold the LOCAL phone advisory
+    lock (same hashtext key the upsert-by-phone endpoint takes) so
+    lock-respecting phone writers are serialized against the cross-DB window."""
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    lock_free_during_push: list[bool] = []
+
+    async def _probe_push(**kw):
+        async with pool.acquire() as probe_conn:
+            async with probe_conn.transaction():
+                got = await probe_conn.fetchval(
+                    "SELECT pg_try_advisory_xact_lock(hashtext($1))", client_phone
+                )
+                lock_free_during_push.append(bool(got))
+        return crm_push.CrmPushResult(ok=False, status="identity_unresolved", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _probe_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", client_phone, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f12")
+
+    await crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=plan.queue_id,
+        plan=plan,
+        result=SimpleNamespace(doc_id=None, audit_id=None),
+    )
+    assert lock_free_during_push == [False]  # held by delivery while push runs
+
+    # And released afterwards:
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            assert await conn.fetchval(
+                "SELECT pg_try_advisory_xact_lock(hashtext($1))", client_phone
+            )
+
+
+async def test_delivery_flags_phone_owner_divergence_post_upload(pool, seed, monkeypatch, caplog):
+    """Round-8 F12 detection layer: a lock-BYPASSING writer that mutates the
+    selected client's phone mid-push cannot be prevented, but the post-upload
+    re-check must flag the delivery loudly for HITL review."""
+    import logging as _logging
+    from types import SimpleNamespace
+
+    from backend.services.intake import crm_delivery, crm_push
+
+    client_phone = "62" + str(uuid.uuid4().int)[:9]
+    hijack_phone = "62" + str(uuid.uuid4().int + 13)[:9]
+
+    async def _mutating_push(**kw):
+        # Simulate a writer that does NOT take the phone advisory lock.
+        async with pool.acquire() as w_conn:
+            await w_conn.execute(
+                "UPDATE clients SET phone=$1 WHERE id=$2",
+                "+" + hijack_phone,
+                seed["cid_a"],
+            )
+        return crm_push.CrmPushResult(ok=True, status="uploaded", detail="t")
+
+    monkeypatch.setattr(crm_push, "push_committed_document", _mutating_push)
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", client_phone, seed["cid_a"]
+        )
+        locked = await conn.fetchrow(
+            "SELECT id, queue_id, doc_index, pipeline_version, status, "
+            "entity_resolution, routing, commit_gate "
+            "FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+        plan = await intake_writer.plan_commit(locked, conn, committed_by="test-f12b")
+
+    with caplog.at_level(_logging.ERROR, logger="zantara.intake.crm_delivery"):
+        await crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=SimpleNamespace(doc_id=None, audit_id=None),
+        )
+    assert any("phone_owner_diverged_post_upload" in r.message for r in caplog.records)
 
 
 async def test_delivery_fails_closed_when_selected_client_has_no_phone(pool, seed, monkeypatch):

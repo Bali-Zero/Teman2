@@ -1337,6 +1337,7 @@ async def upsert_client_by_phone(
                     "action": "rejected_ambiguous",
                     "matched_count": matched_count,
                     "recap_applied": False,
+                    "was_archived": False,
                 }
 
             if rows:
@@ -1403,6 +1404,11 @@ async def upsert_client_by_phone(
                     "action": action,
                     "matched_count": matched_count,
                     "recap_applied": recap_applied,
+                    # The matched row was soft-deleted at match time. Identity
+                    # RESOLUTION callers (intake delivery) treat this as
+                    # unresolvable: an archived row cannot prove a live
+                    # identity (Codex 2026-07-19 round 8, F11 archive gap).
+                    "was_archived": was_archived,
                 }
             else:
                 if not payload.create_if_missing:
@@ -1412,6 +1418,7 @@ async def upsert_client_by_phone(
                         "action": "skipped_not_found",
                         "matched_count": 0,
                         "recap_applied": False,
+                        "was_archived": False,
                     }
                 if not payload.full_name or not payload.full_name.strip():
                     raise HTTPException(
@@ -1448,6 +1455,7 @@ async def upsert_client_by_phone(
                     "action": "inserted",
                     "matched_count": 0,
                     "recap_applied": bool(payload.strategic_recap),
+                    "was_archived": False,
                 }
 
     # Cache invalidation OUTSIDE the transaction (HTTP-layer cache; best-effort).

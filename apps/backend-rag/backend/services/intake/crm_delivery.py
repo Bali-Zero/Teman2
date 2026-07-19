@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any
 
 import asyncpg
@@ -22,6 +23,138 @@ def crm_write_key_from_env() -> str | None:
         if value:
             return value
     return None
+
+
+# Sole-owner gate over BOTH phone columns (Codex round-8, F11 gaps): historical
+# rows carry stale/missing phone_normalized (the CRM dedup code coalesces raw
+# `phone` for the same reason), and ARCHIVED rows count too — the Fly resolver
+# searches archived rows and can restore one, so a soft-deleted local duplicate
+# is still a reachable wrong-attach vector. $2 is the canonical digit string.
+_PHONE_DUP_OWNERS_SQL = """
+SELECT COUNT(*) FROM clients
+ WHERE id <> $1
+   AND (
+     regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') = $2
+     OR regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') = $2
+   )
+"""
+
+
+async def _resolve_and_push_locked(
+    *,
+    pool: asyncpg.Pool,
+    plan: intake_writer.CommitPlan,
+    payload: dict[str, Any],
+    queue_id: int | None,
+    blob_path: str,
+    mime_type: str | None,
+    bearer_token: str | None,
+    crm_write_key: str | None,
+) -> crm_push.CrmPushResult:
+    """Resolve the Fly identity and upload while holding the LOCAL phone lock.
+
+    Identity resolution is keyed on the SELECTED client's own canonical phone —
+    NEVER the transport sender phone (Codex round 6, F5): a forwarder A can send
+    B's document; after the reviewer assigns it to B, resolving Fly by A's phone
+    would deliver B's PII to A. The committed ``plan.client_id`` is the reviewed
+    identity ground truth; if that client has no phone on the local card,
+    delivery fails CLOSED (identity_unresolved) rather than guessing. The name
+    is used ONLY to label a fresh Fly lead (placeholder "Lead +" names skipped).
+
+    The whole resolve→push sequence runs inside ONE local transaction holding
+    ``pg_advisory_xact_lock(hashtext(<digits>))`` — the SAME key the
+    upsert-by-phone endpoint takes — so lock-respecting local phone writers are
+    serialized against the cross-DB resolution window (Codex round 8, F12).
+    Writers that bypass the lock (direct UPDATEs) are caught best-effort by the
+    post-upload divergence re-check, which flags the delivery for HITL review.
+
+    The sole-owner gate (round 7 F11, widened round 8): the selected client
+    must be the ONLY row — live or archived — owning the digits across BOTH
+    ``phone_normalized`` and raw ``phone``. Any other owner → no resolution
+    phone → delivery fails CLOSED. Digits-canonical comparison is stricter
+    than Fly's exact-string match on purpose: formatting variants of the same
+    number also fail closed. (Duplicate-phone groups are a real population:
+    migration 246 recorded 622 at authoring; 41 in the post-dedup dev book,
+    probed 2026-07-19; the schema deliberately has no uniqueness constraint.)
+    """
+    resolution_phone: str | None = None
+    client_full_name: str | None = None
+    phone_digits: str | None = None
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            if plan.client_id is not None:
+                crow = await conn.fetchrow(
+                    "SELECT full_name, phone_normalized FROM clients WHERE id = $1",
+                    int(plan.client_id),
+                )
+                if crow is not None:
+                    _name = (crow["full_name"] or "").strip()
+                    if _name and not _name.lower().startswith("lead "):
+                        client_full_name = _name
+                    digits = re.sub(r"[^0-9]", "", crow["phone_normalized"] or "")
+                    if digits:
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtext($1))", digits
+                        )
+                        # Re-read under the lock: the pre-lock read may be stale.
+                        fresh = await conn.fetchval(
+                            "SELECT phone_normalized FROM clients WHERE id = $1",
+                            int(plan.client_id),
+                        )
+                        stable = re.sub(r"[^0-9]", "", fresh or "") == digits
+                        dup_owners = 0
+                        if stable:
+                            dup_owners = await conn.fetchval(
+                                _PHONE_DUP_OWNERS_SQL, int(plan.client_id), digits
+                            )
+                        if stable and not dup_owners:
+                            resolution_phone = (crow["phone_normalized"] or "").strip()
+                            phone_digits = digits
+                        else:
+                            logger.warning(
+                                "intake.delivery.local_phone_ambiguous queue=%s client=%s "
+                                "shared_with=%s stable=%s",
+                                queue_id,
+                                plan.client_id,
+                                dup_owners,
+                                stable,
+                            )
+            push = await crm_push.push_committed_document(
+                bearer_token=bearer_token,
+                crm_write_key=crm_write_key,
+                client_id=int(plan.client_id),  # type: ignore[arg-type]  # committed means non-None
+                practice_id=plan.practice_id,
+                document_type=payload.get("document_type") or "unknown",
+                document_category=payload.get("document_category"),
+                file_name=payload.get("file_name") or os.path.basename(blob_path),
+                blob_path=blob_path,
+                mime_type=mime_type,
+                expiry_date=payload.get("expiry_date"),
+                notes=payload.get("notes"),
+                sender_phone=resolution_phone,
+                client_full_name=client_full_name,
+            )
+            if phone_digits is not None:
+                # Divergence detection for lock-BYPASSING writers: if ownership
+                # changed between the gate and the upload, the upload may have
+                # landed on a resolution that no longer holds — it cannot be
+                # unwound here, so flag loudly for HITL review (ids only).
+                fresh = await conn.fetchval(
+                    "SELECT phone_normalized FROM clients WHERE id = $1",
+                    int(plan.client_id),
+                )
+                dup_after = await conn.fetchval(
+                    _PHONE_DUP_OWNERS_SQL, int(plan.client_id), phone_digits
+                )
+                if re.sub(r"[^0-9]", "", fresh or "") != phone_digits or dup_after:
+                    logger.error(
+                        "intake.delivery.phone_owner_diverged_post_upload queue=%s "
+                        "client=%s push_status=%s — review this delivery",
+                        queue_id,
+                        plan.client_id,
+                        push.status,
+                    )
+    return push
 
 
 async def deliver_committed_to_crm(
@@ -48,8 +181,6 @@ async def deliver_committed_to_crm(
 
     blob_path: str | None = None
     mime_type: str | None = None
-    resolution_phone: str | None = None
-    client_full_name: str | None = None
     already: asyncpg.Record | None = None
     async with pool.acquire() as conn:
         if queue_id is not None:
@@ -65,57 +196,6 @@ async def deliver_committed_to_crm(
             if qrow is not None:
                 blob_path = qrow["blob_path"]
                 mime_type = qrow["mime_type"]
-        # Identity resolution is keyed on the SELECTED client's own canonical
-        # phone — NEVER the transport sender phone (Codex 2026-07-19 round 6,
-        # F5): a forwarder A can send B's document; after the reviewer assigns
-        # it to B, resolving Fly by A's phone would deliver B's PII to A. The
-        # committed plan.client_id is the reviewed identity ground truth; if
-        # that client has no phone on the local card, delivery fails CLOSED
-        # (identity_unresolved) rather than guessing. The name is used ONLY to
-        # label a fresh Fly lead (placeholder "Lead +<phone>" names skipped).
-        if plan.client_id is not None:
-            crow = await conn.fetchrow(
-                "SELECT full_name, phone_normalized FROM clients WHERE id = $1",
-                int(plan.client_id),
-            )
-            if crow is not None:
-                _name = (crow["full_name"] or "").strip()
-                if _name and not _name.lower().startswith("lead "):
-                    client_full_name = _name
-                _phone = (crow["phone_normalized"] or "").strip()
-                if _phone:
-                    # F11 (Codex round-7): phone-based Fly resolution is only
-                    # sound when the selected client is the SOLE live local
-                    # owner of these digits — live duplicate-phone groups are a
-                    # real population (migration 246 recorded 622 at authoring;
-                    # 41 in the post-dedup dev book, probed 2026-07-19) and the
-                    # schema deliberately has no phone uniqueness constraint.
-                    # With a shared phone, Fly may know only the
-                    # OTHER owner, report matched_count=1 (no ambiguity visible
-                    # on the Fly side) and silently attach this client's
-                    # document to them. Digits-canonical comparison is stricter
-                    # than Fly's exact-string match on purpose: formatting
-                    # variants of the same number also fail CLOSED.
-                    dup_owners = await conn.fetchval(
-                        """
-                        SELECT COUNT(*) FROM clients
-                        WHERE deleted_at IS NULL
-                          AND id <> $1
-                          AND regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g')
-                              = regexp_replace($2, '[^0-9]', '', 'g')
-                        """,
-                        int(plan.client_id),
-                        _phone,
-                    )
-                    if dup_owners:
-                        logger.warning(
-                            "intake.delivery.local_phone_ambiguous queue=%s client=%s shared_with=%s",
-                            queue_id,
-                            plan.client_id,
-                            dup_owners,
-                        )
-                    else:
-                        resolution_phone = _phone
         if result.doc_id is not None:
             already = await conn.fetchrow(
                 "SELECT file_id, file_url FROM documents WHERE id = $1", result.doc_id
@@ -135,20 +215,15 @@ async def deliver_committed_to_crm(
             ok=False, status="missing_blob", detail="no blob_path on intake_queue row"
         )
     else:
-        push = await crm_push.push_committed_document(
-            bearer_token=bearer_token,
-            crm_write_key=crm_write_key,
-            client_id=int(plan.client_id),  # type: ignore[arg-type]  # committed means non-None
-            practice_id=plan.practice_id,
-            document_type=payload.get("document_type") or "unknown",
-            document_category=payload.get("document_category"),
-            file_name=payload.get("file_name") or os.path.basename(blob_path),
+        push = await _resolve_and_push_locked(
+            pool=pool,
+            plan=plan,
+            payload=payload,
+            queue_id=queue_id,
             blob_path=blob_path,
             mime_type=mime_type,
-            expiry_date=payload.get("expiry_date"),
-            notes=payload.get("notes"),
-            sender_phone=resolution_phone,
-            client_full_name=client_full_name,
+            bearer_token=bearer_token,
+            crm_write_key=crm_write_key,
         )
 
     crm_info: dict[str, Any] = {

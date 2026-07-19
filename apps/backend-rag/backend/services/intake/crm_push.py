@@ -159,6 +159,10 @@ async def _ensure_client_on_fly(
         # Resolution must be mutation-safe on shared phones: the endpoint
         # refuses BEFORE any restore/rename when >1 rows match (F10).
         "reject_ambiguous": True,
+        # NEVER resurrect an archived Fly row during identity resolution —
+        # the archived owner of this phone may be a DIFFERENT person than
+        # the locally-selected client (Codex round 8, F11 archive gap).
+        "restore_if_archived": False,
     }
     if full_name and full_name.strip():
         body["full_name"] = full_name.strip()
@@ -183,6 +187,16 @@ async def _ensure_client_on_fly(
         return None
     fly_id = data.get("client_id") if isinstance(data, dict) else None
     if fly_id is None:
+        return None
+    if isinstance(data, dict) and data.get("was_archived"):
+        # The sole Fly match is a soft-deleted row (restore disabled above):
+        # an archived card cannot prove it is the locally-selected person —
+        # uploading would resurrect-and-attach to a possibly different
+        # identity. Fail closed (Codex round 8, F11 archive gap).
+        logger.warning(
+            "intake.crm_push.upsert_archived_match fly_client=%s — refusing delivery",
+            fly_id,
+        )
         return None
     matched_count = data.get("matched_count") if isinstance(data, dict) else None
     if isinstance(matched_count, int) and matched_count > 1:

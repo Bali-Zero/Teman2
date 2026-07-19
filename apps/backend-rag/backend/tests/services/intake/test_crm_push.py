@@ -449,3 +449,33 @@ async def test_shared_phone_ambiguity_fails_closed(mock_client, blob):
     assert result.ok is False
     assert result.status == "identity_unresolved"
     assert [r.url.path for r in requests] == ["/api/crm/clients/upsert-by-phone"]
+
+
+async def test_archived_fly_match_fails_closed(mock_client, blob):
+    """Round-8 F11 archive gap guilt: the sole Fly match is an ARCHIVED row
+    (restore disabled by the resolution body) — an archived card cannot prove
+    the selected identity, so delivery must fail closed with no upload."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/upsert-by-phone"):
+            body = json.loads(request.content)
+            assert body["restore_if_archived"] is False  # never resurrect during resolution
+            assert body["reject_ambiguous"] is True
+            return httpx.Response(
+                200,
+                json={
+                    "client_id": 555,
+                    "was_created": False,
+                    "matched_count": 1,
+                    "was_archived": True,
+                },
+            )
+        raise AssertionError("upload must not run on an archived identity")
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None)
+    )
+    assert result.ok is False
+    assert result.status == "identity_unresolved"
+    assert [r.url.path for r in requests] == ["/api/crm/clients/upsert-by-phone"]
