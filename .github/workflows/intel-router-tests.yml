@@ -23,6 +23,7 @@ jobs:
   test:
     name: Test Intel Services
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -94,6 +95,7 @@ jobs:
   lint:
     name: Lint Intel Services
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code

@@ -28,6 +28,7 @@ jobs:
   p3-static-validation:
     name: P3 static validation (enforcing)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -99,6 +100,7 @@ jobs:
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       # MONITOR step — GitHub ephemeral runners have no safe Docker daemon for

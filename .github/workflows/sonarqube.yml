@@ -34,6 +34,7 @@ jobs:
   sonarqube:
     name: SonarQube Code Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Advisory-only: quality-gate thresholds (code smells, coverage,
     # duplication) are policy decisions the maintainer must own. The
     # scan still runs and publishes to SonarCloud; failure does not

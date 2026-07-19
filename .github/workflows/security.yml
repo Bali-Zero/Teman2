@@ -17,6 +17,7 @@ jobs:
   snyk-python:
     name: Snyk Python Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
     # listed in .security/exceptions.yaml (see docs/security/CVE_TRIAGE_POLICY.md).
     # Exceptions are enforced by the "Honour CVE exceptions" step below, which
@@ -66,6 +67,7 @@ jobs:
   snyk-node:
     name: Snyk Node.js Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Blocking gate — see snyk-python. Exceptions honoured via
     # .security/exceptions.yaml (docs/security/CVE_TRIAGE_POLICY.md).
 
@@ -117,6 +119,7 @@ jobs:
   snyk-docker:
     name: Snyk Docker Security
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Advisory-only: see snyk-python job comment.
     continue-on-error: true
 
@@ -141,6 +144,7 @@ jobs:
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
@@ -173,6 +177,7 @@ jobs:
   bandit:
     name: Bandit Python Security
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Blocking gate (A1 fix 2026-06-13): this job is in the merge-blocking
     # required-checks set, but it previously ran `bandit ... || true` and could
     # never fail — a toothless required check. It now replicates the decision
@@ -240,6 +245,7 @@ jobs:
   safety:
     name: Safety Dependency Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
     # listed in .security/exceptions.yaml (see docs/security/CVE_TRIAGE_POLICY.md).
     # Safety CLI exits 0 for "no vulns" and 64 for "vulns found" — we filter
@@ -283,6 +289,7 @@ jobs:
   detect-secrets:
     name: Detect Secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Re-enabled as a blocking gate now that:
     # 1. .secrets.baseline has been triaged: 920 findings auto-marked as
     #    false positives via scripts/detect_secrets_auto_triage.py (path
@@ -346,6 +353,7 @@ jobs:
   security-summary:
     name: Security Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       [
         snyk-python,
