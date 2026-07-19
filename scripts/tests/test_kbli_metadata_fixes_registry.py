@@ -161,7 +161,18 @@ PRE_CURE_PP28_SOURCES = {
     "10433": ["10433", "10490"],
 }
 POST_CURE_PP28_SOURCES = {
-    "52101": ["52101"],  # unchanged, deliberately not corrected (see spec data_note)
+    # RESIDUAL FIX (2026-07-19, M5 lane, scripts/kbli_filiera/cure_specs/
+    # metadata_residuals_2026_07_19.json): 52101's pp28_sources was left at
+    # the false same-digit self-reference ['52101'] by THIS spec (deliberate
+    # at the time — see this spec's own data_note, rule #9 provenance
+    # caution) even though the record's own whatChanged already named the
+    # true five-parent BPS crosswalk merge. A conductor comment on this PR
+    # (2026-07-19) ruled that gap a field-vs-note FALSITY, not incompleteness,
+    # and authorized the correction using the SAME already-image-verified
+    # BPS Lampiran citation this spec's data_note already cites — a
+    # standalone follow-up spec applied the fix, so the value below is the
+    # CURRENT canonical truth, not this spec's own (superseded) target.
+    "52101": ["03143", "03241", "03243", "03263", "52108"],
     "46100": ["46100"],  # unchanged, deliberately not corrected (see spec data_note)
     "10433": ["10433"],  # CORRECTED: 10490 removed
 }
@@ -238,14 +249,36 @@ def test_per_skala_never_detached_no_disputed_key(code: str):
 # 2. _data_note verbatim from spec
 # ---------------------------------------------------------------------------
 
+# 52101 and 10433 got a 2026-07-19 M5 residual-fix follow-up
+# (scripts/kbli_filiera/cure_specs/metadata_residuals_2026_07_19.json) whose
+# own data_note APPENDS a correction paragraph to THIS spec's original note
+# (never erasing it — team convention: the #2777 conductor-gate evidence
+# trail stays intact). For these two codes we can only assert the current
+# _data_note STARTS WITH this spec's original text, not exact equality;
+# 46100 got no residual fix and keeps the plain exact-match check.
+RESIDUAL_FIXED_CODES = ["52101", "10433"]
+
+
 @pytest.mark.parametrize("code", METADATA_FIX_CODES)
 def test_data_note_matches_spec_verbatim(code: str):
     spec_by_code = _load_spec_by_code()
     rec = _load_record(CANONICAL_PATH, code)
-    assert rec.get("_data_note") == spec_by_code[code]["data_note"], (
-        f"{code}: _data_note drifted from scripts/kbli_filiera/cure_specs/"
-        "metadata_fixes_2026_07_19.json — the compiler must copy data_note verbatim."
-    )
+    current_note = rec.get("_data_note", "")
+    original_note = spec_by_code[code]["data_note"]
+    if code in RESIDUAL_FIXED_CODES:
+        assert current_note.startswith(original_note), (
+            f"{code}: _data_note no longer STARTS WITH the original "
+            "metadata_fixes_2026_07_19.json text — the 2026-07-19 residual "
+            "fix must APPEND a correction paragraph, never erase or reorder "
+            "the original #2777 conductor-gate evidence trail. Full "
+            "verbatim-append pin lives in "
+            "test_kbli_metadata_residuals_52101_10433.py."
+        )
+    else:
+        assert current_note == original_note, (
+            f"{code}: _data_note drifted from scripts/kbli_filiera/cure_specs/"
+            "metadata_fixes_2026_07_19.json — the compiler must copy data_note verbatim."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +295,17 @@ def test_status_mapping_corrected_to_match_con_aggregazione(code: str):
     )
 
 
-@pytest.mark.parametrize("code", STATUS_MAPPING_CORRECTED_CODES)
+# whatChanged from THIS spec (metadata_fixes_2026_07_19.json) still holds
+# verbatim only for 46100. 52101 is deliberately EXCLUDED: the 2026-07-19 M5
+# residual fix further corrected 52101's whatChanged closing sentence (to
+# stop asserting "pp28_sources remains unchanged" once pp28_sources was
+# itself corrected) — the live record has legitimately diverged from THIS
+# spec's own (now-superseded) whatChanged_correction value. That correction
+# is pinned instead by test_kbli_metadata_residuals_52101_10433.py.
+WHATCHANGED_STILL_VERBATIM_FROM_THIS_SPEC = ["46100"]
+
+
+@pytest.mark.parametrize("code", WHATCHANGED_STILL_VERBATIM_FROM_THIS_SPEC)
 def test_whatchanged_corrected(code: str):
     spec_by_code = _load_spec_by_code()
     rec = _load_record(CANONICAL_PATH, code)
@@ -273,20 +316,37 @@ def test_whatchanged_corrected(code: str):
     )
 
 
-def test_10433_gets_no_status_mapping_or_whatchanged_change():
-    """10433's cure is pp28_sources-only — its status_mapping and
-    whatChanged must survive UNCHANGED (the task scoped this cure narrowly;
-    the merge-aware label re-adjudication is a documented follow-up, not
-    forced here)."""
+def test_10433_status_mapping_and_whatchanged_superseded_by_residual_fix():
+    """HISTORY: at THIS spec's (metadata_fixes_2026_07_19.json) own scope,
+    10433's cure was pp28_sources-only — its status_mapping and whatChanged
+    were left UNCHANGED on purpose, and this spec's own data_note explicitly
+    flagged "whether the merge-aware status_mapping label itself needs
+    re-adjudication" as a "known follow-up, not silently left undocumented."
+
+    That follow-up was resolved by the 2026-07-19 M5 residual fix
+    (scripts/kbli_filiera/cure_specs/metadata_residuals_2026_07_19.json,
+    conductor comment on this PR): with 10490 correctly attributed to 10419
+    (not 10433) by pp28_sources — already true after THIS spec's own cure —
+    10433 is a genuine 1:1 continuation, so status_mapping/whatChanged now
+    get corrected too. This test pins the CURRENT (post-residual-fix) truth;
+    it no longer asserts "no change" because a change legitimately landed.
+    """
     rec = _load_record(CANONICAL_PATH, "10433")
-    assert rec.get("status_mapping") == "MATCH_CON_AGGREGAZIONE", (
-        "10433: status_mapping drifted — expected untouched pre-cure value "
-        "'MATCH_CON_AGGREGAZIONE' (this cure does not correct status_mapping)."
+    assert rec.get("status_mapping") == "MATCH_LANGSUNG", (
+        "10433: status_mapping expected 'MATCH_LANGSUNG' (residual fix, "
+        "2026-07-19) — the stale merge-aware 'MATCH_CON_AGGREGAZIONE' label "
+        "should no longer survive now that its second parent (10490) is "
+        "correctly attributed to 10419, not 10433."
     )
     intel = rec.get("intel_2026") or {}
-    assert intel.get("whatChanged") == "KBLI 2020→2025 mapping: match con aggregazione.", (
-        "10433: intel_2026.whatChanged drifted — expected untouched pre-cure value "
-        "(this cure does not correct whatChanged)."
+    what_changed = intel.get("whatChanged", "")
+    assert "10433->10433" in what_changed or "1:1" in what_changed, (
+        f"10433: intel_2026.whatChanged expected a clean 1:1-continuation "
+        f"narrative (residual fix, 2026-07-19) — got {what_changed!r}."
+    )
+    assert what_changed != "KBLI 2020→2025 mapping: match con aggregazione.", (
+        "10433: intel_2026.whatChanged still reads the stale pre-residual-fix "
+        "'match con aggregazione' text — the residual fix did not land."
     )
 
 
@@ -322,6 +382,26 @@ def test_10433_pp28_sources_10490_removed():
 # ---------------------------------------------------------------------------
 
 def test_compiler_dry_run_reports_already_cured():
+    """Idempotency check re-running THIS OLD spec (metadata_fixes_2026_07_19.json)
+    over the served (current) canonical.
+
+    46100 and 10433 stay ALREADY CURED indefinitely — the 2026-07-19 M5
+    residual fix (metadata_residuals_2026_07_19.json) never touches any
+    field THIS spec's own entries check for those two codes (10433's entry
+    here only asserts pp28_sources, which the residual fix leaves alone;
+    46100 got no residual fix at all).
+
+    52101 is the deliberate exception: the residual fix corrected its
+    intel_2026.whatChanged to text that legitimately differs from THIS OLD
+    spec's own (now-superseded) whatChanged_correction value, so re-running
+    THIS spec's dry-run over the current canonical now (correctly) reports
+    52101 needing an "apply" — re-applying it with --apply would REGRESS the
+    residual fix. This is expected, point-in-time-spec behavior (a spec is
+    not meant to be silently re-applied forever once a LATER spec has
+    touched the same field) — tracked as a residual-spec-reapply risk in
+    PENDING-ARMS.md, not something this test should paper over by asserting
+    a false "still idempotent forever" guarantee.
+    """
     result = subprocess.run(
         [
             "python3",
@@ -337,14 +417,27 @@ def test_compiler_dry_run_reports_already_cured():
         check=False,
     )
     assert result.returncode == 0, (
-        f"dry-run over the served dataset should exit 0 (all already cured), "
-        f"got {result.returncode}. stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        f"dry-run over the served dataset should exit 0 (still-idempotent "
+        f"codes report already-cured, 52101's expected divergence is not a "
+        f"'problem' in the compiler's sense), got {result.returncode}. "
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
-    for code in METADATA_FIX_CODES:
+    for code in ("46100", "10433"):
         assert f"{code}: ALREADY CURED (skip)" in result.stdout, (
             f"expected '{code}: ALREADY CURED (skip)' in dry-run output, not found. "
             f"stdout:\n{result.stdout}"
         )
+    assert "52101: ALREADY CURED (skip)" not in result.stdout, (
+        "52101 unexpectedly reports ALREADY CURED against the OLD "
+        "(metadata_fixes_2026_07_19.json) spec — if this now passes, the "
+        "2026-07-19 residual fix's whatChanged correction may have been "
+        "reverted; investigate before treating this as progress."
+    )
+    assert "intel_2026.whatChanged -> metadata-corrected" in result.stdout, (
+        "expected the OLD spec's dry-run to (correctly) flag 52101's "
+        "whatChanged as divergent from ITS OWN (superseded) target value. "
+        f"stdout:\n{result.stdout}"
+    )
 
 
 # ---------------------------------------------------------------------------
