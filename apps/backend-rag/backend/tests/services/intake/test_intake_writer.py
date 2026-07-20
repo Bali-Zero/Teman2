@@ -2039,23 +2039,30 @@ async def test_leva3_nameid_holds_on_name_contradiction(pool, seed, monkeypatch)
 
 async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, monkeypatch):
     """npwp identity-backfill wire (m248): a COMPLETE 15/16-digit npwp is written
-    digits-canonical; a partial OCR fragment or an overlong garble must NEVER be
-    stored — it would pollute the key book the strong-id matcher corroborates
-    against (guilt AND innocence, cicatrix #3)."""
+    digits-canonical (innocence, on an EMPTY card); a partial OCR fragment or an
+    overlong garble must NEVER be stored — it would pollute the key book the
+    strong-id matcher corroborates against (guilt, cicatrix #3). npwp is also an
+    F1 fill-only column (client_enricher._IDENTITY_FILL_ONLY_COLUMNS): once a
+    client already carries a value, a SECOND differently-normalized value —
+    even a well-formed one — is a conflict to quarantine, never a silent
+    correction (GATE-11 identity-safety, research/operations/2026-07-18-intake-
+    identity-backfill-design.md §3 rule 11)."""
     from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
 
     async with pool.acquire() as conn:
-        # formatted legacy 15-digit → stored as bare digits (innocence: full read lands)
+        # formatted legacy 15-digit, fresh card → stored as bare digits
         written = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01.234.567.8-901.234"}}
         )
         assert written.get("npwp") == "012345678901234"
-        # 16-digit NIK-format → stored
+        # a well-formed 16-digit NIK-format value on top of the now-filled card is
+        # a fill-only CONFLICT, not a silent overwrite — the card keeps the first value
         written16 = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
         )
-        assert written16.get("npwp") == "0123456789012345"
-        # 10-digit fragment → dropped (guilt), card keeps the previous full value
+        assert "npwp" not in written16
+        assert written16.get("_skipped_conflicts") == ["npwp"]
+        # 10-digit fragment → dropped (guilt) before fill-only is even consulted
         frag = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789"}}
         )
@@ -2069,10 +2076,16 @@ async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, mo
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "٠1234567890123٤5"}}
         )
         row = await conn.fetchrow("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+        # a fresh, still-empty card DOES accept the 16-digit NIK-format directly —
+        # confirms the rejection above is fill-only-conflict, not a format ban
+        written16_fresh = await enrich_client_from_extracted_fields(
+            conn, seed["cid_b"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
+        )
     assert frag == {}
     assert garble == {}
     assert unicode_mix == {}
-    assert row["npwp"] == "0123456789012345"
+    assert row["npwp"] == "012345678901234", "fill-only must protect the first-written value"
+    assert written16_fresh.get("npwp") == "0123456789012345"
 
 
 async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeypatch):

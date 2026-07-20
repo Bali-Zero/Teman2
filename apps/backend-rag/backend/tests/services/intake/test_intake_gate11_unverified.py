@@ -121,6 +121,13 @@ class FakeConn:
         assert args == (555,)
         return dict(self.client_row)
 
+    async def fetchval(self, _query: str, *_args: Any, **_kwargs: Any) -> Any:
+        # Answers acquire_strong_id_lock's pg_advisory_xact_lock probe — a fake
+        # in-memory connection has no real contention to serialize against, so
+        # the lock always "acquires" instantly (None is the real driver's
+        # return shape for that call too — the SQL function is VOID-typed).
+        return None
+
     async def execute(self, query: str, *args: Any) -> str:
         self.execute_calls.append((query, args))
         return "UPDATE 1"
