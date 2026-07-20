@@ -360,5 +360,10 @@
 - **import**: `@nuzantara/core/components/WhatsAppFAB`
 - **source**: `packages/core/components/WhatsAppFAB.tsx`
 - **use when**: whatsapp, contact cta
-- **props**: _(none parsed)_
+- **props**:
+  - `size`: `number | undefined`
+  - `strokeWidth`: `number | undefined`
+  - `color`: `string | undefined`
+  - `fill`: `string | undefined`
+  - `fillOpacity`: `number | undefined`
 - **example**: `<WhatsAppFAB />`

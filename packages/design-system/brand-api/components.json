@@ -481,7 +481,13 @@
       "name": "WhatsAppFAB",
       "import": "@nuzantara/core/components/WhatsAppFAB",
       "source": "packages/core/components/WhatsAppFAB.tsx",
-      "props": {},
+      "props": {
+        "size": "number | undefined",
+        "strokeWidth": "number | undefined",
+        "color": "string | undefined",
+        "fill": "string | undefined",
+        "fillOpacity": "number | undefined"
+      },
       "useWhen": [
         "whatsapp",
         "contact cta"
