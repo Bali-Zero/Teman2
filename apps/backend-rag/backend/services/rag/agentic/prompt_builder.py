@@ -218,7 +218,19 @@ class SystemPromptBuilder:
         is_creator = False
         is_team = False
 
-        if user_email:
+        # Explicit signal from a resolved sender identity (WA team-assistant
+        # V1 — backend/services/whatsapp_identity.py resolves phone→role and
+        # wa_inbox_bot.py forwards it as profile.role="creator"/"team") takes
+        # priority over the email heuristics below. Additive only: when
+        # profile.role is absent or some other value (e.g. "admin"), this is
+        # a no-op and the existing heuristics run exactly as before.
+        profile_role = str(profile.get("role", "")).lower() if profile else ""
+        if profile_role == "creator":
+            is_creator = True
+        elif profile_role == "team":
+            is_team = True
+
+        if not is_creator and not is_team and user_email:
             email_lower = user_email.lower()
             if "antonello" in email_lower or "siano" in email_lower:
                 is_creator = True
