@@ -290,6 +290,20 @@ def _digits_only(value: Any) -> str | None:
     return d or None
 
 
+def _ascii_digits(value: Any) -> str | None:
+    """ASCII-only digit projection — the exact mirror of SQL ``[^0-9]``.
+
+    Python's ``\\d``/``\\D`` are Unicode-aware (Arabic-Indic, full-width and
+    Devanagari digits survive :func:`_digits_only`), while Postgres ``\\d`` is
+    locale-dependent — comparing the two classes is an environment-dependent
+    mismatch. Strong-id npwp matching uses THIS projection on both sides.
+    """
+    if value is None:
+        return None
+    d = re.sub(r"[^0-9]", "", str(value))
+    return d or None
+
+
 def _looks_like_company_name(value: str) -> bool:
     """True for common Indonesian company/entity prefixes."""
     normalized = re.sub(r"\s+", " ", value.strip().upper())
@@ -329,7 +343,7 @@ def normalize_sender_phone(value: Any) -> str | None:
 async def _match_person_strong(
     conn: asyncpg.Connection, extracted: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Strong-identifier match against ``clients`` (passport / kitas number)."""
+    """Strong-identifier match against ``clients`` (passport / kitas / npwp)."""
     candidates: list[dict[str, Any]] = []
 
     passport = _field_value(extracted, "passport_no") or _field_value(extracted, "passport_number")
@@ -380,6 +394,32 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
+    npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
+    if npwp:
+        norm = _ascii_digits(npwp)
+        # NPWP is EXACTLY 15 (legacy) or 16 (post-2024 NIK-format) digits.
+        # Shorter = partial OCR read; longer = concatenated/garbled OCR —
+        # either way an "exact" match on malformed digits is a false strong-id
+        # (malformed CRM data can mirror malformed OCR).
+        if norm and len(norm) in (15, 16):
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND npwp IS NOT NULL
+                  AND REGEXP_REPLACE(npwp, '[^0-9]', '', 'g') = $1
+                ORDER BY id
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "npwp", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
     return candidates
 
 
@@ -409,13 +449,18 @@ async def _match_company_strong(
 
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
     if npwp:
-        norm = _digits_only(npwp)
-        if norm:
+        norm = _ascii_digits(npwp)
+        # Same exact-length gate as the person side (m248): NPWP is 15 or 16
+        # digits, period. 14 live companies carry an 11-14-digit npwp_company —
+        # a partial OCR fragment exact-matching one of those would become a
+        # unique CONF_STRONG_EXACT candidate and, with the decision matrix
+        # being method-agnostic, an AUTO_ATTACH.
+        if norm and len(norm) in (15, 16):
             rows = await conn.fetch(
                 """
                 SELECT id, company_name
                 FROM companies
-                WHERE REGEXP_REPLACE(npwp_company, '\\D', '', 'g') = $1
+                WHERE REGEXP_REPLACE(npwp_company, '[^0-9]', '', 'g') = $1
                 """,
                 norm,
             )
@@ -861,16 +906,41 @@ async def resolve_entity(
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
         # doc-type is company-ish OR when a company strong-id is present.
-        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt"}:
+        # 'unknown' probes here too (m248): an unclassified doc carrying a
+        # company strong-id field must not skip the company book and land on a
+        # person by npwp alone — the probe is a no-op without company fields.
+        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt", "unknown"}:
             strong += await _match_company_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "company"
 
-        # PERSON-side identifiers (passport/kitas) — and person npwp fallback.
+        # PERSON-side identifiers (passport/kitas/npwp).
         if not strong and (dt in _PERSON_DOC_TYPES or dt == "npwp" or dt == "unknown"):
             strong += await _match_person_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "person"
+        elif strong and subject_kind == "company":
+            # m248 npwp cross-table collision guard: the same 15/16-digit value
+            # on clients.npwp AND companies.npwp_company is a data error (one
+            # tax number cannot belong to both books). Company-first must not
+            # silently crown the company — surface the person hit too and let
+            # the matrix degrade to AMBIGUOUS (>1 distinct strong row).
+            company_npwp_vals = {
+                c.get("matched_value")
+                for c in strong
+                if c.get("method") == "npwp_company"
+            }
+            if company_npwp_vals:
+                person_hits = await _match_person_strong(conn, extracted_fields)
+                collisions = [
+                    c
+                    for c in person_hits
+                    if c.get("method") == "npwp"
+                    and c.get("matched_value") in company_npwp_vals
+                ]
+                if collisions:
+                    strong += collisions
+                    subject_kind = "unknown"
 
         # If still nothing strong and doc is company-ish, also try person strong
         # (defensive: a misclassified doc still gets a chance).

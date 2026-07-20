@@ -31,12 +31,13 @@ SELECT-only for inspection). The MCP `postgres-nuzantara` points at PROD and is 
 intake — always use the local dev DB for intake work.
 
 Core tables:
-| Table | Key columns |
-|---|---|
+
+| Table                             | Key columns                                                                                                                                                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `document_routing_proposal` (`p`) | `id`, `queue_id`, `status` (**review_pending** / review_claimed / routed / **auto_routed**), `entity_resolution` (JSON: `candidates[]{table,id}`, `doc_type`, `decision`), `routing` (JSON: `fields`, `decision`), `commit_gate` |
-| `intake_queue` (`q`) | `id`, `stage_output` (JSON: `classify.ocr_text_per_page[]`, `extract.fields`, `ocr.pages[]`), `source`, `source_ref`, `blob_hash`, `pipeline_version` |
-| `intake_commit_audit` | `proposal_id`, `client_id`, `outcome` (dry_run/blocked/committed/failed/rolled_back), `committed_by`, `dry_run` (bool) — every decision recorded, reversible |
-| `clients` | `id`, `full_name`, `phone_normalized`, `passport_number`, `kitas_number`, `nationality`, `deleted_at` (soft-delete) |
+| `intake_queue` (`q`)              | `id`, `stage_output` (JSON: `classify.ocr_text_per_page[]`, `extract.fields`, `ocr.pages[]`), `source`, `source_ref`, `blob_hash`, `pipeline_version`                                                                            |
+| `intake_commit_audit`             | `proposal_id`, `client_id`, `outcome` (dry_run/blocked/committed/failed/rolled_back), `committed_by`, `dry_run` (bool) — every decision recorded, reversible                                                                     |
+| `clients`                         | `id`, `full_name`, `phone_normalized`, `passport_number`, `kitas_number`, `nationality`, `deleted_at` (soft-delete)                                                                                                              |
 
 **Extracted fields shape:** `routing.fields` (fallback `stage_output.extract.fields`); each value is
 `{value, confidence, source_page}` or a scalar. Strong-id keys: `passport_no`, `kitas_no`.
@@ -133,6 +134,63 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 ---
 
 ## 5. LIVE STATE (update on every material change)
+
+- **2026-07-19 — PERSON-NPWP STRONG-ID LIVE (m248, PR #2775 merged) + BACKLOG REROUTED + WIRE PROVEN:**
+  `routing._match_person_strong` now matches `clients.npwp` (exactly 15/16 ASCII digits, dup→AMBIGUOUS,
+  cross-table collision with `companies.npwp_company`→AMBIGUOUS/unknown; 5 Codex adversarial rounds →
+  CLEAN). Backlog reroute executed (`--reroute-npwp --apply`, `pipeline_version='v2.3-npwp'`, worker
+  restarted from `~/nuzantara-deploy` first): **129 full-npwp review_pending docs** superseded+rerouted,
+  drained <1min. BEFORE→AFTER: NO_MATCH 54→79 (25 noise→quarantine via LEVA-1), AMBIGUOUS 48→33,
+  LINK 20→16, AUTO_ATTACH 5→1. **npwp method fired on 3 proposals: 1 unique match (161274→client 10659) + 2 dup groups (161316: 7042/10353; 161330: 4558/10715) correctly AMBIGUOUS.** The auto-commit
+  tier is PROVEN wired to npwp presence: both LEVA gates evaluated 161274 and correctly HELD it —
+  phone matches no client, doc subject name overlap 0.00 vs the candidate (trigram 0.000, 23-char
+  readable name): affirmative contradiction → human review is the right terminal (data-quality lead:
+  either client 10659's npwp is mis-entered or the doc belongs to an uncatalogued person). never-auto
+  held: 0 auto commits, audit count unchanged. **Honest sizing: deterministic-drain population book-wide
+  = 3 proposals only** (1 held + 2 dup groups); the 611 LINK_CANDIDATE "score 1.0" rows are
+  `fuzzy_full_name` trigram-perfect, NOT strong-id (W88 proxy trap — measure by METHOD, never score).
+  **npwp backfill fuel: 32 pending single-candidate docs carry a full npwp; 25 point at 16 distinct
+  clients LACKING a valid npwp** — each human confirm now compounds the key book via `client_enricher`
+  (npwp write fragment-gated 15/16 ASCII since this change; a partial OCR read is dropped, never stored).
+
+- **2026-07-18 late night — LOCAL SNAPSHOT REFRESHED (safe method — NOT the stock script):**
+  `nuz_db_refresh.sh` does `dropdb nuzantara_dev` — on the Pro that would DESTROY the
+  local-authoritative intake state (247k `intake_queue` rows whose `stage_output` is the ONLY OCR
+  copy, 71.8k proposals, audit; prod intake tables verified EMPTY 0/0/0). Safe procedure executed
+  instead: safety dump of dev (209M) → full prod dump (368M, readonly role via the MCP proxy
+  :15432) → restore into the separate DB **`nuzantara_prod_snapshot`** (complete fresh prod
+  mirror, use it for cross-checks; needed `brew install postgis` — prod `clients.geo_point`) →
+  content-swap of ONLY `clients` in `nuzantara_dev` (DELETE+COPY under
+  `session_replication_role=replica`). Dev schema gained prod's 10 new columns — **`npwp` (291
+  alive), `nib`, `tax_id`, visa/kitas expiry** — previously-invisible strong-id substrate;
+  POSSIBLE new lever: a re-route could gain strong-id matches IF routing consults npwp (verify
+  before claiming). Verified after: dev.clients=1,757 alive / 1,665 with folder / client 3346
+  intact; intake untouched (audit=885 unchanged). Known residue: 21 `documents` + 6 `practices`
+  rows orphaned by prod hard-deletes (report-only).
+
+- **2026-07-18 night — `google_drive_folder_id` backfill CLOSED + PROD-DEDUP DISCOVERY:** the
+  "173/11,744 populated" premise was STALE-SNAPSHOT math. Prod truth (verified twice: Fly API GET +
+  readonly MCP SELECT): the CRM book was **mass-deduped on prod — 1,755 alive clients** (local
+  snapshot still holds ~11.7k pre-dedup rows, 128/128 probed "alive" locally were dead/absent on
+  prod), and **1,664/1,755 (94.8%) already have `google_drive_folder_id`** via the server-side
+  ensure-folder flow. Session-as-reviewer backfill (`scripts/intake_drive_folder_id_backfill.py`,
+  Tier-A bar: exact-name OR sim≥0.85 + Drive ancestor-walk ground truth + live-screen-BEFORE-
+  bijectivity + TOCTOU re-check + never-overwrite): **234 candidates → 1 applied:verified (client 3346)**, 61 already served live, 128 dead on prod, 44 Drive-unresolved (folders renamed/moved
+  post-enqueue — correct terminal skips). **The gdrive-backfill lever is exhausted; every local-book
+  analysis (incl. the 88.5% ceiling below) needs recompute after `nuz_db_refresh.sh`.** Drive access
+  gotcha: the SA alone sees NOTHING (404) — DWD impersonation `zero@balizero.com` is mandatory.
+
+- **2026-07-18 evening — BACKLOG REROUTED through the m227 fix (EXECUTED, measured):**
+  `scripts/intake_reprocess_backlog.py --reroute-drive-folder --apply` resumed **24,256** Drive
+  0-candidate rows at route-only (stage_output PRESERVED — the blobs are retention-evicted, the saved
+  fields are the only copy; the generic `--reprocess` would have WIPED them, locked by test). Worker
+  restarted first (launchagent `com.nuzantara.intake-worker` runs from `~/nuzantara-deploy`, had
+  pre-merge code in memory). Drained in ~5 min. **Outcome: 1,588 docs (6.5%) gained ≥1 candidate —
+  1,285 LINK_CANDIDATE + 300 AMBIGUOUS** (676 LINK + 172 AMBIG live in review_pending; 588+128 in
+  quarantine via the LEVA-1 noise filter, consultable). Methods: folder_name 1,665, fuzzy_full_name
+  195, strong-id 3 (2 passport + 1 kitas — enricher backfill from prior attaches already compounding).
+  **never-auto held: 0 auto_routed.** Side-win: 14,859 noise NO_MATCH moved review_pending→quarantine
+  (review feed −~15k). Pipeline tag: `pipeline_version='v2.2-m227-folder'`.
 
 - **2026-07-18 (m227 FOLDER FIX — the structural lever for the 24k drive backlog):** `routing.py::
 _match_folder_name` was **root-segment-only** (`source_path.split('/')[0]`) — correct for Dropbox

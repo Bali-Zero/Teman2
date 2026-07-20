@@ -160,8 +160,8 @@ else
         # Plain command substitution captures ONLY stdout (the machine
         # verdict); the classifier's stderr (loud human-readable banner)
         # flows straight through to this hook's own stderr, unredirected.
-        VERDICT_OUTPUT="$("$PYTHON_BIN" scripts/prepush_classify.py < "$UNION_FILE")"
-        VERDICT_RC=$?
+        VERDICT_RC=0
+        VERDICT_OUTPUT="$("$PYTHON_BIN" scripts/prepush_classify.py < "$UNION_FILE")" || VERDICT_RC=$?
         rm -f "$UNION_FILE"
 
         if [ "$VERDICT_RC" != "0" ]; then

@@ -573,3 +573,45 @@ def test_chat_kbli_glossary_tertutup(client):
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("What is TERTUTUP?"))
     assert response.status_code == 200
+
+
+def test_chat_kbli_glossary_terbatas_states_correct_capital_facts(client):
+    """Guilt check (FATAL-3 residual): the TERBATAS glossary answer must state
+    the corrected BKPM 5/2025 paid-up capital figure (Rp 2.5bn), never the
+    stale 'Minimum Capital Paid Up for PMA: Rp 10 Billion' line."""
+    with (
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="terbatas"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+    ):
+        response = client.post("/kbli-notebook/chat", json=chat_payload("What does TERBATAS mean?"))
+    assert response.status_code == 200
+    answer = response.json()["answer"]
+    assert "Rp 2.5 Billion" in answer
+    assert "BKPM 5/2025" in answer
+    assert "Minimum Capital Paid Up for PMA: Rp 10 Billion" not in answer
+
+
+def test_chat_kbli_glossary_terbuka_states_correct_capital_facts(client):
+    """Same guilt check as TERBATAS, for the TERBUKA glossary answer."""
+    with (
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="terbuka"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+    ):
+        response = client.post("/kbli-notebook/chat", json=chat_payload("What does TERBUKA mean?"))
+    assert response.status_code == 200
+    answer = response.json()["answer"]
+    assert "Rp 2.5 Billion" in answer
+    assert "BKPM 5/2025" in answer
+    assert "Minimum Capital Paid Up for PMA: Rp 10 Billion" not in answer

@@ -5,9 +5,10 @@ Extracts entities and relationships from SOURCE CHUNKS of high-confidence
 RAG responses and writes them to STAGING TABLES (kg_nodes_staging,
 kg_edges_staging) — NOT directly to production KG.
 
-Staged entries are promoted to production (kg_nodes/kg_edges) by a
-batch validation job every 6h, after passing schema compliance,
-referential integrity, and business logic checks.
+Staged entries are promoted to production (kg_nodes/kg_edges) after
+passing schema compliance, referential integrity, and business logic
+checks. Promoted by backend.scripts.kg_staging_promotion (GitHub
+Actions cron, every 6h; dry-run shadow until armed).
 
 Triggered as a fire-and-forget task after each RAG response with
 evidence_score > 0.6. Uses heuristic extraction (regex, free, <10ms).

@@ -1050,3 +1050,130 @@ def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:
     assert "ocr_chars >= $1" in sql
     assert "sender phone%" in sql
     assert "SELECT 'automation_bucket'" in sql
+
+
+def test_reroute_drive_folder_sql_targets_drive_zero_candidate_bucket() -> None:
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_SELECT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "q.source = 'drive'" in sql
+    assert "q.source_path IS NOT NULL" in sql
+    # Codex round-2 (m248): pick the LATEST proposal per queue row FIRST, and
+    # only then require it to be review_pending — filtering inside the CTE
+    # would resurrect rows whose newest proposal is already routed.
+    assert "proposal_status = 'review_pending'" in sql
+    assert "p.status = 'review_pending'" not in sql
+    assert "'NO_MATCH'" in sql
+    assert "jsonb_array_length" in sql
+    assert "LIMIT $1" in sql
+
+
+def test_reroute_drive_folder_reset_resumes_route_and_preserves_stage_output() -> None:
+    # The load-bearing invariant: 97.7% of these rows' blobs are retention-
+    # evicted, so the saved stage_output (OCR/extract fields) is the ONLY copy.
+    # A reset that wiped it (like REPROCESS_RESET_SQL does) would be
+    # irreversible data loss + a guaranteed pipeline failure at preprocess.
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_RESET_SQL
+    assert "stage_output" not in sql  # NEVER wiped — route-only resume
+    assert "status           = 'validated'" in sql
+    assert "stage            = 'validate'" in sql
+    assert "pipeline_version = $2" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
+    # guilt check: the FULL-rerun reset (for contrast) DOES wipe stage_output.
+    assert "stage_output" in irb.REPROCESS_RESET_SQL
+
+
+def test_reroute_drive_folder_supersede_only_review_pending() -> None:
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL
+    assert "SET status = 'superseded'" in sql
+    assert "p.status = 'review_pending'" in sql
+    # Codex round-4: the sibling sweep is id-bounded BELOW each confirmed
+    # proposal — a proposal born after the SELECT is never touched.
+    assert "p.id < sel.pid" in sql
+    assert "p.queue_id = sel.qid" in sql
+
+
+def test_reroute_selected_supersede_is_proposal_scoped_and_confirms() -> None:
+    # Codex round-3: the CONFIRMING supersede must target the exact selected
+    # proposal ids (an older pending sibling must never, alone, confirm a
+    # reset while the newer proposal sits claimed under a reviewer).
+    irb = _load()
+    sql = irb.REROUTE_SUPERSEDE_SELECTED_SQL
+    assert "id = ANY($1::bigint[])" in sql
+    assert "queue_id = ANY" not in sql
+    assert "status = 'review_pending'" in sql
+    assert "RETURNING id, queue_id" in sql
+
+
+def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
+    # m248: selects review_pending rows with a FULL extracted npwp (>=15
+    # digits after normalization) from either the routed fields or the saved
+    # extract payload — no source / candidate-count filter (the docs that can
+    # gain the npwp signal already carry folder/fuzzy candidates).
+    irb = _load()
+    sql = irb.REROUTE_NPWP_SELECT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "proposal_status = 'review_pending'" in sql
+    assert "npwp_number" in sql
+    # exact-length gate: valid NPWP is 15 or 16 digits, never >=17 garble.
+    assert "IN (15, 16)" in sql
+    assert ">= 15" not in sql
+    assert "LIMIT $1" in sql
+    # innocence: it must NOT copy the folder-mode drive/0-candidate filters.
+    assert "q.source = 'drive'" not in sql
+    assert "jsonb_array_length" not in sql
+
+
+def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
+    # Both modes go through the ONE shared engine — the stage_output
+    # preservation invariant is inherited, and neither mode can grow reset
+    # SQL of its own that could drift.
+    irb = _load()
+    assert not hasattr(irb, "REROUTE_NPWP_RESET_SQL")
+    assert not hasattr(irb, "REROUTE_NPWP_SUPERSEDE_SQL")
+    import inspect
+
+    engine_src = inspect.getsource(irb._run_route_only_reroute)
+    assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in engine_src
+    assert "REROUTE_SUPERSEDE_SELECTED_SQL" in engine_src
+    assert "REROUTE_ELIGIBLE_LOCK_SQL" in engine_src
+    for fn in (irb.run_reroute_npwp, irb.run_reroute_drive_folder):
+        assert "_run_route_only_reroute" in inspect.getsource(fn)
+
+
+def test_reroute_eligible_lock_never_yanks_active_lease() -> None:
+    # Codex round-2: the reset must skip rows the worker is actively
+    # processing, inside one transaction, safe under concurrent invocations.
+    irb = _load()
+    sql = irb.REROUTE_ELIGIBLE_LOCK_SQL
+    assert "lease_owner IS NULL OR lease_expires_at <= now()" in sql
+    assert "FOR UPDATE SKIP LOCKED" in sql
+
+
+def test_reroute_reset_only_actually_superseded_rows() -> None:
+    # Codex round-3: a proposal a human claims between SELECT and supersede
+    # (review_pending -> review_claimed) must be left alone entirely — the
+    # confirming supersede RETURNs (id, queue_id) and ONLY confirmed queue
+    # rows get the sibling sweep + reset.
+    irb = _load()
+    import inspect
+
+    src = inspect.getsource(irb._run_route_only_reroute)
+    assert "REROUTE_SUPERSEDE_SELECTED_SQL, selected_pids" in src
+    assert "confirmed_qids_arr" in src and "confirmed_pids" in src
+    assert "REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids" in src
+
+
+def test_reroute_pipeline_version_defaults_per_mode() -> None:
+    # --reroute-pipeline-version default is None; each mode picks its own tag
+    # so a folder rerun and an npwp rerun stay measurable independently.
+    irb = _load()
+    import inspect
+
+    src = inspect.getsource(irb.main)
+    assert 'or "v2.2-m227-folder"' in src
+    assert 'or "v2.3-npwp"' in src

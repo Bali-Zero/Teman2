@@ -12,18 +12,71 @@ scope. For each candidate it applies the panel's safety model:
 
   1. NEVER touch the main checkout or known long-lived worktrees (allowlist).
   2. Age gate: skip if mtime < MIN_AGE_MIN (active session).
+  2b. Live-cwd gate: skip if any process on the machine has its cwd inside the
+      worktree (exact match OR a subdirectory) — a precise "active session"
+      signal the mtime-age gate alone misses (a shell idling deep in the tree
+      touches no file, so mtime never moves). `lsof` is resolved by ABSOLUTE
+      path (round-2 fix, 2026-07-18: the daily cron's plist PATH is
+      `/opt/homebrew/bin:/usr/bin:/bin`, which does NOT contain `lsof` on
+      either M5 or Pro — it lives at `/usr/sbin/lsof` — so a bare
+      `["lsof", ...]` call silently raised FileNotFoundError under the REAL
+      cron and the guard was inert the whole time: scar #2, green-but-not-
+      working). lsof is invoked ONCE per gc() run (system-wide cwd dump),
+      never once per worktree — a 53-worktree fleet at a 20s timeout each
+      would be ~17min cumulative worst case. Missing binary / any error →
+      logged (visibly, not silently) and falls through to the age/dirty
+      gates below; a live-cwd check must never crash or hang the GC.
   3. Dirty classification: `git status --porcelain` AND a whitespace-insensitive
      diff. Pure formatting noise (Prettier/Black reflow) is NOT real work
      (W62: the 6 orphans were all formatting-only). Real dirty → QUARANTINE.
-  4. Quarantine before removal: if a worktree has real uncommitted work OR is on
-     a detached HEAD with commits, stash it onto refs/agent-quarantine/<slug>
-     so nothing is lost, THEN remove. Never blind-delete dirty work.
-  5. Unpushed-commit gate: if the branch has commits not on origin, do NOT
-     remove — report for operator (a branch may be mid-PR).
+  4. Preservation before removal runs on TWO INDEPENDENT tracks, either of
+     which can veto the remove:
+       a. Real uncommitted work (any worktree) → stash-quarantine onto
+          refs/agent-quarantine/<slug> (git stash create; never touches the
+          stash stack). Quarantine failure → KEEP, never remove.
+       b. Detached HEAD (round-2 fix, 2026-07-18 — cure for a silent-orphan
+          bug: a CLEAN detached-HEAD worktree has no branch ref, so
+          `git worktree remove` was dropping the only pointer to its
+          commits into dangling/unreachable space. `git stash create` is
+          EMPTY on a clean tree, so the old real_dirty-only quarantine never
+          fired for this case). For ANY detached worktree about to be
+          removed, UNCONDITIONALLY resolve `git rev-parse --verify HEAD` and
+          write it to refs/agent-quarantine/<slug>-head BEFORE removal —
+          never gated by the unpushed-commit proxy (rule 5), which can
+          false-zero a detached HEAD via the three-dot content
+          short-circuit. Resolution or ref-write failure → KEEP, never
+          remove (log "could not preserve detached HEAD").
+     Quarantine/preservation refs check for a pre-existing ref at the same
+     name first (slug-truncation collision) and append a short sha
+     uniquifier on collision, so a re-run never clobbers a prior quarantine.
+  5. Unpushed-commit handling for NAMED branches only (FIXED 2026-07-18 —
+     cure for the W88 "kept forever" bug: the daily cron reaped 0 for days,
+     53 worktrees / 55G accumulated, because this gate hard-KEPT every
+     named-branch worktree with `rev-list origin/main..HEAD` > 0 — a proxy
+     that inflated to 7779-7833 on divergent/rebased/squashed bases). A
+     NAMED branch's unpushed commits no longer block dir removal:
+     `git worktree remove` only deletes the WORKING DIRECTORY, never the
+     branch ref — the branch (and every commit on it) survives in
+     refs/heads/ untouched and is fully recoverable via
+     `git worktree add <path> <branch>`. The GC logs a RECLAIM-DIR line
+     (operator awareness + the exact resume command) and proceeds to remove
+     the dir. This script NEVER runs `git branch -D`/`-d` — grep the file to
+     confirm the invariant holds. (Detached HEAD is rule 4b above, not this
+     rule — it never had a branch ref to rely on.)
   6. `git worktree prune` at the end → clears phantom admin entries for /tmp
      worktrees deleted on reboot (Pattern 7).
   7. dry-run by DEFAULT; --apply required to remove.
   8. Loop-bug alarm: WARN if it would remove > MAX_REMOVE_ALARM in one run.
+  9. G2_heartbeat (organ-conformance gene, round-3, 2026-07-18): every run
+     writes a JSON sidecar to ~/.organism/last_seen/<ORGAN_ID>.json (env
+     ORGANISM_LAST_SEEN_DIR overridable) via _heartbeat(), wired at the
+     single try/except/finally point in main() — status ok (with the real
+     removed/quarantined/reclaimed_unpushed/kept_active/phantom counters),
+     disabled (kill-switch), or error (exception summary). This is the
+     anti-blindness fix for the exact failure class this file's own history
+     is made of: the daily cron reaped 0 for days with zero external signal.
+     Registry entry: apps/organism/organism/organs_registry.yaml
+     id=pro.worktree_gc_universal.
 
 Kill switch: WORKTREE_GC_ENABLED=false → no-op exit 0.
 Run: python scripts/worktree_gc_universal.py [--apply] [--quiet]
@@ -31,12 +84,16 @@ Run: python scripts/worktree_gc_universal.py [--apply] [--quiet]
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("worktree_gc_universal")
 
@@ -44,6 +101,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKTREES_DIR = REPO_ROOT / ".worktrees"
 STATE_FILENAME = ".agent-task.json"
 KILL_SWITCH_ENV = "WORKTREE_GC_ENABLED"
+
+# G2_heartbeat (organ-conformance gene, round-3 2026-07-18): the SAME string
+# as this organ's launchd Label (plist Label + registry recovery_params.label
+# + this ID — one string, three consumers, never three separately-maintained
+# copies). registry entry: apps/organism/organism/organs_registry.yaml
+# id=pro.worktree_gc_universal.
+ORGAN_ID = "com.nuzantara.worktree-gc-universal.daily"
 
 MIN_AGE_MIN = 15          # skip worktrees touched in the last 15 min (active)
 DEFAULT_MAX_AGE_HOURS = 24
@@ -57,6 +121,42 @@ ALLOWLIST_PATHS = {
     str(Path.home() / "Desktop" / "nuzantara-deploy"),
     str(Path.home() / "Desktop" / "nuzantara-crm-guardian-drive"),
 }
+
+
+def _heartbeat(status: str, detail: str = "") -> None:
+    """G2_heartbeat (organ-conformance gene, round-3 2026-07-18): proves this
+    organ ran — this exact blindness ("reaped 0 for days", nobody noticed) IS
+    the disease the round-1/2 fixes cured; this gene makes the NEXT such
+    blindness visible instead of silent (superscar #2, Esiste≠Armato).
+
+    Writes a JSON sidecar to <ORGANISM_LAST_SEEN_DIR or ~/.organism/last_seen>
+    /<ORGAN_ID>.json with {organ, status, ts, detail}. `status` is one of
+    ok|error|disabled. `detail` carries the real reap counters on success —
+    the anti-blindness payload a healer/receptor can actually read, not
+    regex-bait for a conformance gate.
+
+    Best-effort ONLY: any failure (permission, disk full, missing HOME, ...)
+    is swallowed here. A heartbeat write must NEVER crash the GC or change
+    its exit code — the GC's job is reaping worktrees, not proving liveness;
+    liveness is a side effect it must survive losing.
+    """
+    try:
+        sidecar_dir = Path(
+            os.environ.get("ORGANISM_LAST_SEEN_DIR")
+            or os.path.expanduser("~/.organism/last_seen")
+        )
+        sidecar_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "organ": ORGAN_ID,
+            "status": status,
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "detail": detail,
+        }
+        (sidecar_dir / f"{ORGAN_ID}.json").write_text(
+            json.dumps(payload), encoding="utf-8",
+        )
+    except Exception as exc:  # noqa: BLE001 — heartbeat is best-effort, never fatal
+        logger.debug("heartbeat write failed (non-fatal): %s", exc)
 
 
 def _run_git(args, *, cwd=None, check=True):
@@ -155,11 +255,123 @@ def _has_real_dirty(worktree: Path) -> bool:
     return bool(diff.strip())
 
 
+def _resolve_lsof_path() -> str | None:
+    """Resolve an absolute path to `lsof`, independent of the caller's PATH.
+
+    BLOCKER (round-2, 2026-07-18): the daily cron's plist sets
+    `PATH=/opt/homebrew/bin:/usr/bin:/bin`. On BOTH M5 and Pro, `lsof` lives
+    ONLY at `/usr/sbin/lsof` — not on that PATH. A bare
+    `subprocess.run(["lsof", ...])` therefore raised FileNotFoundError under
+    the ACTUAL cron every single run, and the old `_has_live_cwd` caught
+    that broadly and returned False — so the live-cwd guard was silently
+    inert in production the whole time it existed (scar #2, "green but not
+    working": no crash, no log, just a guard that never once fired).
+
+    `shutil.which` first (honors an explicit PATH when one is set — covers
+    interactive/test invocations), else probe the two known-good absolute
+    locations directly. None found → caller must log visibly and degrade,
+    never fail silently again.
+    """
+    found = shutil.which("lsof")
+    if found:
+        return found
+    for candidate in ("/usr/sbin/lsof", "/usr/bin/lsof"):
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def _collect_live_cwds() -> set[str]:
+    """Run `lsof -a -d cwd -Fn` ONCE (system-wide, no path filter) and return
+    the set of every process's cwd path on the machine.
+
+    Cheap: a syscall-table read (~0.2s even on a busy box), NOT a directory
+    walk (`lsof +D <dir>` would recursively stat every open file under the
+    target — catastrophic on a worktree that can run to tens of GB, which is
+    exactly why this GC exists). Call this ONCE per gc() run and pass the
+    result to `_has_live_cwd` for each worktree (round-2 fix, 2026-07-18:
+    Codex flagged that calling lsof per-worktree could cost up to ~17min
+    cumulative worst-case across a 53-worktree fleet at a 20s timeout each).
+
+    lsof missing (resolver finds nothing) or any invocation error → empty
+    set, logged ONCE here (not once per worktree, which would spam the log
+    across a large fleet) as a WARNING so the degradation is VISIBLE. Falls
+    through to the age/dirty gates for every worktree this run; a live-cwd
+    check must never crash or hang the GC.
+    """
+    lsof_path = _resolve_lsof_path()
+    if lsof_path is None:
+        logger.warning(
+            "live-cwd guard DEGRADED — lsof not found (checked PATH + "
+            "/usr/sbin/lsof + /usr/bin/lsof); this run falls back to "
+            "age/dirty gates only",
+        )
+        return set()
+    try:
+        out = subprocess.run(
+            [lsof_path, "-a", "-d", "cwd", "-Fn"],
+            capture_output=True, text=True, timeout=20,
+        ).stdout
+    except Exception as exc:  # noqa: BLE001 — best-effort, never crash the GC
+        logger.warning("live-cwd guard DEGRADED — lsof invocation failed: %s", exc)
+        return set()
+    return {line[1:] for line in out.splitlines() if line.startswith("n")}
+
+
+def _has_live_cwd(worktree: Path, live_cwds: set[str]) -> bool:
+    """True if `live_cwds` (from _collect_live_cwds(), collected ONCE per
+    gc() run) contains this worktree's path — exact match OR a subdirectory
+    — a precise "active session" signal the mtime-age gate alone misses (a
+    shell idling deep in the tree touches no file, so mtime never moves).
+
+    Pure Python prefix-match, no subprocess call here (verified empirically
+    on macOS, 2026-07-18: the obvious `lsof -a -d cwd -Fn -- <dir>` form
+    only matches an EXACT cwd — a shell cd'd into a *subdirectory* of the
+    worktree, e.g. `<worktree>/apps/backend-rag`, is invisible to it — so
+    the prefix-match has to happen in Python against the full system-wide
+    dump, not via lsof's own path filter).
+    """
+    try:
+        target = str(worktree.resolve())
+    except OSError:
+        target = str(worktree)
+    prefix = target.rstrip("/") + "/"
+    return any(c == target or c.startswith(prefix) for c in live_cwds)
+
+
 def _unpushed_commits(worktree: Path, branch: str | None) -> int:
     """Count commits on this worktree's HEAD not present on origin/main.
 
-    Conservative: any error → return 1 (treat as has-unpushed, keep it).
+    W88 CAVEAT: this is a PROXY, not a truth signal. `rev-list --count
+    origin/main..HEAD` inflates wildly on a divergent/rebased/squashed base
+    (verified 2026-07-18: 7779-7833 on health/repush/one-shot worktrees whose
+    content was long since squash-merged) — that inflation is exactly what
+    made the GC's old unpushed-gate KEEP-FOREVER (see gc()). Since 2026-07-18
+    this count is used ONLY to produce an operator-facing log number, never to
+    gate dir-removal for a named branch (a clean branch's commits survive in
+    the branch ref regardless of what this reports).
+
+    Honesty short-circuit: if `git diff --quiet origin/main...HEAD` (three-dot,
+    content since common ancestor) reports no difference, the branch is fully
+    merged BY CONTENT — return 0 even if rev-list would over-count. The
+    three-dot form has its own known failure mode post-squash (cicatrix #9,
+    the W88 double-trap: an arrears merge-base can make it report a phantom
+    difference) — but that failure only produces a false NON-zero, never a
+    false zero, so trusting a "no diff" (exit 0) verdict here is safe; we
+    never trust a "has diff" verdict as truth, we just fall through to the
+    raw, known-noisy rev-list count for the log line.
+
+    Conservative on error: any git failure → return 1 (log-line only, no
+    longer a keep/remove gate for named branches).
     """
+    try:
+        quiet = _run_git(
+            ["diff", "--quiet", "origin/main...HEAD"], cwd=worktree, check=False,
+        )
+        if quiet.returncode == 0:
+            return 0
+    except Exception:  # noqa: BLE001 — best-effort short-circuit, never fatal
+        pass
     try:
         # Use origin/main as the canonical upstream baseline.
         out = _run_git(
@@ -171,12 +383,39 @@ def _unpushed_commits(worktree: Path, branch: str | None) -> int:
         return 1
 
 
+def _ref_exists(ref: str) -> bool:
+    """True if `ref` already resolves to an object (any worktree shares the
+    same ref namespace via the common .git dir)."""
+    result = _run_git(["rev-parse", "--verify", "--quiet", ref], check=False)
+    return result.returncode == 0
+
+
+def _unique_ref(base_ref: str, sha_hint: str) -> str:
+    """Return base_ref, or base_ref + a short sha-based uniquifier if
+    base_ref already resolves (FIX C, round-2, 2026-07-18): the 80-char
+    truncation in _slug() can theoretically collide two different worktree
+    paths onto the same slug, and re-running the GC before a prior
+    quarantine ref is manually cleaned up would otherwise clobber it with
+    `update-ref` (unconditional overwrite). Cheap: one `rev-parse --verify`.
+    """
+    if not _ref_exists(base_ref):
+        return base_ref
+    return f"{base_ref}-{sha_hint[:8]}"
+
+
 def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
     """Create a quarantine ref capturing the worktree's current tree+untracked.
 
     Uses `git stash create` (produces a commit object without touching the
-    stash stack) then writes it to refs/agent-quarantine/<slug>. Returns True
-    on success (or dry-run). Best-effort: failure → False (caller keeps wt).
+    stash stack) then writes it to refs/agent-quarantine/<slug> (or a
+    collision-safe variant, see _unique_ref). Returns True on success (or
+    dry-run). Best-effort: failure → False (caller keeps wt).
+
+    NOTE: `git stash create` is EMPTY on a clean working tree — it captures
+    only uncommitted diffs, never committed-but-unreachable-elsewhere
+    commits. It is NOT a substitute for _preserve_detached_head(), which
+    covers the orthogonal case of a detached HEAD's own commits (BLOCKER B,
+    round-2, 2026-07-18).
     """
     ref = f"{QUARANTINE_REF_PREFIX}/{slug}"
     if not apply:
@@ -193,8 +432,9 @@ def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
                            cwd=worktree, check=False)
         sha = created.stdout.strip()
         if sha:
-            _run_git(["update-ref", ref, sha], check=False)
-            logger.info("quarantined %s -> %s (%s)", worktree, ref, sha[:10])
+            final_ref = _unique_ref(ref, sha)
+            _run_git(["update-ref", final_ref, sha], check=False)
+            logger.info("quarantined %s -> %s (%s)", worktree, final_ref, sha[:10])
         # Also drop a patch artifact under .agent-receipts/ for human-readable
         # recovery even if the ref is later pruned.
         receipts = REPO_ROOT / ".agent-receipts"
@@ -207,6 +447,57 @@ def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
     except Exception as exc:  # noqa: BLE001 — best-effort, never crash GC
         logger.warning("quarantine failed for %s: %s", worktree, exc)
         return False
+
+
+def _preserve_detached_head(worktree: Path, slug: str, *, apply: bool) -> bool:
+    """Unconditionally create a durable ref to a detached worktree's HEAD
+    BEFORE removal (BLOCKER B, round-2, 2026-07-18).
+
+    A detached-HEAD worktree has NO branch ref — its commits are reachable
+    ONLY through that worktree's HEAD. `git worktree remove` drops that
+    pointer; if nothing else references the commits, they become dangling
+    and are eventually GC'd by git itself. `git stash create` (the
+    _quarantine() mechanism) does NOT cover this — it is EMPTY on a clean
+    tree, so a CLEAN detached-HEAD worktree with unique commits sailed
+    through the old real_dirty-only quarantine gate and got force-removed,
+    orphaning its commits.
+
+    This check runs for EVERY detached worktree about to be removed,
+    UNCONDITIONALLY — never gated by _unpushed_commits(), which can
+    false-zero a detached HEAD via its three-dot content short-circuit
+    (e.g. a revert/merge commit unique to this worktree but content-equal
+    to origin/main would read as "0 unpushed" while still being the only
+    reachable pointer to that commit object).
+
+    Returns True iff a durable ref now exists pointing at HEAD (or dry-run).
+    False → caller MUST keep the worktree, never remove it.
+    """
+    ref = f"{QUARANTINE_REF_PREFIX}/{slug}-head"
+    if not apply:
+        logger.info(
+            "[dry-run] would preserve detached HEAD %s -> %s", worktree, ref,
+        )
+        return True
+    rev = _run_git(["rev-parse", "--verify", "HEAD"], cwd=worktree, check=False)
+    sha = rev.stdout.strip()
+    if rev.returncode != 0 or not sha:
+        logger.error(
+            "could not resolve HEAD for detached worktree %s (rc=%d) — "
+            "refusing to remove", worktree, rev.returncode,
+        )
+        return False
+    final_ref = _unique_ref(ref, sha)
+    updated = _run_git(["update-ref", final_ref, sha], check=False)
+    if updated.returncode != 0:
+        logger.error(
+            "update-ref failed for detached worktree %s -> %s (rc=%d) — "
+            "refusing to remove", worktree, final_ref, updated.returncode,
+        )
+        return False
+    logger.info(
+        "preserved detached HEAD %s -> %s (%s)", worktree, final_ref, sha[:10],
+    )
+    return True
 
 
 def _remove(worktree: Path, *, apply: bool) -> bool:
@@ -226,16 +517,28 @@ def _slug(path: str) -> str:
     return path.rstrip("/").replace("/", "_").lstrip("_")[:80]
 
 
-def gc(*, apply: bool, max_age_hours: float) -> int:
+def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
+    """Run one GC pass. Returns a report dict — NOT a bare exit code — so
+    main() can wire a real G2 heartbeat from the actual counters (round-3,
+    2026-07-18) instead of a content-free "it ran" ping. Keys:
+    disabled (bool) — kill-switch short-circuit, all other keys absent;
+    otherwise removed/quarantined/reclaimed_unpushed/kept_active/phantom
+    (int) + apply (bool).
+    """
     if _kill_switch_active():
         logger.info("%s=false — GC disabled, no-op", KILL_SWITCH_ENV)
-        return 0
+        return {"disabled": True}
 
     entries = _list_worktrees()
+    # Collected ONCE for the whole run — see _collect_live_cwds() docstring
+    # for why (round-2 fix: calling lsof per-worktree could cost ~17min
+    # cumulative worst-case across a large fleet).
+    live_cwds = _collect_live_cwds()
+
     # In dry-run these count what WOULD happen; in apply they count what DID.
     removed = 0
     quarantined = 0
-    kept_unpushed = 0
+    reclaimed_unpushed = 0
     kept_active = 0
     pruned_phantom = 0
     verb = "would " if not apply else ""
@@ -260,32 +563,59 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
             kept_active += 1
             continue
 
+        if _has_live_cwd(path, live_cwds):
+            logger.info("KEEP %s — live process cwd inside (active)", path_str)
+            kept_active += 1
+            continue
+
         if age < max_age_hours * 3600:
             # Not old enough yet.
             continue
 
         slug = _slug(path_str)
         real_dirty = _has_real_dirty(path)
-        unpushed = _unpushed_commits(path, e.get("branch"))
+        is_detached = bool(e.get("detached"))
 
-        # Detached HEAD with commits OR real dirty work → quarantine first.
-        needs_quarantine = real_dirty or (e.get("detached") and unpushed > 0)
+        # INVARIANT: this GC NEVER deletes a branch (no `git branch -D`/`-d`
+        # anywhere in this file — grep to confirm). `git worktree remove`
+        # only removes the WORKING DIRECTORY.
+        #
+        # Preservation runs on TWO INDEPENDENT tracks; either can veto the
+        # remove. See module docstring rule 4 for the full rationale.
 
-        if unpushed > 0 and not e.get("detached"):
-            # Branch with unpushed commits — may be mid-PR. Keep + report.
-            logger.warning(
-                "KEEP %s — branch '%s' has %d unpushed commit(s); not GC'd "
-                "(operator review)", path_str, e.get("branch"), unpushed,
-            )
-            kept_unpushed += 1
-            continue
-
-        if needs_quarantine:
+        # Track 1: real uncommitted work → stash-quarantine (any worktree).
+        if real_dirty:
             if not _quarantine(path, slug, apply=apply):
                 logger.warning("KEEP %s — quarantine failed, refusing to remove",
                                path_str)
                 continue
             quarantined += 1
+
+        # Track 2a: detached HEAD → UNCONDITIONAL durable ref to HEAD before
+        # removal (BLOCKER B, round-2, 2026-07-18 — a clean detached-HEAD
+        # worktree has no branch ref, and _quarantine()'s stash-create is
+        # empty on a clean tree, so its commits would otherwise be orphaned).
+        if is_detached:
+            if not _preserve_detached_head(path, slug, apply=apply):
+                logger.warning(
+                    "KEEP %s — could not preserve detached HEAD, refusing "
+                    "to remove", path_str,
+                )
+                continue
+        else:
+            # Track 2b: named branch → the branch ref already preserves
+            # every commit (W88 cure, 2026-07-18): unpushed commits never
+            # block removal, just get logged for operator awareness.
+            unpushed = _unpushed_commits(path, e.get("branch"))
+            if unpushed > 0:
+                logger.warning(
+                    "RECLAIM-DIR %s — branch '%s' retains %d commit(s) not "
+                    "on origin/main; dir reclaimed to free disk, branch ref "
+                    "PRESERVED (resume with: git worktree add %s %s)",
+                    path_str, e.get("branch"), unpushed, path_str,
+                    e.get("branch"),
+                )
+                reclaimed_unpushed += 1
 
         if _remove(path, apply=apply):
             removed += 1
@@ -302,11 +632,19 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
         )
 
     logger.info(
-        "done: removed=%d quarantined=%d kept_unpushed=%d kept_active=%d "
+        "done: removed=%d quarantined=%d reclaimed_unpushed=%d kept_active=%d "
         "phantom=%d apply=%s",
-        removed, quarantined, kept_unpushed, kept_active, pruned_phantom, apply,
+        removed, quarantined, reclaimed_unpushed, kept_active, pruned_phantom, apply,
     )
-    return 0
+    return {
+        "disabled": False,
+        "removed": removed,
+        "quarantined": quarantined,
+        "reclaimed_unpushed": reclaimed_unpushed,
+        "kept_active": kept_active,
+        "phantom": pruned_phantom,
+        "apply": apply,
+    }
 
 
 def main() -> int:
@@ -324,7 +662,32 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         stream=sys.stdout,
     )
-    return gc(apply=args.apply, max_age_hours=args.max_age_hours)
+
+    # G2_heartbeat single wiring point (round-3, 2026-07-18): every exit path
+    # — disabled, ok, error — writes exactly one sidecar via this try/except/
+    # finally, never sprinkled per-callsite. `report` stays None only if
+    # gc() raised before returning, which is exactly the "error" case the
+    # except-block already handles; the finally-block's ok/disabled branch
+    # is then correctly skipped (no double-write).
+    report: dict[str, Any] | None = None
+    try:
+        report = gc(apply=args.apply, max_age_hours=args.max_age_hours)
+        return 0
+    except Exception as exc:  # noqa: BLE001 — heartbeat first, then re-raise visibly
+        _heartbeat("error", f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        if report is not None:
+            if report.get("disabled"):
+                _heartbeat("disabled", "kill switch")
+            else:
+                detail = (
+                    f"removed={report['removed']} quarantined={report['quarantined']} "
+                    f"reclaimed_unpushed={report['reclaimed_unpushed']} "
+                    f"kept_active={report['kept_active']} phantom={report['phantom']} "
+                    f"apply={report['apply']}"
+                )
+                _heartbeat("ok", detail)
 
 
 if __name__ == "__main__":

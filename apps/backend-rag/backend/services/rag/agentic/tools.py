@@ -419,7 +419,7 @@ class PricingTool(BaseTool):
         return (
             "🚨 MANDATORY for ALL Bali Zero service price questions. "
             "Get OFFICIAL pricing from Bali Zero database (NO AI generation, NO memory). "
-            "USE THIS when user asks: 'quanto costa', 'price', 'prezzo', 'costo', 'harga', 'berapa', 'cost', 'pricing', 'PT PMA', 'KITAS', 'visa'. "
+            "USE THIS when user asks: 'quanto costa', 'price', 'prezzo', 'costo', 'harga', 'berapa', 'cost', 'pricing'. "
             "Returns EXACT current prices from official pricing database. "
             "NEVER guess prices - ALWAYS call this tool first for price questions."
         )
