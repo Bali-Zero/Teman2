@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "42e61fd6f8b63e26f6a6898036d9ce31acf47d59",
-  "canonical_sha256": "873f8fb4f9b5ebb89eaf7727d5d8abca30c51362519077e4ff9ad07635453d22",
+  "canonical_revision": "39c94f78f577fa965c8378242982e0e1f78b0821",
+  "canonical_sha256": "96a5ccec8f2fd65aeff591a30baa8bf177a16746b3939e02b572a8bf597cf2b3",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,9 +10,9 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 198,
-    "A-serving/pp28": 23,
-    "_in_scope_total": 23,
+    "A-empty/gap": 215,
+    "A-serving/pp28": 6,
+    "_in_scope_total": 6,
     "_total": 221
   },
   "members": [
@@ -1702,8 +1702,8 @@
     },
     {
       "kode_kbli_2025": "91425",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Taman Hutan Raya",
       "pp28_sources": [
@@ -1748,8 +1748,8 @@
     },
     {
       "kode_kbli_2025": "93113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Fasilitas Gelanggang/Arena",
       "pp28_sources": [
@@ -1768,8 +1768,8 @@
     },
     {
       "kode_kbli_2025": "93115",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Fasilitas Olahraga Beladiri",
       "pp28_sources": [
@@ -1788,8 +1788,8 @@
     },
     {
       "kode_kbli_2025": "93121",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Sepak Bola",
       "pp28_sources": [
@@ -1798,8 +1798,8 @@
     },
     {
       "kode_kbli_2025": "93122",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Golf",
       "pp28_sources": [
@@ -1808,8 +1808,8 @@
     },
     {
       "kode_kbli_2025": "93123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Renang",
       "pp28_sources": [
@@ -1818,8 +1818,8 @@
     },
     {
       "kode_kbli_2025": "93124",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Tenis Lapangan",
       "pp28_sources": [
@@ -1828,8 +1828,8 @@
     },
     {
       "kode_kbli_2025": "93125",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Tinju",
       "pp28_sources": [
@@ -1838,8 +1838,8 @@
     },
     {
       "kode_kbli_2025": "93126",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Bela Diri",
       "pp28_sources": [
@@ -1848,8 +1848,8 @@
     },
     {
       "kode_kbli_2025": "93127",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Kebugaran/Fitness Dan Binaraga",
       "pp28_sources": [
@@ -1858,8 +1858,8 @@
     },
     {
       "kode_kbli_2025": "93128",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Boling",
       "pp28_sources": [
@@ -1868,8 +1868,8 @@
     },
     {
       "kode_kbli_2025": "93129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Olahraga Lainnya",
       "pp28_sources": [
@@ -1888,8 +1888,8 @@
     },
     {
       "kode_kbli_2025": "93192",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Juri dan Wasit Profesional",
       "pp28_sources": [
@@ -1908,8 +1908,8 @@
     },
     {
       "kode_kbli_2025": "93194",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Badan Regulasi dan Liga Olahraga",
       "pp28_sources": [
@@ -1918,8 +1918,8 @@
     },
     {
       "kode_kbli_2025": "93195",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Olahraga Tradisional",
       "pp28_sources": [
@@ -1928,8 +1928,8 @@
     },
     {
       "kode_kbli_2025": "93197",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Olaharagawan/Atlet Independen",
       "pp28_sources": [
@@ -1938,8 +1938,8 @@
     },
     {
       "kode_kbli_2025": "93199",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
       "pp28_sources": [
