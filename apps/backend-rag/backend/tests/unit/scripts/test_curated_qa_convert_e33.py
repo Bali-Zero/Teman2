@@ -130,7 +130,10 @@ def test_parses_all_questions_in_the_fixture(synthetic_e33_file: Path) -> None:
 
 def test_extracts_final_client_facing_answer_only(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     q1 = rows[0]
@@ -142,7 +145,10 @@ def test_extracts_final_client_facing_answer_only(synthetic_e33_file: Path) -> N
 
 def test_extracts_confidence_class_per_question(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert [r["confidence_class"] for r in rows] == [
@@ -154,15 +160,181 @@ def test_extracts_confidence_class_per_question(synthetic_e33_file: Path) -> Non
 
 def test_emits_per_class_count_summary(synthetic_e33_file: Path) -> None:
     _, counts = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert counts == {"BERSYARAT": 1, "BELUM_DIATUR_PUBLIK": 1, "KEBIJAKAN_PENYEDIA": 1}
 
 
+# ── Compound CONFIDENCE tag degrade (Fable gate, 2026-07-19, Wave-3) ────────
+# RULING: a compound CONFIDENCE tag (naming MORE THAN ONE of the 5 known
+# classes) must DEGRADE to the least-promotable class at harvest — the
+# verbatim-promotion gate only auto-serves pure JELAS. The original tag is
+# preserved in `confidence_class_raw`, emitted ONLY when normalization
+# actually changed the value (i.e. the degraded class differs from the
+# FIRST class token listed in the tag).
+
+
+def _confidence_fixture(tmp_path: Path, confidence_line: str) -> Path:
+    path = tmp_path / "compound.md"
+    path.write_text(
+        "### Q1. Some question?\n\n"
+        "**FINAL (client-facing):**\nSome answer.\n\n"
+        f"**CONFIDENCE:** {confidence_line}\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- some ref\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_compound_confidence_tag_degrades_to_least_promotable_class(
+    tmp_path: Path,
+) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS (mechanics); BERSYARAT (eligibility)")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS (mechanics); BERSYARAT (eligibility)"
+
+
+def test_slash_separated_compound_confidence_tag_degrades(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS/BERSYARAT split")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS/BERSYARAT split"
+
+
+def test_compound_confidence_tag_degrades_across_three_classes_to_lowest_rank(
+    tmp_path: Path,
+) -> None:
+    path = _confidence_fixture(tmp_path, "BERSYARAT; BELUM_DIATUR_PUBLIK")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BELUM_DIATUR_PUBLIK"
+    assert rows[0]["confidence_class_raw"] == "BERSYARAT; BELUM_DIATUR_PUBLIK"
+
+
+def test_pure_jelas_confidence_tag_stays_jelas_with_no_raw_field(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "JELAS")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "JELAS"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_pure_belum_diatur_publik_confidence_tag_unchanged(tmp_path: Path) -> None:
+    path = _confidence_fixture(tmp_path, "BELUM_DIATUR_PUBLIK")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BELUM_DIATUR_PUBLIK"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_class_token_inside_prose_parentheses_around_same_leading_tag_does_not_emit_raw(
+    tmp_path: Path,
+) -> None:
+    """A class token can appear a SECOND time inside descriptive prose
+    around the SAME leading tag (e.g. explaining a condition under which a
+    different class would apply). The scan finds both tokens, but the
+    min-rank class already equals the leading/first-listed tag — nothing
+    actually degraded, so confidence_class_raw must NOT be emitted even
+    though 2 distinct tokens were found."""
+    path = _confidence_fixture(tmp_path, "BERSYARAT (JELAS only after OSS confirmation)")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_unrecognized_compound_looking_tag_falls_back_to_first_token_verbatim(
+    tmp_path: Path,
+) -> None:
+    """0 known class tokens found (P7 principle, pre-existing behavior):
+    the raw first whitespace-delimited token is kept verbatim, unchanged
+    by the compound-degrade logic."""
+    path = _confidence_fixture(tmp_path, "SOME_NEW_CLASS maybe-also-other")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "SOME_NEW_CLASS"
+    assert "confidence_class_raw" not in rows[0]
+
+
+def test_confidence_class_count_summary_counts_the_normalized_class(tmp_path: Path) -> None:
+    """The per-class count summary must reflect the value that actually
+    lands in confidence_class (i.e. the DEGRADED class) — the summary
+    exists to catch anomalies in what gets harvested, not to audit raw
+    dossier tags class-by-class."""
+    path = _confidence_fixture(tmp_path, "JELAS (mechanics); BERSYARAT (eligibility)")
+
+    _, counts = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert counts == {"BERSYARAT": 1}
+
+
+# ── Interaction: #2810 verbatim_eligible x #2856 compound-degrade ──────────
+# These two Phase-0 rails were built on branches that diverged BEFORE either
+# landed on main (PR #2810 cache-phase0-rails vs PR #2856 confidence-degrade)
+# and were merged together 2026-07-20. The merge composes them (normalize
+# runs first inside parse_e33_markdown_file, then the row-builder derives
+# verbatim_eligible from the resulting `confidence_class` local) — this test
+# pins that composition so a future refactor can't silently split them apart
+# (e.g. by reading the un-normalized first-listed token instead).
+
+
+def test_compound_confidence_tag_verbatim_eligible_uses_normalized_class(
+    tmp_path: Path,
+) -> None:
+    """A compound tag "JELAS; BERSYARAT" degrades confidence_class to the
+    lower-rank BERSYARAT (Wave-3 ruling). verbatim_eligible MUST reflect
+    that NORMALIZED class — i.e. False, per the #2810 FATAL-3 rule that only
+    pure JELAS rows are converter-side eligible — never True as it would be
+    if verbatim_eligible were (incorrectly) derived from the raw tag's
+    first-listed token (JELAS) instead of the post-degrade class."""
+    path = _confidence_fixture(tmp_path, "JELAS; BERSYARAT")
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-19",
+    )
+
+    assert rows[0]["confidence_class"] == "BERSYARAT"
+    assert rows[0]["confidence_class_raw"] == "JELAS; BERSYARAT"
+    assert rows[0]["verbatim_eligible"] is False
+    assert rows[0]["client_specific"] is False
+
+
 def test_extracts_law_refs_as_flat_string_list(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert len(rows[0]["law_refs"]) == 2
@@ -173,7 +345,10 @@ def test_extracts_law_refs_as_flat_string_list(synthetic_e33_file: Path) -> None
 
 def test_source_ref_anchors_to_filename_and_question_number(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert rows[0]["source_ref"] == "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1"
@@ -183,7 +358,10 @@ def test_source_ref_anchors_to_filename_and_question_number(synthetic_e33_file: 
 
 def test_source_date_extracted_from_generated_header(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     assert all(r["source_date"] == "2026-07-15" for r in rows)
@@ -191,7 +369,10 @@ def test_source_date_extracted_from_generated_header(synthetic_e33_file: Path) -
 
 def test_every_row_matches_the_shared_curated_qa_schema(synthetic_e33_file: Path) -> None:
     rows, _ = converter.parse_e33_markdown_file(
-        synthetic_e33_file, domain="visa", lang="en", source_priority=80,
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
     )
 
     for row in rows:
@@ -205,11 +386,51 @@ def test_every_row_matches_the_shared_curated_qa_schema(synthetic_e33_file: Path
             "confidence_class",
             "law_refs",
             "source_priority",
+            "verbatim_eligible",
+            "client_specific",
         }
         assert row["domain"] == "visa"
         assert row["lang"] == "en"
         assert row["source_priority"] == 80
         assert isinstance(row["answer"], str) and row["answer"]
+
+
+def test_verbatim_eligible_true_only_for_jelas_class(synthetic_e33_file: Path) -> None:
+    """The synthetic fixture has BERSYARAT/BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA
+    rows — none JELAS — so verbatim_eligible must be False on all three (this
+    is the converter's own best-effort value; the harvester re-derives it
+    independently and never trusts this one)."""
+    rows, _ = converter.parse_e33_markdown_file(
+        synthetic_e33_file,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+    )
+
+    assert all(r["verbatim_eligible"] is False for r in rows)
+    assert all(r["client_specific"] is False for r in rows)
+
+
+def test_verbatim_eligible_true_for_jelas_row(tmp_path: Path) -> None:
+    path = tmp_path / "jelas.md"
+    path.write_text(
+        "### Q1. Some settled question?\n\n"
+        "**FINAL (client-facing):**\nA settled answer.\n\n"
+        "**CONFIDENCE:** JELAS\n\n"
+        "**LAW REFS (source-cited, unverified):**\n- ref\n",
+        encoding="utf-8",
+    )
+
+    rows, _ = converter.parse_e33_markdown_file(
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-07-15",
+    )
+
+    assert rows[0]["verbatim_eligible"] is True
+    assert rows[0]["client_specific"] is False
 
 
 def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> None:
@@ -227,7 +448,11 @@ def test_unrecognized_confidence_class_is_kept_not_skipped(tmp_path: Path) -> No
     )
 
     rows, counts = converter.parse_e33_markdown_file(
-        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-07-15",
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-07-15",
     )
 
     assert len(rows) == 1
@@ -482,7 +707,11 @@ def test_explicit_source_date_overrides_missing_header(tmp_path: Path) -> None:
     )
 
     rows, _ = converter.parse_e33_markdown_file(
-        path, domain="visa", lang="en", source_priority=80, source_date_override="2026-01-01",
+        path,
+        domain="visa",
+        lang="en",
+        source_priority=80,
+        source_date_override="2026-01-01",
     )
 
     assert rows[0]["source_date"] == "2026-01-01"
@@ -528,6 +757,8 @@ def test_golden_yaml_mode_produces_question_only_rows(tmp_path: Path) -> None:
     assert all(r["confidence_class"] == "UNSCORED" for r in rows)
     assert all(r["law_refs"] == [] for r in rows)
     assert all("golden_answers_questions.yaml" in r["source_ref"] for r in rows)
+    assert all(r["verbatim_eligible"] is False for r in rows)  # no answer, never eligible
+    assert all(r["client_specific"] is False for r in rows)
 
 
 def test_golden_yaml_mode_matches_shared_schema(tmp_path: Path) -> None:
@@ -554,6 +785,8 @@ def test_golden_yaml_mode_matches_shared_schema(tmp_path: Path) -> None:
         "confidence_class",
         "law_refs",
         "source_priority",
+        "verbatim_eligible",
+        "client_specific",
     }
 
 
@@ -577,6 +810,8 @@ def test_prewarm_mode_produces_question_only_rows() -> None:
     assert len(rows) == 3
     assert all(r["answer"] is None for r in rows)
     assert all(r["confidence_class"] == "UNSCORED" for r in rows)
+    assert all(r["verbatim_eligible"] is False for r in rows)  # no answer, never eligible
+    assert all(r["client_specific"] is False for r in rows)
     assert {r["question"] for r in rows} == {
         "What are the KITAS requirements for 2026?",
         "How to renew a KITAS?",
@@ -638,6 +873,8 @@ def test_prewarm_mode_matches_shared_schema() -> None:
         "confidence_class",
         "law_refs",
         "source_priority",
+        "verbatim_eligible",
+        "client_specific",
     }
 
 

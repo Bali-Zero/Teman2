@@ -106,7 +106,7 @@ proven-live 4,959/4,959 at `nuzantara-backups/kbli-vault/` · OSS coverage 6,236
 vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1 missing
 (Turnstile → browser lane) · Perpres-annex compiler not built · absence ≥72h window needs one
 probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
-(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 UNBLOCKED — LANE CLAIM (D12 anti-collision): the P1-v2 second vault wave is OWNED by the S2/Pro conductor session (MANDATO GARUDA), claimed 2026-07-19 on Zero's GO** (supersedes the 2026-07-18 HELD ruling _"aspetti dopo il Pilota A1"_ — Pilota A1 measured, GO issued). Scope of the claimed lane: fetch + sha256 + vault manifest ADDENDUM on Mini (via ssh) for Perpres 10/2021 + 49/2021 investment annexes, Bali (Gubernur letter B.27.000/642/PM/DPMPTSP) + Kepmenaker 228/2019, with DATED per-instrument status snapshots and per-instrument provenance. Facet rules (Zero, verbatim intent): `pma_status`/`l4_bali`/TKA facets stay **abstain fail-safe** (A1/A5/A6) and unlock ONLY per-code where the wave is grounded — **never a global lift**; current Batch-A lots continue in parallel under abstain until the wave is ready. **Disjointness: the M5 Fable session owns Batch B (branch `agent/air-m5/docs/batch-b-design`) — this lane does not touch Batch-B artifacts; the M5 lane does not touch the P1-v2 vault wave.** First-writer-owns per scar D12. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
+(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 UNBLOCKED — LANE CLAIM (D12 anti-collision): the P1-v2 second vault wave is OWNED by the S2/Pro conductor session (MANDATO GARUDA), claimed 2026-07-19 on Zero's GO** (supersedes the 2026-07-18 HELD ruling _"aspetti dopo il Pilota A1"_ — Pilota A1 measured, GO issued). Scope of the claimed lane: fetch + sha256 + vault manifest ADDENDUM on Mini (via ssh) for Perpres 10/2021 + 49/2021 investment annexes, Bali (Gubernur letter B.27.000/642/PM/DPMPTSP) + Kepmenaker 228/2019, with DATED per-instrument status snapshots and per-instrument provenance. Facet rules (Zero, verbatim intent): `pma_status`/`l4_bali`/TKA facets stay **abstain fail-safe** (A1/A5/A6) and unlock ONLY per-code where the wave is grounded — **never a global lift**; current Batch-A lots continue in parallel under abstain until the wave is ready. **Wave status 2026-07-19: DELIVERED** — 8 instrument blobs fetched + sha256'd on the Mini vault (`~/nuzantara-vault/p1v2/`) with 4 dated per-instrument status snapshots; manifest addendum `data/kbli-filiera/manifest/vault-manifest-p1v2-2026-07-19.json` MERGED (#2811, hashes independently re-verified via ssh; claim PR #2808). Next: per-code facet-unlock design (fase 2 — no facet unlocks yet, abstain still in force everywhere). **Disjointness: the M5 Fable session owns Batch B (branch `agent/air-m5/docs/batch-b-design`) — this lane does not touch Batch-B artifacts; the M5 lane does not touch the P1-v2 vault wave.** First-writer-owns per scar D12. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
 **Batch-A Lot 1 conductor gate SIGNED, second signing post-red-team (2026-07-18, MANDATO S2
 session):** final verdict **13/13 quarantine, 0 certified** on the first A-serving lot (a
@@ -146,17 +146,28 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
 
 **Batch-A SWEEP PROGRESS — Lots 1-5 (dense recap 2026-07-19, MANDATO S2 continuous run; supersedes the Lot-1-only block above for current state):**
 
-- **65/114 original in-scope adjudicated across 5 lots — 65/65 QUARANTINED, 0 certified.**
+- **91/114 original in-scope adjudicated across 7 lots — 91/91 QUARANTINED, 0 certified**
+  (L7's 13 pending cure-PR apply; cured-and-live cumulative 78/1,559 incl. pilot).
   Census by lot: L1 13 (div 01→39, gate report 2026-07-18-...lot1..., cure applied+surfaced) ·
   L2 13 (#2753 gate, #2761 cure) · L3 13 (#2768 gate, #2769 cure) · L4 13 (#2774 gate, #2776
   cure incl. runner innocence-PROMPT fix; 64955 wrong-parent flagship; ALL TEN 66xxx carry the
-  identical cooperative-rating payload) · L5 13 (gate second-signed on branch `kbli/lot5-lane`,
-  cure PR #2778 auto-merge armed incl. runner INNOCENCE_SCHEMA symmetric-blind fix; members
-  66192→70100). **Membership census after L5 apply: in-scope remainder 49** (of 221 total,
-  invariant) → **~4 lots to finish** (L6-L9: 13+13+13+10). Surfaces: L1-L4 applied and
-  PROVEN-LIVE (380 contaminated KG REQUIRES edges removed: 147+93+96+44; Qdrant risk cleared;
-  cache busted; backend inspect + mouth SSR eye-verified per lot). L5 surfaces pending #2778
-  merge. Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
+  identical cooperative-rating payload) · L5 13 (gate #2788 MERGED, cure #2778 merged incl.
+  runner INNOCENCE_SCHEMA symmetric-blind fix; members 66192→70100) · **L6 13 (#2803 gate —
+  incl. the 80190 certification REVOKED→re-quarantined, W100-L6 rule "conductor's eyes on the
+  FULL canonical record for every certification"; #2800 cure incl. certification-contract gen-2:
+  `exposed_facts_inventory` REQUIRED + fail-closed `factsInventoryUnverified`; surfaces 13/13
+  PROVEN-LIVE, spot-check 80190)** · **L7 13 (gate SECOND-SIGNED on `kbli/lot7-lane`
+  4089afe76d: 6 source_absent {85403,85404,86109,86201,86202,86203} / 4 payload {85330
+  aviation PAGE-BLEED, 85401 51108-fan, 86102, 91212} / 1 collision {90111, ISO-9001
+  matcher-trap} / 1 illegitimate-inheritance {91222} / 1 unresolvable {91424}; red-team BLOCKER
+  cured — 41013 control stays QUARANTINED on the corrected legal base Pasal 225(1) MT / 230
+  Tinggi / 124(4) derived-license; **contract refinement #2 (derived-fact rule) is the Lot-8
+  precondition**; cure PR + cross-family GLM in flight)**. **In-scope remainder after L7 apply:
+  23** (of 221 total, invariant) → **~2 lots to finish** (L8-L9: 13+10; L8 gated on refinement
+  #2). Surfaces: L1-L4 + L6 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
+  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces INDEPENDENTLY RE-PROVEN
+  2026-07-19** (prod KG query: 13/13 zero REQUIRES edges + `PENDING_REGULATION` + disputed
+  archived; live `inspect/66192` returns risk "Not classified", licenses []). Governance: calibration **v3** on main (#2777, supersedes conflicted #2772) — NEG 47
   salt "v3", POS 8, `pos_preverification_required`, burned-set 16.
 - **Per-lot cycle (proven 5×, ~2h):** lane Workflow (launcher `/tmp/kbli-conductor-a1-0718/
 lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fence) → conductor
@@ -178,12 +189,26 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
   (FATAL-4 candidate — Zero/Legge-5 product decision pending). (e) Innocence-control blindness
   took TWO generations to fix: prompt leak (#2776) then SCHEMA leak (#2778 symmetric pipeline,
   runner-side normalization) — third instance of the fix-begets-twin-bug family; controls from
-  L1-L5 are all recorded as ANCHORED NON-BLIND FIXTURES, first true-blind control run due at L6
-  (59140/59201 re-run, condition 3 of the L5 sign-off).
+  L1-L5 are all recorded as ANCHORED NON-BLIND FIXTURES. **True-blind era (L6-L7): the symmetric
+  path ran live; 59140/59201 RETIRED after 4 reuses; from L7 every lot draws FRESH controls,
+  burned after one use. The L7 fresh pair proved the policy's worth: 20232 (picked for expected
+  cleanliness) itself carries a false MATCH_LANGSUNG, and 41013 asserts fiktif_positif with no
+  citable provenance (correct fail-closed demote → drove contract refinement #2).**
 - **Standing infra state:** Redis lease registry NOAUTH from sessions → LEASE-GUARD SKIPPED
   declared in every gate with compensating isolation. Local vault mirror on Pro
   (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
   `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
+- **Standalone metadata cure-list BACKLOG (grows lot-by-lot, not yet a dedicated spec+PR — the
+  only place this list is currently tracked; update here when it changes):** `01629` + `71204`
+  (Lot 5 gate §m5-POS, 2026-07-19 — multi-parent crosswalk metadata false, evidence-gated) ·
+  `59140` pp28-label (Lot 6 gate §3.4 — OSS-native, pp28_sources unverifiable, per_skala provenance
+  sound by marker) · **`20232` (Lot 7 gate §3.4, 2026-07-19 — fresh SELECTED control, conductor-eye
+  SPLIT on lampiran5_p156-156.png printed p.142: canonical `status_mapping='MATCH_LANGSUNG'`/"scope
+  unchanged" refuted by two consecutive rows, 2025-20232 + 2025-20235; per rule #9 NOT detached in
+  the Lot 7 cure — OSS-native, healthy per_skala).** All four are `metadata_only` candidates (same
+  compiler action as 52101/46100/10433/`metadata_fixes_2026_07_19.json` — status_mapping/whatChanged/
+  pp28_sources correction, per_skala untouched) pending a dedicated evidence-gated spec+PR; none has
+  a canonical write yet.
 
 **Governance flags:**
 
