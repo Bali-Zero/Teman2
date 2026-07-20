@@ -74,9 +74,33 @@ sources:
     `kbli_filiera` cure compilers already call `sync_kbli_dataset.sh`
     unconditionally). Fix: `scripts/sync_kbli_dataset.sh` real-apply, scoped
     to exactly the 57 drifted codes (zero added/removed, record count
-    unchanged), shipped as PR #2884 with auto-merge armed. Per this ledger's
-    own standing rule #1, not marked DONE here until PROVE-LIVE confirms
-    knowledge.balizero.com serves the corrected content post-merge.
+    unchanged), shipped as PR #2884 with auto-merge armed.
+  - **Lever #12 DONE (2026-07-20, PR #2884 merged `3ef826be28`).** Evidence:
+    (a) all 5 declared consumers confirmed byte-identical to canonical on
+    `origin/main` via `scripts/sync_kbli_dataset.sh --check` (exit 0); (b)
+    interesting content-provenance note — the squash-merge diff for #2884
+    landed EMPTY (verified: `git diff 3ef826be28~1 3ef826be28` touches
+    zero bytes) because PR #2878 (Batch A Lot 7 data-plane apply, merged
+    in between) ran its own cure-compiler's unconditional `sync_kbli_dataset.sh`
+    call and independently re-applied the identical fix first — a live,
+    unplanned confirmation of this item's own root-cause claim that the
+    self-healing property already holds going forward, caught by re-verifying
+    content instead of trusting the "MERGED" label as a proxy (scar family #9,
+    W88 discipline: verify state by content, never by SHA/label alone); (c)
+    required CI on #2884 included a real `Frontend Tests (Next.js)` build of
+    apps/kbli-navigator against the corrected data — passed; (d)
+    reachability: `curl -I https://knowledge.balizero.com/kbli/19206` →
+    `307` to `kita.balizero.com/login?redirect=.../kbli/19206` — per this
+    project's own post-deploy QA convention (CLAUDE.md §11, "wait curl
+    200/307") that is the documented-sufficient liveness signal for an
+    SSO-gated surface, and the redirect correctly preserves the specific
+    deep path, confirming the route resolves before hitting auth middleware.
+    **NOT verified: actual rendered content behind the login wall** — this
+    app has no public API and no headless-authenticated browser tool was
+    available in this session; kita.balizero.com SSO login is a genuine
+    operator-only credential (interactive login), not something bypassed.
+    If a visual spot-check is wanted, it needs an interactive session with
+    an authenticated browser (`mcp__claude-in-chrome__*` per CLAUDE.md §11).
 - **Lever #7 DONE** (2026-07-20): root cause found by reading the actual log
   (not guessed) — a live run showed Claude+agy+Codex all missing in the same
   cascade, and ollama qwen3.5 (no web access) emitted a schema-valid
