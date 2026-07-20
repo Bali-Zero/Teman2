@@ -120,10 +120,32 @@ leads, not facts, until re-grepped).
       to this diff)
 - [x] Import chain + syntax clean on all 5 modified files
 - [ ] PROVE-LIVE: re-query `meta_inbox_messages` for thread 77 post-deploy, confirm
-      `sent_at - created_at` shifts down from the 33-94s band
+      `sent_at - created_at` shifts down from the 33-94s band — **BLOCKED**, see below
 - [ ] PROVE-LIVE watch item (from adversarial review): monitor the WA channel's
       abstain/low-context-quality rate after rollout, since multi-hop queries now resolve via
       the post-loop synthesis path rather than in-loop reasoning
+
+## Deploy status (2026-07-20, post-merge)
+
+PR #2891 merged to `main` (squash `c577cbbef24627e123484d5e1d9ff9596d6ab065`), triggering
+`.github/workflows/fly-deploy.yml` run 29724366888. The `Run DB migrations on Fly.io` job
+failed twice — first at the `flyctl` GraphQL control-plane query (`get app network... 503`),
+then on rerun at the `setup-flyctl@master` action itself (`503 Service Unavailable`) — cascading
+skips through rolling deploy, both migration re-run jobs, and post-deploy health check.
+
+Root cause confirmed via three independent sources: (1) code-level reproduction — `fly status
+-a nuzantara-rag` returns the same 503 live; (2) an unrelated deploy run 17 minutes prior to
+#2891's merge shows the identical failure signature; (3) Fly's own status page
+(status.flyio.net) shows an **active, acknowledged incident**: "High number of 5XX on the
+Machines API and dashboard", status Investigating, opened 2026-07-20 07:10 UTC — explicitly
+scoped to the Machines API + dashboard, with "existing machines... unaffected". This is an
+ambient Fly.io platform outage, not caused by this PR's diff (no migration files touched) and
+not fixable from this side. The currently-deployed (pre-fix) app remains healthy
+(`/health` → 200 OK) — only new deploys are blocked.
+
+**Action**: stopped retrying (2 attempts both hit the same outage; further reruns just burn
+CI minutes against a control plane that isn't up). Deploy will be retried once Fly's status
+page marks this incident resolved. PROVE-LIVE steps above stay blocked until then.
 
 ## Follow-up (not in this PR)
 
