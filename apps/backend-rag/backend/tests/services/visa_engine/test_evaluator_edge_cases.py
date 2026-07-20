@@ -64,11 +64,22 @@ class TestNoActiveProducts:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        decision = evaluate(_facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            _facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT
+        )
 
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert decision.no_path_reasons  # non-empty — Decision's own invariant
-        assert decision.no_path_reasons[0].code == "NO_PRODUCT_SUPPORTS_DECLARED_PURPOSES"
+        # Gate round 1 P1 fix (2026-07-19): the fallback code is namespaced
+        # OPERATIONAL_* (never a legal conclusion) and must always carry a
+        # citation — here derived from the pack's own source_records since
+        # zero products were ever ACTIVE/effective to derive from.
+        assert (
+            decision.no_path_reasons[0].code == "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+        )
+        assert decision.no_path_reasons[0].source_refs, (
+            "fallback reason must still carry a citation"
+        )
         assert decision.candidates == ()
 
     def test_product_not_yet_effective_at_query_instant_is_excluded_from_selection(self) -> None:
@@ -97,7 +108,9 @@ class TestNoActiveProducts:
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
-        decision = evaluate(_facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        decision = evaluate(
+            _facts(), compiled, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT
+        )
 
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert decision.no_path_reasons
@@ -109,7 +122,12 @@ class TestAllExcluded:
         product_ids = [B.new_uuid(), B.new_uuid()]
         src = B.source_record(source_id=source_id)
         products = [
-            B.product(product_id=pid, source_id=source_id, product_code=f"P{i}", covered_purposes=["TOURISM"])
+            B.product(
+                product_id=pid,
+                source_id=source_id,
+                product_code=f"P{i}",
+                covered_purposes=["TOURISM"],
+            )
             for i, pid in enumerate(product_ids)
         ]
         hard_filter = B.rule(
@@ -121,9 +139,7 @@ class TestAllExcluded:
             source_id=source_id,
             required_facts=["immigration.currently_in_indonesia"],
         )
-        payload = B.rule_pack_payload(
-            rules=[hard_filter], products=products, source_records=[src]
-        )
+        payload = B.rule_pack_payload(rules=[hard_filter], products=products, source_records=[src])
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 
