@@ -26,7 +26,7 @@ sources:
 | 2 | **Reranker in prod** | Code-complete, `enable_reranker=False` ("Saves ~5GB Docker image"); `visa_oracle.py:918` says "cross-encoder not available on Fly"; nuzantara-rag = shared-2x/2GB RAM | NOT a blind flip. Spike doc comparing: (a) torch-free ONNX cross-encoder in rag process, (b) zerank2/ZeroEntropy external API, (c) stay off. Measure answer-quality delta on gold sets. Same abstain-recalibration gate as lever #1 (F4). **PDP egress gate (adversarial K4): option (b) sends raw query+chunk text to a third party — queries/chunks can carry client PII, so (b) is admissible ONLY behind an explicit redaction gate + DPA review; "already wired" is plumbing, not compliance. Default preference: (a) local ONNX or (c) stay off** | session lane (spike) | Image size + RAM ceiling on 2GB machine; external API = new cost → needs Zero if paid, AND PDP gate (K4) regardless of cost |
 | 3 | **Migration 250 applied to prod** | Re-verified live this morning via `scripts/pg.sh`: tracker tops at `248_clients_npwp_strongid` (03:00 UTC). PR #2804 merged, file on main | Belongs to **lane S3 (visa-engine session)** — do not touch from other lanes (quad-session anti-collision). If still unapplied at next reconciliation, raise with Zero | lane S3 | Migration class = operator-adjacent gates; DB-state probe after apply per modus SHIP |
 | 4 | **Visa rule-pack CONTENT + activation writer** | Substrate shipped (250), key ceremony done 2026-07-19 (session memory; visaoracle skill not yet updated), but zero production rule content, no writer (deferred "STEP 6") | Lane S3 roadmap: author first real rule-packs (114-code catalog → declarative rules), build activation writer | lane S3 | The engine stays ornamental until cargo loads (charter principle #1) |
-| 5 | **`/api/drive/*` regression fix** | ALL 3 endpoints broken: `FileItem` Pydantic model requires `type`, constructor doesn't populate it (404 stats / 500 files / 500 search, correlation IDs in audit) | Locate model + constructor, fix (populate from mimeType or default), add regression test | **this session (in flight)** | Small, CI-gated; L2 auto-merge |
+| 5 | **`/api/drive/*` regression fix** | ~~ALL 3 endpoints broken~~ — corrected 2026-07-20: 2 distinct bugs, not 3 symptoms of 1. `FileItem` Pydantic model requires `type`, manager returned raw payloads (500 files / 500 search) — FIXED, PR #2816 merged 2026-07-19. `/api/drive/stats` (404) is unrelated: the route never existed at all, despite the `get_drive_storage_stats` MCP tool calling it since inception — FIXED, PR #2898 (this session, auto-merge armed) | DONE pending PROVE-LIVE (#2898) | this session | Small, CI-gated; L2 auto-merge |
 | 6 | **Peraturan feeder (Sheet→PDF→NB-6)** | Dead 5+ weeks: every run fails on missing `GOOGLE_SERVICE_ACCOUNT_JSON` (log last entry 2026-06-16) | Operator provides/rotates the credential; then session re-arms + proves one green run end-to-end | operator[credential] → session | Without it NB-6 compliance ground truth stales |
 | 7 | **Regulatory-watcher cadence** | 33 deltas over 64 days ≈ 52% day-coverage (gaps 05-31→06-10, 06-18→06-28); per-day quality high | Read the wrapper's own logs for gap-days: quota-cascade vs launchd death vs TCC (W84 class). Fix the actual cause, add day-coverage metric to proprioception | session lane | Don't guess the cause — read the log first (anti-pattern rule) |
 | 8 | **KBLI schema drift vs CLAUDE.md §9** | Live table `kbli_documents`: `sektor_id`/`pma_status` NESTED in `metadata` jsonb on all 1,563 rows; `kategori_risiko` absent everywhere; `skala_usaha`→`per_skala`. CLAUDE.md §9 says flat/never-nested | Reconcile WITH the kbli-navigator lane: either the invariant doc is stale (likely — table carries newer keys like `kode_kbli_2025`, `pp28_sources`) or the table regressed. Update whichever is wrong; add tripwire test | kbli lane + session | CLAUDE.md §9 is marked NEVER VIOLATE — the contradiction itself is the bug |
@@ -44,8 +44,28 @@ sources:
 - Prod health disambiguation: `zantara.balizero.com/health` = 200 healthy; the
   "critical/search unavailable" seen via MCP is the local MCP api-process path,
   not prod (fly-split-brain class, no P0).
-- Lever #5 (`/api/drive/*` fix): started by this session — see PR reference below
-  once opened.
+- **Lever #5 (2026-07-20, re-grounded and closed out — the original "started by
+  this session" note from 2026-07-19 went stale with no PR ever recorded):**
+  re-verified from scratch rather than trusted from the ledger's own prior
+  claim. Turned out to be 2 unrelated bugs conflated into one row: (a) 500s
+  on `/files`/`/search` — already fixed and merged same-day via PR #2816
+  (`FileItem` needed `type`, manager returned raw un-normalized payloads);
+  (b) 404 on `/stats` — a route that had **never existed**, despite the
+  `get_drive_storage_stats` MCP tool calling it since creation (silently
+  swallowed by `error_monitoring.py`'s blanket `/api/drive/` 404 suppression
+  — zero alerts, ever). Implemented the missing route in PR #2898 (auto-merge
+  armed): exact total storage via `about.get`, files/folders/storage-by-type/
+  largest-files via a capped, honestly-truncation-flagged `files.list` walk.
+  Adversarial-reviewed by Kimi K3 (Codex CLI quota-dead until Aug 19th, GLM
+  Keychain unreachable headless) — 2 findings, both checked against the real
+  code rather than taken at face value: a "missing shared-drive scoping
+  params" flag turned out to match every sibling method in the file (not a
+  gap this diff introduced); a "Google-native-doc size crash" flag turned out
+  to be already-handled by the existing normalizer (added a pinning test
+  anyway since the path was genuinely untested). Not marked DONE above until
+  PROVE-LIVE per standing rule #1. Confirmed-safe leftover branch
+  `fix/team-drive-fileitem-type` (content-identical to #2816's squash-merge,
+  W88-verified via blob diff) deleted as part of this cleanup.
 - **Lever #12 re-grounded + partially DONE** (2026-07-20, fresh re-verification —
   the original row's claims were checked again on disk, not trusted from memory):
   - `apps/kb/data/immigration/`: **87** raw txt (audit said 84 — corrected), zero

@@ -110,6 +110,9 @@ class TeamDriveService:
     async def get_file_metadata(self, user_email: str, file_id: str) -> dict[str, Any]:
         return await self.operations.get_file_metadata(user_email=user_email, file_id=file_id)
 
+    async def get_storage_stats(self, user_email: str) -> dict[str, Any]:
+        return await self.operations.get_storage_stats(user_email=user_email)
+
     async def download_file(self, user_email: str, file_id: str) -> Any:
         return await self.operations.download_file(user_email=user_email, file_id=file_id)
 

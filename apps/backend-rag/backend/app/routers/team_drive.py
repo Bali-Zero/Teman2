@@ -337,6 +337,23 @@ async def drive_status(
     }
 
 
+@router.get("/stats")
+async def drive_stats(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    drive: Annotated[TeamDriveService, Depends(get_drive)],
+) -> dict[str, Any]:
+    """
+    Aggregate storage statistics for the team Drive: total storage used,
+    files count, folders count, storage by type, largest files.
+
+    Backs the `get_drive_storage_stats` MCP tool, whose call to this exact
+    path (`/api/drive/stats`) predates this route's existence — every call
+    404'd silently (suppressed by error_monitoring.py's Drive 404 filter)
+    until this handler was added.
+    """
+    return await drive.get_storage_stats(user_email="system")
+
+
 @router.get("/files", response_model=FileListResponse)
 async def list_files(
     current_user: Annotated[dict, Depends(get_current_user)],
