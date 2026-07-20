@@ -470,7 +470,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/database/postgresql/README.md | LIVE | 132 | 2026-03-10 | 2026-06-08 | — | 53 | 0 | no | — | — |
 | docs/decisions/2026-05-03-codex-spalla-architecture.md | LIVE | 78 | 2026-05-03 | 2026-08-01 | — | 2 | 0 | no | — | — |
 | docs/design/2026-07-19-garuda-os-unified-surfaces/EXECUTION-WORKFLOW.md | LIVE | 0 | 2026-07-20 | 2026-10-18 | — | 0 | 0 | no | — | — |
-| docs/design/2026-07-19-garuda-os-unified-surfaces/PLAN.md | LIVE | 1 | 2026-07-19 | 2026-10-17 | — | 8 | 0 | no | — | — |
+| docs/design/2026-07-19-garuda-os-unified-surfaces/PLAN.md | LIVE | 1 | 2026-07-19 | 2026-10-17 | — | 9 | 0 | no | — | — |
 | docs/design/components-catalog.md | LIVE | 26 | 2026-06-24 | 2026-09-22 | — | 0 | 0 | no | — | — |
 | docs/design-palettes/SESSION-SUMMARY.md | ARCHIVED | 99 | 2026-04-12 | 2026-07-11 | 2026-07-19 | 0 | 0 | no | — | archive: orphan, mtime=99d, refs=0 |
 | docs/design-palettes/funnels/research/tax-MASTER-design.md | LIVE | 99 | 2026-04-12 | 2026-07-11 | — | 1 | 0 | no | — | — |
