@@ -46,6 +46,7 @@ from backend.channels.whatsapp.media_webhook_parse import (
     InboundMedia,
     parse_media_webhook,
 )
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.enqueue import EnqueueResult, enqueue
 
 logger = logging.getLogger(__name__)
@@ -127,6 +128,37 @@ async def ingest_live_media(
             logger.exception("received_by resolver failed media_id=%s", media.media_id)
             received_by = None
 
+        # 2b. Identity capture at the door (intake-v2 PR-1). The sender phone
+        #     is ALWAYS present on WhatsApp — resolve it to a client_id_hint so
+        #     the document never lands 0-candidate for the trivial reason that
+        #     nobody ever created a contact for this number. Team-roster
+        #     numbers never get a contact (they're forwarders); unknown
+        #     numbers auto-create a minimal contact when
+        #     INTAKE_AUTOCREATE_CONTACT_ENABLED is armed (default OFF — until
+        #     then this degrades to "existing match only", never worse than
+        #     today). A resolver fault must NOT drop the document — it just
+        #     falls back to no hint, same as before this feature existed.
+        client_id_hint: int | None = None
+        try:
+            async with pool.acquire() as identity_conn:
+                async with identity_conn.transaction():
+                    resolution = await resolve_or_create_contact(
+                        identity_conn, sender_phone=media.from_phone
+                    )
+            client_id_hint = resolution.client_id
+            logger.info(
+                "contact_autocreate: media_id=%s kind=%s client_id=%s",
+                media.media_id,
+                resolution.kind,
+                resolution.client_id,
+            )
+        except Exception:
+            logger.exception(
+                "contact_autocreate resolver failed media_id=%s — falling back "
+                "to no client_id_hint",
+                media.media_id,
+            )
+
         # 3. Enqueue (DB) — source_ref ties the queue row back to the WA message
         #    so the live flow is distinguishable from the export flow and the
         #    intake_key is stable across Meta retries.
@@ -142,6 +174,7 @@ async def ingest_live_media(
                 byte_size=downloaded.byte_size,
                 received_by=received_by,
                 sender_phone=media.from_phone,
+                client_id_hint=client_id_hint,
             )
         except Exception:
             logger.exception("live WA enqueue failed media_id=%s", media.media_id)

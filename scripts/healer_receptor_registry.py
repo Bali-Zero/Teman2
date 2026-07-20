@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +41,46 @@ from pathlib import Path
 HEALTHY_STATUSES = {"ok", "success", "healthy", "starting", "running"}
 EXEMPT_STATUSES = {"disabled"}
 DEAD_MULTIPLIER = 3
+_REEXEC_GUARD_ENV = "_HEALER_REGISTRY_REEXEC_DONE"
+# Project venvs known to carry PyYAML (see apps/backend-rag/requirements*.txt) —
+# checked in order, first match wins. Kept short and repo-relative on purpose:
+# this is a same-machine self-heal, not a general interpreter search.
+_YAML_VENV_CANDIDATES = (
+    "apps/backend-rag/.venv/bin/python3",
+    ".venv/bin/python3",
+)
+
+
+def _yaml_importable() -> bool:
+    try:
+        import yaml  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _find_yaml_venv(repo_root: Path) -> Path | None:
+    for rel in _YAML_VENV_CANDIDATES:
+        candidate = repo_root / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _reexec_with_yaml_if_needed() -> None:
+    """Whatever invoked us as bare `python3` may resolve to a system
+    interpreter without PyYAML (Homebrew python3, W-mini 2026-07-17:
+    ModuleNotFoundError crashed this receptor with exit 2 on every tick).
+    Re-exec once under a project venv that has it before giving up."""
+    if _yaml_importable():
+        return
+    if os.environ.get(_REEXEC_GUARD_ENV):
+        return  # already retried — let the real ImportError surface as exit 2
+    candidate = _find_yaml_venv(Path(__file__).resolve().parent.parent)
+    if candidate is None:
+        return
+    env = dict(os.environ, **{_REEXEC_GUARD_ENV: "1"})
+    os.execve(str(candidate), [str(candidate), str(Path(__file__).resolve()), *sys.argv[1:]], env)
 
 
 def parse_ts(value) -> datetime | None:
@@ -137,6 +178,7 @@ def run(node: str, registry_path: Path, sidecar_dir: Path) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _reexec_with_yaml_if_needed()
     ap = argparse.ArgumentParser(description="Registry-driven dead-organ receptor")
     ap.add_argument("--node", required=True, choices=["mini", "pro"])
     ap.add_argument("--registry", default=None)

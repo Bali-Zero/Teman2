@@ -173,8 +173,14 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
             logger.info(f"  SKIP (exists, use --force to replace): {out_path.name}")
             return False
 
-    # Read source
-    source = src_path.read_text(encoding="utf-8")
+    # Read source — an index entry whose .mdx vanished (e.g. a deleted
+    # test/ article) must skip, not kill the whole run for every article
+    # after it (translate_hourly heartbeat was degraded exactly this way).
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        logger.warning(f"  SKIP (source vanished): {src_path}")
+        return False
     fm_block, body = split_frontmatter(source)
 
     if not body.strip():

@@ -3,6 +3,7 @@
 import logging
 
 from backend.channels.base import ChannelResponse
+from backend.channels.source_filter import public_sources
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +17,10 @@ class InstagramMessageFormatter:
         parts = []
         if response.text:
             parts.append(response.text)
-        if response.sources:
+        safe_sources = public_sources(response.sources)
+        if safe_sources:
             parts.append("\n\n📚 Fonti:")
-            for idx, src in enumerate(response.sources[:3], 1):
+            for idx, src in enumerate(safe_sources[:3], 1):
                 parts.append(f"{idx}. {src.get('title', 'Link')}")
                 if src.get("url"):
                     parts.append(f"   {src['url']}")

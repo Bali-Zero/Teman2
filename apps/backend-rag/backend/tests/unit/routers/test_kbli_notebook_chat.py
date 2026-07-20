@@ -497,6 +497,96 @@ async def test_generate_kbli_explanation_adds_large_scale_note_for_56101_pma():
     assert "Do not describe a PT PMA restaurant as Menengah Rendah" in message
 
 
+# ============================================================
+# BKPM 5/2025 capital doctrine + risk-analogy abstention
+# (FATAL-3 residual: chat_kbli generation prompt was asserting the
+# stale pre-BKPM-5/2025 Rp 10 Billion paid-up capital figure)
+# ============================================================
+
+
+def test_master_prompt_states_bkpm_5_2025_paidup_capital_correctly():
+    """Guilt check: the corrected Rp 2.5bn modal disetor figure (BKPM 5/2025,
+    effective 2025-10-02) must be present, and the OLD stale sentence that
+    called Rp 10 Billion the paid-up capital minimum must be gone."""
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    assert "Rp 2.5 Billion" in prompt
+    assert "BKPM 5/2025" in prompt
+    assert "2025-10-02" in prompt
+    # The old, wrong sentence must not survive anywhere in the prompt.
+    assert "Modal Disetor Minimum for PMA = Rp 10 Billion" not in prompt
+    assert "mention the Rp 10 Billion minimum Capital Paid Up requirement" not in prompt
+
+
+def test_master_prompt_distinguishes_paidup_capital_from_investment_value():
+    """The two DIFFERENT Rp thresholds (modal disetor vs minimum investment
+    value per KBLI per location) must both be present and explicitly
+    distinguished — never conflated into a single Rp 10bn 'paid-up capital'
+    claim."""
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    assert "Rp 2.5 Billion" in prompt
+    assert "more than Rp 10 Billion" in prompt
+    assert "NEVER present Rp 10 Billion as the modal disetor" in prompt
+
+
+def test_master_prompt_forbids_risk_tier_estimation_by_analogy():
+    """Guilt check: abstention hardening — the prompt must explicitly forbid
+    guessing a licensing risk tier for a code by analogy with other codes
+    when the context has no verified risk_category."""
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    assert "NEVER estimate a licensing risk tier" in prompt
+    assert "analogy with other codes" in prompt
+    assert "do not guess a plausible tier" in prompt
+
+
+def test_master_prompt_still_cites_verified_risk_for_known_codes():
+    """Innocence check: the anti-analogy abstention instruction must NOT
+    suppress risk citations for codes that DO have verified data baked into
+    the prompt (e.g. 56101/56210 have explicit, sourced risk categories)."""
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    # Verified per-code risk facts remain intact and unblocked.
+    assert "PMA/Besar: Menengah Tinggi" in prompt
+    assert "56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU" in prompt
+    assert "Risiko: Menengah Tinggi" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_kbli_explanation_message_states_correct_capital_thresholds():
+    """The per-call message built for the LLM (CAPITAL REQUIREMENTS line)
+    must carry the corrected doctrine, not the old stale Rp 10bn phrasing."""
+    from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
+
+    _mock_llm_gateway.send_message = AsyncMock(
+        return_value=("PMA capital answer", "gemini-flash", MagicMock(), {})
+    )
+
+    mock_result = MagicMock()
+    mock_result.code = "56101"
+    mock_result.title = "AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP"
+    mock_result.description = "Restaurant activities"
+    mock_result.pma_status = "TERBUKA"
+    mock_result.risk_category = "Menengah Tinggi"
+    mock_result.expert_legal = None
+
+    with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
+        await _generate_kbli_explanation(
+            "What is the minimum capital for a PMA restaurant?", [mock_result]
+        )
+
+    message = _mock_llm_gateway.send_message.call_args.kwargs["message"]
+    assert "Rp 2.5 Billion" in message
+    assert "more than Rp 10 Billion" in message
+    assert "Never call Rp 10 Billion the paid-up capital minimum" in message
+    assert "mention the Rp 10 Billion minimum paid-up capital" not in message
+
+
 def test_non_business_keywords_list():
     from backend.app.routers.kbli_notebook_chat import NON_BUSINESS_KEYWORDS
 

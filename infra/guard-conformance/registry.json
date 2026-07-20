@@ -200,10 +200,21 @@
           "tests": [],
           "also_covered_by": ["vaccine"]
         },
+        "infra/claude-hooks/data_plane_guard.py": {
+          "scar": ["superscar-3-generalization", "superscar-9"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_data_plane_guard.py"],
+          "note": "registry-based PreToolUse guard (2026-07-16): blocks interactive hand-edits of curated datasets outside their program's sanctioned compiler scripts (infra/claude-hooks/data-plane-registry.json). 14 guilt+innocence cases against a synthetic git tree prove worktree-aware path relativization (the .git-walk-up, not a hardcoded main-checkout root), missing-registry pass-through, and the kill switch."
+        },
         "scripts/hooks/seam_verify.py": {
           "symbols": {},
           "tests": [],
           "also_covered_by": ["vaccine"]
+        },
+        "infra/claude-hooks/subagent_stop_verify.py": {
+          "scar": ["W80", "wave15-live-reap"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_subagent_stop_verify.py"]
         }
       },
       "exempt": {

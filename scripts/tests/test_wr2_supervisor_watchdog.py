@@ -384,6 +384,16 @@ def test_state_age_missed_is_terminal_not_unknown(wd):
     assert _run_outcome(wd, conn) == []
 
 
+def test_state_age_parked_is_terminal_not_unknown(wd):
+    """B2 park backstop (wr2_draft_generator.py, 2026-07-17): a news-shaped
+    draft with no usable source is parked, human-attended and terminal — not
+    state-machine drift, however old the row gets."""
+    conn = _make_outcome_conn(age_rows=[
+        {"status": "parked", "n": 3, "oldest_hours": 300.0},
+    ])
+    assert _run_outcome(wd, conn) == []
+
+
 def test_state_age_checked_backlog_expected_when_renderer_off(wd):
     """Kill-switched renderer (W46): drafts_imaged_checked backlog is by
     design — no alert."""

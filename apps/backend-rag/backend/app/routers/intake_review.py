@@ -1218,7 +1218,7 @@ async def reject_review(
                     INSERT INTO intake_commit_audit (
                         proposal_id, queue_id, committed_by, dry_run,
                         outcome, plan
-                    ) VALUES ($1, $2, $3, false, 'rejected', $4::jsonb)
+                    ) VALUES ($1, $2, $3, false, 'rejected', $4::text::jsonb)
                     """,
                     proposal_id,
                     prop["queue_id"],

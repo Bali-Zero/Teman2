@@ -66,9 +66,74 @@ def _write_allowlist(path: pathlib.Path, entries: list[dict]) -> None:
     path.write_text(json.dumps({"_doc": "test fixture", "entries": entries}))
 
 
+def _real_allowlist_paths_tracked(real: pathlib.Path | None = None) -> list[str]:
+    """The EXACT bug this guard closes (W91, 2026-07-16): an allowlist entry whose
+    path matches NOTHING the consumer will ever see. The consumer (_main_tree_tracked_clean)
+    compares the `git status --porcelain` path column by EXACT string, and porcelain always
+    emits the FULL repo-relative path of a FILE — so `published_articles.json` (a bare
+    basename) never matched the real `apps/bali-intel-scraper/data/published_articles.json`,
+    and the ff-only-pull exception silently covered nothing on Pro (where that file is ALWAYS
+    dirty). The fixture below happened to use the same bare name, so it was green while reality
+    was broken. This check asserts every entry path is a tracked FILE at HEAD via
+    `git cat-file -t HEAD:<path>` == "blob" — deliberately NOT `git ls-files --error-unmatch`,
+    which treats the arg as a PATHSPEC: a directory/prefix like "apps" would pass ls-files (it
+    matches thousands of files) yet the exact-string consumer would never fire for it. cat-file
+    on a directory returns "tree", on an absent path errors → both correctly flagged.
+    `real` defaults to the shipped allowlist; a path is passed only by the guilt unit-tests."""
+    if real is None:
+        real = HERE / "runtime_state_allowlist.json"
+    root = subprocess.run(
+        ["git", "-C", str(HERE), "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    if not root:
+        return ["reality-check: could not resolve repo root (git rev-parse --show-toplevel)"]
+    try:
+        data = json.loads(real.read_text())
+    except Exception as e:  # noqa: BLE001
+        return [f"reality-check: could not read {real}: {e}"]
+    fails: list[str] = []
+    for entry in data.get("entries", []):
+        p = entry.get("path", "") if isinstance(entry, dict) else ""
+        if not p:
+            continue
+        t = subprocess.run(
+            ["git", "-C", root, "cat-file", "-t", f"HEAD:{p}"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        if t != "blob":
+            fails.append(
+                f"reality-check: allowlist path '{p}' is not a tracked FILE at HEAD "
+                f"(cat-file type={t or 'missing'}) — the consumer's EXACT-string match "
+                f"never fires for a dir/prefix/absent path (W91)"
+            )
+    return fails
+
+
 def main() -> int:
     mod = _load_module()
-    failures: list[str] = []
+    failures: list[str] = _real_allowlist_paths_tracked()
+
+    # real deep path of the WR2/intel publish-state index — the file that exposed W91
+    pa_rel = "apps/bali-intel-scraper/data/published_articles.json"
+
+    # ---- reality-check GUILT: a DIRECTORY path (which `git ls-files` would wrongly ACCEPT as
+    # a pathspec) and an ABSENT path must both be flagged; a real file must NOT be. Proves the
+    # cat-file blob check is exact, not a pathspec/prefix match (F5, Codex red-team 2026-07-16).
+    with tempfile.TemporaryDirectory() as gtd:
+        gpath = pathlib.Path(gtd) / "guilt-allowlist.json"
+        gpath.write_text(json.dumps({"entries": [
+            {"path": "apps", "machines": ["pro"]},                    # a DIRECTORY → tree, not blob
+            {"path": "no/such/file/xyz.json", "machines": ["pro"]},   # absent
+            {"path": pa_rel, "machines": ["pro"]},                    # real file → must NOT flag
+        ]}))
+        gfails = _real_allowlist_paths_tracked(gpath)
+        if not any("'apps'" in f for f in gfails):
+            failures.append("reality-check GUILT: directory path 'apps' NOT flagged (pathspec leak — F5)")
+        if not any("no/such/file/xyz.json" in f for f in gfails):
+            failures.append("reality-check GUILT: absent path NOT flagged")
+        if any(pa_rel in f for f in gfails):
+            failures.append("reality-check GUILT: the real published_articles.json path was wrongly flagged")
 
     with tempfile.TemporaryDirectory() as td:
         repo = pathlib.Path(td) / "fixture"
@@ -76,8 +141,9 @@ def main() -> int:
         _git(repo, "init", "-q")
         (repo / "shared").mkdir()
         (repo / "docs").mkdir()
+        (repo / pa_rel).parent.mkdir(parents=True)  # apps/bali-intel-scraper/data/
         (repo / "shared" / "escalations_pro.jsonl").write_text("{}\n")
-        (repo / "published_articles.json").write_text("[]\n")
+        (repo / pa_rel).write_text("[]\n")
         (repo / "docs" / "AUTOMATIONS_REFERENCE.md").write_text("# ref\n")
         (repo / "apps.py").write_text("x = 1\n")
         _git(repo, "add", "-A")
@@ -88,7 +154,7 @@ def main() -> int:
         mod.RUNTIME_STATE_ALLOWLIST_PATH = allowlist_fixture
         _write_allowlist(allowlist_fixture, [
             {"path": "shared/escalations_pro.jsonl", "machines": ["pro"]},
-            {"path": "published_articles.json", "machines": ["pro"]},
+            {"path": pa_rel, "machines": ["pro"]},
             {"path": "docs/AUTOMATIONS_REFERENCE.md", "machines": ["pro"]},
         ])
         mod._machine_label = lambda hostname=None: "pro"
@@ -99,13 +165,13 @@ def main() -> int:
 
         # ---- INNOCENCE 1: exactly the 3 declared paths dirty → still "clean enough"
         (repo / "shared" / "escalations_pro.jsonl").write_text('{"new": true}\n')
-        (repo / "published_articles.json").write_text('[{"id": 1}]\n')
+        (repo / pa_rel).write_text('[{"id": 1}]\n')
         (repo / "docs" / "AUTOMATIONS_REFERENCE.md").write_text("# ref\nupdated\n")
         if not mod._main_tree_tracked_clean():
             failures.append("INNOCENCE: exactly-3-declared-dirty wrongly reports dirty")
 
         # ---- INNOCENCE 2: only ONE of the 3 dirty (subset) → still clean enough
-        _git(repo, "checkout", "--", "published_articles.json", "docs/AUTOMATIONS_REFERENCE.md")
+        _git(repo, "checkout", "--", pa_rel, "docs/AUTOMATIONS_REFERENCE.md")
         if not mod._main_tree_tracked_clean():
             failures.append("INNOCENCE: single-declared-file-dirty wrongly reports dirty")
         _git(repo, "checkout", "--", "shared/escalations_pro.jsonl")  # reset for next cases
@@ -124,10 +190,11 @@ def main() -> int:
         _git(repo, "checkout", "--", "apps.py")
 
         # ---- GUILT 3: a RENAME touching an allowlisted name → fail-closed (never eligible)
-        _git(repo, "mv", "published_articles.json", "published_articles_renamed.json")
+        pa_renamed = "apps/bali-intel-scraper/data/published_articles_renamed.json"
+        _git(repo, "mv", pa_rel, pa_renamed)
         if mod._main_tree_tracked_clean():
             failures.append("GUILT: rename touching an allowlisted name wrongly reports clean")
-        _git(repo, "mv", "published_articles_renamed.json", "published_articles.json")
+        _git(repo, "mv", pa_renamed, pa_rel)
 
         # ---- GUILT 4: machine scoping — same 3 declared-dirty files, WRONG machine label
         (repo / "shared" / "escalations_pro.jsonl").write_text('{"new": true}\n')
@@ -159,7 +226,8 @@ def main() -> int:
         for f in failures:
             print(f"  - {f}")
         return 1
-    print("OK — runtime-state allowlist opens the ff-only exception ONLY for declared "
+    print("OK — every REAL allowlist path is a tracked blob (W91 reality-check, exact not "
+          "pathspec: 3 guilt), and the allowlist opens the ff-only exception ONLY for declared "
           "Pro paths (2 innocence + 5 guilt + 1 integration + 1 baseline)")
     return 0
 

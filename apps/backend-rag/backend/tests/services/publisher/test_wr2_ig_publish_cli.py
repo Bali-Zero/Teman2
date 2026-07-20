@@ -146,3 +146,101 @@ def test_confirm_fails_closed_when_ledger_db_unreachable(tmp_path, monkeypatch) 
 
     rc = cli.main(["confirm-noledger-slug", "--confirm"])
     assert rc == 1
+
+
+# ── CRITICAL #1 (Codex red-team, 2026-07-16): fail-closed completeness gate ──
+# This CLI is the ACTUAL production Instagram publisher (the WR2 Control app
+# shells out to it) and previously had zero completeness check: slides.json
+# existing/parsing was validated but never cross-checked against how many
+# PNGs were actually discovered, and the review-queue entry's state was
+# never consulted before publish.
+
+
+def _make_carousel_with_declared_slides(
+    tmp_path: Path, slug: str, *, declared: int, actual_pngs: int,
+) -> Path:
+    """Like _make_carousel but with a REAL populated slides.json['slides']
+    list (declared count) that can diverge from how many PNGs actually exist
+    on disk (actual_pngs) — the disk != intended half of CRITICAL #1."""
+    root = tmp_path / "carousel"
+    slug_dir = root / slug
+    slides_dir = slug_dir / "slides"
+    slides_dir.mkdir(parents=True)
+    (slug_dir / "slides.json").write_text(
+        json.dumps({"slides": [{"headline": f"s{i}"} for i in range(declared)]}),
+        encoding="utf-8",
+    )
+    png_magic = b"\x89PNG\r\n\x1a\n"
+    for i in range(1, actual_pngs + 1):
+        (slides_dir / f"{i:02d}.png").write_bytes(png_magic + f"slide{i}".encode())
+    return root
+
+
+def test_confirm_refuses_when_disk_disagrees_with_slides_json(tmp_path, monkeypatch) -> None:
+    """GUILT: slides.json declares 3 slides but only 2 PNGs exist on disk —
+    refuse before ever touching Tigris/ledger/publisher."""
+    cli = _load_cli()
+    root = _make_carousel_with_declared_slides(
+        tmp_path, "incomplete-slug", declared=3, actual_pngs=2,
+    )
+    monkeypatch.setenv("WR2_CAROUSEL_ROOT", str(root))
+    monkeypatch.setenv("WR2_IG_CONTENT_PUBLISH_VERIFIED", "1")
+
+    def _explode_upload(*a, **k):  # type: ignore[no-untyped-def]
+        raise AssertionError("must not reach Tigris upload on an incomplete carousel")
+
+    monkeypatch.setattr(cli, "_upload_slides_to_tigris", _explode_upload)
+
+    rc = cli.main(["incomplete-slug"])  # dry-run is enough to exercise the gate
+    assert rc == 1
+
+
+def test_confirm_refuses_when_queue_entry_render_incomplete(tmp_path, monkeypatch) -> None:
+    """GUILT: disk matches slides.json (genuinely complete) but the matching
+    review-queue entry is state=render_incomplete — refuse regardless of
+    what the disk counts say, a sweep/human already flagged this carousel."""
+    cli = _load_cli()
+    root = _make_carousel_with_declared_slides(
+        tmp_path, "flagged-slug", declared=2, actual_pngs=2,
+    )
+    monkeypatch.setenv("WR2_CAROUSEL_ROOT", str(root))
+    monkeypatch.setenv("WR2_IG_CONTENT_PUBLISH_VERIFIED", "1")
+
+    qpath = tmp_path / "queue" / "human-review-queue.json"
+    qpath.parent.mkdir(parents=True)
+    qpath.write_text(
+        json.dumps([{"topic_slug": "flagged-slug", "state": "render_incomplete"}]),
+        encoding="utf-8",
+    )
+
+    def _explode_upload(*a, **k):  # type: ignore[no-untyped-def]
+        raise AssertionError("must not reach Tigris upload on a render_incomplete entry")
+
+    monkeypatch.setattr(cli, "_upload_slides_to_tigris", _explode_upload)
+
+    rc = cli.main(["flagged-slug"])
+    assert rc == 1
+
+
+def test_dry_run_still_proceeds_when_disk_matches_slides_json(tmp_path, monkeypatch) -> None:
+    """INNOCENCE: a genuinely complete carousel (disk == slides.json, no
+    render_incomplete queue entry) must still flow through the dry-run path
+    unchanged — the new gate is additive, not a regression."""
+    cli = _load_cli()
+    root = _make_carousel_with_declared_slides(
+        tmp_path, "complete-slug", declared=3, actual_pngs=3,
+    )
+    monkeypatch.setenv("WR2_CAROUSEL_ROOT", str(root))
+    monkeypatch.setenv("WR2_IG_CONTENT_PUBLISH_VERIFIED", "1")
+
+    upload_calls: list[int] = []
+
+    def _fake_upload(png_paths, *, draft_id):  # type: ignore[no-untyped-def]
+        upload_calls.append(len(png_paths))
+        return [f"https://tigris/{draft_id}/{i:02d}.png" for i in range(len(png_paths))]
+
+    monkeypatch.setattr(cli, "_upload_slides_to_tigris", _fake_upload)
+
+    rc = cli.main(["complete-slug"])
+    assert rc == 0
+    assert upload_calls == [3]

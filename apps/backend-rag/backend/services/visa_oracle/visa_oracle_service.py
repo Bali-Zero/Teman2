@@ -7,6 +7,7 @@ and family situation. Returns top-3 results with full details.
 
 import hashlib
 import logging
+import re
 import secrets
 from typing import Any
 from urllib.parse import quote
@@ -128,6 +129,63 @@ SCORE_FAMILY_MATCH = 1.0
 
 WHATSAPP_NUMBER = "+62 821 3465 159"
 WHATSAPP_BASE_URL = "https://wa.me/6282230102328"
+
+# PR0 hardening (Codex red-team P1 #4, Markdown injection): the 4 chars
+# Telegram's LEGACY Markdown parse_mode (`send_message(..., parse_mode=
+# "Markdown")`, as used by the visa-oracle handoff notification) actually
+# treats as formatting syntax. Deliberately NOT the full MarkdownV2 set
+# (`_*[]()~>#+-=|{}.!`) — this message is sent as legacy v1, which does not
+# recognize backslash as an escape prefix outside these 4 characters;
+# escaping e.g. `.`/`-`/`!` under v1 would insert a literal stray backslash
+# into the rendered message instead of hiding one.
+_TELEGRAM_MARKDOWN_V1_SPECIAL_CHARS: tuple[str, ...] = ("_", "*", "`", "[")
+
+
+def _escape_telegram_markdown_v1(value: Any) -> str:
+    """Escape legacy-Telegram-Markdown special chars in a value about to be
+    interpolated into a `parse_mode="Markdown"` message. Applied at the
+    string-composition boundary in `build_telegram_summary` for every
+    quiz-answer / visa field that ultimately traces back to user input.
+
+    ONLY valid for values interpolated in NORMAL (non-entity) text — see
+    `_sanitize_code_entity_*` below for values interpolated inside a code
+    span (backticks), where escaping is a different, WRONG mitigation."""
+    text = str(value)
+    for ch in _TELEGRAM_MARKDOWN_V1_SPECIAL_CHARS:
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+
+# R2-B (Codex re-review NEW-BUG, F4): `session_id` and `language` are
+# interpolated INSIDE a Telegram legacy-Markdown CODE SPAN (backticks) in
+# `build_telegram_summary` — e.g. `` `{session_id}` ``. Escaping is INVALID
+# inside a code entity: legacy Markdown does not parse backslash-escapes
+# there, it renders the span's content literally up to the NEXT backtick.
+# An attacker-controlled value containing a backtick would close the span
+# early and inject raw (unescaped) formatting into the surrounding text —
+# `_escape_telegram_markdown_v1` above cannot fix this, no matter which
+# chars it escapes. The only safe mitigation for a code-span value is to
+# WHITELIST the charset, not escape it.
+_SESSION_ID_DISALLOWED_RE = re.compile(r"[^A-Za-z0-9_-]")
+_LANGUAGE_DISALLOWED_RE = re.compile(r"[^a-z-]")
+_SESSION_ID_SANITIZED_MAX_LEN = 40
+_LANGUAGE_SANITIZED_MAX_LEN = 8
+
+
+def _sanitize_code_entity_session_id(value: Any) -> str:
+    """Whitelist `session_id` to `[A-Za-z0-9_-]`, max 40 chars, for safe
+    interpolation inside a Telegram code span. Falls back to "unknown" if
+    sanitization empties the value (e.g. an all-symbol input)."""
+    cleaned = _SESSION_ID_DISALLOWED_RE.sub("", str(value))[:_SESSION_ID_SANITIZED_MAX_LEN]
+    return cleaned or "unknown"
+
+
+def _sanitize_code_entity_language(value: Any) -> str:
+    """Whitelist `language` to `[a-z-]`, max 8 chars, for safe
+    interpolation inside a Telegram code span. Falls back to "unknown" if
+    sanitization empties the value."""
+    cleaned = _LANGUAGE_DISALLOWED_RE.sub("", str(value).lower())[:_LANGUAGE_SANITIZED_MAX_LEN]
+    return cleaned or "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -299,13 +357,27 @@ class VisaOracleService:
         Returns:
             Formatted Markdown string for Telegram.
         """
-        nationality = quiz_answers.get("nationality", "Unknown")
-        purpose = quiz_answers.get("purpose", "Unknown")
-        duration = quiz_answers.get("duration", "Unknown")
+        # PR0 hardening (Codex red-team P1 #4): escape every user-influenced
+        # string right at this composition boundary — nationality/purpose/
+        # duration originate from client-declared quiz input (even the
+        # server-snapshot-preferred path traces back to the original
+        # /recommend POST); visa_name is defense-in-depth even though the
+        # router now resolves it server-side. Escaping is correct HERE
+        # because these values land in NORMAL text, not a code span.
+        nationality = _escape_telegram_markdown_v1(quiz_answers.get("nationality", "Unknown"))
+        purpose = _escape_telegram_markdown_v1(quiz_answers.get("purpose", "Unknown"))
+        duration = _escape_telegram_markdown_v1(quiz_answers.get("duration", "Unknown"))
         family = quiz_answers.get("family", False)
 
+        # R2-B: session_id/language are interpolated INSIDE backticks below
+        # — a code span, where escaping does not apply (see the
+        # `_sanitize_code_entity_*` docstring). Whitelist instead.
+        session_id_safe = _sanitize_code_entity_session_id(session_id)
+        language_safe = _sanitize_code_entity_language(language)
+
         visa_lines = "\n".join(
-            f"  {i + 1}. {v.get('visa_name', '?')} — {v.get('price', '?')} "
+            f"  {i + 1}. {_escape_telegram_markdown_v1(v.get('visa_name', '?'))} — "
+            f"{_escape_telegram_markdown_v1(v.get('price', '?'))} "
             f"(score: {v.get('score', 0):.1f})"
             for i, v in enumerate(recommended_visas[:3])
         )
@@ -315,8 +387,8 @@ class VisaOracleService:
 
         summary = (
             f"*Visa Oracle Lead* 🧭\n"
-            f"Session: `{session_id[:12]}…`\n"
-            f"Language: `{language}`\n\n"
+            f"Session: `{session_id_safe[:12]}…`\n"
+            f"Language: `{language_safe}`\n\n"
             f"*Quiz Answers*\n"
             f"• Nationality: {nationality}\n"
             f"• Purpose: {purpose}\n"

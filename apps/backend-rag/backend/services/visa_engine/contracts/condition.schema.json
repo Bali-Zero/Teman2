@@ -1,0 +1,768 @@
+{
+  "$defs": {
+    "AllCondition": {
+      "additionalProperties": false,
+      "description": "Kleene conjunction: FALSE if any child FALSE; else UNKNOWN if any\nchild UNKNOWN; else TRUE (spec \u00a74.1). No short-circuit at evaluation\ntime \u2014 every child is evaluated so the trace stays complete.",
+      "properties": {
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllCondition",
+                "any": "#/$defs/AnyCondition",
+                "between": "#/$defs/BetweenCondition",
+                "contains_all": "#/$defs/ContainsAllCondition",
+                "eq": "#/$defs/EqCondition",
+                "gt": "#/$defs/GtCondition",
+                "gte": "#/$defs/GteCondition",
+                "in": "#/$defs/InCondition",
+                "intersects": "#/$defs/IntersectsCondition",
+                "known": "#/$defs/PresenceCondition",
+                "lt": "#/$defs/LtCondition",
+                "lte": "#/$defs/LteCondition",
+                "neq": "#/$defs/NeqCondition",
+                "not": "#/$defs/NotCondition",
+                "not_in": "#/$defs/NotInCondition",
+                "unknown": "#/$defs/PresenceCondition"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllCondition"
+              },
+              {
+                "$ref": "#/$defs/AnyCondition"
+              },
+              {
+                "$ref": "#/$defs/NotCondition"
+              },
+              {
+                "$ref": "#/$defs/PresenceCondition"
+              },
+              {
+                "$ref": "#/$defs/EqCondition"
+              },
+              {
+                "$ref": "#/$defs/NeqCondition"
+              },
+              {
+                "$ref": "#/$defs/LtCondition"
+              },
+              {
+                "$ref": "#/$defs/LteCondition"
+              },
+              {
+                "$ref": "#/$defs/GtCondition"
+              },
+              {
+                "$ref": "#/$defs/GteCondition"
+              },
+              {
+                "$ref": "#/$defs/InCondition"
+              },
+              {
+                "$ref": "#/$defs/NotInCondition"
+              },
+              {
+                "$ref": "#/$defs/BetweenCondition"
+              },
+              {
+                "$ref": "#/$defs/IntersectsCondition"
+              },
+              {
+                "$ref": "#/$defs/ContainsAllCondition"
+              }
+            ]
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        },
+        "op": {
+          "const": "all",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "args"],
+      "title": "AllCondition",
+      "type": "object"
+    },
+    "AnyCondition": {
+      "additionalProperties": false,
+      "description": "Kleene disjunction: TRUE if any child TRUE; else UNKNOWN if any child\nUNKNOWN; else FALSE (spec \u00a74.1).",
+      "properties": {
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllCondition",
+                "any": "#/$defs/AnyCondition",
+                "between": "#/$defs/BetweenCondition",
+                "contains_all": "#/$defs/ContainsAllCondition",
+                "eq": "#/$defs/EqCondition",
+                "gt": "#/$defs/GtCondition",
+                "gte": "#/$defs/GteCondition",
+                "in": "#/$defs/InCondition",
+                "intersects": "#/$defs/IntersectsCondition",
+                "known": "#/$defs/PresenceCondition",
+                "lt": "#/$defs/LtCondition",
+                "lte": "#/$defs/LteCondition",
+                "neq": "#/$defs/NeqCondition",
+                "not": "#/$defs/NotCondition",
+                "not_in": "#/$defs/NotInCondition",
+                "unknown": "#/$defs/PresenceCondition"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllCondition"
+              },
+              {
+                "$ref": "#/$defs/AnyCondition"
+              },
+              {
+                "$ref": "#/$defs/NotCondition"
+              },
+              {
+                "$ref": "#/$defs/PresenceCondition"
+              },
+              {
+                "$ref": "#/$defs/EqCondition"
+              },
+              {
+                "$ref": "#/$defs/NeqCondition"
+              },
+              {
+                "$ref": "#/$defs/LtCondition"
+              },
+              {
+                "$ref": "#/$defs/LteCondition"
+              },
+              {
+                "$ref": "#/$defs/GtCondition"
+              },
+              {
+                "$ref": "#/$defs/GteCondition"
+              },
+              {
+                "$ref": "#/$defs/InCondition"
+              },
+              {
+                "$ref": "#/$defs/NotInCondition"
+              },
+              {
+                "$ref": "#/$defs/BetweenCondition"
+              },
+              {
+                "$ref": "#/$defs/IntersectsCondition"
+              },
+              {
+                "$ref": "#/$defs/ContainsAllCondition"
+              }
+            ]
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        },
+        "op": {
+          "const": "any",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "args"],
+      "title": "AnyCondition",
+      "type": "object"
+    },
+    "BetweenCondition": {
+      "additionalProperties": false,
+      "description": "Inclusive ``[lower, upper]`` range (spec \u00a74.1).",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Lower"
+        },
+        "op": {
+          "const": "between",
+          "title": "Op",
+          "type": "string"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Upper"
+        }
+      },
+      "required": ["op", "fact", "lower", "upper"],
+      "title": "BetweenCondition",
+      "type": "object"
+    },
+    "ContainsAllCondition": {
+      "additionalProperties": false,
+      "description": "True iff the fact's set-value is a superset of ``values``.",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "contains_all",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "ContainsAllCondition",
+      "type": "object"
+    },
+    "EqCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "eq",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "EqCondition",
+      "type": "object"
+    },
+    "FactPath": {
+      "description": "Every fact path the engine may ever reference \u2014 35 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "enum": [
+        "person.birth_date",
+        "person.nationalities",
+        "person.marital_status",
+        "immigration.currently_in_indonesia",
+        "immigration.current_status_code",
+        "immigration.current_status_expiry",
+        "immigration.last_entry_date",
+        "immigration.overstay_days",
+        "immigration.violation_history",
+        "intent.purposes",
+        "intent.stay_days",
+        "intent.desired_entry_date",
+        "intent.entry_pattern",
+        "intent.requested_product_code",
+        "work.employer_country_code",
+        "work.employer_is_indonesian_entity",
+        "work.serves_indonesian_clients",
+        "work.indonesia_source_compensation",
+        "work.indonesian_work_sponsor_confirmed",
+        "investment.pt_pma_committed",
+        "investment.investment_capital_idr",
+        "investment.paid_up_capital_idr",
+        "investment.proposed_role",
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "family.sponsor_status_code",
+        "family.marriage_registered",
+        "family.sponsor_confirmed",
+        "study.level",
+        "study.admission_confirmed",
+        "study.sponsor_confirmed",
+        "process.application_channel",
+        "process.wants_onshore_conversion",
+        "commercial.service_fee_budget_idr",
+        "commercial.wants_quote",
+        "derived.age_years",
+        "derived.is_minor",
+        "derived.has_indonesian_citizenship"
+      ],
+      "title": "FactPath",
+      "type": "string"
+    },
+    "GtCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "gt",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "GtCondition",
+      "type": "object"
+    },
+    "GteCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "gte",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "GteCondition",
+      "type": "object"
+    },
+    "InCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "in",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "InCondition",
+      "type": "object"
+    },
+    "IntersectsCondition": {
+      "additionalProperties": false,
+      "description": "True iff the fact's set-value and ``values`` share at least one element.",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "intersects",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "IntersectsCondition",
+      "type": "object"
+    },
+    "LtCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "lt",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "LtCondition",
+      "type": "object"
+    },
+    "LteCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "lte",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "LteCondition",
+      "type": "object"
+    },
+    "NeqCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "neq",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "NeqCondition",
+      "type": "object"
+    },
+    "NotCondition": {
+      "additionalProperties": false,
+      "description": "Negation: TRUE<->FALSE swap; UNKNOWN remains UNKNOWN (spec \u00a74.1).",
+      "properties": {
+        "arg": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllCondition",
+              "any": "#/$defs/AnyCondition",
+              "between": "#/$defs/BetweenCondition",
+              "contains_all": "#/$defs/ContainsAllCondition",
+              "eq": "#/$defs/EqCondition",
+              "gt": "#/$defs/GtCondition",
+              "gte": "#/$defs/GteCondition",
+              "in": "#/$defs/InCondition",
+              "intersects": "#/$defs/IntersectsCondition",
+              "known": "#/$defs/PresenceCondition",
+              "lt": "#/$defs/LtCondition",
+              "lte": "#/$defs/LteCondition",
+              "neq": "#/$defs/NeqCondition",
+              "not": "#/$defs/NotCondition",
+              "not_in": "#/$defs/NotInCondition",
+              "unknown": "#/$defs/PresenceCondition"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllCondition"
+            },
+            {
+              "$ref": "#/$defs/AnyCondition"
+            },
+            {
+              "$ref": "#/$defs/NotCondition"
+            },
+            {
+              "$ref": "#/$defs/PresenceCondition"
+            },
+            {
+              "$ref": "#/$defs/EqCondition"
+            },
+            {
+              "$ref": "#/$defs/NeqCondition"
+            },
+            {
+              "$ref": "#/$defs/LtCondition"
+            },
+            {
+              "$ref": "#/$defs/LteCondition"
+            },
+            {
+              "$ref": "#/$defs/GtCondition"
+            },
+            {
+              "$ref": "#/$defs/GteCondition"
+            },
+            {
+              "$ref": "#/$defs/InCondition"
+            },
+            {
+              "$ref": "#/$defs/NotInCondition"
+            },
+            {
+              "$ref": "#/$defs/BetweenCondition"
+            },
+            {
+              "$ref": "#/$defs/IntersectsCondition"
+            },
+            {
+              "$ref": "#/$defs/ContainsAllCondition"
+            }
+          ],
+          "title": "Arg"
+        },
+        "op": {
+          "const": "not",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "arg"],
+      "title": "NotCondition",
+      "type": "object"
+    },
+    "NotInCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "not_in",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "NotInCondition",
+      "type": "object"
+    },
+    "PresenceCondition": {
+      "additionalProperties": false,
+      "description": "``known``: TRUE iff the fact is KNOWN, else FALSE.\n``unknown``: TRUE iff the fact is UNKNOWN, else FALSE (spec \u00a74.1).",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "enum": ["known", "unknown"],
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "fact"],
+      "title": "PresenceCondition",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.balizero.com/visa-engine/condition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "all": "#/$defs/AllCondition",
+      "any": "#/$defs/AnyCondition",
+      "between": "#/$defs/BetweenCondition",
+      "contains_all": "#/$defs/ContainsAllCondition",
+      "eq": "#/$defs/EqCondition",
+      "gt": "#/$defs/GtCondition",
+      "gte": "#/$defs/GteCondition",
+      "in": "#/$defs/InCondition",
+      "intersects": "#/$defs/IntersectsCondition",
+      "known": "#/$defs/PresenceCondition",
+      "lt": "#/$defs/LtCondition",
+      "lte": "#/$defs/LteCondition",
+      "neq": "#/$defs/NeqCondition",
+      "not": "#/$defs/NotCondition",
+      "not_in": "#/$defs/NotInCondition",
+      "unknown": "#/$defs/PresenceCondition"
+    },
+    "propertyName": "op"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/AllCondition"
+    },
+    {
+      "$ref": "#/$defs/AnyCondition"
+    },
+    {
+      "$ref": "#/$defs/NotCondition"
+    },
+    {
+      "$ref": "#/$defs/PresenceCondition"
+    },
+    {
+      "$ref": "#/$defs/EqCondition"
+    },
+    {
+      "$ref": "#/$defs/NeqCondition"
+    },
+    {
+      "$ref": "#/$defs/LtCondition"
+    },
+    {
+      "$ref": "#/$defs/LteCondition"
+    },
+    {
+      "$ref": "#/$defs/GtCondition"
+    },
+    {
+      "$ref": "#/$defs/GteCondition"
+    },
+    {
+      "$ref": "#/$defs/InCondition"
+    },
+    {
+      "$ref": "#/$defs/NotInCondition"
+    },
+    {
+      "$ref": "#/$defs/BetweenCondition"
+    },
+    {
+      "$ref": "#/$defs/IntersectsCondition"
+    },
+    {
+      "$ref": "#/$defs/ContainsAllCondition"
+    }
+  ]
+}

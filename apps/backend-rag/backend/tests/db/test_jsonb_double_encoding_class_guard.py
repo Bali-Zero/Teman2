@@ -96,6 +96,7 @@ RAW_DICT_TABLES = {"crm_welcome_runs"}
 # an unreviewed script in the same directory is still checked.
 KNOWN_CODEC_LESS_FILES = {
     "scripts/kg_kbli_resync.py",
+    "scripts/kg_fix_68112_node.py",
     "scripts/seed_kg_spatial.py",
     "services/knowledge_graph/pipeline.py",
     "services/knowledge_graph/advanced_quality.py",

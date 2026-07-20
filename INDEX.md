@@ -119,6 +119,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
 | `nuz-status-mac` | Native macOS control surface for Nuzantara operational health. |
+| `nuzantara-lex` | > Second body of the organism. "Avvocato Totale" — the Indonesian labor-law |
 | `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
@@ -126,7 +127,6 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus-ui` |  |
 | `remediator` |  |
-| `research` |  |
 | `team-agent` |  |
 | `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
 | `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`) puntata al DB di produzione |
@@ -142,6 +142,8 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:WORKFLOWS_INDEX_START -->
 | File | Name | Description |
 | ---- | ---- | ----------- |
+| `infra/workflows/kbli-batch-a-lot.js` | kbli-batch-a-lot | GARUDA-FILIERA Batch A calibration-enforced lot runner (D1 crosswalk proposal -> D5 blind refutation -> D2 self-confirming extraction) over evidence already pulled by dossier_pull.py, gated on membership and reporting m1-m4 control limits per lot |
+| `infra/workflows/kbli-pilot-a1.js` | kbli-pilot-a1 | GARUDA-FILIERA per-code adjudication (D1 crosswalk proposal -> D5 blind refutation -> D2 self-confirming extraction) over evidence already pulled by dossier_pull.py |
 | `infra/workflows/modus-bench.js` | modus-bench | Self-refinement sweep for the modus master loop: internal scars/memory × external frontier watch → adversarially verified, operator-gated amendment proposals |
 | `infra/workflows/verify-template.js` | verify-template | Reusable generator≠grader workflow: gather N angles → adversarially verify each → synthesize survivors |
 <!-- DOCSYNC:WORKFLOWS_INDEX_END -->
@@ -151,13 +153,24 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:SKILLS_INDEX_START -->
 | Skill | Description (truncated) |
 | ----- | ----------------------- |
+| `.claude/skills/agent-session-discipline/` | Use at session start when working on a feature/fix that involves code changes. Creates an isolated worktree via L1 broker (scripts/agent_start.py) to prevent... |
+| `.claude/skills/bot/` | "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, ... |
+| `.claude/skills/intake/` | "Intake corner — the live shared context for the document-intake organism (WhatsApp/Drive docs → OCR → classify → extract → route → attach-to-client). Load B... |
+| `.claude/skills/karpathy-discipline/` | Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles to reduce common LLM coding mistakes (sil... |
+| `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
+| `.claude/skills/reuse-first/` | Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). C... |
+| `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
+| `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
+| `.claude/skills/visaoracle/` | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |
+| `.claude/skills/workflow/` | Strategic multi-agent orchestration playbook — the Workflow tool wired to the full cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy wi... |
+| `.claude/skills/wr2/` | "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control ... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`120 plist tracked in infra/launchagents/ · 93 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (78% coverage)`
+`125 plist tracked in infra/launchagents/ · 95 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (76% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

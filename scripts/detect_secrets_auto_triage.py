@@ -268,6 +268,54 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"_state\.json$"),
         "pipeline state file: run IDs and hashes, not credentials",
     ),
+    # GARUDA-FILIERA evidence layer — TREE-WIDE rule (replaces the narrower
+    # manifest-only + membership-only rules 2026-07-16/18; batch-reports/
+    # calibration artifacts were the THIRD directory under data/kbli-filiera/
+    # to hit the same wall — sha256 vault-manifest digests, git-commit-SHA
+    # canonical_revision pins, and now sha256 gold-set control digests all
+    # read as Hex High Entropy Strings — and dossiers/ (hash-chained JSONL
+    # events, D0-D6 protocol) will be next. Rather than add a fourth
+    # subdirectory rule every time a new compiler ships, cover the whole
+    # tree once.
+    #
+    # Why tree-wide is SAFE, not a blanket carve-out: every file under
+    # data/kbli-filiera/ is written by exactly one class of writer —
+    # scripts/kbli_filiera/*.py compilers — enforced by the data-plane
+    # guard (infra/claude-hooks/data_plane_guard.py, #2550), which blocks
+    # any OTHER path (hand-edits, other scripts, `sed`/`echo` redirection)
+    # from touching this tree. The OSS user_key and every other live
+    # credential never enter these compilers' output by construction (they
+    # emit sha256 digests, git SHAs, public KBLI codes, and PP28/OSS
+    # citations only). A rule this wide would be unsafe for a tree ANYONE
+    # can write into; it is safe here because the writer set is closed and
+    # guard-enforced.
+    (
+        re.compile(r"(^|/)data/kbli-filiera/.*\.(json|md|jsonl)$"),
+        "KBLI filiera evidence layer: compiler-only writes (data-plane guard #2550), "
+        "sha256 digests/git SHAs/public codes by design, zero credentials",
+    ),
+    # scripts/kbli_filiera/cure_specs/ — the INPUT side of the same wall.
+    # These are hand-authored spec files that compilers (e.g.
+    # cure_restore_per_ancestor.py) read to produce the guarded
+    # data/kbli-filiera/ output above; they are not themselves under the
+    # data-plane guard, but they carry the identical content class — sha256
+    # render/evidence digests pinning which page-image was image-verified
+    # for a given adjudication (restore_49213.json's `adjudication.renders`
+    # block), never credentials.
+    (
+        re.compile(r"(^|/)scripts/kbli_filiera/cure_specs/.*\.json$"),
+        "KBLI filiera cure specs: compiler input artifacts (data-plane guard #2550), "
+        "sha256 render/evidence digests by design, zero credentials",
+    ),
+    # Nuzantara Lex source manifests pin downloaded public regulations by
+    # SHA-256 so the fetcher can prove byte identity across runs. These are
+    # content digests, not bearer tokens or credentials.
+    (
+        re.compile(
+            r"(^|/)apps/nuzantara-lex/data_sources/ketenagakerjaan_seed\.json$"
+        ),
+        "nuzantara-lex public regulation manifest: SHA-256 content digests, not secrets",
+    ),
     (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",

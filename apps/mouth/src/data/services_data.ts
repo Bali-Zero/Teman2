@@ -395,14 +395,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
-      // SECOND HOME VISA (E35 Series)
+      // SECOND HOME VISA (E33)
       // ═══════════════════════════════════════════════════════════
       {
-        name: "E35 - Second Home Visa",
+        name: "E33 - Second Home Visa",
         description: "Long-term residence (USD 130k+ deposit)",
         price: "Contact",
         features: [
-          "5-10 years validity",
+          "Up to 5 years initial validity",
           "No sponsor required",
           "Bring family members",
         ],
@@ -715,9 +715,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "After holding KITAS for 3-5 consecutive years (depending on category), you can apply for KITAP. Investor KITAP requires 3 consecutive Investor KITAS; Working KITAP requires 4 consecutive years.",
       },
       {
-        question: "What is the Second Home Visa (E35)?",
+        question: "What is the Second Home Visa (E33)?",
         answer:
-          "E35 is a 5-10 year visa for high-net-worth individuals. Requires USD 130,000+ deposit in Indonesian bank, or proof of property ownership. No sponsor needed, can bring family members.",
+          "E33 is a long-term residence visa for high-net-worth individuals, with an initial validity of up to 5 years. It requires qualifying financial evidence, such as a USD 130,000 deposit in a state-owned Indonesian bank or eligible property ownership. No sponsor is required, and eligible family members can apply through dependent routes.",
       },
     ],
   },

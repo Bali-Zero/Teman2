@@ -81,6 +81,7 @@ build_claude_args() {
     local args=("--print")
     [ -n "$MODEL" ] && args+=("--model" "$MODEL")
     [ -n "$AGENT" ] && args+=("--agent" "$AGENT")
+    args+=("--max-budget-usd" "${CASCADE_MAX_BUDGET_USD:-5}")
     args+=("${EXTRA_ARGS[@]}")
     echo "${args[@]}"
 }

@@ -1,0 +1,23 @@
+name: cron - notifiers compliance-forecast (daily 06:30 WITA)
+on:
+  schedule:
+    - cron: "30 22 * * *" # 22:30 UTC = 06:30 WITA next day
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-compliance-forecast-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Inert until system_settings.compliance_forecast_enabled = "true"
+      # (the endpoint returns {"status":"disabled"} otherwise — the kill
+      # switch is the deliberate go-live gesture, not this schedule).
+      - name: POST /api/cron/notifiers/compliance-forecast
+        run: |
+          curl -fsS -X POST https://nuzantara-rag.fly.dev/api/cron/notifiers/compliance-forecast \
+            -H "X-API-Key: ${{ secrets.NUZANTARA_API_KEY }}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'

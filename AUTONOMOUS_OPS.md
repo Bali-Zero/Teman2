@@ -19,6 +19,7 @@
 (re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04;
 the SessionStart staleness hook was fixed the same day to read this declared
 date — not the file mtime, which any edit silently reset, masking the lapse.)
+(re-certified 2026-07-19 by Antonello — routine 30-day refresh; Level 2 unchanged.)
 
 If today's date is >30 days after "active since" without a refresh commit,
 Claude falls back to conservative mode and pings the user to re-certify.
@@ -204,6 +205,8 @@ All gates closed 2026-04-21. L2 active.
 
 ## Change log
 
+- **2026-07-19** — Re-certified by Antonello (routine 30-day refresh after the
+  2026-06-11 certification lapsed). Level 2 unchanged.
 - **2026-04-21** — File created by Claude at Zero's request. Level 1 active
   immediately. Level 2 promoted same day once activation gates closed:
   branch protection live on `main`, hotfix Telegram notifier live,

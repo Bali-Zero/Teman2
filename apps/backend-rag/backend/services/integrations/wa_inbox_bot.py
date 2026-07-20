@@ -54,6 +54,19 @@ _HISTORY_TURNS = 12
 _rag_client: httpx.AsyncClient | None = None
 _rag_client_lock = asyncio.Lock()
 
+# P9 admission gate (spec zantara-wa-spec-v2 D2.5): bounds how many in-flight
+# agentic-RAG calls THIS api process will ever have open against the separate
+# 'rag' Fly process group (shared-2x, 2 vCPU) at once. Placed here rather than
+# in wa_outbox_worker.py because this module owns the ONE call site that
+# actually reaches the RAG process for this feature (main_api.py's K
+# scheduler workers all funnel bot generation through generate_bot_reply) —
+# K workers stampeding the rag process with more simultaneous calls than it
+# can serve would just turn concurrency into RAG-side queueing/timeouts
+# instead of outbox-side throughput. Module-level singleton, lazily built (no
+# `await` between the None-check and the assignment, so this is safe without
+# a lock on a single-threaded event loop — see _get_bot_generation_semaphore).
+_bot_generation_semaphore: asyncio.Semaphore | None = None
+
 
 def is_bot_autoreply_enabled() -> bool:
     """True only when the Fly secret WA_INBOX_BOT_AUTOREPLY is truthy.
@@ -68,6 +81,26 @@ def is_bot_autoreply_enabled() -> bool:
         "yes",
         "on",
     )
+
+
+def _get_bot_generation_semaphore() -> asyncio.Semaphore:
+    """Lazily build (once) the admission-gate semaphore for RAG calls.
+
+    Max concurrent = int(env WA_BOT_MAX_CONCURRENT_GENERATIONS, default 3).
+    Read once, on first use — not re-read per call — matching the existing
+    lazy-singleton pattern for ``_rag_client`` in this module. There is no
+    `await` between the None-check and the assignment below, so on a
+    single-threaded asyncio event loop this cannot race even without a lock
+    (two concurrent callers can't interleave between those two lines).
+    """
+    global _bot_generation_semaphore
+    if _bot_generation_semaphore is None:
+        try:
+            max_concurrent = int(os.getenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "3"))
+        except ValueError:
+            max_concurrent = 3
+        _bot_generation_semaphore = asyncio.Semaphore(max(1, max_concurrent))
+    return _bot_generation_semaphore
 
 
 def _rag_client_headers() -> dict[str, str]:
@@ -192,10 +225,14 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         "channel": "whatsapp",
     }
 
-    client = await _get_rag_client()
-    resp = await client.post("/api/agentic-rag/query", json=payload)
-    resp.raise_for_status()
-    data = resp.json()
+    # P9 admission gate — bound in-flight RAG calls from this api process
+    # (see _get_bot_generation_semaphore docstring). Scoped tightly around
+    # the actual HTTP round-trip, not the cheap DB context-load above it.
+    async with _get_bot_generation_semaphore():
+        client = await _get_rag_client()
+        resp = await client.post("/api/agentic-rag/query", json=payload)
+        resp.raise_for_status()
+        data = resp.json()
 
     if data.get("abstain"):
         # RAG refused — do not guess. Let the worker park it; operator can take over.

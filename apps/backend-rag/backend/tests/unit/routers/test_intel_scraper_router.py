@@ -388,6 +388,193 @@ class TestSubmitFromScraper:
         assert result["success"] is True
 
     @pytest.mark.asyncio
+    async def test_duplicate_backfills_enrichment_when_existing_item_lacks_it(self) -> None:
+        """GUILT (round-2 red-team MUST-FIX #3, scar family #9): a
+        duplicate hit against an existing staging item with no usable
+        enrichment must be healed in place when the new submission carries
+        one — the early-return dedup response happens BEFORE staging_data
+        is built, so without this fix the existing item's future draft
+        would stay stuck at {} forever (7-day dedup window)."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_duplicates") as mock_dup,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-dup"
+            existing_item = {
+                "item_id": "news-2026-existing",
+                "title": "Existing",
+                "source_url": "https://example.com/dup",
+                "enrichment": {},
+            }
+            mock_stg.check_duplicate.return_value = existing_item
+            mock_stg.load_staging_item.return_value = dict(existing_item)
+            mock_dup.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            enrichment_obj = {
+                "the_facts": "Fresh facts.",
+                "bali_zero_take": "Fresh take.",
+            }
+            submission = ScraperSubmission(
+                title="Duplicate with enrichment",
+                content="Content",
+                source_url="https://example.com/dup",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment=enrichment_obj,
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["duplicate"] is True
+        assert result["success"] is True
+        assert result["enrichment_backfilled"] is True
+        mock_stg.load_staging_item.assert_called_once_with("news", "news-2026-existing")
+        mock_stg.save_staging_item.assert_called_once()
+        saved_type, saved_id, saved_data = mock_stg.save_staging_item.call_args[0]
+        assert saved_type == "news"
+        assert saved_id == "news-2026-existing"
+        assert saved_data["enrichment"] == enrichment_obj
+
+    @pytest.mark.asyncio
+    async def test_duplicate_skips_backfill_when_existing_already_has_enrichment(
+        self,
+    ) -> None:
+        """INNOCENCE: an existing duplicate that ALREADY carries a
+        non-empty enrichment dict must not be touched — no load/save call,
+        no `enrichment_backfilled` key in the response."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_duplicates") as mock_dup,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-dup2"
+            mock_stg.check_duplicate.return_value = {
+                "item_id": "news-2026-existing2",
+                "enrichment": {"the_facts": "Already there."},
+            }
+            mock_dup.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Duplicate again",
+                content="Content",
+                source_url="https://example.com/dup2",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment={"the_facts": "New but should not overwrite."},
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["duplicate"] is True
+        assert "enrichment_backfilled" not in result
+        mock_stg.load_staging_item.assert_not_called()
+        mock_stg.save_staging_item.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_skips_backfill_when_existing_is_published(self) -> None:
+        """INNOCENCE (round-3 NICE fix, scar family #9): a duplicate hit
+        against an existing staging item that is already `status: published`
+        must NOT be healed even when it lacks enrichment and the new
+        submission carries one. Published items still live in the staging
+        root (the Telegram-quorum publish path never archives them), so an
+        unconditional heal would write to a closed/live record. No
+        downstream reader depends on this today (topic-selector filters
+        status=="pending"), but the write itself must not happen."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_duplicates") as mock_dup,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-dup4"
+            mock_stg.check_duplicate.return_value = {
+                "item_id": "news-2026-existing4",
+                "enrichment": {},
+                "status": "published",
+            }
+            mock_dup.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Duplicate against published item",
+                content="Content",
+                source_url="https://example.com/dup4",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment={"the_facts": "New but must not land on a published item."},
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["duplicate"] is True
+        assert "enrichment_backfilled" not in result
+        mock_stg.load_staging_item.assert_not_called()
+        mock_stg.save_staging_item.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_backfill_failure_does_not_break_dedup_response(self) -> None:
+        """Heal-attempt failures must never turn a successful dedup into a
+        500 — log and fall through to the unchanged response shape."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_duplicates") as mock_dup,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-dup3"
+            mock_stg.check_duplicate.return_value = {
+                "item_id": "news-2026-existing3",
+                "enrichment": {},
+            }
+            mock_stg.load_staging_item.side_effect = OSError("disk error")
+            mock_dup.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Duplicate heal failure",
+                content="Content",
+                source_url="https://example.com/dup3",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment={"the_facts": "New."},
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["success"] is True
+        assert result["duplicate"] is True
+        assert "enrichment_backfilled" not in result
+
+    @pytest.mark.asyncio
     async def test_service_error(self) -> None:
         from fastapi import HTTPException
 
@@ -410,6 +597,90 @@ class TestSubmitFromScraper:
             with pytest.raises(HTTPException) as exc_info:
                 await submit_from_scraper(submission=submission, _api_key_verified=None)
             assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_enrichment_persisted(self) -> None:
+        """GUILT (WR2 enrichment passthrough, scar family #9): a
+        ScraperSubmission carrying a full structured `enrichment` object
+        must round-trip it verbatim into staging_data."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_submitted") as mock_metric,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-enriched"
+            mock_stg.check_duplicate.return_value = None
+            mock_stg.save_staging_item.return_value = "/tmp/staging/news/news-2026-enriched.json"
+            mock_stg.update_staging_queue_metrics = MagicMock()
+            mock_metric.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            enrichment_obj = {
+                "the_facts": "Facts here.",
+                "bali_zero_take": "Our take.",
+                "thirty_second_brief": "Brief.",
+                "faq": [{"q": "Q1", "a": "A1"}],
+            }
+            submission = ScraperSubmission(
+                title="Enriched article",
+                content="Content",
+                source_url="https://example.com/enriched",
+                source_name="test-scraper",
+                category="news",
+                relevance_score=70,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment=enrichment_obj,
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["success"] is True
+        mock_stg.save_staging_item.assert_called_once()
+        staging_data = mock_stg.save_staging_item.call_args[0][2]
+        assert staging_data["enrichment"] == enrichment_obj
+
+    @pytest.mark.asyncio
+    async def test_enrichment_defaults_to_empty_dict_when_absent(self) -> None:
+        """INNOCENCE: a legacy submission WITHOUT `enrichment` must still
+        validate (backward-compat) and default to {} in staging_data — not
+        crash, not omit the key entirely."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_submitted") as mock_metric,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-legacy"
+            mock_stg.check_duplicate.return_value = None
+            mock_stg.save_staging_item.return_value = "/tmp/staging/news/news-2026-legacy.json"
+            mock_stg.update_staging_queue_metrics = MagicMock()
+            mock_metric.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Legacy article",
+                content="Content",
+                source_url="https://example.com/legacy",
+                source_name="test-scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["success"] is True
+        staging_data = mock_stg.save_staging_item.call_args[0][2]
+        assert staging_data["enrichment"] == {}
 
     @pytest.mark.asyncio
     async def test_with_cover_image(self) -> None:

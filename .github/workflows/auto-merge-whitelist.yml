@@ -45,22 +45,32 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Untrusted webhook fields go via env, NEVER interpolated into the script.
+          # head.ref / user.login are attacker-controlled and this job runs as
+          # pull_request_target with a write token — a branch named `";evil;"` would
+          # otherwise inject shell (GHSA workflow-injection class; actionlint [expression]).
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CHECK_SUITE_ID: ${{ github.event.check_suite.id }}
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
-            echo "number=${{ github.event.pull_request.number }}"   >> "$GITHUB_OUTPUT"
-            echo "branch=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
-            echo "author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
+            echo "number=$PR_NUMBER"  >> "$GITHUB_OUTPUT"
+            echo "branch=$PR_HEAD_REF" >> "$GITHUB_OUTPUT"
+            echo "author=$PR_AUTHOR"   >> "$GITHUB_OUTPUT"
           else
             # check_suite: pick the PR(s) associated with the suite
-            PR_NUM="$(gh api repos/${{ github.repository }}/check-suites/${{ github.event.check_suite.id }}/pulls --jq '.[0].number' 2>/dev/null || echo '')"
+            PR_NUM="$(gh api "repos/$REPO/check-suites/$CHECK_SUITE_ID/pulls" --jq '.[0].number' 2>/dev/null || echo '')"
             if ! [[ "$PR_NUM" =~ ^[0-9]+$ ]]; then
-              echo "No PR linked to check_suite ${{ github.event.check_suite.id }} — skipping."
+              echo "No PR linked to check_suite $CHECK_SUITE_ID — skipping."
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            BRANCH="$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json headRefName --jq '.headRefName')"
-            AUTHOR="$(gh pr view "$PR_NUM" --repo ${{ github.repository }} --json author --jq '.author.login')"
+            BRANCH="$(gh pr view "$PR_NUM" --repo "$REPO" --json headRefName --jq '.headRefName')"
+            AUTHOR="$(gh pr view "$PR_NUM" --repo "$REPO" --json author --jq '.author.login')"
             echo "number=$PR_NUM" >> "$GITHUB_OUTPUT"
             echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
             echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
@@ -69,8 +79,9 @@ jobs:
       - name: Check branch whitelist
         id: branch_check
         if: steps.pr.outputs.skip != 'true'
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }} # carries the attacker-controlled ref → env, not inline
         run: |
-          BRANCH='${{ steps.pr.outputs.branch }}'
           if [[ "$BRANCH" =~ ^docs/auto-sync- ]]              || \
              [[ "$BRANCH" =~ ^dependabot/(pip|npm_and_yarn)/ ]] || \
              [[ "$BRANCH" =~ ^chore/fmt- ]]; then
@@ -84,8 +95,9 @@ jobs:
       - name: Check author allowlist
         id: author_check
         if: steps.branch_check.outputs.match == 'true'
+        env:
+          AUTHOR: ${{ steps.pr.outputs.author }} # attacker-controlled login → env, not inline
         run: |
-          AUTHOR='${{ steps.pr.outputs.author }}'
           case "$AUTHOR" in
             dependabot|dependabot[bot]|github-actions|github-actions[bot]|Balizero1987)
               echo "Author '$AUTHOR' is allowlisted."

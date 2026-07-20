@@ -177,6 +177,7 @@ fi
 "$CLAUDE_BIN" -p "TODO: your standing mandate here" \\
     --model "$MODEL" --dangerously-skip-permissions \\
     --strict-mcp-config --mcp-config '{{"mcpServers":{{}}}}' \\
+    --max-budget-usd "${{{var}_MAX_BUDGET_USD:-5}}" \\
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 ( sleep "$MAX_WALL_S"; kill -0 "$CPID" 2>/dev/null && kill "$CPID" && \\
