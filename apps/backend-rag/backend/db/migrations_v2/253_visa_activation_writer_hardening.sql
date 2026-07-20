@@ -94,13 +94,21 @@
 --   remains the hard structural boundary for any RAW-INSERT bypass of the
 --   function (defense-in-depth — Postgres enforces both regardless of
 --   which path an INSERT takes).
---   Safe to add directly (no `NOT VALID` + separate `VALIDATE CONSTRAINT`
---   needed) because both columns were confirmed to hold ZERO rows on prod
---   via a live read-only query immediately before this migration was
---   authored — there is no existing data this ADD CONSTRAINT could ever
---   fail against. (`constraint-missing-not-valid` is excluded fleet-wide in
---   `.github/workflows/migration-lint.yml` regardless, so this is a safety
---   argument, not a lint-suppression one.)
+--   Both columns were confirmed to hold ZERO rows on prod via a live
+--   read-only query immediately before this migration was authored — so an
+--   immediate ADD CONSTRAINT could not have failed against existing data at
+--   that instant. Even so (F4, cross-family fix-round), the ADD CONSTRAINT
+--   below is TOCTOU-fragile as a single statement: it full-table-scans, and
+--   a bad row inserted between that read-only check and deploy would abort
+--   the ENTIRE migration transaction — including the P0-1 grant fix and the
+--   F9 TRUNCATE guards above it. The constraint is therefore added `NOT
+--   VALID` (no scan, enforced on all new writes immediately) followed by a
+--   separate `VALIDATE CONSTRAINT` (checks existing rows) — if validation
+--   ever fails, only that step needs a retry; the security-critical
+--   statements earlier in the same migration are unaffected.
+--   (`constraint-missing-not-valid` is excluded fleet-wide in
+--   `.github/workflows/migration-lint.yml` regardless, so NOT VALID here is
+--   a safety choice, not a lint-suppression one.)
 -- ============================================================================
 -- P0-1 / P1-4 — GRANT MODEL: EXECUTE-ONLY, SELF-HEALING, FAIL-CLOSED
 -- ============================================================================
@@ -127,11 +135,23 @@
 --   fire its DO block against the role once created.
 --
 --   This migration's own grant block below is therefore the FIRST one that
---   will actually execute once the executor role is provisioned (whenever
---   this migration itself is applied relative to that provisioning event —
---   `migration_manager.apply_all_pending` runs whatever is pending at
---   deploy time, independent of role-creation timing). It is written to be
---   correct regardless of ordering:
+--   will actually execute once the executor role is provisioned — but it is
+--   a BEST-EFFORT self-heal, not a guarantee that activates regardless of
+--   ordering: it fires ONLY if `visa_activation_executor` already exists AT
+--   THE MOMENT this migration applies. `migration_manager` runs each
+--   migration exactly ONCE and never re-runs an applied migration's DO
+--   block — so if the role is instead provisioned AFTER this migration has
+--   already applied, this block has already executed (as the no-op RAISE
+--   NOTICE branch below) and will NOT re-fire to pick up the newly-created
+--   role. In that ordering the P0-1 dangerous-grant fix is NOT guaranteed by
+--   this migration alone — it silently delegates to the operator
+--   provisioning script, which is therefore the CANONICAL arm-site for that
+--   case and MUST independently encode the same EXECUTE-only model (REVOKE
+--   any SELECT/INSERT the role may hold on `visa_rule_packs`, GRANT only
+--   EXECUTE on `visa_activate_rule_pack`). The read-only verify-and-warn
+--   block immediately following this one (F1(b), cross-family fix-round)
+--   exists precisely to make a mis-armed boundary from EITHER ordering
+--   VISIBLE instead of silent. Behavior of this migration's own DO block:
 --     (a) role absent -> RAISE NOTICE, no-op, same convention as 251;
 --     (b) role present -> REVOKE the dangerous `SELECT, INSERT ON TABLE
 --         public.visa_rule_packs` grant IF PRESENT (idempotent no-op if
@@ -348,11 +368,11 @@ BEGIN
     -- P2: opaque-token-format validation (letters/digits/./_/:/- only,
     -- 1-120 chars) -- rejects blank, oversized, AND free-sentence shapes
     -- with one regex per column, before anything else runs.
-    IF NOT (p_activated_by ~ '^[A-Za-z0-9._:-]{1,120}$') THEN
+    IF p_activated_by IS NULL OR NOT (p_activated_by ~ '^[A-Za-z0-9._:-]{1,120}$') THEN
         RAISE EXCEPTION 'visa_activate_rule_pack: activated_by must be an opaque token (letters/digits/./_/:/- only, 1-120 chars) -- not free text (got % chars)',
             char_length(p_activated_by);
     END IF;
-    IF NOT (p_activation_reason ~ '^[A-Za-z0-9._:-]{1,120}$') THEN
+    IF p_activation_reason IS NULL OR NOT (p_activation_reason ~ '^[A-Za-z0-9._:-]{1,120}$') THEN
         RAISE EXCEPTION 'visa_activate_rule_pack: activation_reason must be an opaque reason-code (letters/digits/./_/:/- only, 1-120 chars) -- not free text (got % chars)',
             char_length(p_activation_reason);
     END IF;
@@ -431,16 +451,20 @@ CREATE TRIGGER visa_ruleset_activations_no_wipe
     FOR EACH STATEMENT
     EXECUTE FUNCTION public.reject_visa_immutable_mutation();
 
--- -- P2: opaque-token-format CHECK constraints. Safe without NOT VALID --
--- both columns confirmed 0 rows on prod via live read-only query
--- immediately before authoring this migration.
+-- -- P2/F4 (cross-family fix-round): opaque-token-format CHECK constraints,
+-- added NOT VALID + separately VALIDATED (see header rationale above) so a
+-- hypothetical bad row cannot abort the whole migration transaction.
 ALTER TABLE public.visa_ruleset_activations
     ADD CONSTRAINT visa_ruleset_activations_activated_by_token_format
-    CHECK (activated_by ~ '^[A-Za-z0-9._:-]{1,120}$');
+    CHECK (activated_by ~ '^[A-Za-z0-9._:-]{1,120}$') NOT VALID;
+ALTER TABLE public.visa_ruleset_activations
+    VALIDATE CONSTRAINT visa_ruleset_activations_activated_by_token_format;
 
 ALTER TABLE public.visa_ruleset_activations
     ADD CONSTRAINT visa_ruleset_activations_activation_reason_token_format
-    CHECK (activation_reason ~ '^[A-Za-z0-9._:-]{1,120}$');
+    CHECK (activation_reason ~ '^[A-Za-z0-9._:-]{1,120}$') NOT VALID;
+ALTER TABLE public.visa_ruleset_activations
+    VALIDATE CONSTRAINT visa_ruleset_activations_activation_reason_token_format;
 
 -- -- P0-1/P1-4: the FIRST grant block that can actually activate once the
 -- operator provisions visa_activation_executor (251's own grant block is
@@ -471,6 +495,56 @@ BEGIN
     END;
 END;
 $grant_block_253$;
+
+-- -- F1(b) (cross-family fix-round): READ-ONLY verify-and-warn. Makes a
+-- mis-armed boundary VISIBLE instead of silent, regardless of WHICH path
+-- armed (or failed to arm) the role -- this migration's own grant block
+-- above, an operator provisioning script, or a manual grant. Never mutates
+-- privileges itself (the grant block above is the only privilege-mutating
+-- logic in this migration); guarded so an absent role/table/function never
+-- aborts the migration -- it degrades to "nothing to verify yet".
+DO $verify_boundary_253$
+DECLARE
+    executor_role constant text := 'visa_activation_executor';
+    v_has_select_or_insert boolean := false;
+    v_has_execute boolean := false;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = executor_role) THEN
+        RETURN;
+    END IF;
+
+    IF to_regclass('public.visa_rule_packs') IS NOT NULL THEN
+        BEGIN
+            v_has_select_or_insert :=
+                has_table_privilege(executor_role, 'public.visa_rule_packs', 'SELECT')
+                OR has_table_privilege(executor_role, 'public.visa_rule_packs', 'INSERT');
+        EXCEPTION
+            WHEN undefined_table OR undefined_object THEN
+                v_has_select_or_insert := false;
+        END;
+    END IF;
+
+    IF v_has_select_or_insert THEN
+        RAISE WARNING 'visa_activation_writer hardening (253): % still holds direct SELECT/INSERT on public.visa_rule_packs -- dangerous table grant present, boundary MIS-ARMED',
+            executor_role;
+    END IF;
+
+    IF to_regprocedure('public.visa_activate_rule_pack(uuid, text, text)') IS NOT NULL THEN
+        BEGIN
+            v_has_execute :=
+                has_function_privilege(executor_role, 'public.visa_activate_rule_pack(uuid, text, text)', 'EXECUTE');
+        EXCEPTION
+            WHEN undefined_function OR undefined_object THEN
+                v_has_execute := false;
+        END;
+    END IF;
+
+    IF NOT v_has_execute THEN
+        RAISE WARNING 'visa_activation_writer hardening (253): % is missing EXECUTE on public.visa_activate_rule_pack(uuid, text, text) -- boundary MIS-ARMED (role can neither write directly nor via the sanctioned function)',
+            executor_role;
+    END IF;
+END;
+$verify_boundary_253$;
 
 -- === ROLLBACK ===
 DO $revoke_block_253$
@@ -565,9 +639,13 @@ END;
 $$;
 
 -- Restore the four trigger functions to their EXACT migration-251-applied
--- bodies (unqualified declaration name -- this is what "rollback of the
--- P1-3 qualification" means: reverting to what 251 alone left live).
-CREATE OR REPLACE FUNCTION reject_visa_immutable_mutation()
+-- BODIES (logic byte-identical to 251). The declaration NAME, however,
+-- stays schema-qualified (`public.`) even on rollback (F2, cross-family
+-- fix-round) -- the same ambient-search_path hijack surface the forward
+-- P1-3 fix closes applies equally to a rollback-issued CREATE OR REPLACE,
+-- so rollback intentionally does NOT revert to 251's original bare/
+-- unqualified declaration name.
+CREATE OR REPLACE FUNCTION public.reject_visa_immutable_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog, pg_temp
@@ -577,7 +655,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reject_visa_pack_payload_mismatch()
+CREATE OR REPLACE FUNCTION public.reject_visa_pack_payload_mismatch()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog, pg_temp
@@ -617,7 +695,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reject_visa_activation_insert()
+CREATE OR REPLACE FUNCTION public.reject_visa_activation_insert()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog, pg_temp
@@ -673,7 +751,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reject_visa_activation_mutation()
+CREATE OR REPLACE FUNCTION public.reject_visa_activation_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog, pg_temp

@@ -494,6 +494,57 @@ async def test_activate_accepts_token_with_allowed_punctuation(repo: VisaEngineR
     assert isinstance(activation_id, uuid.UUID)
 
 
+@pytest.mark.asyncio
+async def test_activate_rejects_null_activated_by(repo: VisaEngineRepository) -> None:
+    """F3 (cross-family fix-round): before this fix, ``NULL ~ regex`` is SQL
+    NULL, ``NOT NULL`` is still NULL, and ``IF NULL THEN ...`` never enters
+    the branch — a NULL ``activated_by`` silently skipped the function's own
+    validation entirely and fell through to the INSERT, where it surfaced as
+    a raw, low-level ``NOT NULL`` table-constraint violation instead of this
+    function's typed, friendly error. The explicit ``IS NULL OR`` guard
+    closes that gap."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-null-activated-by",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-null-activated-by",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by=None, activation_reason="ok-reason"  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.asyncio
+async def test_activate_rejects_null_activation_reason(repo: VisaEngineRepository) -> None:
+    """F3 (cross-family fix-round): same NULL-slips-past-regex gap as above,
+    for ``activation_reason`` (also ``TEXT NOT NULL`` at the table level)."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-null-activation-reason",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-null-activation-reason",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(
+        asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
+    ):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason=None  # type: ignore[arg-type]
+        )
+
+
 # --------------------------------------------------------------------------
 # 6. F6(b): activated_by_principal is stamped with session_user
 #    UNCONDITIONALLY — a caller-supplied value (even via a raw INSERT that
