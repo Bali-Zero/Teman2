@@ -1439,6 +1439,8 @@ async def test_armed_apply_refuses_unattested_worker(monkeypatch, capsys):
     """R11-3: an ARMED apply with a failing worker attestation refuses
     (exit 3) BEFORE any ledger/client write; --skip-worker-attest is the
     only bypass and is a visible CLI choice."""
+    if not await _dsn_reachable():
+        pytest.skip(f"local intake DB not reachable at {DSN}")
     monkeypatch.setenv(_mod.KILLSWITCH_ENV, "1")
 
     async def fake_census(conn):
