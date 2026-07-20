@@ -1,7 +1,7 @@
 """Tests for the Batch A membership compiler (P0 precondition).
 
 Pins: the reason-code predicates (plan §1), the in-scope split (as of the
-Lot 6 cure: 36 A-serving extracted, 185 A-empty watchlist -- see the history
+Lot 7 cure: 23 A-serving extracted, 198 A-empty watchlist -- see the history
 comment on test_census_and_in_scope_on_real_canonical for how this number
 moves lot-by-lot), and the deliberate exclusion of the two OSS-sourced cured
 codes (20111, 49213) — they carry `_l2_source` so they are NOT part of the
@@ -60,42 +60,38 @@ def test_serving_code_with_l2_source_is_not_serving():
 
 
 def test_census_and_in_scope_on_real_canonical():
-    # Census AFTER the Lot 6 cure (kbli/lot6-cure) + the l4_bali disclosure
-    # cure (#2807, l4bali_disclosure_2026_07_19.json) landed on main. Post-
-    # Lot-5 baseline was 48/1/172 (in-scope 49, per this test's own prior
-    # history). l4_bali's #2807 apply touches ONLY the `l4_bali` block
-    # (confidence/needs_review/reason) on 57 codes — never per_skala,
-    # pp28_sources, _l2_source, or _l2_status — so it is a no-op for THIS
-    # census; verified 2026-07-19 by inspecting
-    # cure_specs/l4bali_disclosure_2026_07_19.json, whose per-code entries
-    # carry only expected_status/expected_reason/expected_confidence/
-    # expected_needs_review/expected_blocked, none of which _classify()
-    # reads. The Lot 6 cure's 13-code detach (per_skala -> []) is therefore
-    # the ONLY contributor, but it does NOT shift the naive 48-13=35: of
-    # the 13 Lot 6 codes (72101, 72103, 72105, 75001, 75002, 75009, 77397,
-    # 78109, 82911, 85321, 85323, 85324, 80190), 12 had non-empty
-    # pp28_sources pre-cure (A-serving/pp28 -> A-empty/gap) and exactly ONE
-    # -- 80190 -- had pp28_sources=[] pre-cure (its own cure_specs/
-    # batch_a_lot6.json data_note documents status_mapping='BPS_ONLY',
-    # pp28_sources=[] (EMPTY)), so it was already A-serving/orphan, not
-    # A-serving/pp28, and migrated orphan -> gap instead. Verified directly
-    # against the real canonical (not inferred): 80190 now classifies as
-    # A-empty/gap/in_scope=False, same as the other 12. Net: pp28 loses 12
-    # (48-12=36, not 48-13=35), orphan loses its lone 1 (1-1=0), gap gains
-    # the full 13 (172+13=185), summing to the full -13 in-scope shift
-    # (49-13=36). Total population is invariant at 221.
+    # Census AFTER the Lot 7 cure (kbli/lot7-data-apply, batch_a_lot7.json)
+    # landed on main. Post-Lot-6 baseline was 36/0/185 (in-scope 36, per this
+    # test's own prior history, #2843). The Lot 7 cure's 13-code detach
+    # (per_skala -> []) is the ONLY contributor to this census (no other
+    # merged commit between the Lot 6 re-emit and this one touches per_skala,
+    # pp28_sources, _l2_source, or _l2_status). Unlike Lot 6 (12 pp28 + 1
+    # orphan), THIS lot's shift IS the naive 36-13=23: verified directly
+    # against the pre-cure canonical (not inferred) by reading each of the
+    # 13 codes' pp28_sources/per_skala/_l2_source/_l2_status through
+    # emit_batch_membership._classify()'s own predicate BEFORE running
+    # cure_canonical_collisions.py --apply -- all 13 codes (85403, 85404,
+    # 86109, 86201, 86202, 86203, 85330, 85401, 86102, 91212, 90111, 91222,
+    # 91424) classified A-serving/pp28 pre-cure, ZERO were A-serving/orphan
+    # (every one of the 13 already carries a non-empty pp28_sources in the
+    # cure spec itself -- 6 self-referencing health/education codes, plus
+    # multi-parent/collision-citation codes, but none with an empty array).
+    # Net: pp28 loses the full 13 (36-13=23), orphan stays at its Lot-6 floor
+    # of 0 (no orphan existed pre-cure to lose), gap gains the full 13
+    # (185+13=198), summing to the full -13 in-scope shift (36-13=23). Total
+    # population is invariant at 221.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 36
+    assert cen["A-serving/pp28"] == 23
     # census() only inserts a reason_code key when >=1 member has it (plain
-    # dict accumulation, no defaultdict) -- orphan hits exactly zero for the
-    # first time in Batch A's history (80190 was the last orphan, detached
-    # by Lot 6), so the key is genuinely absent, not present-and-zero. Use
-    # .get() here, matching how main() already prints it (`cen.get(k, 0)`).
+    # dict accumulation, no defaultdict) -- orphan has hit exactly zero since
+    # Lot 6 (80190 was the last orphan, detached by Lot 6; #2843), so the key
+    # is genuinely absent, not present-and-zero. Use .get() here, matching
+    # how main() already prints it (`cen.get(k, 0)`).
     assert cen.get("A-serving/orphan", 0) == 0
-    assert cen["A-empty/gap"] == 185
-    assert cen["_in_scope_total"] == 36
+    assert cen["A-empty/gap"] == 198
+    assert cen["_in_scope_total"] == 23
     assert cen["_total"] == 221
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
@@ -142,6 +138,14 @@ def test_census_and_in_scope_on_real_canonical():
     lot6 = ["72101", "72103", "72105", "75001", "75002", "75009", "77397",
             "78109", "82911", "85321", "85323", "85324", "80190"]
     for code in lot6:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 7 cured code migrated to the gap watchlist (out of scope) --
+    # all 13 were pre-cure A-serving/pp28 (none orphan), per the history
+    # note above.
+    lot7 = ["85403", "85404", "86109", "86201", "86202", "86203", "85330",
+            "85401", "86102", "91212", "90111", "91222", "91424"]
+    for code in lot7:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
 
