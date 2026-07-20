@@ -920,6 +920,95 @@ async def test_decision_unknown_ruleset_activation_guilt(
 
 
 # ---------------------------------------------------------------------------
+# 11b. STEP-6b gate round-2 fix (Codex gpt-5.6-sol FIX-FIRST, 2026-07-20):
+#      reject_visa_decision_pack_binding() used to short-circuit its ENTIRE
+#      body -- including the activation-containment block above -- the
+#      moment rule_pack_id was NULL. Per the migration header's own
+#      amendment, activation containment is gated SOLELY on
+#      ruleset_activation_id IS NOT NULL, independent of rule_pack_id.
+#      These tests prove the rule_pack_id=NULL case is no longer a
+#      containment-check bypass: a TEMPORARILY_UNAVAILABLE decision
+#      (rule_pack_id NULL) with a NOT NULL ruleset_activation_id still gets
+#      the SAME containment/existence scrutiny as a pack-bearing decision.
+# ---------------------------------------------------------------------------
+
+
+async def test_decision_null_pack_activation_outside_legal_period_guilt(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    """rule_pack_id=NULL + ruleset_activation_id pointing at an activation
+    whose legal_period does NOT contain effective_at -> still raises. Before
+    the fix, the NULL rule_pack_id alone would have skipped this check
+    entirely, admitting the row with zero validation of the reference."""
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    activation_id = await _insert_activation(w6b_pool, rule_pack_id=rule_pack_id)
+    before_legal_period = GOLD_EVALUATED_AT - timedelta(days=3650)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="outside referenced activation"):
+        await _insert_decision(
+            w6b_conn,
+            rule_pack_id=None,
+            verdict="TEMPORARILY_UNAVAILABLE",
+            ruleset_activation_id=activation_id,
+            effective_at=before_legal_period,
+            observed_at=GOLD_EVALUATED_AT,
+        )
+
+
+async def test_decision_null_pack_unknown_activation_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    """rule_pack_id=NULL + an unknown (nonexistent) ruleset_activation_id ->
+    still raises. Same bypass class as the guilt test above, but for the
+    "activation doesn't exist at all" branch rather than "exists but
+    doesn't contain effective_at"."""
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="unknown ruleset_activation_id"):
+        await _insert_decision(
+            w6b_conn,
+            rule_pack_id=None,
+            verdict="TEMPORARILY_UNAVAILABLE",
+            ruleset_activation_id=uuid.uuid4(),
+        )
+
+
+async def test_decision_null_pack_null_activation_innocence(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    """rule_pack_id=NULL + ruleset_activation_id=NULL (the plain
+    TEMPORARILY_UNAVAILABLE case, no pack and no activation to bind
+    against) -> passes. Same case as
+    test_decision_temporarily_unavailable_allows_null_rule_pack_innocence
+    above; restated here alongside its guilt siblings so this section's
+    guilt+innocence pair is self-contained (cicatrix family #3 discipline)."""
+    decision_id = await _insert_decision(
+        w6b_conn, rule_pack_id=None, verdict="TEMPORARILY_UNAVAILABLE", ruleset_activation_id=None
+    )
+    assert decision_id is not None
+
+
+async def test_decision_null_pack_activation_containing_innocence(
+    w6b_pool: asyncpg.Pool, w6b_conn: asyncpg.Connection
+) -> None:
+    """rule_pack_id=NULL + ruleset_activation_id pointing at an activation
+    that DOES contain effective_at/observed_at -> passes. Proves the fix
+    isn't merely "skip the pack-binding block AND always reject" -- a
+    legitimately-contained activation reference is still admitted even
+    without a rule_pack_id, since the activation<->rule_pack cross-check is
+    itself skipped when rule_pack_id is NULL (nothing to cross-check
+    against)."""
+    rule_pack_id = await _insert_rule_pack(w6b_pool)
+    activation_id = await _insert_activation(w6b_pool, rule_pack_id=rule_pack_id)
+    decision_id = await _insert_decision(
+        w6b_conn,
+        rule_pack_id=None,
+        verdict="TEMPORARILY_UNAVAILABLE",
+        ruleset_activation_id=activation_id,
+        effective_at=GOLD_EVALUATED_AT,
+        observed_at=GOLD_EVALUATED_AT,
+    )
+    assert decision_id is not None
+
+
+# ---------------------------------------------------------------------------
 # 12. visa_decision_payloads guard carve-out (STEP-6b FIX-FIRST P1/P2) — the
 #     ONLY legal UPDATE flips legal_hold; the ONLY legal DELETE requires an
 #     elapsed purge_after AND legal_hold=false.
@@ -1042,6 +1131,65 @@ async def test_source_record_close_must_be_finite_guilt(w6b_conn: asyncpg.Connec
         await w6b_conn.execute(
             "UPDATE visa_source_records SET recorded_period = recorded_period WHERE id = $1",
             source_id,
+        )
+
+
+async def test_source_record_close_infinity_upper_guilt(w6b_conn: asyncpg.Connection) -> None:
+    """STEP-6b gate round-2 fix (Codex gpt-5.6-sol FIX-FIRST, 2026-07-20):
+    ``upper(...) IS NULL`` alone (the check the guilt test above proves)
+    does NOT reject a non-finite close via the explicit 'infinity'
+    sentinel -- Postgres treats an upper bound literally set to
+    'infinity'::timestamptz as a present (non-NULL) value distinct from an
+    unbounded range end, so this used to slip past the old NULL-only guard
+    while remaining functionally open-ended forever (a supersession
+    dead-end: the row could never be re-closed, and the GiST EXCLUDE
+    constraint would still treat it as overlapping). The literal SQL
+    'infinity'::timestamptz below is constructed entirely server-side
+    (never round-tripped through a Python datetime), matching exactly how
+    a raw/hand-written UPDATE could attempt this."""
+    source_id = await _insert_source_record(w6b_conn)
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="finite recorded_period"):
+        await w6b_conn.execute(
+            """
+            UPDATE visa_source_records
+            SET recorded_period = tstzrange(lower(recorded_period), 'infinity'::timestamptz, '[)')
+            WHERE id = $1
+            """,
+            source_id,
+        )
+
+
+async def test_source_record_insert_infinity_recorded_period_upper_guilt(
+    w6b_conn: asyncpg.Connection,
+) -> None:
+    """STEP-6b gate round-2 fix: the trigger-level guard above only fires
+    on UPDATE/DELETE (``visa_source_records_guard`` is ``BEFORE UPDATE OR
+    DELETE`` only -- INSERT is structurally unrestricted, this being an
+    append-only table). A direct INSERT setting recorded_period's upper
+    bound to the literal 'infinity'::timestamptz sentinel must still be
+    rejected -- by the mirroring table CHECK added alongside the trigger
+    fix, since the trigger itself never runs on INSERT and so cannot be
+    what catches this path."""
+    with pytest.raises(asyncpg.exceptions.CheckViolationError):
+        await w6b_conn.execute(
+            """
+            INSERT INTO visa_source_records (
+                id, source_key, version, authority_type, status, jurisdiction,
+                title, publisher, canonical_url, language, document_number,
+                locators, content_sha256, legal_period, recorded_period,
+                retrieved_at, verified_at, verified_by, supersedes_source_record_id
+            ) VALUES (
+                $1, $2, 1, 'PRIMARY_LAW', 'VERIFIED', 'ID',
+                'Test Source Title', 'Test Publisher', 'https://example.com/source', 'en', NULL,
+                '[]'::jsonb, $3, tstzrange($4, NULL, '[)'),
+                tstzrange($4, 'infinity'::timestamptz, '[)'),
+                $4, $4, 'test-verifier', NULL
+            )
+            """,
+            uuid.uuid4(),
+            "infinity-upper-check-source",
+            hashlib.sha256(b"source-content").digest(),
+            GOLD_EVALUATED_AT,
         )
 
 

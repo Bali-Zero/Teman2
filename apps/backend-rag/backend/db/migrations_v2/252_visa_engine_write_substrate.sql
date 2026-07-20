@@ -490,6 +490,19 @@ CREATE TABLE public.visa_source_records (
         AND NOT upper_inc(recorded_period)
         AND lower(recorded_period) <> '-infinity'::timestamptz
     ),
+    -- STEP-6b gate round-2 fix (2026-07-20): mirrors the trigger-level
+    -- guard in reject_visa_source_records_mutation() below at the table
+    -- level, so even a direct raw INSERT/UPDATE (bypassing the trigger's
+    -- own re-close carve-out logic, e.g. a superuser or a future writer
+    -- bug) cannot set a non-finite ('infinity') recorded_period upper
+    -- bound on a row that otherwise looks "closed". `upper(...) IS NULL`
+    -- is the legitimate open-ended default (unbounded -- see column
+    -- default above) and stays allowed; only the explicit 'infinity'
+    -- sentinel value is rejected.
+    CHECK (
+        upper(recorded_period) IS NULL
+        OR upper(recorded_period) <> 'infinity'::timestamptz
+    ),
     UNIQUE (source_key, version),
     EXCLUDE USING gist (
         source_key WITH =,
@@ -523,10 +536,15 @@ FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
 
 -- ---------------------------------------------------------------------------
 -- STEP-6b FIX-FIRST P0/P1: decision-pack scope binding. Mirrors migration
--- 250's reject_visa_pack_payload_mismatch() binding-trigger style. Skips
--- entirely when rule_pack_id IS NULL (the only legal case:
--- TEMPORARILY_UNAVAILABLE, which has no pack to bind against). See the
--- header amendment above for the full rationale.
+-- 250's reject_visa_pack_payload_mismatch() binding-trigger style. The
+-- pack-binding checks (environment/jurisdiction/decision_domain/
+-- rule_pack_sha256) are skipped when rule_pack_id IS NULL (the only legal
+-- case: TEMPORARILY_UNAVAILABLE, which has no pack to bind against) -- but
+-- the ruleset_activation_id containment checks are NOT: those run
+-- whenever ruleset_activation_id IS NOT NULL, independent of rule_pack_id
+-- (STEP-6b gate round-2 fix, 2026-07-20 -- see the function body comment
+-- for why the two used to be wrongly coupled). See the header amendment
+-- above for the full rationale.
 -- ---------------------------------------------------------------------------
 CREATE FUNCTION public.reject_visa_decision_pack_binding()
 RETURNS trigger
@@ -537,31 +555,53 @@ DECLARE
     pack RECORD;
     activation RECORD;
 BEGIN
-    IF NEW.rule_pack_id IS NULL THEN
-        RETURN NEW;
+    -- Pack-binding block: only meaningful when there IS a pack to bind
+    -- against. A TEMPORARILY_UNAVAILABLE row (rule_pack_id NULL) has none,
+    -- so ONLY this block -- environment/jurisdiction/decision_domain/
+    -- rule_pack_sha256 -- is skipped when rule_pack_id IS NULL.
+    --
+    -- STEP-6b gate round-2 fix (2026-07-20, Codex gpt-5.6-sol FIX-FIRST):
+    -- this used to be a single early `IF NEW.rule_pack_id IS NULL THEN
+    -- RETURN NEW; END IF;` that skipped the ENTIRE function, INCLUDING the
+    -- ruleset_activation_id containment block below -- so a row with
+    -- rule_pack_id=NULL + ruleset_activation_id NOT NULL + an arbitrary/
+    -- mismatched activation was admitted with ZERO validation of that
+    -- reference (nothing else forbids that combination -- the table's own
+    -- CHECK only ties verdict='TEMPORARILY_UNAVAILABLE' to rule_pack_id,
+    -- never to ruleset_activation_id). Per this migration's own header
+    -- amendment, the activation-containment check is gated "ONLY when
+    -- ruleset_activation_id IS NOT NULL" -- independent of rule_pack_id's
+    -- nullness. Restructured so the rule_pack_id-NULL case skips only the
+    -- pack-binding checks; the activation-containment block below always
+    -- runs when ruleset_activation_id IS NOT NULL, regardless.
+    IF NEW.rule_pack_id IS NOT NULL THEN
+        SELECT environment, jurisdiction, decision_domain, payload_sha256
+            INTO pack
+            FROM public.visa_rule_packs
+            WHERE id = NEW.rule_pack_id;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'visa_decisions references unknown rule_pack_id %', NEW.rule_pack_id;
+        END IF;
+
+        IF NEW.environment IS DISTINCT FROM pack.environment
+           OR NEW.jurisdiction IS DISTINCT FROM pack.jurisdiction
+           OR NEW.decision_domain IS DISTINCT FROM pack.decision_domain THEN
+            RAISE EXCEPTION 'visa_decisions scope (env=% jur=% domain=%) does not match referenced rule_pack % (env=% jur=% domain=%)',
+                NEW.environment, NEW.jurisdiction, NEW.decision_domain,
+                NEW.rule_pack_id, pack.environment, pack.jurisdiction, pack.decision_domain;
+        END IF;
+
+        IF NEW.rule_pack_sha256 IS NOT NULL AND NEW.rule_pack_sha256 IS DISTINCT FROM pack.payload_sha256 THEN
+            RAISE EXCEPTION 'visa_decisions.rule_pack_sha256 does not match referenced rule_pack % payload_sha256',
+                NEW.rule_pack_id;
+        END IF;
     END IF;
 
-    SELECT environment, jurisdiction, decision_domain, payload_sha256
-        INTO pack
-        FROM public.visa_rule_packs
-        WHERE id = NEW.rule_pack_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'visa_decisions references unknown rule_pack_id %', NEW.rule_pack_id;
-    END IF;
-
-    IF NEW.environment IS DISTINCT FROM pack.environment
-       OR NEW.jurisdiction IS DISTINCT FROM pack.jurisdiction
-       OR NEW.decision_domain IS DISTINCT FROM pack.decision_domain THEN
-        RAISE EXCEPTION 'visa_decisions scope (env=% jur=% domain=%) does not match referenced rule_pack % (env=% jur=% domain=%)',
-            NEW.environment, NEW.jurisdiction, NEW.decision_domain,
-            NEW.rule_pack_id, pack.environment, pack.jurisdiction, pack.decision_domain;
-    END IF;
-
-    IF NEW.rule_pack_sha256 IS NOT NULL AND NEW.rule_pack_sha256 IS DISTINCT FROM pack.payload_sha256 THEN
-        RAISE EXCEPTION 'visa_decisions.rule_pack_sha256 does not match referenced rule_pack % payload_sha256',
-            NEW.rule_pack_id;
-    END IF;
-
+    -- Activation-containment block: independent of rule_pack_id's
+    -- nullness, gated solely on ruleset_activation_id IS NOT NULL (see
+    -- header amendment). Always resolves the activation and enforces
+    -- legal_period/system_period containment, regardless of whether the
+    -- pack-binding block above ran.
     IF NEW.ruleset_activation_id IS NOT NULL THEN
         SELECT rule_pack_id, legal_period, system_period
             INTO activation
@@ -570,7 +610,13 @@ BEGIN
         IF NOT FOUND THEN
             RAISE EXCEPTION 'visa_decisions references unknown ruleset_activation_id %', NEW.ruleset_activation_id;
         END IF;
-        IF activation.rule_pack_id IS DISTINCT FROM NEW.rule_pack_id THEN
+        -- The activation<->rule_pack cross-check only makes sense when
+        -- there IS a rule_pack_id to compare against (a TEMPORARILY_
+        -- UNAVAILABLE row has none, by the table's own CHECK) -- skip it
+        -- rather than comparing against NULL, which activation.rule_pack_id
+        -- (itself NOT NULL) could never legitimately equal.
+        IF NEW.rule_pack_id IS NOT NULL
+           AND activation.rule_pack_id IS DISTINCT FROM NEW.rule_pack_id THEN
             RAISE EXCEPTION 'visa_decisions.ruleset_activation_id % belongs to a different rule_pack than rule_pack_id %',
                 NEW.ruleset_activation_id, NEW.rule_pack_id;
         END IF;
@@ -679,7 +725,20 @@ BEGIN
     IF upper(OLD.recorded_period) IS NOT NULL THEN
         RAISE EXCEPTION 'visa_source_records recorded_period already closed, cannot re-close';
     END IF;
-    IF upper(NEW.recorded_period) IS NULL THEN
+    -- STEP-6b gate round-2 fix (2026-07-20, Codex gpt-5.6-sol FIX-FIRST):
+    -- `upper(...) IS NULL` alone does not reject a non-finite close.
+    -- Postgres distinguishes an unbounded range end (constructed with a
+    -- NULL upper argument -- upper() returns NULL, upper_inf() = true)
+    -- from a range whose upper bound is explicitly the sentinel value
+    -- 'infinity'::timestamptz (upper() returns 'infinity', a NON-NULL
+    -- value, yet upper_inf() is STILL false) -- so a caller "closing" a
+    -- row with upper='infinity' passed the old NULL-only check while
+    -- remaining functionally open-ended forever: a supersession dead-end
+    -- (the row can never be re-closed -- see the guard immediately above
+    -- -- and the GiST EXCLUDE constraint still treats it as overlapping
+    -- any new row over the same source_key/legal_period). Reject both.
+    IF upper(NEW.recorded_period) IS NULL
+       OR upper(NEW.recorded_period) = 'infinity'::timestamptz THEN
         RAISE EXCEPTION 'visa_source_records close must set a finite recorded_period upper bound';
     END IF;
     RETURN NEW;
