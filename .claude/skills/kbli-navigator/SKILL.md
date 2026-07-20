@@ -28,22 +28,31 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-20 — keep current)
 
-**Lot 8 — pre-launch, D0 DONE (2026-07-20):** membership post-L7 confirms in-scope remainder =
-**23** (matches the invariant). Split: **Lot 8 (13 members)** = 91425 + the whole division-93
-sport cluster (93111–93126 excl. the L9 tail); **Lot 9 (10 members, next-next)** =
-93127,93128,93129,93191,93192,93193,93194,93195,93197,93199. D0 dossiers 15/15 complete
-(`/tmp/kbli-conductor-a1-0718/evid-lot8/`): 7/13 members PP28-ABSENT honest on full 21/21-file
-scan (93113,93115,93122,93123,93124,93125,93126 — the whole "Klub" sub-family, same shape as
-L7's 86xxx); 1 suspected FALSE POSITIVE on 93121 (Lampiran I.F p.761, blank code/judul columns —
-a "hot trap page" that ALSO caught the 63101 control hunt on the identical page, code_hunted
-matcher magnet); real hits image-verified on 91425/93111/93119. **Fresh controls selected by the
-conductor: 63101 (multi-source diff-cite) + 73100 (self-cite, Rendah, clean pattern) — 51101
-EXCLUDED (division 51 = the 51108 residual-bucket fan/collision-factory territory, same judgment
-class as L7's 62110 exclusion)**; both control dossiers complete, 73100 clean, 63101 has the
-same hot-trap-page FP. Burn-list formalized+extended (119+ codes: all L1-L8 members + every code
-named in any signed Appendix A NEG/POS pool + conductor exclusions). Pins:
-`/tmp/kbli-conductor-a1-0718/lot8-prelaunch-pins.md`. **Lane launch is the next action** — needs
-a fresh canonical/membership fence pin (post-L7-apply sha `873f8fb4f9b5…`) at launch time.
+**Lot 8 (A-L8) — D6 gate SECOND SIGNED 2026-07-20, MERGED to main** (PR #2892, squash
+`66ee3932e4`; report `research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`):
+15/15 codes adjudicated (13 members + 2 controls) — 0 certified, 13 quarantined, both calibration
+floors breached (m1 0.615<0.75, m2 0.000 outside [0.2,0.85]) but root-caused as a genuine finding,
+not a pipeline defect: this activity family (91425 + the whole 931xx sport/klub cluster) has
+unusually poor PP28 primary-source-locatability. Findings: 1 genuine `payload_cross_contamination`
+(91425 — pp28_sources cited a wrong neighbor code, conductor-eye image-verified), 6 genuine
+`source_absent_in_vault` on exhaustive 21-file/11,208-page scans (93113/93115/93122/93123/93125/93126),
+1 wrong-pointer via a reproducible "hot trap page" (93121, same trap page also hit control 63101 —
+2nd sighting), 1 both-tiers-absent (93124), and 4 held UN-cured because the underlying crosswalk+
+licensing is genuinely sound and only a synthetic derived field lacks formula coverage (93111/93112/ 93119) or the compiler lacks a tier-scoped detach primitive (93114) — detaching these would destroy
+good data, not fix a defect (see PENDING-ARMS for both open items). Cure spec
+(`scripts/kbli_filiera/cure_specs/batch_a_lot8.json`, 9 codes) dry-run clean.
+**Red-team: Codex/agy both unavailable** (Codex re-authenticated but hard quota-limited until
+2026-08-19 on this ChatGPT account; `agy` hung on two independent re-probes) — **Kimi K3 used as
+cross-family substitute seat** instead of waiting a month, verdict **CONFIRMED-WITH-NOTES** (none
+of the 13 dispositions refuted; 2 MEDIUM + 3 LOW audit-trail defects found and cured in the second
+signing — canonical hash pin, disputed-key report/spec mismatch, a lampiran-letter mislabel, a
+line citation, one typo). Full findings in the report's Adversarial review section. Also an
+evidence-loss incident this cycle (first launch hit an empty evidenceRoot, all ~15 seats correctly
+fail-closed rather than hallucinate — re-pulled and independently re-verified before relaunch,
+PULL COMPLETE 15/15). **Next: cure PR (apply the 9-code spec to canonical), cross-family GLM
+Appendix A screen, surfaces (KG detach/Qdrant clear/cache bust/prove-live).** Lot 9 D0 (10
+remaining sport-cluster members: 93127-93199 + 2 fresh controls 46201/96300) evidence already
+pulled and independently verified, pins at `/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md`.
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
