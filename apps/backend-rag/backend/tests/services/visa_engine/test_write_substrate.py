@@ -36,10 +36,13 @@ its OWN worktree. This file:
     private, disposable database per test sidesteps it entirely rather than
     relying on timing.
 
-Run manually (creates+drops its own throwaway DBs under the admin
-connection below — never touches ``nuzantara_dev``/``nuzantara_test``):
+Run manually (creates+drops its own throwaway DBs via an admin connection
+derived from ``TEST_DATABASE_URL`` — same env var conftest.py's
+``db_pool``/``visa_schema`` fixtures read, swapped to the ``postgres``
+maintenance DB; see ``_ADMIN_URL`` below — never touches
+``nuzantara_dev``/``nuzantara_test`` themselves):
 
-    TEST_DATABASE_ADMIN_URL=postgresql://nuzantara@localhost:5432/postgres \\
+    TEST_DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_dev \\
     PYTHONPATH=. pytest backend/tests/services/visa_engine/test_write_substrate.py -v
 """
 
@@ -92,10 +95,32 @@ def _read_migration(path: Path) -> tuple[str, str]:
 # sibling agent) may be using at the same time.
 # ---------------------------------------------------------------------------
 
+# CI-gate fix (2026-07-20): this used to read a SECOND, never-provisioned
+# env var (``TEST_DATABASE_ADMIN_URL``) whose hardcoded fallback
+# (``postgresql://nuzantara@localhost:5432/postgres``) only resolves on a
+# macOS dev box where the OS user ``nuzantara`` is itself a passwordless
+# Postgres superuser -- CI's postgres service (tests.yml: ``postgres:15``
+# with ``POSTGRES_USER=test`` / ``POSTGRES_PASSWORD=test`` /
+# ``POSTGRES_DB=nuzantara_test``) has neither that user nor a trust-auth
+# connection, so every CI run failed deterministically at fixture setup
+# with ``InvalidPasswordError: password authentication failed for user
+# "nuzantara"``. The sibling fixtures in this SAME suite (conftest.py's
+# ``db_pool``/``visa_schema``, used by test_activation_writer.py /
+# test_repository.py) already pass in CI by reading ``TEST_DATABASE_URL``
+# instead -- the one env var CI actually exports (and
+# ``backend/tests/conftest.py``, the root conftest, ``setdefault``s
+# locally before any test module imports). Mirrored here (duplicated
+# rather than imported, per this file's own "SIBLING ISOLATION" note
+# above -- module-local, zero coupling to conftest.py's fixtures) rather
+# than inventing a third convention: read that SAME env var, then swap
+# its database name for ``postgres`` -- the maintenance DB every
+# Postgres install ships, and the one CI's ``test`` role (superuser, per
+# the official Docker postgres image's POSTGRES_USER contract) can always
+# CREATE DATABASE / DROP DATABASE against.
 _ADMIN_URL = os.environ.get(
-    "TEST_DATABASE_ADMIN_URL",
-    "postgresql://nuzantara@localhost:5432/postgres",
-)
+    "TEST_DATABASE_URL",
+    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+).rsplit("/", 1)[0] + "/postgres"
 
 
 def _db_url_for(db_name: str) -> str:
