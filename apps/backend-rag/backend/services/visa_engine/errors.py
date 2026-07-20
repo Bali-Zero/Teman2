@@ -64,3 +64,18 @@ class ConditionStructureError(VisaEngineError):
     exception per-rule and folds it into a non-raising ``CompilationReport``
     entry rather than letting it propagate — see that module's docstring.
     """
+
+
+class PlaceholderIdentityNotAllowedError(VisaEngineError):
+    """Raised by ``evaluator._placeholder_identity_provider`` when asked to
+    fabricate a ``Decision``'s ``decision_id``/``public_id``/
+    ``facts_fingerprint`` for a rule pack whose ``environment`` is not
+    ``TEST`` (PR5 gate round 1, 2026-07-19 — fail-closed guard on the
+    non-secret placeholder identity provider). Not present in spec §1's
+    literal five-class ``errors.py`` snippet, added for the same reason
+    ``ConditionStructureError`` was: a standalone, directly-testable failure
+    mode that did not exist until ``evaluator.py`` needed a real identity
+    provider contract. A caller running against a STAGING/PRODUCTION pack
+    must inject a real crypto-backed ``evaluator.IdentityProvider`` instead
+    of relying on the default.
+    """

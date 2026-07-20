@@ -213,6 +213,26 @@ class OrchestratorCore:
         FAQ cache is faster than semantic cache (exact match vs vector similarity).
         Covers ~60-80% of common questions with pre-calculated answers.
 
+        DOMAIN-SCOPED (Phase-0 safety rail, FATAL 1 —
+        research/operations/2026-07-17-full-domain-cache-design.md §8): the
+        harvester now writes FAQ entries under a domain-scoped key
+        (notebook_id=domain_scope_id(domain)). Lookup here mirrors that:
+
+        1. Classify the query's domain from `extracted_entities` (same field
+           `_inject_curated_qa_grounding` already uses). If the query has no
+           concrete domain (missing or DOMAIN_GENERAL), the FAQ cache is
+           SKIPPED entirely — there is no domain to scope the key by, and
+           generic phrasings ("how long does this take") are exactly the
+           near-certain cross-domain collision case FATAL 1 exists to close.
+        2. Try the domain-scoped key first.
+        3. MIGRATION BRIDGE: if that misses, fall back to the legacy
+           UNSCOPED key (pre-Phase-0 entries — e.g. the 216 E33 rows already
+           live in prod Redis under the old scheme become unreachable
+           otherwise: cold, not wrong). A legacy-key hit is only served when
+           its OWN stored `metadata.domain` matches the classified query
+           domain; a mismatch is treated as a MISS, logged, and counted —
+           never served cross-domain.
+
         Args:
             query: Query string
             extracted_entities: Entities estratte
@@ -224,8 +244,60 @@ class OrchestratorCore:
         if not self.faq_cache:
             return None
 
+        domain = (extracted_entities or {}).get("domain")
+        classified_domain = (
+            domain if domain and domain != EntityExtractionService.DOMAIN_GENERAL else None
+        )
+
+        # No classified domain -> no safe key scope to check against. Skip
+        # the FAQ cache entirely rather than risk an unscoped cross-domain
+        # hit (mirrors the identical precedent in
+        # _inject_curated_qa_grounding: "if not domain ... return").
+        if classified_domain is None:
+            logger.debug(
+                "FAQ Cache SKIPPED (no classified domain): %s...",
+                query[:60],
+            )
+            from backend.app.metrics import faq_cache_misses_total
+
+            faq_cache_misses_total.inc()
+            return None
+
         try:
-            cached = await self.faq_cache.get(query)
+            from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+            cached = await self.faq_cache.get(
+                query,
+                notebook_id=domain_scope_id(classified_domain),
+            )
+
+            if cached is None:
+                # Migration bridge: legacy unscoped key (pre-Phase-0 writes).
+                legacy = await self.faq_cache.get(query)
+                if legacy is not None:
+                    stored_domain = legacy.get("metadata", {}).get("domain")
+                    if stored_domain == classified_domain:
+                        cached = legacy
+                    else:
+                        logger.warning(
+                            "⚠️ FAQ Cache domain-mismatch averted: query "
+                            "classified as %r but legacy-key hit carries "
+                            "domain=%r for '%.60s' — treating as MISS.",
+                            classified_domain,
+                            stored_domain,
+                            query,
+                        )
+                        try:
+                            from backend.app.metrics import (
+                                faq_cache_domain_mismatch_averted_total,
+                            )
+
+                            faq_cache_domain_mismatch_averted_total.labels(
+                                classified_domain=classified_domain,
+                                stored_domain=stored_domain or "unknown",
+                            ).inc()
+                        except ImportError:
+                            pass
 
             if cached:
                 # Cache HIT! Return instant response
@@ -365,6 +437,14 @@ class OrchestratorCore:
         retrieved hits rather than as a Qdrant `filter` argument on purpose —
         see the search_collection call for why passing a filter there is a trap.
 
+        Injection is also STALENESS-GATED (Phase-0 safety rail, MAJOR 7/8):
+        each hit's `active` metadata field is rechecked per-hit alongside
+        the domain tag — a point flagged `active=False` (TTL-expired at
+        harvest time, or quarantined by curated_qa_regen_trigger.py after a
+        regulatory-delta match) is excluded even if it clears score AND
+        domain. Missing `active` (a point written before this rail existed)
+        defaults to included, never silently dropped.
+
         Defensive by design: any failure (Qdrant down, malformed payload,
         missing retriever) is logged and degrades to "" (no injection) —
         this step must never break the main query path.
@@ -434,6 +514,18 @@ class OrchestratorCore:
                 # every real curated_qa point carries an explicit domain.
                 hit_domain = metadata.get("domain")
                 if hit_domain != domain:
+                    continue
+                # Staleness rail (Phase-0 safety rail, MAJOR 7/8): a row
+                # written before its TTL expired is still "active" in
+                # Qdrant (points are never auto-expired the way Redis keys
+                # are), and curated_qa_regen_trigger.py flips this to False
+                # on a regulatory-delta match — folding that quarantine
+                # signal into the SAME field the class-based-TTL rail
+                # writes (rather than a second regulatory_flagged
+                # special-case here). Default True (missing field = a
+                # pre-Phase-0 point written before this rail existed —
+                # treated as active, not silently dropped).
+                if metadata.get("active", True) is False:
                     continue
                 answer = metadata.get("answer")
                 if not answer:
@@ -919,6 +1011,8 @@ class OrchestratorCore:
         start_time: float,
         session_id: str | None = None,
         tool_execution_counter: dict[str, int] | None = None,
+        profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -939,6 +1033,11 @@ class OrchestratorCore:
             start_time: Timestamp di inizio
             session_id: Optional session ID
             tool_execution_counter: Optional tool execution counter
+            profile: Optional caller-supplied profile override (WA
+                team-assistant V1). Merged on top of whatever
+                prepare_query_context()'s DB-keyed lookup found — the
+                caller's fields win on key conflicts. None (every caller
+                except the WA bot today) is a complete no-op.
 
         Returns:
             CoreResult completo
@@ -960,6 +1059,16 @@ class OrchestratorCore:
             conversation_history=conversation_history,
             session_id=session_id,
         )
+
+        # 1a2. WA team-assistant V1: merge a caller-supplied profile override
+        # on top of the DB-keyed profile lookup above. For WA senders,
+        # user_id is "whatsapp_<phone>" — prepare_query_context's DB lookup
+        # never finds a row for that key, so this is normally a full
+        # replacement, not a partial merge; written as a merge so a future
+        # caller with a *real* user_id and a partial override still gets
+        # sane behavior (override fields win).
+        if profile:
+            user_context["profile"] = {**(user_context.get("profile") or {}), **profile}
 
         # 1b. [GraphRAG v6 → SOTA 2026] QueryPlanner
         # Active mode: produces QueryPlan consumed by CRAG Router.
@@ -1083,6 +1192,18 @@ class OrchestratorCore:
 
         # 4. Route query (intent classification + tier selection)
         model_tier, _deep_think_mode, state = await self.routing_manager.route_query(query)
+
+        # Latency knob: only ever LOWER the ReAct step cap, never raise it —
+        # an untrusted caller cannot use this to force deeper (costlier)
+        # reasoning than the route already assigned. Floor of 1: the
+        # Pydantic `ge=1` on AgenticQueryRequest.max_steps only guards the
+        # HTTP path — an in-process caller (e.g. whatsapp_chat.py) can call
+        # orchestrator.process_query() directly with an unvalidated int, and
+        # 0/negative would otherwise disable the ReAct loop entirely
+        # (`while state.current_step < state.max_steps` never fires) instead
+        # of just cutting latency (Kimi K3 adversarial review, 2026-07-20).
+        if max_steps is not None:
+            state.max_steps = max(1, min(max_steps, state.max_steps))
 
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(

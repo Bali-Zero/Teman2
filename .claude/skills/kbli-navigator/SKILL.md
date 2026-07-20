@@ -26,7 +26,26 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-19 — keep current)
+## 1. LIVE STATE (last update 2026-07-20 — keep current)
+
+**Lot 8 (A-L8) — D6 gate FIRST SIGNED 2026-07-20, cure spec authored, NOT yet shipped
+(`research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`, branch `kbli/lot8-lane`):**
+15/15 codes adjudicated (13 members + 2 controls) — 0 certified, 13 quarantined, both calibration
+floors breached (m1 0.615<0.75, m2 0.000 outside [0.2,0.85]) but root-caused as a genuine finding,
+not a pipeline defect: this specific activity family (91425 + the whole 931xx sport/klub cluster)
+has unusually poor PP28 primary-source-locatability. Findings: 1 genuine `payload_cross_contamination`
+(91425 — pp28_sources cited a wrong neighbor code, conductor-eye image-verified), 6 genuine
+`source_absent_in_vault` on exhaustive 21-file/11,208-page scans (93113/93115/93122/93123/93125/93126),
+1 wrong-pointer via a reproducible "hot trap page" (93121, same trap page also hit control 63101 —
+2nd sighting), 1 both-tiers-absent (93124), and 4 held UN-cured because the underlying crosswalk+
+licensing is genuinely sound and only a synthetic derived field lacks formula coverage (93111/93112/ 93119) or the compiler lacks a tier-scoped detach primitive (93114) — detaching these would destroy
+good data, not fix a defect (see PENDING-ARMS for both open items). Cure spec
+(`scripts/kbli_filiera/cure_specs/batch_a_lot8.json`, 9 codes) dry-run clean. **Red-team BLOCKED
+this cycle** — both non-DeepSeek seats confirmed down live (Codex OAuth revoked, `agy` hung/timeout,
+independently verified, not assumed) — gate stays FIRST SIGNING until the arsenal recovers or Zero
+authorizes proceeding without it (PENDING-ARMS, operator[credentials]). Also evidence-loss incident
+this cycle (first launch hit an empty evidenceRoot, all ~15 seats correctly fail-closed rather than
+hallucinate — re-pulled and independently re-verified before relaunch, PULL COMPLETE 15/15).
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -198,6 +217,17 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
   declared in every gate with compensating isolation. Local vault mirror on Pro
   (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
   `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
+- **Standalone metadata cure-list BACKLOG (grows lot-by-lot, not yet a dedicated spec+PR — the
+  only place this list is currently tracked; update here when it changes):** `01629` + `71204`
+  (Lot 5 gate §m5-POS, 2026-07-19 — multi-parent crosswalk metadata false, evidence-gated) ·
+  `59140` pp28-label (Lot 6 gate §3.4 — OSS-native, pp28_sources unverifiable, per_skala provenance
+  sound by marker) · **`20232` (Lot 7 gate §3.4, 2026-07-19 — fresh SELECTED control, conductor-eye
+  SPLIT on lampiran5_p156-156.png printed p.142: canonical `status_mapping='MATCH_LANGSUNG'`/"scope
+  unchanged" refuted by two consecutive rows, 2025-20232 + 2025-20235; per rule #9 NOT detached in
+  the Lot 7 cure — OSS-native, healthy per_skala).** All four are `metadata_only` candidates (same
+  compiler action as 52101/46100/10433/`metadata_fixes_2026_07_19.json` — status_mapping/whatChanged/
+  pp28_sources correction, per_skala untouched) pending a dedicated evidence-gated spec+PR; none has
+  a canonical write yet.
 
 **Governance flags:**
 
