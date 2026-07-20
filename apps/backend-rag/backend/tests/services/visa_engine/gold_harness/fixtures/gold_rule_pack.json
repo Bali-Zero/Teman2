@@ -1,0 +1,1092 @@
+{
+  "canonicalization": "RFC8785",
+  "protected": {
+    "domain": "balizero.visa-rulepack.v1",
+    "alg": "Ed25519",
+    "kid": "gold-harness-key-1",
+    "signed_at": "2026-07-17T00:00:00Z",
+    "schema_version": "1.0.0",
+    "environment": "TEST"
+  },
+  "payload": {
+    "rule_pack_id": "4ca1e654-032a-4988-af59-595903f8afee",
+    "sequence": 1,
+    "version": "1.0.0",
+    "environment": "TEST",
+    "jurisdiction": "ID",
+    "decision_domain": "IMMIGRATION_VISA",
+    "engine_contract_version": "1.0.0",
+    "engine_min_version": "1.0.0",
+    "engine_max_version": "1.0.0",
+    "valid_period": {
+      "from": "2026-07-17T00:00:00Z",
+      "to": null
+    },
+    "created_at": "2026-07-17T00:00:00Z",
+    "created_by": "gold-harness-authoring",
+    "previous_payload_sha256": null,
+    "rollback_of_payload_sha256": null,
+    "hit_policy": {
+      "hard_filter": "COLLECT_ALL",
+      "eligibility": "COVER_ALL_DECLARED_PURPOSES",
+      "human_review": "COLLECT_ALL",
+      "ranking": "SUM_TRUE_INTEGER_WEIGHTS"
+    },
+    "source_records": [
+      {
+        "source_record_id": "c43c40ab-387a-46a1-a2a0-996692ee833e",
+        "source_key": "gold-harness.synthetic-policy.v1",
+        "version": 1,
+        "authority_type": "BALI_ZERO_POLICY",
+        "status": "VERIFIED",
+        "jurisdiction": "ID",
+        "title": "Gold Harness Synthetic Engine-Test Policy v1",
+        "publisher": "Bali Zero -- Visa Oracle Engineering",
+        "canonical_url": "https://internal.balizero.dev/gold-harness/synthetic-policy-v1",
+        "language": "en",
+        "document_number": null,
+        "locators": [],
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "legal_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "recorded_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "retrieved_at": "2026-07-17T00:00:00Z",
+        "verified_at": "2026-07-17T00:00:00Z",
+        "verified_by": "gold-harness-authoring",
+        "supersedes_source_record_id": null
+      }
+    ],
+    "products": [
+      {
+        "product_version_id": "e0669110-09e3-432f-bba9-4cece7be7633",
+        "product_code": "C1",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa C1 (gold harness)",
+          "en": "C1 product (gold harness)"
+        },
+        "category": "SHORT_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["TOURISM"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "SINGLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 30
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 1,
+          "days_per_extension": 30
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "ENTRY_DATE",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "single_entry_visas",
+          "item_key": "c1_tourist"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "75052ec0-598f-466b-9ab0-cdfdee684da2",
+        "product_code": "C2",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa C2 (gold harness)",
+          "en": "C2 product (gold harness)"
+        },
+        "category": "SHORT_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["BUSINESS_MEETINGS"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 60
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 1,
+          "days_per_extension": 60
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "ENTRY_DATE",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "multiple_entry_visas",
+          "item_key": "c2_business"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "f6db3684-ee3e-4a1d-b45d-c4265932ccb8",
+        "product_code": "E23",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E23 (gold harness)",
+          "en": "E23 product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["EMPLOYMENT"],
+        "prohibited_activities": [],
+        "sponsor_types": ["EMPLOYER"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "VARIABLE_BY_GRANT",
+          "minimum_days": null,
+          "maximum_days": null
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 5,
+          "days_per_extension": 365
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e23_employment"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "ae3190a2-9f1c-4d5c-b25a-a371f765591b",
+        "product_code": "E28A",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E28A (gold harness)",
+          "en": "E28A product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["INVESTMENT"],
+        "prohibited_activities": [],
+        "sponsor_types": ["INVESTMENT"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "VARIABLE_BY_GRANT",
+          "minimum_days": null,
+          "maximum_days": null
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 5,
+          "days_per_extension": 730
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e28a_investor"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "68395e06-614b-4d8e-b469-d453aa2b4e0b",
+        "product_code": "E31",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E31 (gold harness)",
+          "en": "E31 product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["FAMILY"],
+        "prohibited_activities": [],
+        "sponsor_types": ["INDIVIDUAL"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "VARIABLE_BY_GRANT",
+          "minimum_days": null,
+          "maximum_days": null
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 5,
+          "days_per_extension": 365
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e31_family"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "5fcfb488-ae0c-4739-ad81-0b8b7d0b1701",
+        "product_code": "E33G",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E33G (gold harness)",
+          "en": "E33G product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["REMOTE_WORK", "TOURISM"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 365
+        },
+        "extension_policy": {
+          "allowed": false,
+          "maximum_extensions": 0,
+          "days_per_extension": null
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "ENTRY_DATE",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e33g_remote_worker"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "83e860db-3e7a-42c8-8e8e-64c7d03dd540",
+        "product_code": "E33R",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E33R (gold harness)",
+          "en": "E33R product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["RETIREMENT"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "VARIABLE_BY_GRANT",
+          "minimum_days": null,
+          "maximum_days": null
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 5,
+          "days_per_extension": 365
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e33r_retirement"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "4a18700a-e790-4e57-a799-db843a341941",
+        "product_code": "E30",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E30 (gold harness)",
+          "en": "E30 product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["STUDY"],
+        "prohibited_activities": [],
+        "sponsor_types": ["EDUCATION"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "VARIABLE_BY_GRANT",
+          "minimum_days": null,
+          "maximum_days": null
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 3,
+          "days_per_extension": 365
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e30_student"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "ec84d6ca-b9a7-4a69-a8b7-097d634d0cba",
+        "product_code": "D1",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa D1 (gold harness)",
+          "en": "D1 product (gold harness)"
+        },
+        "category": "SHORT_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["MEDICAL"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "SINGLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 60
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 2,
+          "days_per_extension": 30
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "ENTRY_DATE",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "single_entry_visas",
+          "item_key": "d1_medical"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "9f91257a-2df8-4495-b22f-2a6abb949e51",
+        "product_code": "E33S",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa E33S (gold harness)",
+          "en": "E33S product (gold harness)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["SECOND_HOME"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1825,
+          "maximum_days": 3650
+        },
+        "extension_policy": {
+          "allowed": true,
+          "maximum_extensions": 1,
+          "days_per_extension": 1825
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e33s_second_home"
+        },
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "public_catalog": true
+      }
+    ],
+    "rules": [
+      {
+        "rule_id": "hf-indonesian-citizen",
+        "stage": "HARD_FILTER",
+        "scope": "GLOBAL",
+        "priority": 10,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "intersects",
+          "fact": "person.nationalities",
+          "values": ["ID"]
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "APPLICANT_IS_INDONESIAN_CITIZEN"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["person.nationalities"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hf_indonesian_citizen",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "hf-overstay-hard",
+        "stage": "HARD_FILTER",
+        "scope": "GLOBAL",
+        "priority": 20,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "gt",
+          "fact": "immigration.overstay_days",
+          "value": 60
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "OVERSTAY_EXCEEDS_HARD_LIMIT"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["immigration.overstay_days"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hf_overstay_hard",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "hr-calling-visa",
+        "stage": "HUMAN_REVIEW",
+        "scope": "GLOBAL",
+        "priority": 30,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "intersects",
+          "fact": "person.nationalities",
+          "values": ["AF", "GN", "IL", "KP", "LR", "NG", "SO"]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "CALLING_VISA_REVIEW"
+        },
+        "on_unknown": "HUMAN_REVIEW",
+        "required_facts": ["person.nationalities"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hr_calling_visa",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "hr-active-overstay",
+        "stage": "HUMAN_REVIEW",
+        "scope": "GLOBAL",
+        "priority": 40,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "eq",
+              "fact": "immigration.currently_in_indonesia",
+              "value": true
+            },
+            {
+              "op": "intersects",
+              "fact": "immigration.violation_history",
+              "values": ["OVERSTAY"]
+            }
+          ]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "ACTIVE_OVERSTAY_REVIEW"
+        },
+        "on_unknown": "HUMAN_REVIEW",
+        "required_facts": [
+          "immigration.currently_in_indonesia",
+          "immigration.violation_history"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hr_active_overstay",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "hr-other-purpose",
+        "stage": "HUMAN_REVIEW",
+        "scope": "GLOBAL",
+        "priority": 50,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "intersects",
+          "fact": "intent.purposes",
+          "values": ["OTHER"]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "NON_STANDARD_PURPOSE_REVIEW"
+        },
+        "on_unknown": "HUMAN_REVIEW",
+        "required_facts": ["intent.purposes"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hr_other_purpose",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "hr-unaccompanied-minor",
+        "stage": "HUMAN_REVIEW",
+        "scope": "GLOBAL",
+        "priority": 60,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "eq",
+              "fact": "derived.is_minor",
+              "value": true
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "eq",
+                "fact": "family.sponsor_confirmed",
+                "value": true
+              }
+            }
+          ]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "MINOR_WITHOUT_CONFIRMED_GUARDIAN"
+        },
+        "on_unknown": "HUMAN_REVIEW",
+        "required_facts": ["derived.is_minor", "family.sponsor_confirmed"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.hr_unaccompanied_minor",
+        "safety_critical": true
+      },
+      {
+        "rule_id": "rank-quote-preference",
+        "stage": "RANKING",
+        "scope": "GLOBAL",
+        "priority": 200,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "known",
+          "fact": "commercial.wants_quote"
+        },
+        "effect": {
+          "type": "ADD_SCORE",
+          "reason_code": "WANTS_QUOTE_BOOST",
+          "points": 5
+        },
+        "on_unknown": "NO_EFFECT",
+        "required_facts": ["commercial.wants_quote"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.rank_quote_preference",
+        "safety_critical": false
+      },
+      {
+        "rule_id": "el-c1-tourism",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["TOURISM"]
+            },
+            {
+              "op": "lte",
+              "fact": "intent.stay_days",
+              "value": 30
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "TOURISM_SUPPORTED",
+          "covered_purposes": ["TOURISM"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["intent.purposes", "intent.stay_days"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_c1_tourism",
+        "safety_critical": false,
+        "product_version_ids": ["e0669110-09e3-432f-bba9-4cece7be7633"]
+      },
+      {
+        "rule_id": "el-c2-business",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "intersects",
+          "fact": "intent.purposes",
+          "values": ["BUSINESS_MEETINGS"]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "BUSINESS_SUPPORTED",
+          "covered_purposes": ["BUSINESS_MEETINGS"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["intent.purposes"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_c2_business",
+        "safety_critical": false,
+        "product_version_ids": ["75052ec0-598f-466b-9ab0-cdfdee684da2"]
+      },
+      {
+        "rule_id": "el-e23-employment",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["EMPLOYMENT"]
+            },
+            {
+              "op": "eq",
+              "fact": "work.employer_is_indonesian_entity",
+              "value": true
+            },
+            {
+              "op": "eq",
+              "fact": "work.indonesian_work_sponsor_confirmed",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "EMPLOYMENT_SUPPORTED",
+          "covered_purposes": ["EMPLOYMENT"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "work.employer_is_indonesian_entity",
+          "work.indonesian_work_sponsor_confirmed"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e23_employment",
+        "safety_critical": false,
+        "product_version_ids": ["f6db3684-ee3e-4a1d-b45d-c4265932ccb8"]
+      },
+      {
+        "rule_id": "el-e28a-investment",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["INVESTMENT"]
+            },
+            {
+              "op": "gte",
+              "fact": "investment.investment_capital_idr",
+              "value": 10000000000
+            },
+            {
+              "op": "eq",
+              "fact": "investment.pt_pma_committed",
+              "value": true
+            },
+            {
+              "op": "in",
+              "fact": "investment.proposed_role",
+              "values": ["SHAREHOLDER_DIRECTOR", "SHAREHOLDER_COMMISSIONER"]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "INVESTMENT_SUPPORTED",
+          "covered_purposes": ["INVESTMENT"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "investment.investment_capital_idr",
+          "investment.pt_pma_committed",
+          "investment.proposed_role"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e28a_investment",
+        "safety_critical": false,
+        "product_version_ids": ["ae3190a2-9f1c-4d5c-b25a-a371f765591b"]
+      },
+      {
+        "rule_id": "el-e31-family",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["FAMILY"]
+            },
+            {
+              "op": "in",
+              "fact": "family.relation_to_sponsor",
+              "values": ["SPOUSE", "CHILD"]
+            },
+            {
+              "op": "eq",
+              "fact": "family.sponsor_confirmed",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "FAMILY_SPONSOR_SUPPORTED",
+          "covered_purposes": ["FAMILY"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "family.relation_to_sponsor",
+          "family.sponsor_confirmed"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e31_family",
+        "safety_critical": false,
+        "product_version_ids": ["68395e06-614b-4d8e-b469-d453aa2b4e0b"]
+      },
+      {
+        "rule_id": "el-e33g-remote",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["REMOTE_WORK"]
+            },
+            {
+              "op": "eq",
+              "fact": "work.employer_is_indonesian_entity",
+              "value": false
+            },
+            {
+              "op": "eq",
+              "fact": "work.serves_indonesian_clients",
+              "value": false
+            },
+            {
+              "op": "eq",
+              "fact": "work.indonesia_source_compensation",
+              "value": false
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REMOTE_WORK_SUPPORTED",
+          "covered_purposes": ["REMOTE_WORK", "TOURISM"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "work.employer_is_indonesian_entity",
+          "work.serves_indonesian_clients",
+          "work.indonesia_source_compensation"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e33g_remote",
+        "safety_critical": false,
+        "product_version_ids": ["5fcfb488-ae0c-4739-ad81-0b8b7d0b1701"]
+      },
+      {
+        "rule_id": "el-e33r-retirement",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["RETIREMENT"]
+            },
+            {
+              "op": "gte",
+              "fact": "derived.age_years",
+              "value": 55
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "RETIREMENT_SUPPORTED",
+          "covered_purposes": ["RETIREMENT"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["intent.purposes", "derived.age_years"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e33r_retirement",
+        "safety_critical": false,
+        "product_version_ids": ["83e860db-3e7a-42c8-8e8e-64c7d03dd540"]
+      },
+      {
+        "rule_id": "el-e30-student",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["STUDY"]
+            },
+            {
+              "op": "eq",
+              "fact": "study.admission_confirmed",
+              "value": true
+            },
+            {
+              "op": "eq",
+              "fact": "study.sponsor_confirmed",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "STUDY_SUPPORTED",
+          "covered_purposes": ["STUDY"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "study.admission_confirmed",
+          "study.sponsor_confirmed"
+        ],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e30_student",
+        "safety_critical": false,
+        "product_version_ids": ["4a18700a-e790-4e57-a799-db843a341941"]
+      },
+      {
+        "rule_id": "el-d1-medical",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "intersects",
+          "fact": "intent.purposes",
+          "values": ["MEDICAL"]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "MEDICAL_SUPPORTED",
+          "covered_purposes": ["MEDICAL"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["intent.purposes"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_d1_medical",
+        "safety_critical": false,
+        "product_version_ids": ["ec84d6ca-b9a7-4a69-a8b7-097d634d0cba"]
+      },
+      {
+        "rule_id": "el-e33s-secondhome",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["SECOND_HOME"]
+            },
+            {
+              "op": "eq",
+              "fact": "process.application_channel",
+              "value": "OFFSHORE"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "SECOND_HOME_SUPPORTED",
+          "covered_purposes": ["SECOND_HOME"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": ["intent.purposes", "process.application_channel"],
+        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "explanation_key": "explain.el_e33s_secondhome",
+        "safety_critical": false,
+        "product_version_ids": ["9f91257a-2df8-4495-b22f-2a6abb949e51"]
+      }
+    ]
+  },
+  "payload_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "signature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}
