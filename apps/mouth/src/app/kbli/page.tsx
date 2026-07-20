@@ -255,6 +255,18 @@ export default async function KBLIHomePage({
             ]}
           />
         </section>
+
+        {/* ── DECODER LINK ── */}
+        <p className="text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
+          Tidak yakin kode yang tepat?{" "}
+          <Link
+            href="/kbli/decoder"
+            className="underline underline-offset-2"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Coba KBLI Decoder →
+          </Link>
+        </p>
       </div>
     </FunnelFrame>
   );
