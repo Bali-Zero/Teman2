@@ -135,6 +135,37 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-20 — LANE A CHIUSA (F26 + PROVE-LIVE su entrambe le superfici) · LANE B: PR #2879
+  aperta, 3 gate CI risolti, wave-1 execution ancora sospesa su GO Zero.**
+  **Lane A:** round-17b (Codex diretto, teammate sibling non più raggiungibile dopo un
+  riavvio harness) ha confermato F24/F25 CHIUSI e sollevato **F26** (MEDIUM): la
+  risoluzione whatsapp era veto-only, non poteva fare da ANCORA quando phone/phone_normalized
+  erano assenti. Fix: `_resolution_anchor(norm_val, raw_val, wa_val)` in `crm_delivery.py` —
+  un solo oracolo per pre-lock/under-lock/post-upload, ognuno fail-closed su colonna
+  inutilizzabile o ≥2 core divergenti. Re-verify CLEAN. PR #2787 era già stata mergiata da
+  una sessione sibling PRIMA che i fix round-17 atterrassero → nuovo branch/PR **#2866** da
+  post-merge origin/main, auto-merge riarmato, mergiato, **Fly v3856 deployato** (health 200,
+  GH_SHA match) e **worker locale `com.nuzantara.intake-worker` riavviato** (`launchctl
+kickstart -k`, PID nuovo 42298 confermato fresco — il PID precedente 70682 girava codice
+  stale rispetto al checkout `~/nuzantara-deploy` già aggiornato). **PROVE-LIVE completo su
+  entrambe le superfici.**
+  **Lane B:** commit+push del build (`b0345b010d`) + **PR #2879 aperta** (branch
+  `agent/nuzantara/backend-rag/intake-clienti-non-a-crm`) con auto-merge armato — i 10 round
+  Codex (6→15, CLEAN) fungono da adversarial review. 3 required check CI fallivano al primo
+  giro: **`check-docs-sync`** (README.md/docs/AI_ONBOARDING.md — DOCSYNC block stale, main
+  era avanzato dal taglio del branch: W86, regen nello stesso commit) · **`antidotes`**
+  (`test_pending_arms_report.py::test_real_ledger_has_zero_phantom_operator` — la voce
+  R13-3 in PENDING-ARMS.md usava "single-operator tool" in prosa, substring-match sul campo
+  owner del classificatore phantom-operator; riformulato "single-user tool") · **`R1 gate —
+adversarial review present`** (`scripts/check_adversarial_review.py` richiede frontmatter
+  YAML `---...---` con `adversarial_review: codex` + sezione `## Adversarial review` — il
+  design doc aveva solo prosa `date:/domain:/...` senza i delimitatori `---`; aggiunta la
+  fence + una sezione che riassume l'intero arco a 10 round). Tutti e 3 verificati verdi
+  localmente (agent backend-verifier indipendente) prima del push (commit `a78769c770`,
+  W97 confermato). **Wave-1 EXECUTION resta sospesa**: voce dedicata in PENDING-ARMS
+  (`operator[business]`) — è la prima creazione reale di contatti CRM da questa pipeline
+  contro il book vivo, richiede GO esplicito di Zero.
+
 - **2026-07-19 — CLIENTI-NON-A-CRM (GO Zero): census DONE, design at adversarial gate.**
   Program: auto-create missing contacts from drive/doc identity signals (the 88%-ceiling
   attack; precedent PR #2669 wa-intake autocreate). Census on the 8,255 identity docs
