@@ -105,7 +105,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
-    "@vercel/analytics": "^1.6.1",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/toolbar": "^0.2.6",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.2",
