@@ -435,8 +435,29 @@ round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
   insertion point in `client_enricher.py` (fill-only skip → GATE-11 promotion → early-exit →
   advisory-lock acquisition → UPDATE); 2 test-fixture regressions surfaced and were fixed
   (`FakeConn.fetchval` missing; an npwp test assumed sequential overwrite, now correctly asserts the
-  fill-only conflict-skip). 576/576 intake tests green post-rebase. **NEXT: WIRE (auto-commit tier ×
-  verified strong-id, delta rate) + DRAIN (measured before/after) not yet run — PR not yet opened.**
+  fill-only conflict-skip). 576/576 intake tests green post-rebase. **WIRE+DRAIN (executed, honest
+  numbers):** fresh census re-run found the strong-id gap this mandate targeted had ALREADY shrunk
+  substantially during the 2-day gap via sibling work (m227 folder + m248 npwp): local passport
+  coverage 73.8%, 0 kitas at design time. BATCH-A (cross-DB unique-phone strict pairing) is now
+  **exhausted: 0/1261 pairs WRITE-verdict** (887 already fill-only-filled locally, 339 no valid prod
+  passport, 35 manifest-excluded) — the lever this council-verified batch targets was mostly consumed
+  by that sibling work before this branch could run it. BATCH-C (human-committed doc backfill) had
+  real yield: **applied 6/148** (3 passport, 3 kitas; rest already-filled/client-not-found/invalid/
+  excluded/quarantined), verified via `measure`: passport 1306→1309 (+3), kitas 0→3. Checked whether
+  any `review_pending` proposal benefits immediately: **25 proposals reference the 6 backfilled
+  clients as a candidate, 0 currently matched via the just-filled column** (`entity_resolution` is a
+  routing-time snapshot, predates the backfill; all 25 sit on weaker `fuzzy_full_name`/`sender_phone`
+  matches, LINK_CANDIDATE/AMBIGUOUS, never AUTO_ATTACH). Re-running resolution on them needs a
+  route-only reroute mode analogous to `--reroute-drive-folder`/`--reroute-npwp` in
+  `intake_reprocess_backlog.py`, which does not exist yet for passport/kitas-backfill — NOT built this
+  session: it touches the shared live-worker file, the precedent modes each went through Codex
+  red-team rounds, and the yield (25 proposals, capped at LINK_CANDIDATE by GATE-11 regardless since
+  the backfilled ids are unverified) doesn't justify rushing that rigor at session tail. Logged as a
+  scoped PENDING-ARMS follow-up. **Honest headline: the structural gap this mandate targeted was
+  already substantially closed by parallel sibling work before this branch could exercise its own
+  batches — GATE-11 (the safety mechanism) is this session's durable contribution, governing every
+  future backfill (this pipeline's and anyone else's), not a one-time volume unlock.** PR not yet
+  opened (pending the corner-update push).
 - **2026-07-19 — PERSON-NPWP STRONG-ID LIVE (m248, PR #2775 merged) + BACKLOG REROUTED + WIRE PROVEN:**
   `routing._match_person_strong` now matches `clients.npwp` (exactly 15/16 ASCII digits, dup→AMBIGUOUS,
   cross-table collision with `companies.npwp_company`→AMBIGUOUS/unknown; 5 Codex adversarial rounds →
