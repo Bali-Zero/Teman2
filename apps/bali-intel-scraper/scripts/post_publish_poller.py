@@ -4,7 +4,9 @@ Post-publish poller v3 — Resilient unified pipeline with step tracking.
 
 Runs every 5 minutes via LaunchAgent (com.balizero.post-publish-poller).
 Reads from PostgreSQL-backed queue on backend, processes each article:
-  - SEO/GEO metadata optimization (Gemini CLI)
+  - SEO/GEO metadata optimization (agy — Antigravity CLI, Gemini 3.1 Pro;
+    falls back to Codex when agy is unreachable. `gemini` CLI is DEPRECATED —
+    Google discontinued the free-tier CLI, confirmed 2026-07-18)
   - Translation to 4 languages (Ollama local)
   - Cover image generation (bz_image_style + Codex $imagegen / gpt-image-2,
     two formats: 21:9 hero + 16:10 homepage card)
@@ -14,7 +16,8 @@ Resilience features:
   - Step tracking: completed_steps JSONB — only re-runs failed steps on retry
   - Max 5 attempts: after that, item moves to 'dead' status
   - Telegram alert on failure (after 2+ attempts)
-  - SEO prompt via stdin (not CLI arg) to avoid timeout on long articles
+  - SEO/image steps are pre-flight health-checked (agy_healthy, codex_healthy)
+    — a dead CLI leaves the step queued, never a corrupted/fabricated result
 
 Sources:
   - 'intel': MDX articles from intel scraper (full pipeline: SEO + translate + image)
@@ -23,6 +26,7 @@ Sources:
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -56,6 +60,186 @@ IMAGE_GH_DIR = "apps/mouth/public/static/news"
 CODEX_BIN_DIR = "/opt/homebrew/bin"
 CODEX_TIMEOUT = 480  # seconds per image (smoke test ~3min, headroom for retries)
 CODEX_HEALTH_TIMEOUT = 60
+
+# ── agy (Antigravity CLI) — SEO/GEO text generation ──────────────────────────
+# Replaces the deprecated `gemini` CLI. Confirmed live 2026-07-18:
+# `gemini -m gemini-2.5-pro` returns `IneligibleTierError: This client is no
+# longer supported for Gemini Code Assist for individuals ... migrate to the
+# Antigravity suite` — Google discontinued the free-tier CLI outright. This is
+# a PERMANENT break (auth-tier removed, not a PATH/model mismatch) — every
+# SEO tick was silently eating this error as "no JSON in Gemini response".
+# agy runs on the Google AI Ultra OAuth seat; the model string matches what
+# scripts/agy_swarm_commander.py resolves its "pro-high" alias to.
+AGY_BIN_DIR = str(Path.home() / ".local" / "bin")
+AGY_MODEL = "Gemini 3.1 Pro (High)"
+AGY_HEALTH_TIMEOUT = 60
+SEO_LLM_TIMEOUT = 120  # per-call budget for the SEO JSON completion (agy or codex)
+
+
+def _agy_env() -> dict:
+    """Env for agy subprocess: ensure ~/.local/bin (where agy lives — not
+    guaranteed on the cron PATH) is present, strip paid-API keys (defense-in-
+    depth — agy runs on Google AI Ultra OAuth quota, never a billed key).
+    Mirrors _codex_env() below.
+    """
+    env = dict(os.environ)
+    path = env.get("PATH", "")
+    if AGY_BIN_DIR not in path.split(":"):
+        env["PATH"] = f"{AGY_BIN_DIR}:{path}" if path else AGY_BIN_DIR
+    for key in (
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "FIREWORKS_API_KEY",
+    ):
+        env.pop(key, None)
+    return env
+
+
+_AGY_AUTH_DEAD_RE = re.compile(
+    r"authentication required|authentication failed|please sign in|"
+    r"not authenticated|log ?in to|token_revoked|401|unauthor",
+    re.I,
+)
+
+
+def agy_healthy() -> bool:
+    """Pre-flight: is the Antigravity CLI (agy) reachable and authed?
+
+    agy needs an interactive Google/Antigravity re-auth on its own schedule
+    (auth_sentinel.py family B — a human-only gesture per CLAUDE.md's
+    credential boundary, NOT something this poller can fix headlessly).
+    Confirmed live 2026-07-18 via `auth_sentinel.py --json`: agy status=
+    "action", "sessione Antigravity/Google scaduta o non risponde". If
+    unreachable, the caller leaves the SEO step queued for a later tick
+    instead of silently giving up (or corrupting frontmatter).
+    """
+    try:
+        proc = subprocess.run(
+            ["agy", "--print-timeout", "45s", "--print", "reply with exactly: pong"],
+            capture_output=True, text=True,
+            timeout=AGY_HEALTH_TIMEOUT, env=_agy_env(), cwd="/tmp",
+        )
+        out = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode == 0 and "pong" in out.lower():
+            return True
+        if _AGY_AUTH_DEAD_RE.search(out):
+            log(f"  ⚠ agy auth FAIL: {out.strip()[-160:]}")
+        else:
+            log(f"  ⚠ agy health unclear rc={proc.returncode}: {out.strip()[-160:]}")
+        return False
+    except FileNotFoundError:
+        log("  ⚠ agy CLI not found on PATH")
+        return False
+    except subprocess.TimeoutExpired:
+        log("  ⚠ agy health-check timed out")
+        return False
+    except Exception as e:
+        log(f"  ⚠ agy health-check error: {e}")
+        return False
+
+
+def agy_generate_text(prompt: str, timeout: int = SEO_LLM_TIMEOUT) -> str | None:
+    """Run one non-interactive agy turn, return raw stdout (None on
+    timeout/error). `--sandbox` disables tool/shell actions — this call wants
+    a plain text/JSON completion, not an agentic session."""
+    try:
+        proc = subprocess.run(
+            ["agy", "--model", AGY_MODEL, "--sandbox",
+             "--print-timeout", f"{timeout}s", "--print", prompt],
+            capture_output=True, text=True,
+            timeout=timeout + 15, env=_agy_env(), cwd="/tmp",
+        )
+    except subprocess.TimeoutExpired:
+        log("    ❌ agy generation timed out")
+        return None
+    except Exception as e:
+        log(f"    ❌ agy generation error: {e}")
+        return None
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "")[-200:]
+        log(f"    ❌ agy generation rc={proc.returncode}: {tail}")
+        return None
+    return proc.stdout or ""
+
+
+def codex_generate_text(prompt: str, timeout: int = SEO_LLM_TIMEOUT) -> str | None:
+    """Run `codex exec` for a plain-text/JSON completion (read-only sandbox —
+    no file writes needed). Fallback path for SEO generation when agy is
+    unreachable; reuses the same ChatGPT Pro OAuth quota already spent on
+    cover images in this file."""
+    try:
+        proc = subprocess.run(
+            ["codex", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-"],
+            input=prompt, capture_output=True, text=True,
+            timeout=timeout, env=_codex_env(), cwd="/tmp",
+        )
+    except subprocess.TimeoutExpired:
+        log("    ❌ codex text generation timed out")
+        return None
+    except Exception as e:
+        log(f"    ❌ codex text generation error: {e}")
+        return None
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "")[-200:]
+        log(f"    ❌ codex text generation rc={proc.returncode}: {tail}")
+        return None
+    return proc.stdout or ""
+
+
+def _seo_llm_complete(prompt: str) -> tuple[str | None, str]:
+    """Get a raw completion for the SEO prompt from the first healthy CLI:
+    agy (primary — CLAUDE.md-mandated replacement for the deprecated `gemini`
+    CLI) then codex (fallback — already wired into this file for cover
+    images). Returns (None, "") if neither is reachable; the caller MUST
+    leave the item queued rather than fabricate metadata.
+    """
+    if agy_healthy():
+        out = agy_generate_text(prompt)
+        if out is not None:
+            return out, "agy"
+        log("  ⚠ SEO: agy healthy but generation failed — trying codex")
+    if codex_healthy():
+        out = codex_generate_text(prompt)
+        if out is not None:
+            return out, "codex"
+    return None, ""
+
+
+def _iter_json_objects(text: str):
+    """Yield every syntactically-balanced {...} substring in `text`, in
+    appearance order. More robust than a single greedy regex span (which
+    would swallow from the first '{' anywhere — e.g. an echoed prompt —
+    straight through to the very last '}' and then fail to parse)."""
+    depth = 0
+    start = None
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    yield text[start:i + 1]
+                    start = None
+
+
+def _extract_seo_json(raw: str) -> dict | None:
+    """Tolerant JSON extraction for the SEO completion: scan every balanced
+    {...} candidate, last-first (the model's real answer is usually the LAST
+    object printed, after any reasoning/prompt-echo prose), and accept the
+    first one that both parses AND carries an expected key."""
+    for blob in reversed(list(_iter_json_objects(raw))):
+        try:
+            obj = json.loads(blob)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and ("seoTitle" in obj or "seoDescription" in obj):
+            return obj
+    return None
 
 
 def _codex_env() -> dict:
@@ -334,6 +518,11 @@ def flush_layout_batch() -> bool:
     return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
 
 
+def flush_translation_batch() -> bool:
+    return _flush_batch("translation", "bot/articles-translations",
+                         "feat(articles): add translations {date} ({n} files)")
+
+
 _FLUSH_THRESHOLD = 8
 
 
@@ -444,9 +633,12 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
 # ─── SEO/GEO ──────────────────────────────────────────────────────────────────
 
 def run_seo(slug: str, category: str) -> bool:
-    """Optimize SEO/GEO metadata of published MDX via Gemini. Uses stdin for prompt."""
-    import re
+    """Optimize SEO/GEO metadata of published MDX via agy (fallback: codex).
 
+    Pre-flight health-checked (see _seo_llm_complete): if neither CLI is
+    reachable, the step is left queued for a later tick rather than silently
+    giving up — or worse, corrupting frontmatter with a garbage response.
+    """
     ARTICLES_PATH = "apps/mouth/src/content/articles"
     mdx_path = f"{ARTICLES_PATH}/{category}/{slug}.mdx"
 
@@ -502,35 +694,14 @@ Return this exact JSON structure:
   }}
 }}"""
 
-    # Use stdin instead of -p arg to avoid shell/timeout issues on long prompts
-    try:
-        result = subprocess.run(
-            ["gemini", "-m", "gemini-2.5-pro"],
-            input=prompt, capture_output=True, text=True, timeout=90,
-        )
-        if result.returncode != 0 or not result.stdout.strip():
-            # Fallback to default model
-            result = subprocess.run(
-                ["gemini"],
-                input=prompt, capture_output=True, text=True, timeout=90,
-            )
-    except subprocess.TimeoutExpired:
-        log("  ⚠ SEO: Gemini timeout (90s)")
-        return False
-    except Exception as e:
-        log(f"  ⚠ SEO: Gemini error: {e}")
+    raw, tool_used = _seo_llm_complete(prompt)
+    if raw is None:
+        log("  ⏸ SEO: no LLM reachable (agy + codex both down) — leaving queued")
         return False
 
-    raw = result.stdout.strip()
-    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if not json_match:
-        log("  ⚠ SEO: no JSON in Gemini response")
-        return False
-
-    try:
-        seo = json.loads(json_match.group(0))
-    except json.JSONDecodeError:
-        log("  ⚠ SEO: invalid JSON from Gemini")
+    seo = _extract_seo_json(raw)
+    if seo is None:
+        log(f"  ⚠ SEO: no JSON in {tool_used} response")
         return False
 
     def set_fm_field(fm: str, key: str, value: str) -> str:
@@ -559,7 +730,7 @@ Return this exact JSON structure:
     # _PENDING_COMMITS) — stage for the end-of-tick batch-branch/PR flush instead.
     _stage_commit("seo", mdx_path, new_content.encode("utf-8"),
                   f"feat(seo): optimize GEO/AEO metadata for '{title[:50]}'")
-    log("  📦 SEO/GEO metadata staged for batch commit")
+    log(f"  📦 SEO/GEO metadata staged for batch commit (via {tool_used})")
     return True
 
 
@@ -595,10 +766,27 @@ def run_translate(slug: str, category: str) -> bool:
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
             return False
-    result = subprocess.run(
-        [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
-        capture_output=True, text=True, timeout=15 * 60,
-    )
+    try:
+        result = subprocess.run(
+            [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
+            capture_output=True, text=True, timeout=15 * 60,
+        )
+    except subprocess.TimeoutExpired as e:
+        # Live incident (8x in post_publish_poller.err): translate-articles.py
+        # wedges past the 15min budget — this used to propagate uncaught and
+        # crash the ENTIRE poller run (every remaining queue item abandoned
+        # mid-tick). Caught here, logged, and reported as a failed step so the
+        # reaper picks the item back up next tick instead of the run dying.
+        stderr_tail = e.stderr
+        if isinstance(stderr_tail, bytes):
+            stderr_tail = stderr_tail.decode("utf-8", errors="replace")
+        log(f"  ❌ translate timed out after {15 * 60}s: "
+            f"{stderr_tail[-200:] if stderr_tail else '(no stderr captured)'}")
+        return False
+    except Exception as e:
+        log(f"  ❌ translate error: {e}")
+        return False
+
     ok = result.returncode == 0
     log(f"  {'✅' if ok else '❌'} translate exit={result.returncode}")
     if not ok and result.stderr:
@@ -824,37 +1012,54 @@ def git_pull_monorepo():
         log(f"⚠ git pull error: {e}")
 
 
-def git_commit_and_push_translations(slugs: list[str]):
+def git_commit_and_push_translations(slugs: list[str]) -> bool:
+    """Stage translation .mdx files and flush via the same batch-branch/PR
+    mechanism as flush_image_batch/flush_seo_batch/flush_layout_batch (see the
+    "GitHub batch-branch/PR commit mechanism" module note above `_stage_commit`).
+
+    Direct `git push origin main` (the old mechanism) is rejected by branch
+    protection EVERY time — and it doesn't fail loudly: the commit lands on the
+    main checkout regardless (git commit succeeds locally), then the push is
+    bounced, leaving an orphan local commit that blocks the next `git pull
+    --ff-only` for every subsequent tick until someone rescues it by hand
+    (live incident 2026-07-18: commits e2c3951c/be43e312d, both rescued
+    manually twice in one day). This function NEVER runs `git add`/`git
+    commit`/`git push` on the main checkout — files are read straight off disk
+    (translate_articles.py already wrote them there) and committed via the
+    GitHub Contents API on a bot branch, exactly like every other write path
+    in this module.
+
+    On any failure (branch create, PUT, PR create) `_flush_batch` logs the gh
+    failure and this returns False. Nothing was ever `git add`-ed, so the
+    local .mdx files are simply left untracked on disk — the next tick's
+    rglob picks them straight back up and re-stages them. No local git state
+    to unwind, no orphan commit possible.
+    """
     repo_root = SCRIPT_DIR.parent.parent.parent
     articles_dir = repo_root / "apps" / "mouth" / "src" / "content" / "articles"
 
-    translation_files = []
+    translation_files: list[Path] = []
     for slug in slugs:
         for f in articles_dir.rglob(f"{slug}.*.mdx"):
-            translation_files.append(str(f.relative_to(repo_root)))
+            translation_files.append(f)
 
     if not translation_files:
         log("⚠ No translation files to commit")
-        return
+        return True
 
-    log(f"▶ git commit+push {len(translation_files)} translation files")
-    try:
-        subprocess.run(["git", "add"] + translation_files, cwd=str(repo_root), capture_output=True, check=True, timeout=30)
-        status = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(repo_root), capture_output=True, timeout=10)
-        if status.returncode == 0:
-            log("⏭ Nothing staged — already committed")
-            return
-        msg = f"feat(articles): add translations for {', '.join(slugs[:3])}{'...' if len(slugs) > 3 else ''}"
-        subprocess.run(["git", "commit", "--no-verify", "-m", msg], cwd=str(repo_root), capture_output=True, check=True, timeout=30)
-        push = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
-        if push.returncode == 0:
-            log("✅ Translations pushed")
-        else:
-            subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=str(repo_root), capture_output=True, timeout=60)
-            push2 = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
-            log(f"{'✅' if push2.returncode == 0 else '❌'} Push after rebase: exit={push2.returncode}")
-    except Exception as e:
-        log(f"⚠ git push translations failed: {e}")
+    message = f"feat(articles): add translations for {', '.join(slugs[:3])}{'...' if len(slugs) > 3 else ''}"
+    log(f"▶ Staging {len(translation_files)} translation file(s) for batch commit")
+    for f in translation_files:
+        gh_path = str(f.relative_to(repo_root))
+        try:
+            content = f.read_bytes()
+        except OSError as e:
+            log(f"  ⚠ Could not read {gh_path}: {e}")
+            continue
+        _stage_commit("translation", gh_path, content, message)
+        log(f"  📦 staged → {gh_path}")
+
+    return flush_translation_batch()
 
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
@@ -971,9 +1176,14 @@ def main():
             f"layout={layout_flush_ok}) — see log"
         )
 
-    # Commit translations
+    # Commit translations — staged + flushed via the same batch-branch/PR
+    # mechanism as image/seo/layout (see git_commit_and_push_translations).
     if translated_slugs:
-        git_commit_and_push_translations(translated_slugs)
+        if not git_commit_and_push_translations(translated_slugs):
+            send_telegram_alert(
+                "⚠️ *Post-publish poller*\n"
+                f"Translation batch flush failed for: {', '.join(translated_slugs[:5])}"
+            )
 
     # Mark done
     if done_slugs:

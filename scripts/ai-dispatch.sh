@@ -34,11 +34,19 @@ EXTRA="${3:-}"
 # ═══════════════════════════════════════════════════════
 # Machine detection
 # ═══════════════════════════════════════════════════════
+# Hostname-first (canonical per AGENTS.md §0), user fallback for legacy shells.
 MACHINE="unknown"
-if [ "$(whoami)" = "nuzantara" ]; then
-    MACHINE="pro"
-elif [ "$(whoami)" = "antonellosiano" ]; then
-    MACHINE="air"
+case "$(hostname -s)" in
+    Nuzantara) MACHINE="pro" ;;
+    Mini-Pro2|mini-pro2) MACHINE="mini" ;;
+    Air-M5) MACHINE="m5" ;;
+esac
+if [ "$MACHINE" = "unknown" ]; then
+    case "$(whoami)" in
+        nuzantara) MACHINE="pro" ;;
+        balizero) MACHINE="m5" ;;
+        antonellosiano) MACHINE="air" ;;  # legacy Air, decommissioned 2026-05-05
+    esac
 fi
 
 # Bypass alias --yolo that exists in .zshrc on Air
@@ -1181,7 +1189,7 @@ for m, count in machines.most_common():
         echo ""
         echo "Peer machine:"
         peer=""
-        if [ "$MACHINE" = "pro" ]; then peer="air"; else peer="pro"; fi
+        if [ "$MACHINE" = "pro" ]; then peer="mini"; else peer="pro"; fi  # pro peer = mini since Air decommission 2026-05-05
         if ssh -o ConnectTimeout=2 "$peer" 'echo "reachable"' 2>/dev/null; then
             ok "  $peer: REACHABLE"
         else

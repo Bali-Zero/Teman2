@@ -7,6 +7,8 @@ replacement: writes are staged in-memory during a poller tick and flushed
 once, per kind, into ONE bot branch + auto-merged PR.
 """
 
+import base64
+import json
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -264,6 +266,155 @@ class TestFlushLayoutBatch:
         assert title.startswith("chore(homepage): hero rotation ")
 
 
+# ── git_commit_and_push_translations (translations batch-branch/PR flow) ───
+#
+# Regression coverage: the poller used to `git add` + `git commit --no-verify`
+# + `git push --no-verify origin main` directly on the main checkout. Branch
+# protection rejects that push every time, but the commit had already landed
+# locally — leaving an orphan commit that blocks every subsequent tick's
+# `git pull --ff-only` until rescued by hand (live incident 2026-07-18:
+# commits e2c3951c/be43e312d, both rescued manually the same day). The fix
+# routes translations through the same batch-branch/PR mechanism as
+# image/seo/layout — never touching local git state at all.
+
+
+def _write_translation_file(tmp_path, slug, lang, category="business", content="---\nfoo\n---\nbody"):
+    articles_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / category
+    articles_dir.mkdir(parents=True, exist_ok=True)
+    f = articles_dir / f"{slug}.{lang}.mdx"
+    f.write_text(content, encoding="utf-8")
+    return f
+
+
+def _fake_repo_root(tmp_path, monkeypatch):
+    """Point ppp.SCRIPT_DIR at tmp_path/apps/bali-intel-scraper/scripts so
+    SCRIPT_DIR.parent.parent.parent (repo_root inside the function) resolves
+    to tmp_path — lets us stage real files without touching the real repo."""
+    fake_script_dir = tmp_path / "apps" / "bali-intel-scraper" / "scripts"
+    fake_script_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(ppp, "SCRIPT_DIR", fake_script_dir)
+
+
+class TestGitCommitAndPushTranslations:
+    def test_never_invokes_git_push_or_commit_to_main(self, tmp_path, monkeypatch):
+        """GUILT: the translations flow must never shell out to git at all —
+        no `git add`, no `git commit`, no `git push ... main`. Everything goes
+        through the gh-api batch-branch/PR mechanism instead."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        _write_translation_file(tmp_path, "test-slug", "fr")
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is True
+        git_calls = [c for c in calls if c["cmd"] and c["cmd"][0] == "git"]
+        assert git_calls == []  # zero direct git subprocess invocations
+        push_main_calls = [c for c in calls if "push" in c["cmd"] and "main" in c["cmd"]]
+        assert push_main_calls == []
+
+    def test_uses_translations_branch_prefix_and_gh_pr_create(self, tmp_path, monkeypatch):
+        """INNOCENCE: expected behavior is the same batch-branch/PR mechanism
+        as image/seo/layout — branch prefix bot/articles-translations, one
+        gh api PUT per staged file, gh pr create + --auto --squash arm."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        _write_translation_file(tmp_path, "test-slug", "fr")
+        _write_translation_file(tmp_path, "test-slug", "ru")
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is True
+        assert ppp._PENDING_COMMITS == []  # drained by the flush
+
+        import json as _json
+
+        create_ref_calls = [
+            c for c in calls
+            if c["cmd"][:2] == ["gh", "api"] and c["cmd"][2].endswith("/git/refs") and "POST" in c["cmd"]
+        ]
+        assert len(create_ref_calls) == 1
+        ref_payload = _json.loads(create_ref_calls[0]["kwargs"]["input"])
+        assert ref_payload["ref"].startswith("refs/heads/bot/articles-translations-")
+
+        pr_create_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "create"]]
+        pr_merge_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "merge"]]
+        assert len(pr_create_calls) == 1
+        assert len(pr_merge_calls) == 1
+        assert "--auto" in pr_merge_calls[0]["cmd"]
+        assert "--squash" in pr_merge_calls[0]["cmd"]
+
+        title = pr_create_calls[0]["cmd"][pr_create_calls[0]["cmd"].index("--title") + 1]
+        assert title.startswith("feat(articles): add translations ")
+
+        put_calls = [c for c in calls if "/contents/" in c["cmd"][2] and "PUT" in c["cmd"]]
+        assert len(put_calls) == 2  # both translation files staged+committed
+        for pc in put_calls:
+            payload = _json.loads(pc["kwargs"]["input"])
+            assert payload["message"].startswith("feat(articles): add translations for test-slug")
+            assert payload["branch"].startswith("bot/articles-translations-")
+
+    def test_no_files_found_is_noop_returns_true(self, tmp_path, monkeypatch, _silence_log):
+        _fake_repo_root(tmp_path, monkeypatch)
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["nonexistent-slug"])
+
+        assert ok is True
+        assert calls == []
+        assert any("No translation files to commit" in m for m in _silence_log)
+
+    def test_flush_failure_returns_false_and_never_touches_local_git_state(self, tmp_path, monkeypatch, _silence_log):
+        """On a flush failure the function must return False and the .mdx file
+        must remain untouched on disk — no git add/commit ever ran, so the
+        next tick's rglob picks it right back up and re-stages it."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        f = _write_translation_file(tmp_path, "test-slug", "fr")
+
+        def fake_run(cmd, **kwargs):
+            s = " ".join(cmd)
+            if "git/refs/heads/main" in s:
+                return _res(stdout="deadbeef\n")
+            if s.endswith("git/refs --method POST --input -"):
+                return _res(returncode=1, stderr="422 Reference already exists")
+            return _res(returncode=0)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is False
+        assert f.exists()
+        assert f.read_text(encoding="utf-8") == "---\nfoo\n---\nbody"  # untouched
+        assert any("Reference already exists" in m for m in _silence_log)
+
+
+class TestFlushTranslationBatch:
+    def test_uses_distinct_branch_prefix_and_title(self):
+        ppp._stage_commit(
+            "translation", "apps/mouth/src/content/articles/business/foo.fr.mdx", b"---\n---\nbody",
+            "feat(articles): add translations for foo",
+        )
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.flush_translation_batch()
+
+        assert ok is True
+        create_ref_calls = [
+            c for c in calls
+            if c["cmd"][:2] == ["gh", "api"] and c["cmd"][2].endswith("/git/refs") and "POST" in c["cmd"]
+        ]
+        import json as _json
+
+        ref_payload = _json.loads(create_ref_calls[0]["kwargs"]["input"])
+        assert ref_payload["ref"].startswith("refs/heads/bot/articles-translations-")
+
+        pr_create_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "create"]]
+        title = pr_create_calls[0]["cmd"][pr_create_calls[0]["cmd"].index("--title") + 1]
+        assert title.startswith("feat(articles): add translations ")
+
+
 # ── rotate_hero (homepage-layout.json write path) ──────────────────────────
 #
 # Regression coverage: rotate_hero() used to PUT apps/mouth/src/content/
@@ -422,6 +573,58 @@ class TestMaybeFlushAllBatches:
 # when the flag lied.
 
 
+class TestRunTranslateTimeoutGuard:
+    """Regression coverage for the crash bug: the subprocess.run() call for
+    translate-articles.py used to be bare (no try/except). When the script
+    wedges past the 15min timeout, subprocess.TimeoutExpired propagated
+    uncaught and crashed the ENTIRE poller run — every remaining queue item
+    was abandoned mid-tick (8 real incidents in post_publish_poller.err on
+    Pro). run_translate() must catch the timeout, log the cause (stderr
+    tail — never a bare fail), and return False so the item is reported as a
+    failed step and retried on the next tick instead of killing the run."""
+
+    def test_translate_timeout_is_caught_returns_false_not_raised(self, tmp_path, monkeypatch, _silence_log):
+        _fake_repo_root(tmp_path, monkeypatch)
+        # MDX already present locally so run_translate skips the GitHub-pull
+        # branch entirely and goes straight to the translate subprocess call.
+        mdx_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / "business"
+        mdx_dir.mkdir(parents=True, exist_ok=True)
+        (mdx_dir / "test-slug.mdx").write_text("---\nfoo\n---\nbody", encoding="utf-8")
+
+        distinctive_tail = "OLLAMA_HUNG_CUDA_TIMEOUT_XYZ123"
+
+        def fake_run(cmd, **kwargs):
+            if cmd[0] == "pgrep":
+                return _res(returncode=1)  # no other translate running -> free immediately
+            # This is the translate-articles.py invocation — simulate it wedging.
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=15 * 60, output="", stderr=distinctive_tail)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            # Without the try/except this raises subprocess.TimeoutExpired and
+            # the test errors out instead of asserting — that IS the guilt case.
+            result = ppp.run_translate("test-slug", "business")
+
+        assert result is False
+        assert any(distinctive_tail in m for m in _silence_log)
+
+    def test_translate_success_path_unaffected(self, tmp_path, monkeypatch):
+        """INNOCENCE: the guard must not swallow a genuine success/failure exit."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        mdx_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / "business"
+        mdx_dir.mkdir(parents=True, exist_ok=True)
+        (mdx_dir / "ok-slug.mdx").write_text("---\nfoo\n---\nbody", encoding="utf-8")
+
+        def fake_run(cmd, **kwargs):
+            if cmd[0] == "pgrep":
+                return _res(returncode=1)
+            return _res(returncode=0)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            result = ppp.run_translate("ok-slug", "business")
+
+        assert result is True
+
+
 class TestProcessItemNeverSkipsImageStep:
     def test_intel_source_calls_run_image_even_when_completed_steps_true(self):
         item = {
@@ -496,3 +699,191 @@ class TestProcessItemNeverSkipsImageStep:
         mock_image.assert_called_once()
         # mark_step_done must NOT be called for "image" when run_image fails
         assert ("lost-slug", "image") not in [c.args for c in mock_mark.call_args_list]
+
+
+# ── SEO step: migrated off the deprecated `gemini` CLI ──────────────────────
+#
+# `gemini -m gemini-2.5-pro` started returning `IneligibleTierError: ... migrate
+# to the Antigravity suite` — Google discontinued the free-tier CLI outright
+# (confirmed live 2026-07-18), a PERMANENT break, not a PATH/model mismatch.
+# run_seo() now delegates to _seo_llm_complete(), which tries agy first
+# (CLAUDE.md's mandated replacement) then falls back to codex (already wired
+# into this file for cover images) — each pre-flight health-checked so a dead
+# tool leaves the item queued instead of corrupting frontmatter.
+
+
+class TestExtractSeoJson:
+    def test_valid_json_only(self):
+        raw = '{"seoTitle": "Foo", "seoDescription": "Bar"}'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Foo", "seoDescription": "Bar"}
+
+    def test_json_with_surrounding_prose(self):
+        raw = 'Here is the metadata:\n{"seoTitle": "Foo", "seoDescription": "Bar"}\nHope that helps!'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Foo", "seoDescription": "Bar"}
+
+    def test_prompt_echo_then_real_answer_picks_the_last_valid_object(self):
+        # Simulates an agentic CLI echoing an unrelated JSON blob (e.g. its
+        # own input record) before the real answer — must pick the LAST
+        # candidate that parses AND carries an expected key, not the first.
+        raw = '{"unrelated": "echo"}\n\n{"seoTitle": "Real", "seoDescription": "Answer"}'
+        assert ppp._extract_seo_json(raw) == {"seoTitle": "Real", "seoDescription": "Answer"}
+
+    def test_no_braces_returns_none(self):
+        assert ppp._extract_seo_json("Error: authentication required. Run 'agy' to log in.") is None
+
+    def test_empty_string_returns_none(self):
+        assert ppp._extract_seo_json("") is None
+
+    def test_malformed_json_returns_none(self):
+        assert ppp._extract_seo_json("{seoTitle: not valid json}") is None
+
+
+class TestSeoLlmCascade:
+    def test_agy_healthy_and_generates_uses_agy_only(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=True),
+            patch.object(ppp, "agy_generate_text", return_value='{"seoTitle": "x"}') as mock_agy,
+            patch.object(ppp, "codex_healthy") as mock_codex_healthy,
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoTitle": "x"}', "agy")
+        mock_agy.assert_called_once_with("prompt")
+        mock_codex_healthy.assert_not_called()
+
+    def test_agy_unreachable_falls_back_to_codex(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=False),
+            patch.object(ppp, "codex_healthy", return_value=True),
+            patch.object(ppp, "codex_generate_text", return_value='{"seoDescription": "y"}') as mock_codex,
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoDescription": "y"}', "codex")
+        mock_codex.assert_called_once_with("prompt")
+
+    def test_agy_healthy_but_generation_fails_falls_back_to_codex(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=True),
+            patch.object(ppp, "agy_generate_text", return_value=None),
+            patch.object(ppp, "codex_healthy", return_value=True),
+            patch.object(ppp, "codex_generate_text", return_value='{"seoTitle": "z"}'),
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert (raw, tool) == ('{"seoTitle": "z"}', "codex")
+
+    def test_both_unreachable_returns_none_never_fabricates(self):
+        with (
+            patch.object(ppp, "agy_healthy", return_value=False),
+            patch.object(ppp, "codex_healthy", return_value=False),
+        ):
+            raw, tool = ppp._seo_llm_complete("prompt")
+
+        assert raw is None
+        assert tool == ""
+
+
+def _mdx_frontmatter_payload(body_extra: str = "") -> str:
+    """A `gh api contents/...` response body for a not-yet-optimized MDX file
+    (no answerSnippet in frontmatter, so run_seo won't short-circuit as
+    already-optimized)."""
+    content = (
+        "---\n"
+        'title: "Test Article"\n'
+        'seoTitle: ""\n'
+        "---\n"
+        f"Body text here.{body_extra}\n"
+    )
+    return json.dumps({"content": base64.b64encode(content.encode()).decode("ascii")})
+
+
+class TestRunSeo:
+    def test_valid_json_response_stages_seo_commit(self):
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        seo_json = (
+            '{"seoTitle": "Great SEO Title", "seoDescription": "Great SEO description.", '
+            '"aiOptimization": {"answerSnippet": "The answer.", "primaryQuestion": "What is it?"}}'
+        )
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=(seo_json, "agy")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is True
+        staged = [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"]
+        assert len(staged) == 1
+        decoded = base64.b64decode(staged[0]["content_b64"]).decode()
+        assert "Great SEO Title" in decoded
+        assert "Great SEO description." in decoded
+        assert staged[0]["gh_path"] == "apps/mouth/src/content/articles/business/test-slug.mdx"
+
+    def test_empty_or_non_json_response_does_not_stage_and_returns_false(self):
+        """The CLI ran (agy/codex both reported healthy) but its answer had no
+        parseable JSON (e.g. a stray auth-error string past the health-check,
+        or a truncated response) — must NOT stage a commit and must return
+        False so the item is honestly retried, never a silent no-op success."""
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=("not json at all", "agy")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is False
+        assert [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"] == []
+
+    def test_neither_agy_nor_codex_reachable_leaves_item_queued(self):
+        """Both CLIs unreachable (e.g. agy needs interactive re-auth AND codex
+        token revoked) — must leave the step queued (return False, no staged
+        commit), never fabricate metadata to force a "done" state."""
+        gh_payload = _mdx_frontmatter_payload()
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:2] == ["gh", "api"]:
+                return _res(stdout=gh_payload)
+            raise AssertionError(f"unexpected subprocess call: {cmd}")
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run),
+            patch.object(ppp, "_seo_llm_complete", return_value=(None, "")),
+        ):
+            ok = ppp.run_seo("test-slug", "business")
+
+        assert ok is False
+        assert [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"] == []
+
+    def test_agy_invocation_uses_configured_model_and_sandbox(self):
+        """Regression pin for the actual CLI invocation shape (agy_swarm_
+        commander.py convention: --model "Gemini 3.1 Pro (High)" --sandbox)."""
+        captured = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            captured["env"] = kwargs.get("env")
+            return _res(stdout='{"seoTitle": "x"}')
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            out = ppp.agy_generate_text("some prompt")
+
+        assert out == '{"seoTitle": "x"}'
+        cmd = captured["cmd"]
+        assert cmd[0] == "agy"
+        assert "--model" in cmd and ppp.AGY_MODEL in cmd
+        assert "--sandbox" in cmd
+        assert "--print" in cmd and "some prompt" in cmd
+        # PATH must include agy's install dir even if the cron PATH lacks it
+        assert ppp.AGY_BIN_DIR in captured["env"]["PATH"].split(":")

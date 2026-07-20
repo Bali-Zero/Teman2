@@ -19,6 +19,30 @@ name: Docs Inventory Refresh
 # refreshes the TABLE (docs_audit.py --regen-only: no git-mv side effects) so the
 # classification never rots stale between whenever that weekly cron last ran cleanly.
 #
+# P3-prime (2026-07-17, research/operations/2026-07-17-push-pipeline-optimization-spec.md
+# §P3 — extends this workflow, does not duplicate it): the ROOT CAUSE of the wallclock
+# rot above was that `inventory-check` (the PR gate, docs-guardian.yml) itself compared
+# wall-clock-derived classification — so a doc could silently cross its orphan threshold
+# between two runs of the SAME gate on unrelated PRs. The structural cure has two halves:
+#   1. docs_audit.py now stores DETERMINISTIC per-doc facts (`last_touched_date`,
+#      `orphan_eligible_on` — pure functions of git history, no "today" anywhere) and
+#      `inventory-check` verifies ONLY those facts — see docs_audit.py's module
+#      docstring. A doc crossing `orphan_eligible_on` no longer makes an unrelated PR red.
+#   2. The actual TIME-CROSSING decision — "has this doc's orphan_eligible_on passed?" —
+#      moves HERE, to this scheduled organ, the only place allowed to consult wall-clock
+#      for that purpose (docs_audit.py in write mode, called by "Regenerate" below via
+#      `scripts/docs_inventory_regen.sh --organ`, which passes --as-of "$(date -u
+#      +%Y-%m-%d)" = real "today" explicitly — footgun fix 2026-07-19, PR #2626 landing
+#      incident: the SCRIPT's bare/default invocation is now GATE-CONSISTENT
+#      (--gate-consistent, never invents a flip) precisely so a PR-side contributor
+#      running the plain command cannot accidentally commit a wall-clock-driven flip the
+#      gate would then reject as drift on the SAME PR — only this scheduled organ, via
+#      the explicit --organ flag, is supposed to advance flips from real time). When a doc
+#      crosses, this run stamps its `orphan_flipped_on` provenance marker and the
+#      "Regenerate" step's own stderr logs `docs_audit: advanced N flip(s), eligibility
+#      recomputed: <paths>` — surfaced below into both this run's log AND the opened PR's
+#      body (steps.stats.outputs.flips).
+#
 # PR-creation mechanism note (2026-07-17 design decision): this repo's established,
 # empirically-verified pattern for scheduled automation PRs (nb-curator #2567, the
 # codex-nightly-autofix-ci.sh branches #950/#1001) is a MACHINE CRON authenticated as the
@@ -66,11 +90,40 @@ jobs:
           python-version: "3.11"
 
       - name: Regenerate docs-inventory + DOCSYNC markers (SSOT script)
-        run: bash scripts/docs_inventory_regen.sh
+        env:
+          # P3-prime: capture the --json stats payload (flips_this_run,
+          # flipped_paths) alongside the regen, so this run can surface the
+          # count without a second, duplicate docs_audit.py invocation.
+          DOCS_AUDIT_STATS_JSON: ${{ runner.temp }}/docs_audit_stats.json
+        # --organ: this IS the scheduled refresh organ — the one caller
+        # explicitly opting INTO dated/wall-clock behavior (real "today")
+        # instead of the script's now-gate-consistent default. Footgun fix
+        # 2026-07-19, PR #2626 landing incident — see the module comment
+        # above and scripts/docs_inventory_regen.sh's own header.
+        run: bash scripts/docs_inventory_regen.sh --organ
 
       - name: Check drift
         id: drift
+        env:
+          STATS_JSON: ${{ runner.temp }}/docs_audit_stats.json
         run: |
+          set -uo pipefail
+          # $STATS_JSON is passed as argv[1], never interpolated into the
+          # Python source itself (defense-in-depth against quoting/injection
+          # surprises, even though this value is only ever a same-run
+          # ${{ runner.temp }} path this workflow itself set).
+          FLIPS=$(python3 -c "
+          import json, sys
+          try:
+              with open(sys.argv[1]) as f:
+                  print(json.load(f).get('flips_this_run', 0))
+          except Exception:
+              print(0)
+          " "$STATS_JSON")
+          echo "flips=$FLIPS" >> "$GITHUB_OUTPUT"
+          if [ "$FLIPS" -gt 0 ]; then
+            echo "docs_audit reported $FLIPS orphan-eligibility flip(s) this run" >&2
+          fi
           if git diff --quiet; then
             echo "no drift" >&2
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -84,29 +137,73 @@ jobs:
         if: steps.drift.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          FLIPS: ${{ steps.drift.outputs.flips }}
         run: |
           set -euo pipefail
           DATE_SLUG=$(date -u +%Y-%m-%d)
           BRANCH="docs/auto-sync-inventory-${DATE_SLUG}"
+
+          # P3-prime: "Refresh PR logs 'advanced N flips, eligibility
+          # recomputed'" — surfaced in BOTH the commit message and the PR
+          # body, built via the FLIPS env var (never a raw GH-expression
+          # interpolated straight into this run body) since FLIPS ultimately
+          # traces back to file content this run computed.
+          FLIP_LINE=""
+          if [ "${FLIPS:-0}" -gt 0 ]; then
+            FLIP_LINE="Advanced ${FLIPS} orphan-eligibility flip(s) this run, eligibility recomputed (see docs_audit.py's own stderr log above for the doc list)."
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add -A
-          git commit -m "chore(docs): scheduled inventory + DOCSYNC refresh (${DATE_SLUG})
-
-          Structural cure for the wallclock inventory-check gate rot: regenerates
-          docs/DOCS_INVENTORY.md (calendar-driven LIVE/STALE/ARCHIVED classification)
-          and DOCSYNC markers directly on main so drift never accumulates against an
-          unrelated PR.
-
-          Auto-generated by scripts/docs_inventory_regen.sh via
-          .github/workflows/docs-inventory-refresh.yml (scheduled run).
-
-          Co-Authored-By: docs-inventory-refresh <noreply@balizero.com>"
+          COMMIT_MSG_FILE=$(mktemp)
+          {
+            echo "chore(docs): scheduled inventory + DOCSYNC refresh (${DATE_SLUG})"
+            echo
+            echo "Structural cure for the wallclock inventory-check gate rot: regenerates"
+            echo "docs/DOCS_INVENTORY.md (deterministic LIVE/STALE/ARCHIVED classification"
+            echo "facts, P3-prime) and DOCSYNC markers directly on main so drift never"
+            echo "accumulates against an unrelated PR."
+            if [ -n "$FLIP_LINE" ]; then
+              echo
+              echo "$FLIP_LINE"
+            fi
+            echo
+            echo "Auto-generated by scripts/docs_inventory_regen.sh via"
+            echo ".github/workflows/docs-inventory-refresh.yml (scheduled run)."
+            echo
+            echo "Co-Authored-By: docs-inventory-refresh <noreply@balizero.com>"
+          } >"$COMMIT_MSG_FILE"
+          git commit -F "$COMMIT_MSG_FILE"
+          rm -f "$COMMIT_MSG_FILE"
           git push origin "$BRANCH"
+
+          PR_BODY_FILE=$(mktemp)
+          {
+            echo "Scheduled regen of \`docs/DOCS_INVENTORY.md\` + DOCSYNC markers — cures the wallclock \`inventory-check\` gate rot (deterministic LIVE/STALE/ARCHIVED facts, independent of PR content — P3-prime, research/operations/2026-07-17-push-pipeline-optimization-spec.md §P3)."
+            if [ -n "$FLIP_LINE" ]; then
+              echo
+              echo "$FLIP_LINE"
+            fi
+            echo
+            echo "Docs-only diff, auto-generated, safe to auto-merge. See \`scripts/docs_inventory_regen.sh\` header and memory \`discovery_docs_guardian_wallclock_gate_rot_2026_07_16\` for the full incident history."
+          } >"$PR_BODY_FILE"
           PR_URL=$(gh pr create --base main --head "$BRANCH" \
             --title "chore(docs): scheduled inventory refresh (${DATE_SLUG})" \
-            --body "Scheduled regen of \`docs/DOCS_INVENTORY.md\` + DOCSYNC markers — cures the wallclock \`inventory-check\` gate rot (calendar-driven LIVE/STALE/ARCHIVED reclassification, independent of PR content). Docs-only diff, auto-generated, safe to auto-merge. See \`scripts/docs_inventory_regen.sh\` header and memory \`discovery_docs_guardian_wallclock_gate_rot_2026_07_16\` for the full incident history.")
+            --body-file "$PR_BODY_FILE")
+          rm -f "$PR_BODY_FILE"
           echo "Opened: $PR_URL"
           PR_NUM=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
-          gh pr merge "$PR_NUM" --auto --squash || echo "::warning::auto-merge arm failed (see log above) — needs manual check, PR left open"
+          # BLOCKER-4 fix (red-team 2026-07-18): a swallowed `::warning::`
+          # here left this whole run GREEN even when the flip-PR never got
+          # armed to merge — Esiste != Armato at the PR level, invisible to
+          # anything watching only this workflow's conclusion. An arm
+          # failure now fails this run for real; the liveness guardian's own
+          # stuck-flip-PR EFFECT-check (docs_inventory_refresh_liveness.py,
+          # same red-team round) is the second, independent backstop in case
+          # this run's own red state is itself missed.
+          if ! gh pr merge "$PR_NUM" --auto --squash; then
+            echo "::error::auto-merge arm failed for $PR_URL — the flip-PR is open but NOT armed to merge; docs/DOCS_INVENTORY.md will NOT update on main until this is re-armed or merged manually. Failing this run so the failure is visible (BLOCKER-4)." >&2
+            exit 1
+          fi

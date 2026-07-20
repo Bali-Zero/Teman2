@@ -1,10 +1,12 @@
 """Tests for the Batch A membership compiler (P0 precondition).
 
-Pins: the reason-code predicates (plan §1), the in-scope split (114 A-serving
-extracted, 107 A-empty watchlist), and the deliberate exclusion of the two
-OSS-sourced cured codes (20111, 49213) — they carry `_l2_source` so they are
-NOT part of the no-scope/PP28-fill population Batch A targets, even though the
-pilot cured them. A silent inclusion or a census drift must fail here.
+Pins: the reason-code predicates (plan §1), the in-scope split (as of the
+Lot 7 cure: 23 A-serving extracted, 198 A-empty watchlist -- see the history
+comment on test_census_and_in_scope_on_real_canonical for how this number
+moves lot-by-lot), and the deliberate exclusion of the two OSS-sourced cured
+codes (20111, 49213) — they carry `_l2_source` so they are NOT part of the
+no-scope/PP28-fill population Batch A targets, even though the pilot cured
+them. A silent inclusion or a census drift must fail here.
 """
 
 from __future__ import annotations
@@ -58,23 +60,94 @@ def test_serving_code_with_l2_source_is_not_serving():
 
 
 def test_census_and_in_scope_on_real_canonical():
+    # Census AFTER the Lot 7 cure (kbli/lot7-data-apply, batch_a_lot7.json)
+    # landed on main. Post-Lot-6 baseline was 36/0/185 (in-scope 36, per this
+    # test's own prior history, #2843). The Lot 7 cure's 13-code detach
+    # (per_skala -> []) is the ONLY contributor to this census (no other
+    # merged commit between the Lot 6 re-emit and this one touches per_skala,
+    # pp28_sources, _l2_source, or _l2_status). Unlike Lot 6 (12 pp28 + 1
+    # orphan), THIS lot's shift IS the naive 36-13=23: verified directly
+    # against the pre-cure canonical (not inferred) by reading each of the
+    # 13 codes' pp28_sources/per_skala/_l2_source/_l2_status through
+    # emit_batch_membership._classify()'s own predicate BEFORE running
+    # cure_canonical_collisions.py --apply -- all 13 codes (85403, 85404,
+    # 86109, 86201, 86202, 86203, 85330, 85401, 86102, 91212, 90111, 91222,
+    # 91424) classified A-serving/pp28 pre-cure, ZERO were A-serving/orphan
+    # (every one of the 13 already carries a non-empty pp28_sources in the
+    # cure spec itself -- 6 self-referencing health/education codes, plus
+    # multi-parent/collision-citation codes, but none with an empty array).
+    # Net: pp28 loses the full 13 (36-13=23), orphan stays at its Lot-6 floor
+    # of 0 (no orphan existed pre-cure to lose), gap gains the full 13
+    # (185+13=198), summing to the full -13 in-scope shift (36-13=23). Total
+    # population is invariant at 221.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 113
-    assert cen["A-serving/orphan"] == 1
-    assert cen["A-empty/gap"] == 107
-    assert cen["_in_scope_total"] == 114
+    assert cen["A-serving/pp28"] == 23
+    # census() only inserts a reason_code key when >=1 member has it (plain
+    # dict accumulation, no defaultdict) -- orphan has hit exactly zero since
+    # Lot 6 (80190 was the last orphan, detached by Lot 6; #2843), so the key
+    # is genuinely absent, not present-and-zero. Use .get() here, matching
+    # how main() already prints it (`cen.get(k, 0)`).
+    assert cen.get("A-serving/orphan", 0) == 0
+    assert cen["A-empty/gap"] == 198
+    assert cen["_in_scope_total"] == 23
     assert cen["_total"] == 221
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
     assert "20111" not in by and "49213" not in by
-    # the orphan is in scope
-    assert by["80190"]["reason_code"] == m.REASON_SERVING_ORPHAN
-    assert by["80190"]["in_scope"] is True
+    # 80190 was the Lot 6 cure's lone pre-cure orphan (empty pp28_sources);
+    # it is now detached like the rest of Lot 6, no longer serving/orphan.
+    assert by["80190"]["reason_code"] == m.REASON_EMPTY_GAP
+    assert by["80190"]["in_scope"] is False
     # a no-scope cured pilot code is present but OUT of scope (watchlist)
     assert by["51103"]["reason_code"] == m.REASON_EMPTY_GAP
     assert by["51103"]["in_scope"] is False
+    # every Lot 1 cured code migrated to the gap watchlist (out of scope)
+    lot1 = ["01287", "01700", "02201", "02402", "02409", "05102", "05200",
+            "08920", "19206", "36003", "38122", "38222", "39001"]
+    for code in lot1:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 2 cured code migrated to the gap watchlist (out of scope)
+    lot2 = ["42999", "47771", "49233", "49296", "50113", "52103", "52105",
+            "52211", "52219", "52232", "52239", "52299", "59131"]
+    for code in lot2:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 3 cured code migrated to the gap watchlist (out of scope)
+    lot3 = ["60101", "60103", "60201", "60203", "60311", "61905", "61909",
+            "64110", "64220", "64320", "64330", "64920", "64940"]
+    for code in lot3:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 4 cured code migrated to the gap watchlist (out of scope)
+    lot4 = ["64955", "64996", "64997", "66113", "66116", "66123", "66124",
+            "66129", "66131", "66132", "66149", "66153", "66159"]
+    for code in lot4:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 5 cured code migrated to the gap watchlist (out of scope)
+    lot5 = ["66192", "66197", "66211", "66224", "66292", "66299", "66309",
+            "68123", "68125", "68126", "68127", "68129", "70100"]
+    for code in lot5:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 6 cured code migrated to the gap watchlist (out of scope) --
+    # 80190 included, per the pre-cure-orphan history note above.
+    lot6 = ["72101", "72103", "72105", "75001", "75002", "75009", "77397",
+            "78109", "82911", "85321", "85323", "85324", "80190"]
+    for code in lot6:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 7 cured code migrated to the gap watchlist (out of scope) --
+    # all 13 were pre-cure A-serving/pp28 (none orphan), per the history
+    # note above.
+    lot7 = ["85403", "85404", "86109", "86201", "86202", "86203", "85330",
+            "85401", "86102", "91212", "90111", "91222", "91424"]
+    for code in lot7:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
 
 
 def test_members_sorted_deterministic():

@@ -14,7 +14,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/nuzantara/scripts/lead_intent_matcher_run.sh</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/lead_intent_matcher_run.sh</string>
     </array>
 
     <key>StartInterval</key>
@@ -25,6 +25,8 @@
 
     <key>EnvironmentVariables</key>
     <dict>
+        <key>REPO_ROOT</key>
+        <string>/Users/nuzantara/nuzantara-deploy</string>
         <key>PATH</key>
         <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
     </dict>
