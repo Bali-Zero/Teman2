@@ -408,6 +408,56 @@ round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
   8 sibling 2-di-3-colonne dichiarati in PENDING-ARMS (tutti fail-safe direction),
   PR dedicato a valle.
 
+- **2026-07-20 — IDENTITY-BACKFILL PIPELINE BUILT + GATE-11 SHIPPED, rebased onto m248's
+  npwp/advisory-lock work (branch `agent/nuzantara/backend-rag/identity-backfill-0718`, not yet
+  merged):** the S4 mandate's structural cure — strong-id CRM coverage was the actual bottleneck
+  for auto-commit, not model power (a more powerful matching model produces zero more auto-commits
+  against an empty key book). Built `scripts/intake_identity_backfill.py` (manifest exclusions →
+  census → BATCH-C cross-DB pairing on unique-phone+exact-name → BATCH-A → rollback → measure), all
+  gated fill-only (never overwrites a non-empty identifier column on conflict) with a
+  **queue-contradiction gate** (a proposed backfill pair is SKIPPED if any `review_pending` document
+  names the same local client with a DIFFERENT valid passport than the one about to be written —
+  23/277 doc-confirmed, 33/277 contradicted-and-blocked, ~244 clean). **GATE-11** (routing.py +
+  client_enricher.py): a backfilled identifier is born `verified:false` in
+  `custom_fields.identity_backfill.<col>` and CANNOT alone trigger AUTO_ATTACH — `_classify_decision`
+  degrades a single-strong-candidate match to LINK_CANDIDATE when `id_verified is False`; the value
+  is promoted to `verified:true` only when a REAL committed document later confirms the same
+  normalized value (closes the Fellegi-Sunter error-contagion risk: a false-positive backfill can
+  never become its own future matching key). **Rebase reconciliation (2026-07-20):** main had moved
+  153 commits since this branch's base, 2 of which (`9abbca2279` person-npwp strong-id, `b30103c32a`
+  advisory-locking + in-TX strong-id revalidation in `auto_attach.py`) directly overlapped
+  routing.py/client_enricher.py/writer.py. Confirmed by design read: GATE-11's `id_verified` gate and
+  main's `_strong_id_still_owned` in-TX revalidator are COMPLEMENTARY, not redundant — GATE-11 gates
+  the INITIAL classification (routing.py, before a proposal is even created), `_strong_id_still_owned`
+  re-verifies OWNERSHIP FRESHNESS at commit time (auto_attach.py) and does not consult backfill
+  provenance at all, so no extension of GATE-11 to npwp candidates was needed (nothing writes npwp
+  with unverified provenance). Manual conflict resolution composed both patches at their shared
+  insertion point in `client_enricher.py` (fill-only skip → GATE-11 promotion → early-exit →
+  advisory-lock acquisition → UPDATE); 2 test-fixture regressions surfaced and were fixed
+  (`FakeConn.fetchval` missing; an npwp test assumed sequential overwrite, now correctly asserts the
+  fill-only conflict-skip). 576/576 intake tests green post-rebase. **WIRE+DRAIN (executed, honest
+  numbers):** fresh census re-run found the strong-id gap this mandate targeted had ALREADY shrunk
+  substantially during the 2-day gap via sibling work (m227 folder + m248 npwp): local passport
+  coverage 73.8%, 0 kitas at design time. BATCH-A (cross-DB unique-phone strict pairing) is now
+  **exhausted: 0/1261 pairs WRITE-verdict** (887 already fill-only-filled locally, 339 no valid prod
+  passport, 35 manifest-excluded) — the lever this council-verified batch targets was mostly consumed
+  by that sibling work before this branch could run it. BATCH-C (human-committed doc backfill) had
+  real yield: **applied 6/148** (3 passport, 3 kitas; rest already-filled/client-not-found/invalid/
+  excluded/quarantined), verified via `measure`: passport 1306→1309 (+3), kitas 0→3. Checked whether
+  any `review_pending` proposal benefits immediately: **25 proposals reference the 6 backfilled
+  clients as a candidate, 0 currently matched via the just-filled column** (`entity_resolution` is a
+  routing-time snapshot, predates the backfill; all 25 sit on weaker `fuzzy_full_name`/`sender_phone`
+  matches, LINK_CANDIDATE/AMBIGUOUS, never AUTO_ATTACH). Re-running resolution on them needs a
+  route-only reroute mode analogous to `--reroute-drive-folder`/`--reroute-npwp` in
+  `intake_reprocess_backlog.py`, which does not exist yet for passport/kitas-backfill — NOT built this
+  session: it touches the shared live-worker file, the precedent modes each went through Codex
+  red-team rounds, and the yield (25 proposals, capped at LINK_CANDIDATE by GATE-11 regardless since
+  the backfilled ids are unverified) doesn't justify rushing that rigor at session tail. Logged as a
+  scoped PENDING-ARMS follow-up. **Honest headline: the structural gap this mandate targeted was
+  already substantially closed by parallel sibling work before this branch could exercise its own
+  batches — GATE-11 (the safety mechanism) is this session's durable contribution, governing every
+  future backfill (this pipeline's and anyone else's), not a one-time volume unlock.** PR not yet
+  opened (pending the corner-update push).
 - **2026-07-19 — PERSON-NPWP STRONG-ID LIVE (m248, PR #2775 merged) + BACKLOG REROUTED + WIRE PROVEN:**
   `routing._match_person_strong` now matches `clients.npwp` (exactly 15/16 ASCII digits, dup→AMBIGUOUS,
   cross-table collision with `companies.npwp_company`→AMBIGUOUS/unknown; 5 Codex adversarial rounds →
