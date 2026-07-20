@@ -4,7 +4,7 @@ domain: operations
 client_case: none
 adversarial_review: codex
 adversarial_review_date: 2026-07-20
-adversarial_review_verdict: "FAIL on first pass -> fixed, re-verified independently by the orchestrator (Fable), see §7"
+adversarial_review_verdict: "FAIL on first pass -> fixed; a second, INDEPENDENT parallel review (also Codex, different session, concurrent with the first) found the first fix's trust boundary too broad -> hardened, re-verified independently by the orchestrator (Fable), see 'Adversarial review' section, point 5"
 sources:
   - apps/backend-rag/backend/app/routers/whatsapp_chat.py
   - apps/backend-rag/backend/services/integrations/wa_inbox_bot.py
@@ -283,3 +283,36 @@ refuter's word alone — standing "even the refuter hallucinates" rule):
    elsewhere in this spec (§1, wa_outbox_worker → wa_inbox_bot references)
    and in the bot corner (`.claude/skills/bot/` §2 established truth #1) —
    this is a citation-completeness nit, not an unverified claim. No change.
+5. **[CONFIRMED, HARDENED — second independent pass] Fix #1's trust
+   boundary was still too broad.** A SEPARATE, genuinely concurrent Claude
+   session ran its own Codex adversarial review of the same original diff
+   (git evidence: its `Merge PR 2872` commit, 05:13:04, predates fix #1's
+   push at 07:30:09 by >2h — it never saw fix #1) and found that
+   `current_user.get("role") in ("internal", "admin")` is not actually
+   scoped to "this is the WA bot resolving a real sender". Traced live:
+   `X-Internal-Key` (`settings.wa_mirror_internal_key`, `hybrid_auth.py:
+   369-384`) is a SHARED secret — every holder gets the identical
+   `role="internal"` pseudo-identity, and the comment at that call site
+   names OTHER Pro-side consumers ("scripts like
+   wa-mirror-auto-promote-leads", also accepted by `crm_clients.py:122-136`
+   via the same key). So fix #1 let ANY holder of that shared key — not
+   just `wa_inbox_bot.py` — set `profile.email` to an arbitrary team
+   member's address, which (once the Phase-2 CRM tools land, flag-gated)
+   would let it read that member's CRM book under an impersonated scope.
+   The `role == "admin"` allowance (X-Debug-Key) was also unnecessary — no
+   shipped caller uses it. **Fix**: adopted the twin session's stronger,
+   already-tested design rather than re-deriving it — closed
+   `InternalSenderProfile` Pydantic model (`extra="forbid"`, `role:
+   Literal["creator","team"]`) replacing the free-form `dict[str, Any]`;
+   `_is_trusted_wa_profile_caller()` now requires `role == "internal"`
+   **and** `channel == "whatsapp"` (verified `wa_inbox_bot.py` always sets
+   `channel="whatsapp"` in its payload, so the legitimate path is
+   unaffected); `role == "admin"` is no longer trusted; an untrusted
+   `profile` attempt now gets an explicit `403`, not a silent drop. 8
+   tests in `TestProfileFieldPrivilegeGuard` (guilt: internal+whatsapp
+   forwards, admin rejected, internal-off-whatsapp rejected, schema
+   rejects unknown fields/roles; innocence: regular user, anonymous,
+   profile-absent). Full router + identity + orchestrator suites re-run
+   green (161 passed, 11 pre-existing skips) after the change. The
+   never-pushed twin branch/commit itself was left untouched (sibling
+   discipline) — its idea was ported, not its commit.
