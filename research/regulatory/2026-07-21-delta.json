@@ -1,0 +1,58 @@
+{
+  "run_at": "2026-07-21T07:40:07+08:00",
+  "today": "2026-07-21",
+  "yesterday_seen_count": 23,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://ortax.org/news (dead path — 'Artikel tidak ditemukan')",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (JS-rendered, no results extractable from raw HTML)",
+    "https://jdih.kemenkeu.go.id/peraturan (timeout)",
+    "https://www.imigrasi.go.id (homepage generic, no news feed extractable)"
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "SE-9/PJ/2026",
+      "title_id": "SE-9/PJ/2026 tentang Tata Cara Permintaan Informasi dan/atau Bukti atau Keterangan dalam Rangka Pelaksanaan Akses Informasi Keuangan untuk Kepentingan Perpajakan",
+      "title_en": "Directorate General of Taxes Circular Letter SE-9/PJ/2026 on the Procedure for Requesting Information and/or Evidence or Statements for the Implementation of Financial Information Access for Tax Purposes",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "impact_note": "DJP formalizes and expands its authority to request client financial and crypto-asset data (banks + CARF-reporting crypto providers) for EOI, compliance monitoring, audits, collection, and criminal tax investigations — raises compliance/audit exposure for PT PMA and expat clients holding Indonesian bank accounts or crypto assets. No immediate client deadline; relevant to audit-risk posture.",
+      "summary": "Dirjen Pajak Bimo Wijayanto menerbitkan SE-9/PJ/2026 (berlaku sejak 16 Juli 2026) yang memperbarui tata cara permintaan Informasi dan/atau Bukti atau Keterangan (IBK) dalam rangka akses informasi keuangan untuk kepentingan perpajakan, menyusul berlakunya PMK 108/2025. Cakupan permintaan IBK diperluas mencakup EOI, pengawasan kepatuhan, intelijen perpajakan, pemeriksaan, penagihan, pemeriksaan bukti permulaan, penyidikan, hingga upaya administratif/hukum (keberatan, banding, PK, APA, MAP).",
+      "source": "DDTC News + CNBC Indonesia (cross-validated) | https://news.ddtc.co.id/berita/nasional/1820967/djp-perbarui-tata-cara-permintaan-informasi-keuangan-wajib-pajak",
+      "verbatim_excerpt": "Surat edaran ini dimaksudkan untuk menjadi pedoman bagi unit kerja di lingkungan DJP dalam pelaksanaan permintaan informasi dan/atau bukti atau keterangan dalam rangka akses informasi keuangan untuk kepentingan perpajakan.",
+      "confidence": "high",
+      "first_seen_at": "2026-07-21T07:40:07+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PP 30/2026",
+    "SE-9/PJ/2026"
+  ]
+}
