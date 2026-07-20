@@ -120,7 +120,8 @@ leads, not facts, until re-grepped).
       to this diff)
 - [x] Import chain + syntax clean on all 5 modified files
 - [ ] PROVE-LIVE: re-query `meta_inbox_messages` for thread 77 post-deploy, confirm
-      `sent_at - created_at` shifts down from the 33-94s band — **BLOCKED**, see below
+      `sent_at - created_at` shifts down from the 33-94s band — deploy is live (see below); no
+      new exchange on thread 77 since 2026-07-20 08:19 UTC yet to measure against
 - [ ] PROVE-LIVE watch item (from adversarial review): monitor the WA channel's
       abstain/low-context-quality rate after rollout, since multi-hop queries now resolve via
       the post-loop synthesis path rather than in-loop reasoning
@@ -146,6 +147,25 @@ not fixable from this side. The currently-deployed (pre-fix) app remains healthy
 **Action**: stopped retrying (2 attempts both hit the same outage; further reruns just burn
 CI minutes against a control plane that isn't up). Deploy will be retried once Fly's status
 page marks this incident resolved. PROVE-LIVE steps above stay blocked until then.
+
+## Deploy resolved — fix is live (2026-07-20, ~08:31 UTC)
+
+Fly's status page moved to "Monitoring" (fix implemented) at 08:02 UTC. Rerunning run
+29724366888 at that point succeeded end-to-end: DB migrations, rolling deploy, SQL v2
+re-run, Python-idiom migrations, and post-deploy health check all passed; rollback never
+triggered. Verified independently (not just trusting CI's own verdict):
+
+- `curl https://nuzantara-rag.fly.dev/health` → `200`, `"status":"healthy"`
+- `fly status -a nuzantara-rag` — all 3 machines (`api`/`drive`/`rag`) show `LAST UPDATED`
+  08:18-08:19 UTC, i.e. genuinely fresh (the prior stale check was ~06:3x UTC, from before
+  either deploy attempt)
+
+`max_steps=2` is live in production on both WhatsApp call paths. The remaining PROVE-LIVE
+item — re-measuring thread 77's `sent_at - created_at` — is not yet possible: no new
+exchange on that thread has landed since the deploy went live (checked 08:32 UTC, ~13min
+post-deploy window). This isn't a blocker, just contingent on real client traffic; re-run
+the query in `## Verification checklist` above next time this file is revisited, or whenever
+thread 77 has a fresh exchange to check.
 
 ## Follow-up (not in this PR)
 
