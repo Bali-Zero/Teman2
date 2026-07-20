@@ -597,3 +597,215 @@ def test_guilt_d5_schema_and_prompt_carry_oss_native_locator_clause(js_source: s
         "the OSS-native locator amendment must not have displaced the pre-existing "
         '"pp28_sources is empty is never a reason to skip" guarantee'
     )
+
+
+# ---------------------------------------------------------------------------
+# 9. DERIVED-FACT CERTIFICATION RULE (contract refinement #2, 2026-07-19 Lot 7 conductor gate
+#    §3.5/§5.4, precondition for Lot 8 — mandatory cure deliverable): a rule-DERIVED
+#    exposed_facts_inventory entry (fiktif_positif / derived_license) can never carry its own
+#    page/row locator — it is a legal consequence the OSS-RBA platform attaches once its BASE
+#    facts (kategori_risiko, jangka_waktu, same per_skala tier) are themselves verified, per PP
+#    28/2025 Pasal 225(1) (Menengah Tinggi) / Pasal 230 (Tinggi); Pasal 124(4) is the SEPARATE
+#    derived-license rule. These are textual-invariant checks (schema/prompt shape, gate wired);
+#    the BEHAVIORAL guilt+innocence regression suite lives at
+#    infra/workflows/tests/test-kbli-certification-contract.mjs (tests 6-9), which drives the
+#    actual derivedEntryUnverified()/factsInventoryUnverified()/adjudicateCode() logic end-to-end.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_derived_fields_registry_is_scoped_to_fiktif_positif_and_derived_license(
+    js_source: str,
+) -> None:
+    """GUILT: the stricter derived-fact rule must apply ONLY to fiktif_positif/derived_license —
+    never accidentally widened to kategori_risiko/jangka_waktu/scope_uraian (which still need only
+    a plain page/row locator, per the Lot 6 patch). A DERIVED_FIELDS registry that silently grew
+    to include a base fact would make ordinary crosswalk facts subject to a citation requirement
+    they were never meant to carry."""
+    assert re.search(
+        r'const DERIVED_FIELDS = \[\s*"fiktif_positif",\s*"derived_license",?\s*\]', js_source
+    ), "DERIVED_FIELDS must be exactly [fiktif_positif, derived_license] — no base fact included"
+
+
+def test_guilt_derived_entry_unverified_checks_base_facts_and_citation(js_source: str) -> None:
+    """GUILT (the mandate's guilt test, verbatim): base facts absent -> derived absent -> no
+    certification. derivedEntryUnverified() must check BOTH the base kategori_risiko AND
+    jangka_waktu entries are themselves verified with a non-empty source_locator before it will
+    ever accept a derived field's own status="verified" at face value."""
+    assert re.search(r"function\s+derivedEntryUnverified\s*\(\s*entry\s*,\s*inventory\s*\)", js_source), (
+        "derivedEntryUnverified(entry, inventory) not found — the derived-fact rule is not wired"
+    )
+    _params, body = _function_signature_and_body(js_source, "derivedEntryUnverified")
+    assert re.search(r'riskEntry\.status\s*===\s*"verified"', body), (
+        "derivedEntryUnverified does not check the base kategori_risiko entry's own verified status"
+    )
+    assert re.search(r'jwEntry\.status\s*===\s*"verified"', body), (
+        "derivedEntryUnverified does not check the base jangka_waktu entry's own verified status"
+    )
+    assert "source_locator" in body, (
+        "derivedEntryUnverified does not require a non-empty source_locator on the base facts"
+    )
+    assert re.search(r"if\s*\(\s*!baseFactsVerified\s*\)\s*return\s+true", body), (
+        "derivedEntryUnverified does not fail-closed (return true) when base facts are unverified"
+    )
+
+
+def test_innocence_derived_entry_can_resolve_verified_when_fully_cited(js_source: str) -> None:
+    """INNOCENCE (the mandate's innocence test, verbatim): base verified + formula cited ->
+    derived verified -> certification possible. derivedEntryUnverified() must have a path that
+    returns false (i.e. the field counts as verified) — proves the rule does not make a genuinely
+    derived, correctly-cited fact impossible to certify."""
+    _params, body = _function_signature_and_body(js_source, "derivedEntryUnverified")
+    assert re.search(r"return\s+false\s*;\s*$", body.strip()), (
+        "derivedEntryUnverified has no reachable `return false` path — a fully verified+cited "
+        "derived fact could never certify, contradicting the mandate's innocence requirement"
+    )
+
+
+def test_guilt_expected_article_matches_pasal_225_230_124(js_source: str) -> None:
+    """GUILT: the article-choice function must cite the EXACT legal bases from the gate report
+    (§3.5, adversarial BLOCKER, corrected legal base): Pasal 225(1) for Menengah Tinggi
+    (Sertifikat Standar deemed verified), Pasal 230 for Tinggi (Izin auto-issued), Pasal 124(4)
+    ONLY for the separate derived_license field — never swapped or conflated (the exact defect
+    the first-signing BLOCKER corrected: citing 230/124(4) for a Menengah Tinggi record)."""
+    assert re.search(r"function\s+expectedArticleFor\s*\(\s*field\s*,\s*riskValue\s*\)", js_source), (
+        "expectedArticleFor(field, riskValue) not found"
+    )
+    _params, body = _function_signature_and_body(js_source, "expectedArticleFor")
+    assert '"225(1)"' in body and "Menengah Tinggi" in body, (
+        "expectedArticleFor does not map Menengah Tinggi -> Pasal 225(1)"
+    )
+    assert '"230"' in body and '"Tinggi"' in body, (
+        "expectedArticleFor does not map Tinggi -> Pasal 230"
+    )
+    assert '"124(4)"' in body and "derived_license" in body, (
+        "expectedArticleFor does not map derived_license -> Pasal 124(4)"
+    )
+
+
+def test_guilt_derivation_citation_pins_the_versioned_script(js_source: str) -> None:
+    """GUILT: derivationCitationValid() must require the EXACT versioned script path
+    (scripts/derive_fiktif_positif.py) and the PP 28/2025 instrument — a citation naming a
+    different script or no instrument at all must not validate (never a bare "trust me" flag)."""
+    assert re.search(r"function\s+derivationCitationValid\s*\(", js_source), (
+        "derivationCitationValid() not found"
+    )
+    _params, body = _function_signature_and_body(js_source, "derivationCitationValid")
+    assert "scripts/derive_fiktif_positif.py" in body, (
+        "derivationCitationValid does not pin the versioned script scripts/derive_fiktif_positif.py"
+    )
+    assert "28" in body and "2025" in body, (
+        "derivationCitationValid does not check for the PP 28/2025 instrument"
+    )
+
+
+def test_guilt_facts_inventory_unverified_dispatches_derived_fields_to_the_stricter_rule(
+    js_source: str,
+) -> None:
+    """GUILT: factsInventoryUnverified() must route a derived field's entry through
+    derivedEntryUnverified() BEFORE accepting its own status="verified" at face value — otherwise
+    the stricter rule is defined but never actually wired into the certification gate."""
+    _params, body = _function_signature_and_body(js_source, "factsInventoryUnverified")
+    assert re.search(r'entry\.status\s*!==\s*"verified"', body), (
+        "factsInventoryUnverified must still check entry.status !== \"verified\" as the first, "
+        "universal guard (unchanged from the Lot 6 patch)"
+    )
+    assert re.search(r"isDerivedField\s*\(\s*entry\.field\s*\)", body), (
+        "factsInventoryUnverified does not dispatch derived fields to isDerivedField()"
+    )
+    assert re.search(r"derivedEntryUnverified\s*\(\s*entry\s*,\s*inventory\s*\)", body), (
+        "factsInventoryUnverified does not call derivedEntryUnverified(entry, inventory) for a "
+        "derived field — the stricter rule is defined but not wired into the certification gate"
+    )
+
+
+def test_innocence_d5_schema_and_prompt_describe_derivation_citation(js_source: str) -> None:
+    """INNOCENCE (proves the seat-visible surface, not just the deterministic gate, carries the
+    fix): D5_SCHEMA's exposed_facts_inventory item schema AND d5Prompt's body must both describe
+    derivation_citation and the three articles — a seat that never reads about this requirement
+    cannot be expected to supply it."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    assert "derivation_citation" in schema_body, (
+        "D5_SCHEMA does not declare a derivation_citation property on exposed_facts_inventory items"
+    )
+    assert "225(1)" in schema_body and "230" in schema_body and "124(4)" in schema_body, (
+        "D5_SCHEMA's derivation_citation description does not name all three articles"
+    )
+
+    _params, prompt_body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "derivation_citation" in prompt_body, (
+        "d5Prompt does not instruct the seat to populate derivation_citation"
+    )
+    assert "scripts/derive_fiktif_positif.py" in prompt_body, (
+        "d5Prompt does not name the versioned script scripts/derive_fiktif_positif.py"
+    )
+    assert "225(1)" in prompt_body and "230" in prompt_body and "124(4)" in prompt_body, (
+        "d5Prompt does not name all three articles (225(1) MT / 230 Tinggi / 124(4) derived-license)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. JOURNAL PROVENANCE (Lot 7 gate adversarial MINOR #5, §5.6b — mandatory cure deliverable):
+#     every seat result must carry label + prompt sha256 + schema sha256 + runner blob sha256, and
+#     a control's provenance is tagged control_tag_applied_after=true strictly AFTER the seat-blind
+#     adjudicateCode() call already returned. The BEHAVIORAL guilt+innocence regression suite
+#     (tests 10-11) lives at infra/workflows/tests/test-kbli-certification-contract.mjs.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_seat_provenance_computed_from_the_real_prompt_and_schema(js_source: str) -> None:
+    """GUILT: promptSha256/schemaSha256 must be computed from the ACTUAL prompt text and schema
+    object handed to agent() (via callSeat()) — never a placeholder or a hash of the label alone,
+    which would defeat the whole "prove which prompt produced which verdict" purpose."""
+    assert re.search(r"function\s+sha256Hex\s*\(\s*message\s*\)", js_source), (
+        "sha256Hex(message) not found — journal provenance has no hashing primitive"
+    )
+    assert re.search(r"async function\s+callSeat\s*\(", js_source), (
+        "callSeat() wrapper not found — seat calls are not instrumented for provenance"
+    )
+    _params, body = _function_signature_and_body(js_source, "callSeat")
+    assert re.search(r"sha256Hex\s*\(\s*promptText\s*\)", body), (
+        "callSeat does not hash the actual prompt text"
+    )
+    assert re.search(r"sha256Hex\s*\(\s*JSON\.stringify\s*\(\s*opts\.schema\s*\)\s*\)", body), (
+        "callSeat does not hash the actual schema object (JSON.stringify(opts.schema))"
+    )
+    assert "runnerBlobSha256" in body, "callSeat does not attach runnerBlobSha256 to the provenance record"
+    assert "label: opts.label" in body, "callSeat does not carry the seat's own label into the provenance record"
+
+
+def test_guilt_adjudicate_code_returns_seat_provenance_for_d1_and_d5(js_source: str) -> None:
+    """GUILT: adjudicateCode's return object must expose seat_provenance for D1 and D5 (and D2
+    when it ran) — a provenance mechanism that computes hashes but never surfaces them on the
+    result would be dead code, unusable by any downstream audit."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateCode")
+    assert "seat_provenance" in body, "adjudicateCode's return object does not include seat_provenance"
+    assert re.search(r"D1:\s*d1Call\.provenance", body), (
+        "adjudicateCode does not surface D1's provenance on the result"
+    )
+    assert re.search(r"D5:\s*d5Call\.provenance", body), (
+        "adjudicateCode does not surface D5's provenance on the result"
+    )
+
+
+def test_innocence_control_tag_applied_after_adjudicate_code_returns(js_source: str) -> None:
+    """INNOCENCE: control_tag_applied_after must be added to the provenance record ONLY inside
+    adjudicateInnocence(), strictly AFTER awaiting adjudicateCode(code) — proving the tag is
+    runner-side bookkeeping applied post-hoc, never something a seat call could see or be biased
+    by (same SYMMETRIC BLIND TREATMENT v2 discipline as innocenceControl/innocence below it).
+    Reuses the existing agent()-absence guilt check for this function (section 7 above) — this
+    test only adds the control_tag_applied_after-specific assertions."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert re.search(r"await\s+adjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence must await adjudicateCode(code) before any provenance tagging"
+    )
+    assert "control_tag_applied_after: true" in body, (
+        "adjudicateInnocence does not tag control_tag_applied_after: true onto the seat provenance"
+    )
+    # the tag must be applied to the ALREADY-RETURNED adjudication's provenance, never built from
+    # scratch or passed to a fresh seat call.
+    assert re.search(r"adjudication\.seat_provenance", body), (
+        "control_tag_applied_after is not derived from adjudication.seat_provenance — it must be "
+        "a post-hoc relabeling of the seat-blind result, not an independently constructed value"
+    )
