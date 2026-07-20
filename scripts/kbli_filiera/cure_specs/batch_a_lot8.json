@@ -37,7 +37,8 @@
       "flavor": "pp28-source-absent-full-scan",
       "judul": "Klub Golf",
       "data_note": "Crosswalk 93122<->93122 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93122'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
-      "whatYouNeed": "This golf-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+      "whatYouNeed": "This golf-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team.",
+      "zantaraOpener_correction": "Golf in Bali is a premium, established market — but this code's specific risk classification and licensing regime could not be confirmed against the official 2025 regulation text. Let me walk you through what's verified and the honest gap in what's not."
     },
     {
       "code": "93123",
