@@ -1,7 +1,7 @@
 """Tests for the Batch A membership compiler (P0 precondition).
 
 Pins: the reason-code predicates (plan §1), the in-scope split (as of the
-Lot 7 cure: 23 A-serving extracted, 198 A-empty watchlist -- see the history
+Lot 9 cure: 6 A-serving extracted, 215 A-empty watchlist -- see the history
 comment on test_census_and_in_scope_on_real_canonical for how this number
 moves lot-by-lot), and the deliberate exclusion of the two OSS-sourced cured
 codes (20111, 49213) — they carry `_l2_source` so they are NOT part of the
@@ -78,20 +78,42 @@ def test_census_and_in_scope_on_real_canonical():
     # multi-parent/collision-citation codes, but none with an empty array).
     # Net: pp28 loses the full 13 (36-13=23), orphan stays at its Lot-6 floor
     # of 0 (no orphan existed pre-cure to lose), gap gains the full 13
-    # (185+13=198), summing to the full -13 in-scope shift (36-13=23). Total
-    # population is invariant at 221.
+    # (185+13=198), summing to the full -13 in-scope shift (36-13=23).
+    #
+    # Lot 8 cure (fix(kbli): Lot 8 cure -- apply batch_a_lot8.json, commit
+    # d50d5f33ca, 9-code detach-only) shifted it AGAIN, down to 14: this
+    # assertion was never refreshed after that lot landed -- a real gap in
+    # this program's per-lot ritual (every one of Lots 2/4/5/6/7 bundled a
+    # "re-emit membership + refresh census expectations" commit; Lot 8 did
+    # not). Verified directly by diffing _classify() per-code between
+    # d50d5f33ca^ and d50d5f33ca: all 9 codes (91425, 93113, 93115, 93121,
+    # 93122, 93123, 93124, 93125, 93126) flip A-serving/pp28 -> A-empty/gap,
+    # zero orphans involved. Net: pp28 23-9=14, gap 198+9=207.
+    #
+    # Lot 9 cure (this branch, commit 39c94f78f5, batch_a_lot9.json, 8-code
+    # Group-A detach) shifts it a third time, down to 6. Verified directly by
+    # diffing _classify() per-code between 9acc7fa3d4 (Lot 8 Appendix A tip,
+    # pre-Lot-9) and 39c94f78f5 (current HEAD): all 8 codes (93127, 93128,
+    # 93129, 93192, 93194, 93195, 93197, 93199) flip A-serving/pp28 ->
+    # A-empty/gap, zero orphans involved. Net: pp28 14-8=6, gap 207+8=215.
+    # (93191/93193 are the 2 tier-scoped-held members of this lot -- per_skala
+    # untouched, so they do NOT flip census; only status_mapping/whatChanged
+    # changed for them, which _classify() does not read.)
+    #
+    # Total population is invariant at 221 across all three lots (detach-only
+    # cures never remove a record, only zero its per_skala).
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 23
+    assert cen["A-serving/pp28"] == 6
     # census() only inserts a reason_code key when >=1 member has it (plain
     # dict accumulation, no defaultdict) -- orphan has hit exactly zero since
     # Lot 6 (80190 was the last orphan, detached by Lot 6; #2843), so the key
     # is genuinely absent, not present-and-zero. Use .get() here, matching
     # how main() already prints it (`cen.get(k, 0)`).
     assert cen.get("A-serving/orphan", 0) == 0
-    assert cen["A-empty/gap"] == 198
-    assert cen["_in_scope_total"] == 23
+    assert cen["A-empty/gap"] == 215
+    assert cen["_in_scope_total"] == 6
     assert cen["_total"] == 221
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
@@ -146,6 +168,24 @@ def test_census_and_in_scope_on_real_canonical():
     lot7 = ["85403", "85404", "86109", "86201", "86202", "86203", "85330",
             "85401", "86102", "91212", "90111", "91222", "91424"]
     for code in lot7:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 8 cured code migrated to the gap watchlist (out of scope) --
+    # all 9 were pre-cure A-serving/pp28 (none orphan), verified directly
+    # against d50d5f33ca^/d50d5f33ca above.
+    lot8 = ["91425", "93113", "93115", "93121", "93122", "93123", "93124",
+            "93125", "93126"]
+    for code in lot8:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 9 Group-A detached code migrated to the gap watchlist (out of
+    # scope) -- all 8 were pre-cure A-serving/pp28 (none orphan), verified
+    # directly against 9acc7fa3d4/39c94f78f5 above. (93191/93193, the 2
+    # tier-scoped-held members, are untouched on per_skala and NOT asserted
+    # here -- see test_kbli_batch_a_lot9_registry.py for their coverage.)
+    lot9 = ["93127", "93128", "93129", "93192", "93194", "93195", "93197",
+            "93199"]
+    for code in lot9:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
 
