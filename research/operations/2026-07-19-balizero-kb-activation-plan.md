@@ -67,6 +67,16 @@ sources:
     2026-07-19, same day as the audit) claiming to cure exactly this class of
     drift. Tracked and handled as its own item, not as an "archive an orphan"
     task — see below.
+  - **Update (2026-07-20, later same day):** the 12,663-byte drift above is
+    fixed — root-caused by a dedicated forensics pass to PR #2821 committing a
+    locally-generated navigator snapshot the same day canonical moved under
+    it (one-time authoring gap, not a recurring compiler bug — all 5
+    `kbli_filiera` cure compilers already call `sync_kbli_dataset.sh`
+    unconditionally). Fix: `scripts/sync_kbli_dataset.sh` real-apply, scoped
+    to exactly the 57 drifted codes (zero added/removed, record count
+    unchanged), shipped as PR #2884 with auto-merge armed. Per this ledger's
+    own standing rule #1, not marked DONE here until PROVE-LIVE confirms
+    knowledge.balizero.com serves the corrected content post-merge.
 - **Lever #7 DONE** (2026-07-20): root cause found by reading the actual log
   (not guessed) — a live run showed Claude+agy+Codex all missing in the same
   cascade, and ollama qwen3.5 (no web access) emitted a schema-valid
