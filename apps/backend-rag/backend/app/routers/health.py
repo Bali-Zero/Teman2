@@ -1014,9 +1014,11 @@ async def collections_health(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.warning("Failed to get collection freshness: %s", e)
 
-    # Get live point counts from Qdrant
+    # Get live point counts + vector config from Qdrant (per-collection, not the
+    # in-process op-counter get_qdrant_stats() below returns only an aggregate for).
     qdrant_stats = await get_qdrant_stats()
     live_counts: dict[str, int] = {}
+    live_config: dict[str, dict[str, Any]] = {}
     try:
         client = _get_qdrant_client()
         response = await client.get("/collections")
@@ -1028,14 +1030,24 @@ async def collections_health(request: Request) -> dict[str, Any]:
                 try:
                     coll_response = await client.get(f"/collections/{coll_name}")
                     coll_response.raise_for_status()
-                    points = coll_response.json().get("result", {}).get("points_count", 0)
-                    live_counts[coll_name] = points
+                    result = coll_response.json().get("result", {})
+                    live_counts[coll_name] = result.get("points_count", 0)
+                    vectors = result.get("config", {}).get("params", {}).get("vectors", {})
+                    live_config[coll_name] = {
+                        "status": result.get("status", "unknown"),
+                        # Named-vector collections (hybrid dense+sparse) nest per
+                        # vector name here instead of a flat size/distance pair —
+                        # same simplification as QdrantClient.get_stats() (qdrant_db.py).
+                        "vector_size": vectors.get("size") if isinstance(vectors, dict) else None,
+                        "distance": vectors.get("distance") if isinstance(vectors, dict) else None,
+                        "segments_count": result.get("segments_count"),
+                    }
                 except Exception:
                     pass
     except Exception as e:
         logger.warning("Failed to get live Qdrant counts: %s", e)
 
-    # Merge freshness + live counts
+    # Merge freshness + live counts + live config
     collections: dict[str, Any] = {}
     all_names = set(freshness.keys()) | set(live_counts.keys())
     for name in sorted(all_names):
@@ -1043,6 +1055,7 @@ async def collections_health(request: Request) -> dict[str, Any]:
         if name in freshness:
             entry.update(freshness[name])
         entry["live_points"] = live_counts.get(name, None)
+        entry.update(live_config.get(name, {}))
         collections[name] = entry
 
     return {

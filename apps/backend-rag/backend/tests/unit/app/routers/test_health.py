@@ -123,3 +123,49 @@ class TestHealthRouter:
             result = await get_qdrant_stats()
             assert result["collections"] == 0
             assert "error" in result
+
+    def test_collections_health_includes_vector_config(self, app, client):
+        """2026-07-19 audit lever #11: /health/collections must return real
+        per-collection vector_size/distance/status/segments_count, not just a
+        bare point count — get_collection_stats' docstring promised this and
+        the MCP tool used to proxy a different, always-near-zero endpoint
+        instead. Pin the fields here so a regression is caught at this layer,
+        not rediscovered by re-auditing the MCP tool by hand."""
+        mock_client = AsyncMock()
+
+        collections_resp = MagicMock()
+        collections_resp.json.return_value = {
+            "result": {"collections": [{"name": "kbli_2025_final"}]},
+        }
+        collections_resp.raise_for_status = MagicMock()
+
+        detail_resp = MagicMock()
+        detail_resp.json.return_value = {
+            "result": {
+                "points_count": 1563,
+                "status": "green",
+                "segments_count": 4,
+                "config": {"params": {"vectors": {"size": 1536, "distance": "Cosine"}}},
+            },
+        }
+        detail_resp.raise_for_status = MagicMock()
+
+        async def get_side_effect(url):
+            return collections_resp if url == "/collections" else detail_resp
+
+        mock_client.get = AsyncMock(side_effect=get_side_effect)
+        # AsyncMock().is_closed is itself a truthy auto-attribute, so without
+        # this _get_qdrant_client() reads "closed" and silently replaces the
+        # mock with a brand-new REAL httpx.AsyncClient (proved live: the first
+        # draft of this test hit actual Qdrant Cloud and got real collections).
+        mock_client.is_closed = False
+        health_mod._qdrant_client = mock_client
+
+        response = client.get("/health/collections")
+        assert response.status_code == 200
+        entry = response.json()["collections"]["kbli_2025_final"]
+        assert entry["live_points"] == 1563
+        assert entry["vector_size"] == 1536
+        assert entry["distance"] == "Cosine"
+        assert entry["status"] == "green"
+        assert entry["segments_count"] == 4
