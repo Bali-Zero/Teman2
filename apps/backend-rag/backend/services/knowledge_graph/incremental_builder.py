@@ -4,7 +4,10 @@ Integrates with AutonomousScheduler for automatic incremental KG updates
 """
 
 import asyncio
+import hashlib
 import logging
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -61,9 +64,14 @@ class KGIncrementalBuilder:
             try:
                 from google import genai
 
-                # Use GOOGLE_API_KEY (Google AI Studio)
+                # Prefer a KG-dedicated key (KG_GOOGLE_API_KEY) so this feeder can
+                # be moved to an isolated Gemini project/key without touching the
+                # WhatsApp bot's shared GOOGLE_API_KEY. Falls back to the shared
+                # settings chain until KG_GOOGLE_API_KEY is set anywhere (additive,
+                # no behavior change until then).
                 api_key = (
-                    settings.google_api_key
+                    os.environ.get("KG_GOOGLE_API_KEY")
+                    or settings.google_api_key
                     or settings.google_ai_studio_key
                     or settings.google_imagen_api_key
                 )
@@ -74,8 +82,12 @@ class KGIncrementalBuilder:
 
                 # Initialize with Google AI Studio API key
                 self._gemini_client = genai.Client(api_key=api_key)
+                # Log a non-reversible fingerprint, never the key material, so we can
+                # still verify (e.g. against the WhatsApp bot's key) WHICH key is in
+                # use without leaking it in clear text (CodeQL #4019).
+                key_fp = hashlib.sha256(api_key.encode()).hexdigest()[:8] if api_key else "none"
                 logger.info(
-                    f"✅ Gemini client initialized with Google AI Studio (API key: {api_key[:10]}...)",
+                    "✅ Gemini client initialized with Google AI Studio (key fp=%s)", key_fp
                 )
             except ImportError:
                 logger.warning("⚠️ google-genai SDK not available")
@@ -139,7 +151,6 @@ class KGIncrementalBuilder:
 
         # Import incremental extractor
         try:
-            import os
             import sys
             from pathlib import Path
 
@@ -318,7 +329,6 @@ async def run_knowledge_graph_incremental_build(db_pool: asyncpg.Pool) -> dict[s
 async def _persist_kg_verdict(db_pool: asyncpg.Pool, stats: dict[str, Any]) -> None:
     """Upsert the last-run verdict so liveness is a DB probe, not a log grep."""
     import json
-    from datetime import datetime, timezone
 
     payload = {
         "ran_at": datetime.now(timezone.utc).isoformat(),
@@ -340,26 +350,109 @@ async def _persist_kg_verdict(db_pool: asyncpg.Pool, stats: dict[str, Any]) -> N
     )
 
 
-async def _kg_incremental_loop(db_pool: asyncpg.Pool, interval_seconds: int) -> None:
-    """Daily incremental KG extraction on the live path."""
-    from backend.services.misc.autonomous_scheduler import _acquire_task_lock
+async def _get_last_kg_run_ts(db_pool: asyncpg.Pool) -> datetime | None:
+    """Read the cadence-driving timestamp: when did a run last persist a verdict?
+
+    This is a plain DB read, deliberately decoupled from the Redis dedup
+    lock's TTL (root cause 2026-07-19: the lock TTL used to double as the
+    cadence signal — see module docstring above `_kg_incremental_loop`).
+    Returns None if no verdict has ever been persisted, or if the read
+    itself fails (fail-open: treated as "never ran" by the caller, same
+    fail-open philosophy as `_acquire_task_lock` on Redis errors).
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT updated_at FROM system_settings WHERE key = 'kg_incremental_last'",
+            )
+            return row["updated_at"] if row else None
+    except Exception as e:
+        logger.error("[kg-incremental] failed to read last-run timestamp: %s", e)
+        return None
+
+
+async def _kg_incremental_tick(
+    db_pool: asyncpg.Pool,
+    interval_seconds: int,
+    lock_ttl_seconds: int,
+) -> None:
+    """One check-cycle: due? acquire the short dedup lock? run + persist + release.
+
+    Cadence ("has a run succeeded within the last `interval_seconds`?") is
+    driven by the `system_settings.kg_incremental_last.updated_at` DB
+    timestamp. The Redis lock only dedups concurrent workers during an
+    active run — it is released in a `finally` (compare-and-delete, so a
+    worker never deletes a lock it doesn't own) and additionally bounded by
+    `lock_ttl_seconds` so a hard-killed run frees the lock in hours, not a
+    full cadence window.
+    """
+    from backend.services.misc.autonomous_scheduler import (
+        _acquire_task_lock,
+        _release_task_lock,
+    )
+
+    last_run_ts = await _get_last_kg_run_ts(db_pool)
+    if last_run_ts is not None:
+        age = datetime.now(timezone.utc) - last_run_ts
+        if age < timedelta(seconds=interval_seconds):
+            logger.debug(
+                "[kg-incremental] not due yet (last run %s ago, cadence %ss)",
+                age,
+                interval_seconds,
+            )
+            return
+
+    if not await _acquire_task_lock("kg_incremental_builder", lock_ttl_seconds):
+        logger.debug("[kg-incremental] another worker holds the lock")
+        return
+
+    try:
+        stats = await run_knowledge_graph_incremental_build(db_pool)
+        try:
+            await _persist_kg_verdict(db_pool, stats)
+        except Exception as e:
+            logger.error("[kg-incremental] verdict persist failed: %s", e)
+    finally:
+        await _release_task_lock("kg_incremental_builder")
+
+
+async def _kg_incremental_loop(
+    db_pool: asyncpg.Pool,
+    interval_seconds: int,
+    check_interval_seconds: int | None = None,
+    lock_ttl_seconds: int | None = None,
+) -> None:
+    """Daily incremental KG extraction on the live path.
+
+    SCAR 2026-07-19: the old design acquired the Redis dedup lock with
+    TTL = interval_seconds (24h) BEFORE running, and used that same 24h
+    lock as the cadence signal. A run that crashed mid-flight (rate-limited
+    ~2.5-3.7h run on a 2GB Fly machine that redeploys/OOMs) left the 24h
+    lock held with no verdict persisted, so every subsequent boot's acquire
+    returned False and the run stayed poisoned for a full day.
+
+    Fix: cadence and dedup are two different concerns now. Every short
+    `check_interval_seconds` (default KG_CHECK_INTERVAL=3600, 1h) this loop
+    asks `_kg_incremental_tick` whether a run is due (DB timestamp, not lock
+    TTL) and — only if so — acquires a short `lock_ttl_seconds` (default
+    KG_LOCK_TTL=14400, 4h) lock for the duration of the run, released in a
+    `finally`. A crash now retries within ~1h (next tick) instead of ~24h,
+    and even a killed process frees the lock within hours via its TTL. The
+    run is already idempotent (dedups by processed chunk-ids), so a resumed
+    run safely picks up where it left off.
+    """
+    check_interval = check_interval_seconds or int(os.environ.get("KG_CHECK_INTERVAL", "3600"))
+    lock_ttl = lock_ttl_seconds or int(os.environ.get("KG_LOCK_TTL", "14400"))
 
     await asyncio.sleep(120)  # let the app finish booting before Qdrant scans
     while True:
         try:
-            if await _acquire_task_lock("kg_incremental_builder", interval_seconds):
-                stats = await run_knowledge_graph_incremental_build(db_pool)
-                try:
-                    await _persist_kg_verdict(db_pool, stats)
-                except Exception as e:
-                    logger.error("[kg-incremental] verdict persist failed: %s", e)
-            else:
-                logger.debug("[kg-incremental] another worker holds the lock")
+            await _kg_incremental_tick(db_pool, interval_seconds, lock_ttl)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # the loop must survive anything
             logger.error("[kg-incremental] run crashed: %s", e, exc_info=True)
-        await asyncio.sleep(interval_seconds)
+        await asyncio.sleep(check_interval)
 
 
 def start_kg_incremental_task(
@@ -372,8 +465,6 @@ def start_kg_incremental_task(
     MAX_RPM) and extraction is dedup-idempotent via processed chunk ids, so
     an armed default is safe; ENABLE_KG_INCREMENTAL=false is the kill switch.
     """
-    import os
-
     if os.environ.get("ENABLE_KG_INCREMENTAL", "true").lower() in {"false", "0", "no"}:
         logger.info("[kg-incremental] disabled via ENABLE_KG_INCREMENTAL")
         return None

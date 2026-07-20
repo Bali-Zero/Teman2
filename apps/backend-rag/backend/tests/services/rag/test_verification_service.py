@@ -6,6 +6,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from backend.services.rag.verification_service import (
     VerificationResult,
@@ -38,7 +39,7 @@ class TestVerificationResult:
         assert result.score == 0.95
 
     def test_score_bounds_enforced(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError, match="score"):
             VerificationResult(
                 is_valid=True,
                 status=VerificationStatus.VERIFIED,
@@ -55,6 +56,7 @@ class TestVerificationResult:
         )
         assert result.corrected_answer is None
         assert result.missing_citations == []
+        assert result.verdict_available is True
 
 
 class TestVerificationServiceFallbacks:
@@ -108,6 +110,54 @@ class TestVerificationServiceFallbacks:
         assert result.is_valid is True
         assert result.status == VerificationStatus.PARTIALLY_VERIFIED
         assert "failed" in result.reasoning.lower()
+        # Placeholder score — never a real verdict, must never gate
+        # self-correction downstream (reasoning.py).
+        assert result.verdict_available is False
+
+    @pytest.mark.asyncio
+    async def test_empty_llm_response_marks_verdict_unavailable(self):
+        """2026-07-18 fix: Gemini can return text="" (safety block / content
+        filter). json.loads("") used to raise and fall into the blanket
+        except, minting a score=0.5 that reasoning.py's self-correction gate
+        treated as a real verdict — wasting a rephrase+re-verify round-trip
+        (~23s, live timeout repro). Guard must catch this BEFORE json.loads
+        and mark verdict_available=False, never raise.
+        """
+        service = VerificationService()
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        mock_client.generate_content = AsyncMock(return_value={"text": ""})
+        service._genai_client = mock_client
+
+        result = await service.verify_response(
+            query="test",
+            draft_answer="test answer",
+            context_chunks=["context"],
+        )
+        assert result.is_valid is True
+        assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        assert result.score == 0.5
+        assert result.verdict_available is False
+
+    @pytest.mark.asyncio
+    async def test_unparseable_json_marks_verdict_unavailable(self):
+        """Malformed JSON from the verifier LLM must also be treated as
+        'no verdict available', not a real score=0.5."""
+        service = VerificationService()
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        mock_client.generate_content = AsyncMock(return_value={"text": "{not valid json"})
+        service._genai_client = mock_client
+
+        result = await service.verify_response(
+            query="test",
+            draft_answer="test answer",
+            context_chunks=["context"],
+        )
+        assert result.is_valid is True
+        assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        assert result.score == 0.5
+        assert result.verdict_available is False
 
 
 class TestVerificationServiceWithLLM:
@@ -141,6 +191,8 @@ class TestVerificationServiceWithLLM:
         assert result.is_valid is True
         assert result.status == VerificationStatus.VERIFIED
         assert result.score == 0.95
+        # Innocence: a normal, successfully-parsed verdict is a REAL verdict.
+        assert result.verdict_available is True
 
     @pytest.mark.asyncio
     async def test_hallucination_detected(self):

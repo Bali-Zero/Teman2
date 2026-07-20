@@ -242,6 +242,120 @@ UPDATE intake_queue
  WHERE id = ANY($1::bigint[])
 """
 
+# --reroute-drive-folder: Drive 0-candidate rows re-routed through the fixed
+# m227 multi-segment folder matcher (PR #2664). ROUTE-ONLY resume: unlike
+# REPROCESS_RESET_SQL this MUST NOT wipe stage_output — 97.7% of these rows'
+# blobs are retention-evicted, so the saved OCR/extract fields are the ONLY
+# copy; a full re-run would fail at preprocess AND destroy them. Resuming at
+# status='validated' makes the worker run exactly one stage (route → fase4
+# resolve_entity with source_path) against the preserved fields.
+REROUTE_DRIVE_FOLDER_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
+           p.entity_resolution AS entity_resolution
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE q.source = 'drive'
+       AND q.source_path IS NOT NULL
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND (entity_resolution->>'decision') = 'NO_MATCH'
+   AND jsonb_array_length(
+         COALESCE(entity_resolution->'candidates', '[]'::jsonb)) = 0
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
+# Reset-eligibility lock (Codex round-2, m248): a queue row actively LEASED by
+# the worker must never be yanked mid-flight, and the whole
+# select→supersede→reset must be one transaction. FOR UPDATE SKIP LOCKED makes
+# concurrent reroute invocations safe too.
+REROUTE_ELIGIBLE_LOCK_SQL = """
+SELECT id
+  FROM intake_queue
+ WHERE id = ANY($1::bigint[])
+   AND (lease_owner IS NULL OR lease_expires_at <= now())
+ FOR UPDATE SKIP LOCKED
+"""
+
+# Supersede is a TWO-STEP under one transaction (Codex round-3): first the
+# EXACT selected latest proposal, by id — its RETURNING confirms atomically
+# that it was still review_pending (a reviewer claim in the gap = no
+# confirmation = the queue row is left completely alone). Only then the
+# confirmed queue rows get their OLDER review_pending siblings swept (an
+# older sibling must never, alone, confirm a reset: the reviewer may be
+# working the newer claimed one).
+REROUTE_SUPERSEDE_SELECTED_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE id = ANY($1::bigint[])
+   AND status = 'review_pending'
+RETURNING id, queue_id
+"""
+
+# Sibling sweep is bounded to ids OLDER than the confirmed selected proposal
+# (id < pid): a proposal born between SELECT and sweep is never touched. An
+# older sibling that got review_claimed in the gap is skipped by the status
+# filter and stays with its reviewer — the writer's own FOR-UPDATE
+# revalidation guards the eventual commit against the fresh proposal.
+REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal p
+   SET status = 'superseded'
+  FROM (SELECT unnest($1::bigint[]) AS qid, unnest($2::bigint[]) AS pid) sel
+ WHERE p.queue_id = sel.qid
+   AND p.id < sel.pid
+   AND p.status = 'review_pending'
+"""
+
+REROUTE_DRIVE_FOLDER_RESET_SQL = """
+UPDATE intake_queue
+   SET status           = 'validated',
+       stage            = 'validate',
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = now(),
+       last_error       = NULL,
+       pipeline_version = $2,
+       updated_at       = now()
+ WHERE id = ANY($1::bigint[])
+"""
+
+# m248: route-only resume of review_pending rows whose extracted npwp is a
+# full 15/16-digit value — the person matcher now consults clients.npwp
+# (previously invisible locally; 291 alive clients carry one after the
+# 2026-07-18 snapshot refresh). No source / candidate-count filter: the docs
+# that can gain the npwp strong-id signal already HAVE folder/fuzzy candidates
+# (measured: 3/131 match a client; 0 in the 0-candidate pool). Reuses the
+# folder-mode supersede+reset SQL (both are generic by queue_id; the reset
+# NEVER touches stage_output).
+REROUTE_NPWP_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
+           COALESCE(
+             p.routing->'fields'->'npwp_number'->>'value',
+             p.routing->'fields'->>'npwp_number',
+             q.stage_output->'extract'->'fields'->'npwp_number'->>'value',
+             q.stage_output->'extract'->'fields'->>'npwp_number'
+           ) AS npwp_raw
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND npwp_raw IS NOT NULL
+   AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) IN (15, 16)
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
 # Same v2 reset contract, but for targeted retry lanes that must be observable
 # immediately in production tests. The worker orders pending WhatsApp jobs by
 # next_visible_at, so resetting historical rows to now() parks them behind newer
@@ -1896,6 +2010,167 @@ async def run_reprocess(pool: asyncpg.Pool, pipeline_version: str, apply: bool) 
     return counts
 
 
+async def _run_route_only_reroute(
+    pool: asyncpg.Pool,
+    *,
+    mode: str,
+    select_sql: str,
+    pipeline_version: str,
+    limit: int,
+    apply: bool,
+) -> dict[str, int]:
+    """Shared route-only reroute engine (m227 folder / m248 npwp).
+
+    One transaction end-to-end (Codex round-2): the SELECT, the
+    lease-eligibility lock (FOR UPDATE SKIP LOCKED — a row the worker is
+    actively processing is skipped, never yanked), the proposal supersede and
+    the queue reset all commit or roll back together. stage_output is NEVER
+    touched (locked by contract test).
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            rows = await conn.fetch(select_sql, limit)
+            queue_ids = sorted({r["queue_id"] for r in rows})
+
+            counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
+            if not apply:
+                logger.info(
+                    "[%s][DRY-RUN] would supersede %d proposals and resume %d "
+                    "queue rows at route (pipeline_version=%s, limit=%d) "
+                    "(pass --apply to execute)",
+                    mode, counts["proposals"], counts["queue_rows"],
+                    pipeline_version, limit,
+                )
+                return counts
+
+            eligible_rows = await conn.fetch(REROUTE_ELIGIBLE_LOCK_SQL, queue_ids)
+            eligible = set(r["id"] for r in eligible_rows)
+            counts["lease_skipped"] = len(queue_ids) - len(eligible)
+
+            # Confirm-supersede the EXACT selected latest proposals, by id.
+            # A proposal a reviewer claimed in the gap (review_pending →
+            # review_claimed) returns nothing → its queue row is left
+            # completely alone (no sibling sweep, no reset).
+            selected_pids = sorted(
+                r["proposal_id"] for r in rows if r["queue_id"] in eligible
+            )
+            confirmed = await conn.fetch(
+                REROUTE_SUPERSEDE_SELECTED_SQL, selected_pids
+            )
+            superseded_qids = sorted({r["queue_id"] for r in confirmed})
+            counts["claim_skipped"] = len(eligible) - len(superseded_qids)
+
+            # Sweep OLDER review_pending siblings only on confirmed rows
+            # (id-bounded below each confirmed proposal), so the review feed
+            # doesn't keep stale duplicates of what the worker re-proposes.
+            confirmed_pids = [r["id"] for r in confirmed]
+            confirmed_qids_arr = [r["queue_id"] for r in confirmed]
+            sibling_swept = await conn.execute(
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL,
+                confirmed_qids_arr,
+                confirmed_pids,
+            )
+            reset = await conn.execute(
+                REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids, pipeline_version
+            )
+        counts["superseded"] = len(confirmed)
+        counts["sibling_swept"] = (
+            int(sibling_swept.split()[-1]) if sibling_swept else 0
+        )
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[%s] superseded=%d proposals, resumed=%d queue rows at route "
+        "(pipeline_version=%s, lease_skipped=%d, claim_skipped=%d)",
+        mode, counts.get("superseded", 0), counts.get("reset", 0),
+        pipeline_version, counts.get("lease_skipped", 0),
+        counts.get("claim_skipped", 0),
+    )
+    return counts
+
+
+async def run_reroute_drive_folder(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route Drive 0-candidate proposals through the fixed m227 folder matcher.
+
+    Route-only resume (status='validated', stage_output PRESERVED — the saved
+    OCR/extract fields are the only copy left after blob retention). Supersedes
+    the stale NO_MATCH proposals and lets the live worker re-run fase-4
+    resolve_entity with source_path, so client folders at any depth (PR #2664)
+    produce LINK_CANDIDATE/AMBIGUOUS proposals. Candidates feed the normal
+    review tier; any auto-attach still requires the concordance gates.
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-drive-folder",
+        select_sql=REROUTE_DRIVE_FOLDER_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
+async def run_reroute_npwp(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route review_pending rows carrying a full extracted npwp (m248).
+
+    Route-only resume, identical contract to --reroute-drive-folder
+    (stage_output PRESERVED, supersede stale proposals, worker re-runs fase-4
+    where _match_person_strong now consults clients.npwp). A unique npwp hit
+    adds a CONF_STRONG_EXACT candidate; duplicate-npwp and person/company
+    npwp collisions degrade to AMBIGUOUS downstream. NOTE: the live worker
+    runs with the auto-attach killswitches ON — an AUTO_ATTACH decision plus
+    phone/subject-name concordance CAN commit (reversible via
+    intake_commit_audit + rollback_commit).
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-npwp",
+        select_sql=REROUTE_NPWP_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
+UNDELIVERED_REPORT_SQL = """
+SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id
+  FROM intake_commit_audit a
+ WHERE a.outcome = 'committed'
+   AND a.dry_run = false
+   AND a.plan->'crm_push'->>'status' = 'identity_unresolved'
+ ORDER BY a.id
+"""
+
+
+async def run_report_undelivered(pool: asyncpg.Pool) -> dict[str, int]:
+    """Operator consumer for the ``intake.delivery.identity_unresolved`` marker.
+
+    Read-only, integer ids only (Law 2). Lists committed documents whose Kita
+    delivery failed identity resolution — the rows to redeliver AFTER the
+    identity mapping (client phone / dedup) is fixed. Blind auto-redelivery
+    stays forbidden by design: a retry cannot succeed until the mapping itself
+    changes.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(UNDELIVERED_REPORT_SQL)
+    # Integer ids ONLY (Law 2): committed_by carries the reviewer's e-mail on
+    # HITL commits — it must never reach report/log output (Codex r7 F8-NIT).
+    for r in rows:
+        logger.info(
+            "[report-undelivered] audit=%s proposal=%s queue=%s client=%s doc=%s",
+            r["audit_id"],
+            r["proposal_id"],
+            r["queue_id"],
+            r["client_id"],
+            r["doc_id"],
+        )
+    logger.info("[report-undelivered] total=%d (full list, no display cap)", len(rows))
+    return {"undelivered": len(rows)}
+
+
 async def run_revive_stub(
     pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
 ) -> dict[str, int]:
@@ -3013,6 +3288,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows",
     )
     p.add_argument(
+        "--reroute-drive-folder",
+        action="store_true",
+        help=(
+            "route-only resume of Drive 0-candidate review_pending rows through "
+            "the fixed m227 folder matcher (stage_output preserved, never wiped)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-npwp",
+        action="store_true",
+        help=(
+            "route-only resume of review_pending rows with a full extracted "
+            "npwp through the m248 person-npwp matcher (stage_output preserved)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-limit",
+        type=int,
+        default=30000,
+        help="max rows selected per --reroute-drive-folder / --reroute-npwp run",
+    )
+    p.add_argument(
+        "--reroute-pipeline-version",
+        default=None,
+        help=(
+            "pipeline_version stamped on rerouted rows (fresh routing_key); "
+            "defaults per mode: v2.2-m227-folder (drive-folder), v2.3-npwp (npwp)"
+        ),
+    )
+    p.add_argument(
         "--backfill",
         action="store_true",
         help="enqueue historical wa-mirror media skipped by the watermark seed",
@@ -3267,6 +3572,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--media-types", default=None, help="comma list for --backfill (default document,image)"
     )
+    p.add_argument(
+        "--report-undelivered",
+        action="store_true",
+        help=(
+            "operator report (read-only, ids only): committed documents whose "
+            "Kita delivery failed identity resolution (crm_push status "
+            "identity_unresolved in the audit) — the consumer for the "
+            "intake.delivery.identity_unresolved marker"
+        ),
+    )
     return p
 
 
@@ -3279,6 +3594,8 @@ async def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     needs_db = (
         args.reprocess
+        or args.reroute_drive_folder
+        or args.reroute_npwp
         or args.backfill
         or args.scrub_group_phone
         or args.backfill_source_context
@@ -3294,10 +3611,12 @@ async def main(argv: list[str] | None = None) -> int:
         or args.auto_attach_direct_phone
         or args.promote_direct_new_prospects
         or args.review_backlog_report
+        or args.report_undelivered
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
-            "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
+            "nothing to do: pass --backfill, --reprocess, --reroute-drive-folder, "
+            "--reroute-npwp, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3331,6 +3650,22 @@ async def main(argv: list[str] | None = None) -> int:
             await run_backfill_source_context(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
+        if args.reroute_drive_folder:
+            await run_reroute_drive_folder(
+                pool,
+                args.reroute_pipeline_version or "v2.2-m227-folder",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
+        if args.report_undelivered:
+            await run_report_undelivered(pool)
+        if args.reroute_npwp:
+            await run_reroute_npwp(
+                pool,
+                args.reroute_pipeline_version or "v2.3-npwp",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
         if args.autocatalog_direct_unknown_text:
             await run_autocatalog_direct_unknown_text(
                 pool,

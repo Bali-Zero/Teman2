@@ -25,6 +25,45 @@ program's own compilers/ (infra/claude-hooks/data-plane-registry.json, id
 "kbli-filiera") — opening the file inside this script is what is sanctioned;
 hand-editing it via Edit/Write/Bash text tools is not.
 
+Batch A Lot 2 extension (2026-07-18, mapping_metadata_false class, e.g. 47771):
+some spec entries ALSO need a crosswalk-metadata correction alongside the
+detach — a canonical `status_mapping` (and, when it derives from the same false
+narrative, `intel_2026.whatChanged`) that itself asserts a wrong crosswalk
+story (e.g. "MATCH_LANGSUNG"/"direct match" when BPS documents a multi-parent
+merge). Two OPTIONAL spec-entry keys drive this, mirroring the existing
+whatYouNeed pattern (spec-driven, idempotent, never invented ad hoc by this
+script):
+  - status_mapping_correction: new canonical status_mapping value (must already
+    be one of the enum values used elsewhere in the dataset — this script does
+    not validate the enum, the spec author does, same discipline as data_note).
+  - whatChanged_correction: new intel_2026.whatChanged value.
+Both are no-ops when absent from the entry (Fase 1 / Lot 1 specs are
+unaffected). Applied independently of the detach — a record can get a
+metadata-only correction, a detach-only cure, or both in the same apply.
+
+Standalone metadata-fix extension (2026-07-19, e.g. 52101/46100/10433 —
+OSS-native codes with a HEALTHY, non-empty per_skala that must NEVER be
+detached, even though a crosswalk-metadata defect needs curing):
+
+  - "action": "metadata_only" (OPTIONAL spec-entry key) — when present, this
+    entry's per_skala (and any disputed key) is placed COMPLETELY out of
+    scope: `needs_detach` is forced False regardless of the record's current
+    per_skala emptiness, and `apply_cure` never touches per_skala at all (no
+    fold, no []-write, no disputed-key write). Without this key, the
+    pre-existing behavior is UNCHANGED: `needs_detach` is derived purely from
+    whether the record's CURRENT per_skala is already `[]` (the Fase-1/Lot-1/
+    Lot-2/Lot-3 detach specs never set this key and are byte-for-byte
+    unaffected). This is the ONLY way to apply a metadata correction to a
+    record whose per_skala is currently non-empty without also detaching it —
+    the un-flagged code path always detaches a non-empty per_skala, by design,
+    for every prior lot.
+  - pp28_sources_correction: new canonical pp28_sources value (a list),
+    mirroring status_mapping_correction/whatChanged_correction exactly — a
+    no-op when absent, applied verbatim (deep-copied) when present and
+    different from the current value. Same discipline as data_note: this
+    script never invents a replacement list, only writes what the spec
+    author already independently verified.
+
 Usage:
   # dry run (default) — prints a per-code diff summary, writes nothing
   python scripts/kbli_filiera/cure_canonical_collisions.py
@@ -96,9 +135,12 @@ class CurePlan:
 
     status:
       "apply"          — record will be mutated: detach (per_skala -> []) and/or the
-                         honest-gap intel_2026.whatYouNeed rewrite (see the flags)
+                         honest-gap intel_2026.whatYouNeed rewrite and/or a
+                         status_mapping / whatChanged / pp28_sources metadata
+                         correction (see the flags)
       "already-cured"  — detach already done (per_skala == []) AND whatYouNeed already
-                         matches the spec (or spec supplies none): idempotent no-op
+                         matches the spec (or spec supplies none) AND any requested
+                         metadata correction already matches: idempotent no-op
       "ambiguous-skip" — per_skala == [] but NO disputed_key: an unrecognised prior
                          state — refuse to touch the record at all, skip
       "missing"        — code not found in canonical at all
@@ -115,6 +157,10 @@ class CurePlan:
         data_note: str = "",
         needs_detach: bool = False,
         needs_whatyouneed: bool = False,
+        needs_status_mapping: bool = False,
+        needs_whatchanged: bool = False,
+        needs_pp28_sources: bool = False,
+        metadata_only: bool = False,
     ) -> None:
         self.code = code
         self.status = status
@@ -124,6 +170,10 @@ class CurePlan:
         self.data_note = data_note
         self.needs_detach = needs_detach
         self.needs_whatyouneed = needs_whatyouneed
+        self.needs_status_mapping = needs_status_mapping
+        self.needs_whatchanged = needs_whatchanged
+        self.needs_pp28_sources = needs_pp28_sources
+        self.metadata_only = metadata_only
 
     def describe(self) -> str:
         note_preview = (self.data_note[:80] + "…") if len(self.data_note) > 80 else self.data_note
@@ -144,6 +194,14 @@ class CurePlan:
             )
         if self.needs_whatyouneed:
             actions.append("intel_2026.whatYouNeed -> honest-gap")
+        if self.needs_status_mapping:
+            actions.append("status_mapping -> metadata-corrected")
+        if self.needs_whatchanged:
+            actions.append("intel_2026.whatChanged -> metadata-corrected")
+        if self.needs_pp28_sources:
+            actions.append("pp28_sources -> metadata-corrected")
+        if self.metadata_only:
+            actions.append("[metadata_only: per_skala NOT touched]")
         return f"{self.code}: {' | '.join(actions)} | _data_note: {note_preview!r}"
 
 
@@ -152,22 +210,55 @@ def _current_whatyouneed(record: dict[str, Any]) -> Any:
     return intel.get("whatYouNeed") if isinstance(intel, dict) else None
 
 
+def _current_whatchanged(record: dict[str, Any]) -> Any:
+    intel = record.get("intel_2026")
+    return intel.get("whatChanged") if isinstance(intel, dict) else None
+
+
 def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> CurePlan:
     code = entry["code"]
+    metadata_only = entry.get("action") == "metadata_only"
     current_per_skala = record.get("per_skala")
-    has_disputed = disputed_key in record
-    is_empty = current_per_skala == []
 
-    # per_skala already empty with no disputed marker: an unrecognised prior state.
-    # Refuse to touch the record at all (do not even rewrite whatYouNeed) — no clobber.
-    if is_empty and not has_disputed:
-        return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+    if metadata_only:
+        # per_skala is COMPLETELY out of scope for a metadata_only entry —
+        # never detached, never folded, never checked for the ambiguous prior
+        # -state (that gate exists only to protect an about-to-detach write
+        # from clobbering an unknown disputed block; it does not apply here
+        # because this entry will never write per_skala at all).
+        needs_detach = False
+    else:
+        has_disputed = disputed_key in record
+        is_empty = current_per_skala == []
+        # per_skala already empty with no disputed marker: an unrecognised prior state.
+        # Refuse to touch the record at all (do not even rewrite whatYouNeed) — no clobber.
+        if is_empty and not has_disputed:
+            return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+        needs_detach = not is_empty
 
-    needs_detach = not is_empty
     target_wyn = entry.get("whatYouNeed")
     needs_whatyouneed = bool(target_wyn) and _current_whatyouneed(record) != target_wyn
 
-    if not needs_detach and not needs_whatyouneed:
+    target_status_mapping = entry.get("status_mapping_correction")
+    needs_status_mapping = (
+        bool(target_status_mapping) and record.get("status_mapping") != target_status_mapping
+    )
+
+    target_whatchanged = entry.get("whatChanged_correction")
+    needs_whatchanged = bool(target_whatchanged) and _current_whatchanged(record) != target_whatchanged
+
+    target_pp28_sources = entry.get("pp28_sources_correction")
+    needs_pp28_sources = (
+        target_pp28_sources is not None and record.get("pp28_sources") != target_pp28_sources
+    )
+
+    if not (
+        needs_detach
+        or needs_whatyouneed
+        or needs_status_mapping
+        or needs_whatchanged
+        or needs_pp28_sources
+    ):
         return CurePlan(code, "already-cured", disputed_key=disputed_key)
 
     row_count = len(current_per_skala) if isinstance(current_per_skala, list) else 0
@@ -180,24 +271,42 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
         data_note=entry["data_note"],
         needs_detach=needs_detach,
         needs_whatyouneed=needs_whatyouneed,
+        needs_status_mapping=needs_status_mapping,
+        needs_whatchanged=needs_whatchanged,
+        needs_pp28_sources=needs_pp28_sources,
+        metadata_only=metadata_only,
     )
 
 
 def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> dict[str, Any]:
-    """Return a NEW record dict with the cure applied. Three idempotent parts:
+    """Return a NEW record dict with the cure applied. Four idempotent parts:
 
-    1. DETACH — only when per_skala is non-empty: move the current per_skala (folding
+    1. DETACH — only when per_skala is non-empty AND the entry is NOT
+       "action": "metadata_only": move the current per_skala (folding
        per_skala_legacy if present) into the disputed key inserted immediately after
        per_skala, and set per_skala -> []. If per_skala is ALREADY [], this is skipped
        so a re-run never clobbers the previously-preserved disputed block with [].
+       A metadata_only entry skips this whole part unconditionally — per_skala
+       (and any disputed key) is copied through completely untouched, even when
+       currently non-empty (the standalone metadata-fix class: a HEALTHY
+       OSS-native per_skala that must never be detached).
     2. WHATYOUNEED — when the spec supplies `whatYouNeed`, (re)write
        intel_2026.whatYouNeed to the honest-gap text (existing sub-key, order preserved).
-    3. _data_note is (re)set at the end (same string -> idempotent).
+    3. METADATA CORRECTION (Lot 2 extension + 2026-07-19 pp28_sources_correction) —
+       when the spec supplies `status_mapping_correction` and/or
+       `whatChanged_correction` and/or `pp28_sources_correction`, (re)write those
+       fields verbatim from the spec. Independent of (1): a record may get a
+       metadata-only correction with no detach, or both together.
+    4. _data_note is (re)set at the end (same string -> idempotent).
     """
+    metadata_only = entry.get("action") == "metadata_only"
     current_per_skala = record.get("per_skala")
 
-    if current_per_skala == []:
-        # already detached — preserve the existing disputed block, only touch (2)+(3)
+    if metadata_only or current_per_skala == []:
+        # metadata_only: per_skala is out of scope entirely, whatever its
+        # current value — copy the record through as-is, touch only (2)-(4).
+        # Already-detached (non-metadata_only): preserve the existing
+        # disputed block, only touch (2)+(3)+(4).
         new_record: dict[str, Any] = dict(record)
     else:
         disputed_value: Any
@@ -228,6 +337,25 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
         intel = dict(intel)
         intel["whatYouNeed"] = target_wyn
         new_record["intel_2026"] = intel
+
+    target_status_mapping = entry.get("status_mapping_correction")
+    if target_status_mapping:
+        new_record["status_mapping"] = target_status_mapping
+
+    target_whatchanged = entry.get("whatChanged_correction")
+    if target_whatchanged:
+        intel = new_record.get("intel_2026")
+        if not isinstance(intel, dict):
+            raise CureError(
+                f"{entry['code']}: cannot set whatChanged — intel_2026 is missing or not a dict"
+            )
+        intel = dict(intel)
+        intel["whatChanged"] = target_whatchanged
+        new_record["intel_2026"] = intel
+
+    target_pp28_sources = entry.get("pp28_sources_correction")
+    if target_pp28_sources is not None:
+        new_record["pp28_sources"] = copy.deepcopy(target_pp28_sources)
 
     new_record["_data_note"] = entry["data_note"]
     return new_record

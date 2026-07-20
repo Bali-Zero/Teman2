@@ -920,6 +920,65 @@ class TestPipelineProcessing:
         assert result_state.final_answer == "corrected answer"
 
     @pytest.mark.asyncio
+    async def test_pipeline_verdict_unavailable_skips_self_correction(self, engine):
+        """2026-07-18 verifier-timeout fix: verification_score < 0.7 but
+        verdict_available=False (empty/unparseable verifier response) must
+        NOT trigger self-correction — only 1 pipeline pass, only 1
+        send_message call (no wasted rephrase round-trip)."""
+        pipeline = MagicMock()
+        pipeline.process = AsyncMock(
+            return_value={
+                "response": "original answer",
+                "verification_score": 0.5,
+                "verdict_available": False,
+                "verification": {
+                    "reasoning": "Verifier LLM returned an empty response. Verdict unavailable.",
+                },
+            },
+        )
+        from backend.services.rag.agentic.reasoning import ReasoningEngine
+
+        local_engine = ReasoningEngine(tool_map={}, response_pipeline=pipeline)
+
+        state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
+        # Populate context so the (skipped) self-correction branch would be reachable
+        state.context_gathered = ["some context"]
+
+        call = {"i": 0}
+
+        async def send(*a, **k):
+            call["i"] += 1
+            return _llm_response("Final Answer: original answer")
+
+        gateway = _mk_gateway(send_message_side_effect=send, has_tools=True)
+
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
+            result_state, _, _, _ = await _run_loop(local_engine, gateway, state)
+
+        # Pipeline ran only once — NO re-run after a (skipped) self-correction
+        assert pipeline.process.await_count == 1
+        # send_message called only once (the original answer) — no rephrase call
+        assert call["i"] == 1
+        # Original (never "corrected") answer stands
+        assert result_state.final_answer == "original answer"
+
+    @pytest.mark.asyncio
     async def test_pipeline_error_falls_back_to_post_process(self, engine):
         """R30: response_pipeline.process raises ValueError → post_process_response applied, no raise escapes."""
         pipeline = MagicMock()

@@ -26,6 +26,7 @@ on:
       - "source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/kbli-navigator/data/kbli-2025.json"
       - "scripts/sync_kbli_dataset.sh"
       - ".github/workflows/check-kbli-dataset-sync.yml"
   push:
@@ -35,6 +36,7 @@ on:
       - "source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
       - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/kbli-navigator/data/kbli-2025.json"
       - "scripts/sync_kbli_dataset.sh"
       - ".github/workflows/check-kbli-dataset-sync.yml"
 
