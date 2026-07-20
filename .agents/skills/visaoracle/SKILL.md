@@ -233,6 +233,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   highest-value reconciliation) and settle G-b's canonical evidence pointer — likely PR5's suite
   plus a ported property-test file, with M5's `gold_harness/` package retired or kept only as
   design reference. Do not cite M5's harness alone as "G-b satisfied."
+- 2026-07-20 (M5, overnight coordinator sweep): ceremony runbook **#2861 MERGED** (`1f16223335`),
+  gold-harness package **#2876 MERGED** (`1606f7af25`); RulePack authoring pipeline
+  (`compile_pack.py` + offline `sign_pack.py` + first signed TEST fixture) **PR #2869 in flight**
+  (mergeable, CI running, 2 Codex adversarial rounds cured, round-3 confirm died on network —
+  shipped under authorized fallback with a transparent PR-body note). Both PRs fought the same
+  DOCSYNC conflict (`docs/DOCS_INVENTORY.md`) four times overnight as main advanced ~15 commits —
+  cured each time by regenerating via `scripts/docs_inventory_regen.sh`, never side-picking. A
+  **Kimi session** was independently reconciling the same two PR branches in parallel from
+  `/tmp/wt-2876-gold` — its commits carry the SAME git author identity as this machine's session
+  (Kimi inherits the global `git config user.name/email`, has no committer identity of its own),
+  which caused two pushes to be rejected as "behind" before the pattern was recognized; resolved
+  by fetch+legal-merge each time, never force-push, no work lost on either side. Detail:
+  memory `discovery_kimi_parallel_worktree_pr2876_2026_07_20`. SHADOW-wiring prerequisite for the
+  ENFORCE-GATE (STEP-6c) still not live — S3/Pro's PR #2824 (migration 252 SHADOW substrate)
+  remains the actual blocker for evaluating any gate criterion, G-b included.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
