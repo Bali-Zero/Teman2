@@ -1,0 +1,175 @@
+{
+  "canonicalization": "RFC8785",
+  "payload": {
+    "created_at": "2026-07-19T00:00:00Z",
+    "created_by": "agent.m5.visa-authoring-a1",
+    "decision_domain": "IMMIGRATION_VISA",
+    "engine_contract_version": "1.0.0",
+    "engine_max_version": "1.0.0",
+    "engine_min_version": "1.0.0",
+    "environment": "TEST",
+    "hit_policy": {
+      "eligibility": "COVER_ALL_DECLARED_PURPOSES",
+      "hard_filter": "COLLECT_ALL",
+      "human_review": "COLLECT_ALL",
+      "ranking": "SUM_TRUE_INTEGER_WEIGHTS"
+    },
+    "jurisdiction": "ID",
+    "previous_payload_sha256": null,
+    "products": [
+      {
+        "category": "SHORT_STAY",
+        "clock_policy": {
+          "anchor": "NOT_APPLICABLE",
+          "available": false,
+          "checkpoints": []
+        },
+        "covered_purposes": ["TOURISM"],
+        "entry_policy": {
+          "entry_count": "SINGLE"
+        },
+        "extension_policy": {
+          "allowed": true,
+          "days_per_extension": 30,
+          "maximum_extensions": 1
+        },
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "en": "Tourist Visit Visa (C1)",
+          "id": "Visa Kunjungan Wisata (C1)"
+        },
+        "pricing_key": {
+          "category": "single_entry_visas",
+          "item_key": "c1_tourism_single_entry"
+        },
+        "product_code": "C1",
+        "product_version_id": "f6decf9d-27f0-57de-825c-748b721cffd3",
+        "prohibited_activities": ["paid_employment"],
+        "public_catalog": true,
+        "source_refs": ["e6d28bc1-1b38-5ab1-86bc-00fd7d0af142"],
+        "sponsor_types": ["NONE"],
+        "status": "ACTIVE",
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "maximum_days": 30,
+          "minimum_days": 30
+        },
+        "valid_period": {
+          "from": "2026-07-19T00:00:00Z",
+          "to": null
+        }
+      }
+    ],
+    "rollback_of_payload_sha256": null,
+    "rule_pack_id": "8a57d996-c7f2-5abc-9c31-4128a29ed848",
+    "rules": [
+      {
+        "effect": {
+          "reason_code": "OVERSTAY_EXCEEDS_60_DAYS",
+          "type": "EXCLUDE"
+        },
+        "explanation_key": "explain.hf.overstay-exceeds-60-days",
+        "on_unknown": "NEEDS_INPUT",
+        "priority": 100,
+        "product_version_ids": null,
+        "required_facts": ["immigration.overstay_days"],
+        "rule_id": "hf.overstay-exceeds-60-days",
+        "safety_critical": true,
+        "scope": "GLOBAL",
+        "source_refs": ["e6d28bc1-1b38-5ab1-86bc-00fd7d0af142"],
+        "stage": "HARD_FILTER",
+        "valid_period": {
+          "from": "2026-07-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "fact": "immigration.overstay_days",
+          "op": "gt",
+          "value": 60
+        }
+      },
+      {
+        "effect": {
+          "covered_purposes": ["TOURISM"],
+          "reason_code": "C1_TOURISM_SUPPORTED",
+          "type": "SUPPORT"
+        },
+        "explanation_key": "explain.el.c1-tourism-support",
+        "on_unknown": "NEEDS_INPUT",
+        "priority": 100,
+        "product_version_ids": ["f6decf9d-27f0-57de-825c-748b721cffd3"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
+        "rule_id": "el.c1-tourism-support",
+        "safety_critical": false,
+        "scope": "PRODUCTS",
+        "source_refs": ["e6d28bc1-1b38-5ab1-86bc-00fd7d0af142"],
+        "stage": "ELIGIBILITY",
+        "valid_period": {
+          "from": "2026-07-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": ["TOURISM"]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 30
+            }
+          ],
+          "op": "all"
+        }
+      }
+    ],
+    "sequence": 1,
+    "source_records": [
+      {
+        "authority_type": "OFFICIAL_PORTAL",
+        "canonical_url": "https://www.imigrasi.go.id/id/visa-kunjungan/",
+        "content_sha256": "09ac922368c41244297068cc9d6e7f2b36539f8b7281f7b27f70ffe51ae0dc46",
+        "document_number": "UU 63/2024",
+        "jurisdiction": "ID",
+        "language": "id",
+        "legal_period": {
+          "from": "2026-07-19T00:00:00Z",
+          "to": null
+        },
+        "locators": [],
+        "publisher": "Direktorat Jenderal Imigrasi (Ditjen Imigrasi)",
+        "recorded_period": {
+          "from": "2026-07-19T00:00:00Z",
+          "to": null
+        },
+        "retrieved_at": "2026-07-19T00:00:00Z",
+        "source_key": "imigrasi.go.id.c1.visa-kunjungan-overstay",
+        "source_record_id": "e6d28bc1-1b38-5ab1-86bc-00fd7d0af142",
+        "status": "VERIFIED",
+        "supersedes_source_record_id": null,
+        "title": "Visa Kunjungan (C1) dan Ketentuan Overstay \u2014 Direktorat Jenderal Imigrasi",
+        "verified_at": "2026-07-19T00:00:00Z",
+        "verified_by": "agent.m5.visa-authoring-a1",
+        "version": 1
+      }
+    ],
+    "valid_period": {
+      "from": "2026-07-19T00:00:00Z",
+      "to": null
+    },
+    "version": "1.0.0"
+  },
+  "payload_sha256": "ffefeb62d53350fbfc196123cbb3c3676e641ac738f2677de6c1032a8e7cd164",
+  "protected": {
+    "alg": "Ed25519",
+    "domain": "balizero.visa-rulepack.v1",
+    "environment": "TEST",
+    "kid": "key-2026-07-test-1",
+    "schema_version": "1.0.0",
+    "signed_at": "2026-07-19T00:05:00Z"
+  },
+  "signature": "2qWNVT3NpnLrGANHlVbHXS1pgwsk9v9TmQ84QJ-hvExug4t79xn-wQ3qUc6LeyzR2nltUwm8rR-LWNFN4EoHDg"
+}

@@ -1,0 +1,157 @@
+{
+  "persona_id": "03_overstay_hard_filter_exclusion",
+  "narrative": "Overstayer whose 91 days beyond permit trigger a hard exclusion from every product.",
+  "notes": "",
+  "facts": {
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1979-11-20"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["AU"]
+    },
+    "person.marital_status": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.currently_in_indonesia": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "immigration.current_status_code": {
+      "status": "KNOWN",
+      "value": "C1"
+    },
+    "immigration.current_status_expiry": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.last_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.overstay_days": {
+      "status": "KNOWN",
+      "value": 91
+    },
+    "immigration.violation_history": {
+      "status": "KNOWN",
+      "value": ["OVERSTAY"]
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["TOURISM"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 30
+    },
+    "intent.desired_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.entry_pattern": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.requested_product_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.employer_country_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.serves_indonesian_clients": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.indonesia_source_compensation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.indonesian_work_sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.pt_pma_committed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.investment_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.paid_up_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.proposed_role": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.relation_to_sponsor": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_nationalities": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_status_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.marriage_registered": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.level": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.admission_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "ONSHORE_CONVERSION"
+    },
+    "process.wants_onshore_conversion": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.service_fee_budget_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.wants_quote": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    }
+  },
+  "expected": {
+    "global_state": "NO_SUPPORTED_PATH",
+    "global_reason_codes": ["OVERSTAY_EXCEEDS_HARD_LIMIT"],
+    "products": {},
+    "default": {
+      "kind": "DOMINANT_GLOBAL",
+      "state": "EXCLUDED",
+      "reason_codes": ["OVERSTAY_EXCEEDS_HARD_LIMIT"]
+    }
+  }
+}
