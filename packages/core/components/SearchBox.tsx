@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Search, X } from "lucide-react";
 
 export interface SearchBoxProps {
   value: string;
@@ -17,6 +16,40 @@ export interface SearchBoxProps {
 }
 
 const INPUT_BASE = "w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none";
+
+const SearchIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+);
+
+const ClearIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <path d="m18 6-12 12" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
 
 /**
  * Standard list-page search input: leading search icon, `/` focuses it from
@@ -70,7 +103,7 @@ export function SearchBox({
 
   return (
     <div className="relative flex-1">
-      <Search
+      <SearchIcon
         className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
         style={{ color: "var(--bz-text-2)" }}
       />
@@ -93,7 +126,7 @@ export function SearchBox({
           style={{ color: "var(--bz-text-2)" }}
           aria-label="Clear search"
         >
-          <X className="w-4 h-4" />
+          <ClearIcon className="w-4 h-4" />
         </button>
       )}
     </div>

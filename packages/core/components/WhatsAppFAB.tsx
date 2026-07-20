@@ -1,6 +1,38 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+interface WhatsAppIconProps {
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  fill?: string;
+  fillOpacity?: number;
+}
+
+const MessageCircle = ({
+  size = 20,
+  strokeWidth = 2,
+  color = "currentColor",
+  fill = "none",
+  fillOpacity = 0,
+  ...props
+}: WhatsAppIconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill={fill}
+    fillOpacity={fillOpacity}
+    stroke={color}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    {...props}
+  >
+    <path d="M21 11.5a8.5 8.5 0 0 0-16.1 5.06L3 21l4.69-1.64A8.5 8.5 0 1 0 21 11.5" />
+    <path d="m9 9 6 3-2 1.5-1 3.5 1.5-1 2 1.5" />
+  </svg>
+);
 
 /**
  * Persistent WhatsApp contact FAB — pill-shaped with label.
