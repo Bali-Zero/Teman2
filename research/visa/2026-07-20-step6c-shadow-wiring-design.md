@@ -14,6 +14,7 @@ sources:
   - apps/backend-rag/backend/services/common/background.py
   - apps/backend-rag/backend/db/migrations_v2/252_visa_engine_write_substrate.sql
   - apps/backend-rag/backend/tests/services/visa_engine/test_write_substrate.py
+adversarial_review: kimi-k3
 ---
 
 # STEP-6c — SHADOW wiring design (task #5)
@@ -134,3 +135,34 @@ assertion/log.
   VISA_ENGINE_TRUST_STORE_KEYS_JSON; set VISA_ENGINE_MATCH_MODE=SHADOW +
   VISA_ENGINE_MATCH_ENVIRONMENT; (later) runtime GRANT if ownership moves off
   backend_rag_v2.
+
+---
+
+## Adversarial review (cross-family, generator≠grader, W100) — PR #2916 STEP-6c SHADOW wiring
+
+- **Author (generator):** Sonnet 5 implementer. Design/orchestration: Fable 5.
+- **Adversarial grader:** Kimi (Moonshot) via `kimi -m kimi-code/kimi-for-coding` and
+  `-m kimi-code/k3` — a different training family from the Sonnet author and Fable
+  designer (satisfies the cross-family requirement).
+- **Seat status this run (declared):** Codex gpt-5.6-sol UNSUPPORTED with the ChatGPT
+  account (400 invalid_request_error); GLM token absent in Keychain; DeepSeek balance
+  dead. Kimi was the sole live cross-family seat and ran a full review.
+- **Scope reviewed:** the whole `services/visa_engine/shadow.py` diff + the
+  `visa_check.py` router edit, against migration-252 `visa_decisions` trigger/FK/CHECK
+  constraints. 7 categories: request-safety (can it raise/block/500), PII-in-logs,
+  trigger/FK/CHECK satisfaction, flag fail-open, facts-adapter correctness,
+  idempotency, async/pool.
+- **Result:** NO P0/P1. Two P2 findings, BOTH fixed in-diff before the commit landed:
+  1. The `_save_shadow_decision` idempotency docstring overstated `ON CONFLICT
+     (decision_id)` dedup — corrected after independently verifying against
+     `evaluator._deterministic_ids` that `effective_at` (wall-clock `now()`) feeds
+     `decision_id`, so cross-time re-evaluations of the same match produce DISTINCT,
+     harmless audit rows (not deduped).
+  2. The `evaluate()`-failure log now emits `type(exc).__name__` instead of
+     `str(exc)`, closing a transitive raw-fact leak vector (Law 2 / never-log-facts
+     contract).
+- **Independent Fable re-verification (verdicts-are-leads / W65):** 30/30 tests
+  re-run including 3 real-DB integration that prove the migration-252 constraints;
+  diff scope-checked (exactly 3 code files, additive); `decision_id` determinism
+  re-verified on disk.
+- **Verdict:** SHIP — no hard-requirement violation.
