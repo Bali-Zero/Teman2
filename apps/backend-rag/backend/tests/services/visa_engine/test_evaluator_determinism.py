@@ -4,12 +4,33 @@ pack + instants must produce a byte-identical ``Decision`` on every call —
 ``decision_id``/``public_id``/``facts_fingerprint`` must all be DERIVED from
 the inputs, never randomly generated (see ``evaluator.py``'s module
 docstring divergence #5).
+
+``assessment_id`` binding (round-3 graft from the sibling
+``visa-evaluator-hardening`` PR, 2026-07-20): ``decision_id``/``public_id``
+are now also derived from ``facts.assessment_id``, so ``_run`` below pins a
+FIXED assessment_id by default — otherwise two "repeated calls" in the same
+test would each get ``_gold_fixtures.applicant_facts``'s own default (a
+fresh random UUID per call) and legitimately diverge, which would defeat the
+point of a determinism test. Tests that specifically exercise the new
+assessment_id-uniqueness behavior pass distinct assessment_ids explicitly.
+
+Note: this file intentionally does NOT port
+``visa-evaluator-hardening``'s ``test_caller_supplied_hmac_key_controls_fingerprint``
+— that test asserts control over the fingerprint via a mandatory
+``fingerprint_hmac_key``/``fingerprint_key_id`` kwarg on every ``evaluate()``
+call, an API this module's injectable ``identity_provider`` design does not
+have (and, per the round-3 graft decision, deliberately does not adopt).
+The equivalent guarantee for THIS design — a caller-supplied provider fully
+controls ``decision_id``/``public_id``/``facts_fingerprint`` — is already
+covered by
+``test_evaluator_gate_round1.py::TestPlaceholderIdentityEnvironmentGuard::test_production_environment_pack_succeeds_with_an_injected_real_provider``.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import uuid
 from datetime import datetime, timezone
 
 import pytest
@@ -17,14 +38,23 @@ import pytest
 from backend.services.visa_engine.evaluator import evaluate
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 
+#: Fixed (not random) assessment_id for tests whose intent is "same logical
+#: assessment replayed twice must match" — ``_gold_fixtures.applicant_facts``
+#: defaults to a fresh ``uuid.uuid4()`` per call when not given one, which is
+#: correct for fixture ergonomics but wrong for a determinism test now that
+#: ``assessment_id`` is a load-bearing identity input (round-3 graft).
+_FIXED_ASSESSMENT_ID = uuid.UUID("a0b0c0d0-e0f0-4000-8000-000000000001")
+
 
 @pytest.fixture(scope="module")
 def compiled_gold_pack():
     return gf.build_gold_compiled_pack()
 
 
-def _run(compiled_gold_pack, overrides: dict):
-    facts = gf.applicant_facts(overrides=overrides)
+def _run(compiled_gold_pack, overrides: dict, assessment_id: uuid.UUID | None = None):
+    facts = gf.applicant_facts(
+        assessment_id=assessment_id or _FIXED_ASSESSMENT_ID, overrides=overrides
+    )
     return evaluate(
         facts,
         compiled_gold_pack,
@@ -86,6 +116,26 @@ class TestDeterministicReplay:
         citizen = _run(compiled_gold_pack, {"person.nationalities": gf.known(["ID"])})
         assert tourist.decision_id != citizen.decision_id
         assert tourist.facts_fingerprint.digest != citizen.facts_fingerprint.digest
+
+    def test_distinct_assessments_with_identical_facts_have_distinct_ids(
+        self, compiled_gold_pack
+    ) -> None:
+        """Round-3 graft (2026-07-20, from ``visa-evaluator-hardening``):
+        two DISTINCT assessments — different ``assessment_id`` — carrying
+        byte-identical ``ApplicantFactsData`` must NOT collide on
+        ``decision_id``/``public_id``. Before the graft, ``_deterministic_ids``
+        derived its seed only from ``rule_pack_id``/``sequence``/
+        ``facts_digest``/``effective_at`` — none of which vary here — so
+        this pair used to come out with the SAME decision identity despite
+        being two different assessments. ``facts_fingerprint`` legitimately
+        stays equal (it fingerprints the DATA, not the assessment)."""
+        overrides = {"intent.purposes": gf.known(["TOURISM"])}
+        first = _run(compiled_gold_pack, overrides, assessment_id=uuid.uuid4())
+        second = _run(compiled_gold_pack, dict(overrides), assessment_id=uuid.uuid4())
+
+        assert first.facts_fingerprint.digest == second.facts_fingerprint.digest
+        assert first.decision_id != second.decision_id
+        assert first.public_id != second.public_id
 
     def test_json_round_trip_preserves_full_equality(self, compiled_gold_pack) -> None:
         decision = _run(compiled_gold_pack, {"person.nationalities": gf.known(["AF"])})
