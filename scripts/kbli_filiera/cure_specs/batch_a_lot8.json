@@ -1,0 +1,72 @@
+{
+  "_doc": "GARUDA-FILIERA Batch A Lot 8 (A-L8) cure spec — conductor gate research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md. 9 of 13 members detached (per_skala unverifiable against the record's own cited pp28_sources); 4 members explicitly EXCLUDED (93111, 93112, 93114, 93119 — crosswalk+primary licensing genuinely verified by both D1/D5 seats, quarantined only by contract-coverage/tooling gaps that are NOT record defects — see gate report §3.5, do not add them here without a fresh adjudication).",
+  "_provenance": "Workflow run wf_d079f983-515 (evidenceRoot /tmp/kbli-conductor-a1-0718/evid-lot8, re-pulled+verified this session after the first launch wf_3a28b22f-e6d hit empty evidence and was discarded). runnerBlobSha256 45e3951fb0d52f1d2c1687c12895a38cdc050a62c8486e3cbcaef967f3d4b01d.",
+  "version": "lot8-v1",
+  "disputed_key": "per_skala_disputed_pp28_collision",
+  "codes": [
+    {
+      "code": "91425",
+      "flavor": "payload-cross-contamination-code-proximity",
+      "judul": "Taman Hutan Raya",
+      "data_note": "Crosswalk 91033<->91425 ('Taman Hutan Raya') is clean ONE_TO_ONE, image-verified bidirectionally on BPS Vol.2 Lampiran 10 (p.241 forward, p.438 reverse). But canonical's pp28_sources=['91025'] cites a DIFFERENT KBLI-2020 activity ('Taman Budaya'/Cultural Park, which itself crosswalks to 90310, never to 91425) — the served per_skala (Rendah/NIB/Otomatis/Bupati-Walikota) is 91025's PP28 row (Lampiran I.J-P p.497 row 8), image-verified verbatim match to canonical's payload, confirming the licensing facts were borrowed from a code-proximity neighbor (91025 sits near true parent 91033 in the same 91xxx cluster), not from 91425's actual predecessor. 91033's own PP28 row was never located in this dossier. per_skala detached; the correct 91033-sourced licensing row requires a fresh, targeted PP28 re-hunt.",
+      "whatYouNeed": "This nature-conservation-park code's licensing information was carried over using a neighboring 2020 code's data by mistake — that neighbor is a different activity entirely (a cultural park, not a forest park). The licensing rows shown here earlier have been removed because they do not actually belong to this activity; the correct requirements are not yet reliably confirmed in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93113",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Fasilitas Gelanggang/Arena",
+      "data_note": "Crosswalk 93113<->93113 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93113'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault despite the confident MATCH_LANGSUNG framing. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This sports-arena-facility code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93115",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Fasilitas Olahraga Beladiri",
+      "data_note": "Crosswalk 93115<->93115 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93115'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This martial-arts sports-facility code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93121",
+      "flavor": "pp28-wrong-page-hot-trap",
+      "judul": "Klub Sepak Bola",
+      "data_note": "Crosswalk 93121<->93121 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). The single PP28 render captured for this code (pp28/394938_p761-761.png, header 'I.F.2886') is a blank-identity-column continuation row (No/Kode KBLI/Judul KBLI/Ruang Lingkup/Skala Usaha/Tingkat Risiko/Perizinan/Persyaratan/Jangka Waktu all blank) whose only visible content is industrial quality-control/calibration obligations, entirely unrelated to a football club — neither '93121' nor 'Klub Sepak Bola' appears anywhere on the page, and the page's own lampiran letter (I.F) contradicts canonical's own sektor_id (I.J-P). This is a fuzzy-matcher false-positive hit (a second confirmed sighting of this exact page/file across two independent lot pulls this program). per_skala detached; a future re-hunt must target the correct sector lampiran (I.J-P) and explicitly exclude 394938_p761-761.png.",
+      "whatYouNeed": "This football-club facility code's licensing information could not be confirmed — the regulation excerpt our system located for this code turned out to be an unrelated, blank entry from a different industry sector, not this code's own row. The licensing rows shown here earlier have been removed until the correct source row is located. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93122",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Klub Golf",
+      "data_note": "Crosswalk 93122<->93122 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93122'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This golf-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93123",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Klub Renang",
+      "data_note": "Crosswalk 93123<->93123 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93123'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This swimming-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93124",
+      "flavor": "pp28-source-absent-full-scan-multitier",
+      "judul": "Klub Tenis Lapangan",
+      "data_note": "Crosswalk 93124<->93124 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93124'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) for BOTH of the record's two per_skala tiers (Menengah Rendah and Tinggi) — no PP28 row backing either tier could be located anywhere in the vault. per_skala detached (both tiers); the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This tennis-club code's licensing information (both scale tiers) could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific rows this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93125",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Klub Tinju",
+      "data_note": "Crosswalk 93125<->93125 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93125'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This boxing-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "93126",
+      "flavor": "pp28-source-absent-full-scan",
+      "judul": "Klub Bela Diri",
+      "data_note": "Crosswalk 93126<->93126 is clean ONE_TO_ONE, image-verified bidirectionally (BPS Vol.2 Lampiran 10, p.242 forward + p.438 reverse). canonical's pp28_sources=['93126'] is self-referential, but an exhaustive vault hunt for this code across all 21 pinned PP28 lampiran files (394930-394950, 11,208 pages total) returned verdict=absent (pp28/ABSENT.json) — no PP28 row backing this code's per_skala could be located anywhere in the vault. per_skala detached; the cited PP28 source does not resolve to any evidence.",
+      "whatYouNeed": "This martial-arts-club code's licensing information could not be confirmed against the official 2025 regulation text — an exhaustive search of the full regulation did not turn up the specific row this code's licensing was supposedly based on. The licensing rows shown here earlier have been removed until a verified source is found. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    }
+  ],
+  "_whatYouNeed_doc": "whatYouNeed text follows the established F12 wording rule: speaks only to OUR verification state (not located / not confirmed), never asserts regulatory non-existence; always closes with the Bali Zero contact line, matching every prior lot's convention."
+}
