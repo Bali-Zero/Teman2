@@ -135,7 +135,12 @@ class DriveOperationsManager:
         `about.get` call — independent of the walk below. `files_count`/
         `folders_count`/`storage_by_type`/`largest_files` come from a
         paginated `files.list` walk (pageSize 1000, capped at `max_pages`
-        pages OR `max_seconds` wall-clock time, whichever hits first).
+        pages OR `max_seconds` cumulative wall-clock time between pages,
+        whichever hits first). This bounds the common case (many pages each
+        completing normally) but is cooperative, not preemptive: the deadline
+        is only consulted between completed page fetches, so a single slow
+        request is bounded only by the shared http client's own timeout, not
+        by `max_seconds` (Kimi K3 cross-family review, 2026-07-20).
         If the drive has more pages than the cap allows, `truncated=True` and
         `scanned_pages` say so explicitly — a partial count is never returned
         silently as if it were the total.

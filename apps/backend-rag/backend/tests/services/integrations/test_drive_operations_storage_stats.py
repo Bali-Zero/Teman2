@@ -234,12 +234,28 @@ async def test_get_storage_stats_honestly_flags_truncation_when_wall_clock_deadl
 async def test_get_storage_stats_does_not_falsely_flag_wall_clock_truncation_when_fast():
     """Innocence: a walk that finishes before the deadline must not be reported
     truncated — proves the wall-clock check above is measuring the deadline,
-    not a bug that always trips it."""
-    mgr = _manager([_resp(ABOUT_RESP), _resp({"files": []})])
+    not a bug that always trips it.
+
+    Cross-family review (Kimi K3, 2026-07-20) caught the first version of this
+    test being vacuous: a single page with no `nextPageToken` breaks the loop
+    via `if not page_token: break` BEFORE the deadline check is ever reached,
+    so it never exercised the `time.monotonic() >= walk_deadline` branch at
+    all — it would have passed even if that condition were replaced with
+    `or True`. Fixed by using a 2-page walk so the check's False path (page 1
+    has a `nextPageToken`, is under the deadline, and the walk continues) is
+    what's actually under test."""
+    page1 = _resp(
+        {
+            "files": [_file("f1", "a.pdf", "application/pdf", "100")],
+            "nextPageToken": "tok-2",
+        }
+    )
+    page2 = _resp({"files": []})
+    mgr = _manager([_resp(ABOUT_RESP), page1, page2])
 
     with patch("backend.services.integrations.drive.drive_operations.time.monotonic") as mock_clock:
         mock_clock.side_effect = [0.0, 1.0]
         out = await mgr.get_storage_stats(USER, max_pages=20, max_seconds=10.0)
 
     assert out["truncated"] is False
-    assert out["scanned_pages"] == 1
+    assert out["scanned_pages"] == 2
