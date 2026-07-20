@@ -256,10 +256,20 @@ LOT8_DATA_NOTE_MARKERS = {
 #           "Pengelolaan Fasilitas Olahraga Lainnya", the THREE codes THIS SAME gate report
 #           explicitly holds un-cured (§3.5, contract-coverage/tooling gap, not a record defect)
 #           — the sharpest available guard-over-match antidote, same lot/same family/same session.
-#   93114 — "Fasilitas Lapangan", the FOURTH §3.5 code (partial: one genuinely-sound tier, one
-#           gap the compiler cannot cure without a per-tier primitive) — untouched by this spec.
 #   91429 — "Aktivitas Cagar Alam Lainnya" (other nature reserve activities), the direct
 #           division-91 sibling of THIS lot's 91425 (nature recreation park) — untouched.
+#
+# SUPERSESSION (2026-07-21, Lot 10): 93114 — "Fasilitas Lapangan", originally the FOURTH §3.5
+# code here (one genuinely-sound tier, one gap the compiler could not cure without a per-tier
+# primitive) — was REMOVED from this list. Lot 10
+# (research/operations/2026-07-21-kbli-batch-a-lot10-conductor-gate.md) built exactly that
+# primitive (PR #2921, action="partial_detach"+tier_selector) and legitimately cured 93114's
+# defective tier while leaving its sound tier byte-identical in per_skala — so 93114 now
+# DOES carry the disputed key and IS no longer "untouched by this spec" (which was only ever
+# true as of Lot 8; it was never a promise that no LATER lot would cure it once the tooling
+# existed). Its current invariants are pinned in test_kbli_batch_a_lot10_registry.py instead.
+# Do NOT re-add 93114 here without a fresh regression (this file remains authoritative for what
+# Lot 8 itself did and did not touch).
 #
 # NOTE: deliberately does NOT include any of Lot 9's 10 sport-cluster members (93127, 93128,
 # 93129, 93191, 93192, 93193, 93194, 93195, 93197, 93199 — see
@@ -270,7 +280,7 @@ LOT8_DATA_NOTE_MARKERS = {
 # the moment Lot 9's own cure lands, for a reason that has nothing to do with Lot 8. Innocence
 # controls must be codes with no near-term cure scheduled against them.
 INNOCENT_NEIGHBORS = [
-    "93111", "93112", "93114", "93119",
+    "93111", "93112", "93119",
     "91429",
 ]
 

@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "39c94f78f577fa965c8378242982e0e1f78b0821",
-  "canonical_sha256": "96a5ccec8f2fd65aeff591a30baa8bf177a16746b3939e02b572a8bf597cf2b3",
+  "canonical_revision": "2df807b006a9158afef9c153e31875daf12ec727",
+  "canonical_sha256": "446c5f5f1fcf5c33d18d411c71843a48f398b9b7a52f1f249c507c86604cf50b",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,9 +10,9 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 215,
-    "A-serving/pp28": 6,
-    "_in_scope_total": 6,
+    "A-empty/gap": 216,
+    "A-serving/pp28": 5,
+    "_in_scope_total": 5,
     "_total": 221
   },
   "members": [
@@ -1898,8 +1898,8 @@
     },
     {
       "kode_kbli_2025": "93193",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Perburuan di Kawasan Buru",
       "pp28_sources": [

@@ -350,26 +350,37 @@ LOT9_PRE_CURE_PER_SKALA_SNAPSHOT = {
 
 @pytest.mark.parametrize("path", _existing_dataset_copies(), ids=_DATASET_IDS)
 @pytest.mark.parametrize("code", LOT9_METADATA_ONLY_CODES)
-def test_lot9_metadata_only_per_skala_completely_untouched(path: Path, code: str):
-    """GUILT+INNOCENCE, the lot's sharpest invariant: 93191/93193 are action=metadata_only --
-    per_skala must be UNCHANGED from its pre-cure value, BYTE-IDENTICAL (both tiers, including the
-    KNOWN cross-contaminated content), never detached, never folded into the disputed key."""
+def test_lot9_metadata_only_per_skala_content_preserved_across_lot10(path: Path, code: str):
+    """SUPERSEDED significance (2026-07-21, Lot 10 --
+    research/operations/2026-07-21-kbli-batch-a-lot10-conductor-gate.md): this test ORIGINALLY
+    asserted 93191/93193's per_skala was byte-identical UNTOUCHED (action=metadata_only at Lot 9,
+    because no per-tier detach primitive existed yet -- PENDING-ARMS L8 §3.4/§5.1b). Lot 10 built
+    that primitive (PR #2921, action="partial_detach"+tier_selector) and legitimately changed
+    per_skala for both codes: 93191 via partial_detach (sound tier kept, contaminated tier
+    moved) and 93193 via a plain full detach (zero sound tiers survive, both tiers moved). The
+    original byte-identical-UNTOUCHED assertion is therefore INTENTIONALLY retired -- it is no
+    longer true, by design, not by regression. What survives as the real cross-lot invariant:
+    NO CONTENT WAS LOST in the Lot 9 -> Lot 10 handoff -- every row from this Lot 9 pre-cure
+    snapshot is still present somewhere in the record today, either still in per_skala (93191's
+    retained sound tier) or relocated into the disputed key (both codes' removed tier(s)). See
+    test_kbli_batch_a_lot10_registry.py for the current, authoritative per-field pins on these
+    two codes."""
     rec = _load_record(path, code)
-    per_skala = rec.get("per_skala")
-    assert isinstance(per_skala, list) and len(per_skala) == 2, (
-        f"{path}: {code}.per_skala expected exactly 2 tiers (untouched by this cure), got "
-        f"{type(per_skala)} / len={len(per_skala) if isinstance(per_skala, list) else None!r}"
-    )
+    per_skala = rec.get("per_skala") or []
+    disputed = rec.get(DISPUTED_KEY) or []
+    combined = per_skala + disputed
+
+    def _sorted_dump(rows: list[Any]) -> str:
+        return json.dumps(
+            sorted(rows, key=lambda r: json.dumps(r, sort_keys=True, ensure_ascii=False)),
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+
     expected = LOT9_PRE_CURE_PER_SKALA_SNAPSHOT[code]
-    actual_dump = json.dumps(per_skala, sort_keys=True, ensure_ascii=False)
-    expected_dump = json.dumps(expected, sort_keys=True, ensure_ascii=False)
-    assert actual_dump == expected_dump, (
-        f"{path}: {code}.per_skala drifted from its hardcoded pre-cure snapshot -- this code is "
-        "action=metadata_only this lot, per_skala must be byte-identical before/after."
-    )
-    assert DISPUTED_KEY not in rec, (
-        f"{path}: {code} unexpectedly carries {DISPUTED_KEY!r} -- action=metadata_only codes must "
-        "never get a disputed-key fold (per_skala was never detached)."
+    assert _sorted_dump(combined) == _sorted_dump(expected), (
+        f"{path}: {code}'s per_skala + {DISPUTED_KEY} no longer reconstruct the Lot 9 pre-cure "
+        "snapshot -- content was lost across the Lot 9 -> Lot 10 handoff, not just relocated."
     )
 
 
@@ -400,7 +411,17 @@ def test_lot9_metadata_only_whatyouneed_untouched():
 # 3. _data_note verbatim from spec (all 10 codes)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("code", LOT9_CODES)
+# SUPERSESSION (2026-07-21, Lot 10): 93191/93193 are excluded here -- Lot 10 legitimately
+# changed their per_skala, and cure_canonical_collisions.py's apply_cure ALWAYS rewrites
+# _data_note to the LATEST cure's own provenance text (step 4 of apply_cure), so these two
+# codes' _data_note is now Lot 10's text, not Lot 9's. Covered instead by
+# test_lot9_data_note_diverges_from_spec_after_lot10_supersession below.
+LOT9_CODES_WITH_DATA_NOTE_STILL_FROM_THIS_LOT = [
+    c for c in LOT9_CODES if c not in LOT9_METADATA_ONLY_CODES
+]
+
+
+@pytest.mark.parametrize("code", LOT9_CODES_WITH_DATA_NOTE_STILL_FROM_THIS_LOT)
 def test_lot9_data_note_matches_spec_verbatim(code: str):
     """_data_note must be copied VERBATIM from the cure spec -- the compiler never authors a
     replacement licensing value or paraphrases the provenance note (rule #9
@@ -410,6 +431,21 @@ def test_lot9_data_note_matches_spec_verbatim(code: str):
     assert rec.get("_data_note") == spec_by_code[code]["data_note"], (
         f"{code}: _data_note drifted from scripts/kbli_filiera/cure_specs/batch_a_lot9.json -- "
         "the compiler must copy data_note verbatim."
+    )
+
+
+@pytest.mark.parametrize("code", LOT9_METADATA_ONLY_CODES)
+def test_lot9_data_note_diverges_from_spec_after_lot10_supersession(code: str):
+    """SUPERSESSION (2026-07-21, Lot 10): 93191/93193's _data_note is no longer Lot 9's own text
+    -- cure_canonical_collisions.py always rewrites _data_note to the LATEST cure's provenance
+    string, and Lot 10 cured both codes' per_skala, overwriting their _data_note with Lot 10's own
+    text. This test pins that the divergence is real and expected, not a silent accidental drift
+    back to a stale Lot-9 value."""
+    spec_by_code = _load_lot9_spec_by_code()
+    rec = _load_record(CANONICAL_PATH, code)
+    assert rec.get("_data_note") != spec_by_code[code]["data_note"], (
+        f"{code}: _data_note UNEXPECTEDLY still matches Lot 9's own spec text -- Lot 10 was "
+        "expected to have overwritten it with its own provenance note by now."
     )
 
 
@@ -677,8 +713,11 @@ def test_lot9_innocent_neighbors_status_mapping_unchanged():
 #    the other 9 codes in this lot.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("code", LOT9_CODES)
+@pytest.mark.parametrize("code", LOT9_CODES_WITH_DATA_NOTE_STILL_FROM_THIS_LOT)
 def test_lot9_data_note_content_marker_present(code: str):
+    """93191/93193 excluded here too (2026-07-21, Lot 10 supersession -- see
+    test_lot9_data_note_diverges_from_spec_after_lot10_supersession above): their marker was a
+    Lot-9-specific phrase and their _data_note is now Lot 10's own text."""
     rec = _load_record(CANONICAL_PATH, code)
     note = rec.get("_data_note", "")
     marker = LOT9_DATA_NOTE_MARKERS[code]
