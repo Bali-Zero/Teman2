@@ -1,10 +1,13 @@
-# CLIENTI-NON-A-CRM — drive/doc contact auto-create (design spec, wave 1)
-
+---
 date: 2026-07-19
 domain: operations
 client_case: none (infrastructure — intake identity backfill)
 sources: local census on nuzantara_dev (this doc), PR #2669 (wa-intake autocreate precedent), migration 246, `.claude/skills/intake/SKILL.md`
-status: DESIGN — pending adversarial gate (Codex), then measured apply
+status: GATE CLOSED CLEAN (10 Codex rounds, 6-15, 2026-07-19/20) — wave-1 execution pending Zero's explicit GO (PENDING-ARMS)
+adversarial_review: codex
+---
+
+# CLIENTI-NON-A-CRM — drive/doc contact auto-create (design spec, wave 1)
 
 ## Mandate (Zero, 2026-07-19)
 
@@ -745,3 +748,52 @@ window) are DECLARED, not fixed — logged in PENDING-ARMS with the
 reasoning on record, because closing them fully requires either a
 different threat model than this single-operator tool has, or a change to
 worker.py itself (a follow-up lane, not a wave-1 blocker).
+
+## Adversarial review
+
+**Seat:** codex (`gpt-5.6-sol` xhigh reasoning, `read-only` sandbox, with `gpt-5.5`
+xhigh fallback on capacity errors — 10 independent rounds, 2026-07-19/20).
+**Verdict:** CLEAN (round 15) — wave-1 GO on the design/build; wave-1 EXECUTION itself
+still gated on Zero's explicit business decision (PENDING-ARMS entry).
+
+Ten rounds (6→15) of generator≠grader review against this design and its
+implementation (`apps/backend-rag/scripts/intake_drive_contact_autocreate.py`,
+`apps/backend-rag/backend/services/intake/drive_autocreate_validity.py`, ~1,900
+lines + growing test suite, ending at 69 tests green). Each round: the prior
+round's closure claims + full current source + a census excerpt were handed to
+a fresh Codex process with no memory of authoring the fix — the model that
+wrote a cure never graded its own cure.
+
+Findings closed, in order (see §v3.5-v3.7 above for full detail per round):
+R11-1 nested-value-member JSON-serialization bypass in `_sql_field_proj` ·
+R11-2 census/live-apply gate asymmetry (`_live_gate_preflight`) · R11-3 no
+attestation that the running worker process actually loaded the audited code
+(`_worker_attestation`) · R11-4/R11-5 rollback/verify hardening · R12-1
+JSON-literal-scalar name-validity bypass (`NULL`/`TRUE`/`FALSE`/`UNDEFINED`) ·
+R12-2/R12-3 attestation wired to refuse pre-drain AND re-checked post-drain ·
+R12-4 unarmed rollback over live rows now a hard exit(6) · R13-1/R13-2
+structural-char + external-executable-provenance tightening · R14-1 the
+cwd-independence bypass (an external absolute executable with cwd merely set
+to the deploy root still attested) — closed by making cwd never an
+independent signal, only a resolution aid for a relative executable token.
+
+The recurring disease across all ten rounds, named explicitly because it is
+the actual lesson, not the individual bugs: **an artifact (manifest,
+attestation, validator, ledger) trusted a PROXY for live/current/coherent
+state instead of checking it directly.** Every fix replaced a proxy with a
+direct check and added the guilt case the proxy would have missed.
+
+Two residuals were DECLARED rather than chased further — R13-3 (mtime-backdating
+bypass requires deliberate self-sabotage of a safety check on a single-operator
+tool, outside this system's realistic threat model; closing it needs a
+`worker.py` self-attestation change, a materially bigger lift) and R13-4
+(freshness-to-ledger TOCTOU on the `reroute_verified` bookkeeping flag — the
+real safety gates are independently re-run by `--verify-batch` at T+delay/T+1d
+regardless of this flag, the same accepted bound as the program's earlier R9-3
+residual). Codex re-examined both in round 14 and did not reopen them. Both are
+logged in `.claude/skills/modus/PENDING-ARMS.md` with the reasoning on record —
+a no-silent-caps declaration, not a silent gap.
+
+The file body above (§Census through §v3.7) is the faithful build record,
+preserved as written round-by-round; this section is the appended R1-gate
+artifact required by `scripts/check_adversarial_review.py`.
