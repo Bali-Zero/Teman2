@@ -33,6 +33,7 @@ from backend.services.visa_check.catalogue import (
     VisaType,
 )
 from backend.services.visa_check.match_tree import BudgetBand, Purpose
+from backend.services.visa_engine.shadow import maybe_spawn_shadow_match
 
 logger = get_logger(__name__)
 
@@ -259,6 +260,17 @@ async def submit_match(
     except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("visa_match: DB insert failed")
         raise HTTPException(status_code=500, detail="Could not save match result")
+
+    # STEP-6c SHADOW wiring: fire-and-forget audit re-evaluation through
+    # the real visa_engine. Flag-gated (default OFF), never rendered, never
+    # able to raise into this handler. See services/visa_engine/shadow.py.
+    maybe_spawn_shadow_match(
+        db_pool,
+        nationality=payload.nationality,
+        purpose=payload.purpose,
+        duration_months=payload.duration_months,
+        match_hash=saved.hash,
+    )
 
     proc_days = _processing_days(result.recommended_visa) if result.recommended_visa else None
 
