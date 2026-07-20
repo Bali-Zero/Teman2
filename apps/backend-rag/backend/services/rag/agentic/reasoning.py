@@ -355,6 +355,13 @@ class ReasoningEngine:
                                     # _prepare_react_loop from the workspace
                                     # endpoint chain. None for legacy /stream.
                                     agent_role=getattr(state, "agent_role", None),
+                                    # WA team-assistant Phase 2 (2026-07-20):
+                                    # forward the resolved caller profile so
+                                    # team_crm_tools.py can self-scope.
+                                    # state.caller_profile is set by
+                                    # OrchestratorCore.process_query_core.
+                                    # None everywhere else (complete no-op).
+                                    caller_profile=getattr(state, "caller_profile", None),
                                 )
                                 return tc, result, duration
                             except Exception as e:
