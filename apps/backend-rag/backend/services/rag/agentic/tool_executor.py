@@ -189,6 +189,7 @@ async def execute_tool(
     tool_execution_counter: dict[str, int] | None = None,
     agent_role: Any | None = None,
     confirmation_emitter: Any | None = None,
+    caller_profile: dict[str, Any] | None = None,
 ) -> tuple[str, float]:
     """
     Execute tool with rate limiting and RBAC authorization.
@@ -213,6 +214,14 @@ async def execute_tool(
             reasoning.py — would duplicate authorizer logic and pollute
             args. This single optional kwarg keeps the authorizer as the
             single source of truth for confirmation decisions.
+        caller_profile: WA team-assistant Phase 2 (2026-07-20). The
+            resolved sender profile dict (`{"role": "team"|"creator", ...}`)
+            from `AgentState.caller_profile` — injected into `arguments` as
+            `_caller_profile` the SAME way `user_id` is injected as
+            `_user_id` below (after the authorizer, so neither the LLM nor
+            the authorizer ever see a server-controlled field mixed into
+            LLM-supplied args). Only `team_crm_tools.py`'s tools read it;
+            every other tool's `**kwargs` silently absorbs it as a no-op.
 
     Returns:
         Tuple of (tool execution result as string, execution duration in seconds)
@@ -336,6 +345,8 @@ async def execute_tool(
         # sees server-controlled fields mixed in with LLM-supplied args.
         if user_id:
             arguments["_user_id"] = user_id
+        if caller_profile:
+            arguments["_caller_profile"] = caller_profile
         result = await tool.execute(**arguments)
         duration = time.time() - start_time
 
