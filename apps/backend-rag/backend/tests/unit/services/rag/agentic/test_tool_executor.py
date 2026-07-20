@@ -332,6 +332,53 @@ class TestExecuteTool:
         assert "_user_id" not in call_kwargs
 
     @pytest.mark.asyncio
+    async def test_caller_profile_injection(self):
+        """WA team-assistant Phase 2 (2026-07-20): caller_profile is injected
+        as `_caller_profile`, mirroring the `_user_id` injection above."""
+        tool = MockTool("test_tool")
+        tool_map = {"test_tool": tool}
+        execute_spy = AsyncMock(return_value="success")
+        tool.execute = execute_spy
+
+        profile = {"role": "team", "email": "member@balizero.com"}
+        await execute_tool(
+            tool_map, "test_tool", {"arg1": "value1"}, caller_profile=profile
+        )
+
+        execute_spy.assert_called_once()
+        call_kwargs = execute_spy.call_args[1]
+        assert call_kwargs["arg1"] == "value1"
+        assert call_kwargs["_caller_profile"] == profile
+
+    @pytest.mark.asyncio
+    async def test_no_caller_profile_injection_when_none(self):
+        tool = MockTool("test_tool")
+        tool_map = {"test_tool": tool}
+        execute_spy = AsyncMock(return_value="success")
+        tool.execute = execute_spy
+
+        await execute_tool(
+            tool_map, "test_tool", {"arg1": "value1"}, caller_profile=None
+        )
+
+        call_kwargs = execute_spy.call_args[1]
+        assert "_caller_profile" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_no_caller_profile_injection_when_empty_dict(self):
+        tool = MockTool("test_tool")
+        tool_map = {"test_tool": tool}
+        execute_spy = AsyncMock(return_value="success")
+        tool.execute = execute_spy
+
+        await execute_tool(
+            tool_map, "test_tool", {"arg1": "value1"}, caller_profile={}
+        )
+
+        call_kwargs = execute_spy.call_args[1]
+        assert "_caller_profile" not in call_kwargs
+
+    @pytest.mark.asyncio
     async def test_value_error_handling(self):
         """Test ValueError from tool.execute is caught"""
         tool = MockTool("test_tool")
