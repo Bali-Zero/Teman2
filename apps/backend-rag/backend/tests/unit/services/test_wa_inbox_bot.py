@@ -17,22 +17,44 @@ from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncpg
 import pytest
 
 from backend.services.integrations import wa_inbox_bot
 
 
 class _Conn:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        fetchrow_result: dict[str, Any] | None = None,
+        fetchrow_error: Exception | None = None,
+    ) -> None:
         self._rows = rows
+        self._fetchrow_result = fetchrow_result
+        self._fetchrow_error = fetchrow_error
 
     async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
         return self._rows
 
+    async def fetchrow(self, sql: str, *args: Any) -> dict[str, Any] | None:
+        # Used by resolve_sender_identity's team_members/clients lookups.
+        # No table-routing needed here — these tests either want "no match"
+        # (default None, both lookups miss → role=unknown) or "DB down"
+        # (fetchrow_error, raised on the first lookup it makes).
+        if self._fetchrow_error is not None:
+            raise self._fetchrow_error
+        return self._fetchrow_result
+
 
 class _Pool:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
-        self._conn = _Conn(rows)
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        fetchrow_result: dict[str, Any] | None = None,
+        fetchrow_error: Exception | None = None,
+    ) -> None:
+        self._conn = _Conn(rows, fetchrow_result=fetchrow_result, fetchrow_error=fetchrow_error)
 
     def acquire(self) -> Any:
         @asynccontextmanager
@@ -264,3 +286,104 @@ async def test_bot_generation_semaphore_bounds_concurrent_rag_calls(monkeypatch)
     assert results == ["ok"] * 5
     assert max_in_flight <= 2
     assert client.post.await_count == 5
+
+
+# ── Team-assistant V1: sender-identity → RAG `profile` field ──────────────
+# Runs the REAL resolve_sender_identity (not mocked) end-to-end through
+# generate_bot_reply — only the RAG POST is mocked. Innocence contract:
+# client/unknown/db-down payloads stay byte-identical to the
+# pre-identity-wiring shape (no "profile" key at all). Guilt: a resolved
+# owner/team sender's payload carries an explicit `profile`.
+
+
+@pytest.mark.asyncio
+async def test_owner_number_adds_creator_profile(monkeypatch):
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.setenv("WHATSAPP_OWNER_NUMBERS", "62811000111")
+    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
+    pool = _Pool(_ROWS_NEWEST_FIRST)  # env resolves before any DB lookup
+
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000111"))
+
+    assert captured["json"]["profile"] == {"role": "creator"}
+
+
+@pytest.mark.asyncio
+async def test_team_env_number_adds_team_profile(monkeypatch):
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "62811000222:Test Member Alpha")
+    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000222"))
+
+    assert captured["json"]["profile"] == {"role": "team", "name": "Test Member Alpha"}
+
+
+@pytest.mark.asyncio
+async def test_team_db_hit_adds_team_profile_with_email(monkeypatch):
+    """DB-resolved team hit (no env override) must include email in profile."""
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
+    pool = _Pool(
+        _ROWS_NEWEST_FIRST,
+        fetchrow_result={
+            "id": "tm-1",
+            "display_name": "Test Member Beta",
+            "email": "beta.tester@balizero.com",
+        },
+    )
+
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000333"))
+
+    assert captured["json"]["profile"] == {
+        "role": "team",
+        "name": "Test Member Beta",
+        "email": "beta.tester@balizero.com",
+    }
+
+
+@pytest.mark.asyncio
+async def test_client_and_unknown_payload_has_no_profile_key(monkeypatch):
+    """Innocence contract: no owner/team match → payload identical to the
+    pre-identity-wiring shape (no 'profile' key at all)."""
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
+    pool = _Pool(_ROWS_NEWEST_FIRST)  # fetchrow_result=None → both lookups miss
+
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
+
+    sent = captured["json"]
+    assert "profile" not in sent
+    assert sent == {
+        "query": "Quanto costa un KITAS?",
+        "user_id": "whatsapp_62899999999",
+        "session_id": "wa_meta_session_7",
+        "conversation_history": [
+            {"role": "user", "content": "Ciao"},
+            {"role": "assistant", "content": "Ciao! Come posso aiutarti?"},
+        ],
+        "channel": "whatsapp",
+    }
+
+
+@pytest.mark.asyncio
+async def test_identity_db_down_fails_safe_no_profile_key(monkeypatch):
+    """resolve_sender_identity fails safe to 'unknown' on a DB error — the
+    payload must stay identical, not raise, not guess a profile."""
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
+    pool = _Pool(_ROWS_NEWEST_FIRST, fetchrow_error=asyncpg.PostgresError("db down"))
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
+
+    assert answer == "ok"
+    assert "profile" not in captured["json"]

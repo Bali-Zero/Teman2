@@ -1011,6 +1011,7 @@ class OrchestratorCore:
         start_time: float,
         session_id: str | None = None,
         tool_execution_counter: dict[str, int] | None = None,
+        profile: dict[str, Any] | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -1031,6 +1032,11 @@ class OrchestratorCore:
             start_time: Timestamp di inizio
             session_id: Optional session ID
             tool_execution_counter: Optional tool execution counter
+            profile: Optional caller-supplied profile override (WA
+                team-assistant V1). Merged on top of whatever
+                prepare_query_context()'s DB-keyed lookup found — the
+                caller's fields win on key conflicts. None (every caller
+                except the WA bot today) is a complete no-op.
 
         Returns:
             CoreResult completo
@@ -1052,6 +1058,16 @@ class OrchestratorCore:
             conversation_history=conversation_history,
             session_id=session_id,
         )
+
+        # 1a2. WA team-assistant V1: merge a caller-supplied profile override
+        # on top of the DB-keyed profile lookup above. For WA senders,
+        # user_id is "whatsapp_<phone>" — prepare_query_context's DB lookup
+        # never finds a row for that key, so this is normally a full
+        # replacement, not a partial merge; written as a merge so a future
+        # caller with a *real* user_id and a partial override still gets
+        # sane behavior (override fields win).
+        if profile:
+            user_context["profile"] = {**(user_context.get("profile") or {}), **profile}
 
         # 1b. [GraphRAG v6 → SOTA 2026] QueryPlanner
         # Active mode: produces QueryPlan consumed by CRAG Router.
