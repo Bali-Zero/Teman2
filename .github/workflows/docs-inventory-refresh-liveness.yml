@@ -83,7 +83,7 @@ jobs:
         # No fetch-depth: 0 — this script never touches git history, only
         # `gh run list` (unlike docs_audit.py, which needs full history).
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 

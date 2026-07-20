@@ -53,7 +53,7 @@ jobs:
             echo "::notice::no relevant paths changed — sentinel success"
           fi
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.relevant.outputs.run == 'true'
         with:
           python-version: "3.11"
