@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -125,13 +126,16 @@ class DriveOperationsManager:
         return [_normalize_drive_file(f) for f in response.json().get("files", [])]
 
     @drive_operation("get_storage_stats")
-    async def get_storage_stats(self, user_email: str, max_pages: int = 20) -> dict[str, Any]:
+    async def get_storage_stats(
+        self, user_email: str, max_pages: int = 20, max_seconds: float = 10.0
+    ) -> dict[str, Any]:
         """Aggregate storage statistics for the team Drive.
 
         `storage_used_bytes`/`storage_limit_bytes` come from a single, exact
         `about.get` call — independent of the walk below. `files_count`/
         `folders_count`/`storage_by_type`/`largest_files` come from a
-        paginated `files.list` walk (pageSize 1000, capped at `max_pages`).
+        paginated `files.list` walk (pageSize 1000, capped at `max_pages`
+        pages OR `max_seconds` wall-clock time, whichever hits first).
         If the drive has more pages than the cap allows, `truncated=True` and
         `scanned_pages` say so explicitly — a partial count is never returned
         silently as if it were the total.
@@ -142,10 +146,12 @@ class DriveOperationsManager:
         about_response = await self.http_client.get(
             "https://www.googleapis.com/drive/v3/about",
             headers=headers,
-            params={"fields": "storageQuota"},
+            params={"fields": "storageQuota,user"},
         )
         about_response.raise_for_status()
-        quota = about_response.json().get("storageQuota", {})
+        about_data = about_response.json()
+        quota = about_data.get("storageQuota", {})
+        quota_measured_as = about_data.get("user", {}).get("emailAddress")
 
         files_count = 0
         folders_count = 0
@@ -154,6 +160,7 @@ class DriveOperationsManager:
         page_token: str | None = None
         scanned_pages = 0
         truncated = False
+        walk_deadline = time.monotonic() + max_seconds
 
         while True:
             params: dict[str, Any] = {
@@ -187,7 +194,7 @@ class DriveOperationsManager:
             page_token = data.get("nextPageToken")
             if not page_token:
                 break
-            if scanned_pages >= max_pages:
+            if scanned_pages >= max_pages or time.monotonic() >= walk_deadline:
                 truncated = True
                 break
 
@@ -200,6 +207,7 @@ class DriveOperationsManager:
         return {
             "storage_used_bytes": int(quota.get("usage") or 0),
             "storage_limit_bytes": int(limit) if limit else None,
+            "quota_measured_as": quota_measured_as,
             "files_count": files_count,
             "folders_count": folders_count,
             "storage_by_type": storage_by_type,

@@ -19,7 +19,7 @@ Mock pattern mirrors test_drive_operations_normalization.py / _mutations.py
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -35,7 +35,8 @@ ABOUT_RESP = {
         "usage": "1048576000",  # 1000 MB
         "usageInDrive": "1048576000",
         "usageInDriveTrash": "0",
-    }
+    },
+    "user": {"emailAddress": "zero@balizero.com"},
 }
 
 
@@ -75,6 +76,7 @@ async def test_get_storage_stats_reports_exact_total_from_about_endpoint():
 
     assert out["storage_used_bytes"] == 1048576000
     assert out["storage_limit_bytes"] == 32985348833280
+    assert out["quota_measured_as"] == "zero@balizero.com"
     assert out["files_count"] == 0
     assert out["folders_count"] == 0
 
@@ -198,6 +200,46 @@ async def test_get_storage_stats_does_not_falsely_flag_truncation_under_cap():
     mgr = _manager([_resp(ABOUT_RESP), _resp({"files": []})])
 
     out = await mgr.get_storage_stats(USER, max_pages=1)
+
+    assert out["truncated"] is False
+    assert out["scanned_pages"] == 1
+
+
+async def test_get_storage_stats_honestly_flags_truncation_when_wall_clock_deadline_hit():
+    """Guilt (wall-clock twin of the max_pages guilt test above): a slow Drive API
+    that would blow past max_seconds must be cut off THERE, not left to run
+    unbounded just because max_pages hasn't been reached yet — max_pages alone
+    does not bound response time (confirmed in prod: 45.5s against real data,
+    still under a max_pages=20 cap that never tripped)."""
+    endless_page = _resp(
+        {
+            "files": [_file("f1", "a.pdf", "application/pdf", "100")],
+            "nextPageToken": "keeps-going",
+        }
+    )
+    mgr = _manager([_resp(ABOUT_RESP), endless_page, endless_page, endless_page])
+
+    with patch("backend.services.integrations.drive.drive_operations.time.monotonic") as mock_clock:
+        # deadline-setup call returns 0.0 (walk_deadline = 0.0 + max_seconds);
+        # first loop check returns a value already >= walk_deadline (10.0) so it
+        # truncates immediately after scanning exactly 1 page.
+        mock_clock.side_effect = [0.0, 10.0]
+        out = await mgr.get_storage_stats(USER, max_pages=20, max_seconds=10.0)
+
+    assert out["truncated"] is True
+    assert out["scanned_pages"] == 1
+    assert out["files_count"] == 1
+
+
+async def test_get_storage_stats_does_not_falsely_flag_wall_clock_truncation_when_fast():
+    """Innocence: a walk that finishes before the deadline must not be reported
+    truncated — proves the wall-clock check above is measuring the deadline,
+    not a bug that always trips it."""
+    mgr = _manager([_resp(ABOUT_RESP), _resp({"files": []})])
+
+    with patch("backend.services.integrations.drive.drive_operations.time.monotonic") as mock_clock:
+        mock_clock.side_effect = [0.0, 1.0]
+        out = await mgr.get_storage_stats(USER, max_pages=20, max_seconds=10.0)
 
     assert out["truncated"] is False
     assert out["scanned_pages"] == 1
