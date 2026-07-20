@@ -45,6 +45,7 @@ WHITELIST_FILES: set[str] = {
     "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
     "yarn.lock",
     "tsconfig.json",
     "vercel.json",
