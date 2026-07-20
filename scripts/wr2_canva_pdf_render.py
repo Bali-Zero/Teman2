@@ -1485,7 +1485,7 @@ def _log_canonicity_banner() -> None:
     import hashlib as _hl
     import subprocess as _sp
     script_path = Path(__file__).resolve()
-    canonical = Path.home() / "Desktop/nuzantara/scripts/wr2_canva_pdf_render.py"
+    canonical = Path.home() / "nuzantara/scripts/wr2_canva_pdf_render.py"
     git_sha = "unknown"
     try:
         git_sha = _sp.check_output(

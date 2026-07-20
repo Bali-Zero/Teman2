@@ -9,7 +9,7 @@
 # Schedule (manual install when ready for Stage 6):
 #   crontab -e
 #   30 3 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh \
-#       /Users/nuzantara/Desktop/nuzantara/scripts/nlm_activation/nlm_shadow_run_all.sh \
+#       /Users/nuzantara/nuzantara/scripts/nlm_activation/nlm_shadow_run_all.sh \
 #       >> /tmp/cron-shadow-extractor.log 2>&1
 #
 # Env required:
@@ -24,7 +24,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 LOG_FILE="$HOME/.openclaw/logs/nlm_shadow_extractor.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 

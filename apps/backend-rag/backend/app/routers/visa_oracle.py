@@ -10,14 +10,18 @@ No authentication required (public product).
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_database_pool
 from backend.services.common.background import spawn
-from backend.services.visa_oracle.visa_oracle_service import get_visa_oracle_service
+from backend.services.visa_oracle.visa_oracle_service import (
+    DURATION_THRESHOLDS,
+    PURPOSE_CATEGORY_MAP,
+    get_visa_oracle_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +30,17 @@ router = APIRouter(prefix="/visa-oracle", tags=["visa-oracle"])
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
+
+# PR0 safety freeze (2026-07-17, round2 spec §9 row PR0 / §6.2): additive
+# five-state contract for /recommend. `visas` MUST be [] for every state
+# except SUPPORTED_CANDIDATES — see `_determine_recommend_state`.
+RecommendState = Literal[
+    "NEEDS_INPUT",
+    "SUPPORTED_CANDIDATES",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+    "TEMPORARILY_UNAVAILABLE",
+]
 
 
 class RecommendRequest(BaseModel):
@@ -39,6 +54,10 @@ class RecommendResponse(BaseModel):
     success: bool
     visas: list[dict[str, Any]]
     session_id: str
+    # PR0 safety freeze — additive, back-compat (old fields unchanged above).
+    state: RecommendState
+    missing_facts: list[str] = []
+    review_reasons: list[str] = []
 
 
 class ChatRequest(BaseModel):
@@ -56,6 +75,10 @@ class ChatResponse(BaseModel):
     confidence: str
     sources: list[str]
     session_id: str
+    # PR0 safety freeze — additive, back-compat. Populated when a safety
+    # branch changed the outcome (e.g. an obsolete-code mention on weak
+    # evidence); empty otherwise.
+    review_reasons: list[str] = []
 
 
 class HandoffRequest(BaseModel):
@@ -95,18 +118,88 @@ OBSOLETE_VISA_CODES: dict[str, tuple[str, str]] = {
     "B211": ("C1", "C1 Visa Wisata tourism C2 business visit"),
 }
 
+# Regulatory basis already established elsewhere in this file (SYSTEM_PROMPT
+# REGULATORY ACCURACY section above) — reused verbatim in
+# `_obsolete_code_static_answer` rather than inventing a new citation.
+OBSOLETE_CODE_REGULATORY_BASIS = "PERMENKUMHAM 22/2023"
 
-def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
-    """Return (obsolete_code, expansion_hint) if the message mentions a
-    retired visa code that needs query expansion + regulatory flagging.
-    Matches word-boundary (B211 won't match B2115 etc.)."""
+
+def _detect_obsolete_codes(text: str) -> list[tuple[str, str]]:
+    """R2-C (Codex re-review NEW-BUG, F6): a message can mention MORE THAN
+    ONE retired visa code (e.g. "is B211 or B211A still valid?") — the
+    prior single-match version silently dropped every code after the
+    first, understating both the review_reasons annotation and the static
+    answer. Returns EVERY match, word-boundary (B211 won't match B211A —
+    no boundary between the shared "211" and the trailing "A" — nor
+    B2115 etc.), in `OBSOLETE_VISA_CODES` dict order."""
     import re
 
     upper = text.upper()
+    hits: list[tuple[str, str]] = []
     for code, (_replacement, hint) in OBSOLETE_VISA_CODES.items():
         if re.search(rf"\b{re.escape(code)}\b", upper):
-            return code, hint
-    return None
+            hits.append((code, hint))
+    return hits
+
+
+def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
+    """Thin single-value wrapper around `_detect_obsolete_codes` — returns
+    the first match, or None. No internal call site needs this shape
+    anymore (all use the plural form); kept for any future caller that
+    only needs "was ANY obsolete code mentioned"."""
+    hits = _detect_obsolete_codes(text)
+    return hits[0] if hits else None
+
+
+def _obsolete_review_reasons(obsolete_hits: list[tuple[str, str]]) -> list[str]:
+    """PR0 W2 + R2-C: the review_reasons annotation carried on a
+    (still-safe) ABSTAIN response when the user's message mentioned one or
+    more retired visa codes. One `obsolete_code_mentioned:<code>` entry per
+    DISTINCT code — replaces the removed ABSTAIN→CAUTIOUS promotion; the
+    code(s) are still named, but no candidate/answer is ever generated on
+    the strength of any of them."""
+    return [f"obsolete_code_mentioned:{code}" for code, _hint in obsolete_hits]
+
+
+def _obsolete_code_static_answer(obsolete_hits: list[tuple[str, str]]) -> str | None:
+    """PR0 hardening (Codex red-team P2 #6) + R2-C (multi-code): a
+    DETERMINISTIC, zero-LLM explanation for the ABSTAIN + obsolete-code-
+    mentioned path. Restores the informational value the removed
+    ABSTAIN->CAUTIOUS promotion used to provide (via ungrounded LLM
+    generation) WITHOUT ever calling the LLM. Enumerates EVERY distinct
+    retired code mentioned, one line each, from its own hint data — a
+    message mentioning both B211 and B211A must not silently answer for
+    only one of them.
+
+    Built entirely from data already present in `OBSOLETE_VISA_CODES` (the
+    replacement code + hint, both already curated in this file) plus the
+    `OBSOLETE_CODE_REGULATORY_BASIS` citation already used elsewhere in this
+    router's SYSTEM_PROMPT — no new regulatory claim is introduced. English
+    only for now (a deliberate scope decision, not an oversight — accurately
+    localizing regulatory phrasing into 7 languages is real translation
+    work, out of scope for a safety-freeze hardening pass; see PR report).
+
+    Returns None when no obsolete code was mentioned — callers fall back to
+    the existing generic ABSTAIN fallback (innocence path, unchanged).
+    """
+    lines: list[str] = []
+    for code, _hint in obsolete_hits:
+        replacement, _ = OBSOLETE_VISA_CODES.get(code, (None, None))
+        if replacement is None:
+            continue
+        lines.append(
+            f"The visa code {code} was retired as part of the "
+            f"{OBSOLETE_CODE_REGULATORY_BASIS} visa reform and is no longer issued. "
+            f"Based on the most common intent, {replacement} is the closest current "
+            "equivalent."
+        )
+    if not lines:
+        return None
+    lines.append(
+        "A Bali Zero consultant can confirm the exact match for your specific "
+        "case on WhatsApp (+62 821-3107-363)."
+    )
+    return "\n".join(lines)
 
 
 # Telegram chat ID for Damar / team lead notifications
@@ -266,6 +359,146 @@ def _parse_family(family_str: str) -> bool:
     return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
 
 
+_REQUIRED_RECOMMEND_FIELDS = ("nationality", "purpose", "duration")
+
+# PR0 hardening — how much of a raw user-supplied value we echo back into a
+# review_reasons entry (e.g. `invalid_purpose:<value>`). Keeps log/response
+# payloads bounded regardless of what the client posts.
+_MAX_ECHOED_VALUE_LEN = 40
+
+# FIX-2 (Codex red-team P1 #1, nationality overclaim): the legacy scorer
+# (`VisaOracleService.recommend_visas`) never looks at `nationality` at all
+# — it is collected but has zero influence on ranking. A SUPPORTED_CANDIDATES
+# response could otherwise read as "we checked your nationality too". This
+# constant is appended to review_reasons on EVERY SUPPORTED_CANDIDATES
+# response as a declared, truthful limitation — not a bug marker. The v2
+# engine (later PRs) is what actually cures nationality-aware matching.
+NATIONALITY_NOT_EVALUATED_REASON = "nationality_not_evaluated"
+
+
+def _sanitize_echoed_value(value: str) -> str:
+    """Collapse whitespace/newlines and truncate before echoing a raw
+    user-supplied value into a review_reasons entry or log line."""
+    collapsed = " ".join(value.split())
+    return collapsed[:_MAX_ECHOED_VALUE_LEN]
+
+
+def _missing_recommend_facts(nationality: str, purpose: str, duration: str) -> list[str]:
+    """Return the subset of required /recommend facts that are blank.
+
+    Pydantic already enforces the fields are present strings; this catches
+    "" / whitespace-only submissions that would otherwise fall through to
+    the scorer's permissive category defaults and silently produce a
+    low-signal (but non-empty) candidate list.
+    """
+    values = {"nationality": nationality, "purpose": purpose, "duration": duration}
+    return [name for name in _REQUIRED_RECOMMEND_FIELDS if not values[name].strip()]
+
+
+def _invalid_recommend_vocabulary(purpose: str, duration: str) -> list[str]:
+    """FIX-1 (Codex red-team P1 #1, "banana -> SUPPORTED_CANDIDATES"):
+    `VisaOracleService._score_visa` awards a +1.5 duration-fit bonus and a
+    +1.0 family bonus INDEPENDENTLY of whether `purpose` is a recognized
+    value — when `purpose` isn't a `PURPOSE_KEYWORDS` key it silently
+    resolves to an empty keyword list instead of rejecting the request. A
+    nonsense purpose (e.g. "banana") can still score >0 purely from the
+    duration/family bonus and reach SUPPORTED_CANDIDATES. Live-verified
+    against the REAL service: `nationality=US purpose=banana duration=long
+    family=false` scores KITAS rows at 1.5; `duration=nonsense family=true`
+    scores at 1.0 from the family bonus alone.
+
+    This closes the gap with a vocabulary gate on the EXISTING dicts
+    (`PURPOSE_CATEGORY_MAP`, `DURATION_THRESHOLDS`) — no new matching logic,
+    just refusing to score an unrecognized purpose/duration at all.
+    """
+    reasons: list[str] = []
+    if purpose.strip().lower() not in PURPOSE_CATEGORY_MAP:
+        reasons.append(f"invalid_purpose:{_sanitize_echoed_value(purpose)}")
+    if duration.strip().lower() not in DURATION_THRESHOLDS:
+        reasons.append(f"invalid_duration:{_sanitize_echoed_value(duration)}")
+    return reasons
+
+
+def _filter_complete_visas(visas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """FIX-3 (Codex red-team P1 #2, garbage candidates) + R2-A (Codex
+    re-review residue on the same finding): drop any scored row lacking
+    EITHER a non-empty string `visa_name` OR a non-empty `price` before it
+    ever reaches state determination or the response body. `price` is the
+    consequential field — it is what `/handoff` renders into the WhatsApp
+    deep-link and the Telegram lead — so a row with a name but no price is
+    exactly as unusable a "candidate" as a nameless one. An upstream
+    pricing-JSON gap should never surface as a candidate client-side."""
+    complete: list[dict[str, Any]] = []
+    for visa in visas:
+        name = visa.get("visa_name")
+        price = visa.get("price")
+        has_name = isinstance(name, str) and name.strip()
+        has_price = price is not None and str(price).strip()
+        if has_name and has_price:
+            complete.append(visa)
+    return complete
+
+
+def _determine_recommend_state(
+    visas: list[dict[str, Any]],
+    missing_facts: list[str],
+    invalid_vocabulary_reasons: list[str] = (),  # type: ignore[assignment]
+    catalog_degraded: bool = False,
+) -> tuple[RecommendState, list[str]]:
+    """Map VisaOracleService's raw scored output to a safe five-state outcome.
+
+    PR0 safety freeze + hardening — a conservative read of the EXISTING
+    scorer's signal, no new matching logic. `visas` is expected to already
+    be completeness-filtered (`_filter_complete_visas`) by the caller;
+    `catalog_degraded` signals that the RAW (pre-filter) list was non-empty
+    but every row was dropped as incomplete.
+
+    Precedence:
+      - required facts missing (blank)        -> NEEDS_INPUT
+      - purpose/duration not in the scorer's
+        known vocabulary (FIX-1)               -> NEEDS_INPUT, invalid_* reasons
+      - raw candidates existed but ALL were
+        incomplete (FIX-3)                     -> TEMPORARILY_UNAVAILABLE, catalog_degraded
+      - scorer returned zero rows              -> TEMPORARILY_UNAVAILABLE, catalog_no_candidates
+      - every candidate scored 0 (no real
+        keyword/duration/family signal)        -> NEEDS_INPUT, low_confidence_match
+      - otherwise                              -> SUPPORTED_CANDIDATES,
+                                                   nationality_not_evaluated (FIX-2,
+                                                   a declared limitation — the legacy
+                                                   scorer never evaluates nationality)
+
+    Returns (state, review_reasons). Callers MUST clear `visas` to [] unless
+    state == "SUPPORTED_CANDIDATES" — this function does not mutate `visas`.
+    """
+    if missing_facts:
+        return "NEEDS_INPUT", []
+
+    if invalid_vocabulary_reasons:
+        return "NEEDS_INPUT", list(invalid_vocabulary_reasons)
+
+    if catalog_degraded:
+        return "TEMPORARILY_UNAVAILABLE", ["catalog_degraded"]
+
+    if not visas:
+        return "TEMPORARILY_UNAVAILABLE", ["catalog_no_candidates"]
+
+    best_score = max((visa.get("score") or 0) for visa in visas)
+    if best_score <= 0:
+        return "NEEDS_INPUT", ["low_confidence_match"]
+
+    return "SUPPORTED_CANDIDATES", [NATIONALITY_NOT_EVALUATED_REASON]
+
+
+def _has_usable_content(result: dict[str, Any]) -> bool:
+    """FIX-4 (Codex red-team P1 #3, empty-content generation): a hybrid
+    search hit can carry a real similarity `score` while its `content`/
+    `text` field is empty or whitespace-only (e.g. a chunking gap). Scoring
+    such a hit as evidence would let a HIGH top_score push confidence past
+    the ABSTAIN gate with literally nothing for the LLM to ground on."""
+    content = result.get("content") or result.get("text") or ""
+    return bool(str(content).strip())
+
+
 def _detect_language(text: str) -> str:
     """Detect user language from message text using Unicode script ranges.
 
@@ -412,7 +645,7 @@ async def _persist_session_create(
                 """
                 INSERT INTO visa_oracle_sessions
                     (session_id, quiz_answers, recommended_visas, ip_hash)
-                VALUES ($1, $2::jsonb, $3::jsonb, $4)
+                VALUES ($1, $2::text::jsonb, $3::text::jsonb, $4)
                 """,
                 session_id,
                 json.dumps(quiz_answers),
@@ -436,7 +669,7 @@ async def _persist_session_append_message(
             await conn.execute(
                 """
                 UPDATE visa_oracle_sessions
-                SET messages = messages || $2::jsonb
+                SET messages = messages || $2::text::jsonb
                 WHERE session_id = $1
                 """,
                 session_id,
@@ -446,20 +679,136 @@ async def _persist_session_append_message(
         logger.warning("visa-oracle session persist (message) failed: %s", exc)
 
 
+def _update_row_count(status: str | None) -> int:
+    """Parse asyncpg's `UPDATE N` command-status string. Returns 0 on any
+    unparseable/missing status — a safe default that just triggers the
+    retry path rather than silently assuming success."""
+    try:
+        return int(str(status).split()[-1])
+    except (AttributeError, ValueError, IndexError):
+        return 0
+
+
+_HANDOFF_TRIGGERED_UPDATE_SQL = """
+    UPDATE visa_oracle_sessions
+    SET handoff_triggered = TRUE
+    WHERE session_id = $1
+    """
+
+
+_HANDOFF_UPDATE_RETRY_ATTEMPTS = 3
+_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS = 5.0  # 2 gaps × 5s ≈ 10s total across 3 attempts
+
+
 async def _persist_session_handoff(db_pool: Any, session_id: str) -> None:
-    """Mark handoff_triggered = TRUE. Non-fatal."""
+    """Mark handoff_triggered = TRUE. Non-fatal — failures are logged, not
+    raised. Called fire-and-forget via `spawn()` at the call site (see
+    `handoff()`), so every attempt/sleep below already runs off the
+    request/response path — nothing here can add HTTP latency.
+
+    FIX-6 (Codex red-team P1 #5, async-persist race) + R2-E (Codex
+    re-review, F5 residue — DECLARED-ACCEPTABLE MITIGATION, not a full
+    cure): /recommend persists the session via a non-blocking `spawn()`'d
+    INSERT — a fast-clicking user (or a client that skips /recommend and
+    calls /handoff directly) can reach this UPDATE before that INSERT
+    lands, matching 0 rows. Retries up to
+    `_HANDOFF_UPDATE_RETRY_ATTEMPTS` times, backing off
+    `_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS` between attempts (~10s total),
+    then logs and gives up — this UPDATE has always been best-effort
+    telemetry, never a gate on the handoff response.
+
+    RESIDUE (accepted for the freeze, not fixed here): `handoff_triggered`
+    can still be lost if /recommend's INSERT lands MORE than ~10s late — a
+    real cure needs UPSERT/marker-row schema semantics, which is
+    repository-layer work out of scope for a safety-freeze hardening pass
+    (see commit body; tracked for PR4).
+    """
+    try:
+        for attempt in range(_HANDOFF_UPDATE_RETRY_ATTEMPTS):
+            async with db_pool.acquire() as conn:
+                status = await conn.execute(_HANDOFF_TRIGGERED_UPDATE_SQL, session_id)
+            if _update_row_count(status) > 0:
+                return
+            if attempt < _HANDOFF_UPDATE_RETRY_ATTEMPTS - 1:
+                await asyncio.sleep(_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS)
+        logger.info(
+            "visa-oracle session persist (handoff): no row for session=%s "
+            "after %d attempts (~%.0fs) — logging and continuing",
+            session_id[:12],
+            _HANDOFF_UPDATE_RETRY_ATTEMPTS,
+            _HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS * (_HANDOFF_UPDATE_RETRY_ATTEMPTS - 1),
+        )
+    except Exception as exc:
+        logger.warning("visa-oracle session persist (handoff) failed: %s", exc)
+
+
+async def _fetch_session_snapshot(db_pool: Any, session_id: str) -> dict[str, Any] | None:
+    """Return the server-persisted {quiz_answers, recommended_visas} for a
+    session — PR0 W3: the ONLY trusted source for handoff pricing and
+    recommendation. Both columns were written entirely server-side by
+    `/recommend` (`recommended_visas` is PricingService-derived via
+    `VisaOracleService.recommend_visas`), so this is the "server-side
+    PricingTool path from the persisted session's own data".
+
+    Returns None if the session was never persisted, or on any read failure
+    — the caller must then proceed WITHOUT a price rather than fall back to
+    the client-posted handoff body.
+    """
     try:
         async with db_pool.acquire() as conn:
-            await conn.execute(
+            row = await conn.fetchrow(
                 """
-                UPDATE visa_oracle_sessions
-                SET handoff_triggered = TRUE
+                SELECT quiz_answers, recommended_visas
+                FROM visa_oracle_sessions
                 WHERE session_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
                 """,
                 session_id,
             )
     except Exception as exc:
-        logger.warning("visa-oracle session persist (handoff) failed: %s", exc)
+        logger.warning("visa-oracle handoff: session snapshot fetch failed: %s", exc)
+        return None
+
+    if row is None:
+        return None
+
+    def _decode(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (TypeError, ValueError):
+                return None
+        return value
+
+    return {
+        "quiz_answers": _decode(row["quiz_answers"]) or {},
+        "recommended_visas": _decode(row["recommended_visas"]) or [],
+    }
+
+
+async def _fetch_session_snapshot_with_retry(
+    db_pool: Any,
+    session_id: str,
+    *,
+    max_attempts: int = 3,
+    backoff_seconds: float = 0.4,
+) -> dict[str, Any] | None:
+    """FIX-6 (Codex red-team P1 #5, async-persist race): `/recommend`
+    persists the session via a non-blocking `spawn()`'d INSERT. If
+    `/handoff` arrives before that INSERT lands (fast client, or a slow DB
+    connection acquire), a single `_fetch_session_snapshot` read would
+    spuriously miss a session that DOES exist a few hundred ms later —
+    silently downgrading a real session to the "no server session" fallback.
+    Retry with a short backoff before giving up; still None after
+    `max_attempts` falls through to the existing safe no-price path."""
+    for attempt in range(max_attempts):
+        snapshot = await _fetch_session_snapshot(db_pool, session_id)
+        if snapshot is not None:
+            return snapshot
+        if attempt < max_attempts - 1:
+            await asyncio.sleep(backoff_seconds)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -476,23 +825,59 @@ async def recommend(
     """
     Score and rank visa types for the given quiz answers.
     No LLM — pure scoring logic from VisaOracleService.
+
+    PR0 safety freeze (2026-07-17) + hardening (Codex red-team round): the
+    response also carries `state` / `missing_facts` / `review_reasons`.
+    `visas` is [] for every state except SUPPORTED_CANDIDATES — callers must
+    not treat a non-empty legacy `visas` list as implying a confident match
+    without also checking `state`. `success=False` (still HTTP 200) is
+    reserved for the scoring-exception path ONLY — a genuine service
+    outage — so a legacy client checking only `success` sees failure on an
+    outage exactly as it did pre-PR0 via the old 500.
     """
     try:
         service = get_visa_oracle_service()
         family_bool = _parse_family(body.family)
-        visas = service.recommend_visas(
-            nationality=body.nationality,
-            purpose=body.purpose,
-            duration=body.duration,
-            family=family_bool,
-        )
+        missing_facts = _missing_recommend_facts(body.nationality, body.purpose, body.duration)
+        invalid_vocabulary_reasons = _invalid_recommend_vocabulary(body.purpose, body.duration)
+
+        success = True
+        try:
+            raw_visas = service.recommend_visas(
+                nationality=body.nationality,
+                purpose=body.purpose,
+                duration=body.duration,
+                family=family_bool,
+            )
+            visas = _filter_complete_visas(raw_visas)
+            catalog_degraded = bool(raw_visas) and not visas
+            state, review_reasons = _determine_recommend_state(
+                visas, missing_facts, invalid_vocabulary_reasons, catalog_degraded
+            )
+        except Exception as scoring_exc:
+            # A genuine scoring/catalog outage — the frontend must still be
+            # able to render this (W4), but `success=False` preserves the
+            # pre-PR0 "this call failed" signal for legacy callers that only
+            # check `success`. Different from catalog_no_candidates/
+            # catalog_degraded, which are a scorer that ran fine and simply
+            # found nothing — those stay success=True. Genuinely unexpected
+            # failures below (service init, session_id generation) still
+            # hit the outer 500 handler.
+            logger.error("visa-oracle /recommend scoring error: %s", scoring_exc, exc_info=True)
+            visas, state, review_reasons = [], "TEMPORARILY_UNAVAILABLE", ["scoring_error"]
+            success = False
+
+        if state != "SUPPORTED_CANDIDATES":
+            visas = []
+
         session_id = service.generate_session_id()
 
         logger.info(
-            "visa-oracle /recommend: purpose=%s duration=%s family=%s → %d visas",
+            "visa-oracle /recommend: purpose=%s duration=%s family=%s state=%s → %d visas",
             body.purpose,
             body.duration,
             family_bool,
+            state,
             len(visas),
         )
         # Persist session non-blocking
@@ -507,7 +892,14 @@ async def recommend(
             )
         )
 
-        return RecommendResponse(success=True, visas=visas, session_id=session_id)
+        return RecommendResponse(
+            success=success,
+            visas=visas,
+            session_id=session_id,
+            state=state,
+            missing_facts=missing_facts,
+            review_reasons=review_reasons,
+        )
 
     except Exception as exc:
         logger.error("visa-oracle /recommend error: %s", exc, exc_info=True)
@@ -649,14 +1041,19 @@ async def chat(
         # downstream: we have enough pretraining knowledge + SYSTEM_PROMPT
         # guidance to correct the code mention, even if the KB top_score
         # is weak (KB is thin on ex-codes precisely because they no longer
-        # exist).
-        obsolete_hit = _detect_obsolete_code(body.message)
-        if obsolete_hit:
-            code, hint = obsolete_hit
-            enriched_query = f"{quiz_ctx}{body.message} {hint}"
+        # exist). R2-C: a message can name more than one retired code —
+        # expand with every DISTINCT hint (B211/B211A share an identical
+        # hint today, so dedupe rather than repeat it verbatim).
+        obsolete_hits = _detect_obsolete_codes(body.message)
+        if obsolete_hits:
+            distinct_hints: list[str] = []
+            for _code, hint in obsolete_hits:
+                if hint not in distinct_hints:
+                    distinct_hints.append(hint)
+            enriched_query = f"{quiz_ctx}{body.message} {' '.join(distinct_hints)}"
             logger.info(
-                "visa-oracle /chat: obsolete code %s detected, expanded query session=%s",
-                code,
+                "visa-oracle /chat: obsolete code(s) %s detected, expanded query session=%s",
+                ",".join(code for code, _hint in obsolete_hits),
                 body.session_id[:12],
             )
         else:
@@ -671,15 +1068,24 @@ async def chat(
             alpha=0.5,
         )
         search_results: list[dict[str, Any]] = raw.get("results", [])
+        # FIX-4 (Codex red-team P1 #3, empty-content generation): a hit can
+        # carry a real similarity score with empty/whitespace `content` —
+        # drop those BEFORE computing top_score so an empty-but-high-scoring
+        # hit can never push confidence past the ABSTAIN gate with nothing
+        # for the LLM to ground on.
+        search_results = [r for r in search_results if _has_usable_content(r)]
 
         if not search_results:
             logger.info("visa-oracle /chat: no results for session=%s", body.session_id[:12])
+            obsolete_answer = _obsolete_code_static_answer(obsolete_hits)
             return ChatResponse(
                 success=True,
-                answer=ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
+                answer=obsolete_answer
+                or ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
+                review_reasons=_obsolete_review_reasons(obsolete_hits),
             )
 
         # --- Use vector similarity scores directly (cross-encoder not available on Fly) ---
@@ -696,32 +1102,34 @@ async def chat(
         else:
             confidence = CONFIDENCE_NORMAL
 
-        # If the user mentioned an obsolete code, DON'T ABSTAIN even with weak
-        # scores. We have enough pretraining context + SYSTEM_PROMPT rules to
-        # correctly flag the code as obsolete and redirect. Promote to CAUTIOUS
-        # so the hedging prefix is emitted too.
-        if obsolete_hit and confidence == CONFIDENCE_ABSTAIN:
-            confidence = CONFIDENCE_CAUTIOUS
-            logger.info(
-                "visa-oracle /chat: promoted ABSTAIN→CAUTIOUS due to obsolete "
-                "code %s (top_score=%.3f) session=%s",
-                obsolete_hit[0],
-                top_score,
-                body.session_id[:12],
-            )
-
+        # PR0 safety freeze (2026-07-17): a prior branch here promoted
+        # ABSTAIN→CAUTIOUS whenever the user mentioned an obsolete visa code,
+        # "on the strength of pretraining context + SYSTEM_PROMPT rules"
+        # alone — i.e. it let the LLM generate a free-form answer (including
+        # possible visa recommendations) with NO grounded KB evidence.
+        # Removed (round2 spec §6.6 step 2 / product-design.md §2 claim #2).
+        # Weak evidence now ALWAYS abstains, obsolete code or not — the code
+        # is still named, but only as a review_reasons annotation below.
         if confidence == CONFIDENCE_ABSTAIN:
             logger.info(
                 "visa-oracle /chat: ABSTAIN (top_score=%.3f) session=%s",
                 top_score,
                 body.session_id[:12],
             )
+            # FIX-7 (Codex red-team P2 #6): restore a DETERMINISTIC,
+            # zero-LLM explanation on the obsolete-code path — built only
+            # from the existing OBSOLETE_VISA_CODES data (no generation, no
+            # new legal claim). Innocence: no obsolete code -> generic
+            # ABSTAIN fallback, unchanged.
+            obsolete_answer = _obsolete_code_static_answer(obsolete_hits)
             return ChatResponse(
                 success=True,
-                answer=ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
+                answer=obsolete_answer
+                or ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
+                review_reasons=_obsolete_review_reasons(obsolete_hits),
             )
 
         # --- Build context for LLM ---
@@ -817,20 +1225,68 @@ async def handoff(
 ) -> HandoffResponse:
     """
     Build WhatsApp deep-link URL and send Telegram lead notification.
+
+    PR0 safety freeze (2026-07-17, W3) + hardening (Codex red-team round):
+    the recommended visa name and price used in the WhatsApp message /
+    Telegram summary come ONLY from the session this backend itself
+    persisted at /recommend time (already PricingService-derived — see
+    `VisaOracleService.recommend_visas`). `HandoffRequest.recommended_visas`
+    (client-posted) is still accepted on the wire for back-compat but is
+    never used for price/recommendation; a divergence is logged (no PII —
+    visa names/prices/session_id are not personal data).
+
+    FIX-5 (Codex red-team P1 #4): quiz facts (nationality/purpose/duration)
+    also prefer the server-persisted snapshot over the client-posted body —
+    same-session data captured by /recommend itself, before any chance for
+    a later handoff POST to alter it — falling back to the client body only
+    when no snapshot (or an empty one) exists. A body-only handoff (no
+    server session backing it at all) still fires the Telegram lead —
+    leads matter commercially — but is tagged `UNVERIFIED (no server
+    session):` rather than presented as if server-verified.
     """
     from backend.services.integrations.telegram_bot_service import telegram_bot
 
     try:
         service = get_visa_oracle_service()
 
-        # Build WhatsApp URL
-        nationality = body.quiz_answers.get("nationality", "Unknown")
-        purpose = body.quiz_answers.get("purpose", "Unknown")
-        duration = body.quiz_answers.get("duration", "Unknown")
+        # FIX-6: retry-wrapped — /recommend's INSERT is non-blocking and can
+        # still be in flight when a fast client calls /handoff.
+        snapshot = await _fetch_session_snapshot_with_retry(db_pool, body.session_id)
+        server_visas = snapshot["recommended_visas"] if snapshot else []
+        server_quiz = snapshot["quiz_answers"] if snapshot else {}
+        server_top = server_visas[0] if server_visas else {}
+        client_top = body.recommended_visas[0] if body.recommended_visas else {}
 
-        top_visa = body.recommended_visas[0] if body.recommended_visas else {}
-        visa_name = top_visa.get("visa_name", "Indonesian Visa")
-        price = top_visa.get("price", "contact for pricing")
+        # A session is "verified" when we found a server snapshot that
+        # actually carries something (either scored visas or a persisted
+        # quiz) — an empty snapshot (session row exists but both columns
+        # are default-empty) is not meaningfully different from no session.
+        session_verified = bool(snapshot) and (bool(server_visas) or bool(server_quiz))
+        quiz_answers = server_quiz if server_quiz else body.quiz_answers
+
+        if client_top and (
+            client_top.get("visa_name") != server_top.get("visa_name")
+            or str(client_top.get("price")) != str(server_top.get("price"))
+        ):
+            logger.warning(
+                "visa-oracle /handoff: client-supplied recommendation diverges "
+                "from server-persisted session=%s — client={visa=%s price=%s} "
+                "server={visa=%s price=%s}",
+                body.session_id[:12],
+                client_top.get("visa_name"),
+                client_top.get("price"),
+                server_top.get("visa_name"),
+                server_top.get("price"),
+            )
+
+        # Build WhatsApp URL — quiz_answers is server-snapshot-preferred
+        # (FIX-5). Only visa_name/price are server-authoritative for price.
+        nationality = quiz_answers.get("nationality", "Unknown")
+        purpose = quiz_answers.get("purpose", "Unknown")
+        duration = quiz_answers.get("duration", "Unknown")
+
+        visa_name = server_top.get("visa_name", "Indonesian Visa")
+        price = server_top.get("price") or "contact for pricing"
 
         whatsapp_url = service.build_whatsapp_message(
             nationality=nationality,
@@ -842,10 +1298,10 @@ async def handoff(
 
         # Send Telegram notification — skip empty/unknown leads
         telegram_sent = False
-        qa = body.quiz_answers or {}
+        qa = quiz_answers or {}
         has_real_data = any(
             qa.get(k) and qa.get(k) != "Unknown" for k in ("nationality", "purpose", "duration")
-        ) or bool(body.recommended_visas)
+        ) or bool(server_visas)
         try:
             if not has_real_data:
                 logger.info(
@@ -856,11 +1312,17 @@ async def handoff(
                 language = body.language or "en"
                 summary = service.build_telegram_summary(
                     session_id=body.session_id,
-                    quiz_answers=body.quiz_answers,
-                    recommended_visas=body.recommended_visas,
+                    quiz_answers=quiz_answers,
+                    recommended_visas=server_visas,
                     messages=body.messages,
                     language=language,
                 )
+                if not session_verified:
+                    # FIX-5 + R2-B (Codex re-review): never present a
+                    # body-only lead as if server-verified. Bracket-free
+                    # plain text — no escaping needed at all, and nothing
+                    # for legacy Telegram Markdown to (mis)parse as syntax.
+                    summary = f"UNVERIFIED (no server session):\n{summary}"
                 await telegram_bot.send_message(
                     chat_id=TELEGRAM_LEAD_CHAT_ID,
                     text=summary,
@@ -868,8 +1330,9 @@ async def handoff(
                 )
                 telegram_sent = True
                 logger.info(
-                    "visa-oracle /handoff: Telegram notification sent, session=%s",
+                    "visa-oracle /handoff: Telegram notification sent, session=%s verified=%s",
                     body.session_id[:12],
+                    session_verified,
                 )
         except Exception as tg_exc:
             # Non-fatal — still return WhatsApp URL

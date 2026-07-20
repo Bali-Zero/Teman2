@@ -5,7 +5,7 @@
 # Phase 1 (articles): max 200/day | Phase 2 (KBLI): max 600/day
 # Updates state JSON files and sends summary to Telegram.
 #
-# Runs on Pro: /Users/nuzantara/Desktop/nuzantara
+# Runs on Pro: /Users/nuzantara/nuzantara
 
 set -uo pipefail
 

@@ -16,7 +16,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/escalations_prune_cron.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/escalations_prune_cron.sh</string>
     </array>
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/cron-agent/escalations-prune.out</string>

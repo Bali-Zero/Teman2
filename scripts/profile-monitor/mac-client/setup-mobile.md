@@ -63,7 +63,7 @@ Solo se il dipendente ha WhatsApp personale attivo sul telefono e vuole sostitui
 
 1. Sul Pro (tuo), apri terminale e avvia wa-mirror per quel numero specifico:
    ```bash
-   cd ~/Desktop/nuzantara/apps/wa-mirror
+   cd ~/nuzantara/apps/wa-mirror
    npm start -- --employee=surya
    ```
    (Aggiorna `--employee=<nome>` per ogni dipendente)
@@ -99,22 +99,27 @@ Se il dipendente lascia Bali Zero, esegui in quest'ordine:
 ## Troubleshooting comune
 
 ### SMS verifica non arriva
+
 - Aspetta 2 min. Se non arriva, scegli "Resend".
 - Se anche il secondo SMS fallisce, scegli "Call me" (Telkomsel manderà chiamata con codice vocale).
 - Se anche la chiamata fallisce: SIM non attivata correttamente, contattare 188 (CS Telkomsel).
 
 ### QR wa-mirror scaduto
+
 - I QR WhatsApp scadono dopo 20 secondi. Ripeti `npm start` per generare nuovo QR.
 
 ### "Number already in use on another account"
+
 - Significa che il numero SIM era stato usato in passato su WhatsApp da qualcun altro. Forza logout previous: WhatsApp Business → "This phone number is registered to another account. Log out other devices?" → SÌ.
 
 ### Telefono non riconosce SIM Telkomsel
+
 - Spegni telefono, rimuovi SIM, pulisci contatti dorati con panno asciutto, reinserisci, accendi.
 - Verifica APN settings (Settings → Mobile Network → APN → "internet" per Telkomsel).
 - Se persiste: SIM difettosa, sostituire con SIM spare dal registro.
 
 ### Dual-SIM iPhone — quale slot per Bali Zero?
+
 - Slot 1 (fisica): personale del dipendente
 - Slot 2 (eSIM o fisica nel vassoio doppio): Bali Zero
 - iMessage / FaceTime: SOLO sul numero personale
@@ -126,6 +131,7 @@ Se il dipendente lascia Bali Zero, esegui in quest'ordine:
 Dopo il setup di ogni dipendente, aggiorna **sim-registry.md** colonna `MDM enrolled` → `WA-Business linked YYYY-MM-DD`.
 
 Esempio:
+
 ```
 | 001 | 0813 3946 856 | +62 813 3946 856 | Surya | BBN/001 | WA-Business linked 2026-05-19 | Tax | — |
 ```

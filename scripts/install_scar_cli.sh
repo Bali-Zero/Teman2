@@ -32,12 +32,12 @@ cat > "$DEST" <<'WRAPPER'
 set -uo pipefail
 SUB="${1:-}"
 if [ "$SUB" = "query" ]; then shift; fi
-for repo in "$HOME/Desktop/nuzantara" "$HOME/Desktop/nuzantara/.worktrees"/*; do
+for repo in "$HOME/nuzantara" "$HOME/nuzantara/.worktrees"/*; do
   if [ -f "$repo/scripts/scar_query.py" ]; then
     exec python3 "$repo/scripts/scar_query.py" "$@"
   fi
 done
-echo "scar: scar_query.py not found under ~/Desktop/nuzantara (or its .worktrees)" >&2
+echo "scar: scar_query.py not found under ~/nuzantara (or its .worktrees)" >&2
 exit 2
 WRAPPER
 

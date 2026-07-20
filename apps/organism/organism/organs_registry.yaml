@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d0e4b81cf2af6692c25e730cfbfaa85582fcbe66ff49a3f3ebee37dd9c304c9b
+checksum: cf2a710add0066991f19e42041d7a2186f60a4e0c4288db9ff4979312b3ae763
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -394,7 +394,7 @@ organs:
   severity_on_silence: warning
   cicatrix_refs: []
   starved_after_periods: 2
-  output_artifact: ~/Desktop/nuzantara/apps/bali-intel-scraper/data/published_articles.json
+  output_artifact: ~/nuzantara/apps/bali-intel-scraper/data/published_articles.json
   bridge_source:
     type: state_file
     path: ~/.agent/decisions/state/intel_scraper.last.json
@@ -1914,6 +1914,27 @@ organs:
     path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
     timestamp_field: ts
     status_field: status
+- id: pro.worktree_gc_universal
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: scripts/worktree_gc_universal.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.worktree-gc-universal.daily
+  severity_on_silence: warning
+  notes: Reaps stale git worktrees across the whole fleet (not just WR2/broker lanes)
+    to free disk. Unpushed-commit gate no longer blocks removal (W88 cure, dir-only
+    reclaim, branch ref preserved) — registered manually as part of the G1/G2 gene
+    retrofit 2026-07-18, not organ_birth.py-generated.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/com.nuzantara.worktree-gc-universal.daily.json
+    timestamp_field: ts
+    status_field: status
 - id: mini.fleet_watch
   runtime: mini_launchd
   type: cron
@@ -2002,5 +2023,67 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/wr2_control_app.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.git_pull_main
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/pro-git-pull-main.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.git-pull-main.15min
+  severity_on_silence: warning
+  notes: Pro auto-sync of ~/nuzantara main checkout (collision-robust; Mini has the
+    5min sibling) (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.git_pull_main.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.launchd_liveness
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/launchd-liveness-detector.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.launchd-liveness-detector.daily
+  severity_on_silence: warning
+  notes: 'Arms scripts/launchd_liveness_detector.py (PR #1518, cicatrix W84) for the
+    first time — 4 test suites existed with zero launchd/cron attachment before infra-liveness-detector-arm-0717
+    (Esiste≠Armato, superscar #2). Pro-only by design: reads ~/Library/LaunchAgents
+    plus local log tails, which are per-host state — a Mini copy would need its own
+    instance (superscar #10 active-active), not this shared registry row. Kill switch
+    env var: LAUNCHD_LIVENESS_DETECTOR_ENABLED=false.'
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.launchd_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.log_rotate
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: infra/launchagents/wrappers/log-rotate-run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.log-rotate.daily
+  severity_on_silence: warning
+  notes: Copytruncate rotation for logs over 50MB under ~/logs (5-generation retention)
+    (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.log_rotate.json
     timestamp_field: ts
     status_field: status

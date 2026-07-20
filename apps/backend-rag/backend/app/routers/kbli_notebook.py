@@ -279,6 +279,20 @@ def get_kbli_ttl(code: str) -> int:
     return 2592000  # 30 Days
 
 
+def _resolve_risk_profile(qdrant_risk: str | None, licenses: list["KBLILicense"]) -> str:
+    """Risk label surfaced to the client for a KBLI code.
+
+    Honest gap over false reassurance (Zero decision 2026-07-17): when no risk is
+    defined anywhere — no Qdrant ``kategori_risiko`` and no license risk row — return
+    ``"Not classified"`` instead of a made-up ``"Low"``. A cured false-friend code
+    (``per_skala`` detached from a cross-vintage collision) has NO risk basis, and
+    ``"Low"`` would be a false-reassuring assertion. The mouth explorer's
+    ``getRiskLevel``/``getRiskBadge`` + ``RiskGauge`` render this as a neutral,
+    needle-less state; WA/webchat pass the string verbatim to the LLM.
+    """
+    return qdrant_risk or (licenses[0].risk_level if licenses else None) or "Not classified"
+
+
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(
     query: KBLISearchQuery,
@@ -440,7 +454,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 or "UNKNOWN"
             )
 
-            risk_profile = qdrant_risk or (licenses[0].risk_level if licenses else None) or "Low"
+            risk_profile = _resolve_risk_profile(qdrant_risk, licenses)
 
             # Patch licenses with "Unknown" risk using Qdrant value
             if qdrant_risk:

@@ -28,7 +28,7 @@ set -u
 LOG_DIR="$HOME/logs/healer"
 LOG="$LOG_DIR/healer.log"
 mkdir -p "$LOG_DIR"
-REPO="${HEALER_REPO:-$HOME/Desktop/nuzantara}"
+REPO="${HEALER_REPO:-$HOME/nuzantara}"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
@@ -260,6 +260,7 @@ fi
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     --model "$MODEL" --dangerously-skip-permissions \
     --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 

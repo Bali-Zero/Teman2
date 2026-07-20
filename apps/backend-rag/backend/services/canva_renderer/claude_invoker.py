@@ -184,8 +184,8 @@ def invoke_claude_apply(
 
     # 2026-05-07: Claude CLI MCP scope is per-directory. The MCP Canva
     # connector (mcp.canva.com/mcp, OAuth token in ~/.mcp-auth/) is only
-    # registered for the main repo at ~/Desktop/nuzantara. The deploy
-    # worktree at ~/Desktop/nuzantara-deploy (used as WR2_REPO_ROOT in
+    # registered for the main repo at ~/nuzantara. The deploy
+    # worktree at ~/nuzantara-deploy (used as WR2_REPO_ROOT in
     # production cron via wr2-script-wrapper.sh) does NOT have the Canva
     # MCP server. Live failure 04:13 WITA on draft 0e8e1cf5 returned:
     #   "ERROR: Canva MCP not available in nuzantara-deploy workspace"

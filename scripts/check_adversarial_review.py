@@ -69,8 +69,11 @@ from typing import List, NamedTuple, Optional, Sequence
 KNOWN_SEATS = {
     "glm-5.2",
     "glm",
-    "deepseek-v4-pro",
-    "deepseek",
+    # DeepSeek API retired 2026-07-19 (Zero's order; seat repeatedly 402 balance-dead) —
+    # a capture claiming a deepseek review would name a seat that cannot be probed.
+    "kimi",
+    "kimi-k3",
+    "kimi-k2.7",
     "codex",
     "gpt-5.5",
     "gemini-3.1-pro",
@@ -162,7 +165,7 @@ def evaluate_file(path: Path) -> FileVerdict:
             path,
             False,
             "`adversarial_review:` key present but value is empty"
-            " — fix: name a reviewing seat (e.g. `deepseek-v4-pro`, `codex`, `human-zero`)",
+            " — fix: name a reviewing seat (e.g. `kimi-k3`, `codex`, `human-zero`)",
         )
 
     if EXEMPT_PREFIX_RE.match(value):
@@ -306,6 +309,17 @@ def run_selftest() -> int:
         expect("GUILT unknown_seat -> fails", v.ok is False)
         expect("GUILT unknown_seat -> reason flags unknown seat", "not a known seat" in v.reason)
 
+        # DeepSeek retired 2026-07-19 — a capture naming the dead seat must FAIL
+        # (fail-honest: the seat can no longer be probed; Zero's removal order).
+        retired_seat = _write(
+            tmp,
+            "research/operations/retired-seat.md",
+            "---\ndate: 2026-07-19\nadversarial_review: deepseek-v4-pro\n---\n\n"
+            "# Title\n\n## Adversarial review\n\nnone survived, 0 raised\n",
+        )
+        v = evaluate_file(retired_seat)
+        expect("GUILT retired deepseek seat -> fails", v.ok is False)
+
         no_section = _write(
             tmp,
             "research/operations/no-section.md",
@@ -336,7 +350,7 @@ def run_selftest() -> int:
         valid = _write(
             tmp,
             "research/operations/valid.md",
-            "---\ndate: 2026-07-06\nadversarial_review: deepseek-v4-pro\n---\n\n"
+            "---\ndate: 2026-07-06\nadversarial_review: kimi-k3\n---\n\n"
             "# Title\n\n## Adversarial review\n\nnone survived, 3 raised\n",
         )
         v = evaluate_file(valid)

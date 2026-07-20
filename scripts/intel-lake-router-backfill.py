@@ -6,7 +6,7 @@ by the listener, but pre-deploy items still in routing_status='unrouted' need
 this manual sweep).
 
 Usage:
-    cd ~/Desktop/nuzantara
+    cd ~/nuzantara
     source apps/backend-rag/.venv/bin/activate
     PYTHONPATH=apps/backend-rag python3 scripts/intel-lake-router-backfill.py
 

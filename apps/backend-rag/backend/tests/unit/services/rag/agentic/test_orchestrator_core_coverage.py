@@ -113,14 +113,25 @@ class TestCheckFaqCache:
 
     @pytest.mark.asyncio
     async def test_faq_cache_miss(self, orch):
+        """A concrete classified domain is REQUIRED to reach faq_cache.get()
+        at all (Phase-0 safety rail FATAL 1 — check_faq_cache skips entirely
+        on an unclassified/general domain, see that method's docstring).
+        `{"domain": "visa"}` here proves this test still exercises the real
+        Redis-miss path, not the domain-skip short-circuit."""
         orch.faq_cache = AsyncMock()
         orch.faq_cache.get = AsyncMock(return_value=None)
         with patch("backend.app.metrics.faq_cache_misses_total", MagicMock(), create=True):
-            result = await orch.check_faq_cache("unknown query", {}, time.time())
+            result = await orch.check_faq_cache("unknown query", {"domain": "visa"}, time.time())
         assert result is None
+        orch.faq_cache.get.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_faq_cache_hit(self, orch):
+        """Phase-0 safety rail FATAL 1: `extracted_entities` must carry a
+        concrete domain for check_faq_cache to even attempt a lookup — an
+        empty dict (no domain) short-circuits to None before ever calling
+        faq_cache.get(). {"domain": "visa"} matches the cached entry's own
+        stored domain so the domain-scoped lookup succeeds."""
         orch.faq_cache = AsyncMock()
         orch.faq_cache.get = AsyncMock(
             return_value={
@@ -129,7 +140,9 @@ class TestCheckFaqCache:
             }
         )
         with patch("backend.app.metrics.faq_cache_hits_total", MagicMock(), create=True):
-            result = await orch.check_faq_cache("quanto costa kitas?", {}, time.time())
+            result = await orch.check_faq_cache(
+                "quanto costa kitas?", {"domain": "visa"}, time.time()
+            )
         assert result is not None
         assert isinstance(result, CoreResult)
         assert result.answer == "KITAS costs Rp 10M"
@@ -137,11 +150,14 @@ class TestCheckFaqCache:
 
     @pytest.mark.asyncio
     async def test_faq_cache_exception_returns_none(self, orch):
+        """Same domain requirement as above — a concrete domain is needed to
+        reach faq_cache.get() and therefore exercise the exception path."""
         orch.faq_cache = AsyncMock()
         orch.faq_cache.get = AsyncMock(side_effect=RuntimeError("redis down"))
         with patch("backend.app.metrics.faq_cache_errors_total", MagicMock(), create=True):
-            result = await orch.check_faq_cache("test", {}, time.time())
+            result = await orch.check_faq_cache("test", {"domain": "visa"}, time.time())
         assert result is None
+        orch.faq_cache.get.assert_awaited()
 
 
 # ============================================================================

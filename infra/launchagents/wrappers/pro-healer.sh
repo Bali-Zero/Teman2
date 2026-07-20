@@ -68,7 +68,7 @@ telegram() { # $1 text — best-effort, never blocks the run
 #     ssh-localhost trampoline in non-ssh contexts (sshd holds FDA, children inherit).
 # (4) hygiene: stdin </dev/null; empty MCP config (each server is a sync-init
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 MAX_WALL_S="${PRO_HEALER_MAX_WALL_S:-3300}"
 # claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
 # Pro: ~/.local/bin only — first live tick died exit=127 on the homebrew default).
@@ -142,6 +142,41 @@ if ! python3 scripts/lint_home_fork.py --check >/dev/null 2>&1; then
     ACTIONABLE=1; REASONS="${REASONS}home-fork-drift "
 fi
 
+# Receptor D: arsenal seats (scripts/arsenal_probe.py) — the seat<->armed
+# boundary was UNWATCHED on Pro: the boot receptor was re-serving a 193h-stale
+# report that claimed claude NOT_INSTALLED on the machine where claude runs
+# daily (S1 medico, 2026-07-18). Same self-throttled pattern as the Mini
+# healer (infra/healer/healer-run.sh Receptor 5): live 1-token probes at most
+# ~daily (report-age gate), transitions read every tick, a NEW persistent
+# seat-death (AUTH/BALANCE/MODEL/UNKNOWN) → ACTIONABLE + direct Telegram —
+# the cure is almost always operator-gated (relogin/top-up).
+ARSENAL_REPORT="$HOME/.organism/arsenal/last.json"
+ARSENAL_AGE_H=999
+if [ -f "$ARSENAL_REPORT" ]; then
+    ARSENAL_AGE_H=$(( ( $(date +%s) - $(stat -f %m "$ARSENAL_REPORT" 2>/dev/null || echo 0) ) / 3600 ))
+fi
+if [ "$ARSENAL_AGE_H" -ge 20 ] && [ -f "scripts/arsenal_probe.py" ]; then
+    log "arsenal probe: report ${ARSENAL_AGE_H}h old — refreshing (live seat probes)"
+    python3 scripts/arsenal_probe.py --quiet >> "$LOG" 2>&1 || true
+fi
+if [ -f "$ARSENAL_REPORT" ]; then
+    NEW_DEAD=$(python3 - <<'PY' 2>/dev/null
+import json, os
+try:
+    d = json.load(open(os.path.expanduser("~/.organism/arsenal/last.json")))
+    strict = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
+    print(",".join(f"{t['seat']}:{t['to']}" for t in d.get("transitions", [])
+                   if t.get("to") in strict))
+except Exception:
+    pass
+PY
+)
+    if [ -n "$NEW_DEAD" ]; then
+        ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
+        telegram "🔌 ARSENALE (Pro): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     log "pre-check clean (pro organs alive, 0 diverged, pairs aligned) — no LLM spawn"
     heartbeat "ok" "idle: pre-check clean"
@@ -171,6 +206,7 @@ export HEALER_RUN=1
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     --model "$MODEL" --dangerously-skip-permissions \
     --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 ( sleep "$MAX_WALL_S"; kill -0 "$CPID" 2>/dev/null && kill "$CPID" && \

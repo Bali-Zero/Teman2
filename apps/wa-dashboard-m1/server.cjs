@@ -48,7 +48,7 @@ const MEDIA_ROOT =
   process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
 const TEAM_AVATAR_DIR =
   process.env.WA_TEAM_AVATAR_DIR ||
-  "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
+  "/Users/nuzantara/nuzantara/apps/mouth/public/static/team";
 const QWEN_GATE_SNAPSHOT =
   process.env.INTAKE_QWEN_GATE_SNAPSHOT ||
   "/tmp/intake-qwen-gate-snapshot.json";

@@ -30,3 +30,33 @@ not a massacre. Heterogeneity > numerosity — give each angle a DISTINCT lens.
 **Doctrine reference**: skill `sota-architecture-loop` ("verifica esterna batte
 autodichiarazione · adversarialità calibrata batte consenso") + `opus-mythos` (never trust
 your own subagent). This file is the doctrine made executable & reusable.
+
+## kbli-pilot-a1.js — GARUDA-FILIERA per-code adjudication (D1 → D5 → D2)
+
+The mechanical/orchestrator layer for the KBLI Filiera per-code reconstruction program
+(research/operations/2026-07-16-kbli-garuda-filiera-workflow.md §1-§3). Fans out to one
+Sonnet 5 seat per code per stage — D1 proposes the 2020↔2025 crosswalk mapping from
+already-rendered evidence PNGs, D5 blindly re-derives and either certifies or refutes
+(generator≠grader, never shown D1's answer until it has its own), D2 runs only when D1
+concluded the code's licensing facts inherit from a KBLI-2020 source and the pair wasn't
+quarantined. Innocence-control codes (no `pp28_sources`) get a single short
+"verify nothing needs changing" prompt instead.
+
+This script is a pure **proposer** — it never writes `data/kbli-filiera/**` (guard-protected).
+Its return value is fed, one code at a time, into `scripts/kbli_filiera/dossier_assemble.py
+--proposals` (the sanctioned compiler writer).
+
+```
+Workflow({ scriptPath: "infra/workflows/kbli-pilot-a1.js", args: {
+  codes: ["68112", "51103", { code: "65121", innocenceControl: true }, ...],
+  evidenceRoot: "/path/to/dossier_pull.py --out output",   // must already be populated
+}})
+```
+
+Returns `{ evidenceRoot, codes, results, quarantinedCodes, summary }`. Requires
+`scripts/kbli_filiera/dossier_pull.py` to have already pulled evidence for every code into
+`evidenceRoot` — this script reads renders, it never fetches or renders them itself.
+
+**Doctrine reference**: research/operations/2026-07-16-kbli-garuda-filiera-workflow.md
+(seats §2, protocol §3) + research/operations/2026-07-17-kbli-pilot-a1-preregistration.md
+(the frozen pilot plan this run is measured against).

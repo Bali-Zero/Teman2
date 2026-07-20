@@ -33,6 +33,15 @@ class TestMetrics:
         assert hasattr(metrics, "cache_misses")
         assert hasattr(metrics, "cache_set_operations")
 
+    def test_curated_qa_injections_metric_exists_and_increments(self):
+        """P14/SPEC v2 D3: curated_qa_injections_total counts D3-L2 grounding
+        injections (curated_qa hit prepended as evidence to the ReAct context)."""
+        assert hasattr(metrics, "curated_qa_injections_total")
+        before = metrics.curated_qa_injections_total._value.get()
+        metrics.curated_qa_injections_total.inc()
+        after = metrics.curated_qa_injections_total._value.get()
+        assert after == before + 1
+
     def test_ai_metrics_exist(self):
         """Test that AI metrics are defined"""
         assert hasattr(metrics, "ai_requests")
@@ -60,48 +69,66 @@ class TestMetrics:
 
     def test_metrics_increment(self):
         """Test incrementing a counter metric"""
+        before = metrics.cache_hits._value.get()
         metrics.cache_hits.inc()
-        # Should not raise exception
+        assert metrics.cache_hits._value.get() == before + 1
 
     def test_metrics_increment_with_value(self):
         """Test incrementing a counter metric with value"""
+        before = metrics.cache_hits._value.get()
         metrics.cache_hits.inc(5)
-        # Should not raise exception
+        assert metrics.cache_hits._value.get() == before + 5
 
     def test_metrics_set_gauge(self):
         """Test setting a gauge metric"""
         metrics.active_sessions.set(10)
-        # Should not raise exception
+        assert metrics.active_sessions._value.get() == 10
 
     def test_metrics_observe_histogram(self):
         """Test observing a histogram metric"""
         # request_duration requires labels (method, endpoint)
-        metrics.request_duration.labels(method="GET", endpoint="/test").observe(0.5)
-        # Should not raise exception
+        child = metrics.request_duration.labels(method="GET", endpoint="/test")
+        before = child._sum.get()
+        child.observe(0.5)
+        assert child._sum.get() == before + 0.5
 
     def test_metrics_labels(self):
         """Test metrics with labels"""
-        metrics.http_requests_total.labels(method="GET", endpoint="/test", status=200).inc()
-        # Should not raise exception
+        child = metrics.http_requests_total.labels(method="GET", endpoint="/test", status=200)
+        before = child._value.get()
+        child.inc()
+        assert child._value.get() == before + 1
 
     def test_rag_queries_total(self):
         """Test RAG queries counter"""
-        metrics.rag_queries_total.labels(
+        child = metrics.rag_queries_total.labels(
             collection="test",
             route_used="fast",
             status="success",
-        ).inc()
-        # Should not raise exception
+        )
+        before = child._value.get()
+        child.inc()
+        assert child._value.get() == before + 1
 
     def test_rag_tool_calls_total(self):
         """Test RAG tool calls counter"""
-        metrics.rag_tool_calls_total.labels(tool_name="vector_search", status="success").inc()
-        # Should not raise exception
+        child = metrics.rag_tool_calls_total.labels(tool_name="vector_search", status="success")
+        before = child._value.get()
+        child.inc()
+        assert child._value.get() == before + 1
 
     def test_database_init_metrics(self):
         """Test database initialization metrics"""
-        if hasattr(metrics, "database_init_success_total"):
-            metrics.database_init_success_total.inc()
-        if hasattr(metrics, "database_init_failed_total"):
-            metrics.database_init_failed_total.labels(error_type="test", is_transient="true").inc()
-        # Should not raise exception
+        assert hasattr(metrics, "database_init_success_total")
+        assert hasattr(metrics, "database_init_failed_total")
+
+        before_success = metrics.database_init_success_total._value.get()
+        metrics.database_init_success_total.inc()
+        assert metrics.database_init_success_total._value.get() == before_success + 1
+
+        failed_child = metrics.database_init_failed_total.labels(
+            error_type="test", is_transient="true"
+        )
+        before_failed = failed_child._value.get()
+        failed_child.inc()
+        assert failed_child._value.get() == before_failed + 1

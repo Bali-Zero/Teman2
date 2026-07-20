@@ -58,7 +58,7 @@ fi
 PUBLISHED_COUNT=$(python3 -c "
 import json
 try:
-    with open('${HOME}/Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json') as f:
+    with open('${HOME}/nuzantara/apps/war-room/output/queue/human-review-queue.json') as f:
         data = json.load(f)
     items = data.get('items', data) if isinstance(data, dict) else data
     n = sum(1 for i in items if i.get('state') in ('published', 'published_with_edits') and (i.get('engagement_metrics') or {}).get('likes') is not None)
@@ -141,7 +141,7 @@ fi
 
 # Spawn Claude agent (Sonnet 5) per spec frontmatter — backgrounded under a
 # wall-clock watchdog (see B7 note at top of file).
-cd "${HOME}/Desktop/nuzantara"
+cd "${HOME}/nuzantara"
 CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
 # Best-effort line-buffering for the child's stdout/stderr (macOS ships a
@@ -153,12 +153,14 @@ if command -v stdbuf &>/dev/null; then
   stdbuf -o L -e L /Users/nuzantara/.local/bin/claude -p \
     --model claude-sonnet-5 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
     "$CLAUDE_PROMPT" \
     >> "$LOG" 2>> "$ERR" &
 else
   /Users/nuzantara/.local/bin/claude -p \
     --model claude-sonnet-5 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
     "$CLAUDE_PROMPT" \
     >> "$LOG" 2>> "$ERR" &
 fi

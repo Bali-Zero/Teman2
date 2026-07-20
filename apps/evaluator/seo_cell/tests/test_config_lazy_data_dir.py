@@ -3,7 +3,7 @@
 Context: before wave 3 the cell's ``config.py`` did
 ``DATA_DIR.mkdir(parents=True, exist_ok=True)`` at module-import time.
 Any ``pytest --collect-only`` run therefore created
-``~/Desktop/nuzantara/data/seo_cell/`` on disk — polluting the workspace
+``~/nuzantara/data/seo_cell/`` on disk — polluting the workspace
 and making ``tmp_path``-based fixtures racy because the "pristine" state
 assumed by a test was already contaminated by the collector.
 

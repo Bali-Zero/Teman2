@@ -52,6 +52,13 @@ NLM_CLI = "nlm"
 NLM_TIMEOUT = 300  # 5 min per artifact creation
 DOWNLOAD_TIMEOUT = 120  # 2 min per download
 
+# Readiness retry for artifact types whose `nlm download` subcommand does NOT
+# poll internally (mind-map, report — see NO_PROGRESS_SUPPORTED below). NLM
+# artifact generation typically takes 1-6 min; ~10 attempts * 60s gives a
+# ~10 min ceiling.
+DOWNLOAD_RETRY_ATTEMPTS = 10
+DOWNLOAD_RETRY_INTERVAL_S = 60
+
 # Telegram
 _BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
@@ -387,6 +394,40 @@ def _run_nlm_download(
         return False, str(exc)
 
 
+def _download_with_retry(
+    artifact_type: str,
+    notebook_id: str,
+    output_path: str,
+    dry_run: bool = False,
+) -> tuple[bool, str]:
+    """Download an artifact, retrying with a readiness poll where needed.
+
+    audio/infographic `nlm download` subcommands poll internally
+    (NO_PROGRESS_SUPPORTED) — a failed attempt there is a real error, so it
+    is passed through unretried. mind-map/report downloads are an immediate
+    fetch: NotebookLM may still be generating the artifact right after
+    create, so a first failure there is not (yet) an error — only exhausting
+    DOWNLOAD_RETRY_ATTEMPTS is.
+    """
+    if artifact_type in NO_PROGRESS_SUPPORTED or dry_run:
+        return _run_nlm_download(artifact_type, notebook_id, output_path, dry_run=dry_run)
+
+    last_msg = ""
+    for attempt in range(1, DOWNLOAD_RETRY_ATTEMPTS + 1):
+        ok, msg = _run_nlm_download(artifact_type, notebook_id, output_path, dry_run=dry_run)
+        if ok:
+            return True, msg
+        last_msg = msg
+        if attempt < DOWNLOAD_RETRY_ATTEMPTS:
+            logger.info(
+                "%s not ready yet (attempt %d/%d), retrying in %ds",
+                artifact_type, attempt, DOWNLOAD_RETRY_ATTEMPTS, DOWNLOAD_RETRY_INTERVAL_S,
+            )
+            time.sleep(DOWNLOAD_RETRY_INTERVAL_S)
+
+    return False, last_msg
+
+
 # ---------------------------------------------------------------------------
 # Core generation logic
 # ---------------------------------------------------------------------------
@@ -436,8 +477,8 @@ def generate_artifact(
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = str(output_dir / f"{date_str}_{notebook_key}.{ext}")
 
-    # Download artifact
-    downloaded, dl_msg = _run_nlm_download(artifact_type, notebook_id, output_path, dry_run=dry_run)
+    # Download artifact (readiness-retried for non-polling types — mind-map/report)
+    downloaded, dl_msg = _download_with_retry(artifact_type, notebook_id, output_path, dry_run=dry_run)
 
     if dry_run:
         _record_success(state, notebook_key, artifact_type, output_path)

@@ -26,7 +26,7 @@ echo "[test] script: $SCRIPT"
 # Stub HOME so the script logs to our isolated dir.
 export HOME="$WORK"
 mkdir -p "$LOG_BASE" "$WORK/.agent/decisions/state" "$WORK/Desktop"
-ln -sfn "$LOCAL" "$WORK/Desktop/nuzantara"
+ln -sfn "$LOCAL" "$WORK/nuzantara"
 
 # Disable Telegram during test.
 export TELEGRAM_BOT_TOKEN=""
@@ -40,7 +40,7 @@ git clone --quiet "$REMOTE" "$ORIGIN_WORK"
 git -C "$ORIGIN_WORK" config user.email "test@test"
 git -C "$ORIGIN_WORK" config user.name "test"
 mkdir -p "$ORIGIN_WORK/apps/backend-rag"
-ln -sfn "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv" \
+ln -sfn "/Users/nuzantara/nuzantara/apps/backend-rag/.venv" \
   "$ORIGIN_WORK/apps/backend-rag/.venv"
 echo "hello" > "$ORIGIN_WORK/README.md"
 git -C "$ORIGIN_WORK" add -A

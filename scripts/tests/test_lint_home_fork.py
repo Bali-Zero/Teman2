@@ -160,7 +160,7 @@ def test_discover_innocence_declared_allowed_repo(tmp_path: Path) -> None:
 
 def test_discover_guilt_worktree_ref(tmp_path: Path) -> None:
     home = tmp_path / "home"
-    repo = home / "Desktop/nuzantara"
+    repo = home / "nuzantara"
     wt = repo / ".worktrees/infra-task/scripts"
     wt.mkdir(parents=True)
     (wt / "job.sh").write_text("x\n")
@@ -173,7 +173,7 @@ def test_discover_guilt_worktree_ref(tmp_path: Path) -> None:
 
 def test_discover_innocence_repo_resident_under_home(tmp_path: Path) -> None:
     home = tmp_path / "home"
-    repo = home / "Desktop/nuzantara"
+    repo = home / "nuzantara"
     (repo / "scripts").mkdir(parents=True)
     (repo / "scripts/canon.sh").write_text("x\n")
     agents = home / "Library/LaunchAgents"

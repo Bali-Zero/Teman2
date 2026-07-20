@@ -904,14 +904,29 @@ async def execute_commit(
         # client's profile (renewal-alert clock, identity fields). Before this the
         # intake commit filed the file and discarded the structured data. Conservative:
         # skips archive-only (client_id None), unknown doc_types, and absent fields —
-        # never overwrites an existing card value with NULL. A bad field is skipped,
-        # never raised, so enrichment can't roll back the document it belongs to.
-        enriched = await enrich_client_from_extracted_fields(
-            conn,
-            plan.client_id,
-            plan.doc_type,
-            plan.payload.get("extracted_fields"),
-        )
+        # never overwrites an existing card value with NULL. Enrichment is metadata,
+        # best-effort by contract: it runs inside its OWN nested transaction
+        # (savepoint), so a failure in its SQL (schema introspection, the UPDATE
+        # itself) rolls back only the enrichment and can never abort the document
+        # commit it belongs to (Codex 2026-07-19: the bare call propagated).
+        enriched: dict[str, Any] = {}
+        try:
+            async with conn.transaction():
+                enriched = await enrich_client_from_extracted_fields(
+                    conn,
+                    plan.client_id,
+                    plan.doc_type,
+                    plan.payload.get("extracted_fields"),
+                )
+        except Exception:
+            logger.warning(
+                "intake.writer: client enrichment failed for proposal=%s client=%s — "
+                "document commit proceeds without card update",
+                plan.proposal_id,
+                plan.client_id,
+                exc_info=True,
+            )
+            enriched = {}
         # Learning evidence is part of the same atomic commit: a document cannot
         # become routed without also contributing its approved/corrected labels.
         # The INSERT is idempotent, so re-committing the same intake instance does
@@ -1000,10 +1015,15 @@ async def _append_practice_document(
             "doc_id": doc_id,
         }
     )
-    # Write jsonb via explicit dumps + cast (pool has no json codec — passing a list
-    # raw makes asyncpg reject it as "expected str, got list").
+    # ::text::jsonb — the app pools DO register a jsonb codec (encoder=json.dumps,
+    # app/core/database.py) despite the stale claim this comment used to make.
+    # A param inferred as jsonb would get the pre-serialized string dumped AGAIN
+    # and land as a jsonb string scalar (practices.documents had 150 polluted
+    # rows, live-probe 2026-07-16). Typing the param as text makes the server
+    # parse it into an object; json.dumps stays because a raw list would
+    # otherwise need the codec's own encoder, which has no default= handler.
     await conn.execute(
-        "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+        "UPDATE practices SET documents = $1::text::jsonb, updated_at = NOW() WHERE id = $2",
         json.dumps(documents),
         plan.practice_id,
     )
@@ -1109,7 +1129,7 @@ async def rollback_commit(
                     if not (isinstance(d, dict) and d.get("doc_id") == doc_id)
                 ]
                 await conn.execute(
-                    "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+                    "UPDATE practices SET documents = $1::text::jsonb, updated_at = NOW() WHERE id = $2",
                     json.dumps(remaining),
                     practice_id,
                 )

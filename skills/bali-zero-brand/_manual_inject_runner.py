@@ -96,7 +96,7 @@ def build_prompt(topic: str, report: str, archetype: str | None,
         "   no monotone desk-document repetition).",
         "5. Compose HTML, render PNG, run critic 4-rubric.",
         "6. Write outputs to",
-        "   `~/Desktop/nuzantara/apps/war-room/output/carousel/<slug>/`.",
+        "   `~/nuzantara/apps/war-room/output/carousel/<slug>/`.",
         "7. Append entry to queue.json so it appears in Damar UI.",
         "",
         "## RULES",
@@ -144,6 +144,11 @@ def run_design_architect(prompt: str, obs_log: Path) -> tuple[int, str]:
         # /api/inject-topic, which is CSRF/Origin-gated + localhost-bound (#1708).
         # Do NOT expose this runner to any un-gated input source.
         "--permission-mode", "bypassPermissions",
+        # P2-3 (family #3/W92): a bypassPermissions -p invocation with only a
+        # wall-clock timeout (see the 3600s soft cap below) can still burn
+        # quota for the whole hour before the timeout fires. --max-budget-usd
+        # truncates it early. Override via BZ_INJECT_MAX_BUDGET_USD env.
+        "--max-budget-usd", os.environ.get("BZ_INJECT_MAX_BUDGET_USD", "5"),
         "--output-format", "stream-json",  # observable: tool calls + sub-agent events
         "--include-partial-messages",
         "--verbose",  # required for stream-json

@@ -17,12 +17,12 @@ dead organs; what is missing is an arm allowed to act THERE.
 
 ## The ONE inverted axis (single-writer preserved)
 
-| Axis | Mini healer (live) | Healer-pro (this design) |
-|---|---|---|
-| Repo writes (worktree→PR→auto-merge) | **YES** — sole repo writer | **NO — NEVER.** No worktree, no commit, no push, no PR, no `gh`. |
-| Local runtime cures | Mini only | **Pro only** |
-| Remote machines | read-only probes | read-only probes (Mini included) |
-| Escalation | Telegram + ledger via PR | Telegram + **escalation FILE drop** (`shared/escalations_pro.jsonl` append is local-runtime, allowed) — ledger lines land via the Mini healer or an interactive session |
+| Axis                                 | Mini healer (live)         | Healer-pro (this design)                                                                                                                                                |
+| ------------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repo writes (worktree→PR→auto-merge) | **YES** — sole repo writer | **NO — NEVER.** No worktree, no commit, no push, no PR, no `gh`.                                                                                                        |
+| Local runtime cures                  | Mini only                  | **Pro only**                                                                                                                                                            |
+| Remote machines                      | read-only probes           | read-only probes (Mini included)                                                                                                                                        |
+| Escalation                           | Telegram + ledger via PR   | Telegram + **escalation FILE drop** (`shared/escalations_pro.jsonl` append is local-runtime, allowed) — ledger lines land via the Mini healer or an interactive session |
 
 Two healers, two disjoint write-scopes: the repo has exactly one autonomous writer
 (Mini), each node's runtime has exactly one local surgeon. No lease contention, no
@@ -57,7 +57,7 @@ verbatim, PLUS the whole repo-write verb class.
   to a weak model) verbatim.
 - Receptors (all read-only, all existing): `healer_receptor_registry.py --node pro` ·
   `proprioception.py --json --no-fetch` (its Pro-relevant probes) · `lint_home_fork.py
-  --check --json` (pro pairs). NOTE: the ledger receptor stays MINI-ONLY — two healers
+--check --json` (pro pairs). NOTE: the ledger receptor stays MINI-ONLY — two healers
   reacting to the same ledger line would duplicate work (single-consumer per receptor).
 - Registry entry `pro.healer` (`recovery_action: human_only` — same constitution:
   nothing auto-restarts a restarter).
@@ -79,14 +79,14 @@ human. Its organs are the operator's hands. No healer, no receptor, nothing to i
 2. Generate wrapper+plist via organ_birth (as above) in a normal PR; write the
    Pro mandate; conformance gate green; merge.
 3. On Pro: copy live pair, `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/
-   com.nuzantara.healer-pro.6h.plist`, verify first heartbeat
+com.nuzantara.healer-pro.6h.plist`, verify first heartbeat
    `~/.organism/last_seen/pro.healer.json`, prove one manual tick under sshd.
 4. Close the ledger line with the heartbeat + tick log as proof (content, not exit code).
 
 ## Risks specific to Pro
 
 - **Interactive collision**: Zero works on Pro. Mitigation: the healer-pro verb set
-  never touches git state, editor state, or `~/Desktop/nuzantara` content (repo is
+  never touches git state, editor state, or `~/nuzantara` content (repo is
   read-only for it); kickstarts are per-label and idempotent (G10 pidfiles in targets).
 - **176-daemon blast radius**: a kickstart storm is capped — max 3 cure actions/tick,
   and only organs DEAD by sidecar age, never stale/never-armed.

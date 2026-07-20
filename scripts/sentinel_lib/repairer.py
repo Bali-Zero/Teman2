@@ -22,7 +22,7 @@ def make_idempotency_token(job_id: str, interval_s: Optional[int] = None) -> str
 
 
 DLQ_FILE = os.path.expanduser("~/.agent/decisions/dlq.json")
-NUZANTARA_ROOT = os.path.realpath(os.path.expanduser("~/Desktop/nuzantara"))
+NUZANTARA_ROOT = os.path.realpath(os.path.expanduser("~/nuzantara"))
 ALLOWED_CMDS_FILE = os.path.expanduser("~/.agent/decisions/allowed_cmds.txt")
 
 # D2.1: Shell metacharacter blocklist — includes null byte, newline, CR (Codex PARTIAL C5)

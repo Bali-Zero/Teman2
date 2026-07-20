@@ -2,50 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key>
-  <string>com.nuzantara.wa-media-pull</string>
-
-  <!-- Anello 1 (Law 2) — sovereign Pro-side WhatsApp media PULL worker. -->
-  <!-- Cron-invoked shim (NOT daemon, KeepAlive=false). Runs ONLY on the Pro -->
-  <!-- (user=nuzantara). Downloads client media FROM Meta to the local blob -->
-  <!-- root + enqueues into LOCAL nuzantara_dev so PII never leaves the Pro. -->
-
-  <key>ProgramArguments</key>
-  <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
-    <string>-u</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_media_pull_worker.py</string>
-  </array>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>FLY_BRIDGE_URL</key>
-    <string>https://nuzantara-rag.fly.dev</string>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    <!-- NO secret in this plist (avoids the 2026-04-29 plist-secret-644     -->
-    <!-- scar). Both secrets come from the Pro Keychain (service             -->
-    <!-- balizero-whatsapp): account 'access-token' (WhatsApp token) and     -->
-    <!-- account 'bridge-api-key' (BRIDGE_API_KEY). The worker reads them at -->
-    <!-- runtime via `security find-generic-password`. See runbook           -->
-    <!-- docs/runbooks/wa-media-pull-worker.md.                              -->
-    <!-- (BRIDGE_API_KEY env, if ever set here, takes precedence.)           -->
-  </dict>
-
-  <!-- Every 5 minutes (cron shim, single-instance via flock in the script). -->
-  <key>StartInterval</key>
-  <integer>300</integer>
-
-  <key>RunAtLoad</key>
-  <true/>
-
-  <key>KeepAlive</key>
-  <false/>
-
-  <key>StandardOutPath</key>
-  <string>/Users/nuzantara/logs/wa-media-pull.log</string>
-
-  <key>StandardErrorPath</key>
-  <string>/Users/nuzantara/logs/wa-media-pull.log</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>FLY_BRIDGE_URL</key>
+		<string>https://nuzantara-rag.fly.dev</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.nuzantara.wa-media-pull</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/scripts/wa-media-pull-run.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wa-media-pull.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wa-media-pull.log</string>
+	<key>StartInterval</key>
+	<integer>300</integer>
 </dict>
 </plist>

@@ -177,7 +177,7 @@ async def _fetch_today(conn: Any, day_start_utc: datetime) -> list[dict[str, Any
     rows = await conn.fetch(
         """
         SELECT id, status, COALESCE(html_render_attempts, 0) AS attempts,
-               updated_at, topic, drive_url
+               updated_at, topic, drive_url, slides_json
           FROM war_room_drafts
          WHERE created_at >= $1
          ORDER BY created_at DESC
@@ -187,12 +187,42 @@ async def _fetch_today(conn: Any, day_start_utc: datetime) -> list[dict[str, Any
     return [dict(r) for r in rows]
 
 
+def _row_intended_slide_count(row: dict[str, Any]) -> int | None:
+    """DB-sourced ground truth: how many slides this draft's OWN input
+    (war_room_drafts.slides_json) declares — independent of anything derived
+    from disk. Returns None when unparseable (caller must not assume 0)."""
+    import json as _json
+
+    sj = row.get("slides_json")
+    if sj is None:
+        return None
+    if isinstance(sj, str):
+        try:
+            sj = _json.loads(sj)
+        except Exception:  # noqa: BLE001
+            return None
+    slides = sj.get("slides", sj) if isinstance(sj, dict) else sj
+    return len(slides) if isinstance(slides, list) else None
+
+
 def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str:
     """Codex red-team #1/#15: DB status='rendered' is a PROXY — the outcome is
     "the human can see it": a review-queue entry + (ideally) durable PNGs.
     Verify by content; when the queue entry is missing (e.g. the visibility
     chain failed after persist), BACKFILL it from the DB row + whatever durable
-    artifacts exist. Returns verified|backfilled|backfill_failed|dry_run."""
+    artifacts exist.
+
+    Codex red-team HIGH #2 (2026-07-16): the append-if-missing path used to
+    trust `slide_count` from a bare disk glob and append a normal reviewable
+    "drafted" entry even when that count was 0 (a DB row already status=
+    'rendered' but `_publish_visibility` failed AFTER wiping/never-populating
+    slides_dir) — a real, reproduced scenario. Resolve the DRAFT'S OWN intent
+    (war_room_drafts.slides_json) first: append as "drafted" only when disk
+    matches that intent AND is > 0; otherwise mark render_incomplete instead
+    of a lying "drafted".
+
+    Returns verified|backfilled|backfilled_incomplete|backfill_failed|dry_run.
+    """
     try:
         import wr2_html_render_apply as viz  # same scripts/ dir, same venv
 
@@ -220,25 +250,483 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
         car_dir = candidates[-1] if candidates else (
             viz._default_output_root() / "carousel" / f"missing-{draft_id[:8]}"
         )
-        slide_count = len(list((car_dir / "slides").glob("*.png"))) if car_dir.exists() else 0
+        # A1: same derive_slide_count helper every writer routes through —
+        # not a bare *.png glob, which would count staged chrome (logo.png)
+        # as a "slide".
+        slide_count = viz.derive_slide_count(car_dir / "slides") if car_dir.exists() else 0
+        intended = _row_intended_slide_count(row)
         from datetime import datetime as _dt, timezone as _tz
 
         entry = viz._make_queue_entry(
             draft_id=draft_id, topic=str(row.get("topic") or ""),
             carousel_dir=car_dir, drive_url=str(row.get("drive_url") or ""),
-            slide_count=slide_count, weak_count=0, fact_check_status=None,
+            slide_count=slide_count, intended_slide_count=intended or 0,
+            weak_count=0, fact_check_status=None,
             drafted_at=_dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
+        complete = intended is not None and intended > 0 and slide_count == intended
         if slide_count == 0:
             # honest entry: no local slides — review happens on Drive
             entry["slides_dir"] = None
             entry["critic_summary"] = "backfilled by reconciler — local PNGs missing, review on Drive"
+        if not complete:
+            # HIGH #2 fix: never append a normal "drafted" for a mismatch —
+            # a human sees render_incomplete, not a reviewable-looking entry
+            # that is secretly missing slides.
+            now_iso = _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            entry["state"] = RENDER_INCOMPLETE_STATE
+            entry["state_history"] = [{
+                "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                "by": "wr2-daily-reconciler",
+                "reason": (
+                    f"backfill: disk={slide_count} intended={intended!r} "
+                    f"— not verifiably complete"
+                ),
+            }]
         viz._append_review_queue(entry)
-        logger.info("visibility backfilled for draft %s (slides=%d)", draft_id, slide_count)
-        return "backfilled"
+        if complete:
+            logger.info("visibility backfilled for draft %s (slides=%d)", draft_id, slide_count)
+            return "backfilled"
+        logger.warning(
+            "visibility backfilled INCOMPLETE for draft %s (disk=%d intended=%r) "
+            "— enqueued as render_incomplete", draft_id, slide_count, intended,
+        )
+        _tg_notify(
+            "p1", f"wr2-visibility-incomplete-{draft_id}",
+            f"⚠️ WR2: carosello draft {draft_id} rientrato in coda come "
+            f"render_incomplete dal backfill (disco={slide_count}, "
+            f"intento={intended!r}) — serve sguardo umano prima di pubblicare.",
+        )
+        return "backfilled_incomplete"
     except Exception as exc:  # noqa: BLE001
         logger.warning("visibility verify/backfill failed: %s", exc, exc_info=exc)
         return "backfill_failed"
+
+
+# ── A3: queue completeness sweep + backfill (2026-07-16) ────────────────────
+# "Nothing anywhere re-verifies slide_count vs reality" (design ground fact,
+# live-measured: 13-16 mismatched entries, always the LAST slide missing on
+# disk vs meta.json/queue's own recorded count — a post-render disk-level
+# drift the render-time A1 gate cannot see, because it happens AFTER a
+# carousel already reached 'drafted' honestly). This sweep is the durable
+# receptor: it re-verifies every non-terminal queue entry against disk on
+# every tick (report-only) and offers a dedicated one-shot backfill mode
+# (mutating, --apply) for the classified 3-way fix.
+
+# Anything not yet published is fair game for drift — broader than
+# wr2_html_render_apply._REPOINTABLE_STATES (which is scoped to the REPOINT
+# decision) because a completeness check must also catch e.g.
+# 'applied_ready_for_damar'/'approved' entries sitting between review and
+# Damar's manual IG publish.
+TERMINAL_QUEUE_STATES = {"published", "published_with_edits", "archived"}
+
+# New queue-level state (2026-07-16): an entry whose declared slide_count no
+# longer matches verified disk reality and could NOT be safely explained as
+# stale metadata (see _classify_completeness). Distinct from the DB-level
+# 'render_failed' status (war_room_drafts) — this is a QUEUE-entry state, and
+# every queue-server action (_damar-queue-server.py mark-published/rejected/
+# flag) already refuses any state outside its own allow-list, so an entry in
+# this state is inert to every existing consumer by construction — no new
+# guard needed downstream.
+RENDER_INCOMPLETE_STATE = "render_incomplete"
+
+
+@dataclass(frozen=True)
+class CompletenessMismatch:
+    entry_id: str
+    draft_id: str | None
+    state: str
+    declared: int
+    disk: int
+    expected: int | None
+    expected_source: str  # "intended_slide_count" | "slides.json" | "none"
+    classification: str  # "queue_stale" | "genuinely_incomplete" | "unknown_intent" | "dirless"
+
+
+def _resolve_expected_count(
+    car_dir: Path, entry: dict[str, Any] | None = None,
+) -> tuple[int | None, str]:
+    """Ground-truth intended slide count, best signal first.
+
+    Codex red-team HIGH #4 (2026-07-16): meta.json's plain `slide_count`
+    field is NOT independent ground truth — `_persist_local_artifacts`
+    computes it from the SAME disk scan this sweep re-checks, so it can
+    NEVER disagree with disk by construction. Trusting it as "expected" used
+    to let a genuine post-render loss be misclassified as `queue_stale` (a
+    lived scenario: intent/queue=9, disk=8, meta.slide_count=8 — the backfill
+    "fixed" the queue down to 8 and called the carousel complete).
+
+    Priority:
+      1. entry["intended_slide_count"] — DB-sourced (war_room_drafts.
+         slides_json), persisted once at render time, independent of disk.
+      2. car_dir/meta.json["intended_slide_count"] — same DB-sourced value,
+         redundant persistence (covers entries whose queue record predates
+         this field but whose artifact dir was re-persisted since this fix).
+      3. car_dir/slides.json — an actual render-input spec file, when one
+         exists beside the artifact (manual-import / rerender_local path).
+      4. Nothing — meta.json's bare disk-echoing `slide_count` is
+         deliberately NOT used as a fallback anymore.
+    Returns (None, "none") when nothing independent is available — callers
+    must classify that as `unknown_intent`, never assume completeness."""
+    import json as _json
+
+    if entry is not None:
+        v = entry.get("intended_slide_count")
+        if isinstance(v, int) and v > 0:
+            return v, "intended_slide_count"
+
+    mj = car_dir / "meta.json"
+    if mj.is_file():
+        try:
+            meta = _json.loads(mj.read_text(encoding="utf-8"))
+            v = meta.get("intended_slide_count")
+            if isinstance(v, int) and v > 0:
+                return v, "intended_slide_count"
+        except Exception:  # noqa: BLE001
+            logger.warning("unreadable meta.json at %s", mj, exc_info=True)
+
+    sj = car_dir / "slides.json"
+    if sj.is_file():
+        try:
+            data = _json.loads(sj.read_text(encoding="utf-8"))
+            slides = data.get("slides", data) if isinstance(data, dict) else data
+            if isinstance(slides, list):
+                return len(slides), "slides.json"
+        except Exception:  # noqa: BLE001 — unreadable slides.json, fall through
+            logger.warning("unreadable slides.json at %s", sj, exc_info=True)
+
+    return None, "none"
+
+
+def _needle_on_segment_boundary(name: str, needle: str) -> bool:
+    """True iff `needle` sits on hyphen-segment boundaries inside `name`
+    (Codex red-team HIGH #2, 2026-07-17): a bare `*{needle}*` glob
+    over-matches ACROSS topics — needle `visa-myth` matches dir
+    `2026-07-17-evisa-mythology-b` (the substring is "e"+"visa-myth"+"ology",
+    with no hyphen boundary on either side), and newest-first would then
+    PREFER that foreign dir over the genuine match. Anchor on the FULL
+    needle as one unit (not its internal hyphens) — exact name, or bounded
+    by a hyphen on the side(s) that aren't the string's own start/end."""
+    return (
+        name == needle
+        or name.endswith("-" + needle)
+        or ("-" + needle + "-") in name
+        or name.startswith(needle + "-")
+    )
+
+
+def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | None:
+    """Resolve an entry's slides directory across schema/path drift
+    (2026-07-17 fix — live case: `indonesia-visafree-myth-reality`, 8 real
+    PNGs on disk, mis-marked dirless/render_incomplete).
+
+    OLD-style queue entries (pre-`slides_dir` field, still live in the
+    queue) carry only `carousel_path` (often `~`-prefixed) and NO
+    `slides_dir` key at all. Trusting a missing `slides_dir` as "no dir" —
+    the pre-fix behavior — misclassified a real, fully-rendered carousel as
+    dirless.
+
+    Resolution order — only when ALL three fail is the entry genuinely
+    dirless:
+      1. entry["slides_dir"], expanduser()'d, if it is a real directory.
+      2. entry["carousel_path"], expanduser()'d — either already IS the
+         slides dir, or is the carousel dir one level up (try + "slides").
+      3. Segment-anchored suffix-match under `carousel_root` by the entry's
+         own dir basename (from carousel_path) or topic_slug — mirrors the
+         app's own `*-{draft_id[:8]}`-style matching convention (see
+         `_verify_visibility_or_backfill`) for entries whose recorded path
+         has since drifted (re-persisted/renamed carousel dir).
+         `_needle_on_segment_boundary` rejects a bare substring hit that
+         crosses topic boundaries (see its docstring).
+    """
+    sd = entry.get("slides_dir")
+    if sd:
+        p = Path(sd).expanduser()
+        if p.is_dir():
+            return p
+
+    cp = entry.get("carousel_path")
+    cp_path: Path | None = None
+    if cp:
+        cp_path = Path(cp).expanduser()
+        if cp_path.name == "slides" and cp_path.is_dir():
+            return cp_path
+        candidate = cp_path / "slides"
+        if candidate.is_dir():
+            return candidate
+
+    needles = [n for n in (cp_path.name if cp_path is not None else None,
+                           entry.get("topic_slug")) if n]
+    if needles and carousel_root.is_dir():
+        for needle in needles:
+            # glob is a cheap prefilter (substring); _needle_on_segment_
+            # boundary is the real gate — rejects cross-topic over-matches
+            # like needle "visa-myth" hitting dir "...-evisa-mythology-...".
+            accepted = [
+                m for m in carousel_root.glob(f"*{needle}*")
+                if _needle_on_segment_boundary(m.name, needle)
+            ]
+            # newest-first AMONG ACCEPTED matches: carousel dirs are
+            # date-prefixed (2026-07-08-..., 2026-07-14-...), so
+            # lexicographic descending == newest-first. A topic re-rendered
+            # into a second dir must resolve to that newer render, never
+            # the stale one from a prior attempt. Deliberately sort-by-name
+            # (deterministic), not by mtime.
+            for m in sorted(accepted, reverse=True):
+                candidate = m / "slides"
+                if candidate.is_dir():
+                    return candidate
+    return None
+
+
+def _classify_completeness(*, disk: int, expected: int | None) -> str:
+    """4-way classification (design spec A3; extended HIGH #3/#4, 2026-07-16):
+
+    (i)    queue_stale         — disk matches the independently-resolved
+                                  expected count; only the queue's own
+                                  slide_count field disagrees. The carousel
+                                  IS complete — fix the number in place.
+    (ii)   genuinely_incomplete — expected is known and != disk: a real slide
+                                  is missing (or extra) vs a TRUSTED source.
+                                  Never silently renumber to "fix" this.
+    (iii)  unknown_intent      — no independent source exists at all (HIGH
+                                  #4): we cannot safely tell whether disk or
+                                  the queue's declared count is the wrong
+                                  one. Report only, NEVER mutate/renumber —
+                                  blindly assuming "disk must be right" here
+                                  is exactly the bug this classification
+                                  exists to stop.
+    Caller handles the separate "dirless" case (no slides_dir) itself."""
+    if expected is None:
+        return "unknown_intent"
+    return "queue_stale" if expected == disk else "genuinely_incomplete"
+
+
+def check_completeness(
+    queue_path: Path | None = None,
+) -> list[CompletenessMismatch]:
+    """Read-only sweep: every non-terminal queue entry, disk-verified.
+
+    Never mutates. Pure reporting — the dedicated backfill mode (`--backfill-
+    completeness [--apply]`) applies the fix; the regular 3x/day tick calls
+    this in report-only mode so a drift is VISIBLE the same day it's found,
+    without racing an in-flight render/repoint with an automatic mutation.
+    """
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    try:
+        queue = _json.loads(qp.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — corrupt queue is _queue_hygiene_sweep's/
+        # the append-writers' problem to surface; this sweep just skips it.
+        logger.warning("completeness sweep: queue unreadable at %s", qp, exc_info=True)
+        return []
+    if not isinstance(queue, list):
+        return []
+
+    carousel_root = viz._default_output_root() / "carousel"
+    mismatches: list[CompletenessMismatch] = []
+    for entry in queue:
+        if not isinstance(entry, dict):
+            continue
+        state = entry.get("state")
+        if state in TERMINAL_QUEUE_STATES:
+            continue
+        declared = entry.get("slide_count")
+        if not isinstance(declared, int):
+            continue
+        entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+        slides_dir = _resolve_slides_dir(entry, carousel_root)
+        if slides_dir is None:
+            mismatches.append(CompletenessMismatch(
+                entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
+                declared=declared, disk=0, expected=None, expected_source="none",
+                classification="dirless",
+            ))
+            continue
+        disk = viz.derive_slide_count(slides_dir)
+        car_dir = slides_dir.parent
+        # HIGH #3 (2026-07-16): resolve expected BEFORE any disk==declared
+        # shortcut — a queue whose declared count happens to match disk can
+        # still be WRONG against a trusted independent source (e.g.
+        # slides.json says 9, queue==disk==8 — both agree with each other and
+        # BOTH are wrong; the old `if disk == declared: continue` never even
+        # looked at slides.json in that case, so this class of loss was
+        # invisible to the sweep entirely).
+        expected, expected_source = _resolve_expected_count(car_dir, entry)
+        disagreement = declared != disk or (expected is not None and expected != disk)
+        if not disagreement:
+            continue  # honest end-to-end: queue, disk, and any known intent all agree
+        classification = _classify_completeness(disk=disk, expected=expected)
+        mismatches.append(CompletenessMismatch(
+            entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
+            declared=declared, disk=disk, expected=expected,
+            expected_source=expected_source, classification=classification,
+        ))
+    return mismatches
+
+
+def apply_completeness_backfill(
+    queue_path: Path | None = None,
+    *,
+    dry_run: bool = True,
+) -> list[dict[str, Any]]:
+    """Apply the 3-way backfill classification under the queue's fcntl lock
+    (same lock file + tmp+rename protocol as wr2_html_render_apply.
+    _append_review_queue / wr2_queue_hygiene.sweep_queue — never a second,
+    unsynchronized writer). Returns one report dict per mismatch, in dry-run
+    or applied form. Re-reads + re-checks under the lock so a concurrent
+    render/repoint between the report-only check and this call cannot be
+    clobbered by a stale decision."""
+    import fcntl
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    carousel_root = viz._default_output_root() / "carousel"
+    lock_path = qp.with_suffix(".lock")
+    reports: list[dict[str, Any]] = []
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            try:
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 — corrupt queue: never guess, never write
+                logger.warning("backfill: queue unreadable at %s", qp, exc_info=True)
+                return []
+            if not isinstance(queue, list):
+                return []
+
+            changed = False
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for entry in queue:
+                if not isinstance(entry, dict):
+                    continue
+                state = entry.get("state")
+                if state in TERMINAL_QUEUE_STATES:
+                    continue
+                declared = entry.get("slide_count")
+                if not isinstance(declared, int):
+                    continue
+                entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+                slides_dir = _resolve_slides_dir(entry, carousel_root)
+                if slides_dir is None:
+                    report = {
+                        "entry_id": entry_id, "classification": "dirless",
+                        "declared": declared, "disk": 0, "action": "mark_render_incomplete",
+                    }
+                    if not dry_run and state != RENDER_INCOMPLETE_STATE:
+                        entry["state"] = RENDER_INCOMPLETE_STATE
+                        entry.setdefault("state_history", []).append({
+                            "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": "dirless: slides_dir/carousel_path/suffix-match all missing",
+                        })
+                        changed = True
+                    reports.append(report)
+                    continue
+                disk = viz.derive_slide_count(slides_dir)
+                car_dir = slides_dir.parent
+                # HIGH #3: resolve expected BEFORE any disk==declared
+                # shortcut — see the matching comment in check_completeness.
+                expected, expected_source = _resolve_expected_count(car_dir, entry)
+                disagreement = declared != disk or (expected is not None and expected != disk)
+                if not disagreement:
+                    continue
+                classification = _classify_completeness(disk=disk, expected=expected)
+                if classification == "queue_stale":
+                    report = {
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": f"fix slide_count {declared} -> {disk}",
+                    }
+                    if not dry_run:
+                        entry["slide_count"] = disk
+                        entry.setdefault("state_history", []).append({
+                            "state": state, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": f"slide_count corrected {declared} -> {disk} "
+                                      f"(disk matches {expected_source} at {expected})",
+                        })
+                        changed = True
+                    reports.append(report)
+                elif classification == "genuinely_incomplete":
+                    report = {
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": "mark_render_incomplete",
+                    }
+                    if not dry_run and state != RENDER_INCOMPLETE_STATE:
+                        entry["slide_count"] = disk  # never lie about physical reality
+                        entry["state"] = RENDER_INCOMPLETE_STATE
+                        entry.setdefault("state_history", []).append({
+                            "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": (
+                                f"genuinely incomplete: expected {expected} "
+                                f"({expected_source}) but disk has {disk}"
+                            ),
+                        })
+                        changed = True
+                    reports.append(report)
+                else:  # unknown_intent (HIGH #4): NEVER mutate — no independent
+                    # source exists to tell whether disk or the queue's own
+                    # declared count is the wrong one. Report only, so a human
+                    # can look, instead of guessing "disk must be right".
+                    reports.append({
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": "report_only (no independent ground truth — refusing to guess)",
+                    })
+
+            if not dry_run and changed:
+                tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+                tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+                os.replace(tmp, qp)
+                logger.info("completeness backfill applied: %d entries mutated", len(reports))
+            return reports
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+def _completeness_report(*, dry_run: bool) -> None:
+    """Report-only completeness sweep, called every regular tick (A3). Never
+    mutates the queue — the fix lives in `--backfill-completeness [--apply]`,
+    run as a dedicated one-shot so a mid-render/repoint entry can never be
+    clobbered by an automatic mutation racing the pipeline's own writer.
+    Best-effort: a sweep failure must never affect the day's decision."""
+    try:
+        mismatches = check_completeness()
+        if not mismatches:
+            return
+        logger.warning(
+            "completeness sweep: %d non-terminal queue entr(y/ies) mismatched: %s",
+            len(mismatches),
+            [(m.entry_id, m.classification, f"declared={m.declared} disk={m.disk}") for m in mismatches[:10]],
+        )
+        if dry_run:
+            return
+        _tg_notify(
+            "digest", f"wr2-completeness-{datetime.now(WITA).date()}",
+            f"🧩 WR2 completeness sweep: {len(mismatches)} entry con slide_count "
+            f"disallineato dal disco (drift post-render, non un render partial "
+            f"nuovo). Esegui `wr2_daily_reconciler.py --backfill-completeness "
+            f"--apply` per correggerli (classificazione: queue_stale / "
+            f"genuinely_incomplete / unknown_intent / dirless — unknown_intent "
+            f"non viene mai auto-corretto).",
+        )
+    except Exception as exc:  # noqa: BLE001 — never break the reconciler tick
+        logger.warning("completeness sweep failed: %s", exc, exc_info=exc)
 
 
 def _queue_hygiene_sweep(*, dry_run: bool) -> None:
@@ -354,6 +842,7 @@ async def _tick(
     max_attempts: int,
 ) -> int:
     _queue_hygiene_sweep(dry_run=dry_run)
+    _completeness_report(dry_run=dry_run)
     rows = await _fetch_today(conn, day_start_utc)
     decision = decide(
         rows, now_wita,
@@ -381,6 +870,12 @@ async def _tick(
                 f"e il backfill è fallito (draft {decision.draft_id}). "
                 f"Il PNG vive su Drive; serve sguardo umano.",
             )
+        elif vis == "backfilled_incomplete":
+            # HIGH #2: the entry landed as render_incomplete, not a lying
+            # "drafted" — degraded (not "failed", the P1 alert already fired
+            # inside _verify_visibility_or_backfill; not "ok", a human still
+            # needs to look before this carousel can be reviewed/published).
+            _heartbeat("degraded", f"{decision.reason}; visibility={vis}")
         else:
             _heartbeat("ok", f"{decision.reason}; visibility={vis}")
         return 0
@@ -409,11 +904,327 @@ async def _tick(
     return 0
 
 
+def repair_false_incomplete(
+    queue_path: Path | None = None,
+    *,
+    dry_run: bool = True,
+    exclude_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """One-shot repair (2026-07-17): the pre-fix dirless bug (missing/stale
+    `slides_dir` misread as "no dir" for old-schema `carousel_path`-only
+    entries — see `_resolve_slides_dir`) marked genuinely-complete carousels
+    render_incomplete. This scans every CURRENT `render_incomplete` entry
+    and, using the FIXED resolution, restores it to `drafted` when the
+    resolved slides dir has >=1 real slide PNG on disk AND disk matches
+    independently-resolved ground truth (`_resolve_expected_count` — the
+    same source `apply_completeness_backfill` trusts).
+
+    HIGH #3 (Codex red-team, 2026-07-17): `disk >= 1` alone is NOT enough —
+    a GENUINELY incomplete carousel (disk=8, but an independent source says
+    9) sitting in render_incomplete would otherwise be restored to drafted
+    with slide_count=8, becoming publish-eligible and defeating the
+    complete-or-nothing gate. Restore ONLY when `expected is not None and
+    disk == expected`; when expected is None (no independent ground truth
+    at all), refuse to guess — same doctrine as apply_completeness_
+    backfill's unknown_intent.
+
+    Report-only by default; `--apply` mutates under the queue's fcntl lock +
+    tmp+rename protocol (same as `apply_completeness_backfill`) so a
+    concurrent render/repoint cannot be clobbered by a stale decision.
+    `exclude_ids` (operator override, e.g. `--exclude-id` repeatable on the
+    CLI) hard-excludes specific entry ids — for a genuinely-bad carousel that
+    happens to also be in render_incomplete. Never touches any other state
+    (published/terminal or otherwise) — this repair is scoped exclusively to
+    undoing the false positives this specific bug produced."""
+    import fcntl
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    excludes = exclude_ids or set()
+    carousel_root = viz._default_output_root() / "carousel"
+    lock_path = qp.with_suffix(".lock")
+    reports: list[dict[str, Any]] = []
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            try:
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 — corrupt queue: never guess, never write
+                logger.warning("repair-false-incomplete: queue unreadable at %s", qp, exc_info=True)
+                return []
+            if not isinstance(queue, list):
+                return []
+
+            changed = False
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for entry in queue:
+                if not isinstance(entry, dict):
+                    continue
+                if entry.get("state") != RENDER_INCOMPLETE_STATE:
+                    continue  # scoped strictly to this state — never touches anything else
+                entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+                if entry_id in excludes:
+                    continue
+                slides_dir = _resolve_slides_dir(entry, carousel_root)
+                if slides_dir is None:
+                    continue  # genuinely dirless even under the fixed resolution — leave it
+                disk = viz.derive_slide_count(slides_dir)
+                if disk < 1:
+                    continue  # resolved a dir, but it's empty — not a false positive
+                expected, expected_source = _resolve_expected_count(slides_dir.parent, entry)
+                if expected is None or disk != expected:
+                    # HIGH #3: no independent ground truth, or disk disagrees
+                    # with it — refuse to guess. Restoring here would make a
+                    # genuinely-incomplete carousel publish-eligible.
+                    continue
+                report = {
+                    "entry_id": entry_id, "resolved_slides_dir": str(slides_dir),
+                    "disk": disk, "expected": expected, "expected_source": expected_source,
+                    "action": "restore_to_drafted",
+                }
+                if not dry_run:
+                    entry["state"] = "drafted"
+                    entry["slide_count"] = disk
+                    entry["slides_dir"] = str(slides_dir)
+                    entry.setdefault("state_history", []).append({
+                        "state": "drafted", "at": now_iso,
+                        "by": "wr2-daily-reconciler-repair-false-incomplete",
+                        "reason": (
+                            f"restored: fixed slides_dir resolution finds {disk} "
+                            f"real PNG(s) on disk — pre-fix dirless bug had missed "
+                            f"the carousel_path-only/suffix-match resolution"
+                        ),
+                    })
+                    changed = True
+                reports.append(report)
+
+            if not dry_run and changed:
+                tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+                tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+                os.replace(tmp, qp)
+                logger.info("repair-false-incomplete applied: %d entries restored", len(reports))
+            return reports
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+def _cmd_repair_false_incomplete(apply: bool, exclude_ids: list[str]) -> int:
+    """One-shot CLI mode: restore render_incomplete entries wrongly marked
+    dirless by the pre-fix bug back to drafted, when the FIXED resolution
+    finds real PNGs. Report-only by default; --apply mutates."""
+    import json as _json
+
+    reports = repair_false_incomplete(dry_run=not apply, exclude_ids=set(exclude_ids))
+    print(_json.dumps({"apply": apply, "count": len(reports), "reports": reports}, indent=2))
+    return 0
+
+
+async def _rebrief_async(draft_id: str) -> bool:
+    """Open the SAME connection the normal tick opens (DATABASE_URL, asyncpg,
+    timeout=15 — see `run()` above), call the DB-leg verb, and close it. Not a
+    new connection path (scar: one-true-way pg) — just the sibling one-shot to
+    `wr2_rerender_requeue.py`'s DSN pattern, reused here because --rebrief lives
+    on THIS CLI (spec B5), not a standalone script."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL not set — run where prod PG is reachable (see scripts/pg.sh)")
+
+    import asyncpg
+
+    sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
+    from backend.services.canva_renderer_v2 import _pg  # noqa: PLC0415
+
+    conn = await asyncpg.connect(dsn, timeout=15)
+    try:
+        return await _pg.rebrief_draft(conn, draft_id)
+    finally:
+        await conn.close()
+
+
+async def _rebrief_preview_async(draft_id: str) -> dict[str, Any] | None:
+    """Read-only preview for --dry-run (Codex red-team B5 FIX 3): SELECT status
+    + lease_owner ONLY — no mutation, no write path taken. Opens its own
+    short-lived connection via the same DATABASE_URL/asyncpg pattern as
+    `_rebrief_async` (one-true-way pg)."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL not set — run where prod PG is reachable (see scripts/pg.sh)")
+
+    import asyncpg
+
+    conn = await asyncpg.connect(dsn, timeout=15)
+    try:
+        row = await conn.fetchrow(
+            "SELECT status, lease_owner FROM war_room_drafts WHERE id = $1",
+            draft_id,
+        )
+    finally:
+        await conn.close()
+    return dict(row) if row else None
+
+
+def _rebrief_queue_guard(draft_id: str) -> tuple[bool, str]:
+    """Reuse wr2_rerender_requeue's queue-state guard directly (same scripts/
+    dir, same venv — do NOT reimplement the queue read here, per Codex
+    red-team B5 FIX 1 instructions).
+
+    WHY THIS EXISTS: Damar's mark_published/mark_rejected write ONLY the
+    review-queue JSON — never war_room_drafts.status. So a draft can carry DB
+    status='rendered' (inside `_pg.rebrief_draft`'s whitelist) while the queue
+    already says 'published'. The DB-only whitelist in `_pg.rebrief_draft`
+    cannot see the queue at all and would let a rebrief through, recompose,
+    and clobber an already-published carousel. `check_queue_state` returns
+    ok=False ONLY on a genuine post-publish state (published/
+    published_with_edits); 'rejected' and the other pre-publish states stay
+    ALLOWED — a rebrief of a rejected draft is a legitimate operator remake,
+    same doctrine as the sibling re-render verb."""
+    import wr2_rerender_requeue as _requeue  # noqa: PLC0415 — same scripts/ dir, same venv
+
+    return _requeue.check_queue_state(draft_id)
+
+
+def _rebrief_dry_run_message(
+    row: dict[str, Any] | None, *, ok_queue: bool, queue_reason: str
+) -> str:
+    """Classify --dry-run eligibility using the SAME whitelist `_pg.rebrief_draft`'s
+    SQL enforces (`_pg.REBRIEF_STATUS_WHITELIST`, single-sourced — never a
+    hand-copied duplicate, cicatrix #9 schema-drift) plus the queue guard above.
+    Truthful preview (Codex red-team B5 FIX 3): states EXACTLY which gate would
+    fire, never a blanket "would rebrief" for an ineligible draft."""
+    if row is None:
+        return "would NO-OP (reason: not found)"
+    if row["lease_owner"] is not None:
+        return f"would NO-OP (reason: leased by {row['lease_owner']})"
+    if not ok_queue:
+        return f"would NO-OP (reason: published in review queue — {queue_reason})"
+
+    sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
+    from backend.services.canva_renderer_v2 import _pg  # noqa: PLC0415
+
+    if row["status"] not in _pg.REBRIEF_STATUS_WHITELIST:
+        return f"would NO-OP (reason: status={row['status']} not rebrief-eligible)"
+    return f"would REBRIEF (status={row['status']}, unleased, queue={queue_reason})"
+
+
+def _cmd_rebrief(draft_id: str, *, dry_run: bool) -> int:
+    """One-shot CLI mode (B5): reset a composed draft back to 'briefed' and
+    atomically clear fact_check_json/status/at + drive_url + html_render_attempts
+    + the 4 stale Canva refs, so it recomposes cleanly (remake hygiene). Respects
+    the DB-side lease + status whitelist (see `_pg.rebrief_draft`) AND the
+    review-QUEUE guard (`_rebrief_queue_guard`) — a draft can be DB
+    status='rendered' while the queue already says 'published' (queue-only
+    state, see `_rebrief_queue_guard`'s docstring), which the DB whitelist
+    alone cannot refuse.
+
+    --dry-run (Codex red-team B5 FIX 3, honest preview): opens the DB READ-ONLY
+    (SELECT status + lease_owner, no mutation), runs the SAME queue guard as
+    the live path, and reports the truthful per-draft outcome — "would
+    REBRIEF (...)" or "would NO-OP (reason: ...)" — never a blanket message.
+    DEVIATION from "exit 0 either way": a preview that could NOT run at all
+    (DB unreachable / DATABASE_URL unset) returns 2, same as the live path's
+    connection-failure code — an infra failure is not a truthful verdict, so
+    it is not folded into the 0-either-way preview contract."""
+    ok_queue, queue_reason = _rebrief_queue_guard(draft_id)
+
+    if dry_run:
+        try:
+            row = asyncio.run(_rebrief_preview_async(draft_id))
+        except Exception as exc:  # noqa: BLE001 — connection/env failure, not a verdict
+            logger.error(
+                "rebrief dry-run: connection/query failed for draft %s: %s", draft_id, exc
+            )
+            return 2
+        logger.info(
+            "DRY-RUN: draft %s — %s",
+            draft_id,
+            _rebrief_dry_run_message(row, ok_queue=ok_queue, queue_reason=queue_reason),
+        )
+        return 0
+
+    if not ok_queue:
+        logger.warning(
+            "rebrief: draft %s is %s in the review queue — refusing (would "
+            "resurrect a published carousel)", draft_id, queue_reason,
+        )
+        return 1
+
+    try:
+        ok = asyncio.run(_rebrief_async(draft_id))
+    except Exception as exc:  # noqa: BLE001 — connection/env failure, not a refusal
+        logger.error("rebrief: connection/query failed for draft %s: %s", draft_id, exc)
+        return 2
+    if ok:
+        logger.info("rebrief: draft %s reset to briefed (remake hygiene applied)", draft_id)
+        return 0
+    logger.warning("rebrief: draft %s NOT reset (leased, wrong status, or not found)", draft_id)
+    return 1
+
+
+def _cmd_backfill_completeness(apply: bool) -> int:
+    """One-shot mode (A3): apply the 3-way completeness classification to
+    every non-terminal queue entry. Default dry-run (report only); --apply
+    mutates under the queue's fcntl lock. Intended to be run once on Pro
+    (queue source of truth) right after this fix merges, to clear the
+    pre-existing mismatch backlog — the regular tick's `_completeness_report`
+    keeps reporting new drift afterward, but never auto-applies."""
+    import json as _json
+
+    reports = apply_completeness_backfill(dry_run=not apply)
+    print(_json.dumps({"apply": apply, "count": len(reports), "reports": reports}, indent=2))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true",
                         help="decide + log only; no DB writes, no kickstarts, no heartbeat")
+    parser.add_argument(
+        "--backfill-completeness", action="store_true",
+        help="one-shot: classify+report queue/disk slide_count mismatches (A3); "
+             "no DB, no decide()/kickstart. Combine with --apply to mutate.",
+    )
+    parser.add_argument(
+        "--repair-false-incomplete", action="store_true",
+        help="one-shot: restore render_incomplete entries wrongly marked dirless "
+             "by the pre-2026-07-17 slides_dir resolution bug (old-schema "
+             "carousel_path-only entries) back to drafted, when the FIXED "
+             "resolution finds real PNGs on disk. Report-only by default; "
+             "combine with --apply to mutate. Combine with --exclude-id to "
+             "hard-exclude specific entries.",
+    )
+    parser.add_argument(
+        "--exclude-id", action="append", default=[], metavar="ENTRY_ID",
+        help="with --repair-false-incomplete: hard-exclude this entry id from "
+             "restoration (repeatable)",
+    )
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="with --backfill-completeness or --repair-false-incomplete: "
+             "actually mutate the queue (default: report only)",
+    )
+    parser.add_argument(
+        "--rebrief", metavar="DRAFT_ID",
+        help="one-shot: reset a composed draft back to 'briefed' and atomically "
+             "clear fact_check_json/status/at + drive_url + html_render_attempts "
+             "+ the 4 stale canva_* refs, so it recomposes cleanly (remake "
+             "hygiene). Respects DB lease + status whitelist AND the review-queue "
+             "guard (refuses a draft already 'published' in the queue, even if "
+             "DB status alone looks eligible); no-op on leased/rejected*/briefed "
+             "(*rejected in the QUEUE is still allowed — only published is a hard "
+             "stop). Combine with --dry-run for an honest preview (SELECT-only, "
+             "no mutation): reports would-REBRIEF vs would-NO-OP with reason.",
+    )
     args = parser.parse_args()
+    if args.rebrief:
+        return _cmd_rebrief(args.rebrief, dry_run=args.dry_run)
+    if args.repair_false_incomplete:
+        return _cmd_repair_false_incomplete(apply=args.apply, exclude_ids=args.exclude_id)
+    if args.backfill_completeness:
+        return _cmd_backfill_completeness(apply=args.apply)
     dry = args.dry_run or os.environ.get("WR2_RECONCILER_DRY_RUN") == "1"
     return asyncio.run(run(dry_run=dry))
 

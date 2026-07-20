@@ -33,7 +33,7 @@ LOG_FILE="$LOG_DIR/setup-team-daily-$(date +%Y%m%d).log"
 SNAPSHOT_FILE="$SNAPSHOT_DIR/setup-team-$(date +%Y%m%d).json"
 SNAPSHOT_TMP="${SNAPSHOT_FILE}.tmp.$$"
 
-REPO_ROOT="${SETUP_TEAM_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
+REPO_ROOT="${SETUP_TEAM_REPO_ROOT:-${HOME}/nuzantara}"
 cd "$REPO_ROOT/apps/mata-garuda" || {
     echo "$(date) FAILED: cannot cd to $REPO_ROOT/apps/mata-garuda" >> "$LOG_FILE"
     exit 1

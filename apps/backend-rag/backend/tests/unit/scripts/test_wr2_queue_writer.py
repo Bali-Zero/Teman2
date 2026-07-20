@@ -322,3 +322,232 @@ def test_ingest_external_explicit_date(queue_file):
     items = json.loads(queue_file.read_text())
     new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
     assert new["instagram_published_at"] == "2026-05-01T12:00:00+00:00"
+
+
+# ── build_external_item / ingest_external_post — ig_media_id (§C, 2026-07-17) ─
+#
+# The scraper diagnosis (team-lead, live Pro-side) found `build_external_item`
+# derives its pseudo-id from the URL SHORTCODE and DISCARDS the real numeric
+# Graph media id even when the caller (wr2_ig_discovery.py) already fetched it.
+# This threads an OPTIONAL `ig_media_id` through, stored as its own field —
+# never folded into item_id's ig-<shortcode> derivation.
+
+
+def test_build_external_item_omits_ig_media_id_when_not_passed():
+    # GUILT/regression guard: no Graph fetch happened -> no fabricated field.
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00", topic="My post")
+    assert "ig_media_id" not in it
+
+
+def test_build_external_item_stores_ig_media_id_when_passed():
+    # INNOCENCE: caller already has the real numeric Graph id -> persisted verbatim,
+    # as a STRING, and separate from item_id (which stays shortcode-derived).
+    it = qw.build_external_item(
+        VALID_URL, "2026-06-10T00:00:00+00:00", topic="My post", ig_media_id=17895695668004550,
+    )
+    assert it["ig_media_id"] == "17895695668004550"
+    assert it["item_id"] == "ig-Cabc123_-"  # unchanged — never derived from ig_media_id
+
+
+def test_build_external_item_omits_ig_media_id_when_falsy():
+    # empty string / 0 must not produce a bogus ig_media_id="" or "0" field.
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00", ig_media_id="")
+    assert "ig_media_id" not in it
+
+
+def test_ingest_external_without_ig_media_id_omits_field(queue_file):
+    # Regression: the WR2 Control app's manual §A entry point never has a Graph
+    # fetch — the minted item must degrade gracefully (no field), not crash.
+    res = qw.ingest_external_post(queue_file, VALID_URL)
+    assert res.ok
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert "ig_media_id" not in new
+
+
+def test_ingest_external_with_ig_media_id_persists_it(queue_file):
+    res = qw.ingest_external_post(
+        queue_file, VALID_URL, ig_media_id="17895695668004550",
+    )
+    assert res.ok
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert new["ig_media_id"] == "17895695668004550"
+
+
+# ── backfill_media_id — reconciliation for already-known posts (§C point 3) ──
+#
+# WR2-native carousels are published via the app's own publish gate, which
+# records the permalink but NEVER a Graph media id. wr2_ig_discovery.py's
+# reconciliation pass (find_media_id_backfills) calls this to attach the real
+# id back onto a native entry once discovery matches it by shortcode.
+
+
+def _native_published_item(item_id="bali-pma-rental-crackdown", ig_url=VALID_URL):
+    """A WR2-native carousel entry: published via the app's own gate — has a
+    permalink but no ig_media_id (the exact shape backfill_media_id targets)."""
+    return {
+        "id": item_id,
+        "topic_slug": item_id,
+        "state": "published",
+        "instagram_post_url": ig_url,
+        "instagram_published_at": "2026-07-10T00:00:00+00:00",
+        "engagement_metrics": None,
+    }
+
+
+@pytest.fixture
+def native_queue_file(tmp_path):
+    items = [_native_published_item()]
+    p = tmp_path / "native-queue.json"
+    p.write_text(json.dumps(items))
+    return p
+
+
+def test_backfill_media_id_not_found_no_write(native_queue_file):
+    before = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "does-not-exist", "17895695668004550")
+    assert res.status == "not_found" and res.ok is False
+    assert native_queue_file.read_text() == before
+
+
+def test_backfill_media_id_backfills_native_entry(native_queue_file):
+    res = qw.backfill_media_id(
+        native_queue_file, "bali-pma-rental-crackdown", "17895695668004550",
+    )
+    assert res.status == "backfilled" and res.ok is True
+    items = json.loads(native_queue_file.read_text())
+    updated = next(i for i in items if qw.item_id_of(i) == "bali-pma-rental-crackdown")
+    assert updated["ig_media_id"] == "17895695668004550"
+    # everything else on the item survives untouched
+    assert updated["instagram_post_url"] == VALID_URL
+    assert updated["state"] == "published"
+
+
+def test_backfill_media_id_idempotent_replay_is_noop(native_queue_file):
+    qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    after_first = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    assert res.status == "already_backfilled" and res.ok is True
+    assert native_queue_file.read_text() == after_first  # no duplicate write
+
+
+def test_backfill_media_id_conflict_refuses_overwrite(native_queue_file):
+    qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    after_first = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "99999999999999999")
+    assert res.status == "conflict" and res.ok is False
+    assert native_queue_file.read_text() == after_first  # refused — no overwrite
+
+
+# ── add_external / validate_external_payload — M5->Pro propagation (§B) ────
+
+
+def _external_payload(**overrides):
+    payload = {
+        "item_id": "external_2026-07-17T090000_my-manual-post",
+        "state": "published",
+        "instagram_post_url": VALID_URL,
+        "source": "external_manual",
+        "published_at": "2026-07-17T09:00:00+00:00",
+        "instagram_published_at": "2026-07-17T09:00:00+00:00",
+        "topic": "My manual post",
+        "topic_slug": "my-manual-post",
+        "slide_count": 0,
+        "created_at": "2026-07-17T09:00:00+00:00",
+    }
+    payload.update(overrides)
+    return payload
+
+
+@pytest.mark.parametrize("field", list(qw.REQUIRED_EXTERNAL_PAYLOAD_FIELDS))
+def test_validate_external_payload_rejects_missing_required_field(field):
+    payload = _external_payload()
+    del payload[field]
+    err = qw.validate_external_payload(payload)
+    assert err is not None and field in err
+
+
+def test_validate_external_payload_rejects_wrong_state():
+    err = qw.validate_external_payload(_external_payload(state="drafted"))
+    assert err is not None and "state" in err
+
+
+def test_validate_external_payload_rejects_wrong_source():
+    err = qw.validate_external_payload(_external_payload(source="manual_external"))
+    assert err is not None and "source" in err
+
+
+def test_validate_external_payload_rejects_bad_url():
+    err = qw.validate_external_payload(_external_payload(instagram_post_url="https://example.com/not-ig"))
+    assert err is not None and "instagram_post_url" in err
+
+
+def test_validate_external_payload_accepts_well_formed_payload():
+    assert qw.validate_external_payload(_external_payload()) is None
+
+
+def test_add_external_happy_path_appends_verbatim(queue_file):
+    before = len(json.loads(queue_file.read_text()))
+    payload = _external_payload()
+    res = qw.add_external(queue_file, payload)
+    assert res.status == "added" and res.ok is True
+    items = json.loads(queue_file.read_text())
+    assert len(items) == before + 1
+    new = next(i for i in items if qw.item_id_of(i) == payload["item_id"])
+    assert new["state"] == "published"
+    assert new["instagram_post_url"] == VALID_URL
+    assert new["source"] == "external_manual"
+    assert new["topic_slug"] == "my-manual-post"
+    assert new["slide_count"] == 0
+    # OTHER items untouched
+    alpha = next(i for i in items if qw.item_id_of(i) == "alpha-FIRSTPROD")
+    assert alpha["state"] == "applied_ready_for_damar"
+
+
+def test_add_external_invalid_payload_no_write(queue_file):
+    before = queue_file.read_text()
+    res = qw.add_external(queue_file, _external_payload(state="drafted"))
+    assert res.status == "invalid_payload" and res.ok is False
+    assert queue_file.read_text() == before
+
+
+def test_add_external_same_item_id_different_post_is_conflict(queue_file):
+    """GUILT (Codex red-team, 2026-07-17, finding E): the SAME item_id but a
+    DIFFERENT post (different URL/shortcode) must be a distinct `conflict`
+    status with ok=False — NOT `already_present`/ok=True, which the wrapper
+    reads as "safe to mark synced" and would silently lose the genuinely
+    distinct post with no record it was ever dropped. Was previously
+    asserting the pre-finding-E (buggy) already_present/ok=True behavior."""
+    payload = _external_payload()
+    qw.add_external(queue_file, payload)
+    n_after_first = len(json.loads(queue_file.read_text()))
+    # same item_id, DIFFERENT URL — a genuinely different post, must conflict
+    dup = _external_payload(instagram_post_url="https://www.instagram.com/p/DIFFERENT99/")
+    res = qw.add_external(queue_file, dup)
+    assert res.status == "conflict" and res.ok is False
+    items = json.loads(queue_file.read_text())
+    assert len(items) == n_after_first  # no duplicate appended, no write at all
+    kept = next(i for i in items if qw.item_id_of(i) == payload["item_id"])
+    assert kept["instagram_post_url"] == VALID_URL  # original untouched
+
+
+def test_add_external_duplicate_url_different_item_id_refused(queue_file):
+    payload = _external_payload()
+    qw.add_external(queue_file, payload)
+    n_after_first = len(json.loads(queue_file.read_text()))
+    # different item_id, SAME url — must still be refused as a duplicate
+    dup = _external_payload(item_id="external_2026-07-17T091500_retry-post", topic_slug="retry-post")
+    res = qw.add_external(queue_file, dup)
+    assert res.status == "already_present" and res.ok is True
+    assert len(json.loads(queue_file.read_text())) == n_after_first
+
+
+def test_add_external_idempotent_replay_safe(queue_file):
+    """The M5->Pro push-back loop may retry the SAME payload after a flaky ssh —
+    replaying the identical payload twice must be a no-op, not an error."""
+    payload = _external_payload()
+    res1 = qw.add_external(queue_file, payload)
+    assert res1.status == "added"
+    res2 = qw.add_external(queue_file, payload)
+    assert res2.status == "already_present" and res2.ok is True

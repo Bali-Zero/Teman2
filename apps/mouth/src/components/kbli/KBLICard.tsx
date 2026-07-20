@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PMABadge } from "./PMABadge";
 import { RiskBadge } from "./RiskBadge";
+import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { TransitionBadge } from "./TransitionBadge";
 import { BaliStatusBadge } from "./BaliStatusBadge";
 import type { KBLICode } from "@/lib/kbli-types";
@@ -93,7 +94,11 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           size="sm"
         />
         {code.licensing[0] && (
-          <RiskBadge riskCategory={code.licensing[0].riskCategory} size="sm" />
+          <RiskBadge
+            riskCategory={code.licensing[0].riskCategory}
+            size="sm"
+            verificationPending={isLicensingVerificationPending(code)}
+          />
         )}
         {showTransition && code.transition.mappingStatus && (
           <TransitionBadge status={code.transition.mappingStatus} />

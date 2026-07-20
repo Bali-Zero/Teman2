@@ -13,7 +13,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
         <string>backend.services.intel.trend_hunter.cli</string>
     </array>
     <key>StartInterval</key>
@@ -35,7 +35,7 @@
          this is why trend-hunter has been silently failing every 2h
          since 2026-04-30 plist reconstruction). -->
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>
@@ -46,7 +46,7 @@
              `OSError: failed to make path absolute` on launchd's empty cwd
              (audit 2026-05-20). -->
         <key>PWD</key>
-        <string>/Users/nuzantara/Desktop/nuzantara</string>
+        <string>/Users/nuzantara/nuzantara</string>
     </dict>
 </dict>
 </plist>

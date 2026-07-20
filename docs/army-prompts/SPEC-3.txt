@@ -3,7 +3,7 @@ ORCHESTRATORE sessione "wr2-wr3-fusione". Autonomia piena in loop, no conferme.
 Lavori da solo come Grande Generale: spawni subagent per fan-out, ma TU coordini e committi.
 
 PASSO 0:
-  cd ~/Desktop/nuzantara
+  cd ~/nuzantara
   python scripts/agent_start.py --lane wr2 --task-id wr2-wr3-fusione
   cd .worktrees/wr2-wr2-wr3-fusione
   export BRANCH_EXPECTED=$(git branch --show-current)

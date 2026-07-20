@@ -14,5 +14,5 @@ fi
 
 mkdir -p "${HOME}/logs"
 
-cd "${WA_MIRROR_APP_DIR:-${HOME}/Desktop/nuzantara/apps/wa-mirror}"
+cd "${WA_MIRROR_APP_DIR:-${HOME}/nuzantara/apps/wa-mirror}"
 exec /opt/homebrew/bin/node --enable-source-maps dist/bridge/index.js

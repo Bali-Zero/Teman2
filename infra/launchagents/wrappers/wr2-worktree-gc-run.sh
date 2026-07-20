@@ -6,7 +6,7 @@
 # installed — only the .example template existed on disk). Follows the W84
 # trampoline sweep pattern (#2421, 2026-07-13): the payload it invokes
 # (scripts/wr2_worktree_gc.py) touches the repo checkout under
-# ~/Desktop/nuzantara, so this wrapper probes/re-execs BEFORE any Desktop
+# ~/nuzantara, so this wrapper probes/re-execs BEFORE any Desktop
 # access, same as matagaruda-consumer-lag-run.sh / curiosity-batch.sh.
 #
 # REPORT-ONLY BY DESIGN (see PR body for the two blocking findings this
@@ -55,7 +55,7 @@ if [ -f "$TRAMPOLINE_LIB" ]; then
     w84_trampoline_or_die "$LOG"
 fi
 
-REPO="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO="${REPO_ROOT:-$HOME/nuzantara}"
 PYBIN="$REPO/apps/backend-rag/.venv/bin/python"
 [ -x "$PYBIN" ] || PYBIN="python3"
 

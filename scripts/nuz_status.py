@@ -30,7 +30,7 @@ DEFAULT_PEER_ALIAS_BY_ROLE = {
     "Mini": "pro",
     "Air-M5": "pro",
 }
-DEFAULT_PEER_REPO = "~/Desktop/nuzantara"
+DEFAULT_PEER_REPO = "~/nuzantara"
 PEER_AUTOSTASH_ENV = "NUZ_STATUS_ALLOW_PEER_AUTOSTASH"
 DRIVE_POLL_ENV_NAME = "NUZANTARA_" + "API" + "_KEY"
 

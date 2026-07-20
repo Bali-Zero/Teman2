@@ -11,13 +11,13 @@
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
 		<key>PYTHONPATH</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
 	<key>Label</key>
 	<string>com.matagaruda.bridge.adaptive</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<string>-u</string>
 		<string>-m</string>
 		<string>mata_garuda.bridge.nerve</string>
@@ -31,6 +31,6 @@
 	<key>StartInterval</key>
 	<integer>60</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>

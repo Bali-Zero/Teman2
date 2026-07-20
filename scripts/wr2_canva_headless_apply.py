@@ -70,6 +70,7 @@ def canva_tools_loaded_in_stream(stream_jsonl: str) -> bool:
 
 
 HEADLESS_TIMEOUT_SEC = int(os.environ.get("WR2_HEADLESS_TIMEOUT_SEC", "900"))
+HEADLESS_MAX_BUDGET_USD = float(os.environ.get("WR2_HEADLESS_MAX_BUDGET_USD", "5"))
 
 
 def _build_command_text(skill_body: str, pending_path: Path) -> str:
@@ -120,7 +121,8 @@ async def apply_headless(conn, pending_path: Path, template_design_id: str,
             # --disallowedTools ignored under skip-permissions). NO regression vs the
             # AppleScript path (same built-ins). Blast-radius = upstream sanitization.
             ["claude", "-p", cmd_text, "--dangerously-skip-permissions",
-             "--output-format", "stream-json", "--verbose"],
+             "--output-format", "stream-json", "--verbose",
+             "--max-budget-usd", str(HEADLESS_MAX_BUDGET_USD)],
             capture_output=True, text=True, timeout=HEADLESS_TIMEOUT_SEC,
             stdin=subprocess.DEVNULL,
         )

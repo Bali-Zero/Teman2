@@ -6,7 +6,7 @@ JSONL file or SQLite mirror is ever touched, so this test cannot collide
 with a sibling session's live queue (scar family #5).
 
 Run:
-    cd ~/Desktop/nuzantara/.worktrees/ops-modus-autoloop
+    cd ~/nuzantara/.worktrees/ops-modus-autoloop
     source apps/backend-rag/.venv/bin/activate
     python -m pytest scripts/tests/test_modus_enqueue.py -v
 """

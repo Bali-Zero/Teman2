@@ -443,10 +443,10 @@ assert.deepEqual(
       INTAKE_TEXT_LLM_TIMEOUT_SECONDS: "45",
     },
     dry_run_command:
-      "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+      "cd ~/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
       "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text",
     apply_command:
-      "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+      "cd ~/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
       "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text --apply",
     safe_to_apply_without_existing_gate: false,
     can_create_kita_proposals: true,

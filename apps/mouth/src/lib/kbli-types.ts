@@ -48,6 +48,22 @@ export interface KBLIScaleEntry {
   fiktif_positif: boolean;
 }
 
+/**
+ * A licensing row preserved under a `per_skala_disputed_*` key after a
+ * GARUDA-FILIERA detach (code-number collision cure). Shape is a superset of
+ * KBLIScaleEntry: collision blocks carry extra locator fields (scope_uraian,
+ * scope_index) and may omit sanction columns.
+ */
+export interface KBLIDisputedScaleRow {
+  skala_usaha?: KBLIBusinessScale[];
+  kategori_risiko?: string;
+  perizinan?: string | string[];
+  kewenangan?: string;
+  jangka_waktu?: string;
+  scope_uraian?: string;
+  [key: string]: unknown;
+}
+
 /** Raw KBLI code record — exact match to JSON structure */
 export interface KBLIRawCode {
   kode_kbli_2025: string;
@@ -68,6 +84,23 @@ export interface KBLIRawCode {
   pma_cap_verified?: boolean; // false => TERBATAS cap % not source-backed, render "≈N% unverified"
   pma_route_to?: string; // sibling private code when a govt code is closed to PMA
   _source: string;
+  // ── Per-record provenance (GARUDA-FILIERA layer markers) ──────────────────
+  /** L1 (existence/title/uraian) source — OSS RBA KBLI-2025 catalog snapshot */
+  _l1_source?: string;
+  /** L2 (risk rows) source. `OSS_RBA_resiko_2025` = KBLI-2025-native. Absent/null = rows NOT from OSS. */
+  _l2_source?: string | null;
+  /** `no_oss_risk` = OSS ruang-lingkup returned 404 for this code (no-scope set, crosswalk audit pending) */
+  _l2_status?: string;
+  /** Honest-gap note written by the cure compiler — carries verbatim citations/locators */
+  _data_note?: string;
+  /**
+   * per_skala rows detached by a collision cure, preserved for the audit trail.
+   * Two live shapes: a bare row array, or `{ per_skala: rows, ... }`.
+   */
+  [key: `per_skala_disputed_${string}`]:
+    | KBLIDisputedScaleRow[]
+    | { per_skala?: KBLIDisputedScaleRow[]; [key: string]: unknown }
+    | undefined;
   // Optional fields (present on some records)
   aggregation_note?: string;
   mapping_note?: string;
@@ -151,6 +184,69 @@ export interface KBLIPmaInfo {
   routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
 }
 
+// -----------------------------------------------------------------------------
+// Provenance (TRACK-P product layer — every rendered fact is either
+// government-sourced with a locator + vintage, or an honest declared gap)
+// -----------------------------------------------------------------------------
+
+/**
+ * Code-level verification state, derived ONLY from structured markers
+ * (never from prose matching — cicatrix #3):
+ * - `verified`         → risk rows are OSS-RBA KBLI-2025 native (`_l2_source`)
+ * - `pending`          → no OSS scope (`_l2_status: no_oss_risk`); rows carried
+ *                        from KBLI-2020-vintage sources, crosswalk audit pending
+ * - `not_classifiable` → collision cured: rows detached (`per_skala_disputed_*`),
+ *                        divergence documented with citations
+ */
+export type KBLIVerificationState = "verified" | "pending" | "not_classifiable";
+
+/** Licensing-axis provenance status */
+export type KBLILicensingProvenanceStatus =
+  | "oss_native"
+  | "pending_crosswalk"
+  /** `_l2_source` present but not the recognized OSS-native marker — audit required */
+  | "unverified_source"
+  | "detached";
+
+/** A licensing block detached by a collision cure, normalized for display */
+export interface KBLIDisputedLicensing {
+  /** raw key it was preserved under (e.g. per_skala_disputed_pp28_collision) */
+  key: string;
+  rows: KBLIDisputedScaleRow[];
+}
+
+/** Per-fact provenance for a KBLI code — the data behind the provenance UI */
+export interface KBLIProvenance {
+  state: KBLIVerificationState;
+  /** Activity definition (title + uraian) — L1 layer */
+  definition: {
+    /** raw locator, e.g. "OSS_RBA_2025_id_version_fff4053d" */
+    locator: string | null;
+    /** dataset assembly source, e.g. "BPS_7_2025 + PP28_2025" */
+    assembly: string | null;
+  };
+  /** Risk & licensing rows — L2 layer */
+  licensing: {
+    status: KBLILicensingProvenanceStatus;
+    /** raw locator when OSS-native (e.g. "OSS_RBA_resiko_2025"), else null */
+    locator: string | null;
+    /** KBLI vintage of the rows as served; null when detached or no rows */
+    vintage: "2025" | "2020" | null;
+    /** true when `_l2_status === "no_oss_risk"` (OSS ruang-lingkup 404) */
+    noOssScope: boolean;
+  };
+  /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage) */
+  pma: {
+    source: string | null;
+    vintage: "2020";
+    status: "pending_crosswalk";
+  };
+  /** Honest-gap note with verbatim citations (only on cured codes) */
+  dataNote: string | null;
+  /** Detached rows preserved for the audit trail (only on cured codes) */
+  disputed: KBLIDisputedLicensing | null;
+}
+
 /** Processed licensing entry for a specific business scale */
 export interface KBLILicenseByScale {
   scales: KBLIBusinessScale[];
@@ -211,6 +307,8 @@ export interface KBLICode {
   };
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
   baliL4?: KBLIBaliL4;
+  /** Per-fact provenance + verification state (TRACK-P). Derived from structured markers only. */
+  provenance?: KBLIProvenance;
 }
 
 /**

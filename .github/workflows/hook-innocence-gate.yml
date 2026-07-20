@@ -14,6 +14,9 @@ name: Hook innocence gate (vaccine)
 #   - infra/claude-hooks/test_host_boundary.py    (host_boundary carve-out)
 #   - infra/claude-hooks/test_phase.py            (plan-phase detection)
 #   - infra/claude-hooks/test_w79_shell_write.py  (W79 shell-write detection)
+#   - infra/claude-hooks/test_data_plane_guard.py (data-plane guard, incl. a
+#     .claude/settings.json wiring assertion — a settings-only regression
+#     that breaks the matcher/command now fails this gate too)
 #   - scripts/test_guardrails_core_overmatch.py   (guardrails python-c over-match)
 #
 # SENTINEL PATTERN (W69, copied from verify-the-verifiers.yml): NO top-level
@@ -35,6 +38,7 @@ on:
       - "scripts/test_guardrails_overmatch.py"
       - "scripts/test_guardrails_core_overmatch.py"
       - "scripts/guardrails_sync_check.py"
+      - ".claude/settings.json"
       - ".github/workflows/hook-innocence-gate.yml"
 
 concurrency:
@@ -64,7 +68,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/claude-hooks/|scripts/hooks/|scripts/guardrails_static_core\.py|scripts/test_guardrails_overmatch\.py|scripts/test_guardrails_core_overmatch\.py|scripts/guardrails_sync_check\.py|\.github/workflows/hook-innocence-gate\.yml)'; then
+            '^(infra/claude-hooks/|scripts/hooks/|scripts/guardrails_static_core\.py|scripts/test_guardrails_overmatch\.py|scripts/test_guardrails_core_overmatch\.py|scripts/guardrails_sync_check\.py|\.claude/settings\.json|\.github/workflows/hook-innocence-gate\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -106,6 +110,7 @@ jobs:
             infra/claude-hooks/test_host_boundary.py \
             infra/claude-hooks/test_phase.py \
             infra/claude-hooks/test_w79_shell_write.py \
+            infra/claude-hooks/test_data_plane_guard.py \
             scripts/test_guardrails_overmatch.py \
             scripts/test_guardrails_core_overmatch.py ; do
             if [ -f "$t" ]; then

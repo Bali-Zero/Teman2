@@ -26,7 +26,7 @@ inputs:
     schema_ref: "free-form"
   - name: b_roll_pool
     kind: file
-    source: "~/Desktop/nuzantara/research/marketing/b-roll-pool/"
+    source: "~/nuzantara/research/marketing/b-roll-pool/"
     required: true
     schema_ref: "free-form"
 

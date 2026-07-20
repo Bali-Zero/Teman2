@@ -17,7 +17,7 @@ if env_path.exists():
     print(f"Loaded .env from {env_path}")
 
 # Set Service Account for Google Drive/Gemini
-sa_path = Path("/Users/nuzantara/Desktop/nuzantara/.secrets/service-account.json")
+sa_path = Path("/Users/nuzantara/nuzantara/.secrets/service-account.json")
 if sa_path.exists():
     with open(sa_path) as f:
         sa_content = f.read()

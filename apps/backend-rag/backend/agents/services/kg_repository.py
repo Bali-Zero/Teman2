@@ -74,15 +74,20 @@ class KnowledgeGraphRepository:
         entity_id = self._generate_entity_id(entity_type, canonical_name)
         chunk_ids = [source_chunk_id] if source_chunk_id else []
 
+        # ::text::jsonb (both binds of $4) — the app pools register a jsonb
+        # codec (encoder=json.dumps); a bare $4 inferred as jsonb from the
+        # column double-encodes json.dumps(metadata) into a jsonb string
+        # scalar (kg_nodes.properties had 1517 polluted rows, live-probe
+        # 2026-07-16). Typing the param as text makes the server parse it.
         await conn.execute(
             """
             INSERT INTO kg_nodes (
                 entity_id, entity_type, name, properties,
                 confidence, source_chunk_ids, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, 1.0, $5, NOW(), NOW())
+            VALUES ($1, $2, $3, $4::text::jsonb, 1.0, $5, NOW(), NOW())
             ON CONFLICT (entity_id) DO UPDATE SET
-                properties = kg_nodes.properties || $4,
+                properties = kg_nodes.properties || $4::text::jsonb,
                 source_chunk_ids = (
                     SELECT array_agg(DISTINCT elem)
                     FROM unnest(
@@ -132,6 +137,11 @@ class KnowledgeGraphRepository:
             "source_references": [source_ref] if source_ref else [],
         }
 
+        # $5::text::jsonb — the app pools register a jsonb codec (encoder=
+        # json.dumps); a bare $5 inferred as jsonb from the column
+        # double-encodes json.dumps(properties) into a jsonb string scalar
+        # (kg_edges.properties had 4735 polluted rows, live-probe
+        # 2026-07-16). Typing the param as text makes the server parse it.
         await conn.execute(
             """
             INSERT INTO kg_edges (
@@ -139,7 +149,7 @@ class KnowledgeGraphRepository:
                 relationship_type, properties, confidence,
                 source_chunk_ids, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, NOW())
             ON CONFLICT (relationship_id) DO UPDATE SET
                 confidence = (kg_edges.confidence + EXCLUDED.confidence) / 2,
                 properties = jsonb_set(

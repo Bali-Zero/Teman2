@@ -44,34 +44,34 @@ Also worth noting (ambient, not a gap of Phase 1):
 Deliverables from `docs/superpowers/plans/2026-04-14-organism-phase1-sinapsi.md`,
 cross-checked against files + git log + launchctl + redis-cli state.
 
-| #  | Task                                         | Status | Evidence                                                                             |
-| -- | -------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| 1  | Bridge envelope model (Pydantic)             | ✅     | `apps/mata-garuda/mata_garuda/bridge/envelope.py`                                    |
-| 2  | Bridge cursor (atomic file I/O)              | ✅     | `apps/mata-garuda/mata_garuda/bridge/cursor.py`                                      |
-| 3  | Backend migration `bridge_outbox`            | ✅     | `apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py` (renamed from `101` in the plan) |
-| 4  | Backend `outbox` service helper              | ✅     | `apps/backend-rag/backend/services/bridge/outbox.py` + `retention.py` + `low_confidence_emitter.py` |
-| 5  | Backend `bridge` router (3 endpoints)        | ✅     | `apps/backend-rag/backend/app/routers/bridge.py` — registered in both include_light + include_heavy |
-| 6  | EventBus → outbox triggers                   | ✅     | `apps/backend-rag/backend/services/events/handlers.py` (grep 'outbox' matches)        |
-| 7  | RAG low-confidence trigger                   | ✅     | `low_confidence_emitter.py` + streaming path wired (commits `c6fd58899`, `0df523a8c`) |
-| 8  | MG config — bridge constants                 | ✅     | `apps/mata-garuda/mata_garuda/config.py` (commit `b256fc0f5`)                         |
-| 9  | Bridge nerve — pull (Fly→Pro)                | ✅     | `apps/mata-garuda/mata_garuda/bridge/nerve.py` (pull_once, commit `c92580da1`)        |
-| 10 | Bridge nerve — push (Pro→Fly)                | ✅     | `nerve.py` push_once + `bridge_main` (commit `c0e0b211f`)                             |
-| 11 | Gap consumer worker                          | ✅     | `apps/mata-garuda/mata_garuda/workers/gap_consumer.py` (commit `04aa0b02e`)           |
-| 12 | LHKPN scraper tools                          | ✅     | `apps/mata-garuda/mata_garuda/tools/lhkpn_tools.py` (commit `57e640e8c`)              |
-| 13 | LHKPN harvester agent + GENOME               | ✅     | `apps/mata-garuda/mata_garuda/agents/lhkpn_harvester.py` + `_GENOME.md` (commit `cedad9d1f`) |
-| 14 | Bridge LaunchAgent + shell wrapper           | ✅     | `~/Library/LaunchAgents/com.matagaruda.bridge.adaptive.plist` loaded (launchctl PID 40737) |
-| 15 | Gap consumer LaunchAgent                     | ✅     | `com.matagaruda.gap.consumer.plist` loaded (launchctl present, PID 0 = idle)          |
-| 16 | End-to-end verification (`test_phase1_e2e`)  | ❌     | No `test_phase1_e2e*` file in `apps/mata-garuda/tests/`. Plan expected it.            |
+| #   | Task                                        | Status | Evidence                                                                                              |
+| --- | ------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------- |
+| 1   | Bridge envelope model (Pydantic)            | ✅     | `apps/mata-garuda/mata_garuda/bridge/envelope.py`                                                     |
+| 2   | Bridge cursor (atomic file I/O)             | ✅     | `apps/mata-garuda/mata_garuda/bridge/cursor.py`                                                       |
+| 3   | Backend migration `bridge_outbox`           | ✅     | `apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py` (renamed from `101` in the plan) |
+| 4   | Backend `outbox` service helper             | ✅     | `apps/backend-rag/backend/services/bridge/outbox.py` + `retention.py` + `low_confidence_emitter.py`   |
+| 5   | Backend `bridge` router (3 endpoints)       | ✅     | `apps/backend-rag/backend/app/routers/bridge.py` — registered in both include_light + include_heavy   |
+| 6   | EventBus → outbox triggers                  | ✅     | `apps/backend-rag/backend/services/events/handlers.py` (grep 'outbox' matches)                        |
+| 7   | RAG low-confidence trigger                  | ✅     | `low_confidence_emitter.py` + streaming path wired (commits `c6fd58899`, `0df523a8c`)                 |
+| 8   | MG config — bridge constants                | ✅     | `apps/mata-garuda/mata_garuda/config.py` (commit `b256fc0f5`)                                         |
+| 9   | Bridge nerve — pull (Fly→Pro)               | ✅     | `apps/mata-garuda/mata_garuda/bridge/nerve.py` (pull_once, commit `c92580da1`)                        |
+| 10  | Bridge nerve — push (Pro→Fly)               | ✅     | `nerve.py` push_once + `bridge_main` (commit `c0e0b211f`)                                             |
+| 11  | Gap consumer worker                         | ✅     | `apps/mata-garuda/mata_garuda/workers/gap_consumer.py` (commit `04aa0b02e`)                           |
+| 12  | LHKPN scraper tools                         | ✅     | `apps/mata-garuda/mata_garuda/tools/lhkpn_tools.py` (commit `57e640e8c`)                              |
+| 13  | LHKPN harvester agent + GENOME              | ✅     | `apps/mata-garuda/mata_garuda/agents/lhkpn_harvester.py` + `_GENOME.md` (commit `cedad9d1f`)          |
+| 14  | Bridge LaunchAgent + shell wrapper          | ✅     | `~/Library/LaunchAgents/com.matagaruda.bridge.adaptive.plist` loaded (launchctl PID 40737)            |
+| 15  | Gap consumer LaunchAgent                    | ✅     | `com.matagaruda.gap.consumer.plist` loaded (launchctl present, PID 0 = idle)                          |
+| 16  | End-to-end verification (`test_phase1_e2e`) | ❌     | No `test_phase1_e2e*` file in `apps/mata-garuda/tests/`. Plan expected it.                            |
 
 **Open items discovered outside the plan:**
 
-| Scope                                          | Status | Note                                                                                  |
-| ---------------------------------------------- | ------ | ------------------------------------------------------------------------------------- |
-| 2nd harvester (**LPSE**, paired with LHKPN)    | ❌     | Mentioned in `mata-garuda-organism-prompt.md` as "LHKPN + LPSE". Only LHKPN shipped.   |
-| Envelope migration of `garuda:raw` (463)       | ⚠️     | Legacy format, consumer is Normalizer (not rewritten yet). Plan says "not urgent".    |
-| Envelope migration of `nexus:gaps` (828)       | ⚠️     | Legacy format BUT consumer IS the new `gap_consumer.py`. Coerce-on-read recommended.  |
-| `intel:articles` stream (War Room producer)    | ❌     | 0 entries. Intel→Content→SEO→Revenue cycle has no producer yet.                       |
-| Phase 1 metrics snapshot                       | ❌     | Plan required "before/after" numbers; no snapshot file committed.                     |
+| Scope                                       | Status | Note                                                                                 |
+| ------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| 2nd harvester (**LPSE**, paired with LHKPN) | ❌     | Mentioned in `mata-garuda-organism-prompt.md` as "LHKPN + LPSE". Only LHKPN shipped. |
+| Envelope migration of `garuda:raw` (463)    | ⚠️     | Legacy format, consumer is Normalizer (not rewritten yet). Plan says "not urgent".   |
+| Envelope migration of `nexus:gaps` (828)    | ⚠️     | Legacy format BUT consumer IS the new `gap_consumer.py`. Coerce-on-read recommended. |
+| `intel:articles` stream (War Room producer) | ❌     | 0 entries. Intel→Content→SEO→Revenue cycle has no producer yet.                      |
+| Phase 1 metrics snapshot                    | ❌     | Plan required "before/after" numbers; no snapshot file committed.                    |
 
 ## Parallel work landing during this audit
 
@@ -123,14 +123,14 @@ Also present: `com.garuda.gap-detector.twice-daily.plist.corrupted-20260412`
 
 ## What Phase 1 claims to deliver vs what's live
 
-| Phase 1 "After" metric                          | Live on 2026-04-16                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| Bridge Pro↔Fly operational                      | ✅ adaptive bridge running, outbox populated via CRM+RAG handlers        |
-| Envelope standard on all new streams            | ✅ for new streams. Legacy not migrated.                                 |
-| Gap consumer consumes `nexus:gaps`              | ⚠️ LaunchAgent loaded, consumer exists, XACK semantics UNVERIFIED.       |
-| 2 new harvesters (LHKPN + LPSE)                 | ⚠️ 1 of 2 (LHKPN only).                                                  |
-| Intel scraper publishes to `intel:articles`     | ❌ stream is empty. Producer not wired.                                  |
-| 4 cycles with ≥1 end-to-end signal              | ⚠️ Cycle 3 (Canali→KB→RAG) is wired via RAG low-confidence → outbox → bridge. Cycle 1 (Intel→Content→SEO→Revenue) has no producer. Cycles 2+4 not verified in this audit. |
+| Phase 1 "After" metric                      | Live on 2026-04-16                                                                                                                                                        |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bridge Pro↔Fly operational                  | ✅ adaptive bridge running, outbox populated via CRM+RAG handlers                                                                                                         |
+| Envelope standard on all new streams        | ✅ for new streams. Legacy not migrated.                                                                                                                                  |
+| Gap consumer consumes `nexus:gaps`          | ⚠️ LaunchAgent loaded, consumer exists, XACK semantics UNVERIFIED.                                                                                                        |
+| 2 new harvesters (LHKPN + LPSE)             | ⚠️ 1 of 2 (LHKPN only).                                                                                                                                                   |
+| Intel scraper publishes to `intel:articles` | ❌ stream is empty. Producer not wired.                                                                                                                                   |
+| 4 cycles with ≥1 end-to-end signal          | ⚠️ Cycle 3 (Canali→KB→RAG) is wired via RAG low-confidence → outbox → bridge. Cycle 1 (Intel→Content→SEO→Revenue) has no producer. Cycles 2+4 not verified in this audit. |
 
 ## Residual work to close Phase 1
 
@@ -173,36 +173,36 @@ In priority order. Each item links back to the plan's deliverable list.
 
 ### Phase 1 plan + specs
 
-- `/Users/nuzantara/Desktop/nuzantara/docs/superpowers/plans/2026-04-14-organism-phase1-sinapsi.md`
-- `/Users/nuzantara/Desktop/nuzantara/docs/superpowers/specs/2026-04-14-curator-agent-garuda-design-v2.md`
-- `/Users/nuzantara/Desktop/nuzantara/docs/superpowers/plans/2026-04-14-mata-garuda-organism-prompt.md` (foundational organism doc)
+- `/Users/nuzantara/nuzantara/docs/superpowers/plans/2026-04-14-organism-phase1-sinapsi.md`
+- `/Users/nuzantara/nuzantara/docs/superpowers/specs/2026-04-14-curator-agent-garuda-design-v2.md`
+- `/Users/nuzantara/nuzantara/docs/superpowers/plans/2026-04-14-mata-garuda-organism-prompt.md` (foundational organism doc)
 
 ### Phase 2 plan (scaffolded, parked until Phase 1 closes)
 
-- `/Users/nuzantara/Desktop/nuzantara/docs/superpowers/plans/2026-04-14-organism-phase2-riflessi.md`
-- `/Users/nuzantara/Desktop/nuzantara/docs/superpowers/specs/2026-04-14-organism-phase2-riflessi-design.md`
+- `/Users/nuzantara/nuzantara/docs/superpowers/plans/2026-04-14-organism-phase2-riflessi.md`
+- `/Users/nuzantara/nuzantara/docs/superpowers/specs/2026-04-14-organism-phase2-riflessi-design.md`
 
 ### Bridge implementation (Phase 1 core)
 
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/bridge/envelope.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/bridge/cursor.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/bridge/nerve.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/config.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/workers/gap_consumer.py`
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/bridge/envelope.py`
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/bridge/cursor.py`
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/bridge/nerve.py`
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/config.py`
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/workers/gap_consumer.py`
 
 ### Backend bridge (Fly side)
 
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/app/routers/bridge.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/bridge/outbox.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/bridge/retention.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/bridge/low_confidence_emitter.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/events/handlers.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/app/routers/bridge.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/bridge/outbox.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/bridge/retention.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/bridge/low_confidence_emitter.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/events/handlers.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py`
 
 ### Harvesters
 
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/agents/lhkpn_harvester.py` ✅ done
-- `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/mata_garuda/tools/lhkpn_tools.py` ✅ done
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/agents/lhkpn_harvester.py` ✅ done
+- `/Users/nuzantara/nuzantara/apps/mata-garuda/mata_garuda/tools/lhkpn_tools.py` ✅ done
 - `apps/mata-garuda/mata_garuda/agents/lpse_harvester.py` ❌ missing
 - `apps/mata-garuda/mata_garuda/tools/lpse_tools.py` ❌ missing
 
@@ -213,10 +213,10 @@ In priority order. Each item links back to the plan's deliverable list.
 
 ### Foundational reading (for any agent picking this up)
 
-- `/Users/nuzantara/Desktop/nuzantara/SYMBIOSIS.md` — 7 laws, 8 pillars
-- `/Users/nuzantara/Desktop/nuzantara/VADEMECUM.md` — operative checklists
-- `/Users/nuzantara/Desktop/nuzantara/INDEX.md` — atlas of organs
-- `/Users/nuzantara/Desktop/nuzantara/CLAUDE.md` — project context
+- `/Users/nuzantara/nuzantara/SYMBIOSIS.md` — 7 laws, 8 pillars
+- `/Users/nuzantara/nuzantara/VADEMECUM.md` — operative checklists
+- `/Users/nuzantara/nuzantara/INDEX.md` — atlas of organs
+- `/Users/nuzantara/nuzantara/CLAUDE.md` — project context
 
 ---
 

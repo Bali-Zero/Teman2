@@ -5,7 +5,7 @@ set -uo pipefail
 
 BATCH=$1
 BATCH_FILE="/tmp/batches/batch_${BATCH}.json"
-WORK_DIR="/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/worker_${BATCH}"
+WORK_DIR="/Users/nuzantara/nuzantara/.gemini/tmp/worker_${BATCH}"
 RESULT_DIR="/tmp/results"
 SA_KEY="/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 DB_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
@@ -16,7 +16,7 @@ PROMPT='Read this PDF. Return ONLY valid JSON, no markdown, no explanation:
 {"total_authorized_capital":<IDR>,"share_nominal_value":<IDR per share>,"kbli_codes":"<comma-sep>","shareholders":[{"name":"<NAME>","role":"<direktur/komisaris/pemegang_saham>","shares_count":<number>,"ownership_percentage":<0-100>}]}
 Indonesian numbers: 10.001.000.000=10001000000. Not found=null.'
 
-cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag
+cd /Users/nuzantara/nuzantara/apps/backend-rag
 source .venv/bin/activate
 
 COUNT=$(python3 -c "import json; print(len(json.load(open('$BATCH_FILE'))))")

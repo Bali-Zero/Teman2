@@ -100,7 +100,7 @@ class ThreadManager:
             """
             INSERT INTO conversation_threads
                 (client_id, channels, subject, metadata)
-            VALUES ($1, $2, $3, $4::jsonb)
+            VALUES ($1, $2, $3, $4::text::jsonb)
             RETURNING id
             """,
             client_id,

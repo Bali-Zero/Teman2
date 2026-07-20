@@ -11,11 +11,11 @@ if [[ "$(hostname)" != "Nuzantara" ]]; then
     exit 2
 fi
 
-REPO_ROOT="${INTAKE_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+REPO_ROOT="${INTAKE_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 BACKEND="${REPO_ROOT}/apps/backend-rag"
 VENV="${INTAKE_BACKEND_VENV:-${BACKEND}/.venv}"
 if [[ ! -d "${VENV}" ]]; then
-    VENV="/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv"
+    VENV="/Users/nuzantara/nuzantara/apps/backend-rag/.venv"
 fi
 
 MINI_ALIAS="${INTAKE_QWEN_MINI_ALIAS:-mini}"

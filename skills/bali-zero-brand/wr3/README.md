@@ -50,6 +50,6 @@ between WR3 agents (avoids confusion / brand drift).
 ## See also
 
 - Agent definitions: `~/.claude/agents/wr3-*.md`
-- I/O contracts: `~/Desktop/nuzantara/docs/wr3/contracts/*.yaml`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
-- Step 06 architecture: `~/Desktop/nuzantara/research/wr3/06-architecture-skeleton.md`
+- I/O contracts: `~/nuzantara/docs/wr3/contracts/*.yaml`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Step 06 architecture: `~/nuzantara/research/wr3/06-architecture-skeleton.md`

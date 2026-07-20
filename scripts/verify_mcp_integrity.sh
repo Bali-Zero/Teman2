@@ -35,7 +35,7 @@ set -uo pipefail
 
 # --- Configuration ---------------------------------------------------------
 
-REPO_ROOT="${NUZ_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${NUZ_REPO_ROOT:-$HOME/nuzantara}"
 MCP_CONFIG="$REPO_ROOT/.mcp.json"
 STATE_DIR="$HOME/.agent/decisions/state"
 BASELINE_FILE="$STATE_DIR/mcp_integrity_baseline.json"

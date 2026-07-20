@@ -7,7 +7,7 @@ next based on coverage of the skill space.
 For Bali Zero: inspect last 30 carousels, identify domain×audience×register×layout combos
 with zero coverage, propose ONE exploration variant for next production cycle.
 
-Output: ~/Desktop/nuzantara/apps/war-room/output/exploration_proposal.json
+Output: ~/nuzantara/apps/war-room/output/exploration_proposal.json
 The orchestrator picks this up at next carousel run and generates an extra exploration variant
 alongside the requested production carousel.
 
@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 DB_PATH = Path.home() / ".claude/projects/-Users-nuzantara/memory/wr2-episodic.db"
-PROPOSAL_PATH = Path.home() / "Desktop/nuzantara/apps/war-room/output/exploration_proposal.json"
+PROPOSAL_PATH = Path.home() / "nuzantara/apps/war-room/output/exploration_proposal.json"
 
 DOMAINS = ["visa", "tax", "property", "regulatory", "health"]
 AUDIENCE_SEGMENTS = ["founder", "investor", "digital-nomad", "retiree", "mass-tourist"]

@@ -41,7 +41,7 @@ to backfill the SQLite mirror from the existing JSONL:
 
 ```bash
 mkdir -p ~/.agent/decisions ~/logs/cron-agent
-python3 ~/Desktop/nuzantara/scripts/migrate_escalations_to_sqlite.py import
+python3 ~/nuzantara/scripts/migrate_escalations_to_sqlite.py import
 sqlite3 ~/.agent/decisions/escalations.sqlite \
     "SELECT COUNT(*) AS total, SUM(resolved_at IS NULL) AS active FROM escalations"
 ```

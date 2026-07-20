@@ -80,6 +80,67 @@ async def test_extract_entities_classifies_domain_entities_and_primary_entity(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "What is the overstay penalty on a C1, and if I overstay do I pay for every day?",
+        "I heard about overstay fines, is that true?",
+        "What is penangkalan in Indonesian immigration law?",
+        "Could I face deportation if I stay too long?",
+        "Apakah saya bisa kena deportasi karena overstay?",
+        "Will I get a re-entry ban if I overstay?",
+    ],
+)
+async def test_extract_entities_classifies_overstay_family_keywords_as_visa(query: str) -> None:
+    """GUILT (task #23, injection-gap investigation 2026-07-19) — the exact
+    prod probe query plus each new visa keyword ("overstay", "penangkalan",
+    "deportation", "deportasi", "re-entry ban") individually must classify
+    as domain=visa, so `_inject_curated_qa_grounding()` is reachable instead
+    of bailing at the domain==general early-return."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == "visa"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("query", "expected_domain"),
+    [
+        ("How does PPh 21 work with NPWP?", "tax"),
+        ("Can a foreigner use Hak Pakai for a villa in Bali?", "property"),
+        ("Find KBLI 47911 for a PT PMA retail company", "kbli"),
+        ("Setup PT PMA for a Singaporean shareholder", "company"),
+    ],
+)
+async def test_extract_entities_overstay_keywords_do_not_shift_unrelated_domains(
+    query: str,
+    expected_domain: str,
+) -> None:
+    """INNOCENCE — representative tax/property/kbli/company queries (none
+    containing "overstay"/"penangkalan"/"deportation"/"deportasi"/"re-entry
+    ban") must keep their pre-existing classification unchanged by the new
+    visa keywords."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == expected_domain
+
+
+@pytest.mark.asyncio
+async def test_extract_entities_general_query_stays_general_after_overstay_addition() -> None:
+    """INNOCENCE — a query matching none of the domain keyword lists
+    (including the new overstay-family additions) must remain general."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities("What is the weather like in Bali today?")
+
+    assert entities["domain"] == "general"
+
+
+@pytest.mark.asyncio
 async def test_extract_entities_ignores_invalid_kbli_ranges() -> None:
     service = EntityExtractionService()
 

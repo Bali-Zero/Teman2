@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/chronic_failure_digest.sh</string>
+        <string>/Users/nuzantara/nuzantara/infra/launchagents/chronic_failure_digest.sh</string>
     </array>
 
     <!-- Monday 08:30 WITA (every week) — 30min after the branch-cleanup weekly,
@@ -37,7 +37,7 @@
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>REPO_ROOT</key>
-        <string>/Users/nuzantara/Desktop/nuzantara</string>
+        <string>/Users/nuzantara/nuzantara</string>
         <key>CHRONIC_DIGEST_ENABLED</key>
         <string>true</string>
         <!-- Min consecutive RED days before a job is reported (default 3). -->
@@ -49,7 +49,7 @@
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/chronic-failure-digest.log</string>

@@ -7,6 +7,7 @@ import type {
   KBLIGoldContent,
 } from "./kbli-types";
 import { resolveLicenseType } from "./kbli-derive";
+import { deriveProvenance } from "./kbli-provenance";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -320,6 +321,7 @@ function transformCode(
             : undefined,
         }
       : undefined,
+    provenance: deriveProvenance(raw),
     tier: goldEntry ? "gold" : "bronze",
     keywords: [],
   };

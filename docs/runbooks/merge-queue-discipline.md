@@ -5,6 +5,14 @@
 > Sister doc: [`research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`](../../research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md)
 > Closes pattern: 17% PR rebase-manual (wave 2026-05-24 ex: #823, #815, #835-cherry, #805-cherry).
 
+> **RETIRED 2026-07-17**: `scripts/setup_merge_queue_rulesets.sh` has been deleted — dead automation
+> (0 GitHub Rulesets live on this repo, 0 consumers; GitHub Rulesets are not available on user-owned
+> repos, so `--apply` could never durably succeed here). This runbook is kept for historical/conceptual
+> reference (§1 rationale, the required-checks table, and the generic `gh pr` procedures still apply);
+> every instruction below that names the script is dead — do not attempt to run it. The separate
+> `scripts/merge_train.py` coordinator (polls classic branch protection every 180s) is UNRELATED and
+> remains live — it was never gated by Rulesets and is untouched by this retirement.
+
 ---
 
 ## 1. Why merge queue?
@@ -18,6 +26,7 @@ patches in parallel against `main`. Without serialization:
   `Detect Secrets`, then the next PR slips a secret through (arXiv 2605.07135).
 
 GitHub merge queue solves both:
+
 1. Re-runs required checks on a synthetic "test PR" against the **current HEAD of main**
    so two valid-against-stale-main PRs cannot collide.
 2. Combined with CODEOWNERS + path-restricted rulesets, agents cannot land changes
@@ -31,18 +40,18 @@ GitHub merge queue solves both:
 Empirical snapshot of `GET /repos/Balizero1987/Teman2/branches/main/protection`
 captured 2026-05-24 by `setup_merge_queue_rulesets.sh --dry-run`:
 
-| Check name                              | Workflow file              | Notes                                          |
-|-----------------------------------------|----------------------------|------------------------------------------------|
-| `E2E Tests (Playwright)`                | `.github/workflows/tests.yml`    | mouth Playwright suite                   |
-| `MCP Server Tests`                      | `.github/workflows/tests.yml`    | nuzantara-mcp + advanced                 |
-| `Frontend Tests (Next.js) (mouth)`      | `.github/workflows/tests.yml`    | vitest + Lighthouse                       |
-| `Detect Secrets`                        | `.github/workflows/security.yml` | detect-secrets baseline diff             |
+| Check name                         | Workflow file                    | Notes                        |
+| ---------------------------------- | -------------------------------- | ---------------------------- |
+| `E2E Tests (Playwright)`           | `.github/workflows/tests.yml`    | mouth Playwright suite       |
+| `MCP Server Tests`                 | `.github/workflows/tests.yml`    | nuzantara-mcp + advanced     |
+| `Frontend Tests (Next.js) (mouth)` | `.github/workflows/tests.yml`    | vitest + Lighthouse          |
+| `Detect Secrets`                   | `.github/workflows/security.yml` | detect-secrets baseline diff |
 
 All four MUST be green before merge queue accepts a PR.
 
 `strict=false` today (allows merge if checks pass on the PR base, not on latest main).
-The `--apply` script flips to `strict=true` once merge queue is enabled, which
-**closes the stale-base race documented above**.
+**RETIRED**: the `--apply` script that would have flipped this to `strict=true` once merge queue
+was enabled (closing the stale-base race documented above) has been removed — see banner at top.
 
 ---
 
@@ -69,18 +78,20 @@ so a malicious PR cannot modify the whitelist to widen its scope.
 ## 4. Path-restriction rulesets
 
 Enforced via CODEOWNERS + branch protection `require_code_owner_reviews: true`
-(set by `--apply` script). Critical paths:
+(previously intended to be set by the now-**RETIRED** `--apply` script — see banner at top;
+verify current live config directly via `gh api repos/Balizero1987/Teman2/branches/main/protection`
+if this needs reconfirming). Critical paths:
 
-| Path                                                  | Owner            | Why locked                                 |
-|-------------------------------------------------------|------------------|--------------------------------------------|
-| `/.github/workflows/`                                 | @Balizero1987    | anti agentic-injection (CI silencing)      |
-| `/.github/dependabot.yml`                             | @Balizero1987    | controls auto-PR cadence                   |
-| `/fly.toml`, `/apps/backend-rag/fly.toml`             | @Balizero1987    | prod deploy config                          |
-| `/apps/backend-rag/backend/db/migrations_v2/`         | @Balizero1987    | irreversible schema changes                |
-| `/apps/backend-rag/backend/app/auth/`                 | @Balizero1987    | auth middleware + JWT                       |
-| `/apps/backend-rag/backend/services/{invoicing,pricing,billing}/` | @Balizero1987 | financial correctness            |
-| `/infra/launchagents/`                                | @Balizero1987    | cron / daemon config                        |
-| Subhi lane `/apps/mouth/src/app/(blog\|marketing\|tax-calendar)/`, etc. | @SubBZ2026 + @Balizero1987 | co-review |
+| Path                                                                    | Owner                      | Why locked                            |
+| ----------------------------------------------------------------------- | -------------------------- | ------------------------------------- |
+| `/.github/workflows/`                                                   | @Balizero1987              | anti agentic-injection (CI silencing) |
+| `/.github/dependabot.yml`                                               | @Balizero1987              | controls auto-PR cadence              |
+| `/fly.toml`, `/apps/backend-rag/fly.toml`                               | @Balizero1987              | prod deploy config                    |
+| `/apps/backend-rag/backend/db/migrations_v2/`                           | @Balizero1987              | irreversible schema changes           |
+| `/apps/backend-rag/backend/app/auth/`                                   | @Balizero1987              | auth middleware + JWT                 |
+| `/apps/backend-rag/backend/services/{invoicing,pricing,billing}/`       | @Balizero1987              | financial correctness                 |
+| `/infra/launchagents/`                                                  | @Balizero1987              | cron / daemon config                  |
+| Subhi lane `/apps/mouth/src/app/(blog\|marketing\|tax-calendar)/`, etc. | @SubBZ2026 + @Balizero1987 | co-review                             |
 
 Full list: see `.github/CODEOWNERS`.
 
@@ -139,7 +150,8 @@ If merge queue causes more friction than it removes:
 # Disable merge queue, keep CODEOWNERS + path-restriction in place.
 gh api -X PATCH repos/Balizero1987/Teman2/branches/main/protection \
   --field 'required_status_checks[strict]=false' \
-  ...  # see setup_merge_queue_rulesets.sh --rollback
+  ...  # RETIRED: setup_merge_queue_rulesets.sh --rollback no longer exists (script deleted);
+       # construct the PUT payload manually per the branch-protection API docs if ever needed.
 ```
 
 CODEOWNERS file remains active even with merge queue disabled (it's a separate
@@ -147,7 +159,10 @@ mechanism).
 
 ---
 
-## 8. Smoke plan after `--apply`
+## 8. Smoke plan after `--apply` (RETIRED — script removed)
+
+> The `--apply` script this section assumed is gone (see banner at top); 0 GitHub Rulesets are
+> live on this repo today. Kept below for historical/conceptual reference only.
 
 After enabling merge queue, the next 3 routine PRs become the smoke test:
 
@@ -163,7 +178,10 @@ against an older base SHA.
 
 ---
 
-## 9. Owner sign-off checklist
+## 9. Owner sign-off checklist (RETIRED — script removed)
+
+> `scripts/setup_merge_queue_rulesets.sh` has been deleted (see banner at top). This checklist is
+> kept for historical/conceptual reference only — do not attempt the steps below.
 
 Before running `bash scripts/setup_merge_queue_rulesets.sh --apply`:
 
@@ -180,5 +198,6 @@ After `--apply`:
 - [ ] Manual PR requires owner approval (smoke 8.3).
 - [ ] No PR blocked >30min on "Queued" without ongoing investigation.
 
-If any smoke fails: run `bash scripts/setup_merge_queue_rulesets.sh --rollback` and
-diagnose offline.
+If any smoke fails: the rollback used to be `bash scripts/setup_merge_queue_rulesets.sh --rollback`
+— **RETIRED**, script removed. Diagnose offline and roll back branch protection manually via the
+`gh api -X PATCH .../protection` call in §7.

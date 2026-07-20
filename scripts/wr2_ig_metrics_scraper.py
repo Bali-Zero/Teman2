@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-DEFAULT_QUEUE = Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+DEFAULT_QUEUE = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 GRAPH = "https://graph.instagram.com"
 
 
@@ -116,12 +116,65 @@ def is_stale(metrics: Optional[dict], max_age_days: int) -> bool:
 
 
 def media_id_of(item: dict) -> Optional[str]:
-    # backfill ids are "ig-<mediaid>"; otherwise derive from the permalink shortcode is not
-    # enough (Graph needs the numeric media id) — rely on the ig-<id> convention.
-    iid = item.get("id") or ""
-    if iid.startswith("ig-"):
-        return iid[3:]
+    """Extract the Graph API numeric media id for a queue item, or None if it
+    doesn't have one it can be trusted to fetch with.
+
+    §C — CORRECTED per live Pro-side diagnosis, 2026-07-17 (supersedes the
+    2026-07-16 fix below, which only widened the KEY searched, not the VALUE
+    trusted):
+
+    1. `ig_media_id` — the AUTHORITATIVE field (`wr2_queue_writer.build_external_item`
+       / `backfill_media_id`, wired from `wr2_ig_discovery.py`'s own Graph media
+       fetch, which carries the real numeric `id` alongside `permalink`). Always
+       preferred when present — it is never derived/guessed.
+    2. Legacy fallback — `id` or `item_id` (dual-schema precedent, same as
+       `wr2_queue_writer.item_id_of`) with an `"ig-"` prefix, but ONLY when the
+       SUFFIX IS ALL DIGITS. This is the load-bearing correction: a Graph media
+       id is a large all-numeric string, while an IG post/reel SHORTCODE (the
+       `/p/<code>/` URL segment) is alphanumeric with `-`/`_` — the two were
+       being conflated. The historical Graph-API backfill wrote `id: "ig-<real
+       numeric id>"` directly (digits-only suffix, still resolves here); but
+       `ingest_external_post`'s OWN `ig-<shortcode>` convention (used before
+       `ig_media_id` existed, and by any caller that never had a Graph fetch —
+       e.g. the WR2 Control app's manual "add external post" §A feature, whose
+       id looks like `external_<date>T<time>_<slug>` and never even reaches
+       this branch) does NOT resolve — a shortcode fed to the Graph endpoint
+       would 400 with a confusing error instead of failing cleanly.
+    3. Neither present -> None. `main()` counts this (`skipped_no_media_id=`)
+       instead of it vanishing into the same silent gap as "not stale yet" —
+       for a post whose real numeric id truly isn't known anywhere yet, this
+       stays a DOCUMENTED LIMITATION (needs `wr2_ig_discovery.py`'s
+       reconciliation pass to run and find/backfill it), not a bug fixed here.
+
+    Length floor (Codex red-team, 2026-07-17, finding I): all 45 real legacy
+    `ig-<digits>` ids on record are 17-digit Graph media ids. `isdigit()`
+    alone would also accept a THEORETICAL all-digit shortcode — requiring
+    `len(suffix) >= 15` keeps the legacy fallback scoped to what it was
+    actually built for.
+    """
+    authoritative = item.get("ig_media_id")
+    if authoritative:
+        return str(authoritative)
+    for key in ("id", "item_id"):
+        iid = item.get(key) or ""
+        if iid.startswith("ig-"):
+            suffix = iid[3:]
+            if suffix.isdigit() and len(suffix) >= 15:
+                return suffix
     return None
+
+
+def _display_id(item: dict) -> str:
+    """Schema-agnostic label for a queue item's log lines (Codex red-team hotfix,
+    2026-07-17, live Pro prove-live): the success/skip/dry-run prints in main()'s
+    fetch loop used a bare `item['id']` fallback after `topic_slug` — old-schema
+    entries (§C reconciliation candidates like bali-pma-rental-crackdown) only
+    carry `item_id`, never `id`, so the scraper KeyError'd mid-loop BEFORE the
+    write at the end of the run. `media_id_of` already handles this dual-schema
+    split correctly (checks BOTH `id` and `item_id`); these print lines never got
+    the same treatment. Never raises — `'?'` is the last resort for a genuinely
+    unlabeled item, never a crash."""
+    return item.get("topic_slug") or item.get("id") or item.get("item_id") or "?"
 
 
 def main() -> int:
@@ -140,34 +193,43 @@ def main() -> int:
     qpath = Path(args.queue)
     queue = json.loads(qpath.read_text())
 
-    # smart selection: published items whose metrics are missing/stale + have a media id
+    # smart selection: published items whose metrics are missing/stale + have a media id.
+    # Selection on instagram_post_url + state=="published" already applies to ANY queue
+    # entry regardless of pipeline origin (§C: this half of the spec's assumption holds).
+    # `no_media_id` makes the OTHER half — entries that qualify here but can never be
+    # fetched because no Graph-resolvable id can be derived (see media_id_of docstring,
+    # e.g. externally-registered posts) — an OBSERVABLE count instead of a silent drop
+    # indistinguishable from "not stale yet" (scar #2, esiste≠armato).
     todo = []
+    no_media_id = 0
     for item in queue:
         if not (item.get("instagram_post_url") and item.get("state") == "published"):
             continue
         if not media_id_of(item):
+            no_media_id += 1
             continue
         if is_stale(item.get("engagement_metrics"), args.max_age_days):
             todo.append(item)
     if args.limit > 0:
         todo = todo[: args.limit]
 
+    skip_note = f" skipped_no_media_id={no_media_id}" if no_media_id else ""
     print(f"published={sum(1 for i in queue if i.get('state')=='published')} "
-          f"to_refresh={len(todo)} (max_age={args.max_age_days}d)")
+          f"to_refresh={len(todo)} (max_age={args.max_age_days}d){skip_note}")
 
     updated = 0
     for item in todo:
         mid = media_id_of(item)
         m = fetch_metrics(mid, token)
         if m is None:
-            print(f"  skip {item.get('topic_slug') or item['id']}: no metrics returned")
+            print(f"  skip {_display_id(item)}: no metrics returned")
             continue
         if args.dry_run:
-            print(f"  [dry] {item.get('topic_slug') or item['id']}: {m}")
+            print(f"  [dry] {_display_id(item)}: {m}")
         else:
             item["engagement_metrics"] = m
             updated += 1
-            print(f"  ok   {item.get('topic_slug') or item['id']}: "
+            print(f"  ok   {_display_id(item)}: "
                   f"likes={m.get('likes')} reach={m.get('reach')} "
                   f"saved={m.get('saved')} shares={m.get('shares')}")
         time.sleep(0.3)  # be gentle on the API

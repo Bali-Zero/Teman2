@@ -12,12 +12,12 @@ contract_version: 1.0.0
 
 ## Role (one-line)
 
-Weekly cron Monday 06:00 WITA. Reads YouTube Analytics API + IG/TikTok engagement scrape for last 30-90 days WR3 episodes, correlates engagement signals with episode attributes (domain, register, archetype, ArcFace avg, critic lane scores). Proposes amendments to _proposed-amendments/. Runs AFTER Reflexion (Sun 02:30).
+Weekly cron Monday 06:00 WITA. Reads YouTube Analytics API + IG/TikTok engagement scrape for last 30-90 days WR3 episodes, correlates engagement signals with episode attributes (domain, register, archetype, ArcFace avg, critic lane scores). Proposes amendments to \_proposed-amendments/. Runs AFTER Reflexion (Sun 02:30).
 
 ## Primary I/O
 
 - **Inputs**: YouTube Analytics API + IG/TT scrape + episode_manifest.json batch
-- **Outputs**: _proposed-amendments/<date>-yt-insights.md
+- **Outputs**: \_proposed-amendments/<date>-yt-insights.md
 
 ## Symbiosis law emphasis
 
@@ -54,6 +54,6 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 ## Resources
 
 - Agent definition: `~/.claude/agents/wr3-yt-metrics-analyst.md`
-- I/O contract: `~/Desktop/nuzantara/docs/wr3/contracts/yt-metrics-analyst.yaml`
+- I/O contract: `~/nuzantara/docs/wr3/contracts/yt-metrics-analyst.yaml`
 - Brand cortex (shared): `~/.claude/skills/bali-zero-brand/`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`

@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="/Users/nuzantara/Desktop/nuzantara"
+PROJECT_ROOT="/Users/nuzantara/nuzantara"
 PYTHON="/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3"
 SCRIPT="$PROJECT_ROOT/scripts/nlm_nb1_daily_refresh.py"
 

@@ -356,7 +356,7 @@ npx playwright test --config=playwright.zantara.config.ts --grep "should admit w
 ## COMANDO PER LANCIARE TUTTI I TEST
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara/apps/mouth
+cd /Users/antonellosiano/nuzantara/apps/mouth
 npx playwright test --config=playwright.zantara.config.ts --reporter=list
 ```
 

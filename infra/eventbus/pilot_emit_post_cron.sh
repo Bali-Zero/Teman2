@@ -43,7 +43,7 @@ EOF
         regulatory.delta.detected)
             # Extract delta from regulatory-watcher's most recent output JSON
             DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
-            DELTA_JSON="$HOME/Desktop/nuzantara/research/regulatory/${DATE}-delta.json"
+            DELTA_JSON="$HOME/nuzantara/research/regulatory/${DATE}-delta.json"
             if [ -f "$DELTA_JSON" ]; then
                 COUNT=$(python3 -c "import json; d=json.load(open('$DELTA_JSON')); print(d.get('new_today_count', 0))" 2>/dev/null || echo "0")
                 if [ "$COUNT" -gt 0 ]; then

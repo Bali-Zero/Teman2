@@ -4,7 +4,7 @@
 #
 # Extracted from the plist (2026-07-14): the canon plist used to exec the
 # venv python DIRECTLY with EnvironmentVariables (GARUDA_CANONICAL_REDIS_HOST,
-# PYTHONPATH, WorkingDirectory) all pointing under ~/Desktop/nuzantara — so a
+# PYTHONPATH, WorkingDirectory) all pointing under ~/nuzantara — so a
 # TCC-dead launchd context (scar W84) kills the job with "Operation not
 # permitted" before it ever reaches Redis. This wrapper interposes the W84
 # fail-fast probe / ssh-localhost trampoline BEFORE any ~/Desktop access, and
@@ -37,7 +37,7 @@ if [ -f "$TRAMPOLINE_LIB" ]; then
     w84_trampoline_or_die "$LOG" "$0"
 fi
 
-REPO="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO="${REPO_ROOT:-$HOME/nuzantara}"
 
 # Env the plist's EnvironmentVariables dict used to set — NOT inherited
 # across the ssh-localhost re-exec (lib/trampoline.sh caveat), so it must be

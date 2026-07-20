@@ -41,11 +41,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import socket
 import sys
 import threading
 import time
 import uuid
+from enum import Enum
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -178,13 +180,23 @@ def _persist_local_artifacts(
     drive_url: str,
     weak_count: int,
     fact_check_status: str | None,
+    intended_slide_count: int = 0,
     out_root: Path | None = None,
     rendered_at: str | None = None,
 ) -> Path:
     """Copy the rendered PNGs to a durable carousel dir + write meta.json.
-    Returns the carousel dir. Raises on IO failure (caller decides severity)."""
+    Returns the carousel dir. Raises on IO failure (caller decides severity).
+
+    `intended_slide_count` is the DB-sourced (war_room_drafts.slides_json)
+    ground truth for how many slides this draft was ASKED to render — an
+    input, never derived from disk — persisted alongside the disk-derived
+    `slide_count` so a downstream sweep has an independent signal to compare
+    against (Codex red-team HIGH #4, 2026-07-16: `slide_count` in meta.json
+    was computed from the SAME disk scan the sweep re-checks, so it can never
+    disagree with disk by construction — it was worthless as "expected")."""
     import json as _json
     import shutil
+    import uuid as _uuid
     from datetime import datetime, timezone
 
     root = out_root if out_root is not None else _default_output_root()
@@ -192,20 +204,55 @@ def _persist_local_artifacts(
     day = ts[:10]
     slug = _slugify(topic)
     car_dir = root / "carousel" / f"{day}-{slug}-{str(draft_id)[:8]}"
+    car_dir.mkdir(parents=True, exist_ok=True)
     slides_dir = car_dir / "slides"
-    slides_dir.mkdir(parents=True, exist_ok=True)
-    # re-render of the same draft/day: clear stale PNGs so a shorter carousel
-    # does not keep ghost slides in the app preview (red-team LOW)
-    for stale in slides_dir.glob("*.png"):
-        stale.unlink()
-    for p in png_paths:
-        shutil.copy2(p, slides_dir / p.name)
+
+    # Staging + atomic swap (Codex red-team HIGH #5, 2026-07-16): the old code
+    # cleared slides_dir file-by-file then copied new PNGs in one at a time,
+    # IN PLACE — a concurrent reader (the completeness sweep) could observe a
+    # transient near-empty/partial directory mid-copy that had nothing to do
+    # with a real completeness defect, and the reconciler would wrongly mark
+    # the entry render_incomplete while a render was simply still writing.
+    # Copy into a private staging dir first, verify completeness there, THEN
+    # swap it into place with two renames (out the old, in the new) — the
+    # window of inconsistency shrinks from "however long N copies take" to
+    # two near-instant syscalls.
+    staging = car_dir / f".slides.new.{os.getpid()}.{_uuid.uuid4().hex[:8]}"
+    staging.mkdir(parents=True)
+    old_dir: Path | None = None
+    try:
+        for p in png_paths:
+            shutil.copy2(p, staging / p.name)
+        # A1: re-derive slide_count from the DURABLE artifact just written,
+        # never from the in-memory png_paths list — this is the ONE helper
+        # every writer of a persisted slide_count routes through (2026-07-16).
+        # A copy that silently dropped a file must be visible here, not
+        # carried forward as a lie in meta.json/queue.
+        durable_count = derive_slide_count(staging)
+        if durable_count != len(png_paths):
+            raise RuntimeError(
+                f"persist_local_artifacts completeness mismatch for draft {draft_id}: "
+                f"copied {len(png_paths)} PNGs but staging verifies {durable_count} "
+                f"— refusing to write a lying meta.json/queue entry"
+            )
+        if slides_dir.exists():
+            old_dir = car_dir / f".slides.old.{os.getpid()}.{_uuid.uuid4().hex[:8]}"
+            os.replace(slides_dir, old_dir)
+        os.replace(staging, slides_dir)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    finally:
+        if old_dir is not None:
+            shutil.rmtree(old_dir, ignore_errors=True)
+
     meta = {
         "draft_id": str(draft_id),
         "topic": topic,
         "slug": slug,
         "drive_url": drive_url,
-        "slide_count": len(png_paths),
+        "slide_count": durable_count,
+        "intended_slide_count": intended_slide_count,
         "weak_slides": weak_count,
         "fact_check_status": fact_check_status,
         "rendered_at": ts,
@@ -222,11 +269,20 @@ def _make_queue_entry(
     carousel_dir: Path,
     drive_url: str,
     slide_count: int,
+    intended_slide_count: int = 0,
     weak_count: int,
     fact_check_status: str | None,
     drafted_at: str,
 ) -> dict:
-    """Review-queue entry per skills/bali-zero-brand/_review-queue-schema.md."""
+    """Review-queue entry per skills/bali-zero-brand/_review-queue-schema.md.
+
+    `intended_slide_count` (Codex red-team HIGH #4, 2026-07-16) is the
+    DB-sourced (war_room_drafts.slides_json) count of how many slides this
+    draft was ASKED to render — persisted verbatim, independent of disk, so
+    the reconciler's completeness sweep has real ground truth to compare
+    `slide_count` (disk-derived) against, instead of trusting a same-source
+    echo (meta.json's plain slide_count, which can never disagree with disk
+    by construction)."""
     slug = _slugify(topic)
     # WR2 deep audit 2026-07-14 (§5a finding #2, Codex objection #15): this path
     # runs ONLY the per-slide designer-loop legibility critic (readable/hierarchy/
@@ -248,6 +304,7 @@ def _make_queue_entry(
         "drive_url": drive_url,
         "media_type": "carousel",
         "slide_count": slide_count,
+        "intended_slide_count": intended_slide_count,
         "critic_overall_verdict": verdict,
         "critic_summary": (
             f"{weak_count} weak slide(s) placed as composition debt (N-1)"
@@ -273,6 +330,7 @@ _REPOINT_FIELDS = (
     "slides_dir",
     "drive_url",
     "slide_count",
+    "intended_slide_count",
     "critic_overall_verdict",
     "critic_summary",
     "fact_check_status",
@@ -285,7 +343,17 @@ _REPOINT_FIELDS = (
 # OLD images must never silently apply to the new ones (Codex review
 # 2026-07-13). Anything else (published, archived, legacy no-state) is
 # immutable history.
-_REPOINTABLE_STATES = ("drafted", "reviewed", "rejected", "drafted_needs_human_edit")
+#
+# "render_incomplete" is included (Codex red-team HIGH #5, 2026-07-16): a
+# successful RE-render that reaches this point has ALREADY passed the A1
+# disk-completeness gate in `_render_carousel`/`_persist_local_artifacts` —
+# repoint only ever fires as a side effect of a verified-complete render, so
+# allowing repoint FROM render_incomplete (never blindly INTO it here) lets a
+# fixed carousel flow back into review instead of leaving the queue stuck
+# pointing at the old, incomplete artifact forever.
+_REPOINTABLE_STATES = (
+    "drafted", "reviewed", "rejected", "drafted_needs_human_edit", "render_incomplete",
+)
 
 
 def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool:
@@ -358,10 +426,19 @@ async def _publish_visibility(
     drive_url: str,
     weak_count: int,
     fact_check_status: str | None,
+    intended_slide_count: int = 0,
 ) -> None:
     """Best-effort visibility: durable PNGs -> queue entry -> tg P0. A failure here
     NEVER fails the render (the DB row + Drive upload are already terminal) but is
-    ALWAYS alerted — invisible production is the disease this cures."""
+    ALWAYS alerted — invisible production is the disease this cures.
+
+    `intended_slide_count` (DB-sourced, see `_apply_one`) is threaded through
+    to `_persist_local_artifacts`/`_make_queue_entry` as an immutable ground
+    truth AND re-checked here as defense in depth (Codex red-team CRITICAL
+    #1, 2026-07-16): `_render_carousel`'s gate should already refuse a
+    mismatched render before this function ever runs, but if disk somehow
+    disagrees with intent by the time we reach here, the entry is enqueued as
+    render_incomplete, never as a normal reviewable "drafted"."""
     from datetime import datetime, timezone
 
     if not str(topic or "").strip() or not png_paths:
@@ -386,13 +463,38 @@ async def _publish_visibility(
             draft_id=draft_id, topic=topic, png_paths=png_paths,
             drive_url=drive_url, weak_count=weak_count,
             fact_check_status=fact_check_status, rendered_at=drafted_at,
+            intended_slide_count=intended_slide_count,
         )
+        # A1: the queue entry's slide_count is RE-DERIVED from the durable
+        # slides_dir _persist_local_artifacts just verified (single helper,
+        # never the in-memory png_paths list) — the queue must never disagree
+        # with the artifact it points at.
+        durable_slide_count = derive_slide_count(car_dir / "slides")
         entry = _make_queue_entry(
             draft_id=draft_id, topic=topic, carousel_dir=car_dir,
-            drive_url=drive_url, slide_count=len(png_paths),
+            drive_url=drive_url, slide_count=durable_slide_count,
+            intended_slide_count=intended_slide_count,
             weak_count=weak_count, fact_check_status=fact_check_status,
             drafted_at=drafted_at,
         )
+        if intended_slide_count and durable_slide_count != intended_slide_count:
+            # Should be unreachable — _render_carousel's gate already refuses
+            # a mismatched render before this function runs. Kept as
+            # defense-in-depth (CRITICAL #1): never let a mismatched entry
+            # reach the queue as a normal reviewable "drafted".
+            entry["state"] = "render_incomplete"
+            entry["state_history"] = [{
+                "state": "render_incomplete", "at": drafted_at, "by": "wr2-html-apply",
+                "reason": (
+                    f"disk={durable_slide_count} != intended={intended_slide_count} "
+                    f"at publish time"
+                ),
+            }]
+            logger.error(
+                "visibility: draft %s disk=%d != intended=%d — enqueued as "
+                "render_incomplete, NOT drafted (should be unreachable)",
+                draft_id, durable_slide_count, intended_slide_count,
+            )
         appended = _append_review_queue(entry)
         logger.info(
             "visibility: artifacts=%s queue_appended=%s", car_dir, appended
@@ -665,6 +767,50 @@ def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[s
 # per-slide renders — assets, never slides. Excluded from the final slide glob.
 _STAGED_ASSET_PNGS = frozenset({"logo.png"})
 
+_SLIDE_STEM_RE = re.compile(r"^\d+$")
+
+
+def derive_slide_paths(slides_dir: Path) -> list[Path]:
+    """Sorted list of REAL slide PNG paths in `slides_dir` — the ONE filter
+    every consumer of "what are this carousel's slides" must share (Codex
+    red-team MEDIUM #7, 2026-07-16): the post-render PNG collector used to
+    run its own looser glob (excluding only staged logo.png, NOT placeholder*
+    and NOT restricted to a numeric stem) while the completeness gate used
+    this stricter filter — a placeholder.png staged alongside 8 real slides
+    was counted as a 9th "slide" by the collector/upload/copy path but not by
+    the gate, so a perfectly complete carousel spuriously failed
+    `_persist_local_artifacts`'s disk re-verification (9 copied vs 8 verified).
+
+    Filter mirrors the WR2 Control app's slidePNGs() (WarRoom.swift) so Python
+    and Swift agree on what "a slide" is: numeric-stem *.png only, excluding
+    staged chrome (logo.png) and any placeholder* name. Missing dir -> []
+    (dirless is a mismatch to report, never a crash).
+    """
+    if not slides_dir.is_dir():
+        return []
+    out: list[Path] = []
+    for p in slides_dir.iterdir():
+        if p.suffix.lower() != ".png":
+            continue
+        name = p.name.lower()
+        if name in _STAGED_ASSET_PNGS or name.startswith("placeholder"):
+            continue
+        if _SLIDE_STEM_RE.match(p.stem):
+            out.append(p)
+    return sorted(out)
+
+
+def derive_slide_count(slides_dir: Path) -> int:
+    """Count REAL slide PNGs in `slides_dir` — the one true way to answer "how
+    many slides does this carousel actually have on disk" (A1 completeness
+    gate, 2026-07-16). Every writer of a persisted slide_count (queue entry,
+    meta.json, reconciler backfill) must route through this function instead
+    of trusting an in-memory count or a bare `*.png` glob — a stale/renamed/
+    partial file on disk is the whole disease this closes. Thin wrapper over
+    `derive_slide_paths` (single filter, MEDIUM #7) so count and path-list can
+    never silently disagree."""
+    return len(derive_slide_paths(slides_dir))
+
 
 class WeakSlide(NamedTuple):
     """A slide that did NOT converge its designer loop but DID produce a usable
@@ -706,6 +852,21 @@ async def _render_carousel(
             raise RuntimeError(
                 f"carousel render gate failed: slides={result.slides_rendered} "
                 f"heroes={result.heroes_placed}/{result.heroes_expected} failures={result.failures}"
+            )
+        # A1 completeness gate (2026-07-16, explicit — belt on top of `.ok`):
+        # RenderResult.ok only requires `not failures and slides_rendered > 0`,
+        # NOT slides_rendered == total (see renderer.py RenderResult.ok) — a
+        # future refactor of that property (or a bug in the failures-tracking
+        # it depends on) could silently let a partial carousel through with
+        # zero recorded failures. Re-verify against the DURABLE artifact
+        # (actual PNGs on disk), never trust the in-memory tally alone.
+        total = len(slides)
+        disk_count = derive_slide_count(slides_dir)
+        if disk_count != total:
+            raise RuntimeError(
+                f"carousel completeness gate failed: rendered {disk_count}/{total} "
+                f"slides on disk (result.slides_rendered={result.slides_rendered}, "
+                f"failures={result.failures}) — refusing partial promotion"
             )
         return slides_dir, []
 
@@ -798,6 +959,16 @@ async def _render_carousel(
 
     if len(final_pngs) != total:
         raise RuntimeError(f"per-slide render produced {len(final_pngs)}/{total} slides")
+    # A1 completeness gate, disk-verified (belt on top of the in-memory tally
+    # above — see the matching comment in the non-vision branch of
+    # _render_carousel): re-derive from the DURABLE artifact, never trust only
+    # the list this loop built in memory.
+    disk_count = derive_slide_count(slides_dir)
+    if disk_count != total:
+        raise RuntimeError(
+            f"carousel completeness gate failed (vision path): {disk_count}/{total} "
+            f"slides verified on disk after per-slide render — refusing partial promotion"
+        )
     if len(weak_slides) > max_weak:
         idxs = ", ".join(str(w.index) for w in weak_slides)
         raise RuntimeError(
@@ -870,6 +1041,131 @@ async def _ensure_live(conn: "asyncpg.Connection", dsn: str) -> "asyncpg.Connect
     return conn
 
 
+# ── take_label hard gate (evidence-carved, 2026-07-16) ──────────────────────────
+#
+# composer.py's _check_take_label_variety is WARN-only by design (it sees one
+# slide, never queue/publish state). THIS worker DOES know that state (via the
+# review queue, same source _append_review_queue already reads for its
+# REPOINTABLE_STATES contract), so the hard fail lives here: a genuinely new,
+# not-yet-published draft carrying the retired "OUR TAKE"/"OUR READ" anchor is
+# blocked before Playwright/Drive spend; a REPOINT re-render of an
+# already-published/archived legacy carousel is exempt (history is immutable —
+# warn only, via composer's per-slide check).
+
+
+def _take_label_hard_gate_violations(slides: list[dict]) -> list[str]:
+    """Pure function, no I/O — collects banned take_label hits across every
+    slide. Reuses composer's single banned-set checker so the WARN gate and
+    this HARD gate can never drift apart on what counts as a violation."""
+    from wr2_html_renderer.composer import _take_label_violation
+
+    hits: list[str] = []
+    for i, slide in enumerate(slides, 1):
+        hit = _take_label_violation(slide)
+        if hit:
+            hits.append(f"slide {i}: {hit!r}")
+    return hits
+
+
+def _queue_state_for_draft(draft_id: str, queue: list[dict]) -> str | None:
+    """Pure lookup: the existing queue entry's state for this draft_id, or
+    None if this draft_id has never been queued before (a brand-new draft,
+    never a repoint). NOTE (2026-07-16 red-team finding #1): this None also
+    fires for an entry that DOES exist but has no `state` key at all (legacy
+    pre-state-contract row) -- the two cases are NOT the same thing and a
+    caller that needs to tell them apart must use _queue_entry_for_draft,
+    not this function. Kept as-is for the callers that only ever wanted the
+    narrower "what's the state string" answer."""
+    for item in queue:
+        if isinstance(item, dict) and item.get("draft_id") == draft_id:
+            return item.get("state")
+    return None
+
+
+def _queue_entry_for_draft(draft_id: str, queue: list[dict]) -> dict | None:
+    """Pure lookup: the existing queue entry (the raw dict) for this
+    draft_id, or None if this draft_id has never been queued before. Unlike
+    _queue_state_for_draft, this keeps "never queued" (entry is None) and
+    "queued but no state field" (entry is a dict, entry.get('state') is
+    None) as two distinct, distinguishable outcomes -- collapsing them was
+    exactly the bug in finding #1 of the 2026-07-16 red-team."""
+    for item in queue:
+        if isinstance(item, dict) and item.get("draft_id") == draft_id:
+            return item
+    return None
+
+
+class PrepublishStatus(Enum):
+    """Tri-state verdict for the take_label hard gate (2026-07-16 red-team
+    finding #1 fix). The previous `_is_prepublish_draft` bool collapsed
+    THREE semantically distinct cases into a single True/False:
+
+    - a genuinely new draft (never queued, or queued in a _REPOINTABLE_STATE)
+      -- hard-gating this is correct and intended.
+    - a legacy entry with NO `state` field at all (predates the state
+      contract) -- this is history, same as published/archived, and must
+      never be hard-gated: a re-render must WARN only, never brick it via
+      `release_lease_permanent`.
+    - the queue file being unreadable/corrupt/malformed -- a transient I/O
+      failure, which is NOT evidence either way about the draft's real
+      status. Treating it as "safe to hard-gate" (the old default) meant an
+      I/O hiccup could trigger the SAME irreversible `render_failed` mutation
+      as a genuinely bad new draft. This case must alert + allow retry, and
+      must NEVER by itself cause a permanent state mutation.
+    """
+
+    PREPUBLISH = "prepublish"
+    IMMUTABLE = "immutable"
+    UNKNOWN = "unknown"
+
+
+def _prepublish_status(draft_id: str, *, queue_path: Path | None = None) -> PrepublishStatus:
+    """Pure tri-state classifier -- see PrepublishStatus for the contract.
+    Best-effort UNLOCKED peek -- this only decides WARN/HARD/UNKNOWN, not
+    the queue write itself (that stays behind _append_review_queue's fcntl
+    lock)."""
+    import json as _json
+
+    qp = queue_path if queue_path is not None else (_default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        # No queue has ever been written -- a legitimate "nothing published
+        # yet" state, not ambiguity. Safe to treat as a brand-new draft.
+        return PrepublishStatus.PREPUBLISH
+    try:
+        raw = qp.read_text(encoding="utf-8")
+    except OSError:
+        return PrepublishStatus.UNKNOWN
+    try:
+        queue = _json.loads(raw)
+    except ValueError:
+        return PrepublishStatus.UNKNOWN
+    if not isinstance(queue, list):
+        return PrepublishStatus.UNKNOWN
+
+    entry = _queue_entry_for_draft(draft_id, queue)
+    if entry is None:
+        return PrepublishStatus.PREPUBLISH
+    state = entry.get("state")
+    if state is None:
+        # Legacy entry, no state field at all. Cannot prove this is new --
+        # treat as immutable history, same as published/archived: never
+        # hard-gate on an absence of information.
+        return PrepublishStatus.IMMUTABLE
+    if state in _REPOINTABLE_STATES:
+        return PrepublishStatus.PREPUBLISH
+    return PrepublishStatus.IMMUTABLE
+
+
+def _is_prepublish_draft(draft_id: str, *, queue_path: Path | None = None) -> bool:
+    """Back-compat bool view over _prepublish_status, for callers that only
+    need the PREPUBLISH / not-PREPUBLISH split. UNKNOWN collapses to False
+    here (never hard-gate on ambiguity) -- a caller that must distinguish
+    UNKNOWN (alert + retry, no mutation) from IMMUTABLE (silent warn-only)
+    MUST call _prepublish_status directly, as _apply_one's take_label gate
+    does."""
+    return _prepublish_status(draft_id, queue_path=queue_path) is PrepublishStatus.PREPUBLISH
+
+
 # ── apply one draft ──────────────────────────────────────────────────────────────
 async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str:
     """Full lifecycle for one draft. Uses a dedicated connection for the heartbeat so it
@@ -898,6 +1194,36 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             await _pg.release_lease_permanent(main_conn, draft_id=draft_id, status="render_failed", reason="no_slides")
             await _ops_alert(f"WR2 HTML: draft {draft_id} has no slides -> render_failed")
             return "no_slides"
+        # DB-sourced (war_room_drafts.slides_json) intended count — the input
+        # the draft was ASKED to render, independent of anything derived from
+        # disk later. Threaded through to _publish_visibility so meta.json and
+        # the queue entry persist real ground truth (Codex red-team HIGH #4).
+        intended_slide_count = len(slides) if isinstance(slides, list) else 0
+
+        # take_label hard gate (2026-07-16, tri-state fix same day per
+        # red-team finding #1) — fail BEFORE the ~15min render + Drive spend,
+        # but ONLY for a genuinely new prepublish draft. See PrepublishStatus
+        # docstring: IMMUTABLE (published/archived/legacy-no-state) is
+        # WARN-only forever; UNKNOWN (queue unreadable/corrupt) alerts and
+        # lets the render proceed -- an I/O hiccup must never itself trigger
+        # the irreversible release_lease_permanent(status="render_failed").
+        take_label_hits = _take_label_hard_gate_violations(slides)
+        if take_label_hits:
+            reason = f"take_label banned: {'; '.join(take_label_hits)}"
+            status = _prepublish_status(str(draft_id))
+            if status is PrepublishStatus.PREPUBLISH:
+                await _pg.release_lease_permanent(main_conn, draft_id=draft_id, status="render_failed", reason=reason)
+                await _ops_alert(f"WR2 HTML: draft {draft_id} {reason} -> render_failed (evidence-carved retired-anchor gate)")
+                return "take_label_banned"
+            if status is PrepublishStatus.UNKNOWN:
+                await _ops_alert(
+                    f"WR2 HTML: draft {draft_id} {reason} -- queue state UNKNOWN "
+                    f"(queue unreadable/corrupt), skipping hard gate this run, NOT a "
+                    f"permanent mutation, retry next launchd tick"
+                )
+            # IMMUTABLE (or UNKNOWN, alerted above): warn-only, render
+            # proceeds -- matches composer.py's WARN-only rationale for
+            # legacy/published content whose history must not be bricked.
 
         hb_task = asyncio.create_task(_heartbeat_loop(hb_conn, str(draft_id), owner, stop, hb_interval))
 
@@ -946,12 +1272,15 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     error_class=type(_wom_error).__name__ if _wom_error else None,
                     error_message=str(_wom_error)[:500] if _wom_error else None,
                 )
-            # _stage_assets copies logo.png INTO slides_dir in vision mode (per-slide
-            # HTML resolves file:// assets there) — a bare *.png glob shipped the
-            # brand logo as a bogus extra slide. Exclude staged assets by name.
-            png_paths = sorted(
-                p for p in slides_dir.glob("*.png") if p.name not in _STAGED_ASSET_PNGS
-            )
+            # derive_slide_paths (MEDIUM #7, 2026-07-16): the SAME filter the
+            # completeness gate uses (numeric-stem only, excludes staged
+            # logo.png AND any placeholder* name) — this collector used to run
+            # a looser glob (logo excluded, placeholder NOT excluded, no
+            # numeric-stem restriction), so a staged placeholder.png was
+            # counted here as a real slide but not by the gate, spuriously
+            # failing persist's disk re-verification on an otherwise-complete
+            # carousel.
+            png_paths = derive_slide_paths(slides_dir)
             if not png_paths:
                 raise RuntimeError("no PNGs after render")
 
@@ -1018,6 +1347,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 draft_id=str(draft_id), topic=str(dict(row).get("topic") or ""),
                 png_paths=png_paths, drive_url=web,
                 weak_count=len(weak_slides), fact_check_status=fc_status,
+                intended_slide_count=intended_slide_count,
             )
             if weak_slides:
                 # N-1: the carousel rendered + was delivered, but ≤max_weak slides

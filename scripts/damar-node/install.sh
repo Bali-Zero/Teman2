@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$HOME/Desktop/nuzantara"
+PROJECT_DIR="$HOME/nuzantara"
 
 # Token provided by admin during setup — never hardcode
 if [ -z "${DAMAR_TOKEN:-}" ]; then
@@ -173,7 +173,7 @@ echo "   gemini auth login"
 echo "   → pilih damar@balizero.com"
 echo ""
 echo "2. Test:"
-echo "   cd ~/Desktop/nuzantara"
+echo "   cd ~/nuzantara"
 echo "   gemini"
 echo "   > tampilkan daftar pratik aktif"
 echo ""

@@ -38,7 +38,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
-    @require_role("company_setup", "visa_specialist")
+    @require_role("company_setup")
     async def get_all_prices() -> dict:
         """
         Get the complete pricing catalog for all services.
@@ -52,7 +52,7 @@ def register(mcp, _call, _call_safe):
         return await _call_safe("/api/pricing/all")
 
     @mcp.tool()
-    @require_role("company_setup", "visa_specialist")
+    @require_role("company_setup")
     async def search_service_pricing(query: str, limit: int = 5) -> dict:
         """
         Search for a specific service in the pricing catalog.

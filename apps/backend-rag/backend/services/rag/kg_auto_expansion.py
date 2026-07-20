@@ -5,9 +5,10 @@ Extracts entities and relationships from SOURCE CHUNKS of high-confidence
 RAG responses and writes them to STAGING TABLES (kg_nodes_staging,
 kg_edges_staging) — NOT directly to production KG.
 
-Staged entries are promoted to production (kg_nodes/kg_edges) by a
-batch validation job every 6h, after passing schema compliance,
-referential integrity, and business logic checks.
+Staged entries are promoted to production (kg_nodes/kg_edges) after
+passing schema compliance, referential integrity, and business logic
+checks. Promoted by backend.scripts.kg_staging_promotion (GitHub
+Actions cron, every 6h; dry-run shadow until armed).
 
 Triggered as a fire-and-forget task after each RAG response with
 evidence_score > 0.6. Uses heuristic extraction (regex, free, <10ms).
@@ -18,6 +19,7 @@ Reference: docs/GRAPHRAG_EVOLUTION_ARCHITECTURE.md §3
 """
 
 import hashlib
+import json
 import logging
 import math
 import re
@@ -610,14 +612,25 @@ class KGAutoExpansion:
                 entity_id, entity_type, name, description,
                 properties, confidence, source_chunk_ids,
                 extraction_source, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            ) VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, $8, NOW())
             ON CONFLICT (entity_id) DO NOTHING
             """,
             entity.entity_id,
             entity.entity_type,
             entity.name,
             entity.description,
-            "{}",
+            # was a hardcoded "{}" literal that silently discarded
+            # entity.properties (a real dataclass field, currently always {}
+            # because the heuristic extractor never populates it — verified
+            # 2026-07-16 by tracing every ExtractedNode() construction site).
+            # Wiring the real field is behavior-neutral today and stops the
+            # write-only-field trap for the day a future extractor populates
+            # it. ::text::jsonb also fixes the string-scalar pollution: "{}"
+            # bound bare inferred jsonb from the column and the pool's codec
+            # (encoder=json.dumps) re-encoded it into a jsonb string scalar
+            # instead of an object (kg_nodes_staging had 693 polluted rows,
+            # live-probe 2026-07-16).
+            json.dumps(entity.properties),
             entity.confidence,
             source_chunk_ids,
             entity.extraction_source,
@@ -681,14 +694,17 @@ class KGAutoExpansion:
                 relationship_id, source_entity_id, target_entity_id,
                 relationship_type, properties, confidence,
                 source_chunk_ids, extraction_source, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            ) VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, $8, NOW())
             ON CONFLICT (relationship_id) DO NOTHING
             """,
             edge_id,
             edge.source_entity_id,
             edge.target_entity_id,
             edge.relationship_type,
-            "{}",
+            # was a hardcoded "{}" literal — see the sibling _stage_entity fix
+            # above for the full rationale (real dataclass field, currently
+            # always {} in practice, wiring it is behavior-neutral today).
+            json.dumps(edge.properties),
             edge.confidence,
             source_chunk_ids,
             edge.extraction_source,

@@ -1,13 +1,19 @@
 """Drop the 4 phantom KBLI codes (26120/60111/82920/85598 — in our old file, NOT in OSS
 ground-truth) from the kbli_2025_final_oss twin. Idempotent. Live collection untouched.
 """
-import json, urllib.request, hashlib, uuid
-ENV="/Users/balizero/Desktop/nuzantara/apps/backend-rag/.env"
+import hashlib
+import json
+import urllib.request
+import uuid
+
+ENV="/Users/balizero/nuzantara/apps/backend-rag/.env"
 qurl=qkey=None
 for line in open(ENV):
     line=line.strip()
-    if line.startswith("QDRANT_URL="): qurl=line.split("=",1)[1].strip().strip('"')
-    if line.startswith("QDRANT_API_KEY="): qkey=line.split("=",1)[1].strip().strip('"')
+    if line.startswith("QDRANT_URL="):
+        qurl=line.split("=",1)[1].strip().strip('"')
+    if line.startswith("QDRANT_API_KEY="):
+        qkey=line.split("=",1)[1].strip().strip('"')
 op=urllib.request.build_opener(urllib.request.ProxyHandler({}))
 def req(path, body=None, method="GET"):
     data=json.dumps(body).encode() if body is not None else None

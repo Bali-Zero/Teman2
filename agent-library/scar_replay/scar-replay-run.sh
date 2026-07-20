@@ -28,7 +28,7 @@ HARNESS_DIR="${SCAR_REPLAY_DIR:-${SCRIPT_DIR}}"
 LOG_DIR="${HOME}/logs"
 LOG_FILE="${LOG_DIR}/scar-replay.log"
 TELEMETRY_DIR="${HOME}/.agent/decisions/agent-library-evolver/scar-replay"
-SHARED_DEPLOY="${HOME}/Desktop/nuzantara-deploy"
+SHARED_DEPLOY="${HOME}/nuzantara-deploy"
 mkdir -p "${LOG_DIR}" "${TELEMETRY_DIR}"
 
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" | tee -a "${LOG_FILE}"; }

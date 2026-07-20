@@ -1,4 +1,31 @@
-# AGENTS.md - Nuzantara Project Context for Codex
+# AGENTS.md - Nuzantara Project Context for AI coding agents (Codex · Kimi · Gemini · …)
+
+> Read by every AGENTS.md-standard agent: Codex CLI, **Kimi (kimi-code CLI + Kimi Desktop
+> work-mode, whose workspace is this repo)**, Antigravity/agy, and others. "Codex" below
+> generalizes to "you, the external agent" unless a rule names a specific tool.
+
+## 0.0. External-agent contract (READ FIRST — Kimi/Codex/agy alike)
+
+1. **You build — a Claude session verifies.** Your work product is a branch/diff/artifact
+   that an interactive Claude session independently reviews, tests and merges
+   (generator≠grader). **Never merge your own work, never push to `main`, never arm
+   auto-merge, never deploy.** Prepare; don't ship.
+2. **Legge 5 (absolute):** never publish anything outward — no Instagram, no email, no
+   WhatsApp, no client-facing sends. Editorial drafts stop at `drafted` in the review
+   queue; the owner publishes.
+3. **PII boundary (UU PDP / SYMBIOSIS Law 2, non-negotiable):** client PII (KTP, passport,
+   NPWP, akta, CRM records, OSINT) must never be transcribed into cloud outputs, logs,
+   artifacts or prompts. DB access is read-only (`nuzantara_readonly`); if a task seems to
+   need client rows, STOP and surface it.
+4. **Worktree discipline applies to YOU** (§0.5): the Claude-side hooks do NOT bind you —
+   the convention does. Mutations happen in `.worktrees/<lane>-<task>/`, never in the main
+   checkout. Kimi Desktop: ask the operator to point the workspace at a worktree lane.
+5. **Off-limits files:** `zantara_core.py` (edit only via its own rules), `fly.toml`,
+   `.env*`, `alembic/env.py`, curated datasets (data-plane guard), the WR2 queue JSONs
+   (canonical writers only).
+6. **Scope tightly, don't improvise.** If the task is ambiguous, state your assumption in
+   one line and take the narrowest reading — do NOT invent adjacent work (this is aimed
+   especially at K3's known over-proactivity).
 
 ## 0. Machine Identification (IMPORTANT)
 
@@ -8,7 +35,7 @@
 
 | Machine    | User        | Hostname    | Role                                                              |
 | ---------- | ----------- | ----------- | ----------------------------------------------------------------- |
-| **Pro**    | `nuzantara` | `Nuzantara` | Workhorse — dev, DB, Qdrant, Ollama, 169 daemon, deploy (48GB)    |
+| **Pro**    | `nuzantara` | `Nuzantara` | Workhorse — dev, DB, Qdrant, Ollama, 224 daemon, deploy (48GB)    |
 | **Mini**   | `nuzantara` | `Mini-Pro2` | Server H24 — Ollama dedicato, cron pesanti (24GB)                 |
 | **Air-M5** | `balizero`  | `Air-M5`    | **THIN-CLIENT dev** — editing + agenti; pesante → `ssh pro`       |
 
@@ -19,7 +46,7 @@ echo "Machine: $(whoami)@$(hostname)" && \
 case "$(hostname)" in Nuzantara) OTHER=mini ;; Mini-Pro2) OTHER=pro ;; Air-M5) OTHER=pro ;; *) OTHER=pro ;; esac && \
 ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
 LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
 if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
 ```
 
@@ -41,7 +68,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ## 0.1. Air-M5 Thin-Client Routing Map (READ if `hostname=Air-M5`)
 
-**Air-M5 is a THIN-CLIENT.** You edit code, run agents, commit, and do light research **locally** on M5. Everything heavy — inference, vector DB, SQL, rendering, deploy, the 169 daemon — **lives on the Pro** and is reached via `ssh pro` (or `ssh mini`). M5 deliberately does **not** have Ollama, Postgres, Qdrant, `fly`, or the daemon stack.
+**Air-M5 is a THIN-CLIENT.** You edit code, run agents, commit, and do light research **locally** on M5. Everything heavy — inference, vector DB, SQL, rendering, deploy, the 224-daemon fleet — **lives on the Pro** and is reached via `ssh pro` (or `ssh mini`). M5 deliberately does **not** have Ollama, Postgres, Qdrant, `fly`, or the daemon stack.
 
 ### HARD RULE R1 — Heavy tools are NEVER installed on M5
 
@@ -69,7 +96,7 @@ M5 has **no `ollama`** by design. Never `ollama pull` or `brew install ollama` o
 | OCR / vision (`qwen2.5vl`) | `ssh pro` — Ollama binds `127.0.0.1:11434`, **closed** to M5 |
 | embed batch (`bge-m3`) | `ssh pro` / `ssh mini` |
 
-Lightweight **cloud** LLM clients **are** fine on M5 (they're already set up): `agy` (Gemini), `codex` (you), `nlm` (NotebookLM), DeepSeek API. Use them directly.
+Lightweight **cloud** LLM clients **are** fine on M5 (they're already set up): `agy` (Gemini), `codex`, `kimi` (`~/.kimi-code/bin/kimi`, armed M5+Pro+Mini), `nlm` (NotebookLM). Use them directly. (DeepSeek API RETIRED 2026-07-19 — never route to it; local `deepseek-r1:32b` Ollama weights on Pro/Mini are unrelated and stay.)
 
 ### HARD RULE R3 — DB & vector store: exact access per service
 
@@ -95,10 +122,10 @@ This is a raw-data movement boundary, not a blanket ban on LLMs processing autho
 
 ### HARD RULE R5 — Deploy is Pro/CI-only; M5 has no `fly`
 
-M5 has **no `fly`/`flyctl`** and **no `~/Desktop/nuzantara-deploy`** worktree. Never `brew install flyctl` on M5.
+M5 has **no `fly`/`flyctl`** and **no `~/nuzantara-deploy`** worktree. Never `brew install flyctl` on M5.
 
 - Canonical: commit in a worktree → push → `gh pr create` → green CI + review → **merge to `main`** triggers `.github/workflows/fly-deploy.yml` (gate→migrations→deploy→health→rollback). Vercel frontend auto-deploys on the same `main` push. Machine-independent — M5 needs no `fly`.
-- Manual/out-of-band deploy: **delegate** → `ssh pro 'bash -lc "cd ~/Desktop/nuzantara-deploy && git pull --ff-only origin main && fly deploy --strategy rolling"'`.
+- Manual/out-of-band deploy: **delegate** → `ssh pro 'bash -lc "cd ~/nuzantara-deploy && git pull --ff-only origin main && fly deploy --strategy rolling"'`.
 - `main` is **protected**: PR + CI + review required. Never `git push origin main` directly (from M5 *or* Pro).
 
 ### HARD RULE R6 — Memory (MOS): always via `mem`, never the local file
@@ -109,10 +136,10 @@ On M5 the local `~/.claude/memory.db` is a **0-byte decoy**. The real DB is on t
 - Save: `mem save <type> "<text>" <importance>` (lands in the Pro's DB).
 - Never read the local `memory.db` directly, never write memory to a local `.codex/memories/` note, and **never present recalled context as if you ran a query** (anti-hallucination, CLAUDE.md §6).
 
-### HARD RULE R7 — Heavy render / NB studio / 169 daemon → Pro
+### HARD RULE R7 — Heavy render / NB studio / daemon fleet → Pro
 
 - WR2 hero images (FlowKit/Veo), WR3 video episodes, NotebookLM studio audio/video → **`ssh pro`** (the render pipelines and FlowKit live on the Pro). M5 dispatches and pulls results; it does not render locally.
-- The 169 `com.{nuzantara,balizero,cell}.*` LaunchAgents are **production daemons** — they run on Pro/Mini only. Never load/install them on M5.
+- The 212 `com.{nuzantara,balizero,cell,matagaruda}.*` LaunchAgents (224 jobs incl. cron, snapshot 2026-07-13 per `docs/AUTOMATIONS_REFERENCE.md`) are **production daemons** — they run on Pro/Mini only. Never load/install them on M5.
 
 ### MCP servers from M5
 
@@ -141,14 +168,14 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 
 **MANDATORY for any Codex session that mutates code in this repo.**
 
-This repo is shared with 5+ Claude sessions + occasional Gemini agy on the same Pro machine. All processes default to `cwd=/Users/nuzantara/Desktop/nuzantara` (main checkout). Concurrent file mutations have produced 32+ sibling-orphan stash in 24h. To prevent:
+This repo is shared with 5+ Claude sessions + occasional Gemini agy on the same Pro machine. All processes default to `cwd=/Users/nuzantara/nuzantara` (main checkout). Concurrent file mutations have produced 32+ sibling-orphan stash in 24h. To prevent:
 
 ### Before any mutation
 
 ```bash
 # Create dedicated worktree
 python scripts/agent_start.py --lane <wr2|infra|backend-rag|ops|...> --task-id <slug>
-# Output: WORKTREE_READY /Users/nuzantara/Desktop/nuzantara/.worktrees/<lane>-<task-id>
+# Output: WORKTREE_READY /Users/nuzantara/nuzantara/.worktrees/<lane>-<task-id>
 cd <output-path>
 # Now spawn codex exec HERE, not in main checkout
 ```
@@ -213,20 +240,19 @@ Use only for emergency / hotfix / cicatrix-fix.
 - `apps/kbli-voice/` - KBLI voice interface
 - `apps/evaluator/` - Quality assurance
 - `apps/zantara-media/` - Editorial content system
-- `packages/kb/` - Knowledge base
 - `packages/core/` - Core libraries
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
+- **Backend:** Python 3.11+, FastAPI, 327 router mounts (156 router files), 746 service files, 1,449 test files
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 108,068 nodes, 242,827 edges
-- **Vector Collections:** 10 live on Fly.io (93,283 documents), 20 defined in code (after orphan cleanup)
+- **Vector Collections:** 11 canonical logical collections (`backend/core/collection_registry.py`), 104,154 documents
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
-## 2. Codex Behavior Rules (IMPORTANT)
+## 2. Agent Behavior Rules (IMPORTANT)
 
 **DO NOT ask the user to write code.** You are authorized to edit, write, and execute code directly.
 
@@ -277,10 +303,10 @@ mypy backend/
 ruff check backend/
 ruff format backend/
 
-# Database migrations
-alembic revision --autogenerate -m "description"
-alembic upgrade head
-alembic downgrade -1
+# Database migrations (custom SQL system — NOT Alembic)
+# Create: backend/db/migrations_v2/NNN_name.sql with mandatory `-- === ROLLBACK ===` marker
+PYTHONPATH=. python -m backend.db.migrate apply-all
+PYTHONPATH=. python -m backend.db.schema_audit
 ```
 
 ### Frontend (Next.js)
@@ -312,18 +338,18 @@ vercel --prod
 apps/backend-rag/
 ├── backend/
 │   ├── app/              # FastAPI app
-│   │   ├── routers/      # API endpoints (90 routers)
+│   │   ├── routers/      # API endpoints (156 router files, 327 mounts)
 │   │   ├── services/     # App-level services (CRM, auth, metrics)
 │   │   ├── setup/        # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py  # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py       # Entrypoint (alias for main_cloud.py)
-│   ├── services/         # Core business logic (253 services)
+│   ├── services/         # Core business logic (746 service files)
 │   ├── core/             # Config, security, logging
 │   ├── prompts/          # ⭐ Prompt Single Source of Truth (see below)
 │   ├── channels/         # 7 channels (whatsapp, telegram, instagram, etc.)
 │   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
-│   └── migrations/       # Alembic (up to 060)
-├── tests/                # 419 test files
+│   └── migrations/       # custom SQL (legacy 001→124 py; live v2 092→246 sql in backend/db/migrations_v2/)
+├── tests/                # 1,449 test files (276 tests/ + 1,173 backend/tests/)
 ├── .venv/                # ⚠️ ALWAYS .venv on Pro and Mini
 └── fly.toml
 ```
@@ -413,7 +439,7 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 104,154 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 6. MCP Servers
@@ -562,7 +588,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | "aggiungi paginazione clienti" | Cursor-based pagination on `GET /clients`, follow existing router patterns, async SQLAlchemy, add tests |
 | "fixa il bug del login" | Search recent auth-related errors in routers/auth, identify root cause, fix with proper error handling |
 | "rendi più veloce la ricerca" | Profile the search endpoint, identify bottleneck (N+1, missing index, no cache), fix the actual cause |
-| "aggiungi un campo alla tabella" | Alembic migration + model update + schema update + router update, in order |
+| "aggiungi un campo alla tabella" | SQL migration in `migrations_v2/` (with ROLLBACK marker) + model update + schema update + router update, in order |
 
 **Never** ask for clarification on standard dev tasks. Explore first, then act.
 
@@ -587,7 +613,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | Route             | Description                             |
 | ----------------- | --------------------------------------- |
 | `/kbli`           | KBLI 2025 Navigator homepage (Next.js)  |
-| `/kbli/[code]`    | KBLI code detail page (1,563 SSG pages) |
+| `/kbli/[code]`    | KBLI code detail page (1,559 SSG pages) |
 | `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301)  |
 | `/kbli-explorer`  | AI chat explorer (complementary)        |
 
@@ -616,7 +642,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-07-19 (external-agent contract + Kimi onboarding; was 2026-03-28)
 **Maintained by:** Bali Zero AI Team
 
 ---

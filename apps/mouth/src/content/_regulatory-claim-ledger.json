@@ -69,6 +69,14 @@
       "severity": "P0"
     },
     {
+      "id": "CAPITAL-PAIDUP-10B-MINIMUM-PHRASE",
+      "domain": "company",
+      "stale_pattern": "Minimum paid-up capital IDR 10 billion",
+      "current_fact": "Minimum paid-up capital for a PT PMA is IDR 2.5 billion (Pasal 26(10) Permen BKPM 5/2025, 12-month lock-in); minimum TOTAL investment is >IDR 10 billion per 5-digit KBLI per location (Pasal 26(2)) — two separate figures. Variant phrasing of CAPITAL-PAIDUP-10B: the colon-form pattern missed this wording (spouse-dependent-work-rights regression, 2026-07-16).",
+      "source": "Permen Investasi/BKPM 5/2025 Pasal 26(10): 'modal ditempatkan/disetor paling sedikit Rp2.500.000.000,00 per perseroan terbatas'; Pasal 26(2): 'total investasi lebih besar dari Rp10.000.000.000,00 ... per bidang usaha KBLI 5 digit per lokasi'",
+      "severity": "P0"
+    },
+    {
       "id": "RETIRE-NO-SPONSOR-SINGLE",
       "domain": "visa",
       "stale_pattern": "Min. USD 1,500/month income evidence",

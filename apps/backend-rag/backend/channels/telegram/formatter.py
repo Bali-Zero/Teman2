@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from backend.channels.base import ChannelResponse
+from backend.channels.source_filter import public_sources
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,10 @@ class TelegramMessageFormatter:
         Returns:
             Formatted sources string
         """
+        safe_sources = public_sources(sources)
         formatted_sources = []
 
-        for idx, source in enumerate(sources[:5], 1):  # Max 5 sources
+        for idx, source in enumerate(safe_sources[:5], 1):  # Max 5 sources
             title = source.get("title", "Documento")
             url = source.get("url")
 

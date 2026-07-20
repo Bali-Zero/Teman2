@@ -17,7 +17,7 @@ Monthly cron 1st Monday 07:00 WITA. Researches SOTA video editorial from 12 refe
 ## Primary I/O
 
 - **Inputs**: 12 reference brand video archives + 3 competitor archives + 2 trend reports
-- **Outputs**: ~/.claude/skills/bali-zero-brand/_external-bench-video-YYYY-MM.md
+- **Outputs**: ~/.claude/skills/bali-zero-brand/\_external-bench-video-YYYY-MM.md
 
 ## Symbiosis law emphasis
 
@@ -55,12 +55,12 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 
 ## Cost budget (monthly)
 
-| Tier | LLM | Cost | Quota source |
-|---|---|---|---|
-| 2 | Gemini 3.1 Pro via agy CLI | $0.00 | Google AI Ultra subscription |
-| 3 | Claude Opus 4.7 via claude-cascade.sh | ~$0.30 | Claude MAX OAuth (no SDK) |
-| 4 | DeepSeek V4 Pro reasoning_effort=high | ~$0.05 | DeepSeek API (Keychain key) |
-| **Total** | | **~$0.35** | within $0.50 ceiling |
+| Tier      | LLM                                   | Cost       | Quota source                 |
+| --------- | ------------------------------------- | ---------- | ---------------------------- |
+| 2         | Gemini 3.1 Pro via agy CLI            | $0.00      | Google AI Ultra subscription |
+| 3         | Claude Opus 4.7 via claude-cascade.sh | ~$0.30     | Claude MAX OAuth (no SDK)    |
+| 4         | DeepSeek V4 Pro reasoning_effort=high | ~$0.05     | DeepSeek API (Keychain key)  |
+| **Total** |                                       | **~$0.35** | within $0.50 ceiling         |
 
 ## Cost ceiling discipline
 
@@ -73,6 +73,6 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 ## Resources
 
 - Agent definition: `~/.claude/agents/wr3-editorial-bench.md`
-- I/O contract: `~/Desktop/nuzantara/docs/wr3/contracts/editorial-bench.yaml`
+- I/O contract: `~/nuzantara/docs/wr3/contracts/editorial-bench.yaml`
 - Brand cortex (shared): `~/.claude/skills/bali-zero-brand/`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`

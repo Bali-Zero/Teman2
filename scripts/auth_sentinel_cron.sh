@@ -11,7 +11,7 @@
 # (scar #7 daemon-vs-cron). Un tick = un probe di tutte le credenziali + alert.
 set -uo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 LOG_DIR="$HOME/.local/state/auth-sentinel"
 LOG="$LOG_DIR/run.log"
 HEARTBEAT_DIR="$HOME/.organism/last_seen"   # G2 gene: prova-di-vita monitorabile

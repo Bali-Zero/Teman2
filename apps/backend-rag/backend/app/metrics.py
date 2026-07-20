@@ -113,6 +113,33 @@ faq_cache_api_cost_saved_usd = safe_register_counter(
     "Estimated API cost savings from FAQ cache (USD)",
 )
 
+# Phase-0 curated-cache safety rails (FATAL 1/4, research/operations/
+# 2026-07-17-full-domain-cache-design.md §8)
+faq_cache_domain_mismatch_averted_total = safe_register_counter(
+    "zantara_faq_cache_domain_mismatch_averted_total",
+    "FAQ cache legacy-key hits refused because the stored domain did not "
+    "match the classified query domain (cross-domain serve averted)",
+    ["classified_domain", "stored_domain"],
+)
+curated_qa_quarantined_rows_total = safe_register_counter(
+    "zantara_curated_qa_quarantined_rows_total",
+    "Curated QA rows quarantined by curated_qa_regen_trigger.py after a "
+    "regulatory-watcher delta match (FAQ-sink copy deleted, Qdrant flagged)",
+    ["domain"],
+)
+curated_qa_regen_candidate_backlog_size = safe_register_gauge(
+    "zantara_curated_qa_regen_candidate_backlog_size",
+    "Total un-triaged rows across data/curated_qa/_regen-candidates/*.jsonl",
+    ["domain"],
+)
+
+# Curated QA grounding-injection metrics (SPEC v2 D3-L2, F1b)
+curated_qa_injections_total = safe_register_counter(
+    "zantara_curated_qa_injections_total",
+    "Total D3-L2 grounding injections (curated_qa hit >= score threshold, "
+    "prepended as high-priority evidence to the ReAct context)",
+)
+
 # AI Metrics
 ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
 ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])

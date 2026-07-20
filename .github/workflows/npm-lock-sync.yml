@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
 
       # `npm ci` is the contract: it refuses to install when package.json and
       # package-lock.json disagree. --dry-run keeps it read-only — we want the

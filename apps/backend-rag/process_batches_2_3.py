@@ -9,7 +9,7 @@ import httpx
 import pdfplumber
 
 # Add backend to path
-sys.path.append("/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+sys.path.append("/Users/nuzantara/nuzantara/apps/backend-rag")
 
 # Nuzantara imports
 from backend.llm.claude_oauth_client import complete_async
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("BatchProcessor")
 
 # Constants
-RESULTS_DIR = "/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/results"
+RESULTS_DIR = "/Users/nuzantara/nuzantara/.gemini/tmp/results"
 PDF_DIR = os.path.join(RESULTS_DIR, "pdfs")
 os.makedirs(PDF_DIR, exist_ok=True)
 

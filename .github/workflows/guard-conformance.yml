@@ -137,6 +137,16 @@ jobs:
           set -euo pipefail
           python3 infra/claude-hooks/guard_fuzz_harness.py
 
+      # SubagentStop hook (T2.6 sibling, W80/wave15-live-reap). Registered with
+      # a test ref above — this step is the actual executor, not just the
+      # ancestor-dir path-filter substring that would otherwise "arm" it for
+      # free (the exact W81 theater this workflow exists to prevent).
+      - name: SubagentStop hook guilt+innocence (subagent_stop_verify.py)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_subagent_stop_verify.py
+
       - name: Sentinel success (no guard surfaces changed)
         if: steps.relevant.outputs.run != 'true'
         run: echo "No guard surface changed in this PR — conformance not required. Sentinel pass."

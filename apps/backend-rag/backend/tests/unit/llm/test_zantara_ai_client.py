@@ -91,7 +91,7 @@ def test_init_genai_client_fail_production(mock_genai_available, mock_genai_clie
 def test_get_model_info(mock_genai_available, mock_genai_client):
     client = ZantaraAIClient(api_key="test")
     info = client.get_model_info()
-    assert info["model"] == "gemini-3-flash-preview"
+    assert info["model"] == "gemini-3.5-flash"
     assert info["provider"] == "google_native"
 
     client.mock_mode = True
