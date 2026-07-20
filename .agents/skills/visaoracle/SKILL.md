@@ -213,6 +213,26 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
   is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
   is done.
+- 2026-07-19: GOLD HARNESS (G-b) shipped by M5 (`backend/tests/services/visa_engine/gold_harness/`)
+  — 20 self-authored personas + hand-designed rule pack + a Decision-agnostic thin adapter (built
+  because PR5 was OPEN, not merged, at task launch) + 3 real metamorphic property tests
+  (monotonicity, fact-order invariance, rule-order invariance, fixed seeded shuffles) + a
+  replay-report JSON evidence-artifact CLI.
+- 2026-07-20 (CORRECTION, discovered on merge — read this before citing G-b evidence): **PR5
+  merged overnight** (`c26211da2e`, #2841, "Decision evaluator — pure tri-state orchestrator") and
+  it ships its OWN canonical 20-gold-persona acceptance suite (spec §7's literal persona table,
+  `backend/tests/services/visa_engine/test_evaluator_gold.py` + `_gold_fixtures.py`) run directly
+  against the REAL `evaluator.evaluate()` — that suite, not M5's harness, is the stronger/primary
+  G-b evidence (real engine, not a stand-in adapter). M5's harness predates the merge and uses its
+  own non-canonical persona set + rule pack against its own adapter, so it should be read as
+  COMPLEMENTARY evidence, not the G-b primary satisfier: it adds two things PR5's suite does not
+  have — per-product proof-state assertions (PR5 asserts global `DecisionState` only) and genuine
+  input-order metamorphic invariance (PR5's `test_evaluator_determinism.py` proves repeat-call
+  purity, not fact-dict-order/rule-declaration-order invariance). Follow-up owed: port the
+  fact-order/rule-order metamorphic properties onto the real `evaluator.evaluate()` directly (the
+  highest-value reconciliation) and settle G-b's canonical evidence pointer — likely PR5's suite
+  plus a ported property-test file, with M5's `gold_harness/` package retired or kept only as
+  design reference. Do not cite M5's harness alone as "G-b satisfied."
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
