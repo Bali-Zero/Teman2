@@ -1024,50 +1024,71 @@ async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepositor
 
     async with repo.db_pool.acquire() as conn:
         try:
+            # The whole provisioning phase below (CREATE ROLE through the
+            # final schema GRANT) requires the SAME elevated privilege the
+            # test's own finally-block comment assumes ("the connecting
+            # (superuser) role"): CREATE ROLE alone isn't sufficient — a
+            # non-superuser with CREATEROLE can create a role without
+            # thereby gaining membership in it, so the very next step
+            # (ALTER TABLE ... OWNER TO <role just created>) fails with the
+            # identical InsufficientPrivilegeError on a test-runner role
+            # that merely has CREATEROLE but not superuser (observed on a
+            # local dev Postgres, 2026-07-20). One try/except for the whole
+            # phase, not just the CREATE ROLE calls — a role created but
+            # never successfully owned/granted anything is equally unable
+            # to "mirror the real boundary" this test exists to assert.
             try:
                 await conn.execute(f"CREATE ROLE {owner_role} NOLOGIN")
                 await conn.execute(f"CREATE ROLE {serving_role} NOLOGIN")
                 await conn.execute(f"CREATE ROLE {executor_role} NOLOGIN")
+
+                # 1. Simulate TODAY's prod state: the serving role owns both
+                #    tables (mirrors `backend_rag_v2` being both table owner
+                #    AND serving role — F1+F2's own documented starting point).
+                await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {serving_role}")
+                await conn.execute(
+                    f"ALTER TABLE public.visa_ruleset_activations OWNER TO {serving_role}"
+                )
+
+                # 2. The operator provisioning script's REQUIRED steps
+                #    (migration header, F1+F2 / P0-2): move BOTH tables' AND
+                #    all 5 functions' ownership to the ledger-owner role,
+                #    THEN revoke direct DML from the now-non-owning serving
+                #    role, THEN grant EXECUTE-only to the executor role.
+                await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {owner_role}")
+                await conn.execute(
+                    f"ALTER TABLE public.visa_ruleset_activations OWNER TO {owner_role}"
+                )
+                await conn.execute(
+                    f"ALTER FUNCTION public.visa_activate_rule_pack(uuid, text, text) OWNER TO {owner_role}"
+                )
+                for fn in trigger_functions:
+                    await conn.execute(f"ALTER FUNCTION public.{fn}() OWNER TO {owner_role}")
+                await conn.execute(
+                    f"REVOKE INSERT, UPDATE, DELETE ON public.visa_rule_packs, "
+                    f"public.visa_ruleset_activations FROM {serving_role}"
+                )
+                await conn.execute(
+                    f"GRANT EXECUTE ON FUNCTION public.visa_activate_rule_pack(uuid, text, text) "
+                    f"TO {executor_role}"
+                )
+                # DISCOVERED WHILE WRITING THIS TEST (P1-6): `CREATE OR
+                # REPLACE FUNCTION` checks schema-level CREATE privilege
+                # independent of function ownership (Postgres does not
+                # exempt "replace" from the schema ACL check even though it
+                # exempts it from needing to already own the target).
+                # Migration 251's rollback runs `CREATE OR REPLACE FUNCTION
+                # public.reject_visa_*` — so `visa_ledger_owner` needs
+                # `CREATE ON SCHEMA public` too, not just object ownership,
+                # or a post-hardening rollback fails with "permission
+                # denied for schema public". Folded into the migration
+                # header's provisioning steps + PENDING-ARMS.md.
+                await conn.execute(f"GRANT CREATE ON SCHEMA public TO {owner_role}")
             except asyncpg.exceptions.InsufficientPrivilegeError:
-                pytest.skip("test DB role lacks CREATE ROLE — cannot mirror the real boundary")
-
-            # 1. Simulate TODAY's prod state: the serving role owns both
-            #    tables (mirrors `backend_rag_v2` being both table owner
-            #    AND serving role — F1+F2's own documented starting point).
-            await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {serving_role}")
-            await conn.execute(f"ALTER TABLE public.visa_ruleset_activations OWNER TO {serving_role}")
-
-            # 2. The operator provisioning script's REQUIRED steps
-            #    (migration header, F1+F2 / P0-2): move BOTH tables' AND
-            #    all 5 functions' ownership to the ledger-owner role,
-            #    THEN revoke direct DML from the now-non-owning serving
-            #    role, THEN grant EXECUTE-only to the executor role.
-            await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {owner_role}")
-            await conn.execute(f"ALTER TABLE public.visa_ruleset_activations OWNER TO {owner_role}")
-            await conn.execute(
-                f"ALTER FUNCTION public.visa_activate_rule_pack(uuid, text, text) OWNER TO {owner_role}"
-            )
-            for fn in trigger_functions:
-                await conn.execute(f"ALTER FUNCTION public.{fn}() OWNER TO {owner_role}")
-            await conn.execute(
-                f"REVOKE INSERT, UPDATE, DELETE ON public.visa_rule_packs, "
-                f"public.visa_ruleset_activations FROM {serving_role}"
-            )
-            await conn.execute(
-                f"GRANT EXECUTE ON FUNCTION public.visa_activate_rule_pack(uuid, text, text) "
-                f"TO {executor_role}"
-            )
-            # DISCOVERED WHILE WRITING THIS TEST (P1-6): `CREATE OR REPLACE
-            # FUNCTION` checks schema-level CREATE privilege independent of
-            # function ownership (Postgres does not exempt "replace" from
-            # the schema ACL check even though it exempts it from needing
-            # to already own the target). Migration 251's rollback runs
-            # `CREATE OR REPLACE FUNCTION public.reject_visa_*` — so
-            # `visa_ledger_owner` needs `CREATE ON SCHEMA public` too, not
-            # just object ownership, or a post-hardening rollback fails
-            # with "permission denied for schema public". Folded into the
-            # migration header's provisioning steps + PENDING-ARMS.md.
-            await conn.execute(f"GRANT CREATE ON SCHEMA public TO {owner_role}")
+                pytest.skip(
+                    "test DB role lacks privilege to create/own throwaway "
+                    "roles — cannot mirror the real boundary"
+                )
 
             # --- P0-2 machine assertion: every one of the 5 functions is
             #     now owned by the ledger-owner role, never the serving
