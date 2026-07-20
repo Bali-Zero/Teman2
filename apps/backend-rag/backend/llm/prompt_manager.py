@@ -23,11 +23,50 @@ logger = logging.getLogger(__name__)
 # - v3: v2 + concrete worked examples per domain (pricing/visa/tax/kbli/
 #       escalation/identity-lock in it/en/id) — short-circuits the
 #       abstract policy → concrete behaviour translation step
+# - v4: v3 + unified prompt door (this module IS that door — see
+#       backend/services/rag/agentic/prompt_builder.py, which used to import
+#       ZANTARA_MASTER_TEMPLATE directly from v1, bypassing this env var
+#       entirely) + {today_wita} date-injection placeholder + corrected
+#       worked examples (phantom KBLI codes, invalid get_pricing() call
+#       shapes) + deadline-neutral KBLI migration guidance.
 # Default is v1. Each newer version falls back gracefully to the previous
 # one if its module import fails (defensive against partial deploys).
+# NOTE: this fallback is silent-by-design for partial-deploy resilience, but
+# an EXPLICITLY requested version that fails to import is logged at ERROR
+# (not WARNING) — an operator who set ZANTARA_PROMPT_VERSION=v4 and is
+# silently served v3 needs that to be loud, not buried in info-level noise.
 _PROMPT_VERSION = os.environ.get("ZANTARA_PROMPT_VERSION", "v1").lower()
 
-if _PROMPT_VERSION == "v3":
+if _PROMPT_VERSION == "v4":
+    try:
+        from backend.prompts.zantara_core_v4 import (
+            ZANTARA_MASTER_TEMPLATE,
+        )
+        from backend.prompts.zantara_core_v4 import (
+            today_wita_string as get_today_wita,
+        )
+
+        logger.info("PromptManager: using zantara_core_v4 (ZANTARA_PROMPT_VERSION=v4)")
+    except ImportError as exc:  # pragma: no cover — defensive fallback
+        logger.error(
+            "PromptManager: ZANTARA_PROMPT_VERSION=v4 requested but "
+            "zantara_core_v4 import failed (%s) — falling back to v3. "
+            "This is a REGRESSION (v3 has known-fixed bugs re-appearing) — "
+            "investigate before trusting prod is on v4.",
+            exc,
+        )
+        try:
+            from backend.prompts.zantara_core_v3 import (
+                ZANTARA_MASTER_TEMPLATE,
+            )
+        except ImportError:
+            try:
+                from backend.prompts.zantara_core_v2 import (
+                    ZANTARA_MASTER_TEMPLATE,
+                )
+            except ImportError:
+                ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+elif _PROMPT_VERSION == "v3":
     try:
         from backend.prompts.zantara_core_v3 import (
             ZANTARA_MASTER_TEMPLATE,
@@ -35,7 +74,7 @@ if _PROMPT_VERSION == "v3":
 
         logger.info("PromptManager: using zantara_core_v3 (ZANTARA_PROMPT_VERSION=v3)")
     except ImportError as exc:  # pragma: no cover — defensive fallback
-        logger.warning(
+        logger.error(
             "PromptManager: ZANTARA_PROMPT_VERSION=v3 requested but "
             "zantara_core_v3 import failed (%s) — falling back to v2.",
             exc,
@@ -54,7 +93,7 @@ elif _PROMPT_VERSION == "v2":
 
         logger.info("PromptManager: using zantara_core_v2 (ZANTARA_PROMPT_VERSION=v2)")
     except ImportError as exc:  # pragma: no cover — defensive fallback
-        logger.warning(
+        logger.error(
             "PromptManager: ZANTARA_PROMPT_VERSION=v2 requested but "
             "zantara_core_v2 import failed (%s) — falling back to v1.",
             exc,
@@ -62,6 +101,24 @@ elif _PROMPT_VERSION == "v2":
         ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
 else:
     ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+
+# get_today_wita: only bound when v4 successfully imports (above). Consumers
+# that need date-injection regardless of the active version should import
+# backend.prompts.zantara_core_v4.today_wita_string directly (it has no
+# dependency on which version is selected) rather than relying on this
+# module-level name being present.
+if "get_today_wita" not in globals():
+
+    def get_today_wita() -> str:  # simple passthrough fallback
+        """Fallback when v4 isn't the active/importable version.
+
+        Still returns a real WITA date string (not a placeholder) so a
+        consumer that unconditionally calls this never gets a broken value —
+        it just means the *template* in use may not have a place to put it.
+        """
+        from backend.prompts.zantara_core_v4 import today_wita_string
+
+        return today_wita_string()
 
 # ToneStyle is imported at runtime to avoid circular import
 # The TONE_PROMPTS dict uses string keys at module level, mapped to ToneStyle at runtime

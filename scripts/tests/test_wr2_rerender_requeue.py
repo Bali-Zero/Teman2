@@ -65,8 +65,12 @@ def test_published_entry_refused(tmp_path):
 
 
 def test_prepublish_states_allowed(tmp_path):
-    """INNOCENCE: every damar pre-publish state passes the guard."""
-    for state in ("drafted", "reviewed", "rejected", "drafted_needs_human_edit"):
+    """INNOCENCE: every damar pre-publish state passes the guard, including
+    render_incomplete (2026-07-16) — the manual recovery path for a carousel
+    the completeness gate flagged."""
+    for state in (
+        "drafted", "reviewed", "rejected", "drafted_needs_human_edit", "render_incomplete",
+    ):
         qp = _queue(tmp_path, [{"draft_id": "d1", "state": state}])
         ok, reason = req.check_queue_state("d1", queue_path=qp)
         assert ok is True, f"state={state} should be requeue-able"

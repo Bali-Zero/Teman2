@@ -10,6 +10,7 @@ import type {
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
+import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -178,19 +179,38 @@ function KeyFacts({
   licensing,
   pma,
   baliBlocked = false,
+  notClassifiable = false,
+  verificationPending = false,
 }: {
   licensing: KBLILicenseByScale[];
   pma: KBLIPmaInfo;
   baliBlocked?: boolean;
+  /** provenance.state === "not_classifiable" — collision-cured, rows detached */
+  notClassifiable?: boolean;
+  /** rows served but not verified against a KBLI-2025-native OSS source */
+  verificationPending?: boolean;
 }) {
   const primary = licensing[0];
   if (!primary) {
-    // No OSS-RBA scale rows: special/sectoral licensing regime (government,
-    // finance/OJK-BI, education, health, culture). Show an honest panel instead
-    // of silently rendering nothing (101 codes fall here).
+    // No OSS-RBA scale rows. Two honest readings, discriminated by the
+    // structured provenance state (TRACK-P), never by prose:
+    // - not_classifiable → a collision cure DETACHED the rows; licensing is
+    //   genuinely not yet defined for this KBLI-2025 activity.
+    // - otherwise → special/sectoral licensing regime (government, finance/
+    //   OJK-BI, education, health, culture; 101 codes fall here).
     const specialFacts: { label: string; value: string; accent?: string }[] = [
-      { label: "Licensing Route", value: "Special / sectoral regime" },
-      { label: "OSS-RBA Rows", value: "None published" },
+      {
+        label: "Licensing Route",
+        value: notClassifiable
+          ? "No verified basis — divergence documented"
+          : "Special / sectoral regime",
+      },
+      {
+        label: "OSS-RBA Rows",
+        value: notClassifiable
+          ? "Detached (unverified source)"
+          : "None retrievable (404)",
+      },
       {
         label: "Foreign Ownership",
         value:
@@ -206,7 +226,12 @@ function KeyFacts({
             ? "var(--kbli-pma-open)"
             : "var(--kbli-pma-closed)",
       },
-      { label: "Authority", value: "Sector regulator — verify case-by-case" },
+      {
+        label: "Authority",
+        value: notClassifiable
+          ? "Not verified — see divergence note"
+          : "Sector regulator — verify case-by-case",
+      },
     ];
     return (
       <div
@@ -282,27 +307,39 @@ function KeyFacts({
   ];
 
   return (
-    <div
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-3 lg:grid-cols-5"
-      style={{ background: "var(--kbli-border)" }}
-    >
-      {facts.map((f) => (
-        <div
-          key={f.label}
-          className="flex flex-col gap-1.5 px-4 py-3.5"
-          style={{ background: "var(--kbli-bg-elevated)" }}
-        >
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
-            {f.label}
-          </span>
-          <span
-            className="text-sm font-semibold"
-            style={{ color: f.accent ?? "var(--foreground)" }}
+    <div>
+      <div
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-3 lg:grid-cols-5"
+        style={{ background: "var(--kbli-border)" }}
+      >
+        {facts.map((f) => (
+          <div
+            key={f.label}
+            className="flex flex-col gap-1.5 px-4 py-3.5"
+            style={{ background: "var(--kbli-bg-elevated)" }}
           >
-            {f.value}
-          </span>
-        </div>
-      ))}
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
+              {f.label}
+            </span>
+            <span
+              className="text-sm font-semibold"
+              style={{ color: f.accent ?? "var(--foreground)" }}
+            >
+              {f.value}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* One grid-level qualifier instead of per-cell noise: risk, license
+          AND processing above all come from the same unverified rows
+          (Codex gate round 5). */}
+      {verificationPending && (
+        <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">
+          ⏳ The licensing facts above (risk, license, processing) await
+          KBLI-2025 crosswalk verification — see Sources &amp; Verification
+          below.
+        </p>
+      )}
     </div>
   );
 }
@@ -864,6 +901,11 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
   // the steps are national truth; the Bali restriction is the local override.
   const baliBlocked = !!kbli.baliL4?.blocked;
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
+  // was carried over from a different activity (code-number collision) is
+  // neither blocked nor confirmed open — an analogous frame, warn tone
+  // rather than block tone, since this is an unresolved gap, not a verdict.
+  const baliNonClassifiable = kbli.baliL4?.status === "NON_CLASSIFICABILE";
 
   return (
     <div className="space-y-8">
@@ -898,11 +940,42 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         </div>
       )}
 
+      {/* ── NATIONAL-vs-BALI FRAME (Bali applicability not yet classifiable) ── */}
+      {!baliBlocked && baliNonClassifiable && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              National procedure — Bali applicability not yet classifiable
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The licensing path below is the <strong>national</strong> procedure,
+            valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
+            <strong>Bali</strong>, whether this activity is open to a PT PMA
+            cannot be determined until the correct risk tier is established.
+            {kbli.baliL4?.reason ? ` ${kbli.baliL4.reason}` : ""} Verify with
+            the Bali Zero team before planning a Bali setup.
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts
         licensing={kbli.licensing}
         pma={kbli.pma}
         baliBlocked={baliBlocked}
+        notClassifiable={kbli.provenance?.state === "not_classifiable"}
+        verificationPending={isLicensingVerificationPending(kbli)}
       />
 
       {/* ── PP28 RAW DATA (collapsible) ── */}
@@ -932,6 +1005,14 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             className="space-y-4 p-5"
             style={{ background: "var(--kbli-bg-surface)" }}
           >
+            {/* The section title names the SOURCE; this line states the
+                verification status of everything below it (Codex round 6b). */}
+            {isLicensingVerificationPending(kbli) && (
+              <p className="text-[11px] text-[var(--foreground-muted)]">
+                ⏳ All licensing values below await KBLI-2025 crosswalk
+                verification — see Sources &amp; Verification.
+              </p>
+            )}
             {/* Tier tabs */}
             {kbli.licensing.length > 1 && (
               <div className="flex items-center gap-4">
@@ -951,7 +1032,11 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               <span className="text-sm font-semibold text-[var(--foreground)]">
                 {currentTier.scales.join(", ")}
               </span>
-              <RiskBadge category={currentTier.riskCategory} size="sm" />
+              <RiskBadge
+                category={currentTier.riskCategory}
+                size="sm"
+                verificationPending={isLicensingVerificationPending(kbli)}
+              />
               <span className="text-xs text-[var(--foreground-muted)]">
                 {currentTier.licenseType}
               </span>

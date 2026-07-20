@@ -255,7 +255,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # libera quota Opus per sessioni interattive. Override via CLAUDE_CRON_MODEL env var.
         # Data-driven decision: cron = 82% sessions but 0.6% output value (empirical analysis 2026-04-22).
         local cron_model="${CLAUDE_CRON_MODEL:-claude-haiku-4-5-20251001}"
-        output=$("${env_args[@]}" timeout "$TIMEOUT" claude -p --model "$cron_model" --permission-mode bypassPermissions "$prompt" 2>&1) && exit_code=0 || exit_code=$?
+        output=$("${env_args[@]}" timeout "$TIMEOUT" claude -p --model "$cron_model" --permission-mode bypassPermissions --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" 2>&1) && exit_code=0 || exit_code=$?
 
         # Check if rate limited (explicit error message)
         if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "$RATE_LIMIT_PATTERN"; then

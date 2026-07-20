@@ -63,3 +63,51 @@ def test_format_search_results_handles_missing_optional_arrays_and_negative_dist
 
 def test_format_search_results_returns_empty_for_no_documents() -> None:
     assert format_search_results({}, "general") == []
+
+
+def _pricing_raw_results() -> dict:
+    return {
+        "ids": ["doc-1"],
+        "documents": ["D12 remote work rules"],
+        "distances": [1.0],
+        "metadatas": [{}],
+    }
+
+
+def test_format_search_results_pricing_boost_skipped_without_price_intent() -> None:
+    # Guilt: a non-price question hitting the pricing collection must NOT
+    # get the +0.15 boost — this is the unsolicited-price-dump bug.
+    formatted = format_search_results(
+        _pricing_raw_results(),
+        "bali_zero_pricing_hybrid",
+        query="is remote work permitted on a D12 visa?",
+    )
+    assert formatted[0]["score"] == 0.5  # base score only, no boost
+
+
+def test_format_search_results_pricing_boost_applied_with_price_intent() -> None:
+    # Innocence: a genuine price question still gets the boost.
+    formatted = format_search_results(
+        _pricing_raw_results(),
+        "bali_zero_pricing_hybrid",
+        query="quanto costa un D12?",
+    )
+    assert formatted[0]["score"] == 0.65  # base 0.5 + PRICING_SCORE_BOOST 0.15
+
+
+def test_format_search_results_pricing_boost_applied_when_query_omitted() -> None:
+    # Backwards compat: query=None (caller can't tell us) keeps old
+    # unconditional-boost behavior.
+    formatted = format_search_results(_pricing_raw_results(), "bali_zero_pricing_hybrid")
+    assert formatted[0]["score"] == 0.65
+
+
+def test_format_search_results_team_boost_unaffected_by_query() -> None:
+    # bali_zero_team boost is out of scope for the pricing-intent gate —
+    # must stay unconditional regardless of query.
+    formatted = format_search_results(
+        _pricing_raw_results(),
+        "bali_zero_team",
+        query="is remote work permitted on a D12 visa?",
+    )
+    assert formatted[0]["score"] == 0.65

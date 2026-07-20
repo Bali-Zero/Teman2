@@ -1,0 +1,381 @@
+{
+  "68112": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "Bali changes the registration answer completely. A foreign investor cannot register this activity through a PMA company at a Bali address today. Although the activity is open at all four enterprise scales, the record identifies its Large scale as Medium-Low for the Bali determination. It is therefore blocked by Bali’s PMA moratorium, which the record says applies island-wide and permanently. The stated reason is not a change to the national foreign-ownership ceiling; it is the Bali rule that blocks this activity’s PMA registration on the island.\n\nThe restriction is tied in the record to Governor’s letter B.27.000/642/PM/DPMPTSP, and its supporting explanation cites a government letter dated May 13, 2026. The practical reading is deliberately narrow but decisive: national openness does not make Bali registration available where the local moratorium blocks it. For a founder considering this exact residential real-estate activity, Indonesia’s national framework and a Bali address produce different outcomes. The national ceiling remains 100%; the Bali PMA route is closed under the recorded moratorium.",
+        "new": "Bali's earlier verdict here was that a foreign investor could not register this activity through a PMA company at a Bali address. That reading depended on a risk tier the record no longer supports: the classification behind it was carried over from a different activity through a code-number collision, and has been detached. The earlier ‘blocked under the Bali moratorium’ verdict was based on that same carried-over risk classification, so it is unresolved rather than lifted — whether the moratorium applies cannot be determined until the true risk tier is established. Treat a Bali setup as unconfirmed and verify with the Bali Zero team first."
+      },
+      {
+        "field": "standfirst",
+        "old": "KBLI 68112 covers leasing and operating self-owned or rented residential real estate—open to foreign investment nationally, but unavailable for PMA registration at a Bali address.",
+        "new": "KBLI 68112 covers leasing and operating self-owned or rented residential real estate—open to foreign investment nationally, while its Bali PMA availability remains unclassifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "National openness does not make Bali registration available where the local moratorium blocks it.",
+        "new": "National openness does not resolve Bali registration on its own — that depends on a risk tier not yet re-established."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "Closed (Bali moratorium)",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: CHIUSO_MORATORIA_BALI.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "49213": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "Bali does not reverse that national opening. Its status is recorded as OK_or_HIGHER_RISK, and the record specifies that, at the Large scale, the OSS risk classification is Medium-High/High. For that reason, the activity is not blocked by Bali’s moratorium. The provincial rule blocks Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis; this activity’s stated Large-scale risk treatment places it outside that block. For a foreign founder, the honest conclusion is straightforward: this code remains available for PMA registration in Bali, while the national ceiling remains 100%.",
+        "new": "Whether Bali's PMA moratorium applies to this activity cannot be determined until its risk tier is established — the earlier reading was based on a risk classification carried over from a different activity (code-number collision) and has been removed. Confirm with the Bali Zero team before planning a Bali setup. The activity remains open to foreign investment through a PMA company nationally, a separate and unaffected fact."
+      },
+      {
+        "field": "standfirst",
+        "old": "A fixed-route urban transport activity open to every business scale nationally, with Bali remaining available for PMA registration under its stated risk treatment.",
+        "new": "A fixed-route urban transport activity open to foreign investment through a PMA company; whether Bali's PMA moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "This code remains available for PMA registration in Bali, while the national ceiling remains 100%.",
+        "new": "This activity remains open to foreign investment through a PMA company nationally — whether Bali's moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 2,
+        "old_value": "Menengah-Tinggi/Tinggi",
+        "new_value": "Not classified"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "51103": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "Bali warrants its own reading rather than an automatic extrapolation from the national figure. Bali’s permanent, island-wide PMA moratorium applies to Low and Medium-Low risk activities. This activity is identified as medium-high risk, and the record states that it is not blocked by that moratorium. Its Bali status, OK_or_HIGHER_RISK, supports that conclusion: a foreign investor is not shut out of a Bali registration simply because of the moratorium. Still, this is not a substitute for site diligence. The record specifically calls for verification per address, making the Bali question location-specific rather than a blanket island-wide prohibition.",
+        "new": "Bali warrants its own reading rather than an automatic extrapolation from the national figure. Whether Bali's permanent, island-wide PMA moratorium applies here cannot be determined yet: the earlier reading was based on a risk classification carried over from a different activity (code-number collision) and has been removed. Confirm the current risk tier and any Bali-specific requirement with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "body",
+        "old": "In Bali, it is not caught by the Low and Medium-Low risk moratorium, but the proposed address still needs verification.",
+        "new": "Whether it is caught by Bali's PMA moratorium is not yet classifiable — confirm with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "standfirst",
+        "old": "KBLI 51103 covers passenger journeys in launch vehicles and operator-inclusive hire, open to PMA at every listed scale—while Bali is not moratorium-blocked but requires address verification.",
+        "new": "KBLI 51103 covers passenger journeys in launch vehicles and operator-inclusive hire, open to foreign investment through a PMA company; whether Bali's PMA moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "Nationally, PMA ownership can reach 100%; in Bali, the activity is not blocked by the moratorium but the intended address still needs verification.",
+        "new": "Nationally, this activity is open to foreign investment through a PMA company; whether Bali's moratorium applies to this activity is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "OK_or_HIGHER_RISK",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "51203": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "Bali does not block this activity for PMA registration under the province-wide moratorium. The Bali record places it in the medium-high/high-risk range, while the moratorium applies island-wide and permanently to Low and Medium-Low risk KBLI for PMA. Bali’s position is therefore unblocked, with an explicit instruction to verify the particular address. That is the honest outcome: national PMA openness is 100%, and a Bali registration is not barred by the moratorium, but the address must still be checked.",
+        "new": "Whether Bali's province-wide PMA moratorium applies to this activity cannot be determined until its risk tier is established — the earlier reading was based on a risk classification carried over from a different activity (code-number collision) and has been removed. This activity remains open to foreign investment through a PMA company nationally, a separate and unaffected fact. Confirm with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "standfirst",
+        "old": "This activity covers launch-vehicle cargo transport, satellite launches and operator-led space transport—open nationwide to full foreign ownership, with address verification required in Bali.",
+        "new": "This activity covers launch-vehicle cargo transport, satellite launches and operator-led space transport—open nationwide to full foreign ownership; whether Bali's PMA moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "National PMA openness is 100%, but Bali still requires the particular address to be verified.",
+        "new": "This activity is open to foreign investment through a PMA company nationally; whether Bali's moratorium applies to this activity is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "OK_or_HIGHER_RISK",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "20111": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "The Bali picture is also clear, but for a different reason. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province. This record, however, does not mark KBLI 20111 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is stated directly: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest reading is not a Bali-specific ownership cap or a local percentage condition. It is simpler: nationally the activity is open to PMA up to 100%, and in Bali the record does not block it under the moratorium because the stated risk position is above the moratorium’s blocked risk band.",
+        "new": "Whether Bali's moratorium rule applies to KBLI 20111 cannot be determined until its risk tier is established: the earlier reading was based on a risk classification carried over from a different activity (code-number collision) and has been removed. Nationally, the activity remains open to foreign investment through a PMA company, a separate and unaffected fact. Confirm the current risk tier with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "standfirst",
+        "old": "KBLI 20111 covers basic inorganic chemical manufacturing, nationally open to PMA up to full foreign ownership and not blocked by Bali’s moratorium record.",
+        "new": "KBLI 20111 covers basic inorganic chemical manufacturing, nationally open to PMA up to full foreign ownership; whether Bali's moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "The honest reading is not a Bali-specific ownership cap: nationally this activity is open up to 100%, and the Bali record does not block it under the moratorium.",
+        "new": "The honest reading is not a Bali-specific ownership cap: nationally this activity is open to foreign investment through a PMA company; whether Bali's moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 2,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "OK_or_HIGHER_RISK",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "50115": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "Bali calls for a separate, but not contradictory, conclusion. The Bali status is OK_or_HIGHER_RISK, and the explanation places the activity in the medium-high risk range. On the record provided, this does not trigger a PMA registration block under Bali’s moratorium. For this activity, the Bali reason says it is not blocked. So national foreign openness is not cancelled in Bali by that moratorium. The record nevertheless calls for verification per address, which is an address-specific check—not a stated restriction on the foreign ownership percentage.",
+        "new": "Whether Bali's PMA moratorium applies to this activity cannot be determined until its risk tier is established — the earlier reading was based on a risk classification carried over from a different (air-transport) activity and has been removed. National foreign openness remains a separate, unaffected fact. Confirm the current risk tier and any Bali-specific requirement with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "body",
+        "old": "That is the distinction founders need to carry into their planning. The 100% ceiling belongs to the national PMA position; the Bali conclusion concerns the moratorium and the stated risk reading. Neither should be substituted for the other. For this activity, Bali is not presented as a place where a foreigner is unable to register today. It is presented as an address-verified, medium-high risk setting outside the moratorium block, for an international tourist sea-transport activity that can include a vessel-and-operator charter. The clean reading is open nationally and not blocked by the Bali moratorium, with address verification retained as the record requires.",
+        "new": "That is the distinction founders need to carry into their planning. National openness to foreign investment through a PMA company is a separate part of the record; the Bali conclusion depends on a risk tier that is not yet classifiable, pending re-derivation from the true risk tier for this activity. Confirm current requirements with the Bali Zero team before planning a Bali setup for this international tourist sea-transport activity."
+      },
+      {
+        "field": "standfirst",
+        "old": "International sea tourism is nationally open to full foreign ownership at the stated scales; in Bali it is not blocked by the moratorium, subject to address-level verification.",
+        "new": "International sea tourism is open to foreign investment through a PMA company; whether Bali's moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "National openness is not cancelled in Bali by the moratorium; this activity is address-verified rather than blocked.",
+        "new": "National openness is a separate, unaffected fact; whether Bali's moratorium applies to this activity is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "[\"Menengah\", \"Besar\"]",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "OK_or_HIGHER_RISK",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "60312": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "In Bali, the result is neither an automatic PMA refusal nor an invented all-clear. The recorded Bali status is OK_or_HIGHER_RISK: medium-high and high risk activities are not blocked by the province-wide PMA moratorium. That permanent, island-wide moratorium applies to low and medium-low risk activities. This activity is not marked as blocked. Yet the record expressly calls for verification per address. The clear conclusion is therefore measured: PMA registration is open nationally and is not blocked by the recorded Bali moratorium, while the proposed Bali address still needs verification.",
+        "new": "In Bali, the result is not yet classifiable. Whether this activity is caught by the province-wide PMA moratorium cannot be determined until its risk tier is established: the earlier reading was based on a risk classification carried over from a source that cannot reliably be applied to this KBLI-2025 code, and has been removed. PMA registration remains open nationally, a separate and unaffected fact. Confirm with the Bali Zero team before planning a Bali setup."
+      },
+      {
+        "field": "standfirst",
+        "old": "Private news-agency activity is nationally open to full foreign ownership; in Bali, it is not blocked by the moratorium, though the proposed address still requires verification.",
+        "new": "Private news-agency activity is nationally open to full foreign ownership; whether Bali's moratorium applies is not yet classifiable pending re-derivation of the true risk tier."
+      },
+      {
+        "field": "pullQuote",
+        "old": "PMA registration is open nationally and is not blocked by the recorded Bali moratorium, while the proposed Bali address still needs verification.",
+        "new": "PMA registration is open nationally, a separate and unaffected fact; whether Bali's moratorium applies to this activity is not yet classifiable pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "OK_or_HIGHER_RISK",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: OK_or_HIGHER_RISK.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "64310": {
+    "editorial_patches": [
+      {
+        "field": "body",
+        "old": "A foreign investor cannot register money market fund activity as PMA at a Bali address today. That conclusion sits beside—not against—the national position: KBLI 64310 is TERBUKA nationally, with a foreign-ownership ceiling of 100%.",
+        "new": "Whether a foreign investor can register money market fund activity as PMA at a Bali address is unresolved today — the earlier ‘blocked’ verdict was based on a risk classification carried over from a different activity (code-number collision) and has been detached, so it is unresolved rather than lifted. That question sits beside—not against—the national position: KBLI 64310 is TERBUKA nationally, open to foreign investment through a PMA company."
+      },
+      {
+        "field": "body",
+        "old": "Bali’s position is materially stricter. The record marks it Closed (Bali moratorium) and confirms that PMA registration is blocked. The stated reason is that, at the Besar scale, the activity is classified as Rendah, bringing it within Bali’s PMA moratorium. The provincial rule blocks PMA for activities in the low- and medium-low-risk bands throughout Bali, on a permanent basis. The result is categorical for a Bali address: no PMA registration route is available today, notwithstanding the national 100% ceiling. This is not a Bali-specific reduction in the foreign stake; it is a block on PMA registration in Bali.",
+        "new": "Bali's earlier verdict here was that PMA registration is blocked, on the stated reason that the activity carried a specific risk classification at the Besar scale bringing it within Bali's PMA moratorium. That risk classification was carried over from a different activity (code-number collision) and has been detached, so the block is unresolved rather than lifted: whether the moratorium applies cannot be determined until the true risk tier is established. Treat a Bali setup as unconfirmed and verify with the Bali Zero team first, notwithstanding national openness to foreign investment through a PMA company."
+      },
+      {
+        "field": "standfirst",
+        "old": "Money market fund activity can be wholly foreign-owned nationally, yet Bali’s PMA moratorium prevents a foreign investor from registering it at a Bali address.",
+        "new": "Money market fund activity can be wholly foreign-owned nationally; whether Bali's PMA moratorium applies to this activity is unresolved, pending re-derivation of the true risk tier."
+      }
+    ],
+    "byTheNumbers_patches": [
+      {
+        "index": 1,
+        "old_value": "Mikro, Kecil, Menengah, Besar",
+        "new_value": "Not yet defined"
+      },
+      {
+        "index": 3,
+        "old_value": "Closed (Bali moratorium)",
+        "new_value": "Not classifiable — risk tier unresolved"
+      }
+    ],
+    "l4_bali_new": {
+      "status": "NON_CLASSIFICABILE",
+      "reason": "Bali moratorium applicability not classifiable: the risk tier this verdict depended on was carried over from a different activity (code-number collision) and has been detached. Pending re-derivation from the true risk tier (GARUDA-FILIERA). Previous status: CHIUSO_MORATORIA_BALI.",
+      "confidence": "LOW",
+      "needs_review": true,
+      "blocked": false,
+      "from_2020": null,
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP",
+        "virtual_office": "BANNED as PMA domicile in Bali"
+      }
+    }
+  },
+  "_gold_49213": {
+    "zantaraOpener": "Charter shuttle service, hotel transfers, or organized transport in Bali? For 49213 (urban transport) the current licensing checklist (permits, inspections, route authorizations) isn't reliably established for this code yet, so let me map out the right structure and confirm requirements with you directly.",
+    "whatChanged": "Direct match from KBLI 2020 (MATCH_LANGSUNG) — this is the same urban-transport activity carried forward under a new code. The licensing pathway and requirements for this KBLI-2025 code (OSS pathway, vehicle/route permits) are not yet reliably established; the earlier note that these matched a governed permit checklist rested on a step list of collision provenance and has been removed. Confirm current requirements with the Bali Zero team.",
+    "baliContext": "**🚌 Bali Transport: Market Signals**\n\n**High-demand corridors (2025):**\n- **Airport–Canggu / Airport–Seminyak:** Kuta taxis still dominate but corporate shuttle contracts for hotels are underserved\n- **Denpasar–Ubud:** One of the most traveled tourist routes; no quality scheduled service with Western UX exists\n- **Resort shuttle circuits:** Large Nusa Dua and Uluwatu resorts pay IDR 2–4M/day for dedicated charter vehicles\n\n**EV fleet opportunity:**\n- Government incentives for electric commercial vehicles (2024 Perpres 55/2019 and amendments)\n- An EV shuttle fleet (Tesla vans are too expensive; Hiace/BYD electric conversions are feasible) serving premium Bali hotels is a genuine white space\n\n**ITDP/BRT tender:**\n- Bali Provincial Government has received World Bank/ITDP support for Bus Rapid Transit planning. Formal tender processes for BRT operation could open B2G opportunities for PMA transport companies\n\n*Licensing, permits, and any PMA-eligibility restrictions for this activity are not yet reliably established — confirm current requirements with the Bali Zero team before committing to a route or fleet plan.*"
+  },
+  "_68112_intel_whatYouNeed": {
+    "old": "PMA registration is blocked at a Bali address under the Bali moratorium (see Bali status)",
+    "new": "whether PMA registration is available at a Bali address is unresolved — the earlier 'blocked' verdict depended on a risk tier carried over from a different activity (code-number collision) and has been detached, so it is unresolved rather than lifted; confirm with the Bali Zero team before planning a Bali setup"
+  }
+}

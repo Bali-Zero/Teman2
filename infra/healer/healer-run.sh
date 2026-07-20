@@ -260,6 +260,7 @@ fi
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     --model "$MODEL" --dangerously-skip-permissions \
     --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 

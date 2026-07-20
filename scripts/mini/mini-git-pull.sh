@@ -39,11 +39,16 @@ set -u
 REPO="$HOME/nuzantara"
 LOG_FILE="$HOME/logs/mini-git-pull.log"
 LOCK_FILE="/tmp/mini-git-pull.lock"
+BACKUP_ROOT="${MINI_GIT_PULL_BACKUP_ROOT:-$HOME/.git-pull-collision-backup}"  # recoverable moved-aside untracked collisions
 STASH_RETENTION_THRESHOLD=5  # alert if more stashes than this accumulate
 TELEGRAM_ALERT_COOLDOWN=3600  # 1h cooldown per alert key
 TELEGRAM_STATE_DIR="$HOME/.agent/decisions/state"
 
 mkdir -p "$(dirname "$LOG_FILE")" "$TELEGRAM_STATE_DIR"
+
+# Force literal pathspecs so an exotic incoming filename (`*`, `:(glob)**`, `:/`) fed to
+# `git ls-files -- "$f"` can never be read as pathspec magic and match unrelated files.
+export GIT_LITERAL_PATHSPECS=1
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
@@ -149,38 +154,46 @@ check_type_mismatch() {
   return 0
 }
 
-# Detect untracked local files that occupy a path the incoming merge also
-# touches. `git stash push` (without --include-untracked, see below) does
-# NOT cover untracked files, so they survive the stash step unchanged —
-# but `git merge --ff-only` still refuses when one of them collides with
-# a path the target ref introduces or modifies. Without this check the
-# script stashes tracked changes, fails the merge on the untracked
-# collision, restores the stash, and repeats the whole cycle every 5 min
-# forever (observed 2026-07-11: 7+ retries over 40 min, same path each
-# time) — wasted churn plus a generic "pull-failed" alert that doesn't
-# name the actual blocker. Detect it BEFORE stashing so we skip cleanly
-# with one targeted alert naming the colliding path(s); this is most
-# often a sibling session's uncommitted WIP (e.g. a new test file),
-# which resolves itself once that work is committed or removed — never
-# something this script should touch (Law 5 / sibling-race discipline).
+# RESOLVE untracked/ignored local files that occupy a path the incoming merge also touches.
+# `git merge --ff-only` refuses when an UNTRACKED file collides with a path the target ref
+# introduces, AND (verified on Pro, scar H) SILENTLY OVERWRITES an IGNORED one — so both must
+# be handled. The old behavior SKIPPED the whole tick (exit 1), which for genuinely-transient
+# sibling WIP self-resolves in a tick or two, but (a) left Mini blind to the ignored-file
+# silent-clobber, and (b) stalled indefinitely if the collision persisted. Mirroring
+# scripts/pro/pro-git-pull.sh, we now back each colliding path up to a timestamped,
+# PID-unique, no-clobber backup and MOVE IT ASIDE so the ff can land — recoverable (nothing
+# deleted; every move logged + alerted), so a genuine sibling WIP can be restored from backup.
 #
-# Returns 0 if clean, 1 if a collision is found (caller skips this tick).
-check_untracked_collision() {
-  local changed_paths untracked_paths colliding
-  changed_paths=$(git diff --name-only HEAD "$TARGET_REF" 2>/dev/null)
+# Iterate the INCOMING diff (small, clean git names), classifying each path as untracked by
+# "tracked? no ∧ exists on disk" — so a huge ignore tree (.venv) is never enumerated and
+# ignored collisions ARE caught (unlike `git ls-files --others --exclude-standard`, which
+# skips ignored files). Tracked-modified paths are left to the stash step below.
+#
+# Returns 0 on success (incl. nothing to do); 1 on ANY failure (fail-safe: caller skips tick).
+resolve_untracked_collision() {
+  local changed_paths f backup n=0 first="" ts
+  changed_paths=$(git -c core.quotepath=false diff --name-only HEAD "$TARGET_REF" 2>/dev/null)
   [ -z "$changed_paths" ] && return 0
-  untracked_paths=$(git ls-files --others --exclude-standard 2>/dev/null)
-  [ -z "$untracked_paths" ] && return 0
-  colliding=$(comm -12 <(echo "$changed_paths" | sort) <(echo "$untracked_paths" | sort))
-  if [ -n "$colliding" ]; then
-    local colliding_oneline
-    colliding_oneline=$(echo "$colliding" | tr '\n' ' ' | sed 's/ $//')
-    log "WARN: untracked file(s) collide with incoming $TARGET_REF: $colliding_oneline"
-    log "  HINT: likely a sibling session's uncommitted WIP (new file not yet"
-    log "        committed). Leave it alone — will retry once committed/removed."
-    telegram_alert "untracked-collision" \
-      "Mini pull skipped — untracked file(s) collide with incoming ${TARGET_REMOTE}/main: ${colliding_oneline}. Likely sibling WIP; retries once committed/removed."
-    return 1
+  ts="$(date '+%Y%m%d-%H%M%S')-$$"
+  backup="$BACKUP_ROOT/$ts"
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    # tracked paths → handled by the stash step; only UNTRACKED/IGNORED collide here.
+    git ls-files --error-unmatch -- "$f" >/dev/null 2>&1 && continue
+    # collision only if it actually exists on disk (-L: a dangling symlink blocks/loses too)
+    [ -e "$REPO/$f" ] || [ -L "$REPO/$f" ] || continue
+    mkdir -p "$backup/$(dirname "$f")" 2>>"$LOG_FILE" || { log "ERROR: mkdir backup for $f"; return 1; }
+    if mv -n "$REPO/$f" "$backup/$f" 2>>"$LOG_FILE" && [ ! -e "$REPO/$f" ]; then
+      n=$((n + 1)); [ -z "$first" ] && first="$f"
+      log "  moved colliding untracked/ignored → backup: $f -> $backup/$f"
+    else
+      log "ERROR: mv failed / backup dest existed for $f — skip tick (fail-safe)"; return 1
+    fi
+  done < <(printf '%s\n' "$changed_paths")
+  if [ "$n" -gt 0 ]; then
+    log "Resolved $n untracked/ignored collision(s) with incoming $TARGET_REF into $backup (recoverable)."
+    telegram_alert "untracked-resolved" \
+      "Mini pull: backed up + moved aside ${n} untracked file(s) colliding with incoming ${TARGET_REMOTE}/main (e.g. ${first}) into ${backup}. Restore from backup if any was real sibling WIP."
   fi
   return 0
 }
@@ -282,9 +295,13 @@ if ! check_type_mismatch; then
   exit 1
 fi
 
-# 2026-07-11 hardening: detect untracked-file collisions BEFORE attempting
-# stash. See check_untracked_collision() above.
-if ! check_untracked_collision; then
+# 2026-07-11 hardening (2026-07-17 skip→resolve): back up + move aside untracked/ignored
+# collisions BEFORE the stash step so the ff can land (self-heals instead of stalling, and
+# catches the ignored-file silent-clobber the old --exclude-standard check missed — scar H).
+# See resolve_untracked_collision() above.
+if ! resolve_untracked_collision; then
+  log "ERROR: untracked-collision resolve failed; skip tick (fail-safe)"
+  telegram_alert "untracked-resolve-failed" "Mini pull: untracked-collision resolve errored; tick skipped, nothing merged. Check ~/logs/mini-git-pull.log."
   exit 1
 fi
 

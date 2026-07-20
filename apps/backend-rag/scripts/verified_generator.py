@@ -323,7 +323,8 @@ def generate_document(
 
         try:
             result = subprocess.run(
-                ["claude", "--print", "--dangerously-skip-permissions"],
+                ["claude", "--print", "--dangerously-skip-permissions",
+                 "--max-budget-usd", "3"],
                 input=prompt, capture_output=True, text=True, timeout=300, env=env,
             )
         except subprocess.TimeoutExpired:

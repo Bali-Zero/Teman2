@@ -182,16 +182,20 @@ def get_anthropic_client() -> None:
 )
 async def call_claude_with_retry(
     prompt: str,
-    model: str = "deepseek-chat",
+    model: str = "deepseek-v4-flash",
     max_tokens: int = 4096,
 ) -> ClaudeOAuthMessage:
     """Call DeepSeek with automatic retry on transient errors.
 
     Signature kept for drop-in compatibility with the router that still
     imports this symbol. The ``model`` default changed from
-    ``claude-sonnet-4-6`` to ``deepseek-chat``. The return object still
-    exposes ``content[0].text`` and ``usage.{input,output}_tokens`` so the
-    router needs no changes to its happy path.
+    ``claude-sonnet-4-6`` to ``deepseek-chat`` (v3) and then to the
+    explicit ``deepseek-v4-flash`` (2026-07-18): the legacy ``deepseek-chat``
+    alias already silently routed to V4-Flash and RETIRES 2026-07-24 as a
+    hard-fail, so this pins today's behavior instead of dying next week.
+    The return object still exposes ``content[0].text`` and
+    ``usage.{input,output}_tokens`` so the router needs no changes to its
+    happy path.
     """
 
     async def _make_request() -> ClaudeOAuthMessage:

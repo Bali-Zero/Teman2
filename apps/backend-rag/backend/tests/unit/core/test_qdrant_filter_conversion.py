@@ -138,6 +138,35 @@ class TestQdrantFlatPayloadFilterConversion:
             }
         ]
 
+
+class TestQdrantCuratedQaFlatPayloadFilter:
+    """P7 (SPEC v2 D3): curated_qa is a flat payload collection (like legal_unified) —
+    domain-based purge/search filters must resolve against top-level payload keys,
+    not a nested 'metadata.*' path that this collection never writes."""
+
+    @pytest.fixture
+    def client(self):
+        return QdrantClient(qdrant_url="http://localhost:6333", collection_name="curated_qa")
+
+    def test_include_flat_payload_filters_for_curated_qa_collection(self, client):
+        assert client._include_flat_payload_filters() is True
+
+    def test_domain_filter_matches_top_level_key(self, client):
+        result = client._convert_filter_to_qdrant_format(
+            {"domain": "visa"},
+            include_flat_payload=True,
+        )
+
+        assert result is not None
+        assert result["must"] == [
+            {
+                "should": [
+                    {"key": "metadata.domain", "match": {"value": "visa"}},
+                    {"key": "domain", "match": {"value": "visa"}},
+                ]
+            }
+        ]
+
     def test_convert_filter_in_operator_matches_nested_or_flat(self, client):
         result = client._convert_filter_to_qdrant_format(
             {"legal_type": {"$in": ["PP", "UU"]}},

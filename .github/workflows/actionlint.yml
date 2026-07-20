@@ -1,0 +1,61 @@
+name: actionlint
+
+# Schema + expression gate for GitHub Actions workflow files.
+#
+# Born 2026-07-16: the ai-pr-review.yml advisory Action (#2533) merged green but
+# NEVER RAN — a literal empty `${EXPR}` inside a run: comment startup-failed it on
+# every push (GitHub scans run: bodies for expressions before the shell ever sees
+# the '#'). Nothing in CI caught it: a startup-failing workflow is non-required, so
+# it stays green-because-invisible (scar #2, exists != armed). This gate turns that
+# whole class into a hard, REQUIRED failure — actionlint validates workflow schema +
+# every `${{ }}` expression, and flags untrusted-input interpolation (the
+# pull_request_target + head.ref injection class fixed in the same PR).
+#
+# NO `paths:` filter — this is meant to be a REQUIRED check. A path-filtered required
+# check never reports on PRs outside its paths and leaves them stuck at
+# "Expected — waiting for status" forever (same reasoning as adversarial-review-gate.yml).
+# actionlint on a clean corpus is ~2s, so running on every PR blocks nothing innocent.
+#
+# actionlint is pinned by VERSION AND SHA256 — a compromised release cannot inject.
+# `-shellcheck=` keeps the gate to schema + expressions (the class that caused real
+# incidents); shell-style is out of scope (the corpus is not shellcheck-clean, and
+# that is a separate, noisier tightening for later).
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actionlint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: actionlint — workflow schema + expression gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: "1.7.12"
+      ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download actionlint (pinned version + sha256)
+        run: |
+          set -euo pipefail
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL "$url" -o actionlint.tgz
+          echo "${ACTIONLINT_SHA256}  actionlint.tgz" | sha256sum -c -
+          tar xzf actionlint.tgz actionlint
+          chmod +x actionlint
+
+      - name: Lint all workflow files
+        run: |
+          set -euo pipefail
+          # No file args → actionlint auto-discovers .github/workflows/*.yml.
+          # -shellcheck= disables the shellcheck pass (pre-installed on the runner,
+          # would flood on shell style); we gate schema + expression syntax +
+          # untrusted-input use, which is the class that startup-fails or injects.
+          ./actionlint -color -shellcheck=

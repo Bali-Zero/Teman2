@@ -199,6 +199,7 @@ class NLMPipeline:
             if not preflight_ok:
                 self._phase = PipelinePhase.HALTED
                 summary["halted_at"] = "preflight"
+                summary["halt_reason"] = getattr(self, "_halt_reason", None)
                 return summary
 
             # Determine today's cluster
@@ -293,6 +294,11 @@ class NLMPipeline:
         is_weekend = now_wita.weekday() >= 5
         if is_weekend and not self.dry_run and not self.force:
             logger.info("Weekend — pipeline skipped (use --force to override)")
+            # Intentional calendar skip, not a failure: without this marker the
+            # CLI exited 1, the set-euo cron wrapper died, and every Saturday
+            # run of the 1-6 nb pipelines landed in the DLQ as a fake failure
+            # (S1 medico triage 2026-07-18, run_nb2_pipeline escalation).
+            self._halt_reason = "weekend"
             return False
         checks.append(("weekend", not is_weekend or self.dry_run or self.force))
 
@@ -704,6 +710,10 @@ def main():
     result = pipeline.run()
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
+    # An intentional calendar skip (weekend halt) is a healthy no-op, not a
+    # failure — exit 0 so set-euo cron wrappers don't record a fake death.
+    if result.get("halt_reason") == "weekend":
+        sys.exit(0)
     sys.exit(0 if result.get("phases", {}).get("preflight", {}).get("passed") else 1)
 
 

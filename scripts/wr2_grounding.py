@@ -116,6 +116,24 @@ def _inject_rails_into_facts(prose_facts: str, nb_brief: dict[str, Any]) -> str:
     return "\n\n".join(parts)
 
 
+# The rails line is only ever emitted FIRST (see `parts` assembly above) when
+# `prose_facts` was empty/whitespace — so a the_facts string that starts with
+# this exact header carries ZERO article content, regardless of how it got
+# that way. SSOT for both call sites that need this signal: the marker
+# decision below (injection time) and wr2_draft_generator._has_usable_source
+# (consumption time — it does NOT trust the marker alone, see 2026-07-17
+# red-team finding #1: a the_facts that already had a citation short-circuits
+# `ground_enrichment` at line ~230 before the marker is ever considered).
+_RAILS_ONLY_PREFIX = "Riferimenti normativi"
+
+
+def is_citations_only_the_facts(the_facts: str) -> bool:
+    """True when `the_facts` is structurally nothing but the citation-rails
+    block `_inject_rails_into_facts` emits for empty prose — i.e. zero real
+    event content, whatever field or run it came from."""
+    return str(the_facts or "").strip().startswith(_RAILS_ONLY_PREFIX)
+
+
 async def _query_rag(topic: str) -> str:
     """Ask the Fly backend RAG about `topic`; return the answer text. "" on failure."""
     import json
@@ -172,7 +190,6 @@ async def _query_oracle(topic: str) -> str:
     (backend/services/rag/agentic/tools.py). The scan corpus is `answer` plus
     every `citations[].snippet` and `sources[].snippet` — "" on any failure.
     """
-    import json
 
     import httpx
 
@@ -254,6 +271,16 @@ async def ground_enrichment(brief_json: dict[str, Any], topic: str) -> dict[str,
     base_facts = existing_facts or str(brief_json.get("article_summary") or "")[:600]
     enrichment["the_facts"] = _inject_rails_into_facts(base_facts, nb_brief)
     enrichment.setdefault("grounding_source", grounding_source)
+    # Check the ACTUAL injected result's shape, not `base_facts` truthiness —
+    # a whitespace-only base_facts (e.g. article_summary="   ") is truthy in
+    # Python but still yields a rails-only the_facts (`_inject_rails_into_facts`
+    # strips internally), which the old `if not base_facts:` check missed
+    # (2026-07-17 red-team finding #1). Mark it explicitly so a downstream
+    # consumer (the draft generator's park backstop) can tell "we truly have
+    # no event facts" apart from "we have a real brief that also picked up
+    # citations" without re-deriving the shape itself.
+    if is_citations_only_the_facts(enrichment["the_facts"]):
+        enrichment["_grounding_injected_only"] = True
 
     out = dict(brief_json)
     out["enrichment"] = enrichment

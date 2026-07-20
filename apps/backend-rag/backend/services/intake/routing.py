@@ -290,6 +290,20 @@ def _digits_only(value: Any) -> str | None:
     return d or None
 
 
+def _ascii_digits(value: Any) -> str | None:
+    """ASCII-only digit projection — the exact mirror of SQL ``[^0-9]``.
+
+    Python's ``\\d``/``\\D`` are Unicode-aware (Arabic-Indic, full-width and
+    Devanagari digits survive :func:`_digits_only`), while Postgres ``\\d`` is
+    locale-dependent — comparing the two classes is an environment-dependent
+    mismatch. Strong-id npwp matching uses THIS projection on both sides.
+    """
+    if value is None:
+        return None
+    d = re.sub(r"[^0-9]", "", str(value))
+    return d or None
+
+
 def _looks_like_company_name(value: str) -> bool:
     """True for common Indonesian company/entity prefixes."""
     normalized = re.sub(r"\s+", " ", value.strip().upper())
@@ -329,7 +343,7 @@ def normalize_sender_phone(value: Any) -> str | None:
 async def _match_person_strong(
     conn: asyncpg.Connection, extracted: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Strong-identifier match against ``clients`` (passport / kitas number)."""
+    """Strong-identifier match against ``clients`` (passport / kitas / npwp)."""
     candidates: list[dict[str, Any]] = []
 
     passport = _field_value(extracted, "passport_no") or _field_value(extracted, "passport_number")
@@ -380,6 +394,32 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
+    npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
+    if npwp:
+        norm = _ascii_digits(npwp)
+        # NPWP is EXACTLY 15 (legacy) or 16 (post-2024 NIK-format) digits.
+        # Shorter = partial OCR read; longer = concatenated/garbled OCR —
+        # either way an "exact" match on malformed digits is a false strong-id
+        # (malformed CRM data can mirror malformed OCR).
+        if norm and len(norm) in (15, 16):
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND npwp IS NOT NULL
+                  AND REGEXP_REPLACE(npwp, '[^0-9]', '', 'g') = $1
+                ORDER BY id
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "npwp", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
     return candidates
 
 
@@ -409,13 +449,18 @@ async def _match_company_strong(
 
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
     if npwp:
-        norm = _digits_only(npwp)
-        if norm:
+        norm = _ascii_digits(npwp)
+        # Same exact-length gate as the person side (m248): NPWP is 15 or 16
+        # digits, period. 14 live companies carry an 11-14-digit npwp_company —
+        # a partial OCR fragment exact-matching one of those would become a
+        # unique CONF_STRONG_EXACT candidate and, with the decision matrix
+        # being method-agnostic, an AUTO_ATTACH.
+        if norm and len(norm) in (15, 16):
             rows = await conn.fetch(
                 """
                 SELECT id, company_name
                 FROM companies
-                WHERE REGEXP_REPLACE(npwp_company, '\\D', '', 'g') = $1
+                WHERE REGEXP_REPLACE(npwp_company, '[^0-9]', '', 'g') = $1
                 """,
                 norm,
             )
@@ -507,56 +552,140 @@ async def _match_sender_phone(
     ]
 
 
-def _clean_folder_segment(value: Any) -> str | None:
-    """Normalise the first path segment of ``source_path`` into a name to match.
+# Cap the folder segments probed per document — bounds the 2×N fuzzy round-trips
+# (a Drive path can nest arbitrarily; the client folder is always in the top few).
+_MAX_FOLDER_SEGMENTS = 8
 
-    Real Dropbox folders carry human decorations — ``###PERPANJANGAN KITAS
-    JOHN DOE###``, ``@arsip Cetak (2027)`` — so strip non-name punctuation and
-    parenthetical suffixes, collapse whitespace, reject <3 chars.
+
+def _clean_one_segment(seg: str) -> str | None:
+    """Strip human folder decorations from ONE path segment → a matchable name.
+
+    Real Dropbox/Drive folders carry decorations — ``###PERPANJANGAN KITAS
+    JOHN DOE###``, ``@arsip Cetak (2027)`` — so drop non-name punctuation and
+    parenthetical suffixes, collapse whitespace, reject <3 chars or alpha-less.
     """
-    if value is None:
-        return None
-    seg = str(value).split("/", 1)[0]
     seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
     seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
     seg = re.sub(r"\s+", " ", seg).strip()
-    if len(seg) < 3:
+    # reject <3 chars or alpha-less — Unicode-aware so Cyrillic/Arabic/CJK client
+    # names (Russian/Ukrainian clients) are NOT dropped as "alpha-less".
+    if len(seg) < 3 or not any(ch.isalpha() for ch in seg):
         return None
     return seg
+
+
+def _clean_folder_segment(value: Any) -> str | None:
+    """Normalise the FIRST path segment of ``source_path`` into a name to match.
+
+    Kept for the Dropbox layout (client folder at the root) and as the single-
+    segment helper; Drive's deeper hierarchy is handled by :func:`_folder_segments`.
+    """
+    if value is None:
+        return None
+    return _clean_one_segment(str(value).split("/", 1)[0])
+
+
+def _folder_segments(value: Any) -> list[str]:
+    """ALL matchable name-segments of ``source_path`` (folders + filename stem).
+
+    m227 originally inspected only ``source_path.split('/')[0]`` — correct for the
+    Dropbox layout where the root IS the client folder, but WRONG for Drive, whose
+    roots are staff/category folders (``PEMEGANG KITAS``, ``EXTEND VISA``) and whose
+    client folder lives DEEPER. That single-segment blind spot is why ~24k Drive
+    docs land 0-candidate despite the folder signal existing. Scanning every segment
+    fixes both layouts: the client folder is matched at whatever depth it sits, and
+    non-client segments (categories, ``scan``/``kitas``) simply fall below
+    FUZZY_APPLY_THRESHOLD. The leaf's file extension is stripped; dedup is
+    case-insensitive and order-preserving (shallow→deep).
+    """
+    if value is None:
+        return []
+    parts = str(value).split("/")
+    if parts:  # strip the file extension on the leaf segment only
+        parts[-1] = re.sub(r"\.[A-Za-z0-9]{1,7}$", "", parts[-1])
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        cleaned = _clean_one_segment(part)
+        if cleaned and cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            out.append(cleaned)
+        if len(out) >= _MAX_FOLDER_SEGMENTS:  # cap the fuzzy round-trips per doc
+            break
+    return out
 
 
 async def _match_folder_name(
     conn: asyncpg.Connection, source_path: str | None
 ) -> list[dict[str, Any]]:
-    """Folder-name match (m227): first ``source_path`` segment vs CRM names.
+    """Folder-name match (m227): EVERY ``source_path`` segment vs CRM names.
 
-    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name``;
-    only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport hint (a weak
-    folder sim is noise — unlike the OCR-name fuzzy, which has its own review
-    band). One clear winner → a single CONF_FOLDER_MATCH candidate; top-2 inside
-    the ambiguity margin → both returned so the decision matrix degrades to
-    AMBIGUOUS rather than guessing.
+    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name`` for
+    each folder segment (m227 fix 2026-07-18: was root-segment-only, blind to Drive's
+    deep hierarchy). Only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport
+    hint (a weak folder sim is noise).
+
+    Two-level disambiguation (the AMBIGUITY_MARGIN is a WITHIN-segment tool — scores
+    from different segments are not comparable): (1) each segment resolves to ONE
+    winner, unless its own top-2 are DISTINCT clients within the margin (a homonym
+    folder) → both kept; (2) winners are unioned and deduped by (table, id) keeping the
+    best score. If the union names ONE distinct entity → a single CONF_FOLDER_MATCH
+    LINK_CANDIDATE; if it names ≥2 DISTINCT entities (homonyms, OR two different client
+    folders in one path) → the top-2 are returned so the decision matrix degrades to
+    AMBIGUOUS rather than silently picking the higher-scoring segment. Favouring
+    AMBIGUOUS (human disambiguates) over a confident single pick is the safe direction
+    for a NEVER-auto signal (2026-05-17 identity-hallucination scar; a wrong attach is
+    worse than an unattached doc).
     """
-    name = _clean_folder_segment(source_path)
-    if not name:
+    segments = _folder_segments(source_path)
+    if not segments:
         return []
-    merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
-    merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
-    usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
-    usable.sort(key=lambda c: c["score"], reverse=True)
-    if not usable:
+
+    # (1) per-segment winners — the margin disambiguates homonyms WITHIN a segment.
+    seg_winners: list[dict[str, Any]] = []
+    for name in segments:
+        merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
+        merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
+        usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
+        if not usable:
+            continue
+        usable.sort(key=lambda c: c["score"], reverse=True)
+        winners = [usable[0]]
+        # a homonym folder: two DISTINCT entities matched within the margin → keep both.
+        if (
+            len(usable) >= 2
+            and (usable[1]["table"], usable[1]["id"]) != (usable[0]["table"], usable[0]["id"])
+            and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN
+        ):
+            winners.append(usable[1])
+        for w in winners:
+            ww = dict(w)
+            ww["matched_value"] = name
+            seg_winners.append(ww)
+
+    # (2) union across segments, dedup by entity keeping the best-scoring segment.
+    best: dict[tuple[str, Any], dict[str, Any]] = {}
+    for c in seg_winners:
+        key = (c["table"], c["id"])
+        if key not in best or c["score"] > best[key]["score"]:
+            best[key] = c
+    if not best:
         return []
+
+    ranked = sorted(best.values(), key=lambda c: c["score"], reverse=True)
 
     def _as_hint(c: dict[str, Any]) -> dict[str, Any]:
         return {
             "table": c["table"], "id": c["id"], "name": c["name"],
             "method": "folder_name", "score": CONF_FOLDER_MATCH,
-            "matched_value": name, "basis": "folder", "folder_sim": c["score"],
+            "matched_value": c["matched_value"], "basis": "folder",
+            "folder_sim": c["score"],
         }
 
-    if len(usable) >= 2 and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN:
-        return [_as_hint(usable[0]), _as_hint(usable[1])]
-    return [_as_hint(usable[0])]
+    # ≥2 DISTINCT entities anywhere in the path → AMBIGUOUS (never guess); else single.
+    if len(ranked) >= 2:
+        return [_as_hint(ranked[0]), _as_hint(ranked[1])]
+    return [_as_hint(ranked[0])]
 
 
 async def _match_fuzzy_name(
@@ -777,16 +906,41 @@ async def resolve_entity(
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
         # doc-type is company-ish OR when a company strong-id is present.
-        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt"}:
+        # 'unknown' probes here too (m248): an unclassified doc carrying a
+        # company strong-id field must not skip the company book and land on a
+        # person by npwp alone — the probe is a no-op without company fields.
+        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt", "unknown"}:
             strong += await _match_company_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "company"
 
-        # PERSON-side identifiers (passport/kitas) — and person npwp fallback.
+        # PERSON-side identifiers (passport/kitas/npwp).
         if not strong and (dt in _PERSON_DOC_TYPES or dt == "npwp" or dt == "unknown"):
             strong += await _match_person_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "person"
+        elif strong and subject_kind == "company":
+            # m248 npwp cross-table collision guard: the same 15/16-digit value
+            # on clients.npwp AND companies.npwp_company is a data error (one
+            # tax number cannot belong to both books). Company-first must not
+            # silently crown the company — surface the person hit too and let
+            # the matrix degrade to AMBIGUOUS (>1 distinct strong row).
+            company_npwp_vals = {
+                c.get("matched_value")
+                for c in strong
+                if c.get("method") == "npwp_company"
+            }
+            if company_npwp_vals:
+                person_hits = await _match_person_strong(conn, extracted_fields)
+                collisions = [
+                    c
+                    for c in person_hits
+                    if c.get("method") == "npwp"
+                    and c.get("matched_value") in company_npwp_vals
+                ]
+                if collisions:
+                    strong += collisions
+                    subject_kind = "unknown"
 
         # If still nothing strong and doc is company-ish, also try person strong
         # (defensive: a misclassified doc still gets a chance).

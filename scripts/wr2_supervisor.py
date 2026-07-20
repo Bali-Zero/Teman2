@@ -98,6 +98,7 @@ TRANSITIONS: dict[tuple[str | None, str], str | None] = {
     ("*", "rendered"):                                 None,  # Telegram only
     ("*", "fact_check_failed"):                        None,  # Telegram only — manual review terminal
     ("*", "rejected"):                                 None,  # log only
+    ("*", "parked"):                                   None,  # log only — B2 park backstop, no usable source
 }
 
 ALERT_STATUSES = {"rendered", "fact_check_failed"}

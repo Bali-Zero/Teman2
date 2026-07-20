@@ -37,6 +37,11 @@ export function getRiskBadge(risk: string): {
   className: string;
 } {
   const r = (risk || "").toLowerCase();
+  // Honest gap over false reassurance: an undefined/unclassified risk must NOT
+  // fall through to "Low Risk" (Zero decision 2026-07-17). A cured false-friend
+  // code has no risk basis — say so, neutrally.
+  if (!r || r === "not classified" || r === "unknown")
+    return { label: "Not Classified", className: "badge badge-neutral" };
   if (r.includes("tinggi") && r.includes("menengah"))
     return { label: "Medium-High Risk", className: "badge badge-warning" };
   if (r.includes("tinggi") || r === "high")
@@ -52,13 +57,17 @@ export function getRiskBadge(risk: string): {
 
 export function getRiskLevel(
   risk: string,
-): "low" | "medium-low" | "medium" | "medium-high" | "high" {
+): "low" | "medium-low" | "medium" | "medium-high" | "high" | "not-classified" {
   const r = (risk || "").toLowerCase();
+  // Undefined/unclassified → "not-classified" (neutral gauge, no misleading
+  // needle), NEVER the old default "low" which falsely reassured (Zero 2026-07-17).
+  if (!r || r === "not classified" || r === "unknown") return "not-classified";
   if (r.includes("tinggi") && r.includes("menengah")) return "medium-high";
   if (r.includes("tinggi") || r === "high") return "high";
   if (r.includes("menengah") && r.includes("rendah")) return "medium-low";
   if (r.includes("menengah") || r === "medium") return "medium";
-  return "low";
+  if (r.includes("rendah") || r === "low") return "low";
+  return "not-classified";
 }
 
 // =============================================================================

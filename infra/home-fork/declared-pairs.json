@@ -195,6 +195,30 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/dropbox-intake-sync.sh",
+      "repo": "scripts/dropbox_intake_sync.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): live was UNDECLARED (basename mismatch — hyphen vs underscore is an INTENTIONAL rename done by infra/launchagents/install_dropbox_intake.sh's `install -m 0755 ... dropbox-intake-sync.sh`, not a fork). Confirmed byte-identical.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-pg-proxy-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.balizero.wr2.pg-proxy home_fork_target finding). Wrapper fixes a fly CLI v0.4.49 token regression (extracts access_token from config.yml, injects via FLY_ACCESS_TOKEN, validates before binding). Promoted verbatim; canon plist updated to match (ThrottleInterval 10->30).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/intake-gate-pusher-run.sh",
+      "repo": "infra/launchagents/wrappers/intake-gate-pusher-run.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.nuzantara.intake-gate-count-pusher home_fork_target finding). Sources BRIDGE_API_KEY from 0600 $HOME/.cell-bridge-state/wa-media.env (durable across reboot, replaces a fragile dedicated-keychain approach that macOS quarantined under concurrent launchd access). Promoted verbatim.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/wa-media-pull-run.sh",
+      "repo": "infra/launchagents/wrappers/wa-media-pull-run.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.nuzantara.wa-media-pull home_fork_target finding). Same $HOME/.cell-bridge-state/wa-media.env pattern as intake-gate-pusher-run.sh (WHATSAPP_ACCESS_TOKEN + BRIDGE_API_KEY, 0600, no secret in plist). Promoted verbatim.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/fly-qdrant-backup.sh",
       "repo": "scripts/fly-qdrant-backup.sh",
       "machines": ["pro"]
@@ -318,6 +342,50 @@
       "live": "~/Library/LaunchAgents/com.balizero.wr2.image-generator.plist",
       "repo": "infra/launchagents/com.balizero.wr2.image-generator.plist",
       "_note": "2026-07-16: added WR2_IMAGE_VLM_URL=http://100.93.236.6:11434 (Mini tailscale IP) so the VLM quality-scorer routes off Pro's contended Ollama (176 daemons, ~60s+ under load) onto Mini's dedicated Ollama. Was undeclared before this pair was created.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/pro-git-pull-main.sh",
+      "repo": "infra/launchagents/wrappers/pro-git-pull-main.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.git-pull-main.15min.plist",
+      "repo": "infra/launchagents/com.nuzantara.git-pull-main.15min.plist",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/launchd-liveness-detector.sh",
+      "repo": "infra/launchagents/wrappers/launchd-liveness-detector.sh",
+      "_note": "liveness-detector-arm-0717 (PENDING-ARMS, not yet installed): declared pre-emptively so lint_home_fork.py --discover does not flag the future HOME-fork copy as undeclared once operator[control-plane] installs it. Pro-only by design (per-host launchd/log state — a Mini copy would need its own instance, not a shared one, cf. superscar #10 active-active).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.claude/hooks/worktree_isolation.py",
+      "repo": "infra/claude-hooks/worktree_isolation.py",
+      "_note": "worktree-isolation guard (superscar #3, most-scarred guard in the organism). install via infra/claude-hooks/install_worktree_hooks.sh (self-verifying vaccine + rollback), NOT install_phase_aware.sh which skips it. Declared 2026-07-17 after an 11-day fleet-wide drift went unnoticed (no pair existed) — superscar #1 antidote applied to the guard itself.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/worktree_file_write_check.py",
+      "repo": "infra/claude-hooks/worktree_file_write_check.py",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/runtime_state_allowlist.json",
+      "repo": "infra/claude-hooks/runtime_state_allowlist.json",
+      "_note": "DATA read by worktree_isolation.py (the ff-only exception's per-machine allowlist). install_worktree_hooks.sh deploys it as 644 alongside the two .py hooks.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/log-rotate-run.sh",
+      "repo": "infra/launchagents/wrappers/log-rotate-run.sh",
+      "_note": "Born via organ_birth.py 2026-07-17 (pro.log_rotate) to cure Pro logs growing unrotated (PENDING-ARMS ledger line ~306: supervisor.err 182M, cron-log-sentinel.log 122M, mata-garuda-kg-api.err 111M, translate-hourly.log 100M).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.log-rotate.daily.plist",
+      "repo": "infra/launchagents/com.nuzantara.log-rotate.daily.plist",
       "machines": ["pro"]
     }
   ],

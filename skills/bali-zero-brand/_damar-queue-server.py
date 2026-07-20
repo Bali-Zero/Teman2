@@ -101,6 +101,45 @@ def find_item(queue, item_id):
     return None
 
 
+def _completeness_refusal(item):
+    """Defense-in-depth pre-publish gate (Codex red-team CRITICAL #1,
+    2026-07-16): re-verify disk against the item's own recorded intent right
+    before publish, independent of whatever state-machine guard let us reach
+    this point. Returns an error string, or None when the item is safe to
+    publish. Fails OPEN only when slides_dir is genuinely absent from the
+    entry (nothing to verify against — pre-existing entries without a local
+    dir, review happened on Drive) or the intended count is unknown; fails
+    CLOSED (refuses) on any verifiable mismatch."""
+    slides_dir = item.get("slides_dir")
+    if not slides_dir:
+        return None
+    intended = item.get("intended_slide_count") or item.get("slide_count")
+    if not isinstance(intended, int) or intended <= 0:
+        return None
+    try:
+        import sys as _sys
+
+        # Resolve the sibling scripts/ dir relative to THIS file, never
+        # Path.home() (scar family #1, HOME-fork drift): this file always
+        # lives at <repo_root>/skills/bali-zero-brand/, so its own location
+        # is the one path that is correct whether it's running from the main
+        # checkout or a worktree.
+        _scripts_dir = str(Path(__file__).resolve().parents[2] / "scripts")
+        if _scripts_dir not in _sys.path:
+            _sys.path.insert(0, _scripts_dir)
+        import wr2_html_render_apply as _viz  # lazy: heavy backend.* import chain
+
+        disk = _viz.derive_slide_count(Path(slides_dir))
+    except Exception:
+        return None  # can't verify (module/env issue) — don't block on our own fragility
+    if disk != intended:
+        return (
+            f"completeness gate: disk has {disk} slide(s) but intended={intended} "
+            f"— refusing to publish an incomplete carousel"
+        )
+    return None
+
+
 @with_queue_lock
 def mark_published(item_id, ig_url):
     queue = load_queue()
@@ -111,6 +150,9 @@ def mark_published(item_id, ig_url):
         return {"ok": False, "error": f"cannot publish from state '{item['state']}'"}, 400
     if not ig_url or not ig_url.startswith("https://"):
         return {"ok": False, "error": "ig_url must be an https URL"}, 400
+    refusal = _completeness_refusal(item)
+    if refusal:
+        return {"ok": False, "error": refusal}, 409
 
     has_edits = bool((item.get("designer_override_diff") or {}).get("has_changes"))
     new_state = "published_with_edits" if has_edits else "published"
@@ -161,6 +203,18 @@ def capture_delta(item_id):
     item = find_item(queue, item_id)
     if not item:
         return {"ok": False, "error": f"item {item_id} not found"}, 404
+    # CRITICAL fix (Codex red-team #1, 2026-07-16): this endpoint had NO state
+    # guard at all — it flipped ANY state straight to 'reviewed', including
+    # 'render_incomplete'. Since mark_published already accepts 'reviewed',
+    # that was a live path from render_incomplete -> reviewed -> published
+    # with zero completeness check anywhere in between. Allow-list mirrors
+    # flag_needs_human_edit: only a carousel actually awaiting review can
+    # advance via this action.
+    if item["state"] not in ("drafted", "drafted_needs_human_edit"):
+        return {
+            "ok": False,
+            "error": f"cannot capture delta from state '{item['state']}'",
+        }, 400
 
     now = datetime.now(timezone.utc).isoformat()
     item["state"] = "reviewed"

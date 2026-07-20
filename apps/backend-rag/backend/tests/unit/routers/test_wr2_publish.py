@@ -169,6 +169,134 @@ def test_confirm_calls_publish_with_approved_draft(monkeypatch: pytest.MonkeyPat
 # ── 3. admin gate => non-admin user is 403 ─────────────────────────────────────
 
 
+# ── CRITICAL #1 (Codex red-team, 2026-07-16): DB-driven completeness gate ──
+# This endpoint receives image_urls the app already uploaded — it cannot
+# re-derive a disk count, but it CAN cross-check the draft's OWN DB input
+# (war_room_drafts.slides_json), independent of anything the client claims.
+
+
+def test_confirm_refuses_when_image_urls_disagree_with_db_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: war_room_drafts.slides_json for this slug declares 5 slides but
+    only 3 image_urls were provided — refuse with 409 before the ledger or
+    publisher are ever touched."""
+    monkeypatch.setattr(
+        wr2_publish, "_resolve_intended_slide_count", AsyncMock(return_value=5)
+    )
+    ledger_spy = AsyncMock(
+        side_effect=AssertionError("ledger must NOT run when the completeness gate refuses")
+    )
+    monkeypatch.setattr(wr2_publish, "_ledger_precondition", ledger_spy)
+    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "24126743553672359")
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "dummy-token-not-used")
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post("/api/war-room/publish-ig", json=_body(confirm=True))
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 409, resp.text
+    detail = resp.json()["detail"]
+    assert detail["error"] == "incomplete_carousel"
+    ledger_spy.assert_not_called()
+
+
+def test_dry_run_also_refuses_on_db_intent_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The gate applies to BOTH confirm=False and confirm=True — an operator
+    should see the refusal before ever attempting a real publish."""
+    monkeypatch.setattr(
+        wr2_publish, "_resolve_intended_slide_count", AsyncMock(return_value=9)
+    )
+    validate_spy = AsyncMock(
+        side_effect=AssertionError("must not even reach dry validation on a mismatch")
+    )
+    monkeypatch.setattr(
+        "backend.services.publisher.ig_publisher.IGPublisher.validate", validate_spy
+    )
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post("/api/war-room/publish-ig", json=_body(confirm=False))
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 409, resp.text
+    validate_spy.assert_not_called()
+
+
+def test_confirm_proceeds_when_no_matching_draft_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    """INNOCENCE: no matching war_room_drafts row for this slug (e.g. a
+    carousel published outside the auto-render pipeline) -> fails OPEN, the
+    endpoint behaves exactly as before this fix."""
+    monkeypatch.setattr(
+        wr2_publish, "_resolve_intended_slide_count", AsyncMock(return_value=None)
+    )
+    permalink = "https://www.instagram.com/p/OK123/"
+    monkeypatch.setattr(
+        wr2_publish,
+        "_ledger_precondition",
+        AsyncMock(return_value=(str(uuid4()), "proceed", None)),
+    )
+    monkeypatch.setattr(wr2_publish, "_ledger_record_result", AsyncMock())
+    monkeypatch.setattr(
+        "backend.services.publisher.ig_publisher.IGPublisher.publish",
+        AsyncMock(
+            return_value=PublishResult(
+                ok=True, platform=Platform.INSTAGRAM, draft_id=uuid4(),
+                post_url=permalink, post_external_id="123", meta={},
+            )
+        ),
+    )
+    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "24126743553672359")
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "dummy-token-not-used")
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post("/api/war-room/publish-ig", json=_body(confirm=True))
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["permalink"] == permalink
+
+
+def test_confirm_proceeds_when_image_urls_match_db_intent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """INNOCENCE: image_urls count matches the DB-declared intent exactly ->
+    proceeds normally through the confirm path."""
+    monkeypatch.setattr(
+        wr2_publish, "_resolve_intended_slide_count", AsyncMock(return_value=len(IMAGE_URLS))
+    )
+    permalink = "https://www.instagram.com/p/OK456/"
+    monkeypatch.setattr(
+        wr2_publish,
+        "_ledger_precondition",
+        AsyncMock(return_value=(str(uuid4()), "proceed", None)),
+    )
+    monkeypatch.setattr(wr2_publish, "_ledger_record_result", AsyncMock())
+    monkeypatch.setattr(
+        "backend.services.publisher.ig_publisher.IGPublisher.publish",
+        AsyncMock(
+            return_value=PublishResult(
+                ok=True, platform=Platform.INSTAGRAM, draft_id=uuid4(),
+                post_url=permalink, post_external_id="456", meta={},
+            )
+        ),
+    )
+    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "24126743553672359")
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "dummy-token-not-used")
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post("/api/war-room/publish-ig", json=_body(confirm=True))
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["permalink"] == permalink
+
+
 def test_non_admin_is_forbidden() -> None:
     """A non-admin user is blocked by the router-level _require_admin dependency."""
     app = _app(NON_ADMIN_USER)
@@ -383,3 +511,66 @@ def test_upload_slide_tigris_failure_is_502(monkeypatch: pytest.MonkeyPatch) -> 
         app.dependency_overrides.clear()
     assert resp.status_code == 502
     assert "Tigris upload failed" in resp.json()["detail"]
+
+
+# ── _resolve_intended_slide_count: fail-open contract (regression) ─────────
+#
+# Caught by the pre-push suite against a real (empty-schema) test Postgres,
+# not by any test in this file — every existing test mocks
+# _resolve_intended_slide_count as a black box, so a bug INSIDE it was
+# invisible here. asyncpg.connect() succeeded (the DSN was reachable) but
+# the SELECT failed with UndefinedTableError (no war_room_drafts table in
+# that DB) — the query call was outside the try/except that only guarded
+# asyncpg.connect(), so the exception propagated and crashed the endpoint
+# instead of failing open per the function's own documented contract.
+
+
+@pytest.mark.asyncio
+async def test_resolve_intended_slide_count_fails_open_on_connect_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT (already worked): a DSN that can't be connected to must yield
+    None, not raise."""
+    monkeypatch.setattr(wr2_publish.settings, "database_url", "postgresql://bad/dsn")
+    monkeypatch.setattr(
+        wr2_publish.asyncpg, "connect", AsyncMock(side_effect=OSError("no route to host"))
+    )
+    result = await wr2_publish._resolve_intended_slide_count("some-slug")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_intended_slide_count_fails_open_on_query_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT (the bug this pins): connect() succeeds but fetchrow() raises
+    (e.g. the table doesn't exist in this DB) — must still yield None, and
+    the connection must still be closed, not raise past the caller."""
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(side_effect=RuntimeError('relation "war_room_drafts" does not exist'))
+    conn.close = AsyncMock()
+    monkeypatch.setattr(wr2_publish.settings, "database_url", "postgresql://ok/dsn")
+    monkeypatch.setattr(wr2_publish.asyncpg, "connect", AsyncMock(return_value=conn))
+
+    result = await wr2_publish._resolve_intended_slide_count("some-slug")
+
+    assert result is None
+    conn.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_resolve_intended_slide_count_returns_count_on_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE: a real row with a parseable slides_json still resolves to
+    the correct count — the fail-open fix must not swallow the happy path."""
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value={"slides_json": {"slides": [{}, {}, {}]}})
+    conn.close = AsyncMock()
+    monkeypatch.setattr(wr2_publish.settings, "database_url", "postgresql://ok/dsn")
+    monkeypatch.setattr(wr2_publish.asyncpg, "connect", AsyncMock(return_value=conn))
+
+    result = await wr2_publish._resolve_intended_slide_count("some-slug")
+
+    assert result == 3
+    conn.close.assert_awaited_once()

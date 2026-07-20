@@ -65,6 +65,7 @@ START_EPOCH=$(date +%s)
 
 # Allow up to 30 min for the full pass (5 NB × ~3min each + dedup clustering)
 timeout 1800 claude -p "$PROMPT" --model claude-sonnet-5 \
+    --max-budget-usd "${NB_CURATOR_MAX_BUDGET_USD:-5}" \
     >> "$LOG_FILE" 2>&1
 EXIT=$?
 

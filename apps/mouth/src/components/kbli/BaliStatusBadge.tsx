@@ -17,7 +17,8 @@ export type BaliStatus =
   | "TERTUTUP"
   | "TERBATAS"
   | "TERTUTUP_CANDIDATE"
-  | "TERBATAS_CANDIDATE";
+  | "TERBATAS_CANDIDATE"
+  | "NON_CLASSIFICABILE";
 
 interface BaliStatusBadgeProps {
   status: string;
@@ -103,6 +104,16 @@ const config: Record<
   },
   TERBATAS_CANDIDATE: {
     label: "Likely restricted — verify",
+    icon: "❓",
+    tone: "warn",
+  },
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): the risk tier this verdict
+  // depended on was carried over from a different activity through a
+  // code-number collision and has been detached — the moratorium
+  // applicability is genuinely unresolved, not "verify a special regime"
+  // (NEEDS_REVIEW_NO_OSS_SCOPE) or a known ok/blocked verdict.
+  NON_CLASSIFICABILE: {
+    label: "Bali status not classifiable — verify",
     icon: "❓",
     tone: "warn",
   },

@@ -193,6 +193,18 @@ setuptools>=83.0.0
 # Structured logging
 structlog>=24.1.0
 
+# visa_engine signed rule-pack loader (backend/services/visa_engine/bundle.py):
+# RFC 8785 JCS canonicalization + JSON Schema validation of the signed envelope.
+# Declared here too (not only requirements-prod.txt) because CI Backend Tests and
+# the Fly build install from THIS manifest — a prod-only declaration left the
+# imports unresolved in CI (ModuleNotFoundError: rfc8785). jsonschema is also
+# pulled transitively via mcp, but bundle.py imports Draft202012Validator/
+# FormatChecker directly, so it is declared explicitly; rfc3339-validator makes
+# jsonschema's FormatChecker() "date-time" check real instead of a silent no-op.
+rfc8785==0.1.4  # exact pin: canonicalization is a deterministic security contract
+jsonschema>=4.26.0
+rfc3339-validator>=0.1.4
+
 # Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
 # Skill, Metabolic, HGT). Editable install; path is resolved relative to the
 # working directory where `pip install -r` is invoked, which for this

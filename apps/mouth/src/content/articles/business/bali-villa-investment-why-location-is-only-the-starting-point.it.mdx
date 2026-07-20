@@ -25,6 +25,7 @@ aiOptimization:
 
 locale: "it"
 ---
+
 ## TL;DR
 
 <InfoCard
@@ -32,7 +33,10 @@ locale: "it"
   items={[
     { label: "Dovrei Preoccuparmi?", value: "Dipende" },
     { label: "Livello di Rischio", value: "Medio" },
-    { label: "Chi è Coinvolto", value: "Espatriati e investitori in Indonesia" },
+    {
+      label: "Chi è Coinvolto",
+      value: "Espatriati e investitori in Indonesia",
+    },
     { label: "Quando", value: "Controlla l'articolo per le date specifiche" },
   ]}
 />
@@ -80,8 +84,16 @@ Per i clienti nella fase pre-acquisto, l'ordine di priorità è: verificare la p
 <Checklist
   title="Azioni da Compire"
   items={[
-    { text: "Per gli Espatriati", subItems: ["Rivedi l'articolo per le azioni specifiche"] },
-    { text: "Per gli Investitori", subItems: ["Se sei in fase di due diligence: commissiona un'auditoria legale completa del certificato di terreno, della classificazione della pianificazione, dei permessi esistenti e di qualsiasi storia di affitto o encumbrance prima di trasferire fondi. Usa un notaro (PPAT) indipendente dal venditore.\n\nSe possiedi già una villa e non sei certo della tua struttura: richiedi un controllo legale da un'azienda di avvocati indonesiana qualificata o da una consulenza con capacità legale interna. I problemi più comuni — accordi con procuratori, IMB scaduti non convertiti in PBG, e codici KBLI mancanti o errati nella società di detenzione — sono risolvibili se individuati precocemente.\n\nSe stai considerando una struttura PT PMA: conferma i threshold di investimento minimo e le restrizioni settoriali sotto l'attuale Lista Negativa degli Investimenti (DNI) prima di incorporare. Alcuni codici KBLI del settore ospedaliero portano limiti di proprietà straniera che influenzano la tua capacità di detenere il 100% dell'entità."] },
+    {
+      text: "Per gli Espatriati",
+      subItems: ["Rivedi l'articolo per le azioni specifiche"],
+    },
+    {
+      text: "Per gli Investitori",
+      subItems: [
+        "Se sei in fase di due diligence: commissiona un'auditoria legale completa del certificato di terreno, della classificazione della pianificazione, dei permessi esistenti e di qualsiasi storia di affitto o encumbrance prima di trasferire fondi. Usa un notaro (PPAT) indipendente dal venditore.\n\nSe possiedi già una villa e non sei certo della tua struttura: richiedi un controllo legale da un'azienda di avvocati indonesiana qualificata o da una consulenza con capacità legale interna. I problemi più comuni — accordi con procuratori, IMB scaduti non convertiti in PBG, e codici KBLI mancanti o errati nella società di detenzione — sono risolvibili se individuati precocemente.\n\nSe stai considerando una struttura PT PMA: conferma i threshold di investimento minimo e le restrizioni settoriali sotto l'attuale Lista Negativa degli Investimenti (DNI) prima di incorporare. Alcuni codici KBLI del settore ospedaliero portano limiti di proprietà straniera che influenzano la tua capacità di detenere il 100% dell'entità.",
+      ],
+    },
   ]}
 />
 

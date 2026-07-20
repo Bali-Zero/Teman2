@@ -233,6 +233,399 @@ async def test_submit_scraper_duplicate_article(client_no_auth):
 
 
 @pytest.mark.asyncio
+async def test_submit_scraper_duplicate_backfills_enrichment(client_no_auth):
+    """GUILT (round-2 red-team MUST-FIX #3, scar family #9): re-submitting
+    a duplicate URL whose existing staging file has no usable enrichment,
+    with a non-empty enrichment in the NEW submission, must heal the
+    existing file in place (HTTP-level round-trip of the same fix covered
+    at the router-unit level)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    existing_item = {
+        "item_id": "news-existing-heal",
+        "title": "Existing",
+        "source_url": SCRAPER_PAYLOAD["source_url"],
+        "enrichment": {},
+    }
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-new-submission"
+    mock_staging_svc.check_duplicate.return_value = existing_item
+    mock_staging_svc.load_staging_item.return_value = dict(existing_item)
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    enrichment_obj = {"the_facts": "Fresh facts.", "bali_zero_take": "Fresh take."}
+    payload = {**SCRAPER_PAYLOAD, "enrichment": enrichment_obj}
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["duplicate"] is True
+    assert data["enrichment_backfilled"] is True
+    mock_staging_svc.load_staging_item.assert_called_once_with("news", "news-existing-heal")
+    mock_staging_svc.save_staging_item.assert_called_once()
+    saved_type, saved_id, saved_data = mock_staging_svc.save_staging_item.call_args[0]
+    assert saved_type == "news"
+    assert saved_id == "news-existing-heal"
+    assert saved_data["enrichment"] == enrichment_obj
+
+
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — live_news fields (WR2 liveness rewire, break #2)
+#
+# The enricher (claude_cli_enricher._normalize_live_news_fields) computes
+# live_news_score/liveness_tier/live_news_reasons, but ScraperSubmission had
+# no fields to receive them — carried, validated, and defaulted here.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_fields_persisted(client_no_auth):
+    """GUILT: submitted live_news_score/liveness_tier/live_news_reasons are
+    carried into staging_data verbatim."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-live"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-live.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    payload = {
+        **SCRAPER_PAYLOAD,
+        "live_news_score": 85,
+        "liveness_tier": "breaking",
+        "live_news_reasons": ["official announcement", "effective today"],
+    }
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    mock_staging_svc.save_staging_item.assert_called_once()
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["live_news_score"] == 85
+    assert staging_data["liveness_tier"] == "breaking"
+    assert staging_data["live_news_reasons"] == ["official announcement", "effective today"]
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_fields_default(client_no_auth):
+    """INNOCENCE: submission WITHOUT live_news fields defaults to
+    0 / "evergreen" / [] in staging_data (legacy scraper payloads must not
+    break)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-default"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-default.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=SCRAPER_PAYLOAD,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["live_news_score"] == 0
+    assert staging_data["liveness_tier"] == "evergreen"
+    assert staging_data["live_news_reasons"] == []
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_score_out_of_range_rejected(client_no_auth):
+    """VALIDATION: live_news_score > 100 is rejected (422) before it can
+    ever reach staging."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 150}
+
+    with patch(
+        "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+        return_value={"role": "service"},
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_liveness_tier_invalid_value_rejected(client_no_auth):
+    """VALIDATION: liveness_tier outside the 3-value enum is rejected
+    (422)."""
+    payload = {**SCRAPER_PAYLOAD, "liveness_tier": "hot"}
+
+    with patch(
+        "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+        return_value={"role": "service"},
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — tier derivation from score (red-team FIX3,
+# 2026-07-18). A submission with live_news_score but NO liveness_tier must
+# NOT silently default to "evergreen" (which would exclude an 85/100
+# breaking-news item from wr2_topic_selector's live pool) — derive the tier
+# from the enricher's own bucket scheme instead. An explicitly-provided,
+# validated tier is always trusted as-is (not overridden by the score).
+# ---------------------------------------------------------------------------
+
+
+async def _submit_and_get_staging_data(payload: dict) -> dict:
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-tier-derive"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-tier-derive.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    return mock_staging_svc.save_staging_item.call_args[0][2]
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_breaking_tier_from_high_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """GUILT: score=85, tier absent → staging_data liveness_tier "breaking"
+    (was "evergreen" pre-fix — an 85/100 breaking item excluded from the
+    live pool)."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 85}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 85
+    assert staging_data["liveness_tier"] == "breaking"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_developing_tier_from_mid_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """score=55, tier absent → staging_data liveness_tier "developing"."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 55}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 55
+    assert staging_data["liveness_tier"] == "developing"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_evergreen_tier_from_low_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """score=10, tier absent → staging_data liveness_tier "evergreen"."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 10}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 10
+    assert staging_data["liveness_tier"] == "evergreen"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_trusts_explicit_tier_over_score_derivation(
+    client_no_auth,
+) -> None:
+    """INNOCENCE: an explicitly-provided, validated liveness_tier is trusted
+    as-is — NOT overridden by the score-derivation fallback, even when the
+    two would disagree (score=10 would bucket to "evergreen" but the caller
+    explicitly said "breaking")."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 10, "liveness_tier": "breaking"}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 10
+    assert staging_data["liveness_tier"] == "breaking"
+
+
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — enrichment passthrough (scar family #9,
+# state-schema mutation drift). The intel enricher produces a full
+# structured object (the_facts/bali_zero_take/in_practice/next_steps/faq/
+# thirty_second_brief/metadata) but ScraperSubmission had no field to
+# receive it — wr2_topic_selector wrote enrichment: {} into every draft's
+# brief_json (verified 2026-06-24: {} on 12/12 drafts).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_enrichment_persisted(client_no_auth):
+    """GUILT: a submitted `enrichment` object round-trips verbatim into
+    staging_data over the HTTP contract (not just at the Pydantic-model
+    level)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-enrich-http"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-enrich-http.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    enrichment_obj = {
+        "the_facts": "Facts here.",
+        "bali_zero_take": "Our take.",
+        "thirty_second_brief": "Brief.",
+        "faq": [{"q": "Q1", "a": "A1"}],
+        "metadata": {"suggested_slug": "slug", "tags": ["tag1"]},
+    }
+    payload = {**SCRAPER_PAYLOAD, "enrichment": enrichment_obj}
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    mock_staging_svc.save_staging_item.assert_called_once()
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["enrichment"] == enrichment_obj
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_enrichment_absent_still_validates(client_no_auth):
+    """INNOCENCE (backward-compat): a legacy payload WITHOUT `enrichment`
+    still validates (200, not 422) and defaults to {} in staging_data —
+    the additive/optional field must never break existing scraper
+    callers."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-no-enrich"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-no-enrich.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=SCRAPER_PAYLOAD,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["enrichment"] == {}
+
+
+@pytest.mark.asyncio
 async def test_submit_scraper_missing_api_key(client_no_auth):
     """Missing API key → 401."""
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
