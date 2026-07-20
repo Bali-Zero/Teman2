@@ -25,7 +25,7 @@ Trigger this skill when ANY of the following is true:
 - User explicitly asks to ingest a regulation
 - A devils-advocate report flags `NOT_FOUND_IN_QUERIED` for a regulation
   that subsequent web check confirms IS real (e.g. KEP-55/PJ/2026 case)
-- A research file (`~/Desktop/nuzantara/research/`) cites a new regulation
+- A research file (`~/nuzantara/research/`) cites a new regulation
   not yet covered
 - Intel scraper drops a new daily regulation into `bz:regulatory.delta.detected`
   event stream
@@ -87,11 +87,11 @@ If found, capture:
 
 ### Step 1 — Download PDF
 
-Goal: get the official PDF in `~/Desktop/nuzantara/data/source_documents/peraturan/`.
+Goal: get the official PDF in `~/nuzantara/data/source_documents/peraturan/`.
 
 ```bash
-mkdir -p ~/Desktop/nuzantara/data/source_documents/peraturan/<domain>/
-PDF_PATH=~/Desktop/nuzantara/data/source_documents/peraturan/<domain>/<reg_code_safe>.pdf
+mkdir -p ~/nuzantara/data/source_documents/peraturan/<domain>/
+PDF_PATH=~/nuzantara/data/source_documents/peraturan/<domain>/<reg_code_safe>.pdf
 
 # Try direct PDF first
 curl -sfL -o "$PDF_PATH" "<jdih_pdf_url>" -w "HTTP %{http_code}, size %{size_download}\n"
@@ -252,7 +252,7 @@ The pipeline reuses the existing `LegalIngestionService` (NEVER reimplement
 the chunker / embedder / BM25 vectorizer — they are tested and tuned).
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag
+cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
 DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable" \
 PYTHONPATH=. python3 << 'EOF'
@@ -308,7 +308,7 @@ like "show me all KITAS-related obligations from Permenkumham 22/2023".
 runs KG extraction LOCALLY on Pro (which has 48GB RAM, no OOM concern).
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag
+cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
 DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable" \
 OPENAI_API_KEY="<from .env>" \
@@ -390,23 +390,23 @@ Now reachable by:
 
 ## Failure modes
 
-| Failure                                                | Recovery                                                                                        |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| JDIH page 403/404                                      | Mark `regulation_not_verifiable`, ask user for alt source                                       |
-| PDF download fails                                     | Try text fallback; if also fails, NB-only path                                                  |
-| Drive upload fails (quota)                             | Retry once; if still fails, write to local `~/Desktop/nuzantara/data/peraturan/` for later sync |
-| Spreadsheet append fails                               | Check SA permissions on sheet; manual edit as fallback                                          |
-| NB source add fails                                    | Wait 60s + retry; check `nlm doctor`                                                            |
-| Qdrant upsert fails                                    | Check `LegalIngestionService` logs; chunks may be empty (PDF parse failed)                      |
-| KG extraction OOM                                      | Reduce `--limit` flag; or split file into article-level extraction                              |
-| All 5 succeed but devils-advocate still says NOT_FOUND | Wait 5 min for NB indexing + invalidate Redis cache `da:nb_reg:<canonical>`                     |
+| Failure                                                | Recovery                                                                                |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| JDIH page 403/404                                      | Mark `regulation_not_verifiable`, ask user for alt source                               |
+| PDF download fails                                     | Try text fallback; if also fails, NB-only path                                          |
+| Drive upload fails (quota)                             | Retry once; if still fails, write to local `~/nuzantara/data/peraturan/` for later sync |
+| Spreadsheet append fails                               | Check SA permissions on sheet; manual edit as fallback                                  |
+| NB source add fails                                    | Wait 60s + retry; check `nlm doctor`                                                    |
+| Qdrant upsert fails                                    | Check `LegalIngestionService` logs; chunks may be empty (PDF parse failed)              |
+| KG extraction OOM                                      | Reduce `--limit` flag; or split file into article-level extraction                      |
+| All 5 succeed but devils-advocate still says NOT_FOUND | Wait 5 min for NB indexing + invalidate Redis cache `da:nb_reg:<canonical>`             |
 
 ## Reference resources
 
 - `~/scripts/eventbus/devils_advocate_runner.py` — NB_REGISTRY canonical UUID map
-- `~/Desktop/nuzantara/apps/backend-rag/scripts/ingest_t0_regulations.py` — reference ingest script
-- `~/Desktop/nuzantara/apps/backend-rag/scripts/kg_incremental_extraction.py` — KG extraction
-- `~/Desktop/nuzantara/apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py` — main pipeline
+- `~/nuzantara/apps/backend-rag/scripts/ingest_t0_regulations.py` — reference ingest script
+- `~/nuzantara/apps/backend-rag/scripts/kg_incremental_extraction.py` — KG extraction
+- `~/nuzantara/apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py` — main pipeline
 - Spreadsheet GAP_ANALYSIS: `https://docs.google.com/spreadsheets/d/1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us/edit`
 - Lesson `lessons_devils_advocate_loop_pattern.md` — why 90s NB wait matters
 - CLAUDE.md §15 (Research Capture Convention) — adjacent convention for non-regulatory docs

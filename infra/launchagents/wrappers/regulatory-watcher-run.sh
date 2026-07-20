@@ -37,11 +37,11 @@ export NLM_PROFILE=default
 # without homebrew on PATH (proved live 2026-07-06 05:09).
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
-mkdir -p "$HOME/Desktop/nuzantara/research/regulatory" "$HOME/logs"
+mkdir -p "$HOME/nuzantara/research/regulatory" "$HOME/logs"
 
 LOG="$HOME/logs/regulatory-watcher.log"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
-DELTA_JSON="$HOME/Desktop/nuzantara/research/regulatory/${DATE}-delta.json"
+DELTA_JSON="$HOME/nuzantara/research/regulatory/${DATE}-delta.json"
 DELTA_BASENAME="${DATE}-delta.json"
 
 # W84 fail-fast probe (TAC-2 A4): if this launchd context cannot READ ~/Desktop
@@ -51,7 +51,7 @@ DELTA_BASENAME="${DATE}-delta.json"
 # LLM tiers; launchd's non-zero exit is picked up by launchd_liveness_detector.
 # NB: must be a REAL read (head -c 1), not `[ -r ]` — TCC denies at open(2),
 # while access(2) can still say yes (the probe itself must not be a proxy).
-if ! head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
+if ! head -c 1 "$HOME/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
     # W84 TRAMPOLINE (2026-07-06): before aborting, re-exec THIS wrapper through
     # `ssh localhost` — the sshd context has Full Disk Access, so the whole run
     # (zsh, node/claude, file writes under ~/Desktop) works uniformly regardless
@@ -65,7 +65,7 @@ if ! head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
         echo "[$(date)] W84: TCC denies ~/Desktop in this launchd context — re-exec via ssh-localhost trampoline (sshd has FDA)" >> "$LOG"
         exec ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -i "$HOME/.ssh/id_local_trampoline" localhost "REGWATCH_TRAMPOLINED=1 '$0'"
     fi
-    echo "[$(date)] FATAL: TCC denies ~/Desktop/nuzantara in this launchd context (W84) and no trampoline key — re-grant Full Disk Access to the job's interpreter. Aborting before any LLM tier." >> "$LOG"
+    echo "[$(date)] FATAL: TCC denies ~/nuzantara in this launchd context (W84) and no trampoline key — re-grant Full Disk Access to the job's interpreter. Aborting before any LLM tier." >> "$LOG"
     exit 78
 fi
 
@@ -85,7 +85,7 @@ if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
 elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
     HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
 else
-    HEARTBEAT_LIB="$HOME/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+    HEARTBEAT_LIB="$HOME/nuzantara/scripts/lib/heartbeat.sh"
 fi
 ORGANISM_HB_STATUS="starting"
 ORGANISM_HB_NOTE="regulatory watcher start"
@@ -143,10 +143,10 @@ echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 # instance names its own parent while it is still alive in the log line.
 echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
-PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/Desktop/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
+PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
-PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI, JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/Desktop/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
+PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI, JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
 
 TMPOUT=$(mktemp)
 SUCCESS=0
@@ -165,15 +165,15 @@ PYBIN="${REGWATCH_PYTHON:-$(command -v python3 || echo /usr/bin/python3)}"
 recover_delta() {
     setopt local_options null_glob
     local -a _hits
-    _hits=( "$HOME"/Desktop/nuzantara/.worktrees/*/research/regulatory/"$DELTA_BASENAME"(N.om) )
+    _hits=( "$HOME"/nuzantara/.worktrees/*/research/regulatory/"$DELTA_BASENAME"(N.om) )
     if (( ${#_hits} > 0 )); then
         cp "${_hits[1]}" "$DELTA_JSON" && echo "[$(date)] W81-fix: recovered delta from worktree file ${_hits[1]} -> main" >> "$LOG"
         return 0
     fi
     local _wt_branch
-    _wt_branch="$(cd "$HOME/Desktop/nuzantara" && git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/agent/*/intel/watcher-*' 2>/dev/null | head -1)"
-    if [ -n "$_wt_branch" ] && (cd "$HOME/Desktop/nuzantara" && git cat-file -e "$_wt_branch:research/regulatory/$DELTA_BASENAME" 2>/dev/null); then
-        (cd "$HOME/Desktop/nuzantara" && git show "$_wt_branch:research/regulatory/$DELTA_BASENAME") > "$DELTA_JSON" \
+    _wt_branch="$(cd "$HOME/nuzantara" && git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/agent/*/intel/watcher-*' 2>/dev/null | head -1)"
+    if [ -n "$_wt_branch" ] && (cd "$HOME/nuzantara" && git cat-file -e "$_wt_branch:research/regulatory/$DELTA_BASENAME" 2>/dev/null); then
+        (cd "$HOME/nuzantara" && git show "$_wt_branch:research/regulatory/$DELTA_BASENAME") > "$DELTA_JSON" \
           && echo "[$(date)] W81-fix: recovered delta from branch $_wt_branch -> main" >> "$LOG"
         return 0
     fi
@@ -227,6 +227,43 @@ ensure_delta() {
     return 1
 }
 
+# 2026-07-20 live find: a delta can satisfy the schema (new_today_count + deltas
+# keys) while the model admits `partial:true` — proved live when Claude+agy+Codex
+# all missed on the same run and ollama qwen3.5 (no web access) answered "I cannot
+# browse JDIH/peraturan.go.id... I will provide a JSON structure reflecting zero
+# new findings" and then emitted a schema-valid {new_today_count:0, partial:true}
+# stub. ensure_delta()'s schema check (has the right KEYS) cannot tell that stub
+# apart from a real completed scan that genuinely found nothing — only `partial`
+# does. A false "0 new" is worse than a visible gap: a gap is honestly absent,
+# this looks like a clean day and silently is not one.
+delta_is_partial() {
+    [ -f "$DELTA_JSON" ] || return 1
+    "$PYBIN" -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+sys.exit(0 if d.get("partial") else 1)
+' "$DELTA_JSON"
+}
+
+# Tiers 1-3 use this: a partial stub does NOT count as success — remove it (so
+# the next tier's ensure_delta() does not short-circuit on the stale file via
+# its own "[ -f "$DELTA_JSON" ] && return 0" check) and let the cascade continue.
+# Tier 4 (last resort, nothing left to cascade to) calls plain ensure_delta()
+# and handles partial-acceptance itself (DEGRADED, never silent-clean).
+ensure_full_delta() {
+    local _out="$1"
+    ensure_delta "$_out" || return 1
+    if delta_is_partial; then
+        echo "[$(date)] delta landed but partial=true (tier admitted incomplete/no-access scan) — rejecting, cascading to next tier" >> "$LOG"
+        rm -f "$DELTA_JSON"
+        return 1
+    fi
+    return 0
+}
+
 # W84 trampoline follow-up (2026-07-06): in the sshd context the login Keychain
 # is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
 # "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
@@ -244,7 +281,7 @@ fi
 echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
 "$HOME/.local/bin/claude" --print --model claude-sonnet-5 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
 EXIT=$?
-if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
     SUCCESS=1
     USED_LLM="claude-sonnet-5"
 elif [ $EXIT -eq 0 ]; then
@@ -258,7 +295,7 @@ if [ $SUCCESS -eq 0 ]; then
     > "$TMPOUT"
     printf '%s' "$PROMPT_GENERIC" | /Users/nuzantara/.local/bin/agy -p --print-timeout 5m >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="gemini-3.1-pro-agy"
     fi
@@ -274,14 +311,19 @@ if [ $SUCCESS -eq 0 ]; then
     # contexts run from $HOME which is not a trusted repo → --skip-git-repo-check.
     /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="codex-gpt-5.5"
     fi
     cat "$TMPOUT" >> "$LOG"
 fi
 
-# Tier 4: Ollama local (always available, lower quality but free + unlimited)
+# Tier 4: Ollama local (always available, lower quality but free + unlimited).
+# Last resort — nothing left to cascade to, so a partial result is accepted
+# rather than discarded, but it is marked DEGRADED (never silently "clean")
+# so proprioception/heartbeat can distinguish "genuinely 0 new" from "no tier
+# could actually check".
+DEGRADED=0
 if [ $SUCCESS -eq 0 ]; then
     echo "[$(date)] tier 3 failed/exhausted — falling back to ollama qwen3.5:9b local" >> "$LOG"
     > "$TMPOUT"
@@ -290,11 +332,18 @@ if [ $SUCCESS -eq 0 ]; then
     if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="ollama-qwen3.5:9b-local"
+        if delta_is_partial; then
+            DEGRADED=1
+            echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+        fi
     fi
     cat "$TMPOUT" >> "$LOG"
 fi
 
-if [ $SUCCESS -eq 1 ]; then
+if [ $SUCCESS -eq 1 ] && [ $DEGRADED -eq 1 ]; then
+    echo "[$(date)] regulatory-watcher run DEGRADED — used: $USED_LLM (partial: no tier completed a real scan)" >> "$LOG"
+    organism_hb_set degraded "used ${USED_LLM}, partial=true — no tier completed a real scan"
+elif [ $SUCCESS -eq 1 ]; then
     echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM" >> "$LOG"
     organism_hb_set ok "used ${USED_LLM}"
 
@@ -392,7 +441,7 @@ fi
 if [ -f "$DELTA_JSON" ]; then
     _mod_n=$(/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3 -c "import json;print(len(json.load(open('$DELTA_JSON')).get('deltas',[])))" 2>/dev/null || echo 0)
     if [ "${_mod_n:-0}" -gt 0 ]; then
-        ( cd "$HOME/Desktop/nuzantara" && \
+        ( cd "$HOME/nuzantara" && \
           /Users/nuzantara/.pyenv/versions/3.11.11/bin/python3 scripts/modus_enqueue.py \
             --job "regulatory-delta-capture-$DATE" \
             --source "regulatory-watcher" \

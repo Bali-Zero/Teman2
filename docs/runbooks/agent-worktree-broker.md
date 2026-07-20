@@ -14,8 +14,8 @@ Invariante (4/4 panel SOTA): due sessioni non condividono mai lo stesso working 
 
 ```bash
 python scripts/agent_start.py --lane wr2 --task-id render-cleanup --ttl-min 60
-# stdout: WORKTREE_READY /Users/nuzantara/Desktop/nuzantara/.worktrees/wr2-render-cleanup
-cd /Users/nuzantara/Desktop/nuzantara/.worktrees/wr2-render-cleanup
+# stdout: WORKTREE_READY /Users/nuzantara/nuzantara/.worktrees/wr2-render-cleanup
+cd /Users/nuzantara/nuzantara/.worktrees/wr2-render-cleanup
 # spawn claude qui (NON nel main checkout)
 ```
 
@@ -79,7 +79,7 @@ Exit semantics:
   copy of the wrapper. Preserve dirty main work first, then fast-forward main;
   do not copy scripts in from an unrelated worktree.
 
-GOTCHA: il cron usa SEMPRE il main checkout (`~/Desktop/nuzantara/scripts/agent_start.py`). Il broker risolve `WORKTREES_DIR` da `parents[1]` dello script — invocarlo da un worktree scansiona `.worktrees/<wt>/.worktrees/` (inesistente) → no-op silenzioso.
+GOTCHA: il cron usa SEMPRE il main checkout (`~/nuzantara/scripts/agent_start.py`). Il broker risolve `WORKTREES_DIR` da `parents[1]` dello script — invocarlo da un worktree scansiona `.worktrees/<wt>/.worktrees/` (inesistente) → no-op silenzioso.
 
 ### Orphan detection — W62 ANTIBODY #2
 
@@ -175,7 +175,7 @@ quando `/usr/sbin/lsof` esiste.
 Procedura sicura:
 
 1. Non fare `reset --hard` e non copiare lo script da un worktree.
-2. In `~/Desktop/nuzantara`, preserva o assegna il WIP con commit/stash
+2. In `~/nuzantara`, preserva o assegna il WIP con commit/stash
    descrittivi.
 3. Fast-forwarda il main checkout a `origin/main`.
 4. Valida `bash -n scripts/agent_worktree_cleanup_cron.sh`.
@@ -214,4 +214,4 @@ Regole per chi dispatcha worktree (orchestratore o script):
 - I subagent spawnati via Agent tool girano sotto `.claude/worktrees/agent-<id>/` (path diverso, auto-pulito dall'harness). Questo broker governa SOLO il path user-facing `.worktrees/` usato da spawn manuali o scriptati.
 - Convenzione TTL: usa `--ttl-min` realistico per la durata attesa. Il cron reaper rispetta il TTL per-task; il CI gate impone comunque il cap assoluto di 24h.
 
-Il main checkout `~/Desktop/nuzantara` è riservato all'operator interactive + cicatrix hotfix.
+Il main checkout `~/nuzantara` è riservato all'operator interactive + cicatrix hotfix.

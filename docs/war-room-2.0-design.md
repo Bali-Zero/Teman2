@@ -1,7 +1,7 @@
 # War Room 2.0 — Piano di progettazione
 
 **Autore**: Claude Opus 4.7 · **Data**: 2026-04-18 · **Modalità**: design (non implementazione)
-**File deliverable finale in codebase**: `~/Desktop/nuzantara/docs/war-room-2.0-design.md` (questo documento va poi committato lì in fase implementativa — oggi è un plan file)
+**File deliverable finale in codebase**: `~/nuzantara/docs/war-room-2.0-design.md` (questo documento va poi committato lì in fase implementativa — oggi è un plan file)
 
 ---
 
@@ -613,15 +613,15 @@ All'avvio Consiglio M4:
 
 ## File critici per l'implementazione
 
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/events/event_bus.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/intel/intel_approval_service.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/app/routers/telegram_webhook.py`
-- `/Users/nuzantara/Desktop/nuzantara/packages/cell-core/cell_core/{genome,pulse,homeostasis}.py`
-- `/Users/nuzantara/Desktop/nuzantara/apps/war-room/config/brand.json` (update tone_of_voice)
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/prompts/zantara_core.py` (voice SSOT)
-- `/Users/nuzantara/Desktop/nuzantara/apps/graph-engine/src/nuzantara_graph/curiosity/` (pattern Trend-Hunter)
-- `/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/migrations/migration_111_notification_log.py` (base per 112)
-- `/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-browser` (Playwright render)
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/events/event_bus.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/intel/intel_approval_service.py`
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/app/routers/telegram_webhook.py`
+- `/Users/nuzantara/nuzantara/packages/cell-core/cell_core/{genome,pulse,homeostasis}.py`
+- `/Users/nuzantara/nuzantara/apps/war-room/config/brand.json` (update tone_of_voice)
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/prompts/zantara_core.py` (voice SSOT)
+- `/Users/nuzantara/nuzantara/apps/graph-engine/src/nuzantara_graph/curiosity/` (pattern Trend-Hunter)
+- `/Users/nuzantara/nuzantara/apps/backend-rag/backend/migrations/migration_111_notification_log.py` (base per 112)
+- `/Users/nuzantara/nuzantara/apps/nuzantara-mcp-browser` (Playwright render)
 
 ---
 

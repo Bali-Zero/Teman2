@@ -13,8 +13,8 @@ scp -q "$SRC"/{gateway.py,config.py,mcp_client.py,acp_client.py,claude_client.py
 echo "✓ Gateway files pushed"
 
 echo "→ Pushing MCP server files to ${NODE}..."
-ssh "$NODE" "mkdir -p ~/Desktop/nuzantara/apps/nuzantara-mcp/nuzantara_mcp"
-scp -q -r "$MCP_SRC"/ "${NODE}":~/Desktop/nuzantara/apps/nuzantara-mcp/nuzantara_mcp/
+ssh "$NODE" "mkdir -p ~/nuzantara/apps/nuzantara-mcp/nuzantara_mcp"
+scp -q -r "$MCP_SRC"/ "${NODE}":~/nuzantara/apps/nuzantara-mcp/nuzantara_mcp/
 echo "✓ MCP server pushed"
 
 if [ "$RESTART" = "restart" ]; then

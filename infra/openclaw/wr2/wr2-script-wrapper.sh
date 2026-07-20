@@ -27,13 +27,13 @@ fi
 SCRIPT_PATH="$1"
 shift
 
-# 2026-05-06: switched from ~/Desktop/nuzantara (multi-agent collision zone)
-# to dedicated git worktree ~/Desktop/nuzantara-deploy on branch deploy/main.
-# The main repo at ~/Desktop/nuzantara is shared by 3+ Claude/Codex sessions
+# 2026-05-06: switched from ~/nuzantara (multi-agent collision zone)
+# to dedicated git worktree ~/nuzantara-deploy on branch deploy/main.
+# The main repo at ~/nuzantara is shared by 3+ Claude/Codex sessions
 # that toggle branches every 1-3 min — production cron must read from a stable
 # worktree pinned to origin/main, never feature branches.
-# To update: `cd ~/Desktop/nuzantara-deploy && git pull origin main`.
-REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/Desktop/nuzantara-deploy}"
+# To update: `cd ~/nuzantara-deploy && git pull origin main`.
+REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 
 # 1. Secrets — source primary then backend-specific (additive)

@@ -104,7 +104,7 @@ class TestWebFormatter:
         assert "## 📚 Fonti" in result
         assert "[Visa Guide](https://example.com/visa)" in result
         assert "_(visa_oracle)_" in result
-        assert "3. Local Doc _(legal_unified)_" in result
+        assert "3. [Local Doc](https://example.com/local-doc) _(legal_unified)_" in result
 
     def test_format_with_workflow(self, response_with_workflow: ChannelResponse) -> None:
         result = WebMessageFormatter.format_response(response_with_workflow)
@@ -120,9 +120,10 @@ class TestWebFormatter:
         assert result == "1. [Doc A](https://a.com) _(col_a)_"
 
     def test_format_sources_without_url(self) -> None:
+        """Sources without a public url look internal and are dropped entirely."""
         sources = [{"title": "Doc B", "collection": "col_b"}]
         result = WebMessageFormatter._format_sources(sources)
-        assert result == "1. Doc B _(col_b)_"
+        assert result == ""
 
     def test_format_workflow_no_steps(self) -> None:
         result = WebMessageFormatter._format_workflow({"name": "Simple Plan", "steps": []})

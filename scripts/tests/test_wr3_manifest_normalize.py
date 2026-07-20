@@ -127,7 +127,7 @@ def test_malformed_future_manifest_fails_loud():
         validate_manifest(out)
 
 
-REAL_EPISODE = Path("/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/episode/"
+REAL_EPISODE = Path("/Users/nuzantara/nuzantara/apps/war-room/output/episode/"
                     "content-creator-3-roads-2026-05-29")
 
 

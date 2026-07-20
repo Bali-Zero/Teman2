@@ -4,7 +4,7 @@ Manual execution procedure for the 10 adversarial scenarios.
 
 ## Prerequisites
 
-- Worktree: `/Users/nuzantara/Desktop/nuzantara` on `main`
+- Worktree: `/Users/nuzantara/nuzantara` on `main`
 - Fresh venv: `cd apps/organism && python3 -m pip install -e '.[dev]'`
 - Python 3.11+
 
@@ -34,6 +34,7 @@ staging) is not part of this PR. When staging is provisioned (W5):
 4. Document results in `docs/organism/gauntlet-YYYY-MM-DD.md`.
 
 Scenarios 6-10 require OS-level access:
+
 - 06 Redis down: `sudo pkill -STOP redis-server` (resume with `-CONT`)
 - 07 Network partition: `sudo pfctl -e && sudo pfctl -f block.rules`
 - 08 Clock skew: `sudo date -v+5M` (staging machine only)

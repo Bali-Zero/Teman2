@@ -12,7 +12,7 @@
 # context can silently lose the TCC/Full-Disk-Access grant to ~/Desktop
 # after a reboot — no code, plist, or permission changed, only the
 # per-process TCC row. A job whose payload lives under
-# ~/Desktop/nuzantara dies with "Operation not permitted" (sometimes
+# ~/nuzantara dies with "Operation not permitted" (sometimes
 # swallowed/masked by the job's own error handling), while the SAME job
 # invoked from an interactive shell or ssh session (sshd has a separate,
 # intact FDA grant) works fine. Two cures are wired here:
@@ -74,7 +74,7 @@ w84_trampoline_or_die() {
     local _w84_log="$1"
     local _w84_wrapper="${2:-$0}"
 
-    if head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
+    if head -c 1 "$HOME/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
         return 0
     fi
 
@@ -92,6 +92,6 @@ w84_trampoline_or_die() {
         exec ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -i "$HOME/.ssh/id_local_trampoline" localhost "W84_TRAMPOLINED=1 '$_w84_wrapper'"
     fi
 
-    echo "[$(date)] FATAL: TCC denies ~/Desktop/nuzantara in this launchd context (W84) and no trampoline key — re-grant Full Disk Access to the job's interpreter. Aborting before any further work." >> "$_w84_log"
+    echo "[$(date)] FATAL: TCC denies ~/nuzantara in this launchd context (W84) and no trampoline key — re-grant Full Disk Access to the job's interpreter. Aborting before any further work." >> "$_w84_log"
     exit 78
 }

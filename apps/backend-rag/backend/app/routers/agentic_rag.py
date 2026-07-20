@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import (
     get_current_user,
     get_current_user_optional,
@@ -28,7 +29,7 @@ from backend.app.dependencies import (
     get_orchestrator,
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
-from backend.core.observability import init_observability
+from backend.core.observability import init_observability, start_traced_span
 from backend.core.observability import is_enabled as _lf_enabled
 from backend.db.repositories.conversation_repository import ConversationRepository
 from backend.services.agents.team_agent_config import (
@@ -198,7 +199,8 @@ async def _process_query_traced(
     # "Langfuse POC" for the full UU PDP compliance note.
     query_str = str(query_kwargs.get("query", ""))
     query_hash = hashlib.sha256(query_str.encode("utf-8")).hexdigest()[:16]
-    with lf.start_as_current_span(
+    with start_traced_span(
+        lf,
         name="agentic_rag.query",
         input={"query_hash": query_hash, "query_length": len(query_str)},
         metadata={
@@ -212,20 +214,21 @@ async def _process_query_traced(
         },
     ) as span:
         result = await orchestrator.process_query(**query_kwargs)
-        try:
-            span.update(
-                output={
-                    "route_used": getattr(result, "route_used", None),
-                    "document_count": getattr(result, "document_count", None),
-                    "model_used": getattr(result, "model_used", None),
-                    "abstain": getattr(result, "abstain", False),
-                    "evidence_score": getattr(result, "evidence_score", None),
-                    # No answer text — may contain PII from RAG retrieval.
-                },
-            )
-        except Exception:
-            # Never let observability break the request
-            pass
+        if span is not None:
+            try:
+                span.update(
+                    output={
+                        "route_used": getattr(result, "route_used", None),
+                        "document_count": getattr(result, "document_count", None),
+                        "model_used": getattr(result, "model_used", None),
+                        "abstain": getattr(result, "abstain", False),
+                        "evidence_score": getattr(result, "evidence_score", None),
+                        # No answer text — may contain PII from RAG retrieval.
+                    },
+                )
+            except Exception:
+                # Never let observability break the request
+                pass
         return result
 
 
@@ -452,7 +455,21 @@ async def query_agentic_rag(
                 "cache_hit": result.cache_hit,
                 "ab_config": {
                     "hybrid": hybrid_config,
-                    "rerank": rerank_config,
+                    # HONESTY FIX (2026-07-18): `rerank_config` is the A/B
+                    # experiment's INTENDED variant (e.g. "with_rerank" ->
+                    # {"use_reranking": True}) from a random per-user split —
+                    # it is never actually wired into orchestrator.process_query
+                    # and does NOT reflect whether reranking really ran.
+                    # search_service._init_reranker() used to hardcode
+                    # enabled=True regardless of settings.enable_reranker,
+                    # so a query could show "with_rerank" here while the
+                    # cross-encoder silently failed to import and returned
+                    # zero scores. `reranker_actually_enabled` is the real,
+                    # global on/off switch (see settings.enable_reranker).
+                    "rerank": {
+                        **rerank_config,
+                        "reranker_actually_enabled": settings.enable_reranker,
+                    },
                     "expansion": expansion_config,
                 },
             },

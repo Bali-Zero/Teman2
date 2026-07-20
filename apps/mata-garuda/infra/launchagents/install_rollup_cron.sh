@@ -14,7 +14,7 @@
 # needed, but keep restrictive).
 set -euo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 VENV="$REPO/apps/mata-garuda/.venv/bin/python"
 LABEL="com.matagaruda.nlm-rollup.daily"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"

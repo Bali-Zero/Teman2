@@ -33,7 +33,7 @@ Rispondi con il nome della cartella:"""
     return "99_Misc"
 
 async def process_local_pdf():
-    pdf_path = "/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/company_pdfs/1755.pdf"
+    pdf_path = "/Users/nuzantara/nuzantara/.gemini/tmp/company_pdfs/1755.pdf"
     logger.info(f"Leggo il file PDF locale REALE: {pdf_path}")
 
     try:

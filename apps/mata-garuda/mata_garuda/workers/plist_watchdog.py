@@ -36,6 +36,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -53,6 +54,14 @@ WINDOW_SECONDS = 24 * 3600
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 SNAPSHOT_DIR = _REPO_ROOT / "infra" / "launchagents"
 
+# host-pins.json — declarative label→host(s) pinning (cicatrix family #10,
+# active-active split-brain). A label listed here is only healed by THIS
+# watchdog on a host whose normalized hostname is in the list. Fail-open:
+# missing/malformed file ⇒ no pinning at all, identical to pre-pin behavior.
+# Filename only (not a fixed Path) so it's resolved against SNAPSHOT_DIR at
+# call-time — this keeps it test-patchable the same way SNAPSHOT_DIR is.
+HOST_PINS_FILENAME = "host-pins.json"
+
 
 def _uid() -> int:
     return os.getuid()
@@ -60,6 +69,47 @@ def _uid() -> int:
 
 def _domain() -> str:
     return f"gui/{_uid()}"
+
+
+def _normalize_host(name: str) -> str:
+    """lowercase, strip a trailing '.local' mDNS suffix."""
+    n = (name or "").strip().lower()
+    if n.endswith(".local"):
+        n = n[: -len(".local")]
+    return n
+
+
+def _current_host() -> str:
+    """This machine's normalized hostname (Pro=nuzantara, Mini=mini-pro2)."""
+    try:
+        name = socket.gethostname()
+    except OSError:
+        name = ""
+    return _normalize_host(name)
+
+
+def _load_host_pins() -> tuple[dict[str, list[str]], str]:
+    """Load SNAPSHOT_DIR/host-pins.json. Fail-open: file absent/malformed ⇒
+    no pinning at all — identical to the pre-pin behavior. Resolved against
+    SNAPSHOT_DIR at call-time (not a module-load-time constant) so it stays
+    test-patchable. Returns (pins, status_line)."""
+    path = SNAPSHOT_DIR / HOST_PINS_FILENAME
+    try:
+        raw = path.read_text()
+    except OSError:
+        return {}, "host-pins: unreadable — no pinning"
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return {}, "host-pins: unreadable — no pinning"
+    if not isinstance(data, dict):
+        return {}, "host-pins: unreadable — no pinning"
+    pins: dict[str, list[str]] = {}
+    for label, hosts in data.items():
+        if not isinstance(hosts, list):
+            continue  # e.g. skips "_comment"
+        pins[label] = [_normalize_host(str(h)) for h in hosts]
+    return pins, f"host-pins: loaded ({len(pins)} label(s) pinned)"
 
 
 def _launchctl_knows(label: str) -> bool:
@@ -159,7 +209,9 @@ def _emit_heartbeat(status: str, meta: dict) -> None:
 def main() -> int:
     now = time.time()
     led = _load_ledger()
-    healed, diverged, breaker_tripped, ok = [], [], [], 0
+    current_host = _current_host()
+    host_pins, pins_status = _load_host_pins()
+    healed, diverged, breaker_tripped, skipped_pinned, ok = [], [], [], [], 0
 
     snapshots = sorted(glob.glob(str(SNAPSHOT_DIR / f"{LABEL_PREFIX}*.plist")))
     for snap_path in snapshots:
@@ -181,7 +233,17 @@ def main() -> int:
             ok += 1
             continue
 
-        # VANISHED (absent from disk OR unknown to launchctl) → heal candidate
+        # VANISHED (absent from disk OR unknown to launchctl) → heal candidate,
+        # UNLESS the label is host-pinned to hosts that don't include this one
+        # (cicatrix #10 active-active split-brain: don't resurrect a Mini-only
+        # service on Pro just because Pro doesn't know it).
+        pinned_hosts = host_pins.get(label)
+        if pinned_hosts and current_host not in pinned_hosts:
+            skipped_pinned.append(
+                f"{label}: host-pinned to {pinned_hosts!r}, this host is {current_host!r}"
+            )
+            continue
+
         if not _breaker_ok(led, label, now):
             breaker_tripped.append(label)
             continue
@@ -194,14 +256,18 @@ def main() -> int:
 
     _save_ledger(led)
 
+    print(pins_status)
     print(f"[matagaruda-plist-watchdog] snapshots={len(snapshots)} ok={ok} "
-          f"healed={len(healed)} diverged={len(diverged)} breaker_tripped={len(breaker_tripped)}")
+          f"healed={len(healed)} diverged={len(diverged)} breaker_tripped={len(breaker_tripped)} "
+          f"skipped_pinned={len(skipped_pinned)}")
     for h in healed:
         print(f"  HEALED: {h}")
     for d in diverged:
         print(f"  DIVERGED (report-only, not touched): {d}")
     for b in breaker_tripped:
         print(f"  BREAKER-TRIPPED (>{MAX_HEALS_PER_WINDOW}/{WINDOW_SECONDS}s): {b}")
+    for s in skipped_pinned:
+        print(f"  SKIP {s}")
 
     status = "ok"
     if any("FAILED" in h for h in healed) or breaker_tripped:

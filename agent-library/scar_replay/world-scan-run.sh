@@ -25,8 +25,8 @@ LOGDIR="${HOME}/logs"; mkdir -p "$LOGDIR"
 LOG="$LOGDIR/world-scan.log"
 ERR="$LOGDIR/world-scan.err.log"
 
-HARNESS_DIR="${SCAR_REPLAY_DIR:-${HOME}/Desktop/nuzantara-deploy/agent-library/scar_replay}"
-REPO_ROOT="${WORLD_SCAN_REPO_ROOT:-${HOME}/Desktop/nuzantara-deploy}"
+HARNESS_DIR="${SCAR_REPLAY_DIR:-${HOME}/nuzantara-deploy/agent-library/scar_replay}"
+REPO_ROOT="${WORLD_SCAN_REPO_ROOT:-${HOME}/nuzantara-deploy}"
 WEEK_TAG="$(date +%Y-W%V)"
 PROPOSED_DIR="${REPO_ROOT}/research/operations/_proposed"
 OUTPUT_FILE="${PROPOSED_DIR}/${WEEK_TAG}-world-scan-probes.md"
@@ -113,6 +113,7 @@ log "step1: ingest+extract via claude opus (web search)"
 timeout 1800 "$CLAUDE_BIN" -p \
   --model claude-opus-4-8 \
   --permission-mode bypassPermissions \
+  --max-budget-usd "${WORLD_SCAN_MAX_BUDGET_USD:-5}" \
   "$INGEST_PROMPT" >> "$LOG" 2>> "$ERR" || log "WARN: ingest agent exit=$?"
 
 if [ ! -s "$PATTERNS_JSON" ]; then

@@ -429,7 +429,28 @@ struct CarouselDetailView: View {
         } else if showPublishForm {
             publishForm
         } else {
-            markPublishedButton
+            VStack(alignment: .leading, spacing: 8) {
+                if carousel.isPublishEligible == false {
+                    notPublishEligibleBanner
+                }
+                markPublishedButton
+            }
+        }
+    }
+
+    // Visible reason (never a silently-disabled button, per the 2026-07-16 cross-finding
+    // with the Python A3 daily-reconciler): shown whenever the carousel's current state
+    // — `render_incomplete`, a stalled/in-flight render, or any status the app doesn't
+    // recognize as "ready" — makes both publish buttons below ineligible.
+    private var notPublishEligibleBanner: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.red)
+            Text(lang.t("detail.notPublishEligible") + " (\(carousel.state ?? carousel.criticVerdict ?? "—"))")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.red)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -499,7 +520,10 @@ struct CarouselDetailView: View {
                 .padding(.vertical, 8)
                 .background(Capsule().fill(igLink.trimmingCharacters(in: .whitespaces).isEmpty
                                            ? Theme.yellow.opacity(0.4) : Theme.yellow))
-                .disabled(igLink.trimmingCharacters(in: .whitespaces).isEmpty)
+                // Defense-in-depth: QueueWriter.markPublished itself now refuses an
+                // ineligible state too, but the UI should never invite the click at all.
+                .disabled(igLink.trimmingCharacters(in: .whitespaces).isEmpty
+                          || carousel.isPublishEligible == false)
 
                 Button(lang.t("studio.cancel")) {
                     showPublishForm = false
@@ -601,7 +625,9 @@ struct CarouselDetailView: View {
                 .background(Capsule().fill(Theme.blue))
             }
             .buttonStyle(.plain)
-            .disabled(state.isRunning || state.isPublishingSlug != nil)
+            // Fail-closed (2026-07-16 cross-finding): a render_incomplete or otherwise
+            // not-ready carousel must never even OPEN the publish popover.
+            .disabled(state.isRunning || state.isPublishingSlug != nil || carousel.isPublishEligible == false)
             .popover(isPresented: $showPublishIGConfirm, arrowEdge: .bottom) { publishIGConfirm }
 
             Button {
@@ -615,6 +641,7 @@ struct CarouselDetailView: View {
                     .background(Capsule().fill(Theme.green))
             }
             .buttonStyle(.plain)
+            .disabled(carousel.isPublishEligible == false)
         }
     }
 
@@ -696,6 +723,7 @@ struct CarouselDetailView: View {
                     captionIsLoading || captionLoadError != nil
                         || InstagramCaption.isPublishable(publishCaption) == false
                         || state.isPublishingSlug != nil
+                        || carousel.isPublishEligible == false
                 )
 
                 // The explicit operator publish click (confirm=true).
@@ -716,6 +744,7 @@ struct CarouselDetailView: View {
                     captionIsLoading || captionLoadError != nil
                         || InstagramCaption.isPublishable(publishCaption) == false
                         || state.isPublishingSlug != nil
+                        || carousel.isPublishEligible == false
                 )
 
                 Button(lang.t("detail.publishIGCancel")) { showPublishIGConfirm = false }

@@ -185,11 +185,16 @@ class KnowledgeGraphBuilder:
                 # Ensure chunk_ids is a list for SQL array
                 chunks = entity.source_chunk_ids or []
 
+                # $5::text::jsonb — the app pools register a jsonb codec
+                # (encoder=json.dumps); a bare param inferred as jsonb
+                # double-encodes json.dumps(entity.properties) into a jsonb
+                # string scalar (kg_nodes.properties had 1517 polluted rows
+                # across its several writers, live-probe 2026-07-16).
                 query = """
                     INSERT INTO kg_nodes (
                         entity_id, entity_type, name, description, properties,
                         confidence, source_collection, source_chunk_ids, updated_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+                    ) VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, $8, NOW())
                     ON CONFLICT (entity_id) DO UPDATE SET
                         name = EXCLUDED.name,
                         description = EXCLUDED.description,
@@ -222,11 +227,14 @@ class KnowledgeGraphBuilder:
             try:
                 chunks = relationship.source_chunk_ids or []
 
+                # $5::text::jsonb — same jsonb-codec double-encoding fix as
+                # add_entity above (kg_edges.properties had 4735 polluted
+                # rows, live-probe 2026-07-16).
                 query = """
                     INSERT INTO kg_edges (
                         relationship_id, source_entity_id, target_entity_id,
                         relationship_type, properties, confidence, source_collection, source_chunk_ids
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ) VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, $8)
                     ON CONFLICT (relationship_id) DO UPDATE SET
                         properties = kg_edges.properties || EXCLUDED.properties,
                         confidence = GREATEST(kg_edges.confidence, EXCLUDED.confidence),

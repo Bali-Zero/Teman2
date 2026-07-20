@@ -4,7 +4,7 @@
 
 ## Storage location
 
-`~/Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json`
+`~/nuzantara/apps/war-room/output/queue/human-review-queue.json`
 
 Single JSON array. Append-only by orchestrator. Modified in-place by Damar's tooling (or by Antonello if Damar unavailable).
 
@@ -17,7 +17,7 @@ Single JSON array. Append-only by orchestrator. Modified in-place by Damar's too
     "run_id": 42,
     "topic_slug": "kep71-spt-extension",
     "drafted_at": "2026-05-08T11:00:00Z",
-    "carousel_path": "~/Desktop/nuzantara/apps/war-room/output/carousel/kep71-spt-extension/",
+    "carousel_path": "~/nuzantara/apps/war-room/output/carousel/kep71-spt-extension/",
     "canva_design_id": "DAHJxxxxxx",
     "canva_design_url": "https://www.canva.com/design/DAHJxxxxxx/edit",
     "critic_overall_verdict": "legibility_soft_fail",

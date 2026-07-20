@@ -319,7 +319,11 @@ async def build_context(
             async with db_pool.acquire() as conn:
                 if existing_row_id:
                     await conn.execute(
-                        "UPDATE conversations SET metadata = $1::jsonb WHERE id = $2",
+                        # ::text::jsonb — the app pools register a jsonb codec
+                        # (encoder=json.dumps); a param inferred as jsonb would
+                        # get this pre-serialized string dumped AGAIN, landing
+                        # as a jsonb string scalar.
+                        "UPDATE conversations SET metadata = $1::text::jsonb WHERE id = $2",
                         json.dumps(client_profile),
                         existing_row_id,
                     )

@@ -232,7 +232,7 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
         if p.get("status") == action["status_value"]:
             # canva-apply is a Claude Code skill (markdown-driven, MCP Canva tools)
             # Spawn a one-shot claude --print invocation to execute the skill if canva_pending.json exists
-            pending = "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/canva_pending.json"
+            pending = "/Users/nuzantara/nuzantara/apps/war-room/output/canva/canva_pending.json"
             if not os.path.exists(pending):
                 log.info("spawn-canva-apply skip: %s missing (event %s)", pending, env.event_id)
                 return
@@ -260,7 +260,7 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
                      domain, env.event_id)
             return
         # Low-stakes path: same spawn logic as spawn_canva_apply_if_status
-        pending = "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/canva_pending.json"
+        pending = "/Users/nuzantara/nuzantara/apps/war-room/output/canva/canva_pending.json"
         if not os.path.exists(pending):
             log.info("spawn-canva-apply (low-stakes) skip: %s missing (event %s)", pending, env.event_id)
             return

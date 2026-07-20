@@ -136,8 +136,8 @@ AREA_BLOCK_ALIASES: dict[str, set[str]] = {
 }
 
 DEFAULT_REMOTE_TARGETS: dict[str, tuple[str, str]] = {
-    "m5": ("m5", "/Users/balizero/Desktop/nuzantara"),
-    "air": ("air", "/Users/balizero/Desktop/nuzantara"),
+    "m5": ("m5", "/Users/balizero/nuzantara"),
+    "air": ("air", "/Users/balizero/nuzantara"),
 }
 
 

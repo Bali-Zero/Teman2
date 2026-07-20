@@ -20,7 +20,7 @@ if [ -z "$LABEL" ]; then
   exit 2
 fi
 
-REPO="${REPO:-/Users/nuzantara/Desktop/nuzantara}"
+REPO="${REPO:-/Users/nuzantara/nuzantara}"
 YAML="$REPO/config/job-ownership.yaml"
 LOCK_FILE="/tmp/repo-mutating.lock"
 LOG_FILE="$HOME/logs/mini-migration.log"

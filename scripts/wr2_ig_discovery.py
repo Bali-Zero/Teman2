@@ -149,7 +149,23 @@ def caption_first_line(caption: Optional[str]) -> str:
 
 
 def build_known_shortcodes(queue_items: list[dict[str, Any]]) -> set[str]:
-    """Every IG shortcode already present in the queue (via instagram_post_url)."""
+    """Every IG shortcode already present in the queue (via instagram_post_url).
+
+    TOCTOU note (§E, team-lead diagnosis 2026-07-17): this is a ONE-TIME
+    snapshot taken at the top of `main()` before the ingest loop below writes
+    anything. A post that becomes known between this snapshot and this run's
+    own `ingest_external_post` calls (e.g. a native WR2 entry published
+    mid-run, or a second discovery run racing this one) can still produce a
+    virtual `ig-<shortcode>` entry sharing a URL/shortcode with a native
+    entry — exactly the live case that triggered this diagnosis (idx 61
+    `bali-pma-rental-crackdown`, native + published, vs idx 71
+    `ig-DaxDJuYFPi6`, discovery-ingested 07-14 while idx 61's URL was still
+    null). This function does NOT close that race, and isn't meant to: the
+    backstop is the WR2 Control app's own §E dedup
+    (`WarRoom.swift::matchesAnyPhysicalInstagramURL`), which hides a virtual
+    entry at GALLERY READ TIME whenever a non-virtual sibling shares its URL,
+    independent of ingestion order or timing.
+    """
     known: set[str] = set()
     for item in queue_items:
         url = item.get("instagram_post_url")
@@ -159,6 +175,55 @@ def build_known_shortcodes(queue_items: list[dict[str, Any]]) -> set[str]:
         if code:
             known.add(code)
     return known
+
+
+def find_media_id_backfills(
+    media_list: list[dict[str, Any]],
+    queue_items: list[dict[str, Any]],
+) -> list[tuple[str, str, str]]:
+    """Pair up (item_id, ig_media_id, shortcode) for queue items ALREADY known
+    by shortcode but missing `ig_media_id` — the RECONCILIATION half of §C
+    (`ingest_external_post`'s `ig_media_id` pass-through is the fresh-mint
+    half; this closes the gap for posts that predate that field, notably
+    WR2-NATIVE carousels published via the app's own gate, which records the
+    permalink but never a Graph media id — e.g. `bali-pma-rental-crackdown`).
+
+    Matches by SHORTCODE (not URL string equality — queue URLs may differ in
+    query string/scheme/www; shortcode is the same load-bearing key
+    `build_known_shortcodes()` already uses). Pure and read-only: callers
+    (`main()`) drive the actual `backfill_media_id()` write + dry-run gating.
+
+    The shortcode is returned alongside the pair (Codex red-team, 2026-07-17,
+    finding F) so the caller can pass it to `backfill_media_id` as
+    `expected_shortcode` — a compare-and-set guard taken under that call's OWN
+    lock, re-verifying the entry hasn't moved to a different URL between THIS
+    snapshot and the write acquiring the lock (TOCTOU race).
+    """
+    media_by_shortcode: dict[str, str] = {}
+    for m in media_list:
+        code = _qw.extract_ig_shortcode(m.get("permalink") or "")
+        media_id = m.get("id")
+        if code and media_id:
+            media_by_shortcode[code] = str(media_id)
+
+    pairs: list[tuple[str, str, str]] = []
+    for item in queue_items:
+        if item.get("ig_media_id"):
+            continue  # already reconciled — nothing to do
+        url = item.get("instagram_post_url")
+        if not url:
+            continue
+        code = _qw.extract_ig_shortcode(url)
+        if not code:
+            continue
+        media_id = media_by_shortcode.get(code)
+        if not media_id:
+            continue  # this run's fetch didn't happen to include that post
+        item_id = _qw.item_id_of(item)
+        if not item_id:
+            continue
+        pairs.append((item_id, media_id, code))
+    return pairs
 
 
 def parse_ig_timestamp(ts: Optional[str]) -> Optional[datetime]:
@@ -349,12 +414,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         topic = cap_line[:60] if cap_line else f"(external IG post {shortcode})"
         dt = parse_ig_timestamp(m.get("timestamp"))
         published_at = dt.isoformat() if dt else None
+        media_id = m.get("id")  # real numeric Graph id — always carried through when we have it
 
         if args.dry_run:
-            print(f"[dry-run] would ingest url={permalink} topic={topic!r} published_at={published_at}")
+            print(f"[dry-run] would ingest url={permalink} topic={topic!r} published_at={published_at} "
+                  f"ig_media_id={media_id}")
             continue
 
-        res = _qw.ingest_external_post(queue_path, permalink, topic=topic, published_at=published_at)
+        res = _qw.ingest_external_post(
+            queue_path, permalink, topic=topic, published_at=published_at, ig_media_id=media_id,
+        )
         if res.status == "ingested":
             ingested += 1
             print(f"INGESTED url={permalink} topic={topic!r}")
@@ -363,7 +432,31 @@ def main(argv: Optional[list[str]] = None) -> int:
         else:
             print(f"WARN ingest failed url={permalink} status={res.status} detail={res.detail}", file=sys.stderr)
 
-    print(f"DISCOVERY: fetched={fetched} known={len(known)} ingested={ingested} match_pending={match_pending}")
+    # ── §C point 3 reconciliation: WR2-native carousels (published via the
+    # app's own gate) never get an ig_media_id at publish time. Anything this
+    # run's fetch can match by shortcode gets backfilled here, closing the
+    # metrics gap for entries that predate `ig_media_id` (see
+    # find_media_id_backfills docstring). Computed from the pre-ingest
+    # `queue_items` snapshot — safe because backfill_media_id() re-reads the
+    # live file under lock at write time; only already-known entries (which
+    # exist in that snapshot) are ever candidates. ──────────────────────────
+    backfill_pairs = find_media_id_backfills(media_list, queue_items)
+    backfilled = 0
+    for item_id, media_id, matched_shortcode in backfill_pairs:
+        if args.dry_run:
+            print(f"[dry-run] would backfill ig_media_id={media_id} onto item_id={item_id}")
+            continue
+        res = _qw.backfill_media_id(queue_path, item_id, media_id, expected_shortcode=matched_shortcode)
+        if res.status == "backfilled":
+            backfilled += 1
+            print(f"BACKFILLED item_id={item_id} ig_media_id={media_id}")
+        elif res.status == "already_backfilled":
+            pass  # no-op, nothing new to report
+        else:
+            print(f"WARN backfill failed item_id={item_id} status={res.status} detail={res.detail}", file=sys.stderr)
+
+    print(f"DISCOVERY: fetched={fetched} known={len(known)} ingested={ingested} "
+          f"match_pending={match_pending} backfilled={backfilled}")
 
     if match_pending > 0:
         return 1

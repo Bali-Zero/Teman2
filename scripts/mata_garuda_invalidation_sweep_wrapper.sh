@@ -53,7 +53,7 @@ fi
 # Find the venv python — sweep imports asyncpg lazily; fall back to
 # system python3 if venv is missing (asyncpg import will then fail
 # loud at runtime, captured in the launchd stderr log).
-REPO_ROOT="${HOME}/Desktop/nuzantara"
+REPO_ROOT="${HOME}/nuzantara"
 VENV_PY="${REPO_ROOT}/apps/backend-rag/.venv/bin/python3"
 if [[ -x "${VENV_PY}" ]]; then
     PYTHON="${VENV_PY}"

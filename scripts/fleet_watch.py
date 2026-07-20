@@ -120,7 +120,7 @@ def notify_gateway(
     gateway = REPO_ROOT / "scripts" / "tg_notify.py"
     if not gateway.is_file():
         gateway = Path(
-            os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py")
+            os.path.expanduser("~/nuzantara/scripts/tg_notify.py")
         )
     proc = run(
         [

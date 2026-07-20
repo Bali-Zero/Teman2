@@ -396,6 +396,42 @@ def test_probe_claude_strips_anthropic_api_key_from_env(monkeypatch):
     assert "ANTHROPIC_API_KEY" not in captured_env
 
 
+def test_probe_claude_falls_back_to_oauth_token_slot_1(monkeypatch):
+    # guilt: bare CLAUDE_CODE_OAUTH_TOKEN absent, slotted _1 present (the real
+    # headless/cron shape) — probe_claude must promote it so the claude binary
+    # can actually authenticate instead of reporting a false UNKNOWN_ERR.
+    captured_env = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_env.update(kwargs.get("env") or {})
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_claude(timeout=5)
+    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "slot1-token-value"
+
+
+def test_probe_claude_never_overrides_explicit_oauth_token(monkeypatch):
+    # innocence: a bare CLAUDE_CODE_OAUTH_TOKEN already set (interactive/agent
+    # session shape) must survive untouched — the slot-1 fallback is a
+    # last-resort, never a clobber.
+    captured_env = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_env.update(kwargs.get("env") or {})
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token-value")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_claude(timeout=5)
+    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "explicit-token-value"
+
+
 def test_probe_claude_binary_absent_is_not_installed(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
     monkeypatch.delenv("ARSENAL_CLAUDE_BIN", raising=False)
@@ -463,6 +499,55 @@ def test_probe_agy_missing_binary_not_installed(monkeypatch):
     assert status == ap.NOT_INSTALLED
 
 
+def test_probe_kimi_pong_is_live(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "• PONG\n", ""))
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_kimi_missing_binary_not_installed(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.NOT_INSTALLED
+
+
+def test_probe_kimi_no_providers_is_auth_dead(monkeypatch):
+    # guilt: the unauthenticated kimi-code shape has no 401 marker, only prose
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(
+        ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(1, "No providers configured.\n", "")
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_kimi_pong_with_provider_prose_stays_live(monkeypatch):
+    # innocence: a LIVE answer that happens to mention providers/login in prose
+    # must never be reclassified as a credential death
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, "PONG (managed provider kimi-code, logged in)\n", ""),
+    )
+    status, ev, latency = ap.probe_kimi(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_kimi_uses_devnull_stdin(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/Users/x/.kimi-code/bin/kimi")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_kimi(timeout=5)
+    assert captured.get("stdin") == ap.subprocess.DEVNULL
+
+
 def test_probe_codex_uses_devnull_stdin(monkeypatch):
     captured = {}
 
@@ -492,25 +577,15 @@ def test_probe_codex_401_is_auth_dead(monkeypatch):
     assert status == ap.AUTH_DEAD
 
 
-def test_probe_deepseek_cred_unavailable_when_env_master_missing(monkeypatch):
-    monkeypatch.setattr(ap, "load_env_master_key", lambda var, path="~/x": (None, "not found"))
-    status, ev, latency = ap.probe_deepseek(timeout=5)
-    assert status == ap.CRED_UNAVAILABLE
-    assert ap.is_strict_fail(status) is False
-
-
-def test_probe_deepseek_live_on_200(monkeypatch):
-    monkeypatch.setattr(ap, "load_env_master_key", lambda var, path="~/x": ("key123456789012345678", None))
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, "ok"))
-    status, ev, latency = ap.probe_deepseek(timeout=5)
-    assert status == ap.LIVE
-
-
-def test_probe_deepseek_402_is_balance_dead(monkeypatch):
-    monkeypatch.setattr(ap, "load_env_master_key", lambda var, path="~/x": ("key123456789012345678", None))
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (402, "Insufficient Balance"))
-    status, ev, latency = ap.probe_deepseek(timeout=5)
-    assert status == ap.BALANCE_DEAD
+def test_deepseek_retired_not_in_all_seats_or_probe_funcs():
+    # DeepSeek V4 Pro API retired 2026-07-19 (owner order, pre-auth revoked —
+    # never top up). Guilt-style: it must not resurface as a probeable seat.
+    assert "deepseek" not in ap.ALL_SEATS
+    assert "deepseek" not in ap.PROBE_FUNCS
+    assert "deepseek" not in ap.DEFAULT_TIMEOUTS
+    assert not hasattr(ap, "probe_deepseek")
+    for machine, seats in ap.REQUIRED_SEATS.items():
+        assert "deepseek" not in seats, f"deepseek still required on {machine}"
 
 
 def test_probe_ollama_qwen_listed_is_live(monkeypatch):
@@ -637,14 +712,22 @@ def test_write_heartbeat_ok_status_when_not_degraded(tmp_path, monkeypatch):
     hb = json.loads((tmp_path / "m5.arsenal_probe.json").read_text())
     assert hb["organ"] == "m5.arsenal_probe"
     assert hb["status"] == "ok"
+    assert hb["degraded"] is False
     assert hb["note"] == "all fine"
 
 
-def test_write_heartbeat_degraded_status(tmp_path, monkeypatch):
+def test_write_heartbeat_status_stays_ok_when_arsenal_degraded(tmp_path, monkeypatch):
+    """The sidecar's status is the PROBE's own liveness, never the observed
+    arsenal's health (TAC 2026-07-03, same fix as pro.fly_restart_loop_detector
+    PR #1924) — a dead AI seat must not flip organs_heartbeat's UNHEALTHY_STATUSES
+    gate. The finding still travels via the `degraded` field + note, and via the
+    dedicated arsenal_seats proprioception probe."""
     monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
     ap.write_heartbeat("mini", degraded=True, summary_line="codex auth dead")
     hb = json.loads((tmp_path / "mini.arsenal_probe.json").read_text())
-    assert hb["status"] == "degraded"
+    assert hb["status"] == "ok"
+    assert hb["degraded"] is True
+    assert hb["note"] == "codex auth dead"
 
 
 # ---------------------------------------------------------------------------

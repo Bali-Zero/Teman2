@@ -19,7 +19,6 @@ Guard conditions (skip silently if any fail):
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -236,7 +235,7 @@ async def _record_welcome_run(
                 channels_sent,
                 started_at,
                 success,
-                json.dumps(metadata),
+                metadata,
             )
         logger.info(
             "PracticeKickoff: crm_welcome_runs UPSERT for client=%d practice=%d "

@@ -22,7 +22,7 @@ export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 # ───────────────────────────────────────────────────────────────
 # Config
 # ───────────────────────────────────────────────────────────────
-REPO_ROOT="${CODEX_AUTOFIX_REPO_ROOT:-${HOME}/Desktop/nuzantara/.worktrees/codex-autofix-ci-runtime}"
+REPO_ROOT="${CODEX_AUTOFIX_REPO_ROOT:-${HOME}/nuzantara/.worktrees/codex-autofix-ci-runtime}"
 REPO_SLUG="${CODEX_AUTOFIX_REPO_SLUG:-Balizero1987/Teman2}"
 STATE_DIR="${CODEX_AUTOFIX_STATE_DIR:-${HOME}/.agent/decisions/state}"
 STATE_FILE="${STATE_DIR}/codex_autofix_ci.state"
@@ -101,7 +101,7 @@ if [ "$ATTEMPTS_TODAY" -ge "$DAILY_CAP" ]; then
     exit 0
 fi
 
-PRIMARY_REPO_ROOT="${CODEX_AUTOFIX_PRIMARY_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
+PRIMARY_REPO_ROOT="${CODEX_AUTOFIX_PRIMARY_REPO_ROOT:-${HOME}/nuzantara}"
 if command -v codex_auto_ensure_runtime_worktree >/dev/null 2>&1; then
     codex_auto_ensure_runtime_worktree "$PRIMARY_REPO_ROOT" "$REPO_ROOT" "origin/main" || {
         log "Runtime worktree unavailable: $REPO_ROOT"
@@ -405,7 +405,7 @@ Codex generated this PR to attempt a minimal fix for the CI failure. Review care
 ### Tri-LLM panel review
 This PR is eligible for tri-LLM panel review (Codex + Opus 4.7 + DeepSeek). Run:
 \`\`\`bash
-python3 ~/Desktop/nuzantara/scripts/codex_tri_llm_review.py --pr <this-pr-number>
+python3 ~/nuzantara/scripts/codex_tri_llm_review.py --pr <this-pr-number>
 \`\`\`
 
 ### Verification

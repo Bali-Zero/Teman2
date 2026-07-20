@@ -62,7 +62,7 @@ GIT_BIN="/usr/bin/git"
 
 # --- Configuration ---------------------------------------------------------
 
-REPO_ROOT="${NUZ_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${NUZ_REPO_ROOT:-$HOME/nuzantara}"
 HOME_BRIDGE="$HOME/.openclaw/bin/openclaw_whatsapp_bridge.py"
 TRACKED_PATH="scripts/openclaw_whatsapp_bridge.py"
 GROUND_TRUTH_REF="origin/main"

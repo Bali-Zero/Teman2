@@ -111,7 +111,78 @@ async def test_lifespan_light_disables_only_wa_outbox_scheduler(
     async with main_api.lifespan_light(app):
         await app.state._init_task
         assert app.state.notification_scheduler == "notification-scheduler"
-        assert app.state._wa_outbox_scheduler_task is None
+        assert app.state._wa_outbox_scheduler_tasks == []
+
+
+def test_wa_outbox_worker_count_defaults_to_2(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WA_OUTBOX_WORKERS", raising=False)
+    assert main_api._wa_outbox_worker_count() == 2
+
+
+@pytest.mark.parametrize("value,expected", [("1", 1), ("5", 5), ("0", 2), ("-3", 2), ("bogus", 2)])
+def test_wa_outbox_worker_count_env_override_and_fallback(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: int
+) -> None:
+    monkeypatch.setenv("WA_OUTBOX_WORKERS", value)
+    assert main_api._wa_outbox_worker_count() == expected
+
+
+@pytest.mark.asyncio
+async def test_lifespan_light_spawns_k_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P9: WA_OUTBOX_WORKERS controls how many concurrent scheduler loops get
+    spawned, stored as a list on app.state._wa_outbox_scheduler_tasks (was a
+    single task pre-F1a)."""
+
+    class FakePool:
+        async def close(self) -> None:
+            pass
+
+    async def fake_initialize_services_light(app: Any) -> None:
+        app.state.db_pool = FakePool()
+
+    async def fake_init_scheduler(pool: Any) -> str:
+        return "notification-scheduler"
+
+    async def fake_close() -> None:
+        pass
+
+    calls: list[int] = []
+
+    async def fake_run_wa_outbox_scheduler(app: Any, worker_id: int = 0) -> None:
+        # Real loop is infinite; here it's a no-op that just records which
+        # worker_id it was spawned with and returns (shutdown/cancellation
+        # path is exercised separately by test_scheduler_cancels_cleanly).
+        calls.append(worker_id)
+
+    initializer_mod = ModuleType("backend.app.setup.service_initializer")
+    scheduler_mod = ModuleType("backend.app.modules.notifications.scheduler")
+    rag_proxy_mod = ModuleType("backend.app.rag_proxy")
+    wa_inbox_bot_mod = ModuleType("backend.services.integrations.wa_inbox_bot")
+    initializer_mod.initialize_services_light = fake_initialize_services_light
+    scheduler_mod.init_scheduler = fake_init_scheduler
+    rag_proxy_mod.close_proxy_client = fake_close
+    wa_inbox_bot_mod.close_rag_client = fake_close
+
+    monkeypatch.delenv("DISABLE_BACKGROUND_WORKERS", raising=False)
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", "1")
+    monkeypatch.setenv("WA_OUTBOX_WORKERS", "2")
+    monkeypatch.setitem(sys.modules, "backend.app.setup.service_initializer", initializer_mod)
+    monkeypatch.setitem(sys.modules, "backend.app.modules.notifications.scheduler", scheduler_mod)
+    monkeypatch.setitem(sys.modules, "backend.app.rag_proxy", rag_proxy_mod)
+    monkeypatch.setitem(
+        sys.modules, "backend.services.integrations.wa_inbox_bot", wa_inbox_bot_mod
+    )
+    monkeypatch.setattr(main_api, "_run_wa_outbox_scheduler", fake_run_wa_outbox_scheduler)
+
+    app = SimpleNamespace(state=SimpleNamespace())
+
+    async with main_api.lifespan_light(app):
+        await app.state._init_task
+        assert len(app.state._wa_outbox_scheduler_tasks) == 2
+        # let the (no-op) spawned tasks run to completion
+        await asyncio.gather(*app.state._wa_outbox_scheduler_tasks)
+
+    assert sorted(calls) == [0, 1]
 
 
 @pytest.mark.asyncio

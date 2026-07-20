@@ -32,14 +32,26 @@ for plist in "$AIR" "$PRO" "$MINI"; do
   validate_common "$plist"
 done
 
-assert_plist_value "$AIR" "ProgramArguments:0" "/Users/balizero/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
-assert_plist_value "$AIR" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/balizero/Desktop/nuzantara/apps/war-room/output"
+# ProgramArguments wraps the app binary in the run-wr2control.sh launchd
+# wrapper (PR #2442, G2_heartbeat/G5_kill_switch/G9_fail_visible genes) —
+# index 0 is the interpreter, index 1 the wrapper script, index 2+ the real
+# app invocation. Validate the wrapper shape, not the pre-wrapper direct-exec
+# shape (healer tick 2026-07-17: test-launchagent-config.sh was 3 days stale
+# against #2442, failing on every run since).
+assert_plist_value "$AIR" "ProgramArguments:0" "/bin/bash"
+assert_plist_value "$AIR" "ProgramArguments:1" "/Users/balizero/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh"
+assert_plist_value "$AIR" "ProgramArguments:2" "/Users/balizero/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
+assert_plist_value "$AIR" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/balizero/nuzantara/apps/war-room/output"
 
-assert_plist_value "$PRO" "ProgramArguments:0" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
-assert_plist_value "$PRO" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output"
+assert_plist_value "$PRO" "ProgramArguments:0" "/bin/bash"
+assert_plist_value "$PRO" "ProgramArguments:1" "/Users/nuzantara/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh"
+assert_plist_value "$PRO" "ProgramArguments:2" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
+assert_plist_value "$PRO" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/nuzantara/nuzantara/apps/war-room/output"
 
-assert_plist_value "$MINI" "ProgramArguments:0" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
-assert_plist_value "$MINI" "ProgramArguments:1" "--ambient"
+assert_plist_value "$MINI" "ProgramArguments:0" "/bin/bash"
+assert_plist_value "$MINI" "ProgramArguments:1" "/Users/nuzantara/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh"
+assert_plist_value "$MINI" "ProgramArguments:2" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
+assert_plist_value "$MINI" "ProgramArguments:3" "--ambient"
 assert_plist_value "$MINI" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/nuzantara/.wr2-warroom-sync/output"
 
 print "PASS: launch-agent configurations"

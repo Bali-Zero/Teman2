@@ -19,6 +19,7 @@ import asyncpg as _asyncpg
 from langgraph.graph import END, StateGraph
 
 from backend.core.cache import invalidate_crm_stats
+from backend.phone_lock import lock_phone_cores
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.validators import normalize_phone_e164
 
@@ -244,7 +245,14 @@ class ClientIdentityResolver:
             logger.warning("⚠️ Client not found for %s=%s, no data to create", channel, identifier)
             return (None, False)
 
-        async with self.db_pool.acquire() as conn:
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            # Phone is an identity-resolution key (Codex 2026-07-19 round 10,
+            # F12): cooperative lock before creating a new phone owner.
+            await lock_phone_cores(
+                conn,
+                client_data.get("phone"),
+                client_data.get("whatsapp"),
+            )
             # Create new client
             row = await conn.fetchrow(
                 """

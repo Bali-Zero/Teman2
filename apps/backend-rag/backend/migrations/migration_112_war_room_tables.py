@@ -18,7 +18,7 @@ war_room_posts INSERT, sending pg_notify('war_room_event', json) with payload
 
 Event bus channel registered in event_bus.py PG_CHANNEL_MAP (separate commit).
 
-Reference: /Users/nuzantara/Desktop/nuzantara/docs/war-room-2.0-design.md §7
+Reference: /Users/nuzantara/nuzantara/docs/war-room-2.0-design.md §7
 Author: Claude Opus 4.7
 Date: 2026-04-18
 """

@@ -57,7 +57,7 @@ Env: NUZANTARA_BACKEND_URL=https://nuzantara-rag.fly.dev
 
 ```
 Binary: /Users/nuzantara/.local/bin/nuzantara-mcp-advanced
-Env: FLY_APP=nuzantara-rag, NUZANTARA_ROOT=/Users/nuzantara/Desktop/nuzantara
+Env: FLY_APP=nuzantara-rag, NUZANTARA_ROOT=/Users/nuzantara/nuzantara
 ```
 
 | Tool                                    | Descrizione                 |
@@ -118,7 +118,7 @@ NUZANTARA_BACKEND_URL = "https://nuzantara-rag.fly.dev"
 command = "/Users/nuzantara/.local/bin/nuzantara-mcp-advanced"
 [mcp.servers.nuzantara-ops.env]
 FLY_APP = "nuzantara-rag"
-NUZANTARA_ROOT = "/Users/nuzantara/Desktop/nuzantara"
+NUZANTARA_ROOT = "/Users/nuzantara/nuzantara"
 ```
 
 ---

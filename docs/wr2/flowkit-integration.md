@@ -13,11 +13,11 @@ The empirical POC on 2026-05-03 (Antonello's Ultra account, see memory
 direct HTTP path to the same `GEM_PIX_2` (Nano Banana Pro) model that the
 Playwright path drives via the Gemini web UI. Concrete numbers:
 
-| Path | Latency / image | Credit cost | Setup overhead |
-|---|---|---|---|
-| Playwright (existing) | 30-90 s | 0 (web UI quota) | persistent Chrome profile, hover-reveal selectors |
-| FlowKit image | 5-15 s | **0** (FREE for `PAYGATE_TIER_TWO`) | local agent on Pro `:8100` + Chrome extension |
-| FlowKit video | async, usually minutes | Veo/Flow credits | explicit start image + `PAYGATE_TIER_TIER1P5` |
+| Path                  | Latency / image        | Credit cost                         | Setup overhead                                    |
+| --------------------- | ---------------------- | ----------------------------------- | ------------------------------------------------- |
+| Playwright (existing) | 30-90 s                | 0 (web UI quota)                    | persistent Chrome profile, hover-reveal selectors |
+| FlowKit image         | 5-15 s                 | **0** (FREE for `PAYGATE_TIER_TWO`) | local agent on Pro `:8100` + Chrome extension     |
+| FlowKit video         | async, usually minutes | Veo/Flow credits                    | explicit start image + `PAYGATE_TIER_TIER1P5`     |
 
 Same model, same image quality, **5-10× faster**, same $0 marginal cost.
 The slow path is preserved because FlowKit's bearer token expires every
@@ -48,16 +48,16 @@ draft** — we don't re-probe between slides because (a) it's wasteful and
 
 ## Env-var matrix
 
-| Env var | Default | Purpose |
-|---|---|---|
-| `WR2_IMAGE_BACKEND` | `auto` | `auto` = FlowKit first, fall back to Playwright. `flowkit` = FlowKit only, raise `BackendUnavailableError` if down. `playwright` = legacy Playwright only. |
-| `WR2_FLOWKIT_BASE_URL` | `http://127.0.0.1:8100` | FlowKit local agent endpoint. |
-| `WR2_FLOWKIT_TIMEOUT_S` | `60` | HTTP timeout for individual FlowKit calls. |
-| `WR2_FLOWKIT_MATERIAL` | `realistic` | FlowKit project material/style preset. `realistic` matches the WR2 brand bar (editorial photo aesthetic). |
-| `WR2_FLOWKIT_LANGUAGE` | `en` | Project language hint. |
-| `FLOWKIT_BASE_URL` | `http://127.0.0.1:8100` | CLI/MCP bridge endpoint, evaluated on Pro. |
-| `FLOWKIT_PAYGATE_TIER` | `PAYGATE_TIER_TIER1P5` | Default CLI/MCP tier for Ultra video models. |
-| `FLOWKIT_VIDEO_TIMEOUT_S` | `240` | CLI/MCP video polling timeout when `--dest` is requested. |
+| Env var                   | Default                 | Purpose                                                                                                                                                    |
+| ------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WR2_IMAGE_BACKEND`       | `auto`                  | `auto` = FlowKit first, fall back to Playwright. `flowkit` = FlowKit only, raise `BackendUnavailableError` if down. `playwright` = legacy Playwright only. |
+| `WR2_FLOWKIT_BASE_URL`    | `http://127.0.0.1:8100` | FlowKit local agent endpoint.                                                                                                                              |
+| `WR2_FLOWKIT_TIMEOUT_S`   | `60`                    | HTTP timeout for individual FlowKit calls.                                                                                                                 |
+| `WR2_FLOWKIT_MATERIAL`    | `realistic`             | FlowKit project material/style preset. `realistic` matches the WR2 brand bar (editorial photo aesthetic).                                                  |
+| `WR2_FLOWKIT_LANGUAGE`    | `en`                    | Project language hint.                                                                                                                                     |
+| `FLOWKIT_BASE_URL`        | `http://127.0.0.1:8100` | CLI/MCP bridge endpoint, evaluated on Pro.                                                                                                                 |
+| `FLOWKIT_PAYGATE_TIER`    | `PAYGATE_TIER_TIER1P5`  | Default CLI/MCP tier for Ultra video models.                                                                                                               |
+| `FLOWKIT_VIDEO_TIMEOUT_S` | `240`                   | CLI/MCP video polling timeout when `--dest` is requested.                                                                                                  |
 
 The existing Playwright vars (`WR2_GEMINI_PROFILE_DIR`, `WR2_IMAGE_TIMEOUT_PER_SLIDE`,
 `WR2_IMAGE_MAX_RETRIES`, `WR2_IMAGE_VLM_VALIDATION` etc.) are unchanged
@@ -122,7 +122,7 @@ FlowKit extension icon again.
 Use the repo CLI for direct checks on Pro:
 
 ```bash
-ssh pro 'cd ~/Desktop/nuzantara && apps/backend-rag/.venv/bin/python scripts/flowkit_cli.py health'
+ssh pro 'cd ~/nuzantara && apps/backend-rag/.venv/bin/python scripts/flowkit_cli.py health'
 ```
 
 For Air-M5, use the MCP tools. They copy the current CLI bridge to
@@ -153,7 +153,7 @@ to Pro. SVG avatar placeholders are not valid start images for Flow video.
 
 ```bash
 # Run wr2_image_generator.py manually with a known draft in 'drafts' status:
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 DATABASE_URL=postgresql://localhost/nuzantara_local \
   WR2_IMAGE_BACKEND=auto \
   apps/backend-rag/.venv/bin/python scripts/wr2_image_generator.py --draft-id <UUID>
@@ -175,13 +175,13 @@ FlowKit unavailable — using Playwright backend
 
 ### Failure modes (none of which require operator action)
 
-| Symptom | What's happening | Action |
-|---|---|---|
-| `FlowKit /health unreachable` (DEBUG-level log) | Local agent not running. | None — auto path falls back to Playwright. Restart agent next time you boot Chrome. |
-| `FlowKit token not captured (NO_FLOW_KEY)` or `UNAUTHENTICATED` | Bearer expired or not captured. `extension_connected: true` is not enough. | Refresh `labs.google/fx/tools/flow` on Pro and click the FlowKit extension icon. |
-| `missing_asset` from MCP/CLI video | No start frame was passed, or the expected photo path does not exist on Pro/M5. | Pass `start_image_path` or upload first and pass `start_image_media_id`; do not rely on `AVATAR`. |
-| `FlowKit generate-image/video ... MODEL_ACCESS_DENIED` | Account/tier/model mismatch or region block. | Check `/api/flow/credits` and `~/flowkit/agent/models.json`; Ultra video needs `PAYGATE_TIER_TIER1P5` mapping to `veo_3_1_i2v_s_fast_portrait_ultra`. |
-| `flowkit VLM rejected (score=0.4 < 0.5)` | FlowKit output didn't match prompt (off-brand) | None — auto path falls back to Playwright; flowkit-only path returns error and slide is marked failed. |
+| Symptom                                                         | What's happening                                                                | Action                                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FlowKit /health unreachable` (DEBUG-level log)                 | Local agent not running.                                                        | None — auto path falls back to Playwright. Restart agent next time you boot Chrome.                                                                   |
+| `FlowKit token not captured (NO_FLOW_KEY)` or `UNAUTHENTICATED` | Bearer expired or not captured. `extension_connected: true` is not enough.      | Refresh `labs.google/fx/tools/flow` on Pro and click the FlowKit extension icon.                                                                      |
+| `missing_asset` from MCP/CLI video                              | No start frame was passed, or the expected photo path does not exist on Pro/M5. | Pass `start_image_path` or upload first and pass `start_image_media_id`; do not rely on `AVATAR`.                                                     |
+| `FlowKit generate-image/video ... MODEL_ACCESS_DENIED`          | Account/tier/model mismatch or region block.                                    | Check `/api/flow/credits` and `~/flowkit/agent/models.json`; Ultra video needs `PAYGATE_TIER_TIER1P5` mapping to `veo_3_1_i2v_s_fast_portrait_ultra`. |
+| `flowkit VLM rejected (score=0.4 < 0.5)`                        | FlowKit output didn't match prompt (off-brand)                                  | None — auto path falls back to Playwright; flowkit-only path returns error and slide is marked failed.                                                |
 
 ## What does NOT change
 

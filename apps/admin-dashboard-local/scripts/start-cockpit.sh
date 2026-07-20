@@ -23,7 +23,7 @@ fi
 
 export LOCAL_ONLY=1
 export COCKPIT_HMAC_KEY=$(cat "$HMAC_KEY_FILE")
-export COCKPIT_REPO_ROOT="${COCKPIT_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+export COCKPIT_REPO_ROOT="${COCKPIT_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 
 # Source DB envs
 if [ -f .env ]; then set -a; source .env; set +a; fi

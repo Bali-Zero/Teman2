@@ -135,7 +135,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     ssh-localhost trampoline in non-ssh contexts (sshd holds FDA, children inherit).
 # (4) hygiene: stdin </dev/null; empty MCP config (each server is a sync-init
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
 # claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
 # Pro: ~/.local/bin only — healer-pro first tick died exit=127 on a hardcoded
@@ -177,6 +177,7 @@ fi
 "$CLAUDE_BIN" -p "TODO: your standing mandate here" \\
     --model "$MODEL" --dangerously-skip-permissions \\
     --strict-mcp-config --mcp-config '{{"mcpServers":{{}}}}' \\
+    --max-budget-usd "${{{var}_MAX_BUDGET_USD:-5}}" \\
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 ( sleep "$MAX_WALL_S"; kill -0 "$CPID" 2>/dev/null && kill "$CPID" && \\

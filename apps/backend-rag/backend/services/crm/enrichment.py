@@ -332,10 +332,14 @@ Return ONLY the JSON object, no additional text."""
                     "enriched_at": datetime.now(timezone.utc).isoformat(),
                     "model": OLLAMA_MODEL,
                 }
+                # ::text::jsonb — the app pools register a jsonb codec
+                # (encoder=json.dumps); a bare param inferred as jsonb would
+                # get json.dumps(existing) dumped AGAIN, landing as a jsonb
+                # string scalar.
                 await conn.execute(
                     """
                     UPDATE clients
-                    SET custom_fields = $1, birthplace_enrichment_date = NOW(), updated_at = NOW()
+                    SET custom_fields = $1::text::jsonb, birthplace_enrichment_date = NOW(), updated_at = NOW()
                     WHERE id = $2
                     """,
                     json.dumps(existing),

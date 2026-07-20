@@ -109,7 +109,7 @@ was disabled in W67c). You need the account holder's phone next to you.
 - **Ghost row.** If a re-link fails with a unique-constraint error on
   `whatsapp_team_sessions`, a dead `connected`/`pending` row is blocking it — the
   janitor clears it within ~5 min, or run it once manually:
-  `python3 ~/Desktop/nuzantara/scripts/wa_mirror_session_janitor.py`.
+  `python3 ~/nuzantara/scripts/wa_mirror_session_janitor.py`.
 
 ## References
 

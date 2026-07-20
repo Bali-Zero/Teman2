@@ -37,10 +37,23 @@ CLI:
     python scripts/wr2_queue_writer.py list-ready
     python scripts/wr2_queue_writer.py ref-code <item_id>
     python scripts/wr2_queue_writer.py mark-published <ref_code> <ig_url> [--at ISO]
+    python scripts/wr2_queue_writer.py ingest-external <ig_url> [--topic T] [--at ISO]
+    python scripts/wr2_queue_writer.py add-external '<json payload>'
 
 Side-effect free functions (pure, unit-tested) are separated from the two I/O
 functions (`load_queue`, `write_queue_atomic`) so the matching/normalization
 logic is testable without touching disk.
+
+DOCUMENTED LIMITATION (external-post feature, §B, 2026-07-17): `add-external`
+lands the QUEUE ENTRY only — it never receives or writes the entry's images.
+When the WR2 Control app (M5) registers an external post WITH images, those
+PNGs stay local to M5's `carousel/external-<date>-<slug>/slides/` directory;
+this writer's Pro-side counterpart has no rsync/copy step for them, and Pro
+(the queue's SSOT) renders nothing for that carousel_path. Acceptable for v1
+because Pro's queue-consuming surfaces (scraper, analyst, mark-published) only
+need instagram_post_url/state/metrics, never the local slide PNGs — but a
+future viewer that expects Pro to render the carousel for an image-bearing
+external post will find the directory missing there.
 """
 
 from __future__ import annotations
@@ -62,7 +75,7 @@ from typing import Any, Optional
 # ── Constants ──────────────────────────────────────────────────────────────
 
 DEFAULT_QUEUE_PATH = (
-    Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+    Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 )
 
 # States from which an item may legitimately transition to `published`.
@@ -133,7 +146,8 @@ def extract_ig_shortcode(url: str) -> Optional[str]:
 
 
 def build_external_item(
-    ig_url: str, published_at_iso: str, topic: Optional[str] = None
+    ig_url: str, published_at_iso: str, topic: Optional[str] = None,
+    ig_media_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build a fresh, published queue item for an EXTERNALLY-published IG post.
 
@@ -143,10 +157,21 @@ def build_external_item(
     `ig-<shortcode>` (deterministic from the URL → idempotent). `external=True`
     and `source="manual_external"` flag it so the IG analyst knows it lacks the
     full WR2 attributes (archetype/domain/audience).
+
+    `ig_media_id` (§C reconciliation, 2026-07-17 live Pro-side diagnosis): the
+    REAL numeric Graph API media id, when the caller already fetched it (e.g.
+    `wr2_ig_discovery.py`'s own Graph media listing carries `m["id"]`, the
+    numeric id, alongside `permalink`). Stored as its OWN field — NEVER folded
+    into `item_id`'s `ig-<shortcode>` derivation, because the shortcode (the
+    URL's `/p/<code>/` segment) and the Graph media id are DIFFERENT
+    identifiers; a caller that only has the permalink (no Graph fetch, e.g. the
+    WR2 Control app's manual "add external post" §A feature) legitimately omits
+    this, and the metrics scraper degrades gracefully (skips with a logged
+    reason) rather than mistaking the shortcode for a fetchable media id.
     """
     url = ig_url.strip()
     shortcode = extract_ig_shortcode(url) or hashlib.sha1(url.encode()).hexdigest()[:8]
-    return {
+    item: dict[str, Any] = {
         "item_id": f"ig-{shortcode}",
         "topic": topic or f"(external IG post {shortcode})",
         "state": "published",
@@ -159,6 +184,62 @@ def build_external_item(
         "source": "manual_external",
         "created_at": published_at_iso,
     }
+    if ig_media_id:
+        item["ig_media_id"] = str(ig_media_id)
+    return item
+
+
+REQUIRED_EXTERNAL_PAYLOAD_FIELDS = (
+    "item_id",
+    "state",
+    "instagram_post_url",
+    "source",
+    "topic_slug",
+)
+EXTERNAL_MANUAL_SOURCE = "external_manual"
+
+
+def validate_external_payload(payload: dict[str, Any]) -> Optional[str]:
+    """Return an error string if `payload` is not a valid add-external entry, else None.
+
+    Distinct from `validate_ig_url` (URL shape only): this checks the FULL contract
+    the WR2 Control app (M5) is expected to build (`ExternalPostRegistration.swift`,
+    §A) before pushing it here for propagation to Pro (§B) — required fields present,
+    `state` must already be "published" (this writer never transitions state, only
+    lands an already-published entry), `source` must be the exact literal
+    `"external_manual"` (not the older `ingest_external_post`/`build_external_item`
+    convention `"manual_external"` — the two call sites mint entries for different
+    origins: that one is Zero pasting a bare URL on Pro directly, this one is the app
+    replaying a fully-formed entry it already built on M5).
+
+    Type-checks OPTIONAL fields too, when present (Codex red-team, 2026-07-17,
+    finding G): `slide_count` must be an int >= 0, `published_at` must be
+    ISO-parseable. A malformed value here would otherwise ride to Pro verbatim
+    and can break the Swift decode of the WHOLE queue array on the app's next
+    pull — these fields are optional (may be absent), never wrong-shaped.
+    """
+    for field in REQUIRED_EXTERNAL_PAYLOAD_FIELDS:
+        if not payload.get(field):
+            return f"missing required field: {field!r}"
+    if payload.get("state") != "published":
+        return f"state must be 'published', got {payload.get('state')!r}"
+    if payload.get("source") != EXTERNAL_MANUAL_SOURCE:
+        return f"source must be {EXTERNAL_MANUAL_SOURCE!r}, got {payload.get('source')!r}"
+    if not validate_ig_url(str(payload["instagram_post_url"])):
+        return f"instagram_post_url is not a valid IG permalink: {payload['instagram_post_url']!r}"
+    if "slide_count" in payload and payload["slide_count"] is not None:
+        sc = payload["slide_count"]
+        if isinstance(sc, bool) or not isinstance(sc, int) or sc < 0:
+            return f"slide_count must be an int >= 0, got {sc!r}"
+    if "published_at" in payload and payload["published_at"] is not None:
+        pa = payload["published_at"]
+        if not isinstance(pa, str):
+            return f"published_at must be an ISO-8601 string, got {pa!r}"
+        try:
+            datetime.fromisoformat(pa.replace("Z", "+00:00"))
+        except ValueError:
+            return f"published_at is not ISO-parseable: {pa!r}"
+    return None
 
 
 def find_by_ref_code(
@@ -333,6 +414,7 @@ def ingest_external_post(
     topic: Optional[str] = None,
     published_at: Optional[str] = None,
     now: Optional[datetime] = None,
+    ig_media_id: Optional[str] = None,
 ) -> PublishResult:
     """Register an externally-published IG post (no pre-existing queue item).
 
@@ -344,6 +426,11 @@ def ingest_external_post(
     for the scraper (which skips items <24h old) — these posts are already live,
     we are not waiting for a fresh-publish window. Pass `--at` with the real
     publication date when known.
+
+    `ig_media_id`: pass-through to `build_external_item` (§C, 2026-07-17) — the
+    caller's real numeric Graph media id when it already has one (e.g.
+    `wr2_ig_discovery.py`'s Graph fetch). Omitted by callers with only a
+    permalink (no Graph fetch, e.g. the WR2 Control app's manual entry point).
 
     Returns PublishResult with ref_code = compute_ref_code of the minted id.
       * invalid_url     — not an IG permalink -> NO write
@@ -367,11 +454,167 @@ def ingest_external_post(
         published_iso = published_at or (
             (now or datetime.now(timezone.utc)) - timedelta(hours=25)
         ).isoformat()
-        new_item = build_external_item(url, published_iso, topic=topic)
+        new_item = build_external_item(url, published_iso, topic=topic, ig_media_id=ig_media_id)
         items.append(new_item)
         write_queue_atomic(path, items)
         iid = new_item["item_id"]
         return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
+
+
+def backfill_media_id(
+    path: Path, item_id: str, ig_media_id: str, expected_shortcode: Optional[str] = None,
+) -> PublishResult:
+    """Attach the real numeric Graph media id onto an EXISTING queue item that
+    lacks one (§C reconciliation, 2026-07-17 live Pro-side diagnosis).
+
+    WR2-native carousels are published via the app's own publish gate
+    (`QueueWriter.markPublished`/`mark_published` above), which records the
+    permalink and NEVER a Graph media id — so a native entry (e.g. the
+    `bali-pma-rental-crackdown` case) had no way to get automated metrics even
+    though the same post is trivially fetchable by `wr2_ig_discovery.py`'s own
+    Graph media listing, which carries the real numeric id (Graph's own `id`
+    field) alongside the permalink. `wr2_ig_discovery.py` calls this for every
+    fetched media item whose SHORTCODE already matches a known queue item
+    lacking `ig_media_id` (see `find_media_id_backfills`) — this is the
+    reconciliation half; `ingest_external_post` above is the fresh-mint half.
+
+    `expected_shortcode` (Codex red-team, 2026-07-17, finding F): the shortcode
+    `find_media_id_backfills` actually matched on, at SNAPSHOT time. Without a
+    compare-and-set under THIS call's own lock, a TOCTOU race is possible: if
+    the entry's `instagram_post_url` changes between that snapshot and this
+    write acquiring the lock, the OLD post's media id would get attached to
+    whatever URL now sits at that item_id. Re-derives the entry's CURRENT
+    shortcode under the lock and refuses (conflict) on any mismatch — `None`
+    skips the check (fresh-mint callers that never snapshotted a shortcode).
+
+    Idempotent + conflict-safe, same discipline as `mark_published`:
+      * not_found          — no item matches item_id -> NO write
+      * conflict           — item already has a DIFFERENT ig_media_id, OR its
+                              current shortcode no longer matches
+                              `expected_shortcode` (race) -> NO write (needs human/retry)
+      * already_backfilled — same ig_media_id already present -> NO write (no-op)
+      * backfilled         — field written atomically -> WRITE
+    """
+    with queue_lock(path):
+        items = load_queue(path)
+        idx: Optional[int] = None
+        item: Optional[dict[str, Any]] = None
+        for i, it in enumerate(items):
+            if item_id_of(it) == item_id:
+                idx, item = i, it
+                break
+        if item is None:
+            return PublishResult(
+                "not_found", False, compute_ref_code(item_id), item_id,
+                "no queue item matches this item_id",
+            )
+
+        if expected_shortcode:
+            current_url = str(item.get("instagram_post_url") or "")
+            current_shortcode = extract_ig_shortcode(current_url) if current_url else None
+            if current_shortcode != expected_shortcode:
+                return PublishResult(
+                    "conflict", False, compute_ref_code(item_id), item_id,
+                    f"item's current shortcode ({current_shortcode!r}) no longer matches "
+                    f"the snapshot this backfill was matched on ({expected_shortcode!r}); "
+                    "the entry's URL changed under us — refusing to attach a possibly-stale media id",
+                )
+
+        existing = item.get("ig_media_id")
+        if existing:
+            if str(existing) == str(ig_media_id):
+                return PublishResult(
+                    "already_backfilled", True, compute_ref_code(item_id), item_id,
+                    "no-op: ig_media_id already recorded",
+                )
+            return PublishResult(
+                "conflict", False, compute_ref_code(item_id), item_id,
+                f"item already has a DIFFERENT ig_media_id ({existing!r}); refusing to overwrite",
+            )
+
+        updated = dict(item)
+        updated["ig_media_id"] = str(ig_media_id)
+        assert idx is not None
+        items[idx] = updated
+        write_queue_atomic(path, items)
+        return PublishResult(
+            "backfilled", True, compute_ref_code(item_id), item_id,
+            f"backfilled ig_media_id={ig_media_id}",
+        )
+
+
+def add_external(path: Path, payload: dict[str, Any]) -> PublishResult:
+    """Append a FULLY-FORMED external-manual queue entry (M5->Pro propagation, §B).
+
+    Distinct from `ingest_external_post` above (which MINTS a minimal item from a
+    bare URL for Zero's manual CLI use, id `ig-<shortcode>`, source
+    `"manual_external"`): this accepts a payload the WR2 Control app already built
+    end-to-end (item_id `external_<date>T<time>_<slug>`, topic_slug, slide_count,
+    carousel_path, source `"external_manual"`, ...) and appends it VERBATIM after
+    validation — the app is the author, this call is only the sync landing point.
+
+    Refuses a duplicate on EITHER the same `instagram_post_url` OR the same
+    `item_id` already present (idempotency requirement, §B acceptance #2): the
+    M5->Pro push-back loop may retry after a flaky ssh, and a real duplicate post
+    submitted twice by the operator must be refused, not double-enqueued.
+
+    URL comparison is SHORTCODE-FIRST (Codex red-team, 2026-07-17, finding D):
+    an existing entry's `instagram_post_url` carrying a different query string or
+    scheme/www variant (e.g. a stray `?utm_...`) than the app's canonicalized URL
+    is still the SAME post — exact-string comparison alone would double-enqueue
+    it. Falls back to exact-string only when either URL doesn't parse a shortcode
+    at all (never silently treats two unparseable strings as equal-by-default).
+
+      * invalid_payload  — missing/wrong-shaped field -> NO write
+      * already_present  — same post (item_id+URL match, or URL/shortcode match
+                            alone) already in queue -> NO write (no-op)
+      * conflict         — SAME item_id but a DIFFERENT post (URL/shortcode
+                            mismatch, finding E) -> NO write, ok=False. Must never
+                            collapse into already_present: the wrapper's caller
+                            treats ok=True as "safe to mark synced_to_pro", and
+                            marking synced here would silently lose the genuinely
+                            distinct post with no record it was ever dropped.
+      * added            — appended + written atomically -> WRITE
+    """
+    err = validate_external_payload(payload)
+    if err:
+        return PublishResult("invalid_payload", False, "", detail=err)
+
+    new_id = str(payload["item_id"])
+    new_url = str(payload["instagram_post_url"]).strip()
+    new_shortcode = extract_ig_shortcode(new_url)
+
+    with queue_lock(path):
+        items = load_queue(path)
+        for existing in items:
+            eid = item_id_of(existing)
+            existing_url = (existing.get("instagram_post_url") or "").strip()
+            existing_shortcode = extract_ig_shortcode(existing_url) if existing_url else None
+            if new_shortcode and existing_shortcode:
+                same_post = new_shortcode == existing_shortcode
+            else:
+                same_post = bool(existing_url) and existing_url == new_url
+
+            if eid == new_id:
+                if same_post:
+                    return PublishResult(
+                        "already_present", True, compute_ref_code(new_id), eid,
+                        "no-op: an entry with this item_id and URL already exists",
+                    )
+                return PublishResult(
+                    "conflict", False, compute_ref_code(new_id), eid,
+                    f"item_id {new_id!r} already exists with a DIFFERENT URL "
+                    f"({existing_url!r} vs {new_url!r}); refusing to overwrite",
+                )
+            if same_post:
+                return PublishResult(
+                    "already_present", True, compute_ref_code(new_id), eid,
+                    "no-op: an entry with this instagram_post_url already exists (different item_id)",
+                )
+        items.append(dict(payload))
+        write_queue_atomic(path, items)
+        return PublishResult("added", True, compute_ref_code(new_id), new_id,
+                              f"registered external post {new_id}")
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────
@@ -429,6 +672,21 @@ def _cmd_ingest_external(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _cmd_add_external(args: argparse.Namespace) -> int:
+    path = _resolve_queue_path(args.queue)
+    try:
+        payload = json.loads(args.payload)
+    except json.JSONDecodeError as e:
+        print(json.dumps({"status": "invalid_json", "ok": False, "detail": str(e)}, ensure_ascii=False))
+        return 1
+    if not isinstance(payload, dict):
+        print(json.dumps({"status": "invalid_json", "ok": False, "detail": "payload is not a JSON object"}))
+        return 1
+    result = add_external(path, payload)
+    print(json.dumps(result.as_dict(), ensure_ascii=False))
+    return 0 if result.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="WR2 publish-feedback queue writer")
     p.add_argument("--queue", help="path to human-review-queue.json (default: env WR2_QUEUE_PATH or standard)")
@@ -456,6 +714,13 @@ def build_parser() -> argparse.ArgumentParser:
     ie.add_argument("--topic", help="human label for the post (default: auto from shortcode)")
     ie.add_argument("--at", help="ISO publication date (default: 25h ago, so it's immediately scraper-eligible)")
     ie.set_defaults(func=_cmd_ingest_external)
+
+    ae = sub.add_parser(
+        "add-external",
+        help="append a fully-formed external_manual entry built by the WR2 Control app (M5->Pro sync, §B)",
+    )
+    ae.add_argument("payload", help="JSON object: item_id/state/instagram_post_url/source/topic_slug/...")
+    ae.set_defaults(func=_cmd_add_external)
     return p
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Resolve REPO from this script's location — portable across Pro (.../Desktop/nuzantara)
+# Resolve REPO from this script's location — portable across Pro (.../nuzantara)
 # and Air (.../Projects/nuzantara) without hardcoding machine-specific paths.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"

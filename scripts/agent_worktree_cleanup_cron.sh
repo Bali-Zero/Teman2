@@ -30,7 +30,7 @@ set -euo pipefail
 # Hardcoded MAIN checkout — do NOT derive from $0 (this wrapper may itself be
 # invoked from a worktree copy). The broker path below is the canonical one.
 # Env override exists for the test harness ONLY (point at a stub repo).
-REPO_ROOT="${AGENT_WORKTREE_CLEANUP_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
+REPO_ROOT="${AGENT_WORKTREE_CLEANUP_REPO_ROOT:-${HOME}/nuzantara}"
 BROKER="${REPO_ROOT}/scripts/agent_start.py"
 
 LOG_DIR="${HOME}/logs"

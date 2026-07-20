@@ -9,7 +9,7 @@
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>WR2_REPO_ROOT</key>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<string>/Users/nuzantara/nuzantara-deploy</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.plist-watchdog</string>
@@ -19,7 +19,7 @@
 	<array>
 		<string>/bin/bash</string>
 		<string>-lc</string>
-		<string>if [[ -x /Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh ]]; then export WR2_REPO_ROOT=/Users/nuzantara/Desktop/nuzantara-deploy; exec /Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh; fi; export WR2_REPO_ROOT=/Users/nuzantara/Desktop/nuzantara; exec /Users/nuzantara/Desktop/nuzantara/scripts/wr2_plist_watchdog.sh</string>
+		<string>if [[ -x /Users/nuzantara/nuzantara-deploy/scripts/wr2_plist_watchdog.sh ]]; then export WR2_REPO_ROOT=/Users/nuzantara/nuzantara-deploy; exec /Users/nuzantara/nuzantara-deploy/scripts/wr2_plist_watchdog.sh; fi; export WR2_REPO_ROOT=/Users/nuzantara/nuzantara; exec /Users/nuzantara/nuzantara/scripts/wr2_plist_watchdog.sh</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>900</integer>

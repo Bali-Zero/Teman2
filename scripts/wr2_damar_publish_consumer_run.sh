@@ -17,7 +17,7 @@
 
 set -uo pipefail
 
-REPO_ROOT="${WR2_CONSUMER_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${WR2_CONSUMER_REPO_ROOT:-$HOME/nuzantara}"
 LOGDIR="${HOME}/logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/wr2-damar-publish-consumer.log"

@@ -78,6 +78,23 @@ _ENABLE_HYDE = os.getenv("ENABLE_HYDE", "false").lower() in ("true", "1", "yes")
 # R5 Phase 6: _ENABLE_NLM_ORCHESTRATOR removed — NLM routing decommissioned, Qdrant+KG canonical
 _ENABLE_DEEP_RESEARCH = os.getenv("ENABLE_DEEP_RESEARCH", "false").lower() in ("true", "1", "yes")
 
+# SPEC v2 D3-L2 (F1b, 2026-07-17): curated_qa grounding injection.
+# NOT verbatim serving — a hit is prepended to the ReAct system context as
+# high-priority evidence; the LLM still answers the real question and the
+# abstain gate still runs downstream. Default ON, env-flagged off-switch.
+_CURATED_QA_INJECTION_ENABLED = os.getenv("CURATED_QA_INJECTION_ENABLED", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+_CURATED_QA_COLLECTION_NAME = "curated_qa"
+_CURATED_QA_TOP_K = 2
+# 0.90 raw cosine was calibrated against near-verbatim question matches; real
+# paraphrased visa queries score 0.46-0.74 against the stored questions, so
+# the gate almost never fired in prod. 0.58 is the calibrated within-domain
+# threshold — safe only because injection is now domain-filtered (below).
+_CURATED_QA_SCORE_THRESHOLD = float(os.getenv("CURATED_QA_SCORE_THRESHOLD", "0.58"))
+
 
 class OrchestratorCore:
     """
@@ -196,6 +213,26 @@ class OrchestratorCore:
         FAQ cache is faster than semantic cache (exact match vs vector similarity).
         Covers ~60-80% of common questions with pre-calculated answers.
 
+        DOMAIN-SCOPED (Phase-0 safety rail, FATAL 1 —
+        research/operations/2026-07-17-full-domain-cache-design.md §8): the
+        harvester now writes FAQ entries under a domain-scoped key
+        (notebook_id=domain_scope_id(domain)). Lookup here mirrors that:
+
+        1. Classify the query's domain from `extracted_entities` (same field
+           `_inject_curated_qa_grounding` already uses). If the query has no
+           concrete domain (missing or DOMAIN_GENERAL), the FAQ cache is
+           SKIPPED entirely — there is no domain to scope the key by, and
+           generic phrasings ("how long does this take") are exactly the
+           near-certain cross-domain collision case FATAL 1 exists to close.
+        2. Try the domain-scoped key first.
+        3. MIGRATION BRIDGE: if that misses, fall back to the legacy
+           UNSCOPED key (pre-Phase-0 entries — e.g. the 216 E33 rows already
+           live in prod Redis under the old scheme become unreachable
+           otherwise: cold, not wrong). A legacy-key hit is only served when
+           its OWN stored `metadata.domain` matches the classified query
+           domain; a mismatch is treated as a MISS, logged, and counted —
+           never served cross-domain.
+
         Args:
             query: Query string
             extracted_entities: Entities estratte
@@ -207,8 +244,60 @@ class OrchestratorCore:
         if not self.faq_cache:
             return None
 
+        domain = (extracted_entities or {}).get("domain")
+        classified_domain = (
+            domain if domain and domain != EntityExtractionService.DOMAIN_GENERAL else None
+        )
+
+        # No classified domain -> no safe key scope to check against. Skip
+        # the FAQ cache entirely rather than risk an unscoped cross-domain
+        # hit (mirrors the identical precedent in
+        # _inject_curated_qa_grounding: "if not domain ... return").
+        if classified_domain is None:
+            logger.debug(
+                "FAQ Cache SKIPPED (no classified domain): %s...",
+                query[:60],
+            )
+            from backend.app.metrics import faq_cache_misses_total
+
+            faq_cache_misses_total.inc()
+            return None
+
         try:
-            cached = await self.faq_cache.get(query)
+            from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+            cached = await self.faq_cache.get(
+                query,
+                notebook_id=domain_scope_id(classified_domain),
+            )
+
+            if cached is None:
+                # Migration bridge: legacy unscoped key (pre-Phase-0 writes).
+                legacy = await self.faq_cache.get(query)
+                if legacy is not None:
+                    stored_domain = legacy.get("metadata", {}).get("domain")
+                    if stored_domain == classified_domain:
+                        cached = legacy
+                    else:
+                        logger.warning(
+                            "⚠️ FAQ Cache domain-mismatch averted: query "
+                            "classified as %r but legacy-key hit carries "
+                            "domain=%r for '%.60s' — treating as MISS.",
+                            classified_domain,
+                            stored_domain,
+                            query,
+                        )
+                        try:
+                            from backend.app.metrics import (
+                                faq_cache_domain_mismatch_averted_total,
+                            )
+
+                            faq_cache_domain_mismatch_averted_total.labels(
+                                classified_domain=classified_domain,
+                                stored_domain=stored_domain or "unknown",
+                            ).inc()
+                        except ImportError:
+                            pass
 
             if cached:
                 # Cache HIT! Return instant response
@@ -322,6 +411,156 @@ class OrchestratorCore:
                 set_span_status("error", str(e))
 
         return None
+
+    async def _inject_curated_qa_grounding(
+        self,
+        query: str,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> str:
+        """D3-L2 (SPEC v2, F1b): grounding injection from the curated_qa collection.
+
+        This is NOT verbatim serving. On a high-confidence hit (score >=
+        _CURATED_QA_SCORE_THRESHOLD) the pre-vetted answer is formatted as a
+        tagged evidence block and returned for the CALLER to prepend to the
+        ReAct system context — the LLM still reasons over and answers the
+        real question, and the abstain gate still runs on its output. This
+        method never returns an answer directly and never short-circuits the
+        query pipeline.
+
+        Injection is DOMAIN-GATED: with the score threshold alone, cosine
+        similarity overlaps enough across domains that a query in one domain
+        (e.g. "register a PT PMA company") can score above threshold against a
+        curated_qa entry from an unrelated domain (e.g. a visa Q&A) — polluting
+        the answer with irrelevant evidence. So we only inject when the query
+        has a concrete, classified domain AND each retrieved hit's own `domain`
+        tag matches it (the per-hit recheck below). The gate is applied on the
+        retrieved hits rather than as a Qdrant `filter` argument on purpose —
+        see the search_collection call for why passing a filter there is a trap.
+
+        Injection is also STALENESS-GATED (Phase-0 safety rail, MAJOR 7/8):
+        each hit's `active` metadata field is rechecked per-hit alongside
+        the domain tag — a point flagged `active=False` (TTL-expired at
+        harvest time, or quarantined by curated_qa_regen_trigger.py after a
+        regulatory-delta match) is excluded even if it clears score AND
+        domain. Missing `active` (a point written before this rail existed)
+        defaults to included, never silently dropped.
+
+        Defensive by design: any failure (Qdrant down, malformed payload,
+        missing retriever) is logged and degrades to "" (no injection) —
+        this step must never break the main query path.
+
+        Args:
+            query: The user's query (embedded and searched verbatim against
+                the curated_qa collection).
+            extracted_entities: Output of EntityExtractionService.extract_entities()
+                for this query, used to read the classified `domain`.
+
+        Returns:
+            A formatted evidence-block string ready to append to
+            `system_context_for_prompt`, or "" if disabled/no domain/no
+            qualifying hit/error.
+        """
+        if not _CURATED_QA_INJECTION_ENABLED or not self.retriever:
+            return ""
+
+        domain = (extracted_entities or {}).get("domain")
+        # Never inject cross-domain: an unclassified/general query has no
+        # curated_qa domain to filter on, and all-domain cosine overlap at
+        # the calibrated threshold would pollute unrelated answers.
+        if not domain or domain == EntityExtractionService.DOMAIN_GENERAL:
+            return ""
+
+        try:
+            # NO Qdrant-level domain filter here (root-caused 2026-07-18):
+            # search_collection() feeds `filter` through SearchService ->
+            # _convert_filter_to_qdrant_format, which expects the SIMPLIFIED
+            # {field: value} shape and re-wraps anything else. A Qdrant-native
+            # {"must": [{"key": "domain", ...}]} filter got mangled into a
+            # condition on a field literally named "must" -> Qdrant HTTP 400
+            # ("Expected some form of condition"); even the simplified
+            # {"domain": domain} form emits an unindexed `metadata.domain` term
+            # -> HTTP 400. Either way the whole search died, so curated_qa
+            # injection NEVER fired in prod (dead since F1b/#2588; #2684's
+            # "domain filter" only reinforced the trap). The per-hit
+            # `hit_domain != domain` recheck below is the real, sufficient
+            # domain gate: every curated_qa point carries a top-level `domain`,
+            # so an off-domain query retrieves only same-store hits and discards
+            # any whose tag doesn't match -> "" (no cross-domain pollution).
+            search_result = await self.retriever.search_collection(
+                query=query,
+                collection_name=_CURATED_QA_COLLECTION_NAME,
+                limit=_CURATED_QA_TOP_K,
+            )
+            if not isinstance(search_result, dict):
+                # Defensive: search_collection's real contract returns a plain
+                # dict ({"results": [...], ...}); anything else (including a
+                # not-yet-awaited object from an under-specced test double) is
+                # treated as a miss rather than risking a sync .get() call on
+                # something that expects to be awaited.
+                return ""
+
+            blocks: list[str] = []
+            for hit in search_result.get("results", []):
+                if not isinstance(hit, dict):
+                    continue
+                if hit.get("score", 0.0) < _CURATED_QA_SCORE_THRESHOLD:
+                    continue
+                metadata = hit.get("metadata") or {}
+                # PRIMARY domain gate (there is no Qdrant-level filter — see the
+                # search_collection call above): inject a hit ONLY when its own
+                # `domain` tag equals the query's classified domain. This is what
+                # prevents cross-domain pollution (scar family #3). A hit with a
+                # missing/blank/mismatched domain tag is skipped conservatively —
+                # every real curated_qa point carries an explicit domain.
+                hit_domain = metadata.get("domain")
+                if hit_domain != domain:
+                    continue
+                # Staleness rail (Phase-0 safety rail, MAJOR 7/8): a row
+                # written before its TTL expired is still "active" in
+                # Qdrant (points are never auto-expired the way Redis keys
+                # are), and curated_qa_regen_trigger.py flips this to False
+                # on a regulatory-delta match — folding that quarantine
+                # signal into the SAME field the class-based-TTL rail
+                # writes (rather than a second regulatory_flagged
+                # special-case here). Default True (missing field = a
+                # pre-Phase-0 point written before this rail existed —
+                # treated as active, not silently dropped).
+                if metadata.get("active", True) is False:
+                    continue
+                answer = metadata.get("answer")
+                if not answer:
+                    # Question-only seeds (prewarm/golden) must never reach
+                    # here (the harvester skips them for the Qdrant sink too),
+                    # but skip defensively rather than inject an empty block.
+                    continue
+                source_ref = metadata.get("source_ref", "unknown")
+                source_date = metadata.get("source_date", "unknown")
+                blocks.append(f"[CURATED {source_ref} {source_date}]\n{answer}")
+
+            if not blocks:
+                return ""
+
+            try:
+                from backend.app.metrics import curated_qa_injections_total
+
+                curated_qa_injections_total.inc()
+            except ImportError:
+                pass
+
+            logger.info(
+                "✅ [CuratedQA] Injected %d curated evidence block(s) for query",
+                len(blocks),
+            )
+            return (
+                "\n\n--- CURATED KNOWLEDGE (high-priority, pre-vetted evidence) ---\n"
+                + "\n\n".join(blocks)
+            )
+        except Exception as e:
+            logger.warning(
+                "⚠️ [CuratedQA] Grounding injection failed (continuing without): %s",
+                e,
+            )
+            return ""
 
     async def extract_entities_and_kg_context(
         self,
@@ -867,6 +1106,16 @@ class OrchestratorCore:
         if cached_result:
             return cached_result
 
+        # 3c. [SPEC v2 D3-L2] Curated QA grounding injection — NOT verbatim
+        # serving: on a high-confidence curated_qa hit, prepend it as
+        # high-priority evidence to the system context. The query still goes
+        # through the full ReAct loop + abstain gate below; this only shapes
+        # the evidence the LLM reasons over. Defensive by design (see
+        # _inject_curated_qa_grounding docstring) — never raises.
+        curated_qa_context = await self._inject_curated_qa_grounding(query, extracted_entities)
+        if curated_qa_context:
+            system_context_for_prompt += curated_qa_context
+
         # 3b. Phase 6: Check if multi-agent coordination is needed
         if self._multi_agent_coordinator and requires_multi_agent(query):
             try:
@@ -874,6 +1123,7 @@ class OrchestratorCore:
                 ma_result = await self._multi_agent_coordinator.process(
                     query=query,
                     user_context={"extracted_entities": extracted_entities},
+                    grounding_context=system_context_for_prompt,
                 )
                 if ma_result.get("final_answer"):
                     return CoreResult(

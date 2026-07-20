@@ -24,7 +24,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-LAMP = Path("/Users/balizero/Desktop/nuzantara/data/kb_sources/lampiran_pp28")
+LAMP = Path("/Users/balizero/nuzantara/data/kb_sources/lampiran_pp28")
 OUT = Path(__file__).resolve().parents[1] / "scratch" / "education_jangka_ocr.json"
 
 CODE_RE = re.compile(r"\b(85\d{3})\b")           # education KBLI

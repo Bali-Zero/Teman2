@@ -366,7 +366,7 @@ class DeliveryManager:
                     (channel, channel_id, sender_id, content, metadata,
                      error_message, error_type, attempt_count, max_attempts,
                      next_retry_at, status)
-                VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, 0, $8, $9, 'pending')
+                VALUES ($1, $2, $3, $4, $5::text::jsonb, $6, $7, 0, $8, $9, 'pending')
                 """,
                 record["channel"],
                 record["channel_id"],

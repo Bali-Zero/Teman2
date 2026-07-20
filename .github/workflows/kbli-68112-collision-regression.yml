@@ -1,0 +1,65 @@
+name: kbli-68112-collision-regression
+
+# Regression tripwire for the KBLI 68112 code-number collision (fixed 2026-07-16).
+#
+# BPS Peraturan 7/2025 (KBLI 2025, current) codes 68112 as residential leasing;
+# PP 28/2025 (numbered on the OLD KBLI 2020) codes the SAME 5-digit number 68112
+# as MICE-venue rental (Lampiran I.L, Sektor Pariwisata, p.I.L.44) — a pure
+# code-number collision across two 2025 regulations. The served datasets had the
+# correct residential title but the WRONG (PP28-MICE) per_skala licensing block.
+# Fix: per_skala -> [] (honest — no OSS NSPK published yet for the new code,
+# ruang-lingkup 404), original block preserved under
+# per_skala_disputed_pp28_mice for audit, advisory _data_note added.
+#
+# This job is the tripwire: it fails if the MICE-venue licensing ever leaks back
+# into 68112's own per_skala on any served dataset copy. Scoped to this ONE known
+# collision — see scripts/tests/test_kbli_68112_pp28_mice_collision.py docstring
+# for why a dataset-wide "no MICE/Venue" rule would false-positive on 68124/82300
+# (legitimate MICE/convention-venue codes).
+#
+# Path-scoped (no pending-forever, W69 BUCO #1): a PR that doesn't touch the KBLI
+# dataset or this test has nothing for it to check. NON-REQUIRED by design: a new
+# signal observes for a review cycle before it can block; flip to required only
+# after it proves stable + zero false-positive.
+on:
+  pull_request:
+    paths:
+      - "source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "scripts/tests/test_kbli_68112_pp28_mice_collision.py"
+      - ".github/workflows/kbli-68112-collision-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "scripts/tests/test_kbli_68112_pp28_mice_collision.py"
+      - ".github/workflows/kbli-68112-collision-regression.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kbli-68112-collision-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kbli-68112-collision-regression:
+    name: kbli-68112-collision-regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run 68112 collision regression test
+        run: |
+          set -uo pipefail
+          python -m pip install --quiet pytest
+          python -m pytest scripts/tests/test_kbli_68112_pp28_mice_collision.py -v

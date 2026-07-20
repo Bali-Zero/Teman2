@@ -3,6 +3,7 @@ Unit tests for QdrantClient methods (get, delete, peek, hybrid_search, upsert_do
 Target: >95% coverage
 """
 
+import json
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -93,6 +94,96 @@ class TestQdrantClientGet:
 
             assert result["ids"] == []
             assert result["documents"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_with_include_sends_flags_in_json_body_not_query_params(self, client):
+        """
+        GUILT test (bug fix 2026-07-19, verified live task #22): Qdrant's
+        points-retrieve endpoint (POST /collections/{name}/points) only
+        honors with_payload/with_vector as JSON BODY fields — it silently
+        ignores them as query params (200 OK, empty payload/vectors; scar
+        family #2 "green but not working").
+
+        Uses a real httpx.MockTransport so we inspect the ACTUAL wire-level
+        Request (query string vs body), not a mocked `.post()` call — a
+        mock on `.post()` alone can't distinguish `params=` from `json=`.
+
+        This test FAILS against the pre-fix implementation (which sent
+        `params={"with_payload": True, "with_vectors": True}` alongside an
+        `{"ids": ids}`-only body): the flags would show up in
+        `request.url.params` and be absent from the JSON body.
+        """
+        captured: dict[str, httpx.Request] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["request"] = request
+            return httpx.Response(
+                200,
+                json={
+                    "result": [
+                        {"id": "1", "vector": [0.1, 0.2], "payload": {"text": "hi"}},
+                    ],
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(base_url="http://qdrant-test", transport=transport) as real_http_client:
+            with patch.object(client, "_get_client", return_value=real_http_client):
+                result = await client.get(["1"], include=["embeddings", "payload"])
+
+        request = captured["request"]
+
+        # Guilt: the flags must NOT be query params (that's the bug location).
+        assert "with_payload" not in request.url.params
+        assert "with_vector" not in request.url.params
+        assert "with_vectors" not in request.url.params
+
+        # Fix: the flags must be in the JSON body, using Qdrant's real
+        # (singular) field name "with_vector", not "with_vectors".
+        body = json.loads(request.content)
+        assert body["ids"] == ["1"]
+        assert body["with_payload"] is True
+        assert body["with_vector"] is True
+        assert "with_vectors" not in body
+
+        # And the round-trip actually recovers payload + vector now.
+        assert result["embeddings"] == [[0.1, 0.2]]
+        assert result["documents"] == ["hi"]
+
+    @pytest.mark.asyncio
+    async def test_get_without_include_still_works(self, client):
+        """
+        INNOCENCE test: a plain get() with no `include` (the common case,
+        e.g. delete-verification / existence-check callers) must keep
+        working exactly as before — full payload + vector fetch, flags
+        still land in the JSON body.
+        """
+        captured: dict[str, httpx.Request] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["request"] = request
+            return httpx.Response(
+                200,
+                json={
+                    "result": [
+                        {"id": "1", "vector": [0.4, 0.5], "payload": {"text": "hello"}},
+                    ],
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(base_url="http://qdrant-test", transport=transport) as real_http_client:
+            with patch.object(client, "_get_client", return_value=real_http_client):
+                result = await client.get(["1"])
+
+        request = captured["request"]
+        body = json.loads(request.content)
+        assert body == {"ids": ["1"], "with_payload": True, "with_vector": True}
+        assert "with_payload" not in request.url.params
+
+        assert result["ids"] == ["1"]
+        assert result["embeddings"] == [[0.4, 0.5]]
+        assert result["documents"] == ["hello"]
 
 
 class TestQdrantClientDelete:

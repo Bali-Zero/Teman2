@@ -13,7 +13,7 @@
 set -uo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-REPO_ROOT="${REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-/Users/nuzantara/nuzantara}"
 DIGEST_SCRIPT="$REPO_ROOT/infra/launchagents/chronic_failure_digest.py"
 
 # Source Telegram secrets (TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID).

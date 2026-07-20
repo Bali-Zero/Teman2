@@ -1,0 +1,51 @@
+{
+  "_doc": "GARUDA-FILIERA Fase 1 cure spec — originally the 7 KBLI-2025 codes quarantined by pilot A1 (research/operations/2026-07-17-kbli-pilot-a1-results.md), each with an image-verified provenance note from the D6 final gate. This file is the deterministic compiler's INPUT (provenance, authored from the pilot's image-verified findings); scripts/kbli_filiera/cure_canonical_collisions.py mechanically applies the false-friend detach pattern from it. It NEVER authors a replacement licensing value (rule #9 no-new-values-without-provenance / rule #4 detach>plausible-remap): the cure is DETACH (per_skala -> []) + PRESERVE the contaminated block under a disputed key (audit, never silent-delete) + a corroborated _data_note + keep pp28_sources for provenance. The frontend already guards licensing.length>0, so a detached code renders 'licensing not yet defined' (honest gap) rather than wrong data. 68112 was cured earlier (#2508/#2527) with this same pattern and is the template. GRADUATION (2026-07-18): 49213 was REMOVED from this file's codes — it graduated from detach to a per-ancestor RESTORE (scripts/kbli_filiera/cure_restore_per_ancestor.py + cure_specs/restore_49213.json), per the signed conductor adjudication research/operations/2026-07-18-kbli-batch-a-plan.md §A-6(b)-RESOLVED (PR #2721/#2740). It must NOT be re-added here: a future --apply run of THIS compiler over the now-restored record would treat the restored per_skala as a fresh contamination and re-detach it into per_skala_disputed_pp28_collision, destroying the restore. The remaining 6 codes below are unaffected and still pending restore/detach as before.",
+  "_provenance": "Every note below cites a vault artifact re-read at the D6 gate (BPS Tabel Konversi Vol.2 sha 29f17b3b, PP28 BPK renders, OSS ABSENT.json). Pilot pre-registration: research/operations/2026-07-17-kbli-pilot-a1-preregistration.md. Do NOT edit the served dataset by hand — data-plane guard #2550 blocks it; route changes through the compiler.",
+  "version": 3,
+  "disputed_key": "per_skala_disputed_pp28_collision",
+  "codes": [
+    {
+      "code": "51103",
+      "flavor": "cross-vintage-aviation-to-space",
+      "judul": "Transportasi Antariksa untuk Penumpang",
+      "data_note": "KBLI 2025 code 51103 = 'Transportasi Antariksa untuk Penumpang' (space passenger transport), a genuinely NEW activity. Per BPS Tabel Konversi Vol.2 lampiran5 p.193 (image-verified), old-51109 SPLITS into new-51101 (scheduled airline) + new-51103 (space). Its pp28_sources [51103,51108,51104] are all KBLI-2020-vintage AVIATION codes (aircraft operator / AOC / cargo-carrier insurance requirements) — a code-number collision, not the same activity. OSS ruang-lingkup returns 404 (no published NSPK for this new code). Aviation licensing detached; no space-transport NSPK exists to substitute. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This is a new KBLI-2025 activity (space passenger transport), open to foreign investment through a PMA company. The risk classification and permits shown here earlier were carried over from unrelated KBLI-2020 aviation codes and do not apply to this activity, so they have been removed from this page; a correct risk tier and licensing are not yet reliably defined for this code. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "51203",
+      "flavor": "cross-vintage-aviation-to-space",
+      "judul": "Transportasi Antariksa untuk Barang",
+      "data_note": "KBLI 2025 code 51203 = 'Transportasi Antariksa untuk Barang' (space cargo transport), a NEW activity. Per BPS lampiran5 p.193 (image-verified), old-51204 (unscheduled international air cargo) SPLITS into new-51202 + new-51203 (space); the freed number 51203 also collides with old-51203 (which maps forward to new-51201). Its pp28_source [51203] carried KBLI-2020 scheduled-air-cargo licensing (aircraft type/quantity, AOC/ROC, cargo insurance) — 100% aviation, zero space content — a code-number collision. OSS ruang-lingkup 404. Aviation licensing detached. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This is a new KBLI-2025 activity (space cargo transport), open to foreign investment through a PMA company. The risk classification and permits shown here earlier were carried over from unrelated KBLI-2020 air-cargo licensing and do not apply to this activity, so they have been removed from this page; a correct risk tier and licensing are not yet reliably defined for this code. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "20111",
+      "flavor": "merge-aggregation-unverified",
+      "judul": "Industri Asam, Basa, dan Garam Anorganik",
+      "data_note": "KBLI 2025 code 20111 is a MANY-TO-ONE MERGE target, image-verified on BPS lampiran5 p.140-141: three KBLI-2020 codes converge into it — old-20111 (Khlor-Alkali), old-20114 (Anorganik Lainnya), old-20118 (Organik->Bahan Kimia Khusus). The served per_skala reflected a single-source inheritance (aggregation_note 'Dati da 20111'), not the aggregation across all three feeders that a MERGE requires. Detached pending a proper multi-source licensing extraction; a single-feeder block is neither complete nor certifiable for the merged code. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This activity is open to foreign investment through a PMA company. The risk classification and permits shown here earlier came from a source that cannot reliably be applied to this KBLI-2025 code, so they have been removed from this page; a correct risk tier and licensing are not yet reliably defined. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "50115",
+      "flavor": "wrong-mode-source-absent",
+      "judul": "Angkutan Laut Luar Negeri untuk Wisata",
+      "data_note": "KBLI 2025 code 50115 = 'Angkutan Laut Luar Negeri untuk Wisata' (international SEA tourism transport). Its declared pp28_source [51107] is an AIR-transport code ('Angkutan Udara untuk Wisata') — a transport-MODE mismatch — and 51107 was NOT found anywhere in the 21-file PP 28/2025 vault (11,208 pages scanned; pp28/ABSENT.json, verdict=absent). The crosswalk-true predecessor is 50122 (sea, image-verified lampiran5 p.191 / lampiran10 p.387). The served per_skala is sourced from the wrong mode and cannot be verified; detached pending 50122's own PP28 licensing. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This activity is open to foreign investment through a PMA company. The risk classification and permits shown here earlier were carried over from an unrelated (air-transport) code and do not apply to this maritime activity, so they have been removed from this page; a correct risk tier and licensing are not yet reliably defined for this code. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "60312",
+      "flavor": "absent-source",
+      "judul": "Aktivitas Kantor Berita oleh Swasta",
+      "data_note": "KBLI 2025 code 60312 = 'Aktivitas Kantor Berita oleh Swasta' (private news agency). Its declared pp28_source [63912] could NOT be located across the 21-file PP 28/2025 vault (11,208 pages; pp28/ABSENT.json, verdict=absent). The crosswalk itself is clean (old-63912 -> new-60312, coherent Swasta renumbering, image-verified lampiran5 p.216 / lampiran10 p.409), but the licensing block's declared source is unverifiable in the pinned vault. Detached pending source location (may exist in a PP28 volume outside the 21-file corpus — conservative quarantine, not a certified 'source is bogus'). BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This activity is open to foreign investment through a PMA company. The risk classification and permits shown here earlier came from a source that cannot reliably be applied to this KBLI-2025 code, so they have been removed from this page; a correct risk tier and licensing are not yet reliably defined. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "64310",
+      "flavor": "wrong-pointer",
+      "judul": "Aktivitas Dana Pasar Uang",
+      "data_note": "KBLI 2025 code 64310 = 'Aktivitas Dana Pasar Uang' (money-market fund), image-verified as a SPLIT of old-64300 into 64310/64320/64330 (lampiran5 p.203 / lampiran10 p.412). Its declared pp28_source [96122] points to PP 28/2025 Lampiran I.L.101 row 76 = 'Aktivitas SPA (Sante Par Aqua)' (image-verified render 394946 p.223) — a wholly unrelated activity (spa/wellness, Menengah Tinggi, LSPr). The licensing block was transplanted from a wrong-pointer source. Detached; no money-market-fund PP28 row substituted (not extracted). BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This activity is open to foreign investment through a PMA company. The risk classification and permits shown here earlier came from an unrelated activity that cannot reliably be applied to this code, so they have been removed from this page. Any earlier claim that a Bali-specific restriction applied was based on that invalid classification, so whether a local restriction applies is unconfirmed. Before registering or investing, confirm the current risk tier, licensing, and any Bali restriction with the Bali Zero team."
+    }
+  ],
+  "_whatYouNeed_doc": "v2 (2026-07-17): each code also carries a client-facing honest-gap `whatYouNeed` that REPLACES the stale intel_2026.whatYouNeed (which still asserted the now-detached collision-derived risk/licensing). Authored from the image-verified data_note, then passed a 3-round Codex cross-family adversarial gate (generator!=grader): preserve ONLY pma-open (no %), retract the collision-derived risk/licensing as removed-from-page, declare the gap, verify-with-team-first; never author a new risk/licensing/authority VALUE (rule #9). 68112 keeps its earlier honest-gap prose (#2508/#2527)."
+}

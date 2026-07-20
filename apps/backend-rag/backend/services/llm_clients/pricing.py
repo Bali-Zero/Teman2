@@ -58,15 +58,19 @@ class TokenUsage:
 # Source: https://ai.google.dev/pricing, https://openai.com/pricing, https://openrouter.ai/models
 LLM_PRICING: dict[str, dict[str, float]] = {
     # ── Active Gemini Models (primary + fallback) ──
-    "gemini-3-flash-preview": {
-        "input": 0.10,
-        "output": 0.40,
+    "gemini-3.5-flash": {
+        "input": 1.50,
+        "output": 9.00,
     },
     "gemini-2.5-flash": {
         "input": 0.075,
         "output": 0.30,
     },
     # ── Legacy Gemini (kept for cost tracking of old logs) ──
+    "gemini-3-flash-preview": {
+        "input": 0.10,
+        "output": 0.40,
+    },
     "gemini-2.0-flash": {
         "input": 0.075,
         "output": 0.30,

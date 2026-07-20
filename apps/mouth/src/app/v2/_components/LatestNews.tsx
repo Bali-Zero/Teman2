@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Calendar, Clock, ArrowUpRight, type LucideIcon } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
 import { InlineNewsCTA } from "./InlineNewsCTA";
+import { BZImage } from "@/components/ui/BZImage";
 
 const CATEGORY_ACCENT: Record<string, { accent: string; label: string }> = {
   immigration: { accent: "#ff2d4c", label: "Immigration" },
@@ -118,12 +119,14 @@ export function LatestNews({
             >
               <div className="h-44 md:h-36 relative overflow-hidden">
                 {cover ? (
-                  <img
+                  <BZImage
                     src={cover}
                     alt=""
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover"
-                    aria-hidden="true"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover transition-opacity duration-300"
+                    containerClassName="absolute inset-0"
+                    aria-hidden={true}
                   />
                 ) : (
                   <div

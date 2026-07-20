@@ -13,11 +13,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/metabolic_rollup_pro.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/metabolic_rollup_pro.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <!-- VADEMECUM §11: launchd doesn't inherit PATH/HOME — declare explicitly. -->
     <key>EnvironmentVariables</key>

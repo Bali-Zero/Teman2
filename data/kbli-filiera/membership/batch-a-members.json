@@ -1,0 +1,2038 @@
+{
+  "batch": "A",
+  "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
+  "canonical_revision": "978530a7ecaa4c5a216a237cf7ce6bf364092d8d",
+  "canonical_sha256": "03e3116a5d6bddd30d1d154842a30024396512c81b9ccfe28e0a0f813047fc02",
+  "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+  "predicate_doc": {
+    "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
+    "A-serving/orphan": "per_skala non-empty AND pp28_sources empty AND no _l2_source",
+    "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
+  },
+  "census": {
+    "A-empty/gap": 185,
+    "A-serving/pp28": 36,
+    "_in_scope_total": 36,
+    "_total": 221
+  },
+  "members": [
+    {
+      "kode_kbli_2025": "01287",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.B",
+      "judul": "Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang",
+      "pp28_sources": [
+        "01287"
+      ]
+    },
+    {
+      "kode_kbli_2025": "01700",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.B",
+      "judul": "Perburuan, Penangkapan, dan Kegiatan Jasa Terkait",
+      "pp28_sources": [
+        "01711"
+      ]
+    },
+    {
+      "kode_kbli_2025": "02201",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.C",
+      "judul": "Pemanenan Kayu",
+      "pp28_sources": [
+        "02201"
+      ]
+    },
+    {
+      "kode_kbli_2025": "02402",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.C",
+      "judul": "Jasa Penggunaan Kawasan Kehutanan ?",
+      "pp28_sources": [
+        "02402"
+      ]
+    },
+    {
+      "kode_kbli_2025": "02409",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.C",
+      "judul": "Jasa Penunjang Kehutanan Lainnya",
+      "pp28_sources": [
+        "02409"
+      ]
+    },
+    {
+      "kode_kbli_2025": "05102",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.D",
+      "judul": "Benefisiasi atau Peningkatan Kualitas Batu Bara",
+      "pp28_sources": [
+        "05100"
+      ]
+    },
+    {
+      "kode_kbli_2025": "05200",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.D",
+      "judul": "Pertambangan Lignit",
+      "pp28_sources": [
+        "05200"
+      ]
+    },
+    {
+      "kode_kbli_2025": "08920",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.A",
+      "judul": "Ekstraksi Tanah Gambut (Peat)",
+      "pp28_sources": [
+        "08920"
+      ]
+    },
+    {
+      "kode_kbli_2025": "19206",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.c",
+      "judul": "Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel",
+      "pp28_sources": [
+        "19291"
+      ]
+    },
+    {
+      "kode_kbli_2025": "36003",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.H",
+      "judul": "Aktivitas Penunjang Penyediaan Air",
+      "pp28_sources": [
+        "36003"
+      ]
+    },
+    {
+      "kode_kbli_2025": "38122",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Pengumpulan Limbah Radioaktif",
+      "pp28_sources": [
+        "38120"
+      ]
+    },
+    {
+      "kode_kbli_2025": "38222",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Pengolahan dan Pembuangan Limbah Radioaktif",
+      "pp28_sources": [
+        "38220"
+      ]
+    },
+    {
+      "kode_kbli_2025": "39001",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.D",
+      "judul": "Aktivitas Penangkapan Karbon",
+      "pp28_sources": [
+        "39000"
+      ]
+    },
+    {
+      "kode_kbli_2025": "42999",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.H",
+      "judul": "Konstruksi Bangunan Sipil Lainnya YTDL",
+      "pp28_sources": [
+        "42929"
+      ]
+    },
+    {
+      "kode_kbli_2025": "47771",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.A",
+      "judul": "Perdagangan Eceran Minyak Tanah",
+      "pp28_sources": [
+        "47771"
+      ]
+    },
+    {
+      "kode_kbli_2025": "49233",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Angkutan Tidak Bermotor untuk Barang",
+      "pp28_sources": [
+        "49433"
+      ]
+    },
+    {
+      "kode_kbli_2025": "49296",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Angkutan Ojek Motor",
+      "pp28_sources": [
+        "49424"
+      ]
+    },
+    {
+      "kode_kbli_2025": "50113",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Angkutan Laut Dalam Negeri untuk Wisata",
+      "pp28_sources": [
+        "50113"
+      ]
+    },
+    {
+      "kode_kbli_2025": "50115",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Angkutan Laut Luar Negeri untuk Wisata",
+      "pp28_sources": [
+        "51107"
+      ]
+    },
+    {
+      "kode_kbli_2025": "51103",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Transportasi Antariksa untuk Penumpang",
+      "pp28_sources": [
+        "51103",
+        "51108",
+        "51104"
+      ]
+    },
+    {
+      "kode_kbli_2025": "51203",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Transportasi Antariksa untuk Barang",
+      "pp28_sources": [
+        "51203"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52103",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.A",
+      "judul": "Aktivitas Gudang Berikat",
+      "pp28_sources": [
+        "52103"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52105",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)",
+      "pp28_sources": [
+        "52105"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52211",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Aktivitas Terminal Darat",
+      "pp28_sources": [
+        "52211"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52219",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Aktivitas Jasa Terkait Transportasi Darat Lainnya",
+      "pp28_sources": [
+        "52219"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52232",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Jasa Pelayanan Navigasi Penerbangan",
+      "pp28_sources": [
+        "52232"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52239",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Aktivitas Jasa Terkait Angkutan Udara Lainnya",
+      "pp28_sources": [
+        "96990"
+      ]
+    },
+    {
+      "kode_kbli_2025": "52299",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Aktivitas Penunjang Angkutan Lainnya YTDL",
+      "pp28_sources": [
+        "52299"
+      ]
+    },
+    {
+      "kode_kbli_2025": "59131",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah",
+      "pp28_sources": [
+        "59131"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60101",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Penyiaran Radio Analog",
+      "pp28_sources": [
+        "60101"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60103",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Distribusi dan Streaming Audio Atas Permintaan",
+      "pp28_sources": [
+        "60102"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60201",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Penyiaran dan Pemrograman Televisi Analog",
+      "pp28_sources": [
+        "60201"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60203",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Distribusi dan Streaming Video Atas Permintaan",
+      "pp28_sources": [
+        "60202"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60311",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Kantor Berita oleh Pemerintah",
+      "pp28_sources": [
+        "63911"
+      ]
+    },
+    {
+      "kode_kbli_2025": "60312",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Kantor Berita oleh Swasta",
+      "pp28_sources": [
+        "63912"
+      ]
+    },
+    {
+      "kode_kbli_2025": "61905",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Jasa Telekomunikasi Khusus Berbasis Satelit",
+      "pp28_sources": [
+        "61992"
+      ]
+    },
+    {
+      "kode_kbli_2025": "61909",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Telekomunikasi Lainnya YTDL",
+      "pp28_sources": [
+        "61919",
+        "61999",
+        "61929"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64110",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Bank Sentral",
+      "pp28_sources": [
+        "64110"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64220",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Pembiayaan Conduit",
+      "pp28_sources": [
+        "64200"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64310",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Dana Pasar Uang",
+      "pp28_sources": [
+        "96122"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64320",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Dana Investasi Bukan Pasar Uang",
+      "pp28_sources": [
+        "64300"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64330",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Trust, Warisan, dan Keagenan",
+      "pp28_sources": [
+        "64300"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64920",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Pembiayaan Perdagangan Internasional",
+      "pp28_sources": [
+        "86902"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64940",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Sekuritisasi",
+      "pp28_sources": [
+        "53201"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64955",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Pengelolaan Tabungan Perumahan Rakyat",
+      "pp28_sources": [
+        "64992"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64995",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Perdagangan Unit Karbon atas Nama Sendiri",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "64996",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Perbankan Bulion Konvensional",
+      "pp28_sources": [
+        "64921"
+      ]
+    },
+    {
+      "kode_kbli_2025": "64997",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Perbankan Bulion Syariah",
+      "pp28_sources": [
+        "64922"
+      ]
+    },
+    {
+      "kode_kbli_2025": "65123",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Penjaminan Simpanan dan Asuransi",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "66113",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Penyelenggaraan Bursa Aset Keuangan Digital",
+      "pp28_sources": [
+        "66113"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66116",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Pengawasan Jasa Keuangan Selain Asuransi dan Dana Pensiun",
+      "pp28_sources": [
+        "66116"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66123",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Kepialangan Aset Keuangan Digital",
+      "pp28_sources": [
+        "66123"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66124",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Kepialangan Pasar Uang dan Pasar Valuta Asing",
+      "pp28_sources": [
+        "66124"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66129",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Kepialangan Efek dan Kontrak Komoditas Lainnya",
+      "pp28_sources": [
+        "66152"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66131",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Kliring dan Setelmen Transaksi di Pasar Keuangan",
+      "pp28_sources": [
+        "66131"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66132",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Penyimpanan Aset Keuangan dan Kontrak Komoditas Berjangka",
+      "pp28_sources": [
+        "66132"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66149",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Penyelenggaraan Transaksi Keuangan dan Pengelolaan Uang Rupiah Lainnya selain Pasar Keuangan",
+      "pp28_sources": [
+        "66149"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66153",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Advisori Syariah Pasar Modal",
+      "pp28_sources": [
+        "66153"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66159",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Advisori Pasar Keuangan Lainnya",
+      "pp28_sources": [
+        "66159"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66192",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Penitipan dan Pengelolaan Berdasarkan Perjanjian Trust",
+      "pp28_sources": [
+        "66192"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66197",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Pendukung di Pasar Uang dan Pasar Valuta Asing",
+      "pp28_sources": [
+        "66139"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66211",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Penilai Risiko Asuransi",
+      "pp28_sources": [
+        "66211"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66224",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Agen Penjaminan",
+      "pp28_sources": [
+        "66224"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66292",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Pengawasan Jasa Keuangan Asuransi dan Dana Pensiun",
+      "pp28_sources": [
+        "66292"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66299",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Penunjang Lainnya untuk Asuransi, Penjamian, dan Dana Pensiun YTDL",
+      "pp28_sources": [
+        "66299"
+      ]
+    },
+    {
+      "kode_kbli_2025": "66309",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Manajemen Dana Lainnya",
+      "pp28_sources": [
+        "66390"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68112",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Penyewaan Bangunan dan Lahan Hunian Milik Sendiri atau Sewa",
+      "pp28_sources": [
+        "68112"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68123",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Pengelolaan Kawasan Ekonomi Khusus",
+      "pp28_sources": [
+        "68130"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68125",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pengelolaan Pusat Perbelanjaan",
+      "pp28_sources": [
+        "68120",
+        "68130"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68126",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Penyewaan Gudang dan Fasilitas Penyimpanan Mandiri",
+      "pp28_sources": [
+        "52101"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68127",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.h",
+      "judul": "Pengelolaan Gedung Perkantoran",
+      "pp28_sources": [
+        "68111"
+      ]
+    },
+    {
+      "kode_kbli_2025": "68129",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.G",
+      "judul": "Aktivitas Real Estat (Bangunan dan Lahan) Nonhunian Lainnya Milik Sendiri atau Sewa",
+      "pp28_sources": [
+        "68111"
+      ]
+    },
+    {
+      "kode_kbli_2025": "70100",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Kantor Pusat",
+      "pp28_sources": [
+        "70100"
+      ]
+    },
+    {
+      "kode_kbli_2025": "72101",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.h",
+      "judul": "Penelitian dan Pengembangan Ilmu Alam",
+      "pp28_sources": [
+        "72101"
+      ]
+    },
+    {
+      "kode_kbli_2025": "72103",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.h",
+      "judul": "Penelitian dan Pengembangan Ilmu Kedokteran dan Kesehatan",
+      "pp28_sources": [
+        "72103"
+      ]
+    },
+    {
+      "kode_kbli_2025": "72105",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.h",
+      "judul": "Penelitian dan Pengembangan Ilmu Pertanian dan Kedokteran Hewan",
+      "pp28_sources": [
+        "72105"
+      ]
+    },
+    {
+      "kode_kbli_2025": "72201",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Penelitian dan Pengembangan Ilmu Pengetahuan Sosial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "72202",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Penelitian dan Pengembangan Humaniora",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "75001",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.B",
+      "judul": "Aktivitas Personel Kesehatan Hewan Mandiri",
+      "pp28_sources": [
+        "75000"
+      ]
+    },
+    {
+      "kode_kbli_2025": "75002",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.B",
+      "judul": "Aktivitas Pengelolaan Sarana Kesehatan Hewan",
+      "pp28_sources": [
+        "75000"
+      ]
+    },
+    {
+      "kode_kbli_2025": "75009",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.B",
+      "judul": "Aktivitas Pengelolaan Kesehatan Hewan Lainnya",
+      "pp28_sources": [
+        "75000"
+      ]
+    },
+    {
+      "kode_kbli_2025": "77397",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.G",
+      "judul": "Penyewaan dan Sewa Guna Usaha Mesin dan Peralatan Radiasi",
+      "pp28_sources": [
+        "77301"
+      ]
+    },
+    {
+      "kode_kbli_2025": "78109",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.Q-V",
+      "judul": "Aktivitas Penempatan Tenaga Kerja Lainnya",
+      "pp28_sources": [
+        "78429"
+      ]
+    },
+    {
+      "kode_kbli_2025": "79909",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Terkait Perjalanan Lainnya YTDL",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "80190",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Keamanan YTDL",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "82911",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.F.h",
+      "judul": "Aktivitas Agen Penagihan",
+      "pp28_sources": [
+        "82911"
+      ]
+    },
+    {
+      "kode_kbli_2025": "84111",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Lembaga Legislatif",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84112",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Penyelenggaraan Pemerintahan Negara dan Kesekretariatan Negara",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84113",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Lembaga Eksekutif Keuangan, Perpajakan, dan Bea Cukai",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84114",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Lembaga Eksekutif Perencanaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84115",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Lembaga Pemerintah Nonkementerian dengan Tugas Khusus",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84119",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Administrasi Pemerintahan Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84121",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Pendidikan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84122",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Kesehatan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84123",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Perumahan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84124",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Kesejahteraan Sosial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84125",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Keagamaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84126",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Kebudayaan/Kesenian/Rekreasi/Olahraga",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84129",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan, dan Kebudayaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84130",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Administrasi Pelayanan Pemerintah Bidang Lingkungan Hidup",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84141",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Pertanian",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84142",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Pertambangan dan Penggalian, Listrik, Air, dan Gas",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84143",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Perindustrian",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84144",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Komunikasi dan Informatika",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84145",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Konstruksi",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84146",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Perdagangan dan Pariwisata",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84147",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Perhubungan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84148",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Ketenagakerjaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84149",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan untuk Menciptakan Efisiensi Produksi dan Bisnis Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84210",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Hubungan Luar Negeri",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84221",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Lembaga Pertahanan dan Angkatan Bersenjata",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84222",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Angkatan Darat",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84223",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Angkatan Udara",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84224",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Angkatan Laut",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84231",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kepolisian",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84232",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pertahanan Sipil",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84233",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Lembaga Peradilan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84234",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Kegiatan Lembaga Pemerintahan Bidang Penanggulangan Bencana dan Pemadam Kebakaran",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "84300",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Jaminan Sosial Wajib",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85101",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Taman Kanak-Kanak Umum Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85103",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Prasekolah Keagamaan Islam",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85104",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Prasekolah Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85201",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Dasar Umum Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85203",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Dasar Keagamaan Islam",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85204",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Dasar Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85311",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Pertama Umum Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85313",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Pertama Keagamaan Islam",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85314",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Pertama Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85315",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Atas Umum Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85317",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Atas Keagamaan Islam",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85318",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Menengah Atas Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85321",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.J-P",
+      "judul": "Pendidikan Menengah Kejuruan Umum Pemerintah",
+      "pp28_sources": [
+        "85321"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85323",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Pendidikan Menengah Kejuruan Keagamaan Islam",
+      "pp28_sources": [
+        "85240"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85324",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.I",
+      "judul": "Pendidikan Menengah Kejuruan Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
+      "pp28_sources": [
+        "85230"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85330",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.I",
+      "judul": "Pendidikan Pascamenengah Nontersier",
+      "pp28_sources": [
+        "85499"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85401",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": null,
+      "judul": "Pendidikan Tinggi Umum Pemerintah",
+      "pp28_sources": [
+        "85497",
+        "85496",
+        "85499"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85403",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Pendidikan Tinggi Keagamaan Pemerintah",
+      "pp28_sources": [
+        "85331"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85404",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Pendidikan Tinggi Keagamaan Swasta",
+      "pp28_sources": [
+        "85332"
+      ]
+    },
+    {
+      "kode_kbli_2025": "85550",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pendidikan Lainnya Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85560",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85581",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Teknik Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85582",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Teknologi Informasi dan Komunikasi Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85583",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Industri Kreatif Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85584",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Pariwisata dan Perhotelan Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85585",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Bisnis dan Manajemen Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85586",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Pekerjaan Domestik Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85587",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Pertanian dan Perikanan Perusahaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85589",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Pelatihan Kerja Perusahaan Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85691",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sertifikasi Profesi Hasil Pendidikan dan Pelatihan Sendiri",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "85692",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sertifikasi Profesi Hasil Pendidikan dan Pelatihan Mitra",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "86102",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Puskesmas",
+      "pp28_sources": [
+        "86102"
+      ]
+    },
+    {
+      "kode_kbli_2025": "86109",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Rumah Sakit Lainnya",
+      "pp28_sources": [
+        "86109"
+      ]
+    },
+    {
+      "kode_kbli_2025": "86201",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Praktik Dokter",
+      "pp28_sources": [
+        "86201"
+      ]
+    },
+    {
+      "kode_kbli_2025": "86202",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Praktik Dokter Spesialis",
+      "pp28_sources": [
+        "86202"
+      ]
+    },
+    {
+      "kode_kbli_2025": "86203",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Praktik Dokter Gigi",
+      "pp28_sources": [
+        "86203"
+      ]
+    },
+    {
+      "kode_kbli_2025": "87101",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatan dan Pemulihan kesehatan Berbasis Residensial oleh Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87102",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatan dan Pemulihan Kesehatan Berbasis Residensial oleh Lembaga Kesejahteraan Sosial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87201",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87202",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatan untuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Lembaga Kesejahteraan Sosial (LKS)",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87301",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87302",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial untuk Lanjut Usia atau Penyandang Disabilitas Fisik oleh Lembaga Kesejahteraan Sosial (LKS)",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87991",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Lembaga Kesejahteraan Sosial Anak Berbasis Residensial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87992",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perawatanuntuk Anak yang Berhadapan dengan Hukum Berbasis Residensial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "87993",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Tunasosial Berbasis Residensial",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88101",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Pemerintah Tanpa Akomodasi untuk Orang Lanjut Usia atau Penyandang Disabilitas",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88102",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Lembaga Kesejahteraan Sosial Tanpa Akomodasi untuk Orang Lanjut Usia atau Penyandang Disabilitas",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88901",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Pemerintah Tanpa Akomodasi Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88902",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Lembaga Kesejahteraan Sosial Tanpa Akomodasi Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88903",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Pengumpulan Dana Keislaman",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88904",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Pengumpulan Dana Nonislam",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "88905",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Sosial Pengumpulan Dana Lainnya",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "90111",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Penciptaan Karya Sastra",
+      "pp28_sources": [
+        "90011",
+        "90021"
+      ]
+    },
+    {
+      "kode_kbli_2025": "90113",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Jurnalis Berita Independen",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "90391",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Penyelenggaraan Kegiatan Kesenian dan Kebudayaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91111",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perpustakaan Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91121",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.A",
+      "judul": "Aktivitas Kearsipan Pemerintah",
+      "pp28_sources": [
+        "87901"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91211",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Museum yang Dikelola Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91212",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.Q-V",
+      "judul": "Museum yang Dikelola Swasta",
+      "pp28_sources": [
+        "91012"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91221",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Situs Bersejarah dan Monumen yang Dikelola Pemerintah",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91222",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta",
+      "pp28_sources": [
+        "91022"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91300",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": "I.A",
+      "judul": "Konservasi, Restorasi, dan Aktivitas Penunjang Lainnya untuk Warisan Budaya",
+      "pp28_sources": [
+        "91039"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91421",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Suaka Margasatwa",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91422",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Taman Nasional",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91423",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Hutan Lindung",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "91424",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Taman Wisata Alam",
+      "pp28_sources": [
+        "91024"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91425",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Taman Hutan Raya",
+      "pp28_sources": [
+        "91025"
+      ]
+    },
+    {
+      "kode_kbli_2025": "91426",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Taman Laut",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "92000",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Perjudian dan Pertaruhan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "93111",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Fasilitas Stadion",
+      "pp28_sources": [
+        "93111"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93112",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Fasilitas Sirkuit",
+      "pp28_sources": [
+        "93112"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93113",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Fasilitas Gelanggang/Arena",
+      "pp28_sources": [
+        "93113"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93114",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Fasilitas Lapangan",
+      "pp28_sources": [
+        "93114"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93115",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Fasilitas Olahraga Beladiri",
+      "pp28_sources": [
+        "93115"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93119",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Pengelolaan Fasilitas Olahraga Lainnya",
+      "pp28_sources": [
+        "93119"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93121",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Sepak Bola",
+      "pp28_sources": [
+        "93121"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93122",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Golf",
+      "pp28_sources": [
+        "93122"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93123",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Renang",
+      "pp28_sources": [
+        "93123"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93124",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Tenis Lapangan",
+      "pp28_sources": [
+        "93124"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93125",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Tinju",
+      "pp28_sources": [
+        "93125"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93126",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Bela Diri",
+      "pp28_sources": [
+        "93126"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93127",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Kebugaran/Fitness Dan Binaraga",
+      "pp28_sources": [
+        "93127"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93128",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Boling",
+      "pp28_sources": [
+        "93128"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93129",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Klub Olahraga Lainnya",
+      "pp28_sources": [
+        "93129"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93191",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Penyelenggaraan Kegiatan Olahraga",
+      "pp28_sources": [
+        "93191"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93192",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Juri dan Wasit Profesional",
+      "pp28_sources": [
+        "93192"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93193",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Perburuan di Kawasan Buru",
+      "pp28_sources": [
+        "93193"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93194",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Badan Regulasi dan Liga Olahraga",
+      "pp28_sources": [
+        "93194"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93195",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Olahraga Tradisional",
+      "pp28_sources": [
+        "93195"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93197",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Olaharagawan/Atlet Independen",
+      "pp28_sources": [
+        "93192"
+      ]
+    },
+    {
+      "kode_kbli_2025": "93199",
+      "reason_code": "A-serving/pp28",
+      "in_scope": true,
+      "sektor_id": "I.J-P",
+      "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
+      "pp28_sources": [
+        "93199"
+      ]
+    },
+    {
+      "kode_kbli_2025": "94110",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Bisnis dan Pengusaha",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94121",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Ilmu Pengetahuan Sosial dan Masyarakat",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94122",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Ilmu Pengetahuan Alam dan Teknologi",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94200",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Buruh",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94910",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Keagamaan",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94920",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Politik",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "94990",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Organisasi Keanggotaan Lainnya YTDL",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "97000",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Rumah Tangga sebagai Pemberi Kerja bagi Pekerja Rumah Tangga (PRT)",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "98100",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Produksi Barang oleh Rumah Tangga untuk Keperluan Sendiri",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "98200",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Produksi Beragam Jasa oleh Rumah Tangga untuk Keperluan Sendiri",
+      "pp28_sources": []
+    },
+    {
+      "kode_kbli_2025": "99000",
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
+      "sektor_id": null,
+      "judul": "Aktivitas Badan Internasional dan Badan Ekstra Internasional Lainnya",
+      "pp28_sources": []
+    }
+  ]
+}

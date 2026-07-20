@@ -9,7 +9,7 @@
 		<key>PATH</key>
 		<string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>PWD</key>
-		<string>/Users/nuzantara/Desktop/nuzantara</string>
+		<string>/Users/nuzantara/nuzantara</string>
 	</dict>
 	<key>KeepAlive</key>
 	<false/>
@@ -20,7 +20,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+		<string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
 		<string>backend.services.measurer.scheduler_cli</string>
 	</array>
 	<key>RunAtLoad</key>
@@ -32,6 +32,6 @@
 	<key>StartInterval</key>
 	<integer>21600</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara</string>
+	<string>/Users/nuzantara/nuzantara</string>
 </dict>
 </plist>

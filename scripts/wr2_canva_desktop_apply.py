@@ -75,7 +75,7 @@ CLAUDE_APP_NAME = "Claude"
 # (infra/launchagents/com.balizero.wr2.canva-apply.plist) all flipping
 # WR2_OUTPUT_ROOT in lockstep. Out of scope for this PR.
 _LEGACY_OUTPUT_ROOT = Path(
-    "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva"
+    "/Users/nuzantara/nuzantara/apps/war-room/output/canva"
 )
 _OUTPUT_ROOT = Path(
     os.environ.get("WR2_OUTPUT_ROOT") or str(_LEGACY_OUTPUT_ROOT)

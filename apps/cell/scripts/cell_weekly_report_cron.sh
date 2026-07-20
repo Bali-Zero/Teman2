@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-CELL_DIR="/Users/nuzantara/Desktop/nuzantara/apps/cell"
+CELL_DIR="/Users/nuzantara/nuzantara/apps/cell"
 VENV="${CELL_DIR}/.venv/bin/python"
 SCRIPT="${CELL_DIR}/scripts/cell_weekly_report.py"
 

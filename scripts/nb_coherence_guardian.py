@@ -53,7 +53,7 @@ GUARDRAILS (inherited from Phase A/B — CLAUDE.md §5/§14, SYMBIOSIS Law 2)
    calls and findings are merged — no silent context overflow.
 
 RUN (on Pro/Mini, where the corpus lives — corpus is NOT on M5):
-    cd ~/Desktop/nuzantara
+    cd ~/nuzantara
     python scripts/nb_coherence_guardian.py --list           # show corpus on disk, no LLM
     python scripts/nb_coherence_guardian.py --dimension internal_nlm
     python scripts/nb_coherence_guardian.py --all            # all 4 dimensions (resumes)

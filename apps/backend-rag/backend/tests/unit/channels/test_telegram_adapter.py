@@ -205,9 +205,19 @@ class TestTelegramFormatter:
         assert "Here is the answer." in result
         assert "*Fonti:*" in result
         assert "[Visa Guide](https://example.com/visa)" in result
-        assert "3. Local Doc" in result
-        # Sources without URL should not have link syntax
-        assert "[Local Doc]" not in result
+        assert "3. [Local Doc](https://example.com/local-doc)" in result
+
+    def test_format_source_without_url(self) -> None:
+        """Sources without a public url look internal and are dropped entirely."""
+        response = ChannelResponse(
+            text="Answer",
+            sources=[{"title": "No URL Doc"}],
+            metadata={},
+        )
+        result = TelegramMessageFormatter.format_response(response)
+        assert result == "Answer"
+        assert "No URL Doc" not in result
+        assert "Fonti" not in result
 
     def test_format_sources_max_five(self) -> None:
         response = ChannelResponse(

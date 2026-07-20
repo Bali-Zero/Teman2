@@ -4,7 +4,7 @@
 # curiosity_loop.sh and genome_decay.sh after the renaissance PR-A1 fix.
 case "$(whoami)" in
     nuzantara)
-        PROJECT_DIR="$HOME/Desktop/nuzantara"
+        PROJECT_DIR="$HOME/nuzantara"
         # Pro uses .venv (CLAUDE.md §14)
         PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/.venv/bin/python3"
         ;;

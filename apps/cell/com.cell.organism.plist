@@ -7,10 +7,10 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/scripts/launch_cell.sh</string>
+        <string>/Users/nuzantara/nuzantara/apps/cell/scripts/launch_cell.sh</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell</string>
+    <string>/Users/nuzantara/nuzantara/apps/cell</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

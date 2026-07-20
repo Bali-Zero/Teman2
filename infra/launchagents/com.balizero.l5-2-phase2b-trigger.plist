@@ -62,7 +62,7 @@
   <string>/Users/nuzantara/logs/l5-2-phase2b-trigger.error.log</string>
 
   <key>WorkingDirectory</key>
-  <string>/Users/nuzantara/Desktop/nuzantara</string>
+  <string>/Users/nuzantara/nuzantara</string>
 
   <key>ThrottleInterval</key>
   <integer>3600</integer>

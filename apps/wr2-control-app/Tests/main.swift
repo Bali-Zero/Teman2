@@ -49,7 +49,34 @@ func makeFixtureRoot() -> URL {
     return base
 }
 
-func makeCarousel(in root: URL, slug: String, slides: [String], brief: [String: Any]? = nil) -> URL {
+/// - Parameter declareSlides: the A2 complete-or-nothing gate (WarRoom.declaredSlideCount)
+///   needs a declaration source (slides.json/manifest.json/queue slide_count) or the dir is
+///   undeclarable and excluded outright. `.auto` (the default) resolves to
+///   `.objectSlides(slides.count)` — the OBJECT schema `{"slides":[...]}` is the dominant
+///   real-world shape (a 2026-07-16 census of the live local carousel root found 100% of
+///   existing slides.json files use it, none use a bare top-level array — Codex red-team
+///   finding #6). `.bareArray` exercises the legacy/rare shape explicitly. `.absent` omits
+///   slides.json entirely (majority real-world shape — most local dirs have none at all,
+///   falling through to manifest.json/queue). `.malformed` writes invalid JSON.
+///   NOTE: this case is named `.absent`, NOT `.none` — a case literally named `none` on an
+///   enum used through an `Optional`-typed parameter is a documented Swift trap: `.none` at
+///   the call site resolves to `Optional<DeclaredSlides>.none` (plain nil) instead of
+///   `Optional.some(.none)`, silently discarding the intended declaration mode. Caught live
+///   2026-07-16: with a `DeclaredSlides?` parameter and a `case none`, EVERY `.none` call
+///   site below silently reverted to the `.auto` default instead of "no slides.json at all",
+///   which made the "undeclarable" and "ambiguous same-tier queue count" guilt tests pass
+///   for the wrong reason (source (a) short-circuited before source (c) was ever reached).
+enum DeclaredSlides: Equatable {
+    case objectSlides(Int)
+    case bareArray(Int)
+    case absent
+    case malformed
+    case auto
+}
+
+@discardableResult
+func makeCarousel(in root: URL, slug: String, slides: [String], brief: [String: Any]? = nil,
+                   declareSlides: DeclaredSlides = .auto) -> URL {
     let dir = root.appendingPathComponent("carousel/\(slug)", isDirectory: true)
     let slidesDir = dir.appendingPathComponent("slides", isDirectory: true)
     try? fm.createDirectory(at: slidesDir, withIntermediateDirectories: true)
@@ -70,6 +97,24 @@ func makeCarousel(in root: URL, slug: String, slides: [String], brief: [String: 
     if let brief = brief,
        let data = try? JSONSerialization.data(withJSONObject: brief) {
         try? data.write(to: dir.appendingPathComponent("brief.json"))
+    }
+    let mode: DeclaredSlides = (declareSlides == .auto) ? .objectSlides(slides.count) : declareSlides
+    switch mode {
+    case .objectSlides(let n):
+        let entries = (0..<n).map { ["index": $0 + 1] }
+        let obj: [String: Any] = ["slides": entries]
+        if let data = try? JSONSerialization.data(withJSONObject: obj) {
+            try? data.write(to: dir.appendingPathComponent("slides.json"))
+        }
+    case .bareArray(let n):
+        let entries = (0..<n).map { ["index": $0 + 1] }
+        if let data = try? JSONSerialization.data(withJSONObject: entries) {
+            try? data.write(to: dir.appendingPathComponent("slides.json"))
+        }
+    case .absent, .auto:
+        break
+    case .malformed:
+        try? Data("{ not valid json ,,,".utf8).write(to: dir.appendingPathComponent("slides.json"))
     }
     return dir
 }
@@ -152,7 +197,7 @@ func test_pathDriftResolver() {
     _ = makeCarousel(in: root, slug: "e33g-visa-2026", slides: ["01.png", "02.png"])
 
     // a FOREIGN absolute path (as stored in queue JSON on the Pro)
-    let foreign = "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/e33g-visa-2026/"
+    let foreign = "/Users/nuzantara/nuzantara/apps/war-room/output/carousel/e33g-visa-2026/"
     let resolved = WarRoom.resolveCarouselDir(foreignPath: foreign, carouselRoot: croot)
     T.check(resolved != nil, "foreign /Users/nuzantara path re-rooted to live machine")
     T.eq(resolved?.lastPathComponent, "e33g-visa-2026", "resolves to correct slug dir")
@@ -288,7 +333,7 @@ func test_reviewQueueJoin() {
     let json = """
     [
       {"id":"fsm","topic_slug":"lkpm-panic-myth",
-       "carousel_path":"/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/2026-07-08-lkpm-panic-myth-79d3c3a9","state":"drafted"},
+       "carousel_path":"/Users/nuzantara/nuzantara/apps/war-room/output/carousel/2026-07-08-lkpm-panic-myth-79d3c3a9","state":"drafted"},
       {"id":"legacy","topic_slug":"golden-visa","carousel_path":"/x/carousel/golden-visa/","state":"drafted"},
       {"id":"gone","topic_slug":"golden-visa-attracts-rp2-trillion",
        "carousel_path":"/x/carousel/missing-efd58430","state":"drafted"},
@@ -316,6 +361,422 @@ func test_reviewQueueJoin() {
     T.check(match(2) == nil, "missing-on-disk item stays non-interactive (no phantom)")
     T.check(match(4) == nil, "topic_slug that is only a SUBSTRING of the dir slug does not join")
     T.check(match(5) == nil, "'other' does not join 2026-07-08-other-topic-deadbeef (suffix not hex id)")
+}
+
+// MARK: - review queue tolerant decode (one malformed entry must not blank the rest)
+
+func test_queueTolerantDecode_skipsOneMalformed() {
+    T.suite("review queue tolerant decode — skips one malformed entry (GUILT)")
+    let json = """
+    [
+      {"item_id":"ok-1","topic":"Valid one","state":"pass"},
+      "garbage",
+      {"item_id":"ok-2","topic":"Valid two","state":"soft_fail"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "1 malformed (non-object) entry skipped, 2 valid entries recovered — not a stale/empty fallback")
+    T.check(items.contains { $0.item_id == "ok-1" }, "valid entry #1 (ok-1) present")
+    T.check(items.contains { $0.item_id == "ok-2" }, "valid entry #2 (ok-2) present")
+}
+
+func test_queueTolerantDecode_skipsWrongTypedObject() {
+    T.suite("review queue tolerant decode — skips a wrong-typed OBJECT entry (GUILT, realistic corruption)")
+    // Middle entry IS an object (unlike the "garbage" string case) but item_id is a NUMBER,
+    // not a String — throws typeMismatch inside dec.decode(ReviewItem.self, ...), exercising
+    // the per-element decode-failure branch (WarRoom.swift readQueue), not the non-object branch.
+    let json = """
+    [
+      {"item_id":"ok-a","topic":"A","state":"pass"},
+      {"item_id":42},
+      {"item_id":"ok-b","topic":"B","state":"pass"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "wrong-typed object (item_id as number) skipped, 2 valid entries recovered")
+    T.eq(items.map { $0.item_id ?? "?" }, ["ok-a", "ok-b"], "recovered ids are exactly ok-a and ok-b, in order")
+}
+
+func test_queueTolerantDecode_allValidUnchanged() {
+    T.suite("review queue tolerant decode — all-valid array unchanged (INNOCENCE 1, fast path)")
+    let json = """
+    [
+      {"item_id":"v1","topic":"One","state":"pass"},
+      {"item_id":"v2","topic":"Two","state":"soft_fail"},
+      {"item_id":"v3","topic":"Three","state":"drafted"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 3, "fully-valid N-entry array still returns all N — fast path unchanged")
+}
+
+func test_queueTolerantDecode_truncatedKeepsLastGood() {
+    T.suite("review queue tolerant decode — truncated write keeps M3 last-good (INNOCENCE 2)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"g1","topic":"Good one","state":"pass"},
+      {"item_id":"g2","topic":"Good two","state":"soft_fail"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 2, "setup: valid queue establishes lastGoodQueue")
+
+    // Truncated mid-write: not valid JSON of ANY shape (not even a complete array).
+    let truncatedContent = "[{\"item_id\":\"g1\",\"topic\":\"Good one\",\"stat"
+    let truncatedURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? truncatedContent.data(using: .utf8)!.write(to: truncatedURL)
+    // Prove readQueue actually SAW a bad file, not an absent one (Codex: a silently-failed
+    // write would make Data(contentsOf:) fail too, returning lastGoodQueue for the WRONG
+    // reason and passing this test without ever exercising the tolerant-decode path).
+    T.check(fm.fileExists(atPath: truncatedURL.path), "truncated fixture written to disk")
+    T.check((try? Data(contentsOf: truncatedURL))?.isEmpty == false, "truncated fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: truncatedURL) }
+
+    let items = WarRoom.readQueue(queueFile: truncatedURL)
+    T.eq(items.count, 2, "M3 preserved: truncated file keeps the previous 2 items, not 0, not partial")
+    T.eq(items.map { $0.item_id ?? "?" }, ["g1", "g2"], "returned items are EXACTLY the prior lastGoodQueue (g1, g2), not some other N-count")
+}
+
+func test_queueTolerantDecode_allMalformedKeepsLastGood() {
+    T.suite("review queue tolerant decode — every entry malformed keeps last-good (INNOCENCE 3, anti-blank)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"h1","topic":"Held one","state":"pass"},
+      {"item_id":"h2","topic":"Held two","state":"soft_fail"},
+      {"item_id":"h3","topic":"Held three","state":"drafted"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 3, "setup: valid queue establishes lastGoodQueue")
+
+    // Valid, COMPLETE JSON array — but every single entry is malformed (not an object).
+    let allBadJSON = #"["garbage", "more garbage", 42]"#
+    let badURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? allBadJSON.data(using: .utf8)!.write(to: badURL)
+    // Prove readQueue actually SAW the all-bad file, not an absent/unwritten one.
+    T.check(fm.fileExists(atPath: badURL.path), "all-malformed fixture written to disk")
+    T.check((try? Data(contentsOf: badURL))?.isEmpty == false, "all-malformed fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: badURL) }
+
+    let items = WarRoom.readQueue(queueFile: badURL)
+    T.eq(items.count, 3, "all-malformed array does NOT blank to 0 — keeps the prior 3 (systemic failure, not per-entry)")
+    T.eq(items.map { $0.item_id ?? "?" }, ["h1", "h2", "h3"], "returned items are EXACTLY the prior lastGoodQueue (h1, h2, h3), not some other N-count")
+}
+
+// MARK: - A2 complete-or-nothing gate (2026-07-16 mandate)
+
+func test_completeOrNothingGate() {
+    T.suite("A2 complete-or-nothing gate (2026-07-16 mandate)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // INNOCENZA — N-of-N via slides.json (source a): a full render passes through unaffected.
+    _ = makeCarousel(in: root, slug: "complete-5", slides: (1...5).map { "\($0).png" })
+
+    // COLPEVOLEZZA — declared (9) != disk (8): must be excluded entirely, not just flagged.
+    _ = makeCarousel(in: root, slug: "mismatch-9-vs-8", slides: (1...8).map { "\($0).png" },
+                      declareSlides: .objectSlides(9))
+
+    // COLPEVOLEZZA — no slides.json/manifest.json/queue entry at all: undeclarable, excluded
+    // even though real PNGs exist on disk (never silently trust raw disk count).
+    _ = makeCarousel(in: root, slug: "undeclarable", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+    // fallback (b) — manifest.json total_slides, no slides.json (external-import shape).
+    let manifestDir = makeCarousel(in: root, slug: "manifest-fallback", slides: ["1.png", "2.png"],
+                                    declareSlides: .absent)
+    let manifestJSON: [String: Any] = ["total_slides": 2, "imported": true]
+    try? JSONSerialization.data(withJSONObject: manifestJSON)
+        .write(to: manifestDir.appendingPathComponent("manifest.json"))
+
+    // fallback (c) — queue slide_count, no slides.json/manifest.json at all.
+    _ = makeCarousel(in: root, slug: "queue-fallback", slides: ["1.png", "2.png", "3.png"],
+                      declareSlides: .absent)
+
+    // published exemption — undeclarable AND the only 1 disk PNG, but published: must stay
+    // visible regardless (immutable, REPOINT-guarded — never hidden retroactively).
+    _ = makeCarousel(in: root, slug: "published-partial", slides: ["1.png"], declareSlides: .absent)
+
+    let queueJSON = """
+    [
+      {"id":"qf","topic_slug":"queue-fallback","slide_count":3,"state":"drafted"},
+      {"id":"pp","topic_slug":"published-partial","state":"pass",
+       "instagram_post_url":"https://instagram.com/p/xyz",
+       "instagram_published_at":"2026-06-01T00:00:00Z"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+    T.eq(queue.count, 2, "gate-test queue fixture decoded")
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+    func find(_ slug: String) -> Carousel? { carousels.first(where: { $0.slug == slug }) }
+
+    T.check(find("complete-5") != nil, "innocence: N-of-N (slides.json) is listed")
+    T.eq(find("complete-5")?.slideCount, 5, "innocence: displayed count == declared == disk")
+
+    T.check(find("mismatch-9-vs-8") == nil, "guilt: declared=9 vs disk=8 is excluded entirely")
+    T.check(find("undeclarable") == nil, "guilt: no declaration source at all is excluded")
+
+    T.check(find("manifest-fallback") != nil, "fallback (b): manifest.json total_slides accepted")
+    T.eq(find("manifest-fallback")?.slideCount, 2, "fallback (b): displayed count from manifest.json")
+
+    T.check(find("queue-fallback") != nil, "fallback (c): queue slide_count accepted")
+    T.eq(find("queue-fallback")?.slideCount, 3, "fallback (c): displayed count from queue join")
+
+    T.check(find("published-partial") != nil,
+            "published exemption: undeclarable+mismatched but published stays visible")
+
+    T.eq(WarRoom.excludedIncompleteCount, 2,
+         "excludedIncompleteCount counts exactly the 2 unpublished exclusions (mismatch + undeclarable)")
+}
+
+// MARK: - Codex red-team hardening (2026-07-16, findings #1/#2/#3/#6 on the A2 gate)
+
+func test_matchCarouselPrecedenceOrder() {
+    T.suite("matchCarousel precedence — exact wins over regex regardless of array order (Codex finding #1)")
+
+    func fakeCarousel(_ slug: String) -> Carousel {
+        Carousel(slug: slug, directory: URL(fileURLWithPath: "/tmp/\(slug)"),
+                  slidesDir: URL(fileURLWithPath: "/tmp/\(slug)/slides"),
+                  slidePNGs: [], modified: Date(), topic: nil, domain: nil,
+                  criticVerdict: nil, slideCount: 1, imagegenFallback: false,
+                  coverURL: nil, metrics: nil, instagramURL: nil, publishedAt: nil, canvaURL: nil)
+    }
+    let exactDir = fakeCarousel("golden-visa-order")
+    let regexDir = fakeCarousel("2026-07-08-golden-visa-order-deadbeef")
+
+    let json = #"[{"id":"x","topic_slug":"golden-visa-order","state":"drafted"}]"#
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    defer { try? fm.removeItem(at: url) }
+    let item = WarRoom.readQueue(queueFile: url)[0]
+
+    // COLPEVOLEZZA (the pre-fix bug): a combined exact+regex pass lets array order pick
+    // the regex dir here. Putting it FIRST is exactly the scenario that broke.
+    T.eq(WarRoom.matchCarousel(for: item, in: [regexDir, exactDir])?.slug, "golden-visa-order",
+         "exact match wins even when the regex-matching dir sorts FIRST in the array")
+    // INNOCENZA — same result with the array in the other order (sanity, not the bug itself).
+    T.eq(WarRoom.matchCarousel(for: item, in: [exactDir, regexDir])?.slug, "golden-visa-order",
+         "exact match wins when it already sorts first too")
+}
+
+func test_completeOrNothingGateHardening() {
+    T.suite("A2 gate hardening — Codex red-team findings #2/#3/#6 (2026-07-16)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // Finding #2 — two queue rows at the SAME precedence tier (both exact topic_slug,
+    // neither has carousel_path) declare DIFFERENT slide_count. Must be excluded with a
+    // logged ambiguity reason, never silently resolved by picking the first row.
+    _ = makeCarousel(in: root, slug: "ambiguous-count", slides: (1...7).map { "\($0).png" },
+                      declareSlides: .absent)
+
+    // Finding #3 (guilt) — an empty-string instagram_post_url must NOT count as published
+    // and must NOT let an incomplete render bypass the gate.
+    _ = makeCarousel(in: root, slug: "empty-url-guilt", slides: (1...3).map { "\($0).png" },
+                      declareSlides: .objectSlides(5))
+
+    // Finding #3 (innocence) — a legacy row with state=="published" but no URL/timestamp
+    // at all must still count as published and must NOT be hidden.
+    _ = makeCarousel(in: root, slug: "state-only-published", slides: ["1.png"], declareSlides: .absent)
+
+    // Finding #6 — a malformed slides.json must not crash and must fall through cleanly
+    // to the next declaration source (queue slide_count here), same as if it were absent.
+    _ = makeCarousel(in: root, slug: "malformed-json", slides: (1...4).map { "\($0).png" },
+                      declareSlides: .malformed)
+
+    // Finding #6 — multi-source conflict mirroring the real `bali-pma-rental-crackdown`
+    // case: slides.json (a) says 9, manifest.json (b) says 999, queue (c) says 8 — (a)
+    // must win over both, precedence a > b > c.
+    let conflictDir = makeCarousel(in: root, slug: "multi-source-conflict",
+                                    slides: (1...9).map { "\($0).png" }, declareSlides: .objectSlides(9))
+    let manifestConflict: [String: Any] = ["total_slides": 999]
+    try? JSONSerialization.data(withJSONObject: manifestConflict)
+        .write(to: conflictDir.appendingPathComponent("manifest.json"))
+
+    let queueJSON = """
+    [
+      {"id":"amb1","topic_slug":"ambiguous-count","slide_count":7,"state":"drafted"},
+      {"id":"amb2","topic_slug":"ambiguous-count","slide_count":8,"state":"drafted"},
+      {"id":"eu","topic_slug":"empty-url-guilt","instagram_post_url":"","state":"drafted"},
+      {"id":"sp","topic_slug":"state-only-published","state":"published"},
+      {"id":"mj","topic_slug":"malformed-json","slide_count":4,"state":"drafted"},
+      {"id":"msc","topic_slug":"multi-source-conflict","slide_count":8,"state":"drafted"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+    T.eq(queue.count, 6, "hardening-test queue fixture decoded")
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+    func find(_ slug: String) -> Carousel? { carousels.first(where: { $0.slug == slug }) }
+
+    T.check(find("ambiguous-count") == nil,
+            "finding #2 guilt: same-tier queue rows disagreeing on slide_count → excluded, not first-picked")
+
+    T.check(find("empty-url-guilt") == nil,
+            "finding #3 guilt: empty-string instagram_post_url does NOT bypass the gate")
+
+    T.check(find("state-only-published") != nil,
+            "finding #3 innocence: state==\"published\" with no URL/timestamp still exempts the gate")
+
+    T.check(find("malformed-json") != nil,
+            "finding #6: malformed slides.json falls through to queue fallback, no crash")
+    T.eq(find("malformed-json")?.slideCount, 4, "finding #6: fallback count taken from queue after malformed (a)")
+
+    T.check(find("multi-source-conflict") != nil, "finding #6: a>b>c conflict — carousel listed")
+    T.eq(find("multi-source-conflict")?.slideCount, 9,
+         "finding #6: slides.json (a)=9 wins over manifest (b)=999 and queue (c)=8")
+}
+
+// MARK: - Publish-eligibility gate (2026-07-16 cross-finding w/ Python A3 reconciler)
+
+func test_publishEligibilityCrossFinding() {
+    T.suite("publish-eligibility — fresh state must not be masked by a stale verdict")
+
+    func fakeCarousel(state: String?, criticVerdict: String?, isPublished: Bool = false) -> Carousel {
+        Carousel(slug: "x", directory: URL(fileURLWithPath: "/tmp/x"),
+                 slidesDir: URL(fileURLWithPath: "/tmp/x/slides"), slidePNGs: [],
+                 modified: Date(), topic: nil, domain: nil, criticVerdict: criticVerdict,
+                 slideCount: 8, imagegenFallback: false, coverURL: nil, metrics: nil,
+                 instagramURL: isPublished ? "https://instagram.com/p/x/" : nil,
+                 publishedAt: nil, canvaURL: nil, state: state)
+    }
+
+    // COLPEVOLEZZA — the exact cross-finding bug: a stale GOOD verdict from an earlier
+    // successful critic run must NOT mask a FRESH render_incomplete state the Python A3
+    // daily-reconciler set later (a post-render disk-level drift the render-time gate
+    // couldn't see). If phase/eligibility were still computed verdict-first
+    // (critic_overall_verdict ?? state, the OLD precedence), this carousel would wrongly
+    // read as waitlist/publishable.
+    let maskedByStaleVerdict = fakeCarousel(state: "render_incomplete", criticVerdict: "pass")
+    T.eq(maskedByStaleVerdict.phase, .review,
+         "fresh render_incomplete state wins over a stale \"pass\" verdict -> review, not waitlist")
+    T.check(maskedByStaleVerdict.isPublishEligible == false,
+            "guilt: not publish-eligible despite the stale good verdict")
+
+    // INNOCENZA — a legacy-schema row with NO `state` field at all, only the verdict,
+    // must still fall back correctly (the fix must not regress rows that never carried
+    // a state field in the first place).
+    let legacyVerdictOnly = fakeCarousel(state: nil, criticVerdict: "pass")
+    T.eq(legacyVerdictOnly.phase, .waitlist, "no state field -> falls back to criticVerdict -> waitlist")
+    T.check(legacyVerdictOnly.isPublishEligible, "innocence: legacy verdict-only carousel stays eligible")
+
+    // INNOCENZA — the ordinary, current-day case: state="drafted", no verdict yet.
+    let ordinaryDraft = fakeCarousel(state: "drafted", criticVerdict: nil)
+    T.eq(ordinaryDraft.phase, .waitlist, "drafted -> waitlist")
+    T.check(ordinaryDraft.isPublishEligible, "innocence: an ordinary drafted carousel is eligible")
+
+    // COLPEVOLEZZA — an already-published carousel is never "eligible for a FRESH
+    // publish" (that's the separate, reversible undo-publish flow).
+    let alreadyPublished = fakeCarousel(state: "published", criticVerdict: "pass", isPublished: true)
+    T.check(alreadyPublished.isPublishEligible == false,
+            "guilt: already-published carousel is not eligible for a fresh publish")
+}
+
+func test_isPublishedIndependentFieldCheck() {
+    T.suite("isQueueItemPublished / Carousel.isPublished — state & verdict checked independently (2026-07-16 final-gate finding)")
+
+    func item(state: String?, verdict: String?, url: String? = nil) -> ReviewItem {
+        var obj: [String: Any] = ["id": "x", "topic_slug": "x"]
+        if let s = state { obj["state"] = s }
+        if let v = verdict { obj["critic_overall_verdict"] = v }
+        if let u = url { obj["instagram_post_url"] = u }
+        let data = try! JSONSerialization.data(withJSONObject: obj)
+        return try! JSONDecoder().decode(ReviewItem.self, from: data)
+    }
+
+    func fakeCarousel(state: String?, criticVerdict: String?, instagramURL: String? = nil) -> Carousel {
+        Carousel(slug: "x", directory: URL(fileURLWithPath: "/tmp/x"),
+                 slidesDir: URL(fileURLWithPath: "/tmp/x/slides"), slidePNGs: [],
+                 modified: Date(), topic: nil, domain: nil, criticVerdict: criticVerdict,
+                 slideCount: 8, imagegenFallback: false, coverURL: nil, metrics: nil,
+                 instagramURL: instagramURL, publishedAt: nil, canvaURL: nil, state: state)
+    }
+
+    // COLPEVOLEZZA — the exact corner caught in final-gate review: verdict="pass" is
+    // non-nil, so the OLD coalesced `critic_overall_verdict ?? state` NEVER even looked
+    // at `state`. An app-enqueued legacy row (pre-#2442 fabricated "pass" verdict)
+    // later marked `state: "published"` with no URL backfill must still read as
+    // published — each field is now checked independently, not coalesced.
+    T.check(isQueueItemPublished(item(state: "published", verdict: "pass")),
+            "guilt: verdict=\"pass\" no longer masks state=\"published\" (isQueueItemPublished)")
+    T.check(fakeCarousel(state: "published", criticVerdict: "pass").isPublished,
+            "guilt: same corner case on Carousel.isPublished")
+
+    // INNOCENZA — every previously-working path must still work.
+    T.check(isQueueItemPublished(item(state: nil, verdict: nil, url: "https://instagram.com/p/x/")),
+            "innocence: URL alone still marks published")
+    T.check(isQueueItemPublished(item(state: "published", verdict: nil)),
+            "innocence: state alone (no verdict) still marks published")
+    T.check(isQueueItemPublished(item(state: nil, verdict: "published")),
+            "innocence: verdict alone (no state) still marks published")
+    T.check(isQueueItemPublished(item(state: "drafted", verdict: "pass")) == false,
+            "innocence: neither field says \"published\" -> not published (independent OR doesn't over-trigger)")
+    T.check(fakeCarousel(state: "drafted", criticVerdict: "pass").isPublished == false,
+            "innocence: same non-trigger case on Carousel.isPublished")
+}
+
+func test_stateWiredThroughScanCarousels() {
+    T.suite("WarRoom.scanCarousels wires raw state through the queue join (not just verdict)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+    _ = makeCarousel(in: root, slug: "cross-finding-slug", slides: (1...8).map { "\($0).png" })
+
+    let json = """
+    [{"id":"cf","topic_slug":"cross-finding-slug","state":"render_incomplete","critic_overall_verdict":"pass","slide_count":8}]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    defer { try? fm.removeItem(at: url) }
+    let queue = WarRoom.readQueue(queueFile: url)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+    guard let c = carousels.first(where: { $0.slug == "cross-finding-slug" }) else {
+        T.check(false, "cross-finding-slug carousel should be listed (complete render, gate unaffected by publish state)")
+        return
+    }
+    T.eq(c.state, "render_incomplete", "raw state wired through from the queue join")
+    T.eq(c.criticVerdict, "pass", "criticVerdict stays verdict-first — unchanged field, different purpose (critic badge)")
+    T.eq(c.phase, .review, "phase uses raw state, not verdict -> review despite the \"pass\" verdict")
+    T.check(c.isPublishEligible == false, "publish gate correctly refuses despite the gallery listing it as complete")
 }
 
 // MARK: - carousel phase mapping (pipeline↔app coherence, 2026-06-25)
@@ -495,6 +956,395 @@ func test_externalImportOutcomeParsing() {
     }
 }
 
+// MARK: - External post registration (§A, 2026-07-17)
+
+func test_externalPostRegistrationURLValidation() {
+    T.suite("ExternalPostRegistration — Instagram URL validation/canonicalization")
+
+    // INNOCENZA — well-formed URLs in several shapes all canonicalize correctly.
+    do {
+        let canon = try ExternalPostRegistration.canonicalizeInstagramURL("https://instagram.com/p/Cabc123_-")
+        T.eq(canon, "https://www.instagram.com/p/Cabc123_-/", "bare p/ URL (no www, no trailing slash) canonicalizes")
+    } catch { T.check(false, "well-formed p/ URL should not throw: \(error)") }
+
+    do {
+        let canon = try ExternalPostRegistration.canonicalizeInstagramURL("  https://www.instagram.com/reel/Xyz789/?igshid=foo  ")
+        T.eq(canon, "https://www.instagram.com/reel/Xyz789/", "reel URL with query string + surrounding whitespace canonicalizes, drops query")
+    } catch { T.check(false, "well-formed reel URL should not throw: \(error)") }
+
+    // COLPEVOLEZZA — reject empty/garbage (acceptance criteria §A).
+    func expectThrows(_ url: String, _ expected: ExternalPostRegistration.ValidationError, _ msg: String) {
+        do {
+            _ = try ExternalPostRegistration.canonicalizeInstagramURL(url)
+            T.check(false, "\(msg): should have thrown")
+        } catch let e as ExternalPostRegistration.ValidationError {
+            T.eq(e, expected, msg)
+        } catch {
+            T.check(false, "\(msg): wrong error type \(error)")
+        }
+    }
+    expectThrows("", .emptyURL, "empty string rejected")
+    expectThrows("   ", .emptyURL, "whitespace-only rejected")
+    expectThrows("not a url", .notAnInstagramPostURL, "garbage string rejected")
+    expectThrows("https://instagram.com/balizero0", .notAnInstagramPostURL, "profile URL (not a post) rejected")
+    expectThrows("https://example.com/p/abc/", .notAnInstagramPostURL, "wrong host rejected")
+}
+
+func test_externalPostRegistrationTopicAndIdentity() {
+    T.suite("ExternalPostRegistration — topic validation + item_id/dir-name/entry construction")
+
+    do {
+        let t = try ExternalPostRegistration.validateTopic("  My manual post  ")
+        T.eq(t, "My manual post", "topic is trimmed")
+    } catch { T.check(false, "well-formed topic should not throw") }
+
+    do {
+        _ = try ExternalPostRegistration.validateTopic("   ")
+        T.check(false, "blank topic should throw emptyTopic")
+    } catch ExternalPostRegistration.ValidationError.emptyTopic {
+        T.check(true, "blank topic throws emptyTopic")
+    } catch { T.check(false, "wrong error type") }
+
+    var comps = DateComponents()
+    comps.year = 2026; comps.month = 7; comps.day = 17; comps.hour = 9; comps.minute = 0; comps.second = 0
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "UTC")!
+    let date = cal.date(from: comps)!
+
+    T.eq(ExternalPostRegistration.makeItemID(publishDate: date, slug: "my-manual-post"),
+         "external_2026-07-17T090000_my-manual-post", "item_id format: external_<date>T<time>_<slug>")
+    // Codex red-team finding H, 2026-07-17: dir name now carries TIME too (matches
+    // makeItemID's date+time uniqueness) — was date+slug only, which let two
+    // same-day same-slug registrations collide into one directory.
+    T.eq(ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post"),
+         "external-2026-07-17T090000-my-manual-post", "carousel dir name: external-<date>T<time>-<slug>")
+
+    // GUILT (finding H): two same-day, same-slug registrations at DIFFERENT times
+    // must now produce DISTINCT dir names — the exact collision the date-only
+    // format allowed.
+    var comps2 = comps
+    comps2.hour = 14; comps2.minute = 30
+    let laterSameDay = cal.date(from: comps2)!
+    T.check(
+        ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post") !=
+        ExternalPostRegistration.carouselDirName(publishDate: laterSameDay, slug: "my-manual-post"),
+        "two same-day same-slug registrations at different times get DISTINCT dir names (finding H)")
+
+    let entryNoImages = ExternalPostRegistration.buildQueueEntry(
+        instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
+        slug: "my-manual-post", publishDate: date, slideCount: 0, carouselPath: nil)
+    T.eq(entryNoImages["item_id"] as? String, "external_2026-07-17T090000_my-manual-post", "0-image entry item_id")
+    T.eq(entryNoImages["state"] as? String, "published", "0-image entry state=published")
+    T.eq(entryNoImages["source"] as? String, "external_manual", "0-image entry source=external_manual")
+    T.eq(entryNoImages["slide_count"] as? Int, 0, "0-image entry slide_count=0")
+    T.check(entryNoImages["carousel_path"] == nil, "0-image entry has NO carousel_path (renders as virtual card)")
+    T.check(entryNoImages["instagram_published_at"] != nil, "instagram_published_at set (existing consumers read this key)")
+    T.check(entryNoImages["published_at"] != nil, "published_at also set (spec's literal field name)")
+
+    let entryWithImages = ExternalPostRegistration.buildQueueEntry(
+        instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
+        slug: "my-manual-post", publishDate: date, slideCount: 3,
+        carouselPath: "~/nuzantara/apps/war-room/output/carousel/external-2026-07-17T090000-my-manual-post/")
+    T.eq(entryWithImages["slide_count"] as? Int, 3, "image entry slide_count reflects the copied-image count")
+    T.check(entryWithImages["carousel_path"] != nil, "image entry HAS carousel_path")
+}
+
+// MARK: - Gallery recency sort key (§D, 2026-07-17 — re-rendered cards must not stay buried)
+
+func test_recencySortKeyPure() {
+    T.suite("WarRoom.recencySortKey — max(dir, slide-mtime) for drafts, publishedAt for published")
+
+    let dirOld = Date(timeIntervalSince1970: 1_752_000_000)
+    let slideNew = Date(timeIntervalSince1970: 1_752_800_000)   // later than dirOld
+
+    // COLPEVOLEZZA (the pre-fix bug: dir mtime alone) — a fresher slide mtime must win.
+    let key1 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: slideNew,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key1, slideNew, "unpublished: newer slide mtime wins over older dir mtime")
+
+    // INNOCENZA — max, not "always prefer slide": dir mtime wins when it IS the newer one.
+    let key2 = WarRoom.recencySortKey(dirModified: slideNew, newestSlideModified: dirOld,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key2, slideNew, "unpublished: dir mtime wins when it's the newer one")
+
+    let key3 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: nil,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key3, dirOld, "unpublished, no slide mtime available: falls back to dir mtime alone")
+
+    // PUBLISHED — publishedAt wins even when file mtimes are much newer (an unrelated
+    // later touch, e.g. a metrics backfill, must never bump a live post's position).
+    let pubDate = "2026-06-01T00:00:00Z"
+    let key4 = WarRoom.recencySortKey(dirModified: slideNew, newestSlideModified: slideNew,
+                                        isPublished: true, publishedAt: pubDate)
+    T.eq(key4, WarRoom.parsePublishedAt(pubDate), "published: publishedAt wins over much-newer file mtimes")
+
+    // published but no/unparseable publishedAt → falls back to max(dir, slide).
+    let key5 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: slideNew,
+                                        isPublished: true, publishedAt: nil)
+    T.eq(key5, slideNew, "published with no publishedAt: falls back to max(dir, slide)")
+}
+
+func test_scanCarouselsRerenderSortsToTop() {
+    T.suite("WarRoom.scanCarousels — re-rendered carousel sorts to top of drafted (§D acceptance #3)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    let oldDir = makeCarousel(in: root, slug: "old-draft", slides: ["1.png", "2.png"])
+    // "re-rendered" dir: same shape — a re-render overwrites the PNG bytes in place,
+    // same filenames, so its directory's OWN mtime does not bump (see doc comment).
+    let rerenderedDir = makeCarousel(in: root, slug: "rerendered-draft", slides: ["1.png", "2.png"])
+
+    let farPast = Date(timeIntervalSinceNow: -86_400 * 30)
+    let justNow = Date()
+    try? fm.setAttributes([.modificationDate: farPast], ofItemAtPath: oldDir.path)
+    try? fm.setAttributes([.modificationDate: farPast], ofItemAtPath: rerenderedDir.path)
+    let rerenderedSlide = rerenderedDir.appendingPathComponent("slides/1.png")
+    try? fm.setAttributes([.modificationDate: justNow], ofItemAtPath: rerenderedSlide.path)
+
+    let queueJSON = """
+    [
+      {"id":"od","topic_slug":"old-draft","slide_count":2,"state":"drafted"},
+      {"id":"rd","topic_slug":"rerendered-draft","slide_count":2,"state":"drafted"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+        .sorted { $0.modified > $1.modified }
+    T.eq(carousels.first?.slug, "rerendered-draft",
+         "the re-rendered carousel (fresh slide mtime) sorts FIRST despite both dirs sharing an old dir-mtime")
+}
+
+// MARK: - Duplicate virtual-entry detection (§E, 2026-07-17)
+
+func test_igShortcodeExtraction() {
+    T.suite("WarRoom.igShortcode — entity extraction for URL-equality dedup")
+    T.eq(WarRoom.igShortcode(from: "https://www.instagram.com/p/DaxDJuYFPi6/"), "DaxDJuYFPi6", "p/ URL")
+    T.eq(WarRoom.igShortcode(from: "https://instagram.com/reel/Xyz789/?igshid=x"), "Xyz789", "reel/ URL with query string")
+    T.check(WarRoom.igShortcode(from: "https://instagram.com/balizero0") == nil, "profile URL has no shortcode")
+}
+
+func test_matchesAnyPhysicalInstagramURL() {
+    T.suite("WarRoom.matchesAnyPhysicalInstagramURL — cosmetic-difference-tolerant URL dedup")
+
+    let known = ["https://www.instagram.com/p/DaxDJuYFPi6/", "https://www.instagram.com/p/Other111/"]
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://instagram.com/p/DaxDJuYFPi6/?igshid=x", knownURLs: known),
+            "same shortcode, different cosmetic form (no www, query string) still matches")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://www.instagram.com/p/Unrelated999/", knownURLs: known) == false,
+            "a genuinely different shortcode does not match")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("", knownURLs: known) == false, "empty string never matches")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://instagram.com/p/DaxDJuYFPi6/", knownURLs: []) == false,
+            "no known URLs at all -> no match")
+}
+
+func test_scanCarouselsDedupesVirtualEntrySharingURL() {
+    T.suite("WarRoom.scanCarousels — virtual ig-* entry hidden when a physical sibling shares its URL (§E)")
+
+    // Live shape (team-lead diagnosis, 2026-07-17): the real queue had TWO
+    // entries for this post — idx 61 (native, this fixture's "real-1") only
+    // got its instagram_post_url once flipped to published, and idx 71
+    // (ig-DaxDJuYFPi6) was discovery-ingested 07-14 while idx 61's URL was
+    // still null, with its topic mislabeled "150 LICENSED." — kept verbatim
+    // here for direct traceability to the incident, not a placeholder.
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // the REAL carousel, published, with its own queue-joined instagram_post_url.
+    _ = makeCarousel(in: root, slug: "bali-pma-rental-crackdown", slides: ["1.png"], declareSlides: .absent)
+
+    let queueJSON = """
+    [
+      {"id":"real-1","topic_slug":"bali-pma-rental-crackdown","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/",
+       "instagram_published_at":"2026-06-01T00:00:00Z"},
+      {"item_id":"ig-DaxDJuYFPi6","topic":"150 LICENSED.","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/?igshid=x",
+       "instagram_published_at":"2026-06-01T00:00:00Z"},
+      {"item_id":"ig-GenuinelyUnrelated1","topic":"(a real other IG-only post)","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/GenuinelyUnrelated1/",
+       "instagram_published_at":"2026-06-02T00:00:00Z"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+
+    // GUILT — without the fix this would show TWO cards for the same post.
+    let dupMatches = carousels.filter { $0.instagramURL?.contains("DaxDJuYFPi6") == true }
+    T.eq(dupMatches.count, 1, "only ONE card total for the DaxDJuYFPi6 post (the real on-disk one, virtual hidden)")
+    T.check(dupMatches.first?.slug == "bali-pma-rental-crackdown",
+            "the surviving card is the REAL on-disk carousel, not the virtual phantom")
+
+    // INNOCENCE — a genuinely unrelated IG-only post (no physical sibling) still shows.
+    T.check(carousels.contains { $0.slug == "ig-GenuinelyUnrelated1" },
+            "a genuinely different IG-only post with no physical sibling still renders as a virtual card")
+}
+
+// MARK: - External-manual entries: completeness gate exemption (§A guilt+innocence pair)
+
+func test_externalManualCompletenessGateGuiltInnocence() {
+    T.suite("A2 completeness gate — external_manual entries stay exempt (§A guilt+innocence regression)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // GUILT — an ordinary DRAFTED (unpublished) dir whose real PNG count (1) doesn't
+    // match its declared count (3) must STILL be excluded — the pre-existing A2 gate,
+    // unchanged by the external-post feature.
+    _ = makeCarousel(in: root, slug: "mismatched-draft", slides: ["1.png"], declareSlides: .objectSlides(3))
+
+    let queueJSON = """
+    [
+      {"id":"md","topic_slug":"mismatched-draft","state":"drafted"},
+      {"item_id":"external_2026-07-17T090000_no-image-test","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/ExternalNoImage1/",
+       "instagram_published_at":"2026-07-17T09:00:00Z","source":"external_manual",
+       "topic":"No-image external post","topic_slug":"no-image-test","slide_count":0}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+
+    T.check(carousels.contains { $0.slug == "mismatched-draft" } == false,
+            "GUILT: mismatched-disk drafted entry is still excluded from the gallery")
+    T.eq(WarRoom.excludedIncompleteCount, 1,
+         "GUILT: the exclusion is observable via excludedIncompleteCount (scar #2)")
+
+    let external = carousels.first { $0.instagramURL == "https://www.instagram.com/p/ExternalNoImage1/" }
+    T.check(external != nil, "INNOCENCE: the 0-image external_manual entry IS present in the gallery")
+    T.check(external?.isPublished == true, "INNOCENCE: it renders as published")
+    T.eq(external?.slideCount, 0, "INNOCENCE: slideCount reflects the declared 0")
+}
+
+// MARK: - Gate-exclusion delta-emission (2026-07-18 wound: ~29 lines re-emitted to
+// wr2control.err on EVERY scanCarousels refresh, ~30MB/day). Swaps WarRoom.exclusionEmit
+// (the injectable test seam) for an array-recorder so the stderr WRITE is assertable
+// deterministically, distinct from excludedIncompleteCount (the UI count), which must
+// NEVER be affected by delta-emission dedup.
+
+func test_gateExclusionDeltaEmission() {
+    T.suite("gate-exclusion delta-emission — stderr write deduped across scans, count never deduped (2026-07-18)")
+
+    let originalEmit = WarRoom.exclusionEmit
+    defer { WarRoom.exclusionEmit = originalEmit }
+    var emitted: [String] = []
+    WarRoom.exclusionEmit = { emitted.append($0) }
+
+    // --- GUILT (dedup) + INNOCENCE (count unchanged) ---------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-dedup-guilt", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "GUILT scan 1: steady-state exclusion is emitted exactly once")
+        T.eq(WarRoom.excludedIncompleteCount, 1, "INNOCENCE scan 1: count reflects the 1 excluded dir")
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "GUILT scan 2: the SAME steady-state exclusion emits ZERO lines on the next scan")
+        T.eq(WarRoom.excludedIncompleteCount, 1,
+             "INNOCENCE scan 2: excludedIncompleteCount STILL counts it — delta-emission dedupes the WRITE, never the count")
+    }
+
+    // --- NEW mid-run: excluded on scan 2 but not scan 1 -------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-new-midrun", slides: (1...3).map { "\($0).png" })   // complete N-of-N
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "NEW scan 1: complete carousel excludes nothing yet")
+
+        // simulate a mid-render dir losing a slide between the two scans (declared count
+        // stays 3 in the already-written slides.json — only the disk count drops to 2).
+        let slidesDir = croot.appendingPathComponent("delta-new-midrun/slides", isDirectory: true)
+        try? fm.removeItem(at: slidesDir.appendingPathComponent("3.png"))
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "NEW scan 2: an exclusion appearing for the FIRST time is emitted once")
+    }
+
+    // --- REAPPEAR: excluded scan 1, absent scan 2, excluded scan 3 -------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        let dir = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        // declared=3, disk=1 → excluded (mismatch reason)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 1: initial exclusion emits once")
+
+        // scan 2: the dir is gone entirely — nothing to exclude, and this ALSO drops the
+        // key from the delta memory (scanCarousels' final-return commit is a scan-scoped
+        // REPLACE of lastLoggedExclusions, not a running union).
+        try? fm.removeItem(at: dir)
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "REAPPEAR scan 2: the dir is absent — nothing excluded, nothing emitted")
+
+        // scan 3: the SAME slug+reason exclusion reappears — since scan 2 dropped it from
+        // memory, it must be treated as new again and logged once more.
+        _ = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 3: a re-appearing exclusion (absent in between) is logged again")
+    }
+
+    // --- FAILURE-PATH memory: an early-return scan must not wipe the dedup memory ----
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-failure-path-x", slides: ["1.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan A (good): first-time exclusion X emits once")
+
+        // scan B hits the early `guard let entries = ... else { return [] }` failure path —
+        // a nonexistent root can never be listed by contentsOfDirectory.
+        let badRoot = root.appendingPathComponent("does-not-exist-\(UUID().uuidString)", isDirectory: true)
+        emitted.removeAll()
+        let failedScan = WarRoom.scanCarousels(carouselRoot: badRoot, queue: [])
+        T.eq(failedScan.count, 0, "FAILURE-PATH scan B: unreadable root returns an empty carousel list")
+        T.eq(emitted.count, 0, "FAILURE-PATH scan B: the early-return path itself emits nothing (no dirs were scanned)")
+
+        // scan C is a GOOD scan again, on the ORIGINAL root, with a genuinely NEW exclusion
+        // Z added alongside the still-present X.
+        _ = makeCarousel(in: root, slug: "delta-failure-path-z", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan C: emits ONLY the genuinely-new exclusion Z (does NOT go silent)")
+        T.check(emitted.first?.contains("delta-failure-path-z") == true,
+                "FAILURE-PATH scan C: the one emitted line is Z, not a re-storm of X")
+        T.check(emitted.contains { $0.contains("delta-failure-path-x") } == false,
+                "FAILURE-PATH scan C: X stays silent — the failed scan B did NOT wipe its memory (no re-storm)")
+    }
+}
+
 // MARK: - main
 
 let suites: [() -> Void] = [
@@ -507,12 +1357,32 @@ let suites: [() -> Void] = [
     test_topicPrompt,
     test_adversarialFixes,
     test_reviewQueueJoin,
+    test_queueTolerantDecode_skipsOneMalformed,
+    test_queueTolerantDecode_skipsWrongTypedObject,
+    test_queueTolerantDecode_allValidUnchanged,
+    test_queueTolerantDecode_truncatedKeepsLastGood,
+    test_queueTolerantDecode_allMalformedKeepsLastGood,
+    test_completeOrNothingGate,
+    test_matchCarouselPrecedenceOrder,
+    test_completeOrNothingGateHardening,
+    test_publishEligibilityCrossFinding,
+    test_isPublishedIndependentFieldCheck,
+    test_stateWiredThroughScanCarousels,
     test_carouselPhaseMapping,
     test_instagramCaptionValidation,
     test_instagramCaptionProcessContract,
     test_externalImportClassification,
     test_externalImportArguments,
     test_externalImportOutcomeParsing,
+    test_externalPostRegistrationURLValidation,
+    test_externalPostRegistrationTopicAndIdentity,
+    test_recencySortKeyPure,
+    test_scanCarouselsRerenderSortsToTop,
+    test_igShortcodeExtraction,
+    test_matchesAnyPhysicalInstagramURL,
+    test_scanCarouselsDedupesVirtualEntrySharingURL,
+    test_externalManualCompletenessGateGuiltInnocence,
+    test_gateExclusionDeltaEmission,
 ]
 for s in suites { s() }
 exit(T.report())

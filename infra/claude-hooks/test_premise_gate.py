@@ -44,7 +44,7 @@ def edit(fp: str) -> dict:
 
 
 def main() -> int:
-    PROD = "/Users/x/Desktop/nuzantara/apps/mouth/src/foo.tsx"
+    PROD = "/Users/x/nuzantara/apps/mouth/src/foo.tsx"
     fails = 0
     cases = [
         # name, payload, transcript, expect_warn

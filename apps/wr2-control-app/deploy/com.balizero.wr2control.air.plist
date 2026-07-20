@@ -7,13 +7,13 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/balizero/Desktop/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh</string>
+        <string>/Users/balizero/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh</string>
         <string>/Users/balizero/Applications/WR2 Control.app/Contents/MacOS/WR2Control</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>WR2_WARROOM_ROOT</key>
-        <string>/Users/balizero/Desktop/nuzantara/apps/war-room/output</string>
+        <string>/Users/balizero/nuzantara/apps/war-room/output</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>

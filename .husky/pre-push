@@ -5,24 +5,201 @@ echo "🔍 Running pre-push hooks..."
 # false positives from coverage exit codes. Run manually: npm run test:ci
 echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 
+# ============================================================================
+# Path-aware backend-suite gate (2026-07-17, Zero GO)
+#
+# A PR that never touches the backend should not pay for the 17,384-test,
+# 11-32min Python suite below on every single push (measured: 4 pushes for
+# one log-rotation-only PR). This block decides, PURELY from the set of
+# files changed by the ref(s) actually being pushed, whether the 4-state
+# gate below even runs at all. The gate's OWN internal logic (PG states,
+# venv guard, DB clone, CI-parity env — all documented in the big comment
+# right below this one) is completely UNCHANGED: when this block decides
+# "run the backend suite", behavior is byte-identical to before
+# path-awareness existed.
+#
+# The full/skip-backend DECISION lives in scripts/prepush_classify.py — a
+# pure, unit-tested (guilt+innocence, scripts/tests/test_prepush_classify.py)
+# Python function, deliberately NOT inline bash (cicatrix-superscar.md #3:
+# "nessuna guardia mergiata senza un test di innocenza E di colpevolezza" —
+# a guard living only as bash conditionals cannot get that test). THIS
+# block's only job is git plumbing: read the pre-push stdin protocol
+# (`local_ref local_sha remote_ref remote_sha` per line — the documented
+# git pre-push hook contract), compute the right diff range per ref, union
+# the changed files across every ref in this push, and hand that union to
+# the classifier exactly once.
+#
+# FAIL-CLOSED EVERYWHERE (non-negotiable): any ambiguity — zero ref lines
+# read, a malformed stdin line, a failed `git fetch origin main`, a failed
+# `git merge-base`/`git diff`, no python3 on PATH, a non-zero classifier
+# exit, or classifier stdout that is not EXACTLY "full" or "skip-backend" —
+# forces the FULL suite below. Only a clean, explicit "skip-backend"
+# verdict skips it. A ref whose local_sha is the all-zero SHA is a branch
+# DELETION: it legitimately contributes zero files to the diff and is NOT
+# treated as an error.
+#
+# FRESHNESS (added post-panel-review, same day, GLM 5.2 finding): the
+# "new branch" diff range below is computed as `merge-base origin/main
+# local_sha`. A LOCAL `origin/main` ref that has not been fetched recently
+# is a proxy that can lie about where this branch actually forked
+# (cicatrix-superscar.md #9, state-schema/proxy-drift family) — so this
+# block runs `git fetch origin main` unconditionally before touching any
+# ref, and fails closed to FULL if that fetch fails, rather than silently
+# trusting whatever origin/main this checkout last happened to know about.
+#
+# RENAME SAFETY (verified empirically same day): `git diff --name-only`,
+# WITHOUT `--no-renames`, collapses a detected rename to a SINGLE line —
+# the destination path only. Reproduced live: renaming a file out of one
+# directory into another made the SOURCE path vanish from the diff
+# entirely. If the source had been backend-relevant and the destination
+# allowlisted, the classifier would never see the backend path — an
+# under-match by construction. Every `git diff` below therefore passes
+# `--no-renames`, so a rename is always reported as delete+add (BOTH the
+# old and new path visible in the union, never just one).
+#
+# REMOTE SAFETY (round-1 red-team HARDENING-1, 2026-07-18, Codex Sol xhigh
+# on PR #2642): every diff range below is computed against `origin/main` —
+# but git's documented pre-push hook contract passes the ACTUAL remote
+# being pushed to as `$1` (and its URL as `$2`), which this block used to
+# ignore entirely. A push to any remote OTHER than `origin` would still
+# diff against THIS checkout's `origin/main`, which has no guaranteed
+# relationship to that other remote's history — worst case an empty or
+# nonsensical diff range, i.e. a false "skip-backend" verdict on a push
+# this gate never actually inspected correctly. Fixed: the very first
+# check in the computation below is `$1 = origin`; anything else fails
+# closed to FULL, loudly, before any diff is even attempted.
+#
+# Kill switches:
+#   PREPUSH_FULL=1        always run the full suite unconditionally,
+#                          bypassing this entire block.
+#   PREPUSH_PATHAWARE=0   disable path-awareness entirely (same net effect
+#                          as PREPUSH_FULL=1). Default: path-awareness ON.
+# ============================================================================
+PREPUSH_RUN_BACKEND=1
+
+if [ "${PREPUSH_FULL:-0}" = "1" ]; then
+    echo "🧭 PREPUSH_FULL=1 — path-aware gate bypassed, full suite unconditionally."
+elif [ "${PREPUSH_PATHAWARE:-1}" = "0" ]; then
+    echo "🧭 PREPUSH_PATHAWARE=0 — path-aware gate disabled, full suite unconditionally."
+else
+    ZERO_SHA="0000000000000000000000000000000000000000"
+    PYTHON_BIN="$(command -v python3 || command -v python || true)"
+    REFS_SEEN=0
+    DIFF_ERROR=0
+    UNION_FILE="$(mktemp 2>/dev/null || true)"
+
+    # HARDENING-1 (round-1 red-team, Sol) — see "REMOTE SAFETY" above. Must
+    # be the FIRST check: every branch below trusts `origin/main` as the
+    # diff baseline, so a non-origin remote invalidates all of them before
+    # mktemp/fetch/diff are even worth attempting.
+    if [ "$1" != "origin" ]; then
+        echo "⚠️  path-aware gate: pushing to remote '$1' (this gate only trusts 'origin' as the diff baseline) — fail-closed to FULL suite."
+        DIFF_ERROR=1
+    elif [ -z "$UNION_FILE" ]; then
+        echo "⚠️  path-aware gate: mktemp failed — fail-closed to FULL suite."
+        DIFF_ERROR=1
+    elif ! git fetch origin main --quiet >/dev/null 2>&1; then
+        # See "FRESHNESS" above. A failed fetch means we cannot vouch for
+        # local origin/main's currency, so the new-branch merge-base path
+        # below must not be trusted this push — fail closed rather than
+        # risk a diff range computed against a stale integration point.
+        echo "⚠️  path-aware gate: 'git fetch origin main' failed (offline? auth?) — cannot trust local origin/main freshness — fail-closed to FULL suite."
+        DIFF_ERROR=1
+    else
+        : > "$UNION_FILE"
+        # Reads THIS hook's own stdin (the git pre-push protocol stream) —
+        # must happen before anything else below reads stdin. Nothing later
+        # in this file does, so consuming it fully here is safe.
+        while read -r local_ref local_sha remote_ref remote_sha; do
+            [ -z "$local_ref" ] && continue  # trailing blank line safety
+            REFS_SEEN=$((REFS_SEEN + 1))
+
+            # git's pre-push protocol always emits exactly 4 fields; a
+            # short/garbled line means we cannot safely compute a diff range.
+            if [ -z "$local_sha" ] || [ -z "$remote_sha" ]; then
+                DIFF_ERROR=1
+                break
+            fi
+
+            if [ "$local_sha" = "$ZERO_SHA" ]; then
+                # Ref deletion — no local commit to diff, contributes no
+                # files. Legitimate (delete-only push), not an error.
+                continue
+            fi
+
+            if [ "$remote_sha" = "$ZERO_SHA" ]; then
+                # New branch/ref not yet on the remote — diff from where it
+                # forked off main, i.e. every commit this push is introducing.
+                RANGE_FROM="$(git merge-base origin/main "$local_sha" 2>/dev/null)"
+                if [ -z "$RANGE_FROM" ]; then
+                    DIFF_ERROR=1
+                    break
+                fi
+            else
+                # Existing branch being updated — diff only the NEW commits
+                # since what the remote already has.
+                RANGE_FROM="$remote_sha"
+            fi
+
+            if ! git diff --no-ext-diff --no-renames --name-only "$RANGE_FROM" "$local_sha" >> "$UNION_FILE" 2>/dev/null; then
+                DIFF_ERROR=1
+                break
+            fi
+        done
+
+        [ "$REFS_SEEN" -eq 0 ] && DIFF_ERROR=1
+    fi
+
+    if [ "$DIFF_ERROR" = "1" ]; then
+        echo "⚠️  path-aware gate: could not safely compute the changed-file diff for this push — fail-closed to FULL suite."
+        [ -n "$UNION_FILE" ] && rm -f "$UNION_FILE"
+    elif [ -z "$PYTHON_BIN" ]; then
+        echo "⚠️  path-aware gate: no python3/python on PATH to run the classifier — fail-closed to FULL suite."
+        rm -f "$UNION_FILE"
+    else
+        # Plain command substitution captures ONLY stdout (the machine
+        # verdict); the classifier's stderr (loud human-readable banner)
+        # flows straight through to this hook's own stderr, unredirected.
+        VERDICT_RC=0
+        VERDICT_OUTPUT="$("$PYTHON_BIN" scripts/prepush_classify.py < "$UNION_FILE")" || VERDICT_RC=$?
+        rm -f "$UNION_FILE"
+
+        if [ "$VERDICT_RC" != "0" ]; then
+            echo "⚠️  path-aware gate: classifier exited $VERDICT_RC — fail-closed to FULL suite."
+        elif [ "$VERDICT_OUTPUT" = "skip-backend" ]; then
+            PREPUSH_RUN_BACKEND=0
+        elif [ "$VERDICT_OUTPUT" != "full" ]; then
+            echo "⚠️  path-aware gate: unrecognized classifier output '$VERDICT_OUTPUT' — fail-closed to FULL suite."
+        fi
+        # VERDICT_OUTPUT = "full": PREPUSH_RUN_BACKEND stays at its default 1.
+    fi
+fi
+
 # Run Python tests — gated on a PROVISIONED local PostgreSQL (CI-parity).
 #
 # Most backend tests build their schema against DATABASE_URL. With no local PG the
 # suite emitted ~141 "Connect call failed (::1, 5432)" errors + ~2min of noise, and
 # the old `|| { Continuing }` swallowed it — the gate never gated.
 #
-# Three gate states (in order):
+# Four gate states (in order):
 #   1. PG absent on 127.0.0.1:5432 → clean SKIP (dev without local PG; CI has its own
 #      service container so this branch never runs in CI).
 #   2. PG present but NOT provisioned (db `nuzantara_test` missing the migrated schema)
 #      → SKIP with a "run the one-time bootstrap" pointer. We do NOT block here: a bare
 #      `brew services start postgresql@17` must not wedge every push.
-#   3. PG present AND provisioned → clone `nuzantara_test` into a throwaway per-push
-#      database (state 3 rationale is inline below, where the clone is created), run
-#      the REAL suite against the clone with CI-parity env, and a genuine failure
-#      BLOCKS the push (exit 1). PRE_PUSH_TEST_DB, if set, overrides which db is used
-#      as the TEMPLATE for the clone (still defaults to `nuzantara_test`) — it no
-#      longer runs the suite directly against a fixed db.
+#   3. PG provisioned but apps/backend-rag/.venv missing → clean SKIP, checked before
+#      touching Postgres at all. A bare `git worktree add` does NOT create the venv
+#      symlink the main checkout has; without this gate, `source .venv/bin/activate
+#      2>/dev/null` swallows the missing-file error, the `&&` chain aborts mid-subshell,
+#      and the hook falls straight into the generic "❌ Python tests FAILED" branch —
+#      blocking a push that never ran a single test (L243, 2026-07-16: 4 legitimate
+#      pushes blocked this way in one session).
+#   4. PG present AND provisioned AND venv present → clone `nuzantara_test` into a
+#      throwaway per-push database (state 4 rationale is inline below, where the clone
+#      is created), run the REAL suite against the clone with CI-parity env, and a
+#      genuine failure BLOCKS the push (exit 1). PRE_PUSH_TEST_DB, if set, overrides
+#      which db is used as the TEMPLATE for the clone (still defaults to
+#      `nuzantara_test`) — it no longer runs the suite directly against a fixed db.
 #
 # CI-parity env (mirrors .github/workflows/tests.yml): DATABASE_URL + TEST_DATABASE_URL
 # both point at test:test@localhost:5432/<the per-push clone, templated off nuzantara_test>.
@@ -49,6 +226,15 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # F5: keg-only postgresql@17 `pg_isready`/`psql` are NOT on the PATH of this hook's
 # non-interactive shell; resolve by absolute path with a `command -v` fallback.
 # F8: with PG provisioned, a genuine test failure must BLOCK (exit 1), not "Continuing".
+#
+# Everything from here through the matching `fi` below runs ONLY when the
+# path-aware gate above decided PREPUSH_RUN_BACKEND=1 (full suite). The body
+# is intentionally left at its ORIGINAL indentation (not re-indented under
+# the new wrapping `if`) — this is a scar-laden, hard-won file and a
+# minimal, line-preserving diff is far easier to review byte-for-byte than
+# a cosmetically-reindented one. Correctness does not depend on indentation
+# in sh/bash.
+if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
 echo "🐍 Running Python tests..."
 PG_BIN="/opt/homebrew/opt/postgresql@17/bin"
 PG_ISREADY="$(command -v pg_isready || echo "$PG_BIN/pg_isready")"
@@ -64,6 +250,10 @@ elif [ "$("$PSQL" -h 127.0.0.1 -p 5432 -d "$PRE_PUSH_DB" -tAc "SELECT to_regclas
     echo "     PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py && \\"
     echo "     PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all"
     echo "   (see research/operations/specs/2026-06-12-M5-postgres-local-spec.md §AC2)"
+elif [ ! -f apps/backend-rag/.venv/bin/activate ]; then
+    echo "⏭️  SKIP Python tests — worktree has no apps/backend-rag/.venv (bare 'git worktree add' doesn't create it)."
+    echo "   Fix: symlink it from the main checkout, or create the worktree via scripts/agent_start.py."
+    echo "   CI remains the real gate for this push."
 else
     # Isolated DB clone per push (2026-07-16). Under ~10 concurrent agent pushes,
     # the suite used to run straight against the shared "$PRE_PUSH_DB" — every
@@ -97,10 +287,32 @@ else
     # this firing more than once (e.g. once from the failure branch's `exit 1`
     # and again from the EXIT trap it triggers) is harmless.
     trap cleanup_clone EXIT INT TERM
+    # The clone must inherit the TEMPLATE's owner, not the cloner's identity.
+    # Since PG15 `public` is owned by the pseudo-role pg_database_owner, which
+    # resolves to whoever owns the database. CREATE DATABASE re-parents the
+    # clone to the creating role — the OS user, `balizero` on M5 — so a template
+    # owned by `test` silently loses test's CREATE on public inside the clone:
+    # every schema-building test then dies with "permission denied for schema
+    # public" and drags a cascade of "relation ... does not exist" behind it
+    # (measured 2026-07-16: 39 failed + 79 errors of 17339, blocking the push).
+    # Table-level ownership IS copied by the clone; only this schema privilege,
+    # held implicitly through ownership rather than by an explicit GRANT,
+    # evaporates. The bug stayed latent from #2489 until nuzantara_test happened
+    # to be re-created with owner=test — while template-owner == cloner nothing
+    # showed. Deriving the owner keeps the clone faithful whoever pushes.
+    TEMPLATE_OWNER="$("$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc \
+        "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$PRE_PUSH_DB';" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$TEMPLATE_OWNER" ]; then
+        OWNER_CLAUSE=" OWNER \"$TEMPLATE_OWNER\""
+    else
+        # Unreadable owner must not wedge the push: fall back to the old
+        # behaviour (clone owned by the cloner) rather than refusing to clone.
+        OWNER_CLAUSE=""
+    fi
     CREATE_OK=0
     ATTEMPT=1
     while [ "$ATTEMPT" -le 3 ]; do
-        if "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$CLONE_DB\" TEMPLATE \"$PRE_PUSH_DB\";" >/dev/null 2>&1; then
+        if "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$CLONE_DB\" TEMPLATE \"$PRE_PUSH_DB\"$OWNER_CLAUSE;" >/dev/null 2>&1; then
             CREATE_OK=1
             CLONE_CREATED=1
             break
@@ -128,6 +340,11 @@ else
         echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/ --ignore=backend/tests/e2e"
         exit 1
     fi
+fi
+else
+    echo "⏭️  backend suite SKIPPED (path-aware): no backend-relevant paths changed in this push."
+    echo "   Reminder: CI required checks (Backend Tests etc.) still run the FULL suite on the PR —"
+    echo "   this is a local early-warning gate only. Force it anytime: PREPUSH_FULL=1 git push"
 fi
 # Note: Coverage check removed from pre-push (current coverage ~0.67%, target 80% is long-term goal)
 # To check coverage manually: pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=80

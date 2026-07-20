@@ -18,7 +18,7 @@ set -uo pipefail
 CLAUDE_DIR="$HOME/.claude"
 MEM_MAIN="$CLAUDE_DIR/projects/-Users-balizero-Desktop-nuzantara/memory"
 MEM_DUP="$CLAUDE_DIR/projects/-Users-balizero/memory"
-PROJ_SETTINGS="$HOME/Desktop/nuzantara/.claude/settings.local.json"
+PROJ_SETTINGS="$HOME/nuzantara/.claude/settings.local.json"
 APPLY="${APPLY:-0}"
 TS="$(date +%Y%m%d-%H%M%S)"
 QUARANTINE="$CLAUDE_DIR/_sota-quarantine-$TS"
@@ -97,7 +97,7 @@ import json, os, sys, glob
 
 HOME = os.path.expanduser("~")
 MEM = f"{HOME}/.claude/projects/-Users-balizero-Desktop-nuzantara/memory/MEMORY.md"
-PROJ_SETTINGS = f"{HOME}/Desktop/nuzantara/.claude/settings.local.json"
+PROJ_SETTINGS = f"{HOME}/nuzantara/.claude/settings.local.json"
 MEM_HARD = 25600      # limite #40614: oltre = troncamento silenzioso
 MEM_SOFT = 23000      # avviso preventivo
 ALLOW_SOFT = 600      # permessi: oltre = discarica

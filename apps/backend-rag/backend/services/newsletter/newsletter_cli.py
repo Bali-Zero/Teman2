@@ -7,7 +7,7 @@ exist there. For a manual/local run against a machine that already has all
 three set, the usage below still applies.
 
 Usage:
-    cd ~/Desktop/nuzantara/apps/backend-rag
+    cd ~/nuzantara/apps/backend-rag
     source .venv/bin/activate
     PYTHONPATH=. python -m backend.services.newsletter.newsletter_cli            # weekly roundup
     PYTHONPATH=. python -m backend.services.newsletter.newsletter_cli --daily    # internal daily digest

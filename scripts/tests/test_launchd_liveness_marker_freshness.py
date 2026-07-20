@@ -34,7 +34,7 @@ def _write_log(path: Path, line: str, age_sec: float) -> None:
     os.utime(path, (ts, ts))
 
 
-MARKER_LINE = "bash: /Users/x/Desktop/nuzantara/scripts/lib/heartbeat.sh: Operation not permitted"
+MARKER_LINE = "bash: /Users/x/nuzantara/scripts/lib/heartbeat.sh: Operation not permitted"
 
 
 def test_fresh_marker_is_reported(tmp_path: Path) -> None:
@@ -68,4 +68,57 @@ def test_env_override_widens_window(tmp_path: Path, monkeypatch) -> None:
     mod = _load_module()
     log = tmp_path / "job.err"
     _write_log(log, MARKER_LINE, age_sec=5 * 24 * 3600)  # 5d: stale at 48h, fresh at 10d
+    assert mod._log_has_failure_marker([log]) is not None
+
+
+def _fmt_ts(age_sec: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - age_sec))
+
+
+def test_sparse_log_stale_marker_ignored_despite_fresh_file_mtime(tmp_path: Path) -> None:
+    """Real shape (kg-query-api, healer tick 2026-07-17): a low-frequency logger
+    keeps a cured incident's marker inside the last-25-lines window forever,
+    while later healthy appends keep bumping the FILE's mtime — the outer
+    file-level gate alone lets this back in. The marker's OWN nearby timestamp
+    (months old here) must override the fresh file mtime."""
+    mod = _load_module()
+    log = tmp_path / "job.err"
+    old_ts = _fmt_ts(mod.MARKER_FRESH_SEC + 30 * 24 * 3600)  # ~30d past the window
+    recent_ts = _fmt_ts(3600)  # 1h ago
+    lines = [
+        "Traceback (most recent call last):",
+        MARKER_LINE,
+        f"{old_ts},000 INFO kg_query listening on 1.2.3.4:8990",
+        f"{recent_ts},000 INFO kg_query 1.2.3.4 - \"GET /health HTTP/1.1\" 200 -",
+    ]
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    now = time.time()
+    os.utime(log, (now, now))  # file mtime is NOW — outer gate alone would pass this through
+    assert mod._log_has_failure_marker([log], now=now) is None
+
+
+def test_sparse_log_fresh_marker_still_reported(tmp_path: Path) -> None:
+    """Companion to the above: a marker with a genuinely RECENT neighboring
+    timestamp must still alarm — the fix must not swallow live failures."""
+    mod = _load_module()
+    log = tmp_path / "job.err"
+    recent_ts = _fmt_ts(120)  # 2min ago
+    lines = [
+        "Traceback (most recent call last):",
+        MARKER_LINE,
+        f"{recent_ts},000 INFO kg_query listening on 1.2.3.4:8990",
+    ]
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    now = time.time()
+    os.utime(log, (now, now))
+    assert mod._log_has_failure_marker([log], now=now) is not None
+
+
+def test_marker_without_any_nearby_timestamp_falls_back_to_file_mtime(tmp_path: Path) -> None:
+    """No parseable timestamp anywhere in the tail: preserve the ORIGINAL
+    single-write-log behavior (file-mtime-gated only) — this is the shape all
+    four tests above this one already exercise, kept explicit here."""
+    mod = _load_module()
+    log = tmp_path / "job.err"
+    _write_log(log, MARKER_LINE, age_sec=3600)
     assert mod._log_has_failure_marker([log]) is not None

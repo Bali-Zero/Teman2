@@ -16,7 +16,7 @@
 set -euo pipefail
 export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 
-REPO_ROOT="${CODEX_FEEDER_REPO_ROOT:-${HOME}/Desktop/nuzantara/.worktrees/codex-overnight-feeder-runtime}"
+REPO_ROOT="${CODEX_FEEDER_REPO_ROOT:-${HOME}/nuzantara/.worktrees/codex-overnight-feeder-runtime}"
 REPO_SLUG="${CODEX_FEEDER_REPO_SLUG:-Balizero1987/Teman2}"
 QUEUE_DIR="${CODEX_FEEDER_QUEUE_DIR:-${HOME}/codex-overnight/queue}"
 BACKLOG_DIR="${CODEX_FEEDER_BACKLOG_DIR:-${HOME}/codex-overnight/backlog}"

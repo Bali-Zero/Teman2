@@ -11,7 +11,7 @@ set -u
 HOST="$(scutil --get LocalHostName 2>/dev/null || hostname -s)"
 case "$HOST" in
     Nuzantara|nuzantara)
-        REPO="$HOME/Desktop/nuzantara"; NODE="Pro" ;;
+        REPO="$HOME/nuzantara"; NODE="Pro" ;;
     Nuzantara-9|nuzantara-9)
         REPO="$HOME/Projects/nuzantara"; NODE="Air" ;;
     *)

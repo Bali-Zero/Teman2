@@ -21,7 +21,7 @@
 #       Auto-merge is a separate deferred phase (GitHub App check-run).
 #
 # Signal-writers are installed BEFORE the deadman so their signals exist when it
-# first runs. RUNTIME HOME = the deploy worktree (~/Desktop/nuzantara-deploy),
+# first runs. RUNTIME HOME = the deploy worktree (~/nuzantara-deploy),
 # the deploy-puller-refreshed checkout that carries the FASE-0 scripts (the main
 # checkout was on an older branch missing them — see W69).
 #
@@ -45,7 +45,7 @@ STATE_DIR="$HOME/.agent/decisions/state"
 UID_VAL="$(id -u)"
 
 # The runtime checkout the plists point at. Must carry the FASE-0 scripts.
-RUNTIME_ROOT="$HOME/Desktop/nuzantara-deploy"
+RUNTIME_ROOT="$HOME/nuzantara-deploy"
 
 # Install order: signal-writers first, the deadman (watcher) last.
 LABELS=(

@@ -4,9 +4,9 @@ Re-derivation of the 2026-06-19 comparison, on today's data. Deterministic, no L
 import json, re, unicodedata
 from difflib import SequenceMatcher
 
-OURS = "/Users/balizero/Desktop/nuzantara/apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
-OSS = "/Users/balizero/Desktop/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
-GOLD = "/Users/balizero/Desktop/nuzantara/apps/mouth/data/kbli-gold-all.json"
+OURS = "/Users/balizero/nuzantara/apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+OSS = "/Users/balizero/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
+GOLD = "/Users/balizero/nuzantara/apps/mouth/data/kbli-gold-all.json"
 
 def norm(s):
     if not s: return ""

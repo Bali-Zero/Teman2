@@ -6,7 +6,7 @@
 set -euo pipefail
 
 REPO_URL="git@github.com:Balizero1987/Teman2.git"
-PROJECT_DIR="$HOME/Desktop/nuzantara"
+PROJECT_DIR="$HOME/nuzantara"
 OPENCLAW_DIR="$HOME/.openclaw-ruslana"
 
 # Token provided by admin during setup — never hardcode
@@ -120,7 +120,7 @@ Sei un AI assistant tecnico per il board di Nuzantara/Bali Zero.
 - Parla **italiano** o **inglese** con Ruslana
 - Usa i tool MCP per dati reali — non inventare
 - Per bug/deploy → segnala a Zero
-- Repo: ~/Desktop/nuzantara
+- Repo: ~/nuzantara
 - Backend: https://nuzantara-rag.fly.dev
 
 ## Ruolo Ruslana
@@ -189,12 +189,12 @@ echo "   gemini auth login"
 echo "   → seleziona ruslana@balizero.com"
 echo ""
 echo "2. Test Gemini + MCP:"
-echo "   cd ~/Desktop/nuzantara"
+echo "   cd ~/nuzantara"
 echo "   gemini"
 echo "   > mostrami le ultime analytics revenue"
 echo ""
 echo "3. Test Claude + MCP:"
-echo "   cd ~/Desktop/nuzantara"
+echo "   cd ~/nuzantara"
 echo "   claude"
 echo "   > mostrami le ultime analytics revenue"
 echo ""

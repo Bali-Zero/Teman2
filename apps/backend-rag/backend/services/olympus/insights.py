@@ -257,7 +257,11 @@ class InsightsCollector:
                 new_id = await conn.fetchval(
                     "INSERT INTO olympus_insights ("
                     "insight_type, title, content, evidence, source, confidence, applicable_to"
-                    ") VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7) RETURNING id",
+                    ") VALUES ($1, $2, $3, $4::text::jsonb, $5, $6, $7) RETURNING id",
+                    # $4::text::jsonb — the app pools register a jsonb codec whose
+                    # encoder is json.dumps; a param inferred as jsonb would get
+                    # the pre-serialized string dumped AGAIN and land as a jsonb
+                    # string scalar (11350 rows were, live-probe 2026-07-16).
                     insight.insight_type,
                     insight.title,
                     insight.content,

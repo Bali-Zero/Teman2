@@ -33,7 +33,7 @@ aws s3api put-bucket-lifecycle-configuration \
 
 ```bash
 source ~/.nuzantara-secrets.env
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 apps/backend-rag/.venv/bin/python scripts/wr2_bootstrap_canva_oauth.py
 # Browser opens. Authorize Bali Zero team. Wait "✅ Bootstrap complete".
 ls -la ~/.config/wr2/canva_tokens.json  # mode 0600
@@ -92,13 +92,13 @@ psql -c "UPDATE system_settings SET value='false' WHERE key='wr2_canva_renderer_
 
 ## Diagnostics
 
-| Symptom | Check | Fix |
-|---|---|---|
-| "Exit 4" in log | `ls ~/.config/wr2/canva_tokens.json` | Bootstrap step 4 |
-| "Exit 5" in log | Telegram says "refresh revoked" | Re-bootstrap step 4 |
-| "Exit 7" in log | HMAC corruption | Backup at `.broken-*.json`, re-bootstrap |
-| Drafts stuck `rendering` | Lease watchdog 10min interval | Should self-heal in ≤25min |
-| Canva 429 spam | Tigris/MCP rate | Reduce MAX_DRAFTS_PER_RUN |
+| Symptom                  | Check                                | Fix                                      |
+| ------------------------ | ------------------------------------ | ---------------------------------------- |
+| "Exit 4" in log          | `ls ~/.config/wr2/canva_tokens.json` | Bootstrap step 4                         |
+| "Exit 5" in log          | Telegram says "refresh revoked"      | Re-bootstrap step 4                      |
+| "Exit 7" in log          | HMAC corruption                      | Backup at `.broken-*.json`, re-bootstrap |
+| Drafts stuck `rendering` | Lease watchdog 10min interval        | Should self-heal in ≤25min               |
+| Canva 429 spam           | Tigris/MCP rate                      | Reduce MAX_DRAFTS_PER_RUN                |
 
 ## Refresh-token expiry handling
 

@@ -114,10 +114,15 @@ items:
   - label: "OPENING DATE"
     value: "MARCH 2026"
     status: neutral
-  - label: "OUR TAKE"
+  - label: "MARINA WORKS"
     value: "STOPPED"
     status: critical
 ```
+
+Note (2026-07-16): the label above was historically `"OUR TAKE"` — a generic
+placeholder that the CONTENT-LABEL RULE (see storyboarder/layout-composer
+docs) explicitly bans. Content tags name what the value IS
+(`MARINA WORKS`, `PBG STATUS`, `KKPR`), never a journalistic genre word.
 
 ## Common failures
 
