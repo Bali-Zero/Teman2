@@ -2,7 +2,7 @@
 date: 2026-07-21
 domain: compliance
 client_case: null
-adversarial_review: none-this-signing
+adversarial_review: exempt-already-reviewed-at-lot8-lot9-gates
 adversarial_review_detail: "Not run as a fresh D1/D5 Workflow lane -- this lot's adjudication was ALREADY COMPLETE at Lot 8's gate (research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md, 93114/93111/93112/93119 disposition) and Lot 9's gate (research/operations/2026-07-20-kbli-batch-a-lot9-conductor-gate.md, 93191/93193 disposition), BOTH of which already went through their own Kimi K3 cross-family adversarial review (Lot 8: CONFIRMED-WITH-NOTES, 2 MEDIUM+3 LOW cured; Lot 9: CONFIRMED-WITH-NOTES, 2 MEDIUM+2 LOW cured, refuted none). This lot is purely mechanical cure execution against those two already-adjudicated, already-red-teamed dispositions, now that the tier-scoped partial_detach primitive (PR #2921) exists to act on them. The one NEW piece of reasoning this session added -- confirming 93111/93112/93119 as genuinely clean innocence controls via PP28/2025 Pasal 8(1) regulatory research -- was independently grounded against NotebookLM (NB-3) verbatim regulation text, not merely asserted."
 sources:
   - research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md (93114/93111/93112/93119 adjudication, §3.4/§3.5)
