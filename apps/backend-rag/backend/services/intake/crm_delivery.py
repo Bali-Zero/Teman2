@@ -13,7 +13,9 @@ import asyncpg
 # The canonical projection is SHARED with the CRM dedup and every phone writer
 # (backend.phone_lock) — "the same phone" has exactly one definition, so the
 # round-9 F13 parity requirement holds by construction, not by mirroring.
-from backend.phone_lock import phone_core as _phone_core
+from backend.phone_lock import (
+    phone_core as _phone_core,  # noqa: F401 — re-exported for tests/siblings
+)
 from backend.phone_lock import phone_value_state
 from backend.services.intake import crm_push
 from backend.services.intake import writer as intake_writer
@@ -57,7 +59,8 @@ def _raw_phone_state(raw: object) -> tuple[str, str | None]:
 _PHONE_DUP_OWNERS_SQL = """
 SELECT COUNT(*) FROM (
   SELECT regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') AS dn,
-         regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr
+         regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr,
+         regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') AS dw
     FROM clients
    WHERE id <> $1
 ) t
@@ -67,7 +70,60 @@ SELECT COUNT(*) FROM (
     OR CASE WHEN t.dr LIKE '62%' THEN substr(t.dr, 3)
             WHEN t.dr LIKE '0%'  THEN substr(t.dr, 2)
             ELSE t.dr END = $2
+    OR CASE WHEN t.dw LIKE '62%' THEN substr(t.dw, 3)
+            WHEN t.dw LIKE '0%'  THEN substr(t.dw, 2)
+            ELSE t.dw END = $2
 """
+# ^ Round 16, F24: whatsapp is the THIRD ownership column (the Fly resolver
+# and the dedup/upload gates all search it) — a co-owner known only by
+# whatsapp was invisible to this sole-owner gate, and on Fly that same core
+# can legitimately resolve to THAT client: the exact wrong-attach vector the
+# gate exists to close. The W89 writer audit covered writers; this gate is a
+# READER and needed the same third leg.
+
+
+def _resolution_anchor(
+    norm_val: object, raw_val: object, wa_val: object
+) -> tuple[str | None, str | None, str | None]:
+    """Round 17, F26: ONE coherent resolution core across all three
+    ownership columns. F24 made whatsapp a VETO (a whatsapp-only co-owner
+    blocks delivery) but the resolution ANCHOR still came exclusively from
+    ``phone_normalized`` — a client whose only phone-ish value is whatsapp
+    could never deliver at all (fail-closed but unusable, the same
+    functional-gap shape F25 fixed on the upload side).
+
+    Returns ``(reason, core, digits)``:
+
+    - any phone-ish column in state 'unusable' → ``("unusable_phone_column:
+      <cols>", None, None)`` — garbage digits cannot cross-check anything;
+    - two usable cores that diverge → ``("phone_columns_diverged", None,
+      None)`` — no value can prove the identity;
+    - zero usable cores → ``(None, None, None)`` — plain no-phone card,
+      silent fail-closed as before;
+    - else ``(None, core, digits)`` where ``digits`` is the digit
+      projection of the FIRST source (normalized → phone → whatsapp) whose
+      core equals the anchor — the exact-digits advisory-lock key keeps
+      converging with upsert-by-phone's legacy lock on that same string.
+    """
+    cols = (
+        ("phone_normalized", norm_val),
+        ("phone", raw_val),
+        ("whatsapp", wa_val),
+    )
+    states = [(name, val, *_raw_phone_state(val)) for name, val in cols]
+    unusable = [name for name, _v, state, _c in states if state == "unusable"]
+    if unusable:
+        return f"unusable_phone_column:{','.join(unusable)}", None, None
+    cores = {c for _n, _v, state, c in states if state == "usable"}
+    if len(cores) > 1:
+        return "phone_columns_diverged", None, None
+    if not cores:
+        return None, None, None
+    core = next(iter(cores))
+    for _name, val, state, c in states:
+        if state == "usable" and c == core:
+            return None, core, re.sub(r"[^0-9]", "", str(val))
+    return None, None, None  # unreachable — a usable state implies a core
 
 
 async def _resolve_and_push_locked(
@@ -115,32 +171,24 @@ async def _resolve_and_push_locked(
         async with conn.transaction():
             if plan.client_id is not None:
                 crow = await conn.fetchrow(
-                    "SELECT full_name, phone_normalized, phone FROM clients WHERE id = $1",
+                    "SELECT full_name, phone_normalized, phone, whatsapp "
+                    "FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 if crow is not None:
                     _name = (crow["full_name"] or "").strip()
                     if _name and not _name.lower().startswith("lead "):
                         client_full_name = _name
-                    digits = re.sub(r"[^0-9]", "", crow["phone_normalized"] or "")
-                    core_norm = _phone_core(crow["phone_normalized"])
-                    raw_state, core_raw = _raw_phone_state(crow["phone"])
-                    # Round-9/10 F11 gap 1: the selected client's OWN card must
-                    # be internally consistent — a stale non-null
-                    # phone_normalized diverging from raw `phone` means neither
-                    # value can prove the identity. Fail CLOSED on divergence,
-                    # on an unusable normalized value with a raw present, AND on
-                    # a present-but-unusable raw (short/garbage digits cannot
-                    # cross-check the normalized value — round-10 residual).
-                    reason: str | None = None
-                    if core_norm is None or not digits:
-                        if raw_state != "absent":
-                            reason = "unusable_normalized_phone"
-                        # else: plain no-phone card → silent fail-closed (as before)
-                    elif raw_state == "unusable":
-                        reason = "unusable_raw_phone"
-                    elif core_raw is not None and core_raw != core_norm:
-                        reason = "phone_columns_diverged"
+                    # Round-9/10 F11 gap 1 + round-16 F24 + round-17 F26:
+                    # the selected client's OWN card must be internally
+                    # consistent, and the resolution ANCHOR is the single
+                    # coherent core across ALL THREE ownership columns —
+                    # not phone_normalized alone (a whatsapp-only client
+                    # must be able to deliver; any unusable column or core
+                    # divergence still fails closed).
+                    reason, anchor_core, anchor_digits = _resolution_anchor(
+                        crow["phone_normalized"], crow["phone"], crow["whatsapp"]
+                    )
                     if reason is not None:
                         logger.warning(
                             "intake.delivery.local_phone_ambiguous queue=%s client=%s "
@@ -149,44 +197,49 @@ async def _resolve_and_push_locked(
                             plan.client_id,
                             reason,
                         )
-                    elif core_norm is not None and digits:
+                    elif anchor_core is not None and anchor_digits:
                         # Two lock keys, lexicographic order (digits key sorts
                         # before 'phonecore:…' — deadlock-safe total order shared
                         # by every participant): the exact-digits key converges
                         # with upsert-by-phone's legacy lock; the canonical
                         # 'phonecore:' key converges with prefix-variant writers
                         # (PATCH phone updates, 0812… payloads) — round-9 F12/F13.
-                        for _key in sorted([digits, f"phonecore:{core_norm}"]):
+                        for _key in sorted([anchor_digits, f"phonecore:{anchor_core}"]):
                             await conn.execute(
                                 "SELECT pg_advisory_xact_lock(hashtext($1))", _key
                             )
-                        # Re-read BOTH columns under the lock: pre-lock reads may
-                        # be stale.
+                        # Re-read ALL THREE columns under the lock (pre-lock
+                        # reads may be stale) and re-derive the anchor with
+                        # the SAME oracle: any new inconsistency, or an
+                        # anchor that moved, fails closed.
                         fresh = await conn.fetchrow(
-                            "SELECT phone_normalized, phone FROM clients WHERE id = $1",
+                            "SELECT phone_normalized, phone, whatsapp "
+                            "FROM clients WHERE id = $1",
                             int(plan.client_id),
                         )
-                        _f_state, _f_core = (
-                            _raw_phone_state(fresh["phone"])
+                        _f_reason, _f_core, _f_digits = (
+                            _resolution_anchor(
+                                fresh["phone_normalized"],
+                                fresh["phone"],
+                                fresh["whatsapp"],
+                            )
                             if fresh is not None
-                            else ("absent", None)
+                            else ("row_gone", None, None)
                         )
                         stable = (
-                            fresh is not None
-                            and re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "")
-                            == digits
-                            and _f_state != "unusable"
-                            and _f_core in (None, core_norm)
+                            _f_reason is None
+                            and _f_core == anchor_core
+                            and _f_digits == anchor_digits
                         )
                         dup_owners = 0
                         if stable:
                             dup_owners = await conn.fetchval(
-                                _PHONE_DUP_OWNERS_SQL, int(plan.client_id), core_norm
+                                _PHONE_DUP_OWNERS_SQL, int(plan.client_id), anchor_core
                             )
                         if stable and not dup_owners:
-                            resolution_phone = digits
-                            phone_digits = digits
-                            phone_core = core_norm
+                            resolution_phone = anchor_digits
+                            phone_digits = anchor_digits
+                            phone_core = anchor_core
                         else:
                             logger.warning(
                                 "intake.delivery.local_phone_ambiguous queue=%s client=%s "
@@ -217,20 +270,28 @@ async def _resolve_and_push_locked(
                 # landed on a resolution that no longer holds — it cannot be
                 # unwound here, so flag loudly for HITL review (ids only).
                 fresh = await conn.fetchrow(
-                    "SELECT phone_normalized, phone FROM clients WHERE id = $1",
+                    "SELECT phone_normalized, phone, whatsapp "
+                    "FROM clients WHERE id = $1",
                     int(plan.client_id),
                 )
                 dup_after = await conn.fetchval(
                     _PHONE_DUP_OWNERS_SQL, int(plan.client_id), phone_core
                 )
-                _p_state, _p_core = (
-                    _raw_phone_state(fresh["phone"]) if fresh is not None else ("absent", None)
+                # Round 16 F24 residual + round 17 F26: the self-consistency
+                # re-check re-derives the anchor with the SAME three-column
+                # oracle — any new unusable/divergent column, or an anchor
+                # that moved core or digits, flags the delivery.
+                _r_reason, _r_core, _r_digits = (
+                    _resolution_anchor(
+                        fresh["phone_normalized"], fresh["phone"], fresh["whatsapp"]
+                    )
+                    if fresh is not None
+                    else ("row_gone", None, None)
                 )
                 changed = (
-                    fresh is None
-                    or re.sub(r"[^0-9]", "", fresh["phone_normalized"] or "") != phone_digits
-                    or _p_state == "unusable"
-                    or _p_core not in (None, phone_core)
+                    _r_reason is not None
+                    or _r_core != phone_core
+                    or _r_digits != phone_digits
                 )
                 if changed or dup_after:
                     logger.error(

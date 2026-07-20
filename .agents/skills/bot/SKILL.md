@@ -20,7 +20,7 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-19 ~21:00 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-20 ~02:45 WITA — keep current)
 
 - **WA OUTBOX P0 (2026-07-19) — FIXED #2812 + DEPLOYED 12:45 UTC + VERIFIED**: the per-thread
   advisory lock passed raw `int thread_id` into `hashtext('wa_outbox_thread_' || $1::text)` —
@@ -30,8 +30,38 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   they don't do asyncpg's client-side type validation. Deploy got lost twice (concurrency-cancel
   - ~2h runner queue); caught by the new fly-logs accumulator (O0-P1). Verified: zero
     occurrences after 12:44 UTC. **Lesson: lock/unlock key args must be same TYPE, and mocks of
-    asyncpg conns lie about type checking.**
-
+    asyncpg conns lie about type checking.** **Client-side PROVE-LIVE**: backlog claimed at
+    12:13Z right after deploy; fresh inbound answered in 150ms (row 157); only failures =
+    `24h_window_closed` on a thread idle since June (correct Meta-policy behavior) —
+    independently confirmed by the wa-tester battery from Zero's own number (bot reply ~36s,
+    Meta `read` receipt, all corrected facts verbatim in Bahasa).
+- **PR #2825 (injection gap #23) MERGED + DEPLOYED + PROVEN**: overstay/penangkalan/deportation/
+  re-entry-ban keywords added to the visa domain classifier — queries previously classed
+  "general" never searched curated_qa. Prove-live: probe → log
+  `✅ [CuratedQA] Injected 2 curated evidence block(s)`, answer carries 60-day threshold /
+  10+10 ban / Rp 90jt pencabutan (PP 45/2024 VI.E).
+- **PR #2822 (QdrantClient.get) MERGED + DEPLOYED**: flags moved to JSON body (`with_payload`/
+  `with_vector`) — was silently returning empty payloads. Consumer-map finding: sole non-test
+  caller is the memory_vector router which is NOT mounted in prod (F29 note in handlers.py) →
+  preventive hardening, no live surface.
+- **CHATKB cantiere: 21 dossiers GATED (396 Q&A)** across visa/company/tax/property (Waves 1-3,
+  Fable gate 7/7+8/8+6/6 PASS). Zero ruling 2026-07-19: **promote ALL answers VERBATIM** (team
+  review after, not before) — execution gated on PR #2810 rails (pricing-detector, source
+  allowlist, `verbatim_eligible`, still OPEN); PR #2856 (compound-CONFIDENCE degrade at
+  harvest) MERGED. Team review packs: 21 batches Bahasa + 21 editable docx in
+  `~/Desktop/TEAM-REVIEW-2026-07-20/`.
+- **GARUDA-E23 law_refs delta-harvest LIVE**: Perpres 20/2018 (revoked in full by PP 34/2021)
+  re-cited to PP 34/2021 Pasal 19/6 on 2 prod points (Q2/Q6), answers untouched, neighbors
+  no-drift.
+- **Team-assistant V1 IN FLIGHT (task #29)**: sender-identity wiring into the live meta-inbox
+  path (resolve team/owner from `team_members.whatsapp` + env, profile.role into RAG payload →
+  TEAM/CREATOR persona finally reachable). Innocence contract: clients/unknown byte-identical.
+  Phase 2 (CRM scoped tools per assigned_to) parked pending Zero GO.
+- **wa-tester LID under-match (task #26, low-pri)**: isPaired fix PR #2820 live on Pro; the
+  battery's receive matcher `remoteJid !== BOT_JID` drops replies syncing under `@lid`
+  (WhatsApp LID rollout) → `reply_count:0` false negative even though the bot answered (ground
+  truth via Postgres — see the P0 prove-live above). Instrumentation-only, not a bot-behavior
+  bug.
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
   per-thread advisory lock, claim-token fencing, lease heartbeat, burst coalescing, K workers
@@ -171,6 +201,11 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   `DOMAIN_ABSTAIN_THRESHOLDS`.
 - **Corpora**: `data/curated_qa/*.jsonl` (E33 216 via `curated_qa_convert_e33.py`; golden 28).
 - **Team phone SSOT**: `team_members.whatsapp` (F2 detection key).
+- **Team-assistant V1 (task #29) IN FLIGHT since 2026-07-19**: upstream identity plumbing for
+  F2 (team check-in) — sender-identity resolution into the live meta-inbox path (see §1). A PR
+  for this track may already be open (or merging) by the time this note is read — a sibling
+  recovery lane was pushing it in parallel; check `gh pr list` for the current state rather
+  than trusting this line's snapshot.
 
 ## 7. Collaboration protocol (the TRACK)
 

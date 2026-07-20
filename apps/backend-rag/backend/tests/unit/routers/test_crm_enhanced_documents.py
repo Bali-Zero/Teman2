@@ -1451,3 +1451,74 @@ async def test_upload_allows_absent_raw_phone_with_matching_normalized(
         )
 
     assert result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_upload_succeeds_for_whatsapp_only_owner(
+    mock_db_pool,
+    mock_current_user,
+):
+    """Round-16 F25: the resolver's whatsapp arm finds whatsapp-only owners,
+    so the upload ownership proof must be able to COMPLETE that same case —
+    a row whose only phone-ish value is whatsapp, matching the expected
+    core, is consistent single-column ownership, not a refusal."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    row = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": None,
+        "phone_normalized": None,
+        "whatsapp": "+62 812 3456 7890",  # the ONLY ownership value
+    }
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        row,
+        {
+            "phone": row["phone"],
+            "phone_normalized": row["phone_normalized"],
+            "whatsapp": row["whatsapp"],
+        },
+    ]
+    conn.fetch.return_value = [{"id": 1}]
+    conn.fetchval.side_effect = [703]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        result = await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="passport.pdf",
+                document_type="passport",
+                document_category="immigration",
+                expected_phone_core="81234567890",
+            ),
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result["success"] is True  # the resolver arm's defining case completes
