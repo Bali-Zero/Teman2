@@ -15,6 +15,7 @@ import {
   buildTranscript,
   checkRecipientAllowlist,
   extractMessageText,
+  isBotReplyJid,
   isPairedFromCreds,
   matchesBotRecipient,
   parseMessageTimestampMs,
@@ -441,5 +442,51 @@ describe("isPairedFromCreds — guilt + innocence (QR-companion vs pairing-code 
         me: { id: "628213465159:1@s.whatsapp.net" },
       }),
     ).toBe(true);
+  });
+});
+
+describe("isBotReplyJid — guilt + innocence (scar #3 UNDER-match, WhatsApp LID rollout)", () => {
+  it("[guilt] bot's own phone-JID form matches (pre-existing behaviour, preserved)", () => {
+    expect(isBotReplyJid(BOT_JID, null)).toBe(true);
+  });
+
+  it("[guilt] bot's phone-JID with a multi-device :N suffix still matches", () => {
+    expect(isBotReplyJid("628213465159:5@s.whatsapp.net", null)).toBe(true);
+  });
+
+  it("[guilt] a @lid JID that resolves to the bot's phone matches (the actual bug this fixes)", () => {
+    expect(isBotReplyJid("224112131756075@lid", "+628213465159")).toBe(true);
+  });
+
+  it("[guilt] @lid resolution may come back as bare digits, not just E.164", () => {
+    expect(isBotReplyJid("224112131756075@lid", "628213465159")).toBe(true);
+  });
+
+  it("[innocence-1] a @lid JID that resolves to a DIFFERENT phone must NOT match", () => {
+    expect(isBotReplyJid("224112131756075@lid", "+6281234567890")).toBe(false);
+  });
+
+  it("[innocence-2] a @lid JID that fails to resolve (null) must NOT match — fail closed", () => {
+    expect(isBotReplyJid("224112131756075@lid", null)).toBe(false);
+  });
+
+  it("[innocence-3] some other contact's phone-JID must NOT match", () => {
+    expect(isBotReplyJid("6281234567890@s.whatsapp.net", null)).toBe(false);
+  });
+
+  it("[innocence-4] a resolved LID phone must NOT rescue an unrelated remoteJid", () => {
+    // resolvedLidPhoneE164 is only consulted when remoteJid itself is a LID —
+    // it must never leak into matching a phone-JID it wasn't resolved from.
+    expect(isBotReplyJid("6281234567890@s.whatsapp.net", "+628213465159")).toBe(
+      false,
+    );
+  });
+
+  it("[innocence-5] group/broadcast/empty JIDs never match", () => {
+    expect(isBotReplyJid("123456-789@g.us", "+628213465159")).toBe(false);
+    expect(isBotReplyJid("status@broadcast", "+628213465159")).toBe(false);
+    expect(isBotReplyJid(null, "+628213465159")).toBe(false);
+    expect(isBotReplyJid(undefined, "+628213465159")).toBe(false);
+    expect(isBotReplyJid("", "+628213465159")).toBe(false);
   });
 });
