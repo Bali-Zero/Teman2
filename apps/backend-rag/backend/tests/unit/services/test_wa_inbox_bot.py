@@ -370,6 +370,7 @@ async def test_client_and_unknown_payload_has_no_profile_key(monkeypatch):
             {"role": "assistant", "content": "Ciao! Come posso aiutarti?"},
         ],
         "channel": "whatsapp",
+        "max_steps": 2,
     }
 
 
