@@ -554,13 +554,19 @@ async def check_system_health() -> dict:
 async def get_collection_stats() -> dict:
     """
     Get Qdrant collection statistics.
-    
+
     Returns:
-        Vector counts, sizes, and health for all collections
+        Per-collection point counts, vector size/distance, status, and
+        freshness for every canonical collection.
     """
+    # 2026-07-19 audit finding (activation-plan lever #11): this tool used to hit
+    # /health/metrics/qdrant — the SAME in-process op-counter get_qdrant_metrics()
+    # returns, always near-zero on a fresh process and carrying zero per-collection
+    # data despite the docstring's promise. /health/collections is the endpoint
+    # that actually walks Qdrant's own /collections + /collections/{name}.
     try:
         client = _get_health_client()
-        resp = await client.get("/health/metrics/qdrant")
+        resp = await client.get("/health/collections")
         return resp.json()
     except Exception as e:
         return {"error": str(e)}

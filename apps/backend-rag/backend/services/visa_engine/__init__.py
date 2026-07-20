@@ -119,15 +119,23 @@ one place.
   own until a Decision-producing ``evaluate()`` exists to thread
   ``payload_sha256`` into (see the next bullet); deferred rather than
   building a hollow stub, per the PR3 task brief's explicit escape valve.
-- **evaluator.py**, **trace.py** — not started. **Deferred to a later PR**:
-  the entire per-product/global evaluator (``ProductProofStatus``,
-  ``ProductProof``, ``DecisionDraft``, ``evaluate()`` — spec §4.2/§4.3) and
-  deterministic trace-building (``TraceNode``, ``EvaluationTrace``,
-  ``TraceBuilder``, ``trace_sha256()``). PR3's own scope was narrower: the
-  strong-Kleene tri-state CONDITION evaluator (``ast.evaluate_condition``)
-  plus its two supporting steps (``FactRegistry.derive()``,
-  ``compiler.build_compiled_pack()``) — the per-product proof/ranking/global
-  state machine that consumes them is still greenfield.
+- **evaluator.py** — done (PR5) for ``ProductProofStatus``, ``ProductProof``,
+  ``evaluate_product()`` (spec §4.2 per-product stage loop), and
+  ``evaluate()`` (spec §4.3 global state assembly + §4.4 ranking) — the
+  per-product/global evaluator PR3's own scope note (above) named as
+  greenfield. Returns ``models.Decision`` directly rather than spec's
+  ``DecisionDraft``/``EvaluationContext`` (neither exists anywhere in this
+  package) — see ``evaluator.py``'s own module docstring for this and every
+  other documented divergence (facts_fingerprint/decision_id/public_id
+  placeholder derivation, the folded-in global-review pre-pass, the
+  union-not-intersection ``minimal_missing_fact_set``, the
+  NO_SUPPORTED_PATH fallback reason). **Still NOT included**:
+  ``TEMPORARILY_UNAVAILABLE`` production (out of this pure function's
+  scope by construction — see divergence #4), real pricing (``quotes`` is
+  always ``()``), and **trace.py** (``TraceNode``, ``EvaluationTrace``,
+  ``TraceBuilder``, ``trace_sha256()`` — deterministic trace-building is
+  still greenfield; ``Decision.trace_sha256``/``decision_integrity`` are
+  left ``None`` by this PR).
 - **pricing.py**, **catalog.py**, **clock.py**, **repository.py**,
   **crypto.py**, **retention.py**, **flags.py** — not started. **Deferred to
   PR4+** (persistence/pricing/clock/consent-adjacent infrastructure; exact PR
