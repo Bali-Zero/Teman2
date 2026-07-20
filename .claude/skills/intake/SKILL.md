@@ -135,8 +135,32 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-21 — WAVE-1 EXECUTED (Zero GO) — 198 contatti creati, PR #2879 mergiata.**
+  Zero GO (bare "go") ricevuto subito dopo la chiusura Lane B. Primo tentativo REFUSED
+  (exit 3, zero scritture — fail-closed come da design): `_worker_attestation()` rifiuta
+  perché il daemon `intake-worker` porta permanentemente armati i 3 flag auto-attach di
+  m248 (`INTAKE_AUTO_ATTACH_ENABLED`/`INTAKE_NAMEID_AUTO_ATTACH_ENABLED`/
+  `INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED`) — interazione reale tra due capacità
+  indipendentemente shippate, non un bug. Chiesto a Zero come procedere (AskUserQuestion)
+  → approvato "disarma temporaneamente, esegui, riarma". L'esecuzione ha rivelato una
+  SECONDA tensione: con il worker vivo il digest census→apply andava in race col suo
+  routing a 2s (2 MANIFEST MISMATCH consecutivi, zero scritture), mentre un worker
+  completamente fermato falliva la stessa attestazione sul requisito di liveness
+  (`worker_not_loaded`) — le due proprietà di sicurezza (stato congelato vs. daemon vivo
+  attestato) sono in tensione tra loro. Risolto con un terzo stato: worker caricato e in
+  esecuzione (liveness OK) ma con `INTAKE_POLL_INTERVAL_SECONDS` portato a un valore
+  no-op (routing loop congelato) + i 3 flag rimossi dal plist, più il pausing temporaneo
+  di `com.balizero.dropbox-intake` (trovato anch'esso a mutare stato candidato). **Batch
+  `w1-20260720T155154Z-d16f4831`: created=198, skipped=2 (`possible_existing_appeared`,
+  rifiutati correttamente non forzati), lots=1 (hard-cap rispettato), frozen=null.**
+  `--verify-batch` immediato: 198/198 righe ledger status=created, 0 owner_violations,
+  0 name_violations, 0 reroute non verificati. Plist daemon ripristinato byte-identico
+  al backup pre-wave1 (diff pulito), entrambi i servizi ricaricati `running` con l'env
+  originale. **Residuo: `--verify-batch` a T+1d (2026-07-21 15:52 UTC) ancora da
+  eseguire** — PENDING-ARMS riga aperta dedicata.
+
 - **2026-07-20 — LANE A CHIUSA (F26 + PROVE-LIVE su entrambe le superfici) · LANE B: PR #2879
-  aperta, 3 gate CI risolti, wave-1 execution ancora sospesa su GO Zero.**
+  mergiata dopo 3 gate CI risolti.**
   **Lane A:** round-17b (Codex diretto, teammate sibling non più raggiungibile dopo un
   riavvio harness) ha confermato F24/F25 CHIUSI e sollevato **F26** (MEDIUM): la
   risoluzione whatsapp era veto-only, non poteva fare da ANCORA quando phone/phone_normalized
