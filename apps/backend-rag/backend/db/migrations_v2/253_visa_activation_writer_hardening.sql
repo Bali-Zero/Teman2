@@ -97,15 +97,25 @@
 --   Both columns were confirmed to hold ZERO rows on prod via a live
 --   read-only query immediately before this migration was authored — so an
 --   immediate ADD CONSTRAINT could not have failed against existing data at
---   that instant. Even so (F4, cross-family fix-round), the ADD CONSTRAINT
---   below is TOCTOU-fragile as a single statement: it full-table-scans, and
---   a bad row inserted between that read-only check and deploy would abort
---   the ENTIRE migration transaction — including the P0-1 grant fix and the
---   F9 TRUNCATE guards above it. The constraint is therefore added `NOT
---   VALID` (no scan, enforced on all new writes immediately) followed by a
---   separate `VALIDATE CONSTRAINT` (checks existing rows) — if validation
---   ever fails, only that step needs a retry; the security-critical
---   statements earlier in the same migration are unaffected.
+--   that instant. The constraint is nonetheless added `NOT VALID` (no scan,
+--   enforced on all new writes immediately) followed by a separate
+--   `VALIDATE CONSTRAINT` (checks existing rows) — but NOT for transaction
+--   isolation or lock-duration benefit: `migration_base.py` applies this
+--   migration's ENTIRE forward SQL in ONE asyncpg transaction (`async with
+--   conn.transaction(): await conn.execute(sql_forward)`, ~lines 491-514) —
+--   grant block, F9 TRUNCATE guards, and this VALIDATE CONSTRAINT included.
+--   A VALIDATE CONSTRAINT failure therefore rolls back the WHOLE migration,
+--   the same blast radius as a plain single-statement ADD CONSTRAINT, and
+--   AccessExclusiveLock is held to commit either way; the NOT VALID +
+--   VALIDATE split does NOT isolate VALIDATE from the migration transaction
+--   here. That is fail-closed by design, not a gap: any failure aborts
+--   cleanly with no partial/half-applied state and no security regression,
+--   and a retry is a clean full re-run of this migration, never a resume of
+--   one step. The split is kept for structural clarity and forward-
+--   compatibility — a FUTURE migration could move VALIDATE CONSTRAINT into
+--   its own transaction for genuine isolation — and because residual
+--   practical risk here is negligible: both columns hold 0 rows on prod and
+--   this table is SHADOW-only (STEP-6c, no HTTP surface reads it yet).
 --   (`constraint-missing-not-valid` is excluded fleet-wide in
 --   `.github/workflows/migration-lint.yml` regardless, so NOT VALID here is
 --   a safety choice, not a lint-suppression one.)
@@ -150,8 +160,14 @@
 --   any SELECT/INSERT the role may hold on `visa_rule_packs`, GRANT only
 --   EXECUTE on `visa_activate_rule_pack`). The read-only verify-and-warn
 --   block immediately following this one (F1(b), cross-family fix-round)
---   exists precisely to make a mis-armed boundary from EITHER ordering
---   VISIBLE instead of silent. Behavior of this migration's own DO block:
+--   is subject to that SAME once-only-run limitation: it only observes
+--   privilege state AT THIS MIGRATION's OWN apply time. If the role is
+--   instead provisioned AFTER this migration applies, the block already
+--   returned early (role absent) and will NEVER re-fire to catch a later
+--   mis-arm — for THAT ordering, the operator provisioning script (and its
+--   own post-provision verification) is the one responsible for surfacing
+--   a mis-armed boundary, not this migration. Behavior of this migration's
+--   own DO block:
 --     (a) role absent -> RAISE NOTICE, no-op, same convention as 251;
 --     (b) role present -> REVOKE the dangerous `SELECT, INSERT ON TABLE
 --         public.visa_rule_packs` grant IF PRESENT (idempotent no-op if
@@ -496,13 +512,20 @@ BEGIN
 END;
 $grant_block_253$;
 
--- -- F1(b) (cross-family fix-round): READ-ONLY verify-and-warn. Makes a
--- mis-armed boundary VISIBLE instead of silent, regardless of WHICH path
--- armed (or failed to arm) the role -- this migration's own grant block
--- above, an operator provisioning script, or a manual grant. Never mutates
--- privileges itself (the grant block above is the only privilege-mutating
--- logic in this migration); guarded so an absent role/table/function never
--- aborts the migration -- it degrades to "nothing to verify yet".
+-- -- F1(b) (cross-family fix-round): READ-ONLY verify-and-warn, run ONCE at
+-- THIS MIGRATION's own apply time. Makes a mis-armed boundary VISIBLE
+-- instead of silent for whichever arming path was already in effect AT
+-- THAT INSTANT -- this migration's own grant block above, an operator
+-- provisioning script that ran earlier, or a manual grant. It does NOT
+-- cover every ordering: if the executor role is instead provisioned AFTER
+-- this migration has applied, this block has already executed (as its
+-- role-absent no-op branch) and will NEVER re-fire to catch a later
+-- mis-arm -- the operator provisioning script (and its own post-provision
+-- verification) is the canonical detector for that ordering, not this
+-- migration. Never mutates privileges itself (the grant block above is
+-- the only privilege-mutating logic in this migration); guarded so an
+-- absent role/table/function never aborts the migration -- it degrades
+-- to "nothing to verify yet".
 DO $verify_boundary_253$
 DECLARE
     executor_role constant text := 'visa_activation_executor';
