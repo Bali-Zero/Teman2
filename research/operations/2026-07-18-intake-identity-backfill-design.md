@@ -7,6 +7,7 @@ sources:
   - prod DB nuzantara_rag census via scripts/pg.sh (read-only)
   - .claude/skills/intake corner (LIVE STATE 2026-07-18)
   - apps/backend-rag/backend/services/intake/{auto_attach,writer,client_enricher}.py (re-read this session)
+adversarial_review: codex
 ---
 
 # Identity-backfill — design spec (S4 mandate, 2026-07-18)
@@ -187,6 +188,11 @@ guard, never-NULL-overwrite), `intake_commit_audit` audit pattern, pg_trgm.
 - Auto-commit-eligible rate of the refinery on a fixed sample: measured before/after (with
   gate 11 semantics: eligible = verified id, or unverified + third signal).
 - 0 PII values in any artifact produced by this mandate (grep-audited).
+
+## Adversarial review
+
+See §8 below (R1 gate — generator != grader, this design's author is Fable 5, the reviewing
+seats are Codex/GLM/Gemini, none of them wrote the design they're reviewing).
 
 ## 8. Council verdict + accepted fixes (v3, 2026-07-18)
 
