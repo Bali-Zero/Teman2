@@ -46,6 +46,32 @@ sources:
   not prod (fly-split-brain class, no P0).
 - Lever #5 (`/api/drive/*` fix): started by this session — see PR reference below
   once opened.
+- **Lever #7 DONE** (2026-07-20): root cause found by reading the actual log
+  (not guessed) — a live run showed Claude+agy+Codex all missing in the same
+  cascade, and ollama qwen3.5 (no web access) emitted a schema-valid
+  `{new_today_count:0, partial:true}` stub instead of a real scan; the old
+  `ensure_delta()` schema check (right KEYS present) could not distinguish
+  that from a genuine clean day. Fixed: `ensure_full_delta()` rejects+cascades
+  a partial stub past tiers 1-3; tier 4 (last resort) accepts it but marks the
+  run DEGRADED via the existing `organism_hb_set` heartbeat channel instead of
+  logging it identically to a clean run. Home-fork pair synced + verified via
+  `scripts/lint_home_fork.py --check`. The audit's original "52% day-coverage"
+  gaps (05-31→06-10, 06-18→06-28) predate this wrapper's W81/W84 hardening
+  (dated 2026-07-05/06) and are not reproduced live — the NEW live failure mode
+  found today (false-clean, not a visible gap) is the one this fix closes.
+- **Lever #11 PARTIALLY DONE** (2026-07-20): `get_collection_stats` now calls
+  `/health/collections` (extended with `status`/`vector_size`/`distance`/
+  `segments_count`) instead of the op-counter endpoint `get_qdrant_metrics`
+  also used — fixes the "returns the same zeroed op-counter" half. The RBAC
+  `unknown`-role half is NOT a bug: `apps/nuzantara-mcp/nuzantara_mcp/auth.py`'s
+  fail-closed default for direct/bypass callers (any interactive Claude Code
+  session via the tracked `.mcp.json`, which sets no `AGENT_ROLE`) is deliberate
+  per that module's own docstring, and `roles.yaml` has no non-admin role
+  covering these tools today — inventing one or granting `admin` to interactive
+  sessions is a privilege-boundary call, left open below for Zero rather than
+  decided unilaterally under the K7 cure's own "identity resolution FIRST"
+  principle (identifying the right principal/role is the missing step, not
+  mine to skip by picking one).
 
 ## Standing rules for this ledger
 
@@ -53,6 +79,22 @@ sources:
 2. Levers owned by other live lanes (S3 visa) are tracked here but never executed
    from this lane — reconcile at boundaries, don't collide (scar family #5).
 3. New levers discovered while working land HERE first, then get an owner.
+
+## §Solo-operatore — open from lever #11 (2026-07-20)
+
+`apps/nuzantara-mcp`'s per-tool RBAC (`auth.py`) fails closed to `unknown` for
+any caller with no `AGENT_ROLE` env var — this is every interactive Claude Code
+session on the tracked `.mcp.json` (which sets `PYTHONPATH`/`LANGSMITH_*` but
+no `AGENT_ROLE`). `roles.yaml` today has 4 roles (`visa_specialist`,
+`tax_consultant`, `company_setup`, `admin`); none cover `get_collection_stats`/
+`get_qdrant_metrics`, and `admin` is a `*` wildcard — granting it to every
+interactive session would be broad, not least-privilege. Zero's call: (a) add
+a new scoped role (e.g. read-only observability) to `roles.yaml` + wire
+`AGENT_ROLE` for interactive sessions in `.mcp.json`, or (b) leave `unknown`
+fail-closed as designed and accept that self-inspection tools stay 403 from
+direct sessions (route through the team-agent wrapper instead, which already
+sets a role). Not decided here — it changes who can see what across an MCP
+server multiple tools share.
 
 ## Adversarial review
 
