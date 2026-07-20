@@ -527,11 +527,14 @@ async def process_whatsapp_message(
             enhanced_history.extend(ctx["conversation_history"])
 
             # Direct RAG query (Gemini will respond with Zantara + WhatsApp persona blend)
+            # max_steps=2 (default 3): real-time channel, see
+            # research/operations/2026-07-20-wa-bot-latency.md.
             rag_result = await orchestrator.process_query(
                 query=message_text,
                 user_id=wa_user_id,
                 session_id=session_id,
                 conversation_history=enhanced_history,
+                max_steps=2,
             )
 
             # Extract response from RAG

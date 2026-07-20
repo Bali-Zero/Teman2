@@ -285,6 +285,14 @@ class AgenticQueryRequest(BaseModel):
     # rejects any field this contract doesn't enumerate. None remains a
     # complete no-op for every existing caller.
     profile: InternalSenderProfile | None = None
+    # Latency knob (additive, optional): a caller expecting a fast reply
+    # (e.g. the WhatsApp bot, see research/operations/2026-07-20-wa-bot-latency.md)
+    # may request a lower ReAct step cap. Never allowed to RAISE the cap —
+    # OrchestratorCore clamps this to min(max_steps, AgentState default), so
+    # this field can only ever cut latency, never grant deeper reasoning to
+    # an untrusted caller. None remains a complete no-op for every existing
+    # caller.
+    max_steps: int | None = Field(default=None, ge=1)
 
 
 def _is_trusted_wa_profile_caller(
@@ -472,6 +480,8 @@ async def query_agentic_rag(
             # WA team-assistant V1 — already authorized above (403 on any
             # untrusted attempt) by `_is_trusted_wa_profile_caller`.
             query_kwargs["profile"] = trusted_profile
+        if request.max_steps is not None:
+            query_kwargs["max_steps"] = request.max_steps
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
