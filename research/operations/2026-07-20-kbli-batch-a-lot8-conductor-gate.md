@@ -2,10 +2,12 @@
 date: 2026-07-20
 domain: compliance
 client_case: null
+adversarial_review: kimi-k3
+adversarial_review_detail: "DONE (kimi-code/k3, read-only over this file + cure spec + full evidence root + cure compiler source + git history, cross-family substitute seat — Codex hard quota-limited until 2026-08-19 and agy hung indefinitely, see §5b. Verdict: CONFIRMED-WITH-NOTES — all 13 dispositions independently re-verified against primary PNG renders/canonical/ABSENT.json/pull-log and NONE refuted. 2 MEDIUM audit-trail defects found and cured in this SECOND SIGNING (canonical_sha256 pin never matched this branch; report §3 prose named three disputed_key values the executable spec never used) + 3 LOW (wrong line citation, one typo, one cure-spec lampiran mislabel) + 1 NOTE (fiktif_positif scoping on the 4 un-cured codes, already flagged §5.1, wording tightened)."
 sources:
   - PP 28/2025 Lampiran corpus (peraturan.bpk.go.id, download ids 394930-394950)
   - BPS Tabel Konversi KBLI 2020-2025 Volume 2 (Lampiran 5 + 10)
-  - data/source_documents/KBLI_2025_FINAL_CLEAN.json (canonical, sha256 03e3116a5d6bddd30d1d154842a30024396512c81b9ccfe28e0a0f813047fc02)
+  - data/source_documents/KBLI_2025_FINAL_CLEAN.json (canonical, sha256 873f8fb4f9b5ebb89eaf7727d5d8abca30c51362519077e4ff9ad07635453d22)
   - infra/workflows/kbli-batch-a-lot.js (runnerBlobSha256 45e3951fb0d52f1d2c1687c12895a38cdc050a62c8486e3cbcaef967f3d4b01d)
 ---
 
@@ -53,7 +55,7 @@ not a runner/process defect — confirmed by conductor by-eye verification on pr
    Taman Hutan Raya | 91425 | Taman Hutan Raya"** — clean, unambiguous, image-verified. Same page,
    separately: **"91025 | Taman Budaya | 90310 | Aktivitas Operasional Tempat dan Fasilitas
    Kesenian"** — confirms 91025 crosswalks to 90310, NOT to 91425.
-2. `pp28/394946_p497-497.png` (391425's cited PP28 source, row 8): star-seal PP28 render, row **"8.
+2. `pp28/394946_p497-497.png` (91425's cited PP28 source, row 8): star-seal PP28 render, row **"8.
    91025 | Taman Budaya | Seluruh | Mikro/Kecil/Menengah/Besar | Rendah | NIB | - | Otomatis |
    Menyampaikan laporan kegiatan secara berkala | - | Seluruh | Bupati/Walikota"** — matches
    canonical.json's `per_skala` payload for 91425 **verbatim, field for field**. This is the wrong
@@ -84,8 +86,9 @@ quarantined" reading would conflate genuinely different findings.
   sits 8 digits from the true parent 91033 in the same cluster), not from 91425's actual
   predecessor. D1 and D5 concordant (`category_mismatch=true` on label only —
   `payload_cross_contamination` vs `unresolvable_source_pointer`, same underlying finding, D1's
-  label is the more precise one). **Cure: detach `per_skala`, preserve under
-  `per_skala_disputed_pp28_wrong_code`, honest `_data_note`.**
+  label is the more precise one). **Cure: detach `per_skala`, preserve under the spec's disputed
+  key (§3.6 note on the key name — same generic key as all 9 codes, semantic nuance carried in the
+  cure spec's per-code `flavor` field instead), honest `_data_note`.**
 
 ### 3.2 Genuine `source_absent_in_vault` — full exhaustive-scan absence (6 codes)
 
@@ -98,7 +101,7 @@ quarantined" reading would conflate genuinely different findings.
   most of these (needs_quarantine=false, "not quarantine-worthy for the mapping"); D5 correctly
   flagged `problem_found=true`/`source_absent_in_vault` on all six — this is exactly what the
   divergence rule is for (plan §3/A4: any D1/D5 disagreement quarantines, never averaged). **Cure:
-  detach `per_skala`, preserve under `per_skala_disputed_pp28_absent`, honest `_data_note` citing
+  detach `per_skala`, preserve under the spec's disputed key (§3.6), honest `_data_note` citing
   the ABSENT.json full-scan proof.**
 
 ### 3.3 Genuine wrong-pointer via the hot-trap-page (1 code)
@@ -108,9 +111,9 @@ quarantined" reading would conflate genuinely different findings.
   (industrial-QC obligations) bears no relation to a football club's licensing profile, and
   `sektor_id` on the record (`I.J-P`) doesn't even match the trap page's lampiran letter (`I.F`).
   D1 correctly diagnosed this as a fuzzy-match false positive, not evidence of anything about
-  93121. **Cure: detach `per_skala`, preserve under `per_skala_disputed_pp28_wrong_page`, note
-  should record the trap-page filename explicitly so a future re-hunt against the correct sector
-  lampiran (I.J-P, not I.F) isn't fooled again.**
+  93121. **Cure: detach `per_skala`, preserve under the spec's disputed key (§3.6), note should
+  record the trap-page filename explicitly so a future re-hunt against the correct sector lampiran
+  (I.J-P, not I.F) isn't fooled again.**
 
 ### 3.4 Partial/mixed evidence (2 codes)
 
@@ -138,9 +141,12 @@ quarantined" reading would conflate genuinely different findings.
   (`kategori_risiko`/`jangka_waktu`/`perizinan`) is **natively PP28-sourced and image-verified by
   BOTH seats with zero disagreement** (93111: p.178 row 44; 93112: p.179 row 45; 93119: p.186 row
   50 — all own-code rows, not borrowed). D1 `needs_quarantine=false` and D5 `problem_found=false`
-  on ALL THREE — the underlying crosswalk+licensing data is genuinely sound. They were quarantined
-  anyway because `factsInventoryUnverified()` (the post-Lot-6 fail-closed gate,
-  `infra/workflows/kbli-batch-a-lot.js:739-746`) demotes any preliminarily-"certified" verdict the
+  on ALL THREE — the underlying crosswalk+licensing PP28-row fields are genuinely sound (scoped
+  claim, corrected this signing: this covers the row fields specifically, NOT the synthetic
+  `fiktif_positif` boolean living inside the same `per_skala` entries — see the caveat two
+  paragraphs below). They were quarantined anyway because `factsInventoryUnverified()` (the
+  post-Lot-6 fail-closed gate, `infra/workflows/kbli-batch-a-lot.js:1028`) demotes any
+  preliminarily-"certified" verdict the
   moment D5's `exposed_facts_inventory` contains ANY non-`"verified"` entry — and for these three,
   the synthetic derived field `fiktif_positif` (93111, 93119) and `derived_license` (93112, 93119)
   came back `"absent"` because **the current derivation-formula table
@@ -162,6 +168,22 @@ is canonical.json's own `fiktif_positif=true` assertion on those tiers itself a 
 over-assertion defect (93111/93112/93119, §5.1)? And: does the cure compiler need a per-tier
 detach primitive before 93114 (and likely other multi-tier records) can be cured correctly
 (§5.1b)? Lot 9's remaining 931xx members will very likely hit the identical gaps.
+
+### 3.6 On the disputed-key name (adversarial finding, corrected this signing)
+
+An earlier draft of §3.1-3.3 above prescribed three DIFFERENT preservation keys per category —
+`per_skala_disputed_pp28_wrong_code`, `_pp28_absent`, `_pp28_wrong_page`. **That was wrong and
+never matched the executable artifact**, caught by this lot's red-team pass (Kimi K3, see
+Adversarial review below). The cure compiler (`cure_canonical_collisions.py`) only supports ONE
+top-level `disputed_key` per spec file, applied uniformly to every code in it — and every prior lot
+(5, 6, 7) used the same generic `per_skala_disputed_pp28_collision`, regardless of the actual
+defect flavor. `batch_a_lot8.json` follows that same precedent: all 9 codes are preserved under
+`per_skala_disputed_pp28_collision`, with the semantic nuance (wrong-code / absent / wrong-page)
+carried instead in each code's own `flavor` field. The label "collision" is a loose fit for 8 of
+these 9 codes (their actual defect is absence or a wrong-page mismatch, not a collision) — this is
+a pre-existing naming imprecision across the WHOLE program, not new to Lot 8, filed as its own
+PENDING-ARMS item (a future compiler enhancement to key preservation off `flavor` instead of one
+blanket string) rather than something to fix ad hoc on this lot alone.
 
 ## 4. Innocence controls
 
@@ -251,48 +273,90 @@ to what it demands.)
   zero seat results from it are used anywhere in this report.
 - `runnerBlobSha256`: `45e3951fb0d52f1d2c1687c12895a38cdc050a62c8486e3cbcaef967f3d4b01d` (unchanged
   since Lot 7 — same certification-contract generation, no runner edits this lot).
-- `canonical_sha256` (pre-cure, this branch's checkout): `03e3116a5d6bddd30d1d154842a30024396512c81b9ccfe28e0a0f813047fc02`.
-  **Note:** this worktree's branch (`kbli/lot7-lane`) was found 56 commits behind `origin/main`
-  when this gate was written — merged current before the Lot 8 cure spec is authored, so the cure
-  applies against the true current canonical, not a stale snapshot (W88 discipline).
+- `canonical_sha256` (pre-cure, `kbli/lot8-lane` at the gate commit `55329d1ed9` and its parent):
+  `873f8fb4f9b5ebb89eaf7727d5d8abca30c51362519077e4ff9ad07635453d22`.
+  **Correction (this signing):** the FIRST-SIGNING draft of this line cited a stale value
+  (`03e3116a5d6b...`) that never matched this branch — a genuine pin-staleness defect caught by the
+  red-team pass (Kimi K3), independently re-verified by the conductor via a fresh `shasum` +
+  `git show <gate-commit>:...  | shasum` this session. Root cause: the value was carried over from
+  the pre-rebase evidence-gathering context (the original `kbli/lot7-lane` worktree, 56 commits
+  behind `origin/main`) and never refreshed after `kbli/lot8-lane` was cut fresh off current main —
+  exactly the W88 discipline this note itself was meant to document. The cure dry-run (9/9 clean)
+  DID run against the correct, current canonical; only the recorded pin was wrong.
 - Membership: 23 in-scope codes total in the "sport cluster" split (13 Lot 8 + 10 Lot 9:
   93127,93128,93129,93191,93192,93193,93194,93195,93197,93199), per the D0 pre-launch census
   recorded in the kbli-navigator corner.
 
-## 5b. Arsenal outage — red-team could not run this cycle (verified, not assumed)
+## 5b. Arsenal outage — primary red-team seats unavailable, cross-family substitute used
 
 Attempted the mandatory red-team pass (`gpt-5.6-sol` xhigh via the codex MCP tool, per W97 full
 output capture) immediately after cure-spec authoring. **Both non-DeepSeek red-team-capable seats
-are confirmed down right now**, independently verified (not inferred from a stale digest):
+were confirmed down**, independently verified (not inferred from a stale digest):
 
-- **Codex**: `mcp__plugin_second-opinion_codex__codex` returned `"Your access token could not be
-  refreshed because your refresh token was revoked. Please log out and sign in again."` — the
-  documented OAuth-token-revocation scar (CLAUDE.md: "OAuth token può andare in stato 401
-  token_revoked... Fix: terminal interactive `codex login`"). This is an interactive-login action
-  only the operator can perform — not self-serviceable.
+- **Codex**: first probe returned `"Your access token could not be refreshed because your refresh
+  token was revoked. Please log out and sign in again."` — the documented OAuth-token-revocation
+  scar. A LATER re-probe this same session found the OAuth issue had cleared on its own (no
+  operator action taken) but surfaced a DIFFERENT, harder blocker: `gpt-5.6-sol` returned `"model
+  is not supported when using Codex with a ChatGPT account"`, and the fallback `gpt-5.6-terra`
+  returned `"You've hit your usage limit... try again at Aug 19th, 2026"` — i.e. Codex on this
+  account is hard quota-exhausted for close to a month, not a quick re-login. Corrected finding,
+  filed in PENDING-ARMS: the original "needs `codex login`" framing was WRONG (login already
+  works); the real blocker is the usage cap.
 - **Gemini (`agy`)**: a direct health ping (`agy -p "ping" --print-timeout 25s`) hung indefinitely
   (killed after ~3 min, zero CPU time — not processing, not erroring, just stuck). A SECOND,
   independent `agy` invocation from an unrelated process (PID observed via `ps aux`, not mine, seen
-  hung since 07:11) confirms this is a genuine seat-level outage right now, not a one-off fluke on
-  my specific call.
+  hung since 07:11) confirmed this is a genuine seat-level outage, not a one-off fluke on my
+  specific call. Re-confirmed hung a second time later in this same session (background probe
+  killed after its own timeout).
 - **DeepSeek**: explicitly forbidden for this program (standing constraint, not re-litigated here).
 
-**Disposition: this gate stays at FIRST SIGNING, red-team PENDING** — not skipped, not faked. The
-conductor's own by-eye verification (§2: three independently re-rendered/re-checked images,
-compiler dry-run confirming 9/9 clean cure, cross-referenced D1/D5 concordance for every code in
-§3) stands as the evidence base, but does NOT substitute for the mandatory adversarial pass this
-program has run on every prior lot. Cure PR should NOT auto-merge until either (a) Codex OAuth is
-re-authenticated (operator[credentials] action) and the red-team pass runs, or (b) Zero explicitly
-authorizes proceeding without it for this lot given the outage. Flagging as its own PENDING-ARMS
-line (operator[credentials]: `codex login` needed on whichever machine hosts this MCP session).
+**Resolution: Kimi K3 used as cross-family substitute red-team seat.** Given Codex is unavailable
+for a duration incompatible with holding this gate open (~a month) and `agy` shows no sign of
+self-clearing, and given Kimi K3 (armed 2026-07-19, `KNOWN_SEATS` in
+`scripts/check_adversarial_review.py`, CLAUDE.md: "cross-family council/second-opinion seat...
+never the final gate") is a genuinely independent LLM family from the conductor (Fable) and from
+every D1/D5/GLM seat already used in this lot's own adjudication — it was dispatched for a full,
+adversarial (refute-don't-confirm) pass over this report + the cure spec + the complete evidence
+root + the cure compiler source + relevant git history. Kimi did NOT make the final call — the
+conductor (this signing) independently re-verified its two material findings (the hash pin, the
+line citation) before accepting them. See Adversarial review below for the full verdict. Codex/agy
+recovery should still be retried for FUTURE lots (Lot 9+) per the program's normal cascade; this
+lot's gate does not wait on it now that a genuine cross-family pass has been completed.
 
 ## Sign-off
 
-**FIRST SIGNING — conductor gate complete, cure scope determined (§3), NOT yet cured, red-team
-PENDING (arsenal outage, §5b).**
+**SECOND SIGNING — conductor gate complete, cure scope determined (§3), adversarial review
+COMPLETE (Kimi K3 cross-family substitute, §5b + Adversarial review below), NOT yet cured (cure PR
+next).**
 Cure scope: **9 full-detach codes** (91425, 93113, 93115, 93121, 93122, 93123, 93124, 93125,
 93126) **+ 4 explicitly-not-cured** (93111, 93112, 93114, 93119 — contract-coverage/tooling gaps,
 §3.5, real data left untouched rather than destroyed) **+ 2 controls informational only** (63101,
-73100 — not Batch-A members, no spec entry). Next: red-team (blocked on arsenal outage — retry
-when Codex/Gemini seats recover), cure spec authored (this session, dry-run clean 9/9), second
-signing, cross-family GLM Appendix A, gate PR, cure PR, data-apply PR, surfaces.
+73100 — not Batch-A members, no spec entry). The red-team pass found 2 MEDIUM + 3 LOW audit-trail
+defects (canonical hash pin, disputed-key report/spec contradiction, a cure-spec lampiran mislabel,
+a wrong line citation, one typo) — all cured in THIS signing — and refuted NONE of the 13
+dispositions. Next: cross-family GLM Appendix A screen, gate PR, cure PR, data-apply PR, surfaces.
+
+## Adversarial review — VERDICT AND CURES
+
+Seat: **kimi-k3** (Moonshot Kimi K3, `kimi -m kimi-code/k3`), read-only over this file + the cure
+spec + the full evidence root (`/tmp/kbli-conductor-a1-0718/evid-lot8/`, all 6 cited PNG renders
+viewed directly) + `cure_canonical_collisions.py` + relevant git history (gate commit and its
+parent). Full transcript captured at `/tmp/kbli-conductor-a1-0718/kimi-redteam-lot8-output.log`
+(828 lines). Overall verdict: **CONFIRMED-WITH-NOTES** — every load-bearing evidentiary claim
+tested against primary sources held up; none of the 13 codes' cure/no-cure dispositions were
+refuted.
+
+| # | Severity | Finding | Cure in this signing |
+|---|----------|---------|----------------------|
+| 1 | MEDIUM | `canonical_sha256` pin (`03e3116a...`) never matched this branch's actual canonical at any commit checked (HEAD, gate commit, parent) — independently re-verified by the conductor via fresh `shasum` + `git show \| shasum` | §7 corrected to the verified value `873f8fb4f9b5...4d22`, root cause noted (stale value carried over from the pre-rebase evidence context, never refreshed) |
+| 2 | MEDIUM | Report §3.1-3.3 prescribed three different `disputed_key` values the executable cure spec never uses (spec uses one generic key, matching L5-L7 precedent) | New §3.6 added explaining the compiler's one-key-per-spec design and the precedent; §3.1-3.3 cure lines corrected to point at §3.6 instead of asserting a key that doesn't exist |
+| 3 | LOW-MEDIUM | Cure spec's 91425 `data_note` cited "Lampiran I.J-P p.497 row 8" but the actual page header (viewed at full resolution) is I.P.7 — a different lampiran than 91425's own sektor_id, which if anything strengthens the contamination finding | `cure_specs/batch_a_lot8.json`'s 91425 `data_note` corrected to cite the actual page header and note the letter mismatch as additional contamination evidence |
+| 4 | LOW | §3.5 cited `factsInventoryUnverified()` at `kbli-batch-a-lot.js:739-746`; independently re-verified this session at line 1028 (739-746 is unrelated prompt-construction text) | §3.5 line citation corrected |
+| 5 | LOW | §2 item 2 typo: "391425's cited PP28 source" | Corrected to "91425's" |
+| 6 | NOTE | §3.5's "genuinely sound" framing for 93111/93112/93119 covers the PP28-row fields (image-verified) but not the synthetic `fiktif_positif` boolean inside the same `per_skala` entries, which the derivation-formula table cannot support at Rendah/Menengah-Rendah tiers (already flagged §5.1 as an open item, held un-cured) | §3.5 wording scoped explicitly to "PP28-row fields", cross-referencing the existing §5.1 caveat rather than overclaiming record-wide soundness |
+
+What Kimi could NOT verify (declared, not silently skipped): the D1/D5 seat-output rationales and
+the m1 blind-concordance figure (seat journals not in the evidence root, taken on report prose);
+whether the Codex/agy outage was genuinely live at authoring time (not re-probed by Kimi — the
+conductor re-probed independently and confirmed both, see §5b). No F12 wording violation found
+across any of the nine `whatYouNeed` texts.
