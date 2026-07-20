@@ -254,6 +254,17 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         "session_id": f"wa_meta_session_{thread_id}",
         "conversation_history": history,
         "channel": "whatsapp",
+        # Latency: cap the ReAct loop at 2 steps (default 3) for this
+        # real-time channel — observed 33-94s replies, ~15-17s/step, see
+        # research/operations/2026-07-20-wa-bot-latency.md. Never raises the
+        # cap. Full win on single-hop queries (the common case); a query
+        # needing 2+ tool calls exits the loop before an in-loop synthesis
+        # turn and falls to the post-loop context-synthesis path instead
+        # (reasoning.py:428-429, :656) — same LLM-call count, a different
+        # answer path, worth watching on the abstain/low-context-quality
+        # rate post-rollout. Self-correction re-verify (post-loop, not a
+        # ReAct step) is untouched — the answer-quality safety net stays.
+        "max_steps": 2,
     }
     if profile is not None:
         payload["profile"] = profile

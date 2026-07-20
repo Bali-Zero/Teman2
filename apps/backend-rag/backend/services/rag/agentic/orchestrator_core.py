@@ -1012,6 +1012,7 @@ class OrchestratorCore:
         session_id: str | None = None,
         tool_execution_counter: dict[str, int] | None = None,
         profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -1191,6 +1192,18 @@ class OrchestratorCore:
 
         # 4. Route query (intent classification + tier selection)
         model_tier, _deep_think_mode, state = await self.routing_manager.route_query(query)
+
+        # Latency knob: only ever LOWER the ReAct step cap, never raise it —
+        # an untrusted caller cannot use this to force deeper (costlier)
+        # reasoning than the route already assigned. Floor of 1: the
+        # Pydantic `ge=1` on AgenticQueryRequest.max_steps only guards the
+        # HTTP path — an in-process caller (e.g. whatsapp_chat.py) can call
+        # orchestrator.process_query() directly with an unvalidated int, and
+        # 0/negative would otherwise disable the ReAct loop entirely
+        # (`while state.current_step < state.max_steps` never fires) instead
+        # of just cutting latency (Kimi K3 adversarial review, 2026-07-20).
+        if max_steps is not None:
+            state.max_steps = max(1, min(max_steps, state.max_steps))
 
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
