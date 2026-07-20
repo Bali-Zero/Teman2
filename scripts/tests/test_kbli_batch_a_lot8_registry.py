@@ -406,6 +406,14 @@ def test_lot8_spec_never_declares_a_status_mapping_correction():
 # ---------------------------------------------------------------------------
 
 def test_lot8_compiler_dry_run_reports_already_cured():
+    """Idempotency, all 9 codes -- EXTENDED 2026-07-20 (Appendix A gold-staleness fix) to also
+    cover 93122's new zantaraOpener_correction: since the spec now carries that key on 93122's
+    entry, this same dry-run additionally proves the zantaraOpener metadata correction is
+    idempotent (a re-run against the served/cured canonical reports 93122 as ALREADY CURED, not
+    'apply', for the zantaraOpener change too) -- no separate test needed, the existing
+    already-cured assertion below already subsumes it because describe() collapses to
+    'ALREADY CURED (skip)' only when EVERY requested action, including zantaraOpener, already
+    matches."""
     result = subprocess.run(
         [
             "python3",
@@ -429,6 +437,10 @@ def test_lot8_compiler_dry_run_reports_already_cured():
             f"expected '{code}: ALREADY CURED (skip)' in dry-run output, not found. "
             f"stdout:\n{result.stdout}"
         )
+    assert "metadata-corrected" not in result.stdout, (
+        "dry-run over the already-applied canonical unexpectedly still proposes a metadata "
+        f"correction (zantaraOpener or otherwise) -- not idempotent. stdout:\n{result.stdout}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -561,3 +573,89 @@ def test_lot8_91425_true_parent_recorded_as_provenance_only():
         "injecting a replacement/additional source value"
     )
     assert rec.get("status_mapping") == "MATCH_LANGSUNG"
+
+
+# ---------------------------------------------------------------------------
+# 11. Gold-layer staleness fix (Appendix A cross-family finding, Kimi K3, 2026-07-20): 6 of Lot
+#     8's 9 cured codes (91425, 93113, 93115, 93122, 93123, 93124) are ALSO present in the gold
+#     editorial layer (apps/mouth/data/kbli-gold-all.json), whose own whatYouNeed still asserted
+#     the EXACT stale pre-cure licensing facts that canonical's detach removed — and gold wins on
+#     the live /kbli/<code> page (LicensingSection.tsx parses gold.whatYouNeed when gold exists),
+#     so canonical's honest-gap cure never actually surfaced for these 6. Same disease class as
+#     the established 49213/50115/60103/68123-etc. precedent (commit aa01a46b8b, #2794): gold's
+#     whatYouNeed is rewritten to canonical's own already-adversarially-reviewed honest-gap text,
+#     reused VERBATIM (not paraphrased) for consistency between the two surfaces.
+# ---------------------------------------------------------------------------
+
+GOLD_PATH = REPO_ROOT / "apps/mouth/data/kbli-gold-all.json"
+
+# The 6 Lot-8 codes that are ALSO present in gold (of the 9 total) — fixed this session.
+GOLD_STALE_CODES_FIXED = ["91425", "93113", "93115", "93122", "93123", "93124"]
+
+# The 3 Lot-8 codes that were NEVER in gold — innocence controls, untouched by this fix.
+GOLD_ABSENT_LOT8_CODES = ["93121", "93125", "93126"]
+
+
+def _load_gold() -> dict[str, dict[str, Any]]:
+    return json.loads(GOLD_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("code", GOLD_STALE_CODES_FIXED)
+def test_lot8_gold_whatYouNeed_matches_canonical_honest_gap(code: str):
+    """GUILT: gold's whatYouNeed for these 6 codes must now match canonical's own honest-gap
+    text (scripts/kbli_filiera/cure_specs/batch_a_lot8.json's whatYouNeed, the same string
+    already applied to intel_2026.whatYouNeed by the Lot 8 cure) VERBATIM — reused, not
+    paraphrased, per the established gold-staleness-fix convention (commit aa01a46b8b)."""
+    gold = _load_gold()
+    spec_by_code = _load_lot8_spec_by_code()
+    entry = gold.get(code)
+    assert entry is not None, f"{code}: expected to be present in gold (this is one of the 6)"
+    expected = spec_by_code[code]["whatYouNeed"]
+    assert entry.get("whatYouNeed") == expected, (
+        f"{code}: gold whatYouNeed does not match the Lot 8 cure spec's honest-gap text "
+        f"verbatim.\nexpected: {expected!r}\nactual:   {entry.get('whatYouNeed')!r}"
+    )
+    # Cross-check against the LIVE canonical too (not just the spec) — gold and canonical must
+    # now agree, closing the exact gap this Appendix A finding caught.
+    rec = _load_record(CANONICAL_PATH, code)
+    intel = rec.get("intel_2026") or {}
+    assert entry.get("whatYouNeed") == intel.get("whatYouNeed"), (
+        f"{code}: gold whatYouNeed diverges from canonical intel_2026.whatYouNeed — the two "
+        "surfaces must agree post-fix."
+    )
+
+
+@pytest.mark.parametrize("code", GOLD_ABSENT_LOT8_CODES)
+def test_lot8_gold_absent_codes_remain_absent(code: str):
+    """INNOCENCE: these 3 Lot-8 codes (93121, 93125, 93126) were never part of the gold editorial
+    layer and are unaffected by this fix — confirm they remain absent from gold, guarding against
+    an over-broad future edit accidentally inserting them."""
+    gold = _load_gold()
+    assert code not in gold, (
+        f"{code}: unexpectedly present in gold — this code was never part of the Appendix A "
+        "gold-staleness fix and should stay absent."
+    )
+
+
+def test_lot8_93122_zantaraopener_honest_gap():
+    """GUILT: canonical's intel_2026.zantaraOpener for 93122 must now match the cure spec's
+    zantaraOpener_correction verbatim, and must NOT assert the stale "medium-high risk
+    classification" fact that was part of the detached per_skala payload (Appendix A second
+    finding, Kimi K3, 2026-07-20) — regression guard so a future re-run of the compiler (or a
+    hand-edit) cannot silently reintroduce the risk-tier claim."""
+    spec_by_code = _load_lot8_spec_by_code()
+    rec = _load_record(CANONICAL_PATH, "93122")
+    intel = rec.get("intel_2026") or {}
+    expected = spec_by_code["93122"]["zantaraOpener_correction"]
+    actual = intel.get("zantaraOpener")
+    assert actual == expected, (
+        f"93122: intel_2026.zantaraOpener does not match the spec's zantaraOpener_correction "
+        f"verbatim.\nexpected: {expected!r}\nactual:   {actual!r}"
+    )
+    assert "medium-high risk classification" not in (actual or ""), (
+        "93122: zantaraOpener still asserts the stale 'medium-high risk classification' fact "
+        "that was part of the detached payload."
+    )
+    assert "medium-high" not in (actual or ""), (
+        "93122: zantaraOpener unexpectedly still contains 'medium-high' in any form."
+    )

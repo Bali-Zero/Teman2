@@ -64,6 +64,18 @@ detached, even though a crosswalk-metadata defect needs curing):
     script never invents a replacement list, only writes what the spec
     author already independently verified.
 
+Zantara-opener metadata-fix extension (2026-07-20, e.g. 93122 — a code whose
+per_skala detach already ran in a prior lot but whose intel_2026.zantaraOpener
+marketing copy independently asserted a risk-tier fact that was part of the
+now-detached payload):
+
+  - zantaraOpener_correction: new canonical intel_2026.zantaraOpener value,
+    mirroring whatChanged_correction exactly — a no-op when absent, applied
+    verbatim when present and different from the current value. Same
+    discipline as the other *_correction keys: this script never invents a
+    replacement string, only writes what the spec author already
+    independently verified.
+
 Usage:
   # dry run (default) — prints a per-code diff summary, writes nothing
   python scripts/kbli_filiera/cure_canonical_collisions.py
@@ -140,7 +152,8 @@ class CurePlan:
                          correction (see the flags)
       "already-cured"  — detach already done (per_skala == []) AND whatYouNeed already
                          matches the spec (or spec supplies none) AND any requested
-                         metadata correction already matches: idempotent no-op
+                         metadata correction (status_mapping / whatChanged /
+                         pp28_sources / zantaraOpener) already matches: idempotent no-op
       "ambiguous-skip" — per_skala == [] but NO disputed_key: an unrecognised prior
                          state — refuse to touch the record at all, skip
       "missing"        — code not found in canonical at all
@@ -160,6 +173,7 @@ class CurePlan:
         needs_status_mapping: bool = False,
         needs_whatchanged: bool = False,
         needs_pp28_sources: bool = False,
+        needs_zantaraopener: bool = False,
         metadata_only: bool = False,
     ) -> None:
         self.code = code
@@ -173,6 +187,7 @@ class CurePlan:
         self.needs_status_mapping = needs_status_mapping
         self.needs_whatchanged = needs_whatchanged
         self.needs_pp28_sources = needs_pp28_sources
+        self.needs_zantaraopener = needs_zantaraopener
         self.metadata_only = metadata_only
 
     def describe(self) -> str:
@@ -200,6 +215,8 @@ class CurePlan:
             actions.append("intel_2026.whatChanged -> metadata-corrected")
         if self.needs_pp28_sources:
             actions.append("pp28_sources -> metadata-corrected")
+        if self.needs_zantaraopener:
+            actions.append("intel_2026.zantaraOpener -> metadata-corrected")
         if self.metadata_only:
             actions.append("[metadata_only: per_skala NOT touched]")
         return f"{self.code}: {' | '.join(actions)} | _data_note: {note_preview!r}"
@@ -213,6 +230,11 @@ def _current_whatyouneed(record: dict[str, Any]) -> Any:
 def _current_whatchanged(record: dict[str, Any]) -> Any:
     intel = record.get("intel_2026")
     return intel.get("whatChanged") if isinstance(intel, dict) else None
+
+
+def _current_zantaraopener(record: dict[str, Any]) -> Any:
+    intel = record.get("intel_2026")
+    return intel.get("zantaraOpener") if isinstance(intel, dict) else None
 
 
 def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> CurePlan:
@@ -252,12 +274,18 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
         target_pp28_sources is not None and record.get("pp28_sources") != target_pp28_sources
     )
 
+    target_zantaraopener = entry.get("zantaraOpener_correction")
+    needs_zantaraopener = (
+        bool(target_zantaraopener) and _current_zantaraopener(record) != target_zantaraopener
+    )
+
     if not (
         needs_detach
         or needs_whatyouneed
         or needs_status_mapping
         or needs_whatchanged
         or needs_pp28_sources
+        or needs_zantaraopener
     ):
         return CurePlan(code, "already-cured", disputed_key=disputed_key)
 
@@ -274,6 +302,7 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
         needs_status_mapping=needs_status_mapping,
         needs_whatchanged=needs_whatchanged,
         needs_pp28_sources=needs_pp28_sources,
+        needs_zantaraopener=needs_zantaraopener,
         metadata_only=metadata_only,
     )
 
@@ -292,11 +321,12 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
        OSS-native per_skala that must never be detached).
     2. WHATYOUNEED — when the spec supplies `whatYouNeed`, (re)write
        intel_2026.whatYouNeed to the honest-gap text (existing sub-key, order preserved).
-    3. METADATA CORRECTION (Lot 2 extension + 2026-07-19 pp28_sources_correction) —
-       when the spec supplies `status_mapping_correction` and/or
-       `whatChanged_correction` and/or `pp28_sources_correction`, (re)write those
-       fields verbatim from the spec. Independent of (1): a record may get a
-       metadata-only correction with no detach, or both together.
+    3. METADATA CORRECTION (Lot 2 extension + 2026-07-19 pp28_sources_correction +
+       2026-07-20 zantaraOpener_correction) — when the spec supplies
+       `status_mapping_correction` and/or `whatChanged_correction` and/or
+       `pp28_sources_correction` and/or `zantaraOpener_correction`, (re)write
+       those fields verbatim from the spec. Independent of (1): a record may
+       get a metadata-only correction with no detach, or both together.
     4. _data_note is (re)set at the end (same string -> idempotent).
     """
     metadata_only = entry.get("action") == "metadata_only"
@@ -356,6 +386,17 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
     target_pp28_sources = entry.get("pp28_sources_correction")
     if target_pp28_sources is not None:
         new_record["pp28_sources"] = copy.deepcopy(target_pp28_sources)
+
+    target_zantaraopener = entry.get("zantaraOpener_correction")
+    if target_zantaraopener:
+        intel = new_record.get("intel_2026")
+        if not isinstance(intel, dict):
+            raise CureError(
+                f"{entry['code']}: cannot set zantaraOpener — intel_2026 is missing or not a dict"
+            )
+        intel = dict(intel)
+        intel["zantaraOpener"] = target_zantaraopener
+        new_record["intel_2026"] = intel
 
     new_record["_data_note"] = entry["data_note"]
     return new_record
