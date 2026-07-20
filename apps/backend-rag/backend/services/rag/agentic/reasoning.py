@@ -977,6 +977,37 @@ Do not invent information. If the context is insufficient, admit it.
                     if "citations" in processed:
                         state.sources = processed["citations"]
 
+                    # Dead-wiring fix (2026-07-20): this is the AUTHORITATIVE
+                    # `processed` result for the answer actually being
+                    # returned above — if self-correction ran, `processed`
+                    # was reassigned to the retry pipeline's fresh verdict on
+                    # the CORRECTED answer; re-reading here (rather than
+                    # persisting the pre-correction verification_score local
+                    # from before the retry) is what keeps the score
+                    # attached to the text it actually describes. Before
+                    # this fix, verification_score/verdict_available were
+                    # computed but never survived past this function —
+                    # orchestrator_response.py's CoreResult reads
+                    # getattr(state, "verification_score", 0.0), and nothing
+                    # ever set that attribute, so every response reported
+                    # 0.0 regardless of the real score. Only persist when
+                    # verdict_available: an unparseable/placeholder score is
+                    # not a real judgment, and reporting it as the
+                    # client-facing verification_status would swap one lie
+                    # ("always 0.0") for another ("fake pass/fail"). Leaving
+                    # state at its default keeps CoreResult's derived
+                    # verification_status="unchecked" — the honest label for
+                    # "we never got a real verdict".
+                    final_verdict_available = processed.get(
+                        "verdict_available",
+                        verdict_available,
+                    )
+                    if final_verdict_available:
+                        state.verification_score = processed.get(
+                            "verification_score",
+                            verification_score,
+                        )
+
                     logger.info(
                         f"✅ [Pipeline] Response processed: "
                         f"verification={processed.get('verification_status', 'unknown')}, "
