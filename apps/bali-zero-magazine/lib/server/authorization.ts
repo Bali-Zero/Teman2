@@ -27,6 +27,12 @@ export type AuthorizationDecision = Readonly<{
   reason: "allowed" | "permission_denied";
 }>;
 
+const READ_ONLY_ROLE_ALLOWLIST: RoleAllowlist = {
+  version: "roles.read-only.v1",
+  analysts: [],
+  operators: [],
+};
+
 const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> = {
   reader: new Set(["magazine:read"]),
   analyst: new Set(["magazine:read", "research:create", "research:cancel-own"]),
@@ -62,6 +68,26 @@ export function validateRoleAllowlist(
   if (new Set(memberships).size !== memberships.length) {
     throw new TypeError("duplicate actor key in role allowlist");
   }
+}
+
+export function parseRoleAllowlist(raw: string | undefined): RoleAllowlist {
+  if (raw === undefined) return READ_ONLY_ROLE_ALLOWLIST;
+
+  const value: unknown = JSON.parse(raw);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError("invalid role allowlist");
+  }
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).sort().join(",") !== "analysts,operators,version") {
+    throw new TypeError("invalid role allowlist");
+  }
+  const allowlist = {
+    version: record.version,
+    analysts: record.analysts,
+    operators: record.operators,
+  } as RoleAllowlist;
+  validateRoleAllowlist(allowlist);
+  return allowlist;
 }
 
 export function effectiveRole(

@@ -33,13 +33,22 @@ export async function requireViewer(
   if (rawEmail === null || rawEmail.trim() === "") {
     throw new TypeError("authenticated user is required");
   }
-  if (!config.actorKeySecret)
-    throw new TypeError("actor key secret is required");
+  const normalizedEmail = normalizeWorkspaceEmail(rawEmail);
   validateRoleAllowlist(config.roleAllowlist);
-  const actorKey = await hmacSha256Hex(
-    config.actorKeySecret,
-    normalizeWorkspaceEmail(rawEmail),
-  );
+  if (!config.actorKeySecret) {
+    if (
+      config.roleAllowlist.analysts.length > 0 ||
+      config.roleAllowlist.operators.length > 0
+    ) {
+      throw new TypeError("actor key secret is required for privileged roles");
+    }
+    return {
+      actorKey: "0".repeat(64),
+      role: "reader",
+      roleConfigVersion: config.roleAllowlist.version,
+    };
+  }
+  const actorKey = await hmacSha256Hex(config.actorKeySecret, normalizedEmail);
   return {
     actorKey,
     role: effectiveRole(actorKey, config.roleAllowlist),
