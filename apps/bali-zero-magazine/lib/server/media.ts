@@ -58,6 +58,7 @@ const MIME_EXTENSION = {
   "image/webp": "webp",
 } as const;
 const SHA256 = /^[a-f0-9]{64}$/;
+const PUBLIC_STORY_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,198}[a-z0-9])?$/;
 
 function equalsAt(
   bytes: Uint8Array,
@@ -497,7 +498,20 @@ export async function resolvePublishedMedia(
     )
     .bind(digest)
     .first<EligibleAssetRow>();
-  if (row === null || row.sha256 !== digest) return null;
+  return resolveEligibleMedia(bucket, row, digest);
+}
+
+async function resolveEligibleMedia(
+  bucket: R2BucketLike,
+  row: EligibleAssetRow | null,
+  expectedDigest?: string,
+): Promise<ResolvedMedia | null> {
+  if (
+    row === null ||
+    (expectedDigest !== undefined && row.sha256 !== expectedDigest)
+  )
+    return null;
+  const digest = row.sha256;
   const extension = MIME_EXTENSION[row.mime_type];
   if (extension === undefined) return null;
   const canonicalKey = `assets/sha256/${digest}.${extension}`;
@@ -514,4 +528,44 @@ export async function resolvePublishedMedia(
   } catch {
     return null;
   }
+}
+
+export async function resolvePublishedStoryMedia(
+  db: D1DatabaseLike,
+  bucket: R2BucketLike,
+  slug: string,
+): Promise<ResolvedMedia | null> {
+  if (!PUBLIC_STORY_SLUG.test(slug)) return null;
+  const row = await db
+    .prepare(
+      `SELECT a.sha256, a.r2_key, a.mime_type,
+              a.byte_count, a.width, a.height
+       FROM stories s
+       JOIN story_versions sv
+         ON sv.story_id = s.story_id AND sv.version = s.current_version
+       JOIN story_asset_references sar
+         ON sar.packet_id = sv.packet_id AND sar.story_id = sv.story_id
+        AND sar.version = sv.version
+       JOIN assets a ON a.sha256 = sar.asset_sha256
+       JOIN asset_sources source ON source.canonical_sha256 = a.sha256
+       WHERE s.slug = ?
+         AND sar.publication_state = 'published'
+         AND sv.publication_state = 'published'
+         AND ${assetEligibilitySql("source")}
+         AND NOT EXISTS (
+           SELECT 1 FROM story_visibility_events visibility
+           WHERE visibility.story_id = sv.story_id
+             AND visibility.visibility_seq = (
+               SELECT max(latest.visibility_seq)
+               FROM story_visibility_events latest
+               WHERE latest.story_id = sv.story_id
+             )
+             AND visibility.desired_quarantined = 1
+         )
+       ORDER BY source.created_at DESC, a.sha256
+       LIMIT 1`,
+    )
+    .bind(slug)
+    .first<EligibleAssetRow>();
+  return resolveEligibleMedia(bucket, row);
 }

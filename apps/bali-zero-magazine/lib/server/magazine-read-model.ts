@@ -41,6 +41,7 @@ export type StoryCardView = Readonly<{
   confidence: StoryVersionV1["confidence"];
   publishedAt: string;
   imageAlt: string;
+  imageAvailable: boolean;
 }>;
 
 export type SourceStatusView = Readonly<{
@@ -220,6 +221,7 @@ function normalizeStory(
     confidence: story.confidence,
     publishedAt: story.published_at,
     imageAlt: asset?.altText ?? `Editorial visual context for ${story.title}`,
+    imageAvailable: asset !== null,
   };
 }
 
