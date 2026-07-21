@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 47 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 48 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
