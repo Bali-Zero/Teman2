@@ -69,13 +69,26 @@ async def _run(args: argparse.Namespace) -> dict[str, object]:
         await pool.close()
 
 
+def _collect_report(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    try:
+        return asyncio.run(_run(args))
+    except (
+        RuntimeError,
+        asyncpg.PostgresError,
+        asyncpg.InterfaceError,  # sibling of PostgresError, NOT subclass
+        OSError,
+        asyncio.TimeoutError,
+    ) as exc:
+        parser.error(str(exc))
+
+
 def main() -> int:
     parser = _parser()
     args = parser.parse_args()
-    try:
-        report = asyncio.run(_run(args))
-    except (RuntimeError, asyncpg.PostgresError) as exc:
-        parser.error(str(exc))
+    report = _collect_report(parser, args)
     sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return 0
 

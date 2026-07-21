@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -61,6 +62,46 @@ def test_main_rejects_missing_database_url_environment(
 
     assert exc_info.value.code == 2
     assert f"missing database URL environment variable: {variable}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "error",
+    (
+        cli.asyncpg.PostgresError("database rejected the query"),
+        cli.asyncpg.InterfaceError("database connection is closed"),
+        OSError("database socket is unavailable"),
+        asyncio.TimeoutError("database query timed out"),
+    ),
+    ids=("postgres", "interface", "os", "timeout"),
+)
+def test_main_reports_operational_errors_without_using_report(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+) -> None:
+    async def fail_run(_args: argparse.Namespace) -> dict[str, object]:
+        raise error
+
+    monkeypatch.setattr(cli, "_run", fail_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "visa_shadow_evidence.py",
+            "--start",
+            "2026-07-21T00:00:00Z",
+            "--end",
+            "2026-07-22T00:00:00Z",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main()
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert str(error) in captured.err
+    assert captured.out == ""
 
 
 @pytest.mark.asyncio
