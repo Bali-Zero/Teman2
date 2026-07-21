@@ -6,8 +6,10 @@
 @import "../styles/kbli-theme.css";
 
 /* Redefine dark variant to target data-theme instead of .dark class
-   (design doc §5 "Toggle mechanism", step 2 of three coupled changes). */
-@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+   (design doc §5 "Toggle mechanism", step 2 of three coupled changes).
+   Covers every dark-surfaced persona theme actually written by the
+   pre-paint script / core provider: dark, operative-dark, editorial. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *, [data-theme='operative-dark'], [data-theme='operative-dark'] *, [data-theme='editorial'], [data-theme='editorial'] *));
 
 /* Brand entrance strip — "Your 3ali, from ZerΩ" slogan + service subtitle.
    Copied verbatim from (marketing)/page.tsx lines 132–225 so /v2 and legacy
