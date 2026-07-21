@@ -36,7 +36,9 @@ from zantara_media.magazine.media_resolver import (
     AssetFingerprintLedger,
     AssetResolutionResult,
     generated_manifest_is_intact,
+    generated_manifest_matches_packet,
     resolve_asset_manifest,
+    validate_generated_asset_bytes,
 )
 from zantara_media.magazine.ranking import score_candidate
 from zantara_media.magazine.reconciler import DurableOutcomeJournal
@@ -216,6 +218,11 @@ async def _publish(
         canonical: dict[str, str] = {}
         for intent in asset_manifest.intents:
             source_bytes = await asyncio.to_thread(intent.source_path.read_bytes)
+            validate_generated_asset_bytes(
+                intent,
+                packet_id=str(packet["packet_id"]),
+                source_bytes=source_bytes,
+            )
             result = await transport.upload_asset_bytes(
                 source_bytes, intent.provenance(str(packet["packet_id"]))
             )
@@ -388,8 +395,11 @@ async def _resolve_assets_if_needed(
             manifest = empty_manifest
             manifest_exists = False
         else:
-            if not automatic or await generated_manifest_is_intact(
-                manifest, output_dir=output_dir
+            if not automatic or (
+                generated_manifest_matches_packet(manifest, packet, breaking=breaking)
+                and await generated_manifest_is_intact(
+                    manifest, output_dir=output_dir
+                )
             ):
                 return AssetResolutionResult(manifest=manifest, fallback_reason=None)
             manifest = empty_manifest

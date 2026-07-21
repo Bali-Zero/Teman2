@@ -17,7 +17,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from PIL import Image
 
@@ -36,11 +36,31 @@ _MAX_DIMENSION = 8192
 _MAX_PIXELS = 40_000_000
 _DUPLICATE_DISTANCE = 4
 _GENERATION_TIMEOUT_S = 240.0
+_FLOWKIT_REQUEST_TIMEOUT_S = 210.0
+_FLOWKIT_ENV_ALLOWLIST = frozenset(
+    {
+        "CURL_CA_BUNDLE",
+        "FLOWKIT_BASE_URL",
+        "FLOWKIT_PAYGATE_TIER",
+        "FLOWKIT_TIMEOUT_S",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "PATH",
+        "PYTHONPATH",
+        "REQUESTS_CA_BUNDLE",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
+        "TMPDIR",
+    }
+)
 
 
 @dataclass(frozen=True)
 class AssetTarget:
     story_id: str
+    story_version: int
+    target_role: Literal["morning-lead", "breaking-story"]
     slug: str
     captured_at: str
     alt_text: str
@@ -123,6 +143,13 @@ async def resolve_asset_manifest(
         return _fallback(None)
     if any(re.search(pattern, target.prompt) for pattern in INDONESIAN_PII_PATTERNS.values()):
         return _fallback("prompt_rejected")
+    scanner = scan_dlp or dlp_check
+    try:
+        prompt_dlp = await scanner(target.prompt, "magazine-editorial-prompt.txt")
+    except Exception:
+        return _fallback("prompt_rejected")
+    if prompt_dlp.has_pii or prompt_dlp.indeterminate:
+        return _fallback("prompt_rejected")
 
     output_dir = output_dir.resolve()
     await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
@@ -169,7 +196,6 @@ async def resolve_asset_manifest(
         await _discard(source_path, output_dir)
         return _fallback("vision_unavailable")
 
-    scanner = scan_dlp or dlp_check
     try:
         dlp_result = await scanner(description, source_path.name)
     except Exception:
@@ -179,7 +205,15 @@ async def resolve_asset_manifest(
         await _discard(source_path, output_dir)
         return _fallback("dlp_rejected")
 
-    asset_id = f"hero-{fingerprint.sha256}"
+    prompt_sha256 = hashlib.sha256(target.prompt.encode()).hexdigest()
+    asset_id = _generated_asset_id(
+        packet_id=packet_id,
+        story_id=target.story_id,
+        story_version=target.story_version,
+        target_role=target.target_role,
+        prompt_sha256=prompt_sha256,
+        content_sha256=fingerprint.sha256,
+    )
     approved_path = (output_dir / f"hero-{fingerprint.sha256}-{attempt_id}.png").resolve()
     if approved_path.parent != output_dir:
         await _discard(source_path, output_dir)
@@ -213,6 +247,10 @@ async def resolve_asset_manifest(
         dlp_status="passed",
         sanitization_status="passed",
         perceptual_dedup_status="unique",
+        generated_for_packet_id=packet_id,
+        generated_for_story_version=target.story_version,
+        generated_for_target_role=target.target_role,
+        prompt_sha256=prompt_sha256,
     )
     return AssetResolutionResult(
         manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
@@ -234,7 +272,7 @@ async def generated_manifest_is_intact(
             return False
         try:
             file_data = await asyncio.to_thread(source_path.read_bytes)
-            fingerprint = await asyncio.to_thread(_inspect_raster, file_data)
+            await asyncio.to_thread(_inspect_raster, file_data)
         except (
             EOFError,
             OSError,
@@ -246,10 +284,94 @@ async def generated_manifest_is_intact(
         ):
             await _discard(source_path, output_dir)
             return False
-        if intent.asset_id != f"hero-{fingerprint.sha256}":
+        try:
+            validate_generated_asset_bytes(
+                intent,
+                packet_id=str(intent.generated_for_packet_id or ""),
+                source_bytes=file_data,
+            )
+        except ValueError:
             await _discard(source_path, output_dir)
             return False
     return True
+
+
+def generated_manifest_matches_packet(
+    manifest: AssetIntentManifestV1,
+    packet: dict[str, Any],
+    *,
+    breaking: bool,
+) -> bool:
+    """Bind an automatic manifest to one exact packet and editorial target."""
+
+    target = select_asset_target(packet, breaking=breaking)
+    if target is None or len(manifest.intents) != 1:
+        return False
+    intent = manifest.intents[0]
+    return (
+        intent.story_ids == (target.story_id,)
+        and intent.captured_at == target.captured_at
+        and intent.generated_for_packet_id == str(packet.get("packet_id", ""))
+        and intent.generated_for_story_version == target.story_version
+        and intent.generated_for_target_role == target.target_role
+        and intent.prompt_sha256 == hashlib.sha256(target.prompt.encode()).hexdigest()
+    )
+
+
+def validate_generated_asset_bytes(
+    intent: AssetIntentV1,
+    *,
+    packet_id: str,
+    source_bytes: bytes,
+) -> None:
+    """Reject generated bytes that no longer match their immutable asset id."""
+
+    automatic = (
+        intent.rights_basis == "generated" and intent.source == "Bali Zero editorial generator"
+    )
+    if not automatic:
+        return
+    if (
+        not intent.generated_for_packet_id
+        or intent.generated_for_story_version is None
+        or intent.generated_for_target_role is None
+        or intent.prompt_sha256 is None
+        or len(intent.story_ids) != 1
+        or intent.generated_for_packet_id != packet_id
+    ):
+        raise ValueError("generated asset bytes lack a valid publication binding")
+    expected = _generated_asset_id(
+        packet_id=packet_id,
+        story_id=intent.story_ids[0],
+        story_version=intent.generated_for_story_version,
+        target_role=intent.generated_for_target_role,
+        prompt_sha256=intent.prompt_sha256,
+        content_sha256=hashlib.sha256(source_bytes).hexdigest(),
+    )
+    if intent.asset_id != expected:
+        raise ValueError("generated asset bytes do not match the manifest binding")
+
+
+def _generated_asset_id(
+    *,
+    packet_id: str,
+    story_id: str,
+    story_version: int,
+    target_role: str,
+    prompt_sha256: str,
+    content_sha256: str,
+) -> str:
+    binding = ":".join(
+        (
+            packet_id,
+            story_id,
+            str(story_version),
+            target_role,
+            prompt_sha256,
+            content_sha256,
+        )
+    )
+    return f"hero-{hashlib.sha256(binding.encode()).hexdigest()}"
 
 
 def _fallback(reason: str | None) -> AssetResolutionResult:
@@ -268,12 +390,17 @@ def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
     )
 
     async def generate(prompt: str, destination: Path) -> Path:
+        child_env = {
+            key: value for key, value in os.environ.items() if key in _FLOWKIT_ENV_ALLOWLIST
+        }
         process = await asyncio.create_subprocess_exec(
             sys.executable,
             str(cli),
             "generate-image",
             "--prompt",
             prompt,
+            "--timeout",
+            str(_FLOWKIT_REQUEST_TIMEOUT_S),
             "--orientation",
             "LANDSCAPE",
             "--project",
@@ -286,6 +413,7 @@ def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
             str(destination),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=child_env,
         )
         try:
             stdout, _stderr = await asyncio.wait_for(
@@ -393,14 +521,22 @@ def select_asset_target(
     if story is None or story.get("asset_digests"):
         return None
 
-    story_id = str(story.get("story_id", "")).strip()
-    slug = str(story.get("slug", "")).strip()
-    captured_at = str(packet.get("verified_at", "")).strip()
-    title = str(story.get("title", "")).strip()[:240]
-    deck = str(story.get("deck", "")).strip()[:360]
-    domain = str(story.get("domain", "general")).strip()[:40]
-    why = str(story.get("why_it_matters", "")).strip()[:360]
-    if not story_id or not slug or not captured_at or not title:
+    story_id = str(story.get("story_id") or "").strip()
+    slug = str(story.get("slug") or "").strip()
+    captured_at = str(packet.get("verified_at") or "").strip()
+    title = str(story.get("title") or "").strip()[:240]
+    deck = str(story.get("deck") or "").strip()[:360]
+    domain = str(story.get("domain") or "general").strip()[:40]
+    why = str(story.get("why_it_matters") or "").strip()[:360]
+    story_version = story.get("version")
+    if (
+        not story_id
+        or not slug
+        or not captured_at
+        or not title
+        or not isinstance(story_version, int)
+        or story_version < 0
+    ):
         return None
     prompt = (
         "Create one original landscape editorial photograph for the private Bali Zero "
@@ -412,6 +548,8 @@ def select_asset_target(
     )[:1400]
     return AssetTarget(
         story_id=story_id,
+        story_version=story_version,
+        target_role="breaking-story" if breaking else "morning-lead",
         slug=slug,
         captured_at=captured_at,
         alt_text=f"Editorial illustration for {title}"[:500],

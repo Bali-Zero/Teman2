@@ -19,7 +19,11 @@ from zantara_media.cli.magazine_publish import (
 )
 from zantara_media.magazine.assets import AssetIntentManifestV1, AssetIntentV1
 from zantara_media.magazine.audit_anchor import build_audit_event_hash
-from zantara_media.magazine.media_resolver import AssetResolutionResult
+from zantara_media.magazine.media_resolver import (
+    AssetResolutionResult,
+    _generated_asset_id,
+    select_asset_target,
+)
 
 
 PNG = bytes.fromhex(
@@ -28,9 +32,41 @@ PNG = bytes.fromhex(
 )
 
 
-def _projection(
-    path: Path, candidate: dict[str, Any] | None = None
-) -> None:
+def _automatic_intent(
+    packet: dict[str, Any], source: Path, *, source_bytes: bytes = PNG
+) -> AssetIntentV1:
+    target = select_asset_target(packet, breaking=True)
+    assert target is not None
+    prompt_sha256 = hashlib.sha256(target.prompt.encode()).hexdigest()
+    return AssetIntentV1(
+        asset_id=_generated_asset_id(
+            packet_id=str(packet["packet_id"]),
+            story_id=target.story_id,
+            story_version=target.story_version,
+            target_role=target.target_role,
+            prompt_sha256=prompt_sha256,
+            content_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        ),
+        source_path=source,
+        story_ids=(target.story_id,),
+        captured_at=target.captured_at,
+        alt_text="Generated editorial hero",
+        source="Bali Zero editorial generator",
+        source_url=None,
+        rights_basis="generated",
+        rights_status="approved",
+        usage_status="approved",
+        dlp_status="passed",
+        sanitization_status="passed",
+        perceptual_dedup_status="unique",
+        generated_for_packet_id=str(packet["packet_id"]),
+        generated_for_story_version=target.story_version,
+        generated_for_target_role=target.target_role,
+        prompt_sha256=prompt_sha256,
+    )
+
+
+def _projection(path: Path, candidate: dict[str, Any] | None = None) -> None:
     path.write_text(
         json.dumps(
             {
@@ -320,29 +356,14 @@ async def test_intact_generated_manifest_is_reused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
     output_dir = tmp_path / "generated"
     output_dir.mkdir()
     source = output_dir / "hero.png"
     source.write_bytes(PNG)
     existing = AssetIntentManifestV1(
         schema_version="asset-intents.v1",
-        intents=(
-            AssetIntentV1(
-                asset_id=f"hero-{hashlib.sha256(PNG).hexdigest()}",
-                source_path=source,
-                story_ids=(str(packet["story"]["story_id"]),),
-                captured_at=str(packet["verified_at"]),
-                alt_text="Generated editorial hero",
-                source="Bali Zero editorial generator",
-                source_url=None,
-                rights_basis="generated",
-                rights_status="approved",
-                usage_status="approved",
-                dlp_status="passed",
-                sanitization_status="passed",
-                perceptual_dedup_status="unique",
-            ),
-        ),
+        intents=(_automatic_intent(packet, source),),
     )
     manifest_path = tmp_path / "assets.json"
     manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
@@ -361,6 +382,99 @@ async def test_intact_generated_manifest_is_reused(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["packet", "story_version"])
+async def test_generated_manifest_is_not_reused_across_generation_context(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    original_packet = breaking_factory()
+    original_packet["story"]["asset_digests"] = []
+    packet = json.loads(json.dumps(original_packet))
+    if change == "packet":
+        packet["packet_id"] = "packet-breaking-2"
+    else:
+        packet["story"]["version"] += 1
+    output_dir = tmp_path / "generated"
+    output_dir.mkdir()
+    source = output_dir / "hero.png"
+    source.write_bytes(PNG)
+    existing = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(_automatic_intent(original_packet, source),),
+    )
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
+    monkeypatch.setenv("MAGAZINE_ASSET_OUTPUT_DIR", str(output_dir))
+    calls = 0
+
+    async def resolve(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        nonlocal calls
+        calls += 1
+        return AssetResolutionResult(
+            manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=()),
+            fallback_reason="generation_failed",
+        )
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", resolve)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert calls == 1
+    assert result.fallback_reason == "generation_failed"
+
+
+@pytest.mark.asyncio
+async def test_publish_rejects_changed_generated_bytes_before_upload(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
+    source = tmp_path / "hero.png"
+    original = PNG
+    source.write_bytes(original)
+    intent = _automatic_intent(packet, source, source_bytes=original)
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(
+        AssetIntentManifestV1(
+            schema_version="asset-intents.v1", intents=(intent,)
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+    source.write_bytes(original + b"changed-after-verification")
+
+    class Transport:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            pass
+
+        async def upload_asset_bytes(self, *_args: Any, **_kwargs: Any) -> Any:
+            raise AssertionError("changed bytes must not reach transport")
+
+        async def aclose(self) -> None:
+            pass
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.MagazineTransport", Transport)
+    key = Ed25519PrivateKey.generate()
+    monkeypatch.setenv(
+        "MAGAZINE_AUDIT_PRIVATE_KEY_B64",
+        base64.b64encode(key.private_bytes_raw()).decode(),
+    )
+    monkeypatch.setenv("MAGAZINE_BASE_URL", "https://magazine.example")
+    monkeypatch.setenv("MAGAZINE_SIWC_BEARER_TOKEN", "token")
+    monkeypatch.setenv("MAGAZINE_HMAC_KEY_ID", "hmac-1")
+    monkeypatch.setenv("MAGAZINE_HMAC_SECRET", "secret")
+    monkeypatch.setenv("MAGAZINE_HMAC_AUDIENCE", "magazine")
+    monkeypatch.setenv("MAGAZINE_OUTCOME_JOURNAL", str(tmp_path / "outcomes.jsonl"))
+
+    with pytest.raises(ValueError, match="generated asset bytes"):
+        await _publish(packet, breaking=True, asset_manifest_path=manifest_path)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("damage", ["missing", "tampered"])
 async def test_invalid_generated_manifest_is_regenerated(
     tmp_path: Path,
@@ -369,29 +483,14 @@ async def test_invalid_generated_manifest_is_regenerated(
     damage: str,
 ) -> None:
     packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
     output_dir = tmp_path / "generated"
     output_dir.mkdir()
     source = output_dir / "hero.png"
     source.write_bytes(PNG)
     existing = AssetIntentManifestV1(
         schema_version="asset-intents.v1",
-        intents=(
-            AssetIntentV1(
-                asset_id=f"hero-{hashlib.sha256(PNG).hexdigest()}",
-                source_path=source,
-                story_ids=(str(packet["story"]["story_id"]),),
-                captured_at=str(packet["verified_at"]),
-                alt_text="Generated editorial hero",
-                source="Bali Zero editorial generator",
-                source_url=None,
-                rights_basis="generated",
-                rights_status="approved",
-                usage_status="approved",
-                dlp_status="passed",
-                sanitization_status="passed",
-                perceptual_dedup_status="unique",
-            ),
-        ),
+        intents=(_automatic_intent(packet, source),),
     )
     manifest_path = tmp_path / "assets.json"
     manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
@@ -451,9 +550,7 @@ async def test_auto_assets_kill_switch_preserves_empty_manifest(
         ("2026-07-19T00:00:00.123987Z", "2026-07-19T00:00:00.123Z"),
     ],
 )
-def test_anchor_timestamp_is_canonical_millisecond_utc(
-    source: str, expected: str
-) -> None:
+def test_anchor_timestamp_is_canonical_millisecond_utc(source: str, expected: str) -> None:
     assert _millisecond_timestamp(source) == expected
 
 
@@ -508,9 +605,7 @@ async def test_unknown_asset_story_is_rejected_before_first_upload(
         "MAGAZINE_HMAC_KEY_ID": "hmac-1",
         "MAGAZINE_HMAC_SECRET": "secret",
         "MAGAZINE_HMAC_AUDIENCE": "magazine",
-        "MAGAZINE_AUDIT_PRIVATE_KEY_B64": base64.b64encode(
-            key.private_bytes_raw()
-        ).decode(),
+        "MAGAZINE_AUDIT_PRIVATE_KEY_B64": base64.b64encode(key.private_bytes_raw()).decode(),
         "MAGAZINE_OUTCOME_JOURNAL": str(tmp_path / "state" / "outcomes.jsonl"),
     }
     for name, value in env.items():
@@ -543,7 +638,10 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
             {
                 "schema_version": "magazine-morning-input.v2",
                 "projection_inputs": [
-                    {"system_id": "regulatory-watcher", "projection_path": str(projection)}
+                    {
+                        "system_id": "regulatory-watcher",
+                        "projection_path": str(projection),
+                    }
                 ],
                 "expected_current_revision": 0,
                 "expected_breaking_revision": 0,
@@ -628,17 +726,13 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
                 "operation": "edition.publish",
                 "packet_id": staged_packet_id,
             }
-            hash_a = build_audit_event_hash(
-                "magazine-publication.v1", 1, "0" * 64, payload_a
-            )
+            hash_a = build_audit_event_hash("magazine-publication.v1", 1, "0" * 64, payload_a)
             payload_b = {
                 "schema_version": "publication-operation.v1",
                 "operation": "breaking.publish",
                 "packet_id": "breaking-later",
             }
-            hash_b = build_audit_event_hash(
-                "magazine-publication.v1", 2, hash_a, payload_b
-            )
+            hash_b = build_audit_event_hash("magazine-publication.v1", 2, hash_a, payload_b)
             return httpx.Response(
                 200,
                 headers={"cache-control": "no-store"},
@@ -702,14 +796,25 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
     for name, value in env.items():
         monkeypatch.setenv(name, value)
     output = tmp_path / "edition.json"
-    assert await async_main(
-        [
-            "morning", "--input", str(source), "--output", str(output),
-            "--cutoff", "2026-07-17T22:15:00Z", "--required-system-id",
-            "regulatory-watcher", "--asset-manifest", str(assets),
-            "--publish",
-        ]
-    ) == 0
+    assert (
+        await async_main(
+            [
+                "morning",
+                "--input",
+                str(source),
+                "--output",
+                str(output),
+                "--cutoff",
+                "2026-07-17T22:15:00Z",
+                "--required-system-id",
+                "regulatory-watcher",
+                "--asset-manifest",
+                str(assets),
+                "--publish",
+            ]
+        )
+        == 0
+    )
     assert order == [
         "/api/machine/assets",
         "/api/machine/publications/editions",
@@ -747,7 +852,8 @@ async def test_cli_breaking_dry_run_uses_public_projection(
         encoding="utf-8",
     )
     output = tmp_path / "breaking-output.json"
-    assert await async_main(
-        ["breaking", "--input", str(source), "--output", str(output), "--dry-run"]
-    ) == 0
+    assert (
+        await async_main(["breaking", "--input", str(source), "--output", str(output), "--dry-run"])
+        == 0
+    )
     assert json.loads(output.read_text(encoding="utf-8"))["publication_target"] == "breaking"

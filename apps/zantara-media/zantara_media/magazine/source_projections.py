@@ -711,10 +711,11 @@ def prepare_morning_inputs(
         },
     )
     asset_manifest_path = state_dir / "inputs" / f"assets-{edition_date}.json"
-    _write_json_atomic(
-        asset_manifest_path,
-        {"schema_version": "asset-intents.v1", "intents": []},
-    )
+    if not asset_manifest_path.is_file():
+        _write_json_atomic(
+            asset_manifest_path,
+            {"schema_version": "asset-intents.v1", "intents": []},
+        )
     return PreparedMorningInputs(
         manifest_path=manifest_path,
         asset_manifest_path=asset_manifest_path,

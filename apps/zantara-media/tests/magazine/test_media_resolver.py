@@ -19,6 +19,15 @@ from zantara_media.magazine.media_resolver import (
 from zantara_media.security.dlp import DLPResult
 
 
+async def _safe_dlp(_text: str, _filename: str) -> DLPResult:
+    return DLPResult(has_pii=False)
+
+
+@pytest.fixture(autouse=True)
+def stub_default_dlp(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(media_resolver, "dlp_check", _safe_dlp)
+
+
 def test_standard_edition_selects_only_the_declared_lead(
     edition_factory: Callable[..., dict[str, Any]],
     story_factory: Callable[..., dict[str, Any]],
@@ -282,6 +291,41 @@ async def test_obvious_pii_is_rejected_before_cloud_generation(
 
 
 @pytest.mark.asyncio
+async def test_semantic_pii_is_rejected_before_cloud_generation(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory(
+        story=story_factory(
+            title="A deadline affecting Made Wijaya at his home in Ubud",
+            asset_digests=[],
+        )
+    )
+    scanned: list[str] = []
+
+    async def scan(_text: str, filename: str) -> DLPResult:
+        scanned.append(filename)
+        return DLPResult(has_pii=True, patterns=["SEMANTIC_PERSON_NAME"])
+
+    async def generate(_prompt: str, _destination: Path) -> Path:
+        raise AssertionError("semantic PII must never reach the cloud generator")
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=tmp_path / "generated",
+        ledger=AssetFingerprintLedger(tmp_path / "fingerprints.jsonl"),
+        generate=generate,
+        scan_dlp=scan,
+    )
+
+    assert scanned == ["magazine-editorial-prompt.txt"]
+    assert result.manifest.intents == ()
+    assert result.fallback_reason == "prompt_rejected"
+
+
+@pytest.mark.asyncio
 async def test_animated_or_pii_asset_fails_closed(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],
@@ -313,7 +357,9 @@ async def test_animated_or_pii_asset_fails_closed(
     async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
         return "A synthetic sensitive marker is visible.", {"model": "local"}
 
-    async def pii(_text: str, _filename: str) -> DLPResult:
+    async def pii(_text: str, filename: str) -> DLPResult:
+        if filename == "magazine-editorial-prompt.txt":
+            return DLPResult(has_pii=False)
         return DLPResult(has_pii=True, patterns=["PASSPORT_ID"])
 
     detected = await resolve_asset_manifest(
@@ -362,7 +408,9 @@ async def test_oversized_or_indeterminate_asset_fails_closed(
     async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
         return "A dark abstract editorial composition.", {"model": "local"}
 
-    async def indeterminate(_text: str, _filename: str) -> DLPResult:
+    async def indeterminate(_text: str, filename: str) -> DLPResult:
+        if filename == "magazine-editorial-prompt.txt":
+            return DLPResult(has_pii=False)
         return DLPResult(has_pii=True, indeterminate=True)
 
     uncertain = await resolve_asset_manifest(
@@ -397,6 +445,44 @@ async def test_malformed_flowkit_output_is_rejected(
 
     with pytest.raises(RuntimeError, match="invalid output"):
         await generate("bounded prompt", tmp_path / "hero.png")
+
+
+@pytest.mark.asyncio
+async def test_flowkit_generator_uses_bounded_timeout_and_secret_free_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    observed_args: tuple[Any, ...] = ()
+    observed_kwargs: dict[str, Any] = {}
+
+    class Process:
+        returncode = 0
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            return b'{"ok":true}', b""
+
+    async def create(*args: Any, **kwargs: Any) -> Process:
+        nonlocal observed_args, observed_kwargs
+        observed_args = args
+        observed_kwargs = kwargs
+        return Process()
+
+    monkeypatch.setenv("FLOWKIT_BASE_URL", "http://127.0.0.1:8787")
+    monkeypatch.setenv("MAGAZINE_HMAC_SECRET", "must-not-reach-flowkit")
+    monkeypatch.setenv("MAGAZINE_SIWC_BEARER_TOKEN", "must-not-reach-flowkit")
+    monkeypatch.setattr("asyncio.create_subprocess_exec", create)
+
+    generate = _flowkit_generator(tmp_path / "flowkit_cli.py")
+    destination = tmp_path / "hero.png"
+    assert await generate("bounded prompt", destination) == destination
+
+    assert "--timeout" in observed_args
+    timeout_index = observed_args.index("--timeout")
+    assert float(observed_args[timeout_index + 1]) > 30
+    assert float(observed_args[timeout_index + 1]) < 240
+    child_env = observed_kwargs["env"]
+    assert child_env["FLOWKIT_BASE_URL"] == "http://127.0.0.1:8787"
+    assert "MAGAZINE_HMAC_SECRET" not in child_env
+    assert "MAGAZINE_SIWC_BEARER_TOKEN" not in child_env
 
 
 @pytest.mark.asyncio
