@@ -38,14 +38,22 @@ EXEMPTIONS (each one has a dedicated innocence test):
      limit, documented not fixed: a block-comment continuation line NOT
      starting with `* ` is judged as code. Tracking true comment state
      would require the whole file, and this gate only ever sees added lines.
-  2. Token-source paths — (a) anything under `packages/core/tokens/`,
-     (b) anything under `apps/mouth/src/styles/`, (c) any file inside a
-     directory named exactly `tokens/` (a PATH SEGMENT, never a basename),
-     (d) nothing else. Hexes LIVE there by design (that is the SSOT the
-     gate protects). Tri-LLM hardening (PR #2987 round-2): the v1 rule
-     matched BASENAMES (`tokens*.css`, `*.tokens.*`), so a route-local
-     `apps/mouth/src/app/portal/tokens.css` or `anything.tokens.tsx` got a
-     free pass OUTSIDE the token SSOT — basename matching is gone.
+     Round-3 refinement (codex RED, PR #2987): an opener CLOSED on the
+     same line no longer exempts the WHOLE line — `/* legacy */ color:
+     #fff;` is judged on the text after the closer (see
+     `effective_code()`); only an opener with NO same-line closer still
+     exempts the whole line (it swallows the rest of the line, and this
+     gate only ever sees one line).
+  2. Token-source paths — ONLY the two declared SSOT roots: (a) anything
+     under `packages/core/tokens/`, (b) anything under
+     `apps/mouth/src/styles/`, (c) nothing else. Hexes LIVE there by
+     design (that is the SSOT the gate protects). Hardening history: the
+     v1 rule matched BASENAMES (`tokens*.css`, `*.tokens.*` — a
+     route-local `portal/tokens.css` got a free pass); the round-2 rule
+     matched any `tokens/` path SEGMENT (a route-local
+     `portal/tokens/component.tsx` still bypassed — codex RED on
+     PR #2987). Both generic rules are gone: exemption is by SSOT
+     LOCATION, never by name-shape.
   3. `token-lint-ok` marker — a line carrying `token-lint-ok:` followed by a
      NON-EMPTY reason (e.g. `// token-lint-ok: brand logo asset`). A bare
      `token-lint-ok` without colon+reason does NOT exempt — the reason is
@@ -136,14 +144,14 @@ SCOPED_PREFIXES: tuple[str, ...] = (
 )
 
 # Token-source paths — where hexes are SUPPOSED to live (WS1 SSOT).
-# Hardened 2026-07-19 (PR #2987 round-2): prefix/segment matching ONLY —
-# the v1 basename globs (tokens*.css, *.tokens.*) were a bypass (a
-# route-local portal/tokens.css got the SSOT free pass).
+# Hardened 2026-07-19 (PR #2987 round-3, codex RED): ONLY these two SSOT
+# roots exempt. The v1 basename globs (tokens*.css, *.tokens.*) and the
+# round-2 generic `tokens/` path-segment rule were BOTH bypasses (a
+# route-local portal/tokens/component.tsx slipped through round-2).
 TOKEN_SOURCE_PREFIXES: tuple[str, ...] = (
     "packages/core/tokens/",
     "apps/mouth/src/styles/",
 )
-TOKEN_SOURCE_DIR_SEGMENT = "tokens"
 
 # `#` + 3/4/6/8 hex digits, longest-first so `#aabbccdd` is ONE 8-digit match.
 # Lookbehind excludes alphanumerics, a second `#` (markdown `## Heading`) and
@@ -239,21 +247,28 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
     """Parse a unified diff (git format) into the list of ADDED lines with
     their new-file line numbers. Stdlib-only, deterministic.
 
-    State machine: outside a hunk, only `+++ ` headers and well-formed `@@`
-    hunk headers matter — everything else (`diff --git`, `index`, `---`,
-    `new file mode`, `Binary files ...`, blank noise) is ignored, liberally.
-    INSIDE a hunk the parser is STRICT: every line must start with `+`, `-`,
-    ` `, or `\\` (the no-newline marker), and the body must consume exactly
-    the line counts the header declared. The hunk-count tracking (not a
-    naive startswith) is what keeps an added line that literally begins with
-    `++` from being mistaken for a `+++` file header, and vice versa.
+    State machine: outside a hunk, `diff --git` is a per-file STATE BOUNDARY
+    (resets current_path / have_file_header — PR #2987 round-3, codex RED:
+    without the reset, a malformed second file with hunks but no `+++`
+    header INHERITED the previous file's path, so its added lines were
+    attributed to the wrong, possibly out-of-scope, file and the gate could
+    exit clean), `+++ ` headers and well-formed `@@` hunk headers matter —
+    everything else (`index`, `---`, `new file mode`, `Binary files ...`,
+    blank noise) is ignored, liberally. INSIDE a hunk the parser is STRICT:
+    every line must start with `+`, `-`, ` `, or `\\` (the no-newline
+    marker), and the body must consume exactly the line counts the header
+    declared. The hunk-count tracking (not a naive startswith) is what
+    keeps an added line that literally begins with `++` from being mistaken
+    for a `+++` file header, and vice versa.
 
     Raises DiffParseError on: a hunk header that does not parse, a hunk
-    header before any `+++` file header, a hunk-body line with an unknown
-    sigil, a hunk body that overruns its declared counts, a diff-content
-    line outside any hunk, or EOF arriving before a hunk has consumed its
-    declared counts (truncated diff — PR #2987 round-2). All of these mean
-    "the scanner cannot trust what it saw" -> caller fails closed.
+    header before any `+++` file header, an added line with no current file
+    path (deleted files never carry additions), a hunk-body line with an
+    unknown sigil, a hunk body that overruns its declared counts, a
+    diff-content line outside any hunk, or EOF arriving before a hunk has
+    consumed its declared counts (truncated diff — PR #2987 round-2). All
+    of these mean "the scanner cannot trust what it saw" -> caller fails
+    closed.
     """
     added: list[AddedLine] = []
     current_path: str | None = None
@@ -265,6 +280,15 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
 
     for raw in text.splitlines():
         if not in_hunk:
+            if raw.startswith("diff --git "):
+                # Per-file state boundary (PR #2987 round-3, codex RED):
+                # without this reset a malformed second file (hunks but no
+                # `+++` header) INHERITED the previous file's path — its
+                # added lines could be attributed to the wrong (possibly
+                # out-of-scope) file and the gate would exit clean.
+                current_path = None
+                have_file_header = False
+                continue
             if raw.startswith("+++ "):
                 current_path = _file_header_path(raw)
                 have_file_header = True
@@ -301,8 +325,14 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
             continue
         if raw.startswith("+"):
             remaining_new -= 1
-            if current_path is not None:
-                added.append(AddedLine(current_path, new_lineno, raw[1:]))
+            if current_path is None:
+                # `+++ /dev/null` (deleted file) never carries additions, so
+                # a `+` line here means the file header was missing/garbled
+                # (PR #2987 round-3) — fail closed rather than drop the line.
+                raise DiffParseError(
+                    "added line with no current file path (missing +++ header?)"
+                )
+            added.append(AddedLine(current_path, new_lineno, raw[1:]))
             new_lineno += 1
         elif raw.startswith("-"):
             remaining_old -= 1
@@ -339,14 +369,12 @@ def is_scoped(path: str) -> bool:
 
 
 def is_token_source(path: str) -> bool:
-    """True iff `path` is a place where hexes are the SSOT, not a violation:
-    (a) under a TOKEN_SOURCE_PREFIX, or (b) inside a directory named exactly
-    `tokens` — a path SEGMENT, never a basename, so a route-local
-    `portal/tokens.css` is NOT exempt (PR #2987 round-2)."""
-    if any(path.startswith(prefix) for prefix in TOKEN_SOURCE_PREFIXES):
-        return True
-    segments = path.split("/")
-    return TOKEN_SOURCE_DIR_SEGMENT in segments[:-1]
+    """True iff `path` lives under one of the two declared token-SSOT roots
+    (TOKEN_SOURCE_PREFIXES) — nowhere else. No basename globs, no generic
+    `tokens/` segment rule: both were bypasses (PR #2987 rounds 2-3, codex
+    RED — a route-local `portal/tokens/component.tsx` slipped through the
+    segment rule)."""
+    return any(path.startswith(prefix) for prefix in TOKEN_SOURCE_PREFIXES)
 
 
 def is_comment_line(content: str) -> bool:
@@ -364,6 +392,35 @@ def is_comment_line(content: str) -> bool:
         BLOCK_COMMENT_CONT_RE.match(stripped) is not None
         and CSS_RULE_CHARS_RE.search(stripped) is None
     )
+
+
+# Inline comment opener/closer pairs for effective_code(): an opener that is
+# CLOSED on the same line exempts only the comment part, not the whole line.
+INLINE_COMMENT_PAIRS: tuple[tuple[str, str], ...] = (("/*", "*/"), ("<!--", "-->"))
+
+
+def effective_code(content: str) -> str:
+    """The portion of an added line that is JUDGED for hexes (PR #2987
+    round-3, codex RED).
+
+    A line beginning with a comment opener (`/*` or `<!--`) used to be
+    exempt WHOLESALE — so `/* legacy */ color: #fff;` bypassed the gate:
+    the opener made the entire line "a comment". Now: when the matching
+    closer (`*/` resp. `-->`) appears later on the SAME line, only the text
+    AFTER the closer is judged. When no closer appears on the same line,
+    the whole line is a comment (unchanged — an unclosed opener swallows
+    the rest of the line, and this gate only ever sees one line). Lines
+    not starting with an opener are judged whole. Only the LEADING comment
+    is stripped: `/* a */ code /* b */ tail` judges ` code /* b */ tail`.
+    """
+    stripped = content.lstrip()
+    for opener, closer in INLINE_COMMENT_PAIRS:
+        if stripped.startswith(opener):
+            idx = stripped.find(closer, len(opener))
+            if idx == -1:
+                return ""
+            return stripped[idx + len(closer) :]
+    return content
 
 
 def has_ok_marker(content: str) -> bool:
@@ -388,6 +445,8 @@ def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
     Judges every added line in `diff_text` that is attributed to a path in
     `files` (None = judge every path the diff names), inside the scoped
     route groups, outside token sources, and not exempted at line level.
+    Line-level judgment runs on `effective_code(content)` — the text after
+    any same-line-closed leading comment (PR #2987 round-3).
     """
     allowed = None if files is None else {_normalize_path(f) for f in files if f.strip()}
     violations: list[Violation] = []
@@ -401,11 +460,14 @@ def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
         if is_token_source(path):
             continue
         scanned_files.add(path)
-        if is_comment_line(added.content):
+        effective = effective_code(added.content)
+        if not effective.strip():
             continue
-        if has_ok_marker(added.content):
+        if is_comment_line(effective):
             continue
-        for hex_value in find_hexes(added.content):
+        if has_ok_marker(effective):
+            continue
+        for hex_value in find_hexes(effective):
             violations.append(Violation(path, added.line, hex_value))
     return ScanResult(violations, len(scanned_files))
 

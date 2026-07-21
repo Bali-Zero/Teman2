@@ -155,16 +155,26 @@ def test_guilt_eight_digit_hex_matches_once() -> None:
 
 def test_innocence_1_token_source_file() -> None:
     """Innocence-1 (mandate): the same hex in `packages/core/tokens/x.css`
-    passes — that file IS the SSOT the gate protects. The hardened rule
-    (PR #2987 round-2) also exempts a file inside ANY directory named
-    exactly `tokens/` — a path SEGMENT, never a basename."""
+    passes — that file IS the SSOT the gate protects. Round-3 (codex RED):
+    ONLY the two declared SSOT roots exempt (packages/core/tokens/ and
+    apps/mouth/src/styles/) — the generic `tokens/` segment rule is gone."""
     result = tl.scan(make_diff(TOKEN_FILE, ["--accent-funnel: #d4845a;"]), [TOKEN_FILE])
     assert result.violations == []
     assert tl.is_token_source(TOKEN_FILE)
-    segment_dir = "apps/mouth/src/app/portal/tokens/theme.css"
-    assert tl.is_token_source(segment_dir)  # `tokens/` is a real path segment
-    result = tl.scan(make_diff(segment_dir, ["--x: #d4845a;"]), [segment_dir])
-    assert result.violations == []
+
+
+def test_guilt_tokens_segment_not_exempt() -> None:
+    """GUILT (PR #2987 round-3, codex RED finding 1): the round-2 generic
+    `tokens/` path-SEGMENT rule still let route-local files bypass. A hex
+    in `portal/tokens/theme.css` AND in `portal/tokens/component.tsx` MUST
+    both be flagged — exemption is by SSOT LOCATION, never by name-shape."""
+    for trap in (
+        "apps/mouth/src/app/portal/tokens/theme.css",
+        "apps/mouth/src/app/portal/tokens/component.tsx",
+    ):
+        assert not tl.is_token_source(trap), f"still exempt: {trap}"
+        result = tl.scan(make_diff(trap, ["--x: #d4845a;"]), [trap])
+        assert [v.hex for v in result.violations] == ["#d4845a"], trap
 
 
 def test_guilt_basename_trap_tokens_files() -> None:
@@ -233,6 +243,31 @@ def test_guilt_commented_out_css_rule_judged_as_code() -> None:
     assert not tl.is_comment_line(line)
     result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
     assert [v.hex for v in result.violations] == ["#d4845a"]
+
+
+def test_guilt_inline_closed_comment_then_code() -> None:
+    """GUILT (PR #2987 round-3, codex RED finding 2): an opener CLOSED on
+    the same line exempts only the comment part — the code AFTER the closer
+    is judged, at the line's real number."""
+    line = "/* legacy */ color: #d4845a;"
+    assert tl.effective_code(line) == " color: #d4845a;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line], start=42), [WORKSPACE_PAGE])
+    assert [(v.line, v.hex) for v in result.violations] == [(42, "#d4845a")]
+    html_line = "<!-- x --> background: #c9a96e;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [html_line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#c9a96e"]
+
+
+def test_innocence_inline_comment_fully_closed() -> None:
+    """INNOCENCE (finding 2 counterpart): when the closer ends the line (or
+    never comes), nothing judgeable remains."""
+    for line in (
+        "/* palette: #d4845a #c9a96e */",
+        "<!-- brand #ff2d4c -->",
+        "/* unclosed opener swallows the rest of the line: #d4845a",
+    ):
+        result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+        assert result.violations == [], f"flagged: {line!r}"
 
 
 def test_innocence_3_ok_marker_with_reason() -> None:
@@ -328,6 +363,58 @@ def test_innocence_exact_count_hunk_then_eof() -> None:
     assert result.violations == []  # out of scope, but parses clean
 
 
+def test_error_state_leak_second_file_without_header() -> None:
+    """GUILT (PR #2987 round-3, codex RED finding 3): per-file state must
+    reset at every `diff --git` boundary — a malformed second file with
+    hunks but no `+++` header used to INHERIT the first file's path, so its
+    added lines were attributed to the wrong (possibly out-of-scope) file
+    and the gate could exit clean. Now: fail-closed."""
+    leaked = (
+        f"diff --git a/{WORKSPACE_PAGE} b/{WORKSPACE_PAGE}\n"
+        f"--- a/{WORKSPACE_PAGE}\n"
+        f"+++ b/{WORKSPACE_PAGE}\n"
+        "@@ -0,0 +1,1 @@\n"
+        "+ok\n"
+        "diff --git a/apps/mouth/src/app/(marketing)/m.tsx b/apps/mouth/src/app/(marketing)/m.tsx\n"
+        "index 1111111..2222222 100644\n"
+        "@@ -0,0 +1,1 @@\n"
+        "+color: #d4845a;\n"
+    )
+    with pytest.raises(tl.DiffParseError):
+        tl.parse_unified_diff(leaked)
+
+
+def test_error_added_line_for_dev_null_file() -> None:
+    """GUILT (finding 3, sibling guard): `+++ /dev/null` (deleted file)
+    never carries additions — a `+` line in its hunk means the input is
+    garbled -> fail-closed, never silently drop the line."""
+    bad = "+++ /dev/null\n@@ -0,0 +1,1 @@\n+x\n"
+    with pytest.raises(tl.DiffParseError):
+        tl.parse_unified_diff(bad)
+
+
+def test_innocence_two_file_diff_attributes_per_file() -> None:
+    """INNOCENCE (finding 3 counterpart): a well-formed two-file diff keeps
+    correct per-file attribution — the boundary reset changes nothing for
+    honest input."""
+    two = (
+        f"diff --git a/{PORTAL_PAGE} b/{PORTAL_PAGE}\n"
+        f"--- a/{PORTAL_PAGE}\n"
+        f"+++ b/{PORTAL_PAGE}\n"
+        "@@ -0,0 +1,1 @@\n"
+        "+color: #d4845a;\n"
+        f"diff --git a/{WORKSPACE_PAGE} b/{WORKSPACE_PAGE}\n"
+        f"--- a/{WORKSPACE_PAGE}\n"
+        f"+++ b/{WORKSPACE_PAGE}\n"
+        "@@ -0,0 +5,1 @@\n"
+        "+// comment: #c9a96e\n"
+    )
+    result = tl.scan(two, [PORTAL_PAGE, WORKSPACE_PAGE])
+    assert [(v.path, v.line, v.hex) for v in result.violations] == [
+        (PORTAL_PAGE, 1, "#d4845a")
+    ]
+
+
 # ---------------------------------------------------------------------------
 # PARSER UNIT CHECKS — line numbers and tricky shapes.
 # ---------------------------------------------------------------------------
@@ -412,6 +499,28 @@ def test_cli_stdin_truncated_hunk_exit_2() -> None:
     exits 2 with the fail-closed message, never a clean/partial result."""
     truncated = "+++ b/x\n@@ -0,0 +1,5 @@\n+a\n+b\n"
     proc = _run_cli(["--stdin", "--files", "x"], truncated)
+    assert proc.returncode == 2
+    assert "fail-closed" in proc.stderr
+
+
+def test_cli_state_leak_second_file_exit_2() -> None:
+    """CLI contract for round-3 finding 3: crafted two-file stdin where the
+    second file has hunks but no `+++` header exits 2 (fail-closed) — it
+    must never inherit the first file's path and exit clean."""
+    leaked = (
+        f"diff --git a/{WORKSPACE_PAGE} b/{WORKSPACE_PAGE}\n"
+        f"--- a/{WORKSPACE_PAGE}\n"
+        f"+++ b/{WORKSPACE_PAGE}\n"
+        "@@ -0,0 +1,1 @@\n"
+        "+ok\n"
+        "diff --git a/apps/mouth/src/app/(marketing)/m.tsx b/apps/mouth/src/app/(marketing)/m.tsx\n"
+        "@@ -0,0 +1,1 @@\n"
+        "+color: #d4845a;\n"
+    )
+    proc = _run_cli(
+        ["--stdin", "--files", f"{WORKSPACE_PAGE},apps/mouth/src/app/(marketing)/m.tsx"],
+        leaked,
+    )
     assert proc.returncode == 2
     assert "fail-closed" in proc.stderr
 
