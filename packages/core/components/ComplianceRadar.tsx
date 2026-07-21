@@ -22,16 +22,27 @@ export interface ComplianceRadarProps {
  *   documented fill usage); the matching time-left TEXT reads --state-danger
  *   instead, because --status-critical's own contract forbids text on dark
  *   surfaces (~2.54:1) and names --state-danger as the dark-surface text tone.
- * - `warning` reuses --fact-badge-bg (gold #f4c430): the mockup's warning
- *   tone is the KBLI funnel gold (#eab308), which funnels may not read here
- *   (funnel-agnostic panel); --fact-badge-bg is the closest existing
- *   semantic gold and keeps `urgent` (--state-warning, amber) distinct.
+ * - `warning` reads --accent-gold-muted (existing semantic editorial gold):
+ *   the mockup's warning tone is the KBLI funnel gold (#eab308), which a
+ *   funnel-agnostic panel may not read. Round-1 used --fact-badge-bg, but
+ *   that token's contract reserves yellow for verifiable facts only, so the
+ *   muted gold is the closest purpose-clean tone; it also keeps `urgent`
+ *   (--state-warning, amber) visually distinct.
  */
 const SEVERITY_DOT: Record<ComplianceAlert["severity"], string> = {
   critical: "var(--status-critical)",
   urgent: "var(--state-warning)",
-  warning: "var(--fact-badge-bg)",
+  warning: "var(--accent-gold-muted)",
   info: "var(--state-info)",
+};
+
+/** Deterministic row order: critical first, info last (stable — ties keep
+ *  caller order). */
+const SEVERITY_RANK: Record<ComplianceAlert["severity"], number> = {
+  critical: 0,
+  urgent: 1,
+  warning: 2,
+  info: 3,
 };
 
 const ROOT_STYLE: CSSProperties = {
@@ -79,14 +90,21 @@ const TIME_CRITICAL_STYLE: CSSProperties = {
 /**
  * ComplianceRadar — severity-ranked alert rows for the kita workspace
  * (GARUDA OS concept "Compliance Radar" panel). Funnel-agnostic: reads only
- * semantic state / fact-badge / text / border tokens, never --accent-funnel,
+ * semantic state / accent / text / border tokens, never --accent-funnel,
  * so it is safe inside and outside data-funnel scopes. All content is
  * prop-driven; rows render from `alerts` only.
+ *
+ * Row order is deterministic: alerts are sorted by severity rank
+ * critical > urgent > warning > info via a STABLE sort, so caller order is
+ * preserved within the same severity and the input array is never mutated.
  */
 export const ComplianceRadar: FC<ComplianceRadarProps> = ({
   alerts,
   className,
 }) => {
+  const ordered = [...alerts].sort(
+    (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
+  );
   return (
     <div
       role="list"
@@ -96,7 +114,7 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
       }
       style={ROOT_STYLE}
     >
-      {alerts.map((alert, i) => {
+      {ordered.map((alert, i) => {
         const critical = alert.severity === "critical";
         return (
           <div
@@ -110,7 +128,7 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
               gap: 11,
               padding: "9px 0",
               borderBottom:
-                i < alerts.length - 1
+                i < ordered.length - 1
                   ? "1px solid var(--border-default)"
                   : "none",
             }}
@@ -123,6 +141,7 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
                 boxShadow: critical ? "0 0 9px var(--status-critical)" : "none",
               }}
             />
+            <span className="sr-only">Severity: {alert.severity}</span>
             <span>
               <span data-role="alert-title" style={TITLE_STYLE}>
                 {alert.title}

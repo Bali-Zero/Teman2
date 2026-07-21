@@ -160,6 +160,9 @@ export const SystemPulse: FC<SystemPulseProps> = ({ services, className }) => {
               )}
             </span>
             <span data-role="service-latency" style={LAT_STYLE}>
+              <span className="sr-only">
+                Status: {svc.status.toUpperCase()}
+              </span>
               <span
                 data-role="service-latency-value"
                 className="font-mono"

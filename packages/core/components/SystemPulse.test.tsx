@@ -85,6 +85,22 @@ describe("SystemPulse", () => {
     ).toHaveLength(1);
   });
 
+  it("exposes the status as visually-hidden text in every row", () => {
+    const latencyLess: SystemPulseService[] = [
+      { id: "ol", label: "Ollama", status: "idle", barPct: 4 },
+    ];
+    const { container } = render(
+      <SystemPulse services={[...SERVICES, ...latencyLess]} />,
+    );
+    const rows = container.querySelectorAll("[data-role='service-row']");
+    const srText = (row: Element) => row.querySelector(".sr-only")?.textContent;
+    // latency-bearing rows: status is otherwise conveyed by color only
+    expect(srText(rows[0])).toBe("Status: OK");
+    expect(srText(rows[1])).toBe("Status: DOWN");
+    // latency-less row still carries the accessible status text
+    expect(srText(rows[2])).toBe("Status: IDLE");
+  });
+
   it("renders a defined empty root when services is empty", () => {
     const { container } = render(<SystemPulse services={[]} />);
     expect(container.querySelector("[data-role='system-pulse']")).toBeTruthy();

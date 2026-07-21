@@ -51,8 +51,41 @@ describe("ComplianceRadar", () => {
     const bg = (i: number) => (dots[i] as HTMLElement).style.background;
     expect(bg(0)).toBe("var(--status-critical)");
     expect(bg(1)).toBe("var(--state-warning)");
-    expect(bg(2)).toBe("var(--fact-badge-bg)");
+    expect(bg(2)).toBe("var(--accent-gold-muted)");
     expect(bg(3)).toBe("var(--state-info)");
+  });
+
+  it("exposes the severity as visually-hidden text in every row", () => {
+    const { container } = render(<ComplianceRadar alerts={ALERTS} />);
+    const rows = container.querySelectorAll("[data-role='alert-row']");
+    const srText = (row: Element) => row.querySelector(".sr-only")?.textContent;
+    expect(srText(rows[0])).toBe("Severity: critical");
+    expect(srText(rows[3])).toBe("Severity: info");
+    expect(
+      Array.from(rows).every((row) => row.querySelector(".sr-only") !== null),
+    ).toBe(true);
+  });
+
+  it("sorts rows by severity rank, stable within ties, input unmutated", () => {
+    const shuffled: ComplianceAlert[] = [
+      { id: "i1", title: "Info first", severity: "info" },
+      { id: "c1", title: "Crit A", severity: "critical" },
+      { id: "w1", title: "Warn mid", severity: "warning" },
+      { id: "u1", title: "Urgent", severity: "urgent" },
+      { id: "c2", title: "Crit B", severity: "critical" },
+    ];
+    const { container } = render(<ComplianceRadar alerts={shuffled} />);
+    const titles = Array.from(
+      container.querySelectorAll("[data-role='alert-title']"),
+    ).map((el) => el.textContent);
+    expect(titles).toEqual([
+      "Crit A",
+      "Crit B",
+      "Urgent",
+      "Warn mid",
+      "Info first",
+    ]);
+    expect(shuffled.map((a) => a.id)).toEqual(["i1", "c1", "w1", "u1", "c2"]);
   });
 
   it("glows the critical dot only", () => {
