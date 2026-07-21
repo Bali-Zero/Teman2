@@ -163,11 +163,46 @@ async def test_extract_entities_classifies_company_closure_and_compliance_keywor
     matched 4 narrow company-setup phrases, so liquidation/closure/compliance
     queries fell to domain=general and `_inject_curated_qa_grounding()`
     early-returned before curated_qa was ever searched, even though
-    company-domain curated Q&A grounding exists for these topics. Each new
-    keyword ("liquidation"/"liquidate"/"dissolution"/"dissolve"/"close
-    pt"/"close my pt"/"close my company"/"close my business"/"closing
-    pt"/"tutup pt"/"bubar"/"compliance"/"lkpm"/"bpjs"/"izin usaha"/"wind
-    up"/"winding up") individually must classify as domain=company."""
+    company-domain curated Q&A grounding exists for these topics (verified
+    against the real company-compliance.jsonl / company-liquidation-closure.jsonl
+    corpus, ops-populated and gitignored per apps/backend-rag/data/curated_qa/
+    README — see the entries below for verbatim-vocabulary coverage). Each
+    new keyword individually must classify as domain=company."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == "company"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Do we have to hold a RUPS every year?",
+        "Does our NIB expire, and do we need to renew it?",
+        "Who can act as our liquidator during a PT PMA closure?",
+        "What happens if we never file WLKP?",
+        "What is beneficial ownership reporting for our company?",
+        "What is the final step at Kemenkumham that ends our legal existence?",
+        "Do we have to pay severance when we shut the business down?",
+        "What does the Final CIT Return need to cover before we deregister?",
+        "What happens to our LKPM obligation while we're winding down?",
+        "How is a voluntary closure different from being forced to close?",
+    ],
+)
+async def test_extract_entities_classifies_real_corpus_company_vocabulary(
+    query: str,
+) -> None:
+    """GUILT, corpus-grounded — these phrasings are drawn from (or closely
+    paraphrase) the real questions in company-compliance.jsonl and
+    company-liquidation-closure.jsonl (read directly from the ops-populated,
+    gitignored corpus, not invented) to prove the fix rescues the ACTUAL
+    client-question vocabulary from domain=general, not just synthetic
+    keyword probes. RUPS/NIB/liquidator/WLKP/beneficial ownership/Kemenkumham/
+    severance/CIT return/winding down/voluntary closure must each classify
+    as domain=company on their own, without needing "pt pma" or another
+    already-covered keyword also present in the same query."""
     service = EntityExtractionService()
 
     entities = await service.extract_entities(query)
@@ -184,6 +219,13 @@ async def test_extract_entities_classifies_company_closure_and_compliance_keywor
         ("Can a foreigner use Hak Pakai for a villa in Bali?", "property"),
         ("Find KBLI 47911 for a PT PMA retail company", "kbli"),
         ("Setup PT PMA for a Singaporean shareholder", "company"),
+        # Real corpus rows that legitimately belong to another domain
+        # because the query names that domain's own keyword too (priority
+        # order visa > tax > property > kbli > company is unchanged by this
+        # fix, deliberately not touched here) — company-liquidation-closure.jsonl
+        # asks both of these, and both are correctly tax/visa, not company.
+        ("How do we get our NPWP deregistered when we close the company?", "tax"),
+        ("What happens to my KITAS when the company closes?", "visa"),
     ],
 )
 async def test_extract_entities_company_closure_keywords_do_not_shift_unrelated_domains(
