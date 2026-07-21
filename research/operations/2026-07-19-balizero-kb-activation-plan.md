@@ -29,12 +29,12 @@ sources:
 | 5 | **`/api/drive/*` regression fix** | ~~ALL 3 endpoints broken~~ — corrected 2026-07-20: 2 distinct bugs, not 3 symptoms of 1. `FileItem` Pydantic model requires `type`, manager returned raw payloads (500 files / 500 search) — FIXED, PR #2816 merged 2026-07-19. `/api/drive/stats` (404) is unrelated: the route never existed at all — FIXED, PR #2898; follow-up wall-clock fix PR #2900 after a real-prod-data perf finding. **DONE — PROVE-LIVE confirmed 2026-07-20** (see narrative below) | DONE (#2816, #2898, #2900) | this session | Closed. 1 pre-existing out-of-scope finding flagged, not fixed (SYSTEM OAuth token dead → SA fallback, zero quota) |
 | 6 | **Peraturan feeder (Sheet→PDF→NB-6)** | Dead 5+ weeks: every run fails on missing `GOOGLE_SERVICE_ACCOUNT_JSON` (log last entry 2026-06-16) | Operator provides/rotates the credential; then session re-arms + proves one green run end-to-end | operator[credential] → session | Without it NB-6 compliance ground truth stales |
 | 7 | **Regulatory-watcher cadence** | ~~33 deltas over 64 days ≈ 52% day-coverage~~ — superseded 2026-07-20: live run found a NEW failure mode (false-clean, not a coverage gap) — ollama tier emitted a schema-valid `{partial:true}` stub the old check couldn't distinguish from a real scan | **DONE (#2877)**: `ensure_full_delta()` rejects+cascades partial stubs past tiers 1-3; tier 4 marks DEGRADED via heartbeat instead of logging as clean. Home-fork synced | this session | Closed. Day-coverage metric to proprioception NOT added — narrower fix shipped for the live-found bug, not the original coverage-gap framing (predates W81/W84 hardening, not reproduced live) |
-| 8 | **KBLI schema drift vs CLAUDE.md §9** | Live table `kbli_documents`: `sektor_id`/`pma_status` NESTED in `metadata` jsonb on all 1,563 rows; `kategori_risiko` absent everywhere; `skala_usaha`→`per_skala`. CLAUDE.md §9 says flat/never-nested | Reconcile WITH the kbli-navigator lane: either the invariant doc is stale (likely — table carries newer keys like `kode_kbli_2025`, `pp28_sources`) or the table regressed. Update whichever is wrong; add tripwire test | kbli lane + session | CLAUDE.md §9 is marked NEVER VIOLATE — the contradiction itself is the bug |
+| 8 | **KBLI schema drift vs CLAUDE.md §9** | ~~Live table `kbli_documents`: nested, contradicts CLAUDE.md §9~~ — confirmed 2026-07-21: the table was never flat, the invariant doc was wrong (conflated with the genuinely-flat Qdrant KBLI payload). See narrative below | **DONE (PR #2927)**: split the invariant into two correctly-scoped statements + tripwire test, mutation-verified | kbli lane + session | Closed. No collision with the kbli-navigator lane's own (unrelated) `kbli_documents` cure work |
 | 9 | **NAGA claim ledger** | 3,119 claims / 6,980 evidence rows, stale since 2026-05-07 | Zero decides: revive as the claim-verification organ (charter L3 wants it alive) or archive formally. No zombie middle state | operator[business] | — |
-| 10 | **NB hygiene** | 96 NBs / 5,643 sources; 24 empty shells, 11 never-populated "Research" shells, 6 self-marked deprecated (MERGED/ARCHIVED 2026-05-07) still live | Propose deletion/merge list to Zero (NB deletion = confirm-gated); populate-or-delete ruling for the 11 shells | session proposes, Zero confirms | notebook_delete is destructive → explicit confirm |
+| 10 | **NB hygiene** | ~~96 NBs / 5,643 sources; 24 empty shells, 11 never-populated "Research" shells, 6 self-marked deprecated~~ — re-verified live 2026-07-21: **99 NBs / 5,685 sources**; proposal delivered, see narrative below | **PROPOSAL DELIVERED (2026-07-21)**: 39 NBs / 456 sources across 5 evidenced sub-categories, zero core-stack touches, zero deletions executed. Awaiting Zero's confirm | session proposed, **awaiting Zero confirm** | notebook_delete is destructive → explicit confirm. NOT done until Zero rules and deletion (if any) executes |
 | 11 | **MCP observability lies** | ~~`get_collection_stats` + `get_qdrant_metrics` return the same zeroed op-counter... MCP caller has RBAC role `unknown` → all content tools 403~~ — corrected 2026-07-20 (re-grounded from scratch, not trusted from the audit): `get_collection_stats` repointed at `/health/collections` (real per-collection walk) — **FIXED, #2877**, PROVE-LIVE 2026-07-20 via direct `curl https://nuzantara-rag.fly.dev/health/collections` (no auth gate on `/health/*`): 15 collections, 121,252 total documents, real `live_points`/`status`/`vector_size`/`distance`/`segments_count` per collection. `get_qdrant_metrics`'s own docstring was NEVER mismatched with its behavior (promises op-counters, delivers op-counters) — not actually a bug, just less interesting data on a fresh process; left as-is. "All content tools 403" was FALSE — AST census found 41/131 tools RBAC-gated in `nuzantara-mcp` (2/6 content tools), ZERO in `nuzantara-mcp-advanced` (where `get_collection_stats` lives) | **DONE (#2877)** for the real half; RBAC `unknown`-role half correctly left as `operator[business]` — see `§Solo-operatore` note below, not a bug (deliberate fail-closed default, no scoped role exists to grant) | this session | Closed except the flagged operator decision. **Session-local note**: this session's own long-lived local `nuzantara-mcp-advanced` MCP process still returns the pre-fix op-counter shape (loaded the old code before #2877 merged, doesn't hot-reload) — verified via direct endpoint call instead; a session/MCP-connection restart would pick up the fix, not a code issue |
 | 12 | **Orphan corpora** | `apps/kb/data/immigration/` 84 raw txt (unreferenced anywhere); `apps/kbli-navigator/data/` second KBLI dataset copy, sync unverified; `backend/kb/raw/top5_wave3/` empty stubs | Archive or re-wire the 84 txt; add sync check (or single-source) for kbli-navigator data; delete stub scaffold | session lane | Low; reduces fragmentation (audit found ≥6 uncoordinated KB locations) |
-| 13 | **Tier1 legal PDFs → automated re-ingestion** | 517MB verified on disk (`data/kb_sources/`), wired to `ingest_tier1_gaps.py`/`ingest_2026_laws.py` but MANUAL invocation only; Qdrant freshness unconfirmed | Run a verified re-ingestion pass (dry-run → apply), then decide cadence (event-driven on new PDFs, not blind cron). **Embedding-invariant gate (adversarial F5): the pass MUST pin `text-embedding-3-small`/1536 dims explicitly, keep chunking config byte-identical to the collections' existing strategy, and use deterministic point IDs (idempotent re-runs, no silent duplicates). Proof = point-count delta AND per-vector spot-check (named-vector config + dims + a sampled cosine sanity on unchanged docs) — count alone cannot detect mixed embeddings (frozen-invariant breach)** | session lane | Needs Qdrant write path + before/after proof per the F5 gate (Legge 7) |
+| 13 | **Tier1 legal PDFs → automated re-ingestion** | ~~517MB verified on disk, Qdrant freshness unconfirmed~~ — re-grounded 2026-07-21: 517MB confirmed on the MAIN checkout only (gitignored, `data/kb_sources/**/*.pdf` — invisible from an isolated worktree); freshness now CONFIRMED per-document, see narrative below — **5 of 13 already ingested, 8 genuine gaps remain** | **GROUNDED, NOT RUN**: F5 gate structurally verified satisfied (deterministic uuid5 point IDs, frozen embedding pin, non-blocking Drive upload, KG extraction currently disabled). Live ingestion of the 8 real gaps is a production Qdrant+Postgres write in a client-facing legal-answer domain — deliberately NOT executed without explicit go | session lane | Needs Qdrant write path + before/after proof per the F5 gate (Legge 7); **also needs running from the main checkout, not this isolated worktree** (source PDFs are gitignored local data) |
 
 ## Done this session
 
@@ -192,6 +192,118 @@ sources:
   decided unilaterally under the K7 cure's own "identity resolution FIRST"
   principle (identifying the right principal/role is the missing step, not
   mine to skip by picking one).
+- **Lever #8 DONE** (2026-07-21, PR #2927): CLAUDE.md §9's "KBLI flat payload"
+  invariant conflated two unrelated stores. Live-verified via
+  `information_schema.columns` + a `metadata` key-presence sweep on all 1,563
+  rows: the Qdrant KBLI collection payload genuinely IS flat (confirmed via
+  `reindex_kbli_2025_final.py::build_payload`'s own "KBLI flat-payload golden
+  rule" comment) — that half of the invariant was true and is kept. The
+  Postgres `kbli_documents` table (feeds `chat_kbli`'s LLM context, seeded
+  2026-02-18 out-of-band, no migration/ORM model) was NEVER flat: 6 columns
+  only (`kode_kbli`/`judul`/`content`/`metadata` jsonb/`created_at`/
+  `updated_at`); `sektor_id`/`pma_status` live inside `metadata` on all 1,563
+  rows; `skala_usaha` was renamed to `per_skala`; `kategori_risiko` doesn't
+  exist on this table at all (Qdrant-only concept). No collision with the
+  concurrent kbli-navigator lane (grep-verified: their extensive
+  `kbli_documents` cure work never touched this specific CLAUDE.md invariant
+  text — different concern, the data content vs. the doc's claim about its
+  shape). Split the invariant into two correctly-scoped statements + added
+  `test_kbli_documents_queries_read_metadata_not_flat_business_columns`
+  (mutation-tested: reintroduced the false flat-column pattern into
+  `kbli_notebook_chat.py`'s query, confirmed the test fails with a clear
+  message, reverted cleanly, re-confirmed all 4 tripwires green). Full
+  backend suite on push: 19,362 passed, 0 failed.
+- **Lever #10 proposal delivered** (2026-07-21, draft only, zero mutations —
+  `nb-curator` agent, live-re-verified against the actual NotebookLM
+  inventory rather than trusting the 2026-07-19 audit snapshot, which had
+  already drifted: 99 NBs / 5,685 sources vs. the stale 96/5,643).
+  **39 notebooks (456 sources) proposed across 5 disjoint, evidenced
+  sub-categories, none touching the core stack (NB-0..14), NB-INTEL, or
+  MATA GARUDA**:
+  1. **6 generic empty/near-empty shells** (4 sources) — 2 completely blank,
+     1 ops-config scaffold never fed in ~7 weeks, 3 from a 2026-06-04 WA-corpus
+     pilot test cluster (2 carry redacted PII in source titles — real WA-lead
+     name+phone exports).
+  2. **21 never-populated 0-source placeholder shells**: 14 single-topic
+     "Research"-class scaffolds (**3 more than the ledger's stale count of
+     11** — undercounted because the original audit keyword-matched only the
+     literal word "Research," missing siblings like "Veo Competitors 2026" and
+     "Indonesian Tax Updates 2025-2026") + 7 abandoned per-team-member
+     WA-corpus shells (`NB-WA-Sahira/Krisna/Damar/Asya/Ari/Adit/Surya`,
+     created 2026-06-03) whose real deliverable already lives centralized and
+     healthy in a separate NB ("WA CRM Enrichment Architecture 2026," 39 src).
+  3. **7 self-marked `[MERGED/ARCHIVED/EXPORTED]-2026-05-07` zombies**
+     (446 sources — **1 more than the ledger's stale count of 6**, the extra
+     one tagged `[EXPORTED-...]` rather than `MERGED`/`ARCHIVED`, missed by
+     the original keyword set). All merge targets independently confirmed
+     alive and well-populated (150→197 src, 129/49/44→500 src) — deleting
+     these 7 loses zero content.
+  4. **5 unmarked-but-evidenced duplicates** (6 sources) — 3 notebooks
+     literally titled "Bali Zero" seeded with the same templated generic
+     "Business Context" doc (a provisioning-habit pattern, not intentional
+     duplication), plus 2 notebooks sharing one identically-titled WhatsApp
+     video-dossier source.
+  **Explicitly excluded after inspection** (looked near-empty by source
+  count, carry real intentional content): 1 live client-case NB (single
+  source = a real meeting recap for an active matter), 1 legal-citation NB,
+  1 OSINT briefing, 3 small production-working files, plus 2 "Radar IG"
+  shells too new (2 days old) to judge. Also flagged, not proposed: two
+  notebooks both independently titled "NB-0" — a naming collision worth
+  Zero's attention on its own, unrelated to hygiene. **NOT executed**:
+  `notebook_delete`/`notebook_rename` were never called — this is a proposal
+  only, per standing rule (destructive action needs Zero's explicit confirm).
+- **Lever #13 grounded, not executed** (2026-07-21). The 517MB the
+  2026-07-19 audit "verified on disk" is real but lives ONLY on the main
+  checkout (`data/kb_sources/**/*.pdf` is gitignored — invisible from this
+  isolated worktree, a genuinely different failure mode than "the data
+  doesn't exist," worth remembering next time a worktree session finds an
+  audited local-data claim empty). Confirmed on the main checkout: 9 PDFs in
+  `tier1_gaps/` + 5 in `2026_updates/` (14 total, ~600MB), matching the
+  scripts' `TIER1_LAWS`/law-list declarations.
+  **F5 embedding-invariant gate — verified structurally satisfied by
+  existing code, no fix needed**: point IDs are `uuid.uuid5(NAMESPACE_LEGAL,
+  chunk_id)` where `chunk_id = f"{doc_id}_chunk_{i}"` and
+  `doc_id = f"{type_abbrev}_{number}_{year}"` — fully deterministic,
+  idempotent re-runs overwrite rather than duplicate
+  (`hierarchical_indexer.py:311-338`). `create_embeddings_generator()` pins
+  `text-embedding-3-small`/1536 dims (`embeddings.py:254-256`, matches the
+  already-passing `test_openai_embedding_model_is_frozen` tripwire). KG
+  extraction (Stage 7, would write to Postgres) is currently
+  `self.kg_enabled = False` — "TEMP DISABLED: KG extraction causes OOM on
+  2GB Fly machine" (`legal_ingestion_service.py:212`) — so a run today has
+  no Postgres-KG risk surface. Google Drive upload (Stage 1.5) is explicitly
+  non-blocking on failure (`legal_ingestion_service.py:395-407`) — relevant
+  given lever #5's finding that the SYSTEM Drive OAuth token is dead in
+  prod; a run would just skip the backup-to-Drive step, not fail outright.
+  **Freshness check — the actual decision-relevant finding, done via
+  read-only query against `parent_documents` (Postgres, the same table
+  `index_legal_document()` writes to, correlates 1:1 with Qdrant chunk
+  presence for a given `doc_id`)**: of the 13 documents named across both
+  scripts' law lists, **5 are already ingested** — `PP_31_2013` (10 BAB,
+  ingested 2025-12-18), `UU_6_1983` (11 BAB, 2026-03-08), `UU_1_2023` (35
+  BAB, 2026-03-07), `Permen_18_2021` = the PermenATR/BPN 18/2021 doc (14
+  BAB, 2026-05-10), `Permen_22_2023` = the base regulation Permenkumham
+  11/2024 amends (8 BAB, 2026-04-05) — all ingested via some OTHER, earlier
+  legal-corpus effort, not these two scripts (scattered dates rule out a
+  single past run of either script, which would show uniform timestamps).
+  **8 remain genuine gaps**: `PP_18_2021` (Hak Pakai/HGB — the script's own
+  comment calls this "il gap più critico"), `PP_103_2015` (property foreign
+  ownership), `Permenkumham_27_2021`, `Permenkumham_29_2021`,
+  `Permenkumham_11_2024` (the amendment itself, vs. its already-ingested
+  base), `PMK_1_2026` (Coretax), `PP_9_2026` (THR), and — lower confidence,
+  title/ID pattern search came up empty but Indonesian regional-regulation
+  numbering is less predictable — `Pergub_Bali_14_2023` and
+  `SE_Gubernur_Bali_09_2025`.
+  **Deliberately NOT run**: the actual ingestion of the 8 real gaps is a
+  live write to production Qdrant (`legal_unified`/`legal_unified_2026`,
+  81,636 + 15,410 points respectively) and Postgres, in a domain
+  (property/immigration/tax legal regulations) where a bad answer is real
+  client harm (cf. the KBLI-navigator lane's Darinka dispute lesson) — out
+  of proportion to execute unprompted on a "go" that was scoped to
+  investigation, not a live production write. Also can't be run from this
+  isolated worktree as-is (gitignored source data). Ready to execute on
+  explicit go: either from the main checkout, or by staging the 8 gap PDFs
+  into a fresh worktree.
 
 ## Standing rules for this ledger
 
