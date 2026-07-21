@@ -8,7 +8,8 @@
 
    Primitives: constant values, never change with theme
    Semantics:  theme-aware aliases, default=dark
-   Light:      overrides under [data-theme="light"]
+   Light:      overrides under [data-theme="light"],
+               [data-theme="operative-light"]
    ============================================================= */
 
 :root {
@@ -139,7 +140,8 @@
 
 /* ── Light theme overrides ──────────────────────────────────── */
 
-[data-theme="light"] {
+[data-theme="light"],
+[data-theme="operative-light"] {
   /* Backgrounds */
   --bz-bg: #f5f6f8;
   --bz-bg-elevated: #ffffff;

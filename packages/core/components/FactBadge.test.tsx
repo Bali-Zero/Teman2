@@ -23,13 +23,13 @@ describe("FactBadge", () => {
     expect(el.style.background).toBe("var(--fact-badge-bg)");
     expect(el.style.color).toBe("var(--fact-badge-fg)");
     expect(el.style.borderRadius).toBe("var(--fact-badge-radius)");
-    expect(el.style.fontFamily).toBe("var(--font-mono, monospace)");
+    expect(el?.className).toContain("font-mono");
   });
 
   it("merges className after the base class", () => {
     const { container } = render(<FactBadge className="ml-2">47911</FactBadge>);
     const el = container.querySelector("[data-role='fact-badge']");
-    expect(el?.className).toBe("fact-badge ml-2");
+    expect(el?.className).toBe("fact-badge font-mono ml-2");
   });
 
   it("passes title through for the source citation", () => {

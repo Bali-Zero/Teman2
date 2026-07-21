@@ -7,7 +7,7 @@
 
 ## `AppBranchSelector`
 
-- **import**: `@nuzantara/core/components/apps/AppBranchSelector`
+- **import**: `@balizero/core/components/apps/AppBranchSelector`
 - **source**: `packages/core/components/apps/AppBranchSelector.tsx`
 - **use when**: branch selector, choice
 - **props**:
@@ -18,7 +18,7 @@
 
 ## `AppEmailOptIn`
 
-- **import**: `@nuzantara/core/components/apps/AppEmailOptIn`
+- **import**: `@balizero/core/components/apps/AppEmailOptIn`
 - **source**: `packages/core/components/apps/AppEmailOptIn.tsx`
 - **use when**: email opt-in, lead capture
 - **props**:
@@ -33,7 +33,7 @@
 
 ## `AppFrame`
 
-- **import**: `@nuzantara/core/components/apps/AppFrame`
+- **import**: `@balizero/core/components/apps/AppFrame`
 - **source**: `packages/core/components/apps/AppFrame.tsx`
 - **use when**: frame, container
 - **props**:
@@ -48,7 +48,7 @@
 
 ## `AppHeroForm`
 
-- **import**: `@nuzantara/core/components/apps/AppHeroForm`
+- **import**: `@balizero/core/components/apps/AppHeroForm`
 - **source**: `packages/core/components/apps/AppHeroForm.tsx`
 - **use when**: hero, landing form
 - **props**:
@@ -64,7 +64,7 @@
 
 ## `AppResultTimeline`
 
-- **import**: `@nuzantara/core/components/apps/AppResultTimeline`
+- **import**: `@balizero/core/components/apps/AppResultTimeline`
 - **source**: `packages/core/components/apps/AppResultTimeline.tsx`
 - **use when**: timeline, result, history
 - **props**:
@@ -74,7 +74,7 @@
 
 ## `AppSentenceBuilder`
 
-- **import**: `@nuzantara/core/components/apps/AppSentenceBuilder`
+- **import**: `@balizero/core/components/apps/AppSentenceBuilder`
 - **source**: `packages/core/components/apps/AppSentenceBuilder.tsx`
 - **use when**: sentence builder, compose
 - **props**:
@@ -84,7 +84,7 @@
 
 ## `AppShareBar`
 
-- **import**: `@nuzantara/core/components/apps/AppShareBar`
+- **import**: `@balizero/core/components/apps/AppShareBar`
 - **source**: `packages/core/components/apps/AppShareBar.tsx`
 - **use when**: share, social
 - **props**:
@@ -95,7 +95,7 @@
 
 ## `AppStampReveal`
 
-- **import**: `@nuzantara/core/components/apps/AppStampReveal`
+- **import**: `@balizero/core/components/apps/AppStampReveal`
 - **source**: `packages/core/components/apps/AppStampReveal.tsx`
 - **use when**: stamp, reveal, celebration
 - **props**:
@@ -106,7 +106,7 @@
 
 ## `AppTrustStrip`
 
-- **import**: `@nuzantara/core/components/apps/AppTrustStrip`
+- **import**: `@balizero/core/components/apps/AppTrustStrip`
 - **source**: `packages/core/components/apps/AppTrustStrip.tsx`
 - **use when**: trust, social proof
 - **props**:
@@ -115,7 +115,7 @@
 
 ## `AppWhatsAppCTA`
 
-- **import**: `@nuzantara/core/components/apps/AppWhatsAppCTA`
+- **import**: `@balizero/core/components/apps/AppWhatsAppCTA`
 - **source**: `packages/core/components/apps/AppWhatsAppCTA.tsx`
 - **use when**: whatsapp, contact cta, call to action, handoff
 - **props**:
@@ -133,7 +133,7 @@
 
 ## `AppWizard`
 
-- **import**: `@nuzantara/core/components/apps/AppWizard`
+- **import**: `@balizero/core/components/apps/AppWizard`
 - **source**: `packages/core/components/apps/AppWizard.tsx`
 - **use when**: multi-step, wizard, form flow
 - **props**:
@@ -146,7 +146,7 @@
 
 ## `BZLogo`
 
-- **import**: `@nuzantara/core/components/BZLogo`
+- **import**: `@balizero/core/components/BZLogo`
 - **source**: `packages/core/components/BZLogo.tsx`
 - **use when**: branding, header
 - **props**:
@@ -158,7 +158,7 @@
 
 ## `CTAHandoff`
 
-- **import**: `@nuzantara/core/components/CTAHandoff`
+- **import**: `@balizero/core/components/CTAHandoff`
 - **source**: `packages/core/components/CTAHandoff.tsx`
 - **use when**: call to action, handoff
 - **props**:
@@ -172,7 +172,7 @@
 
 ## `CommandPalette`
 
-- **import**: `@nuzantara/core/components/CommandPalette`
+- **import**: `@balizero/core/components/CommandPalette`
 - **source**: `packages/core/components/CommandPalette.tsx`
 - **use when**: command palette, search, keyboard
 - **props**:
@@ -183,7 +183,7 @@
 
 ## `ContextPanel`
 
-- **import**: `@nuzantara/core/components/ContextPanel`
+- **import**: `@balizero/core/components/ContextPanel`
 - **source**: `packages/core/components/ContextPanel.tsx`
 - **use when**: side panel, detail, context
 - **props**:
@@ -194,7 +194,7 @@
 
 ## `DeadlineBadge`
 
-- **import**: `@nuzantara/core/components/DeadlineBadge`
+- **import**: `@balizero/core/components/DeadlineBadge`
 - **source**: `packages/core/components/DeadlineBadge.tsx`
 - **use when**: deadline, expiry, status urgency, status, label
 - **props**:
@@ -204,9 +204,9 @@
 
 ## `FactBadge`
 
-- **import**: `@nuzantara/core/components/FactBadge`
+- **import**: `@balizero/core/components/FactBadge`
 - **source**: `packages/core/components/FactBadge.tsx`
-- **use when**: status, label
+- **use when**: facts, citation, regulation code, kbli code
 - **props**:
   - `children`: `ReactNode`
   - `className`: `string | undefined`
@@ -215,7 +215,7 @@
 
 ## `FilterBar`
 
-- **import**: `@nuzantara/core/components/FilterBar`
+- **import**: `@balizero/core/components/FilterBar`
 - **source**: `packages/core/components/FilterBar.tsx`
 - **props**:
   - `activeCount`: `number`
@@ -229,7 +229,7 @@
 
 ## `FunnelFrame`
 
-- **import**: `@nuzantara/core/components/FunnelFrame`
+- **import**: `@balizero/core/components/FunnelFrame`
 - **source**: `packages/core/components/FunnelFrame.tsx`
 - **use when**: funnel, conversion, stage, frame, container
 - **props**:
@@ -242,7 +242,7 @@
 
 ## `ListPageHeader`
 
-- **import**: `@nuzantara/core/components/ListPageHeader`
+- **import**: `@balizero/core/components/ListPageHeader`
 - **source**: `packages/core/components/ListPageHeader.tsx`
 - **props**:
   - `title`: `React.ReactNode`
@@ -252,7 +252,7 @@
 
 ## `MatterCard`
 
-- **import**: `@nuzantara/core/components/MatterCard`
+- **import**: `@balizero/core/components/MatterCard`
 - **source**: `packages/core/components/MatterCard.tsx`
 - **use when**: case, matter, client record
 - **props**:
@@ -267,7 +267,7 @@
 
 ## `Money`
 
-- **import**: `@nuzantara/core/components/Money`
+- **import**: `@balizero/core/components/Money`
 - **source**: `packages/core/components/Money.tsx`
 - **props**:
   - `value`: `number`
@@ -278,7 +278,7 @@
 
 ## `NavShell`
 
-- **import**: `@nuzantara/core/components/NavShell`
+- **import**: `@balizero/core/components/NavShell`
 - **source**: `packages/core/components/NavShell.tsx`
 - **use when**: navigation, shell, layout, page frame
 - **props**:
@@ -293,7 +293,7 @@
 
 ## `ProgressRing`
 
-- **import**: `@nuzantara/core/components/ProgressRing`
+- **import**: `@balizero/core/components/ProgressRing`
 - **source**: `packages/core/components/ProgressRing.tsx`
 - **use when**: progress, ring, percent
 - **props**:
@@ -306,7 +306,7 @@
 
 ## `SearchBox`
 
-- **import**: `@nuzantara/core/components/SearchBox`
+- **import**: `@balizero/core/components/SearchBox`
 - **source**: `packages/core/components/SearchBox.tsx`
 - **props**:
   - `value`: `string`
@@ -323,7 +323,7 @@
 
 ## `StatChips`
 
-- **import**: `@nuzantara/core/components/StatChips`
+- **import**: `@balizero/core/components/StatChips`
 - **source**: `packages/core/components/StatChips.tsx`
 - **props**:
   - `items`: `Array<StatChip | false | null | undefined>`
@@ -333,7 +333,7 @@
 
 ## `SubNav`
 
-- **import**: `@nuzantara/core/components/SubNav`
+- **import**: `@balizero/core/components/SubNav`
 - **source**: `packages/core/components/SubNav.tsx`
 - **use when**: navigation, shell, layout
 - **props**:
@@ -346,7 +346,7 @@
 
 ## `ThemeProvider`
 
-- **import**: `@nuzantara/core/components/ThemeProvider`
+- **import**: `@balizero/core/components/ThemeProvider`
 - **source**: `packages/core/components/ThemeProvider.tsx`
 - **use when**: theme, dark mode, provider
 - **props**:
@@ -357,7 +357,7 @@
 
 ## `TrustBand`
 
-- **import**: `@nuzantara/core/components/TrustBand`
+- **import**: `@balizero/core/components/TrustBand`
 - **source**: `packages/core/components/TrustBand.tsx`
 - **use when**: trust, social proof
 - **props**:
@@ -368,7 +368,7 @@
 
 ## `WhatsAppFAB`
 
-- **import**: `@nuzantara/core/components/WhatsAppFAB`
+- **import**: `@balizero/core/components/WhatsAppFAB`
 - **source**: `packages/core/components/WhatsAppFAB.tsx`
 - **use when**: whatsapp, contact cta
 - **props**: _(none parsed)_

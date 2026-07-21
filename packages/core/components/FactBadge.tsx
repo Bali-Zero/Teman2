@@ -9,7 +9,6 @@ export interface FactBadgeProps {
 const STYLE: CSSProperties = {
   background: "var(--fact-badge-bg)",
   color: "var(--fact-badge-fg)",
-  fontFamily: "var(--font-mono, monospace)",
   borderRadius: "var(--fact-badge-radius)",
   padding: "2px 6px",
   fontSize: "0.75em",
@@ -29,7 +28,9 @@ export const FactBadge: FC<FactBadgeProps> = ({
   return (
     <span
       data-role="fact-badge"
-      className={className ? `fact-badge ${className}` : "fact-badge"}
+      className={
+        className ? `fact-badge font-mono ${className}` : "fact-badge font-mono"
+      }
       title={title}
       style={STYLE}
     >
