@@ -42,6 +42,22 @@
 # — pytest collects the module but finds 0 test items in it; it contributes
 # 0 to the 154 and is not run by this workflow either. Pre-existing, not
 # introduced or fixed by this change.
+#
+# scripts/wr2_draft_generator.py + its 9 test_wr2_draft_generator_*.py files
+# ADDED 2026-07-21 (production cutover to the planner/writer engine, W-family
+# #2 "esiste≠armato" closed the same way the render battery was closed above):
+# `wr2_draft_generator.py` now imports and drives `wr2_carousel_ir`/
+# `wr2_editorial_pregate`/`wr2_planner_writer` behind the WR2_COMPOSE_ENGINE
+# kill-switch — this was the FIRST production modification of that arc, and
+# its generator-level test suite (including the pre-existing 8 files, which
+# had NO CI enforcement anywhere before this change — dev-run-by-hand only)
+# had never been wired into any workflow. Two of the pre-existing files
+# (test_wr2_draft_generator_enriched_prompt.py, _kicker_variety.py) call
+# `_process_one` directly mocking the monolith's own `claude_compose_slides`;
+# each now pins `WR2_COMPOSE_ENGINE=monolith` (discovered live during this
+# cutover's own pre-push run: the new planner_writer default silently routed
+# those un-pinned tests into a REAL Claude OAuth CLI subprocess call instead
+# of the mocked one — caught before merge, not after).
 name: wr2-queue-tests
 
 on:
@@ -52,6 +68,7 @@ on:
       - "scripts/wr2_queue_hygiene.py"
       - "scripts/wr2_queue_writer.py"
       - "scripts/wr2_rerender_local.py"
+      - "scripts/wr2_draft_generator.py"
       - "scripts/wr2_html_renderer/**"
       - "scripts/wr2_carousel_ir.py"
       - "scripts/wr2_ir_shadow_replay.py"
@@ -68,6 +85,15 @@ on:
       - "scripts/tests/test_wr2_carousel_ir.py"
       - "scripts/tests/test_wr2_editorial_pregate.py"
       - "scripts/tests/test_wr2_planner_writer.py"
+      - "scripts/tests/test_wr2_draft_generator_liveness_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_cover_codex_detection.py"
+      - "scripts/tests/test_wr2_draft_generator_length_per_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_kicker_variety.py"
+      - "scripts/tests/test_wr2_draft_generator_closer_guard.py"
+      - "scripts/tests/test_wr2_draft_generator_enriched_prompt.py"
+      - "scripts/tests/test_wr2_draft_generator_tone_per_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_json_example.py"
+      - "scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
       - ".github/workflows/wr2-queue-tests.yml"
@@ -104,5 +130,14 @@ jobs:
             scripts/tests/test_wr2_carousel_ir.py \
             scripts/tests/test_wr2_editorial_pregate.py \
             scripts/tests/test_wr2_planner_writer.py \
+            scripts/tests/test_wr2_draft_generator_liveness_tier.py \
+            scripts/tests/test_wr2_draft_generator_cover_codex_detection.py \
+            scripts/tests/test_wr2_draft_generator_length_per_tier.py \
+            scripts/tests/test_wr2_draft_generator_kicker_variety.py \
+            scripts/tests/test_wr2_draft_generator_closer_guard.py \
+            scripts/tests/test_wr2_draft_generator_enriched_prompt.py \
+            scripts/tests/test_wr2_draft_generator_tone_per_tier.py \
+            scripts/tests/test_wr2_draft_generator_json_example.py \
+            scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py \
             scripts/wr2_html_renderer/tests \
             -q

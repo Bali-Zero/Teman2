@@ -2,13 +2,19 @@
 """wr2_planner_writer.py — Planner/Writer split (WR2 editorial-intelligence
 Phase 3, Mossa B — "il cuore anti-disco-rotto").
 
-ADDITIVE / SHADOW ONLY. Nothing in `wr2_draft_generator.py` or
-`scripts/wr2_html_renderer/composer.py` imports this module, and this PR
-does not modify either file — production behavior is byte-identical
-before/after. This module is exercised by `wr2_pw_shadow.py` against
-historical decks. Wiring it into the live autonomous pipeline is a later,
-separately-gated cutover (spec §3 rollout step 3: "Planner/Writer dual-run
-(B) — shadow accanto al monolite, poi cutover"), not this PR.
+CUTOVER STATUS (updated by the production cutover PR, spec §3 rollout step
+3): `wr2_draft_generator.py` now imports and drives this module behind the
+`WR2_COMPOSE_ENGINE` kill-switch (`planner_writer` = new default,
+`monolith` = the untouched original single-call path, instant rollback).
+This module itself is UNCHANGED in nature — still pure logic + an injected
+`call_fn` per stage, zero I/O/DB/network side effects of its own; the
+async OAuth-CLI wiring and the pregate-repair loop live in the caller
+(`wr2_draft_generator._generate_planner_writer_deck`), exactly as this
+module's own docstring below already prescribed for `wr2_pw_shadow.py`'s
+shadow harness. `scripts/wr2_html_renderer/composer.py` is still NOT
+imported here and still does not import this module — the contract with
+the renderer is the `wr2_carousel_ir.to_composer_dict` projection, not a
+direct import.
 
 Implements Mossa B of the ratified spec:
     .claude/skills/wr2/_research/2026-07-21-editorial-intelligence-design.md
@@ -411,12 +417,106 @@ assert set(_KIND_FIELD_SCHEMA) == set(_KIND_TO_MODEL), (
     "_KIND_FIELD_SCHEMA has drifted from _KIND_TO_MODEL's keys"
 )
 
+# ─────────────────────────────────────────────────────────────────────────
+# Constitutional constraints per-kind (production cutover, GROUND-4): the
+# composer.py render-time HARD gates (Article 6.1 word budget, Article 7
+# forbidden phrases — both `ValueError`-raising, see composer.py:~1330/
+# ~1493) must reach the writer BEFORE a slide is written, or decks get
+# silently refused at render (a slide that fails the render-time gate
+# still burns the whole html-apply attempt). This module stays zero-I/O:
+# the phrase LIST is loaded by the caller (constitution.md is a repo file,
+# reading it is I/O) and threaded in as a plain `list[str]` parameter —
+# rendering it into prompt text below is pure string formatting, not I/O.
+#
+# Word-count scope mirrors composer._check_body_word_count's OWN scope
+# exactly (derived from which layout family renders a top-level {{body}}
+# placeholder outside any {{#each}} loop, composer.py:~1443-1498):
+#   - "prose" -> editorial-text's {{body}}: Article 6.1 applies (25-50).
+#   - "stat" -> stat-card-hero's {{body}} (mapped from context, see
+#     wr2_carousel_ir.to_composer_dict): Article 6.1 ALSO applies here —
+#     and unlike prose, StatSlide.context defaults to "" (lenient), so an
+#     empty context is NOT a safe default for this kind: it would render 0
+#     words into a family whose skeleton HAS a top-level {{body}}, hard-
+#     failing at render time. The writer must be told this explicitly.
+#   - every other kind (cover/statement/fact_stack/status_list/timeline/
+#     triad/qa/citation/cta) projects to a family with no top-level {{body}}
+#     (structured items, or a short punch line via a different placeholder)
+#     — Article 6.1 does not apply; stated as such so the writer never
+#     second-guesses a short structured answer as "too short".
+_ART_6_1_MIN = 25
+_ART_6_1_MAX = 50
+_BODY_WORD_BUDGET_KINDS = frozenset({"prose", "stat"})
+
+# Mirrors composer.TAKE_LABEL_BANNED verbatim (duplicated, not imported —
+# same cross-Playwright-boundary discipline this module's docstring already
+# states for every other constant here): the evidence-carved take_label
+# variety hard gate lives in `wr2_html_render_apply._take_label_hard_gate_
+# violations` (render_failed if it fires on a fresh, not-yet-published
+# draft) — a fact_stack writer that reaches for "OUR TAKE"/"OUR READ"/etc
+# burns a full render attempt for a copy defect this prompt can prevent
+# up front.
+_TAKE_LABEL_BANNED = frozenset({
+    "OUR TAKE", "OUR READ", "OUR VIEW",
+    "TAKE", "FACT", "FACTS", "NOTE", "REALITY", "KEY FACT",
+})
+
+
+def _render_constitutional_constraints(kind: str, forbidden_phrases: list[str] | None) -> str:
+    """Per-kind constitutional block appended to the writer prompt (GROUND-4
+    of the production cutover mandate). Returns "" only when there is
+    nothing to say AND no phrase list was supplied — in practice the caller
+    always supplies a phrase list in production, so this is effectively
+    always non-empty there; tests exercise both."""
+    lines: list[str] = []
+    if kind in _BODY_WORD_BUDGET_KINDS:
+        field = "body" if kind == "prose" else "context"
+        lines.append(
+            f"ARTICLE 6.1 HARD GATE — your `{field}` field is a RENDER-TIME HARD FAIL outside "
+            f"{_ART_6_1_MIN}-{_ART_6_1_MAX} words (the render pipeline raises and the whole slide "
+            f"is refused, not just warned). Write exactly that: {_ART_6_1_MIN}-{_ART_6_1_MAX} words, "
+            f"never fewer, never more."
+            + (
+                " This field is NOT optional for this kind despite its lenient schema default — an "
+                "empty context here still hard-fails (this layout has a top-level body placeholder)."
+                if kind == "stat" else ""
+            )
+        )
+    else:
+        lines.append(
+            "This kind has no Article 6.1 word-count gate (structured/short-punch layout) — write "
+            "the natural length for the field(s) below, do not pad."
+        )
+    if kind == "fact_stack":
+        banned = ", ".join(sorted(_TAKE_LABEL_BANNED))
+        lines.append(
+            f"take_label (if you use one) MUST NOT be any of: {banned} — these are retired anchor "
+            "labels that hard-fail the render for a fresh draft (evidence-carved.md '## take_label "
+            "variants' has the replacement vocabulary; or coin your own fresh 1-2 word tag)."
+        )
+    lines.append(
+        "CAPS POLICY (ratified, spec §8 item 2) — headings/kickers/short punch lines MAY be "
+        "UPPERCASE; any prose/body/list-item text must NEVER read as a caps-wall (a long run of "
+        "uppercase words is a render-time editorial-pregate FAIL)."
+    )
+    if forbidden_phrases:
+        phrase_list = ", ".join(f'"{p}"' for p in forbidden_phrases)
+        lines.append(
+            "ARTICLE 7 HARD GATE — none of your text fields may contain ANY of these forbidden "
+            f"phrases, in any form/case (render-time hard fail, not a style nit): {phrase_list}."
+        )
+    return (
+        "CONSTITUTIONAL CONSTRAINTS (render-time hard gates — violating these gets the slide, "
+        "and the whole render attempt, refused):\n" + "\n".join(f"- {line}" for line in lines)
+    )
+
 
 def _build_writer_prompt(
     brief_ctx: str,
     plan: ir.DeckPlan,
     slot: ir.SlotPlan,
     sibling_intents: list[str],
+    *,
+    forbidden_phrases: list[str] | None = None,
 ) -> str:
     schema_line = _KIND_FIELD_SCHEMA[slot.kind]
     if sibling_intents:
@@ -431,6 +531,8 @@ def _build_writer_prompt(
             "this slide's list-bearing field; the planner already locked this count against the "
             "heading"
         )
+
+    constraints_block = _render_constitutional_constraints(slot.kind, forbidden_phrases)
 
     return f"""You are the WRITER for ONE slide of a Bali Zero Instagram carousel — the redattore,
 not the editor. The plan below is LOCKED: fill the copy, never re-plan.
@@ -458,6 +560,8 @@ deck). You do NOT see their copy and must NEVER rewrite them, only play off the 
 they represent:
 {siblings_block}
 
+{constraints_block}
+
 OUTPUT — this kind's fields ONLY (plus "kind"):
   {schema_line}
 
@@ -475,11 +579,17 @@ def write_slot(
     sibling_intents: list[str],
     call_fn: Callable[[str], str],
     max_retries: int = 3,
+    *,
+    forbidden_phrases: list[str] | None = None,
 ) -> ir.Slide:
     """Run the writer stage for ONE slot: brief + locked plan frame (spine,
     arc, this slot's role/kind/heading_intent/bullet_promise_n) + sibling
     slots' heading_intents ONLY (never their copy) + the field schema for
-    THIS kind only. Validates against the single kind-matching model
+    THIS kind only + the per-kind constitutional constraints block
+    (`forbidden_phrases`, production cutover GROUND-4 — optional, keyword-
+    only, backward compatible: every existing call site/test that omits it
+    gets the pre-cutover prompt shape, just with a "no phrase list" Article
+    7 clause). Validates against the single kind-matching model
     (`_KIND_TO_MODEL[slot.kind]`) — a writer response whose own "kind" field
     disagrees with `slot.kind` is a retry-worthy failure, NEVER silently
     accepted as a different kind (kind-preserving hard rule, spec §2).
@@ -489,7 +599,9 @@ def write_slot(
     if model_cls is None:  # pragma: no cover — SlotPlan.kind is itself a Literal over these keys
         raise ValueError(f"write_slot: unknown plan kind {slot.kind!r}")
 
-    prompt = _build_writer_prompt(brief_ctx, plan, slot, sibling_intents)
+    prompt = _build_writer_prompt(
+        brief_ctx, plan, slot, sibling_intents, forbidden_phrases=forbidden_phrases
+    )
 
     ctx = prompt
     last_raw = ""
@@ -566,6 +678,8 @@ def produce_deck(
     planner_fn: Callable[[str], str],
     writer_fn: Callable[[str], str],
     max_retries: int = 3,
+    *,
+    forbidden_phrases: list[str] | None = None,
 ) -> ir.SlideDeck:
     """plan -> write each slot (sequential; parallelization is a caller
     concern per spec §2 — "Parallelizzabile per-slot" describes an option,
@@ -577,7 +691,11 @@ def produce_deck(
     voice-register field — so register comes from the same upstream source
     production already resolves it from today (the deck's own
     `war_room_drafts.register` / the historical brief's own `register`, per
-    the `ir_replay_fixture.json` shape `wr2_pw_shadow.py` reads).
+    the `ir_replay_fixture.json` shape `wr2_pw_shadow.py` reads). The
+    production cutover caller (`wr2_draft_generator._generate_planner_writer_
+    deck`) resolves a FRESH register deterministically before calling this
+    (no prior value exists for a first-time draft) — see that function's own
+    docstring; this module stays agnostic to how the caller got it.
 
     `planner_fn` is used for `plan_deck` (typically pinned to
     `DEFAULT_PLANNER_MODEL`); `writer_fn` is used for every `write_slot`
@@ -585,6 +703,11 @@ def produce_deck(
     is the caller's wiring (see this module's docstring, "9x-cost
     mitigation"), not enforced here structurally beyond accepting two
     distinct callables.
+
+    `forbidden_phrases` (keyword-only, optional, production cutover
+    GROUND-4): threaded verbatim into every `write_slot` call's per-kind
+    constitutional-constraints block. Backward compatible — omitted, every
+    existing caller/test gets the pre-cutover prompt shape.
     """
     plan = plan_deck(brief_ctx, liveness_tier, recent_arcs, planner_fn, max_retries=max_retries)
 
@@ -592,7 +715,10 @@ def produce_deck(
     slides: list[ir.Slide] = []
     for slot in ordered_slots:
         sibling_intents = [s.heading_intent for s in ordered_slots if s.slot_id != slot.slot_id]
-        slide = write_slot(brief_ctx, plan, slot, sibling_intents, writer_fn, max_retries=max_retries)
+        slide = write_slot(
+            brief_ctx, plan, slot, sibling_intents, writer_fn, max_retries=max_retries,
+            forbidden_phrases=forbidden_phrases,
+        )
         slides.append(slide)
 
     return ir.SlideDeck(register=register, slides=slides, spine=plan.spine, arc=plan.arc)

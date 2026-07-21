@@ -555,6 +555,14 @@ def _base_row(draft_id: uuid.UUID) -> dict:
 
 
 def _wire_process_one_mocks(monkeypatch: pytest.MonkeyPatch, compose_mock: AsyncMock) -> None:
+    # Production cutover (2026-07-21): every test using this helper mocks
+    # the MONOLITH's own claude_compose_slides + exercises its 3-guard regen
+    # loop directly — pin the engine so it keeps testing exactly that
+    # (WR2_COMPOSE_ENGINE now defaults to planner_writer, which never calls
+    # claude_compose_slides and would otherwise fall through to a REAL
+    # Claude OAuth call here, same class of hazard the cutover PR's own
+    # test suite guards against for its own dispatch-routing tests).
+    monkeypatch.setenv("WR2_COMPOSE_ENGINE", "monolith")
     monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
     monkeypatch.setattr(dg, "generate_cover_image", AsyncMock(return_value=(None, "skip-in-test")))
     monkeypatch.setattr(dg, "_send_telegram", MagicMock())
