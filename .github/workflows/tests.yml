@@ -437,6 +437,10 @@ jobs:
           # backend on main (proven 2026-07-21: 30/30 waits + 41 passed). The
           # fail-loud health gate below exposed the corpse; this is the cure.
           JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          # Next required-var in the Settings chain (same class as JWT_SECRET_KEY
+          # above, found 2026-07-21 after the JWT fix): API_KEYS, same test values
+          # the other backend jobs in this file already use.
+          API_KEYS: test_api_key_1,test_api_key_2
           LANGCHAIN_TRACING_V2: "false"
           ENVIRONMENT: test
         run: |
