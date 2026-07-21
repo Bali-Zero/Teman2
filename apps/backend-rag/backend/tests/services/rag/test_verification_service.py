@@ -60,6 +60,28 @@ class TestVerificationResult:
         assert result.verdict_available is True
 
 
+class TestVerifierVerdict:
+    """Round-2 red-team fixes (Codex, verified independently): the schema
+    the verifier LLM is constrained to must ITSELF reject out-of-range/
+    unknown values, not rely on downstream code to catch them — an
+    unconstrained VerifierVerdict let a malformed model output (e.g.
+    score=1.2) pass generate_structured() cleanly and then blow up
+    VerificationResult's Field(ge=0.0, le=1.0) UNCAUGHT (outside the
+    try/except in verify_response)."""
+
+    def test_score_above_one_rejected(self):
+        with pytest.raises(ValidationError):
+            VerifierVerdict(reasoning="x", status="verified", score=1.2)
+
+    def test_score_below_zero_rejected(self):
+        with pytest.raises(ValidationError):
+            VerifierVerdict(reasoning="x", status="verified", score=-0.1)
+
+    def test_unknown_status_rejected(self):
+        with pytest.raises(ValidationError):
+            VerifierVerdict(reasoning="x", status="bogus", score=0.5)
+
+
 class TestVerificationServiceModelConfig:
     """VERIFIER_MODEL env override (increment-1, self-correction latency —
     self-correction-speed-design.md). Default behavior MUST be unchanged
@@ -80,7 +102,16 @@ class TestVerificationServiceFallbacks:
     """Tests for VerificationService without LLM available."""
 
     @pytest.mark.asyncio
-    async def test_returns_verified_when_model_unavailable(self):
+    async def test_model_unavailable_is_no_verdict(self):
+        """Round-2 fix (Codex red-team, verified independently): renamed
+        from test_returns_verified_when_model_unavailable. The old behavior
+        minted a false "verified" (status=VERIFIED, score=1.0,
+        verdict_available defaulting True) when the verifier itself was
+        dead — inconsistent with every OTHER no-verdict path in this file
+        (empty/malformed verdict, generic error), which all correctly set
+        verdict_available=False. This is a deliberate behavior change, not
+        a regression: "model unavailable" is a no-verdict case like the
+        rest, never a real "verified" judgment."""
         service = VerificationService()
         # Patch google_api_key to None so _get_genai_client() returns None
         # (simulates deployment environment where key is absent)
@@ -92,7 +123,9 @@ class TestVerificationServiceFallbacks:
                 context_chunks=["KITAS is a temporary stay permit in Indonesia."],
             )
         assert result.is_valid is True
-        assert result.status == VerificationStatus.VERIFIED
+        assert result.status == VerificationStatus.PARTIALLY_VERIFIED
+        assert result.score == 0.5
+        assert result.verdict_available is False
         assert "unavailable" in result.reasoning.lower()
 
     @pytest.mark.asyncio
@@ -235,6 +268,35 @@ class TestVerificationServiceWithLLM:
         assert result.status == VerificationStatus.PARTIALLY_VERIFIED
         assert result.score == 0.5
         assert result.verdict_available is False
+
+    @pytest.mark.asyncio
+    async def test_structured_error_does_not_leak_exception_content(self):
+        """Round-2 fix (Codex red-team, verified independently — PII
+        boundary is ABSOLUTE per UU PDP / SYMBIOSIS Law 2): genai_client's
+        LLMStructuredOutputError embeds pydantic ValidationError's str(),
+        which includes input_value=... — the model's malformed output,
+        which can itself echo client PII from the verifier prompt
+        (draft_answer/context_chunks). Neither the log nor the stored
+        `reasoning` may contain the raw exception text."""
+        service = VerificationService()
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        mock_client.generate_structured = AsyncMock(
+            side_effect=LLMStructuredOutputError(
+                "schema error input_value='mario.rossi@example.com passport A1234567'"
+            )
+        )
+        service._genai_client = mock_client
+
+        result = await service.verify_response(
+            query="test",
+            draft_answer="test answer",
+            context_chunks=["context"],
+        )
+        assert "example.com" not in result.reasoning
+        assert "A1234567" not in result.reasoning
+        assert result.verdict_available is False
+        assert result.score == 0.5
 
     @pytest.mark.asyncio
     async def test_calls_structured_not_generate_content(self):

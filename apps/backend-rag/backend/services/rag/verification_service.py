@@ -10,6 +10,7 @@ UPDATED 2025-12-23:
 import logging
 import os
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -66,11 +67,22 @@ class VerifierVerdict(BaseModel):
     """Schema the verifier LLM is constrained to via generate_structured()'s
     response_schema (JSON mode — response_mime_type="application/json",
     no markdown fence, ever; PR #311 convention: `reasoning` FIRST forces
-    think-before-commit)."""
+    think-before-commit).
+
+    `status`/`score` are bounded here (round-2 red-team fix, Codex): an
+    unconstrained schema let a malformed model output (e.g. score=1.2, or
+    a status value outside VerificationStatus) pass generate_structured()
+    cleanly, then blow up VerificationResult's own Field(ge=0.0, le=1.0)
+    UNCAUGHT in the mapping step below (outside the try/except). Bounding
+    it here means generate_structured()'s own model_validate_json +
+    one-retry catches it first, surfacing as the already-handled
+    LLMStructuredOutputError instead. `status` values must equal
+    VerificationStatus's `.value`s 1:1 (see the try/except right below the
+    call site, which still maps VerificationStatus(verdict.status))."""
 
     reasoning: str
-    status: str
-    score: float
+    status: Literal["verified", "partial", "unverified", "hallucination"]
+    score: float = Field(ge=0.0, le=1.0)
     corrections: str | None = None
     missing_citations: list[str] = []
 
@@ -117,12 +129,17 @@ class VerificationService:
         """
         client = self._get_genai_client()
         if not client or not client.is_available:
-            # Fallback if no model: Assume valid but log warning
+            # No verdict path, same as the others below (round-2 red-team
+            # fix, Codex): this used to mint a false "verified"
+            # (score=1.0, verdict_available defaulting True) when the
+            # verifier itself was dead — never let a no-verdict case look
+            # like a real judgment.
             return VerificationResult(
                 is_valid=True,
-                status=VerificationStatus.VERIFIED,
-                score=1.0,
-                reasoning="Verification skipped (model unavailable)",
+                status=VerificationStatus.PARTIALLY_VERIFIED,
+                score=0.5,
+                reasoning="Verification skipped (model unavailable) — verdict unavailable.",
+                verdict_available=False,
             )
 
         if not context_chunks:
@@ -199,28 +216,36 @@ Return a JSON object with this exact structure:
                 max_output_tokens=2048,
                 endpoint="rag.verifier",
             )
-        except LLMStructuredOutputError as e:
+        except LLMStructuredOutputError:
+            # PII boundary (round-2 red-team fix, Codex — UU PDP /
+            # SYMBIOSIS Law 2 is ABSOLUTE): LLMStructuredOutputError's
+            # message embeds pydantic ValidationError's str(), which
+            # includes input_value=... — the model's malformed output,
+            # which can itself echo client PII from the verifier prompt
+            # (draft_answer/context_chunks). Never log or store the raw
+            # exception text.
             logger.warning(
-                "🛡️ [Verifier] Model failed to produce a schema-valid verdict: %s",
-                e,
+                "🛡️ [Verifier] Model failed to produce a schema-valid verdict "
+                "— verdict unavailable",
             )
             return VerificationResult(
                 is_valid=True,
                 status=VerificationStatus.PARTIALLY_VERIFIED,
                 score=0.5,
-                reasoning=f"Verifier verdict unavailable: {e}",
+                reasoning="Verifier verdict unavailable (schema validation failed).",
                 verdict_available=False,
             )
         except Exception as e:
             # Unexpected error (network, API, etc.). Fail safe: allow it but
             # log error — and, same as above, never let the placeholder
-            # score gate self-correction.
-            logger.error("❌ [Verifier] Error during verification: %s", e)
+            # score gate self-correction. Same PII boundary as above: log
+            # the exception TYPE only, never str(e).
+            logger.error("❌ [Verifier] Error during verification: %s", type(e).__name__)
             return VerificationResult(
                 is_valid=True,
                 status=VerificationStatus.PARTIALLY_VERIFIED,
                 score=0.5,
-                reasoning=f"Verification failed processing: {e}",
+                reasoning="Verification failed processing (unexpected error).",
                 verdict_available=False,
             )
 
