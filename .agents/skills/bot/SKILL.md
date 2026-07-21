@@ -50,6 +50,15 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   allowlist, `verbatim_eligible`, still OPEN); PR #2856 (compound-CONFIDENCE degrade at
   harvest) MERGED. Team review packs: 21 batches Bahasa + 21 editable docx in
   `~/Desktop/TEAM-REVIEW-2026-07-20/`.
+- **CHATKB review pipeline (2026-07-21)**: corrections dir
+  `research/curated-qa-corrections-2026-07-21/` (rounds 1-4 applied+harvested). Dossier 11
+  (company-kbli-signed-lots) **round 5 APPLIED TO PROD** batch `company-b02dc5cb2e89`: Q5/Q6
+  KBLI 70100 PMA-block fix (no Usaha Besar row in OSS → a PT PMA cannot register under 70100;
+  the wrong "register now" answer grounded prod RAG from round 4 until the re-harvest), Q13
+  66123 hedged Bali-moratorium caveat (LOW confidence). Adversarial review FIX-THEN-SHIP
+  caught the 64200→64210 vintage error. Capture + operator recipe:
+  `research/company/2026-07-21-kbli-signed-lots-round5-verification.md` + README Round-5
+  section (PR #2989).
 - **GARUDA-E23 law_refs delta-harvest LIVE**: Perpres 20/2018 (revoked in full by PP 34/2021)
   re-cited to PP 34/2021 Pasal 19/6 on 2 prod points (Q2/Q6), answers untouched, neighbors
   no-drift.
