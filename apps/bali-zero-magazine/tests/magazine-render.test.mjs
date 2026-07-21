@@ -768,6 +768,11 @@ test("magazine front page renders editorial priority, five domains, coverage, an
   assert.match(html, /18 July 2026/i);
   assert.match(html, /The Morning File/);
   assert.match(html, /Bali visa files move to a stricter evidence standard/);
+  assert.match(
+    html,
+    /<img[^>]+src="\/api\/story-media\/bali-visa-evidence-standard"[^>]+alt="A reviewed immigration dossier arranged beside a verification checklist"/i,
+  );
+  assert.doesNotMatch(html, /Editorial visual pending verified media/i);
   assert.match(html, /Breaking/);
   assert.match(html, /Primary-source refresh changes the compliance watchlist/);
   for (const section of [

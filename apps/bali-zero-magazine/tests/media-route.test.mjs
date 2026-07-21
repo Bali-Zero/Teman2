@@ -20,6 +20,10 @@ const routePath = new URL(
   "../app/api/media/[digest]/route.ts",
   import.meta.url,
 );
+const storyRoutePath = new URL(
+  "../app/api/story-media/[slug]/route.ts",
+  import.meta.url,
+);
 const mediaModulePath = new URL("../lib/server/media.ts", import.meta.url);
 const routeExists = existsSync(routePath) && existsSync(mediaModulePath);
 
@@ -28,8 +32,16 @@ test("authenticated media route and resolver exist", () => {
   assert.ok(existsSync(mediaModulePath), "missing media resolver");
 });
 
+test("story media route exists", () => {
+  assert.ok(existsSync(storyRoutePath), "missing story media route");
+});
+
 async function loadRoute() {
   return (await import(routePath)).GET;
+}
+
+async function loadStoryRoute() {
+  return (await import(storyRoutePath)).GET;
 }
 
 async function publishVisibleAsset({
@@ -141,6 +153,46 @@ async function getMedia(handler, digest, bindings, authenticated = true) {
     handler(request, { params: Promise.resolve({ digest }) }),
   );
 }
+
+async function getStoryMedia(handler, slug, bindings, authenticated = true) {
+  const headers = authenticated
+    ? { "oai-authenticated-user-email": "reader@balizero.com" }
+    : {};
+  const request = new Request(
+    `https://magazine.example/api/story-media/${encodeURIComponent(slug)}`,
+    { headers },
+  );
+  return runWithMagazineBindings(bindings, () =>
+    handler(request, { params: Promise.resolve({ slug }) }),
+  );
+}
+
+test("story media route serves the approved image without exposing its digest in HTML", async () => {
+  const handler = await loadStoryRoute();
+  const { db, media, metadata, story } = await publishVisibleAsset();
+  const bindings = runtimeBindings(db, media);
+
+  assert.equal(
+    (await getStoryMedia(handler, story.slug, bindings, false)).status,
+    401,
+  );
+  const response = await getStoryMedia(handler, story.slug, bindings);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.equal((await response.text()).includes(metadata.sha256), false);
+  assert.equal(
+    (await getStoryMedia(handler, "missing-story", bindings)).status,
+    404,
+  );
+
+  const hostedBindings = { ...bindings };
+  delete hostedBindings.ACTOR_KEY_SECRET;
+  delete hostedBindings.ROLE_ALLOWLIST_JSON;
+  assert.equal(
+    (await getStoryMedia(handler, story.slug, hostedBindings)).status,
+    200,
+  );
+});
 
 test(
   "media route serves only an authenticated visible current association",

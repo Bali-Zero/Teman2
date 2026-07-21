@@ -8,15 +8,30 @@ type StoryCardProps = Readonly<{
 }>;
 
 export function StoryCard({ story, variant = "domain" }: StoryCardProps) {
+  const showVisual =
+    variant === "hero" || (variant !== "breaking" && story.imageAvailable);
+
   return (
     <article className={`story-card story-card--${variant}`}>
-      {variant === "hero" ? (
+      {showVisual ? (
         <div
-          className="editorial-visual"
-          role="img"
-          aria-label={story.imageAlt}
+          className={`editorial-visual editorial-visual--${variant}${
+            story.imageAvailable ? " editorial-visual--image" : ""
+          }`}
         >
-          <span>Editorial visual pending verified media</span>
+          {story.imageAvailable ? (
+            // The authenticated same-origin route must not pass through an
+            // optimizer, because optimizer requests do not carry the viewer.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/story-media/${encodeURIComponent(story.slug)}`}
+              alt={story.imageAlt}
+              loading={variant === "hero" ? "eager" : "lazy"}
+              fetchPriority={variant === "hero" ? "high" : "auto"}
+            />
+          ) : (
+            <span>Editorial visual pending verified media</span>
+          )}
         </div>
       ) : null}
       <div className="story-card-copy">

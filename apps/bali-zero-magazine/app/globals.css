@@ -308,6 +308,35 @@ main {
   z-index: 1;
 }
 
+.editorial-visual--image {
+  padding: 0;
+}
+
+.editorial-visual--image::after {
+  background: linear-gradient(
+    180deg,
+    transparent 58%,
+    rgba(0, 0, 0, 0.42) 100%
+  );
+  inset: 0;
+  height: auto;
+  transform: none;
+  width: auto;
+}
+
+.editorial-visual img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.editorial-visual--dispatch,
+.editorial-visual--domain {
+  aspect-ratio: 3 / 2;
+  margin-bottom: 0.8rem;
+}
+
 .dispatch-column {
   border-left: 1px solid var(--rule);
   display: flex;
