@@ -1,3 +1,16 @@
+---
+date: 2026-07-21
+domain: visa
+client_case: none
+adversarial_review: kimi-k3
+sources:
+  - apps/backend-rag/backend/db/migrations_v2/255_visa_shadow_evidence.sql
+  - apps/backend-rag/backend/services/visa_engine/shadow_evidence.py
+  - apps/backend-rag/scripts/visa_shadow_evidence.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_shadow_evidence.py
+  - apps/backend-rag/backend/tests/scripts/test_visa_shadow_evidence.py
+---
+
 # Visa Oracle v2 — SHADOW evidence collection receipt
 
 **Date:** 2026-07-21
@@ -94,6 +107,12 @@ The database URL must be supplied via a read-only environment variable. The CLI 
 - Full `backend/tests/services/visa_engine`: 1,070 collected; 0 failures, 0 errors, and one
   pre-existing operational skip because `visa_activation_executor` is not provisioned.
 - `git diff --check`: pass.
+
+## Adversarial review
+
+Kimi independently re-reviewed the four-commit SHADOW evidence series. The final verdict was
+`READY_FOR_DRAFT_PR`, with no high- or medium-severity findings. The re-review recorded M1, M2,
+L1, and L2 as closed.
 
 ## Gate snapshot
 
