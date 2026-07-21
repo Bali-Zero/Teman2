@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 31 · **Packages:** 6
+**Apps:** 33 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -108,6 +108,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
+| `bali-zero-magazine` | Private editorial observatory for Bali Zero, built on |
 | `cell` |  |
 | `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
 | `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
@@ -119,6 +120,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
 | `nuz-status-mac` | Native macOS control surface for Nuzantara operational health. |
+| `nuzantara-lex` | > Second body of the organism. "Avvocato Totale" — the Indonesian labor-law |
 | `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
@@ -162,13 +164,14 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
 | `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
 | `.claude/skills/visaoracle/` | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |
+| `.claude/skills/workflow/` | Strategic multi-agent orchestration playbook — the Workflow tool wired to the full cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy wi... |
 | `.claude/skills/wr2/` | "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control ... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`123 plist tracked in infra/launchagents/ · 93 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (76% coverage)`
+`128 plist tracked in infra/launchagents/ · 97 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (76% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

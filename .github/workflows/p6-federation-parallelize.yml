@@ -40,6 +40,7 @@ jobs:
   parallelize-gate:
     name: P6 parallelize-hypothesis falsifiable gates
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -67,7 +68,7 @@ jobs:
 
       - name: Set up Python
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 

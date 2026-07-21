@@ -253,9 +253,13 @@ async def test_poll_stamps_client_id_hint_for_existing_client(
     client_cleanup.append(phone_normalized)
     async with pool.acquire() as conn:
         client_id = await conn.fetchval(
+            # $2/$3 split, not $2 twice: clients.phone and clients.phone_normalized
+            # are different types (character varying vs text) and asyncpg raises
+            # AmbiguousParameterError when one parameter must deduce to both.
             "INSERT INTO clients (full_name, phone, phone_normalized) "
-            "VALUES ($1, $2, $2) RETURNING id",
+            "VALUES ($1, $2, $3) RETURNING id",
             "PR-2 Test Client",
+            phone_normalized,
             phone_normalized,
         )
 

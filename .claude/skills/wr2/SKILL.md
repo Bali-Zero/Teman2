@@ -29,9 +29,21 @@ back into the next editorial decision. Growth = the standing loop in §4.
 **Legge 5 (absolute)**: publishing to Instagram is Zero's act. The pipeline stops at `drafted`
 in the review queue. No session ever publishes autonomously.
 
-## 1. LIVE STATE (last update 2026-07-18 — keep current)
+## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
-**Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
+**Shipped & proven (July 16-17 arc):** **typed Carousel IR + shadow-replay harness SHIPPED +
+GATE PASSED (#2942, 2026-07-21, editorial-intelligence Phase 1)** — pydantic 11-kind discriminated
+union projecting to explicit `layout_family` pins (composer.py:143-145), ADDITIVE (generator/composer
+zero diff). Replay over ALL 61 historical decks: first-try valid 100%, 0 retries, 0 fails,
+family-resolution 100% via the real `map_slide_to_family`, kind-mix non-degenerate (447 slides, prose
+only ~8.7%) — red-team BLOCKER-1 (strict-schema regen spike) empirically refuted; evidence in
+`_research/2026-07-21-ir-phase1-replay-metrics.json`. DISCOVERY (Phase-3 prerequisite):
+source-citation `{{title}}` and elegant-close `trust_marker`/`reach`/`invite` placeholders are NEVER
+substituted in `composer._fill_placeholders` — those 2 families render broken today; with the IR
+routing cta→elegant-close and citation→source-citation (87/447 replay slides), the composer fix is a
+Phase-3 PRE-REQUISITE, not incidental. Next: Phase 2 deterministic pre-gate (guilt+innocence corpus
+per guard-conformance), then Phase 3 planner/writer dual-run. ·
+complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
 (#2563) · external-post registration + IG metrics FIRST LIVE on native carousels (#2578, hotfix
 #2579, 49 entries backfilled with numeric Graph ids) · **facts-first + park backstop (#2598,
@@ -57,14 +69,76 @@ delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical
 mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
 render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
 (rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
-asymmetric**.
+asymmetric** ·
+**enrichment passthrough SHIPPED + PROVEN-LIVE (#2691, growth-loop) — killed `brief_json.enrichment={}`**:
+the enricher's structured object (`the_facts`/`bali_zero_take`/`faq`/`thirty_second_brief`) was silently
+dropped scraper→staging→drafts (scar family #9). Fix = 4-hop contract: `ScraperSubmission.enrichment`
+field + `submit_from_scraper` persist + `list_pending_items` **opt-in** projection
+(`include_enrichment=true`, never on archived — round-2 payload-fan-out fix) + `build_staging_payload`.
+3 implementer rounds, 2 independent graders: Codex round-1 found 3 MUST-FIX (opt-in projection,
+legacy-dirty-JSON `isinstance(dict)` type-guard, dedup enrichment-heal); a fresh-context Sonnet refuter
+found the round-3 MUST-FIX (`_has_usable_source` unguarded `.get()` crash on a truthy non-dict) + a NICE
+(dedup-heal status-gate) — used because Codex/agy/DeepSeek ALL failed the round-2 re-gate (Codex 30-min
+hang, agy timeout, DeepSeek HTTP 402 balance-dead). PROVE-LIVE 2026-07-18 prod entity-match: submitted
+`enrichment.the_facts` marker → `/pending?include_enrichment=true` returned it exactly, default
+`/pending` omitted it, item cleaned. Fly deploy stalled ~90 min on GitHub-Actions runner starvation.
+LIMITATION ledgered: dedup-heal is a lockless read-modify-write (pre-existing class, low risk).
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
-the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
+the real event) · **PMK 37/2025 "1 August" carousel now FULL-BAHASA, final-rendered 2026-07-18
+(draft a80130df)** — native review Subhi+Ari complete (thread "[Review Bahasa]" 2026-07-17, 6/8
+GO), Zero-delegated decisions: cover "PAJAKNYA SAMA. KASIRNYA GANTI." + closer accent word
+"PERNYATAANMU"; reviewer amendments applied (slide-2 Ari rewrite, months spelled in full, slide-7
+tail). Applied file-only via compose_carousel() on the Pro (same mechanism as the 2026-07-16 C2
+apply; DB/queue untouched, queue `drafted`); EN version preserved in
+`slides.bak-pre-bahasa-20260718/`. At publish, the IG caption MUST carry "Dikecualikan bukan
+berarti bebas pajak — karena dipajaki di aturan lain" (not renderable on the slide, see template
+findings below) + the sumber+kontak pattern.
 
 **Open wounds / next targets:**
 
-- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
+- **Adaptive-production program (2026-07-20).** Empirical DB diagnosis (30d corpus): kicker frozen
+  30/30 on "Our read:" through 2026-07-15, then 3/3 on "THE SIGNAL" post-#2544 — same
+  single-example-anchoring bug, one position over; narrative arc identical 33/33
+  (`cover → take → body×N → CTA`) regardless of domain/liveness; cover subheads formulaic (3-example
+  pool recycled); 4/9 layout families ever selected because the generator never emits the structured
+  fields the other 5 need. **The one axis that varies is the one axis with a DB lookback armed
+  (register/tone) — injected state beats stated intent, every time.** Kicker/subhead DB-lookback cure
+  (generalizing the register/tone mechanism to those 2 axes) is IN FLIGHT in worktree
+  `wr2-kicker-variety`, second red-team round as of this entry. Full 3-seat deep research (Kimi K3
+  world-class-mechanisms + Gemini 3.1 Pro OSS-harvest + Codex sol-ultra architecture-review, +
+  independent Fable visual review of the last 3 decks) archived at
+  `_research/2026-07-20-adaptive-production-3seat-research.md`, with an adoption roadmap ruled by
+  Fable as final gate: **Fase 1 (adopt now)** = typed Carousel IR (slide-shape contract:
+  prose/statement/fact_stack/qa_dialogue/status_list/stat_card/citation) + Creative Ledger
+  (per-draft decision-vector signatures, generalizing the kicker/subhead fix) + closer-contract unify;
+  **Fase 2** = arc grammar + Planner/Slot-Writer split, gated on Fase 1; **metrics-gated** (n≥200) =
+  feedback bandit + portfolio content matrix + art-direction cards; several items are **Zero-gated**
+  (Legge 5/brand — franchise slot "The Bali Zero read", all-caps body doctrine, palette rotation).
+  Codex fresh-eyes findings A-J on the live codebase: **finding A is the root cause of the CTA being
+  absent on every single rendered deck** — the generator requires the last slide to carry a CTA while
+  the `statement-bomb` layout contract explicitly forbids one and renders only a short statement;
+  constitutional split-brain, not a copy-quality bug. **SHIPPED + PROVEN-LIVE (2026-07-20).** Kicker/
+  subhead cure merged `84a1e347c0` (#2873); 3-seat research archive merged `6addafc333` (#2870).
+  Deployed: both Pro checkouts (`~/Desktop/nuzantara` + `~/nuzantara-deploy`) pulled ff-only — the
+  deploy checkout required removing a stale orphaned `.git/index.lock` (confirmed no live process
+  held it via `lsof` before removal). `com.balizero.wr2.draft-generator` kickstarted; no briefed
+  draft was queued at kickstart time (log: "No briefed drafts to process") so a full end-to-end
+  generation could not be observed this session. PROVE-LIVE done via a direct function-level probe
+  through the production wrapper (`wr2-script-wrapper.sh`, real secrets + `DATABASE_URL_LOCAL` via
+  pg-proxy) against the real DB: `fetch_recent_editorial_signatures` returned the real historical
+  signatures `KICKERS: ['THE SIGNAL', 'Our read']` (exactly the two pathological kickers the
+  diagnosis found) + 8 real cover subheads; `_build_variety_steer` produced a 605-char steer block
+  containing "MUST NOT"; `_render_system_instructions` showed zero token leaks
+  (`__KICKER_EXAMPLES__`/`__KICKER_EXAMPLE_TAKE__` both absent from the rendered prompt). No
+  synthetic draft was injected into `war_room_drafts` to avoid polluting prod editorial state (W96
+  discipline) — the collision-regen-guard's full generation-loop behavior remains covered by the 93
+  local tests (50 dedicated) rather than a live end-to-end run; this is the REMAINING natural-proof
+  item, same pattern as the 2026-07-18 liveness wound (receptor = next natural draft generation, not
+  forced). Both worktrees (`wr2-kicker-variety`, `wr2-research-archive`) reaped after confirming
+  content-on-main via blob-per-file compare (W88 discipline) — GitHub had already auto-deleted both
+  remote branches post-squash-merge.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR FIRED POSITIVE → WOUND CLOSED 2026-07-19 ~02:03 WITA.** The first post-patch natural nightly (`run_20260719_010004.json`, 25 articles / 15 classified) emitted **tiers {evergreen:12, developing:3}** with **distinct scores {0, 60}** — the DETERMINISTIC `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} (#2635), NOT the old additive 30/50, and NOT stuck all-evergreen. The 3 developing items score 60 ≥ 40 → they pass the `WR2_PREFER_LIVE_NEWS` filter and will fill the live pool at the next selector run (04:24/05:10; not forced — Legge-5-adjacent). #2631+#2635 chain proven end-to-end on a natural nightly (not just composition). Only remaining passive confirmation: the selector actually picking one. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
   cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
@@ -74,7 +148,14 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (a different, lower-urgency backlog — DB `war_room_drafts.status`):** `render_failed`=20
   (slow-accumulating since 2026-06-09, ~4/wk, 1 in last 3d — not acute), `missed`=17 (one-time
   2026-06-23), `rendered_shadow`=7 (2026-06-13 test batch). A render-failure sweep, if wanted, is
-  a fresh item — not the (now-closed) queue-stuck one.
+  a fresh item — not the (now-closed) queue-stuck one. **GROUND 2026-07-18 (growth-loop B):** the 19
+  render_failed are CONTENT/QUALITY failures, NOT render-infra — #4b279125 = `Article 7 hard fail:
+forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.py:1269`), others =
+  weak-slide non-convergence (max_iters). A blind requeue is FUTILE (identical content → identical
+  fail). The 8 `attempts=0` rows are a stale 06-08→06-13 batch (leave — stale news). **Systematic
+  sub-bug (ledgered):** the render lane's generic `except Exception` (`wr2_html_render_apply.py:1415`)
+  mislabels the deterministic Article-7 reject as 'transient' and burns all 3 retries — should
+  fail-fast. Deeper root cause: composer should never emit forbidden phrases.
 - **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
   `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
   NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
@@ -98,11 +179,60 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   receptor on Zero's next app launch (the app was OFF at ship — err last grew 2026-07-17). Adjacent
   PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
-- **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
-  (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
-- **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
+- **Accessibility/legibility SOTA is in the external benches, NOT a separate amendments file.** Verified 2026-07-18 (M5 + Pro): `_proposed-amendments/2026-07-16-accessibility-discipline.md` does NOT exist on either machine and no "4 accessibility amendments" content is in the brand skill — the prior reference was phantom (scar #6). The real, still-UN-shipped accessibility work is grounded in `_external-bench-2026-06.md`: **Art 14.7 AI-disclosure label** (Meta AI-label + EU AI Act pressure; constitution silent, Art 5.4 covers faces only) + **translucent-caption-pill** legibility scrim. Grounding these into constitution articles is the real (Zero-gated brand judgment) work — there is no lost amendments file to reconcile.
+- **Slide-7 closer micro-text — ✅ MECHANISM PINNED + FIXED + LIVE 2026-07-19 (#2767, growth-loop B).**
+  Corner-note was WRONG (corrected 2026-07-18): the closer is NOT elegant-close — a true-last
+  `cta`/empty-`layout_family` slide routes to **statement-bomb** (Art 9.5). The tiny rendering was a
+  **SIZE COLLAPSE, not a contrast problem**: the injected hero photo's bottom edge → `bottom_ink_ratio≈0.497`
+  → the designer-loop geometry critic reads "bottom overflow" → emits `shrink_font:body`, which rendered
+  `[data-zone-type='text']{font-size:calc(1em*factor)}`; the statement-bomb `.statement` carries
+  `data-zone-type="text"` (over-match) and `1em` resolves to the ~16px PARENT → the Art-9.5 closer collapsed
+  72px→~10px. A black-bg closer has no photo → no false overflow → no lever → stays 72px. **Fix (LIVE):**
+  exclude `.statement` from both the shrink AND grow body-lever selectors (`:not(.statement)`, `composer.py`) —
+  Playwright prove-live on Pro `~/nuzantara-deploy`: closer+shrink_body **72px** (was 12.16px), editorial prose
+  still shrinks (non-regression), 139/139 tests + a regression test; Codex R2 approved scoped.
+  **Still open (SEPARATE axes, ledgered PENDING-ARMS 2026-07-19):** (a) **W89** — the `[data-zone-type='text']`
+  arm over-matches OTHER primary-text leaves (dark-status-list `.heading` 56→12px CONFIRMED); root-cure =
+  prose-only selector + fix `calc(1em*factor)`, render-QA'd across the layout library (NOT a `:not()` whack-a-mole
+  = scar #3); (b) an over-long closer now has neither auto-shrink nor hard-fail (72px unbounded — strictly better
+  than the old ~10px collapse); (c) the **translucent-caption-pill** contrast device
+  (`_external-bench-2026-06.md:57`) for text-over-photo LEGIBILITY stays a separate Zero-gated brand BUILD (it
+  addresses contrast, NOT the size collapse this fixed). Memory
+  `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18` (RESOLVED section).
+- **Render/visual-QA is research-SATURATED + build-partial + armed-live — do NOT re-research** (growth-loop
+  R, 2026-07-18). The 2026-06-07 pair (`design-critic-loop-sota` + `html-css-carousel-renderer-sota`) is the
+  authoritative render-QA SOTA. Built + armed-live on the Pro (ssh-verified: `WR2_VISION_REQUIRED=1`,
+  EasyOCR+torch present, designer-loop firing through 07-18 05:37): font-load hard gate, OCR round-trip
+  (full-size), local contrast. **UNbuilt vs the research** (the narrow real gap): the _thumbnail-downscale_
+  OCR pass + full geometry lint (overlap/off-grid/DOM-overflow). Capture
+  `research/marketing/2026-07-18-wr2-render-qa-saturated-hero-headline-lever-gap.md` · memory
+  `discovery_wr2_render_qa_saturated_hero_headline_lever_gap_2026_07_18`.
+- **Hero-cover headline thumbnail illegibility — the grow-lever was REFUTED, the real cure is the fit
+  policy (Zero-gated)** (growth-loop B, 2026-07-18, #2750). The `grow_font target=heading` lever was built
+  - hardened over 3 adversarial rounds, then MEASURED against prod (n=113 cover instances) → fires on ~1.8%
+    ⇒ refuted, code reverted, capture only. **Real cause:** `_wrap_headline_sentence_aware` (ALWAYS-ON
+    cover-photo fit) shrinks **83.2% of covers to its 60px floor** to keep every sentence on its own line — at
+    IG-grid downscale ~6-8px = the "caption-sized hook" the designer-loop logs. The lever can't help: the
+    renderer defers ~95% via a silent `continue`, so opening the critic prompt alone = a silent no-op
+    (cicatrix #2). **Real fix (NEXT B, Zero-gated):** re-tune the fit policy — a thumbnail-legible floor as the
+    HARD bound, sentence integrity yields to wrapping; ADD a vertical/max-lines guard (content anchored bottom
+    270px, `overflow:hidden` clips) + an indivisible-token guard; reconcile the composer-150px vs critic-110px
+    grid factor. Blast radius 83% of covers → brand call + render QA on a real deck. Capture
+    `research/marketing/2026-07-18-wr2-cover-headline-thumbnail-illegibility-root-cause.md` · memory
+    `discovery_wr2_cover_headline_thumbnail_illegibility_root_cause_2026_07_18`.
+- **Statement-bomb template ignores `yellow_accent`** (found 2026-07-18 on a80130df): the template
+  unconditionally wraps the LAST word of `statement` in the accent span (composer.py ~line 1600),
+  so the accent lands on whatever word ends the sentence — the EN deck had it on "INVOICE." instead
+  of "DECLARATION". Workaround used: clause order chosen so the intended word is last. Fix = honor
+  `yellow_accent` when present; behavior change ⇒ needs guilt+innocence tests across all
+  statement-bomb decks (scar #3).
+- **`dark-status-list` renders only heading + list_items** (found 2026-07-18): `body` and
+  `subheading` are silently dropped by the skeleton — slide-7-class closing messages stored in
+  `body` never appear on the PNG (true for the EN deck too). Fix options: add an optional
+  closing-line slot to the skeleton, or route such copy to a rendered field at compose time; until
+  then closing lines must ride the last list row and the IG caption.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
-  M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
+  M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
 
 ## 2. Anatomy — the hot files (verified 2026-07-17)
@@ -111,16 +241,16 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
 `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` → `REPO_ROOT=${WR2_REPO_ROOT:-~/nuzantara-deploy}`
 — deploy = pull BOTH `~/Desktop/nuzantara` AND `~/nuzantara-deploy`, scar #1):**
 
-| Stage         | Script                                                                                            | launchd          | Notes                                                                                                                                                                                                                                                                              |
+| Stage | Script | launchd | Notes |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
-| Topic pick    | `scripts/wr2_topic_selector.py`                                                                   | topic-selector   | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
-| Compose       | `scripts/wr2_draft_generator.py`                                                                  | draft-generator  | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
-| Hero images   | `scripts/wr2_image_generator.py`                                                                  | image-generator  | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min                                                                                                                                                                                       |
-| Facts         | `scripts/wr2_fact_extractor.py`                                                                   | fact-extractor   | gates on `fact_check_json IS NULL`                                                                                                                                                                                                                                                 |
-| Check         | fact-checker lane                                                                                 | fact-checker     | writes `fact_check_status` (currently degraded pipeline-wide)                                                                                                                                                                                                                      |
-| Render        | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply       | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender`                                                                                                                                     |
-| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py`                                | supervisor       | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked`                                                                                                                                                                                                      |
-| Reconcile     | `scripts/wr2_daily_reconciler.py`                                                                 | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness`                                                                                                                                                                                              |
+| Topic pick | `scripts/wr2_topic_selector.py` | topic-selector | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
+| Compose | `scripts/wr2_draft_generator.py` | draft-generator | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
+| Hero images | `scripts/wr2_image_generator.py` | image-generator | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min |
+| Facts | `scripts/wr2_fact_extractor.py` | fact-extractor | gates on `fact_check_json IS NULL` |
+| Check | fact-checker lane | fact-checker | writes `fact_check_status` (currently degraded pipeline-wide) |
+| Render | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender` |
+| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py` | supervisor | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked` |
+| Reconcile | `scripts/wr2_daily_reconciler.py` | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness` |
 
 **DB**: `war_room_drafts` on nuzantara-postgres. Status machine (CHECK constraint, migration 245):
 briefed → drafts → drafts_imaged → drafts_imaged_facted → drafts_imaged_checked → rendering →
@@ -249,6 +379,8 @@ cover copy measured via the metrics loop.
 - DB access RO: `mcp__postgres-nuzantara__query` / `scripts/pg.sh`; writes ONLY via backend
   code from Pro env (never MCP).
 - IG token: Pro `.env.master` — grep into env vars, never print (scar #4).
+- Adaptive-production 3-seat research (2026-07-20): `_research/2026-07-20-adaptive-production-3seat-research.md`
+  (Kimi K3 + Gemini 3.1 Pro + Codex sol-ultra, full verbatim seat reports + Fable synthesis/adoption ruling).
 
 > Chi cambia lo stato AGGIORNA la §1. Un corner stantio è peggio di nessun corner (W90: anche il
 > ground-truth invecchia).

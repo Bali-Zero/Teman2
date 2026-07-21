@@ -49,6 +49,7 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from backend.phone_lock import lock_phone_cores
 from backend.services.intake.auto_attach import _is_internal_sender_phone
 from backend.services.intake.routing import normalize_sender_phone
 
@@ -224,25 +225,31 @@ async def resolve_or_create_contact(
     # idempotency this whole module depends on would silently vanish.
     # `normalize_phone_number` only strips non-digits (no 0/8->62 rewriting),
     # so feeding it the ALREADY-normalized digits is a safe no-op.
-    row = await conn.fetchrow(
-        """
-        INSERT INTO clients
-            (full_name, phone, phone_normalized, status, origin, created_by,
-             created_at, updated_at)
-        VALUES ($1, $2, $2, $3, $4, $5, NOW(), NOW())
-        ON CONFLICT (phone_normalized)
-        WHERE (phone_normalized IS NOT NULL
-               AND deleted_at IS NULL
-               AND origin = 'wa-intake')
-        DO NOTHING
-        RETURNING id
-        """,
-        full_name,
-        normalized,
-        UNLABELED_STATUS,
-        WA_INTAKE_ORIGIN,
-        AUTOCREATE_CREATED_BY,
-    )
+    # Phone is an identity-resolution key (Codex 2026-07-19 round 10, F12):
+    # cooperative core lock before minting a new owner, held for the INSERT in
+    # the SAME transaction (an xact advisory lock outside one releases at
+    # statement end, silently disarming the protocol).
+    async with conn.transaction():
+        await lock_phone_cores(conn, normalized)
+        row = await conn.fetchrow(
+            """
+            INSERT INTO clients
+                (full_name, phone, phone_normalized, status, origin, created_by,
+                 created_at, updated_at)
+            VALUES ($1, $2, $2, $3, $4, $5, NOW(), NOW())
+            ON CONFLICT (phone_normalized)
+            WHERE (phone_normalized IS NOT NULL
+                   AND deleted_at IS NULL
+                   AND origin = 'wa-intake')
+            DO NOTHING
+            RETURNING id
+            """,
+            full_name,
+            normalized,
+            UNLABELED_STATUS,
+            WA_INTAKE_ORIGIN,
+            AUTOCREATE_CREATED_BY,
+        )
     if row is not None:
         logger.info(
             "contact_autocreate: created client=%s from unknown WA sender phone",

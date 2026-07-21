@@ -355,6 +355,13 @@ class ReasoningEngine:
                                     # _prepare_react_loop from the workspace
                                     # endpoint chain. None for legacy /stream.
                                     agent_role=getattr(state, "agent_role", None),
+                                    # WA team-assistant Phase 2 (2026-07-20):
+                                    # forward the resolved caller profile so
+                                    # team_crm_tools.py can self-scope.
+                                    # state.caller_profile is set by
+                                    # OrchestratorCore.process_query_core.
+                                    # None everywhere else (complete no-op).
+                                    caller_profile=getattr(state, "caller_profile", None),
                                 )
                                 return tc, result, duration
                             except Exception as e:
@@ -907,9 +914,28 @@ Make it feel natural and helpful, not forced.
                     # Run through pipeline
                     processed = await self.response_pipeline.process(pipeline_data)
                     set_span_attribute("verification_score", processed.get("verification_score", 0))
+                    verdict_available = processed.get("verdict_available", True)
+                    verification_score = processed.get("verification_score", 1.0)
+                    set_span_attribute("verdict_available", verdict_available)
 
-                    # Handle verification failure (self-correction)
-                    if processed.get("verification_score", 1.0) < 0.7 and state.context_gathered:
+                    # Handle verification failure (self-correction) — ONLY when
+                    # the verifier actually produced a verdict. An empty/
+                    # unparseable verifier response (verdict_available=False)
+                    # must never trigger self-correction: the placeholder
+                    # score=0.5 is not a real judgment, and rephrasing on top
+                    # of it wastes a full rephrase+re-verify round-trip
+                    # (~23s — the verifier hits the same empty-response bug on
+                    # retry, so the loop "corrects" an answer that was never
+                    # actually rejected). See verification_service.py.
+                    if not verdict_available:
+                        if verification_score < 0.7 and state.context_gathered:
+                            logger.info(
+                                "🛡️ [Pipeline] Verifier unavailable — skipping "
+                                "self-correction (placeholder score=%.2f is not a "
+                                "real verdict).",
+                                verification_score,
+                            )
+                    elif verification_score < 0.7 and state.context_gathered:
                         verification = processed.get("verification", {})
                         logger.warning(
                             f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
@@ -950,6 +976,37 @@ Do not invent information. If the context is insufficient, admit it.
                     state.final_answer = processed["response"]
                     if "citations" in processed:
                         state.sources = processed["citations"]
+
+                    # Dead-wiring fix (2026-07-20): this is the AUTHORITATIVE
+                    # `processed` result for the answer actually being
+                    # returned above — if self-correction ran, `processed`
+                    # was reassigned to the retry pipeline's fresh verdict on
+                    # the CORRECTED answer; re-reading here (rather than
+                    # persisting the pre-correction verification_score local
+                    # from before the retry) is what keeps the score
+                    # attached to the text it actually describes. Before
+                    # this fix, verification_score/verdict_available were
+                    # computed but never survived past this function —
+                    # orchestrator_response.py's CoreResult reads
+                    # getattr(state, "verification_score", 0.0), and nothing
+                    # ever set that attribute, so every response reported
+                    # 0.0 regardless of the real score. Only persist when
+                    # verdict_available: an unparseable/placeholder score is
+                    # not a real judgment, and reporting it as the
+                    # client-facing verification_status would swap one lie
+                    # ("always 0.0") for another ("fake pass/fail"). Leaving
+                    # state at its default keeps CoreResult's derived
+                    # verification_status="unchecked" — the honest label for
+                    # "we never got a real verdict".
+                    final_verdict_available = processed.get(
+                        "verdict_available",
+                        verdict_available,
+                    )
+                    if final_verdict_available:
+                        state.verification_score = processed.get(
+                            "verification_score",
+                            verification_score,
+                        )
 
                     logger.info(
                         f"✅ [Pipeline] Response processed: "

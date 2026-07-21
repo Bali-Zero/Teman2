@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 25af0bde5e40fa20e626d78169f64e940301becabd6729e6a7936e2985c8468c
+checksum: 40aee294d407d7e8c7bcb9a0abe77eecae3b2bc6f7668beaf9e3205b25efee73
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1743,6 +1743,40 @@ organs:
     label: com.balizero.regulatory-watcher.daily
   severity_on_silence: warning
   cicatrix_refs: []
+- id: pro.bali_zero_magazine_morning
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.morning
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_morning.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.bali_zero_magazine_breaking
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.breaking
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_breaking.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.pg_organism_bridge
   runtime: pro_launchd
   type: daemon
@@ -1914,6 +1948,27 @@ organs:
     path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
     timestamp_field: ts
     status_field: status
+- id: pro.worktree_gc_universal
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: scripts/worktree_gc_universal.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.worktree-gc-universal.daily
+  severity_on_silence: warning
+  notes: Reaps stale git worktrees across the whole fleet (not just WR2/broker lanes)
+    to free disk. Unpushed-commit gate no longer blocks removal (W88 cure, dir-only
+    reclaim, branch ref preserved) — registered manually as part of the G1/G2 gene
+    retrofit 2026-07-18, not organ_birth.py-generated.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/com.nuzantara.worktree-gc-universal.daily.json
+    timestamp_field: ts
+    status_field: status
 - id: mini.fleet_watch
   runtime: mini_launchd
   type: cron
@@ -2064,5 +2119,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.log_rotate.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.fly_logs_accumulator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/fly_logs_accumulator.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.fly-logs-accumulator
+  severity_on_silence: warning
+  notes: Fly logs follower for nuzantara-rag — daily rotated files under ~/logs/fly,
+    14d retention, local disk only (Law 2). Kill switch FLY_LOGS_ACCUMULATOR_ENABLED=false.
+    (O0-P1, approved by Zero 2026-07-19)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fly_logs_accumulator.json
     timestamp_field: ts
     status_field: status

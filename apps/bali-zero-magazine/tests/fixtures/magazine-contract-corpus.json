@@ -1,0 +1,55 @@
+{
+  "schema_version": "magazine-contract-corpus.v1",
+  "cases": [
+    {
+      "id": "story-valid",
+      "contract": "story",
+      "accept": true,
+      "mutation": "none"
+    },
+    {
+      "id": "story-invalid-port",
+      "contract": "story",
+      "accept": false,
+      "mutation": "invalid-url-port",
+      "value": "https://example.com:99999/regulation"
+    },
+    {
+      "id": "edition-valid",
+      "contract": "edition",
+      "accept": true,
+      "mutation": "none"
+    },
+    {
+      "id": "edition-missing-legal-effect",
+      "contract": "edition",
+      "accept": false,
+      "mutation": "missing-legal-effect"
+    },
+    {
+      "id": "collector-valid",
+      "contract": "collector",
+      "accept": true,
+      "mutation": "none"
+    },
+    {
+      "id": "collector-extra-field",
+      "contract": "collector",
+      "accept": false,
+      "mutation": "extra-field"
+    },
+    {
+      "id": "asset-valid",
+      "contract": "asset",
+      "accept": true,
+      "mutation": "none"
+    },
+    {
+      "id": "asset-invalid-port",
+      "contract": "asset",
+      "accept": false,
+      "mutation": "invalid-url-port",
+      "value": "https://example.com:99999/image"
+    }
+  ]
+}

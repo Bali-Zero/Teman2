@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "45bbc1f42a0c74d12c3021f56a54565a747a01c7",
-  "canonical_sha256": "659dc7a71b360e16fbdb7bac5cbc0fe1831f33a994785185b56fe66e73fb04b5",
+  "canonical_revision": "2df807b006a9158afef9c153e31875daf12ec727",
+  "canonical_sha256": "446c5f5f1fcf5c33d18d411c71843a48f398b9b7a52f1f249c507c86604cf50b",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,17 +10,16 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-serving/pp28": 113,
-    "A-empty/gap": 107,
-    "A-serving/orphan": 1,
-    "_in_scope_total": 114,
+    "A-empty/gap": 216,
+    "A-serving/pp28": 5,
+    "_in_scope_total": 5,
     "_total": 221
   },
   "members": [
     {
       "kode_kbli_2025": "01287",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang",
       "pp28_sources": [
@@ -29,8 +28,8 @@
     },
     {
       "kode_kbli_2025": "01700",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Perburuan, Penangkapan, dan Kegiatan Jasa Terkait",
       "pp28_sources": [
@@ -39,8 +38,8 @@
     },
     {
       "kode_kbli_2025": "02201",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Pemanenan Kayu",
       "pp28_sources": [
@@ -49,8 +48,8 @@
     },
     {
       "kode_kbli_2025": "02402",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Jasa Penggunaan Kawasan Kehutanan ?",
       "pp28_sources": [
@@ -59,8 +58,8 @@
     },
     {
       "kode_kbli_2025": "02409",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Jasa Penunjang Kehutanan Lainnya",
       "pp28_sources": [
@@ -69,8 +68,8 @@
     },
     {
       "kode_kbli_2025": "05102",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Benefisiasi atau Peningkatan Kualitas Batu Bara",
       "pp28_sources": [
@@ -79,8 +78,8 @@
     },
     {
       "kode_kbli_2025": "05200",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Pertambangan Lignit",
       "pp28_sources": [
@@ -89,8 +88,8 @@
     },
     {
       "kode_kbli_2025": "08920",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Ekstraksi Tanah Gambut (Peat)",
       "pp28_sources": [
@@ -99,8 +98,8 @@
     },
     {
       "kode_kbli_2025": "19206",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.c",
       "judul": "Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel",
       "pp28_sources": [
@@ -109,8 +108,8 @@
     },
     {
       "kode_kbli_2025": "36003",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.H",
       "judul": "Aktivitas Penunjang Penyediaan Air",
       "pp28_sources": [
@@ -119,8 +118,8 @@
     },
     {
       "kode_kbli_2025": "38122",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengumpulan Limbah Radioaktif",
       "pp28_sources": [
@@ -129,8 +128,8 @@
     },
     {
       "kode_kbli_2025": "38222",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengolahan dan Pembuangan Limbah Radioaktif",
       "pp28_sources": [
@@ -139,8 +138,8 @@
     },
     {
       "kode_kbli_2025": "39001",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Aktivitas Penangkapan Karbon",
       "pp28_sources": [
@@ -149,8 +148,8 @@
     },
     {
       "kode_kbli_2025": "42999",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.H",
       "judul": "Konstruksi Bangunan Sipil Lainnya YTDL",
       "pp28_sources": [
@@ -159,8 +158,8 @@
     },
     {
       "kode_kbli_2025": "47771",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Perdagangan Eceran Minyak Tanah",
       "pp28_sources": [
@@ -169,8 +168,8 @@
     },
     {
       "kode_kbli_2025": "49233",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Angkutan Tidak Bermotor untuk Barang",
       "pp28_sources": [
@@ -179,8 +178,8 @@
     },
     {
       "kode_kbli_2025": "49296",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Angkutan Ojek Motor",
       "pp28_sources": [
@@ -189,8 +188,8 @@
     },
     {
       "kode_kbli_2025": "50113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Angkutan Laut Dalam Negeri untuk Wisata",
       "pp28_sources": [
@@ -231,8 +230,8 @@
     },
     {
       "kode_kbli_2025": "52103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Aktivitas Gudang Berikat",
       "pp28_sources": [
@@ -241,8 +240,8 @@
     },
     {
       "kode_kbli_2025": "52105",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)",
       "pp28_sources": [
@@ -251,8 +250,8 @@
     },
     {
       "kode_kbli_2025": "52211",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Terminal Darat",
       "pp28_sources": [
@@ -261,8 +260,8 @@
     },
     {
       "kode_kbli_2025": "52219",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Jasa Terkait Transportasi Darat Lainnya",
       "pp28_sources": [
@@ -271,8 +270,8 @@
     },
     {
       "kode_kbli_2025": "52232",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Jasa Pelayanan Navigasi Penerbangan",
       "pp28_sources": [
@@ -281,8 +280,8 @@
     },
     {
       "kode_kbli_2025": "52239",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Jasa Terkait Angkutan Udara Lainnya",
       "pp28_sources": [
@@ -291,8 +290,8 @@
     },
     {
       "kode_kbli_2025": "52299",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Penunjang Angkutan Lainnya YTDL",
       "pp28_sources": [
@@ -301,8 +300,8 @@
     },
     {
       "kode_kbli_2025": "59131",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah",
       "pp28_sources": [
@@ -311,8 +310,8 @@
     },
     {
       "kode_kbli_2025": "60101",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Penyiaran Radio Analog",
       "pp28_sources": [
@@ -321,8 +320,8 @@
     },
     {
       "kode_kbli_2025": "60103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi dan Streaming Audio Atas Permintaan",
       "pp28_sources": [
@@ -331,8 +330,8 @@
     },
     {
       "kode_kbli_2025": "60201",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Penyiaran dan Pemrograman Televisi Analog",
       "pp28_sources": [
@@ -341,8 +340,8 @@
     },
     {
       "kode_kbli_2025": "60203",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi dan Streaming Video Atas Permintaan",
       "pp28_sources": [
@@ -351,8 +350,8 @@
     },
     {
       "kode_kbli_2025": "60311",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Kantor Berita oleh Pemerintah",
       "pp28_sources": [
@@ -371,8 +370,8 @@
     },
     {
       "kode_kbli_2025": "61905",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Jasa Telekomunikasi Khusus Berbasis Satelit",
       "pp28_sources": [
@@ -381,8 +380,8 @@
     },
     {
       "kode_kbli_2025": "61909",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Aktivitas Telekomunikasi Lainnya YTDL",
       "pp28_sources": [
@@ -393,8 +392,8 @@
     },
     {
       "kode_kbli_2025": "64110",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Bank Sentral",
       "pp28_sources": [
@@ -403,8 +402,8 @@
     },
     {
       "kode_kbli_2025": "64220",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pembiayaan Conduit",
       "pp28_sources": [
@@ -423,8 +422,8 @@
     },
     {
       "kode_kbli_2025": "64320",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Dana Investasi Bukan Pasar Uang",
       "pp28_sources": [
@@ -433,8 +432,8 @@
     },
     {
       "kode_kbli_2025": "64330",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Trust, Warisan, dan Keagenan",
       "pp28_sources": [
@@ -443,8 +442,8 @@
     },
     {
       "kode_kbli_2025": "64920",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pembiayaan Perdagangan Internasional",
       "pp28_sources": [
@@ -453,8 +452,8 @@
     },
     {
       "kode_kbli_2025": "64940",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Sekuritisasi",
       "pp28_sources": [
@@ -463,8 +462,8 @@
     },
     {
       "kode_kbli_2025": "64955",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengelolaan Tabungan Perumahan Rakyat",
       "pp28_sources": [
@@ -481,8 +480,8 @@
     },
     {
       "kode_kbli_2025": "64996",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Perbankan Bulion Konvensional",
       "pp28_sources": [
@@ -491,8 +490,8 @@
     },
     {
       "kode_kbli_2025": "64997",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Perbankan Bulion Syariah",
       "pp28_sources": [
@@ -509,8 +508,8 @@
     },
     {
       "kode_kbli_2025": "66113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penyelenggaraan Bursa Aset Keuangan Digital",
       "pp28_sources": [
@@ -519,8 +518,8 @@
     },
     {
       "kode_kbli_2025": "66116",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pengawasan Jasa Keuangan Selain Asuransi dan Dana Pensiun",
       "pp28_sources": [
@@ -529,8 +528,8 @@
     },
     {
       "kode_kbli_2025": "66123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Aset Keuangan Digital",
       "pp28_sources": [
@@ -539,8 +538,8 @@
     },
     {
       "kode_kbli_2025": "66124",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Pasar Uang dan Pasar Valuta Asing",
       "pp28_sources": [
@@ -549,8 +548,8 @@
     },
     {
       "kode_kbli_2025": "66129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Efek dan Kontrak Komoditas Lainnya",
       "pp28_sources": [
@@ -559,8 +558,8 @@
     },
     {
       "kode_kbli_2025": "66131",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kliring dan Setelmen Transaksi di Pasar Keuangan",
       "pp28_sources": [
@@ -569,8 +568,8 @@
     },
     {
       "kode_kbli_2025": "66132",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penyimpanan Aset Keuangan dan Kontrak Komoditas Berjangka",
       "pp28_sources": [
@@ -579,8 +578,8 @@
     },
     {
       "kode_kbli_2025": "66149",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penyelenggaraan Transaksi Keuangan dan Pengelolaan Uang Rupiah Lainnya selain Pasar Keuangan",
       "pp28_sources": [
@@ -589,8 +588,8 @@
     },
     {
       "kode_kbli_2025": "66153",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Advisori Syariah Pasar Modal",
       "pp28_sources": [
@@ -599,8 +598,8 @@
     },
     {
       "kode_kbli_2025": "66159",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Advisori Pasar Keuangan Lainnya",
       "pp28_sources": [
@@ -609,8 +608,8 @@
     },
     {
       "kode_kbli_2025": "66192",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penitipan dan Pengelolaan Berdasarkan Perjanjian Trust",
       "pp28_sources": [
@@ -619,8 +618,8 @@
     },
     {
       "kode_kbli_2025": "66197",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pendukung di Pasar Uang dan Pasar Valuta Asing",
       "pp28_sources": [
@@ -629,8 +628,8 @@
     },
     {
       "kode_kbli_2025": "66211",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penilai Risiko Asuransi",
       "pp28_sources": [
@@ -639,8 +638,8 @@
     },
     {
       "kode_kbli_2025": "66224",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Agen Penjaminan",
       "pp28_sources": [
@@ -649,8 +648,8 @@
     },
     {
       "kode_kbli_2025": "66292",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pengawasan Jasa Keuangan Asuransi dan Dana Pensiun",
       "pp28_sources": [
@@ -659,8 +658,8 @@
     },
     {
       "kode_kbli_2025": "66299",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penunjang Lainnya untuk Asuransi, Penjamian, dan Dana Pensiun YTDL",
       "pp28_sources": [
@@ -669,8 +668,8 @@
     },
     {
       "kode_kbli_2025": "66309",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Manajemen Dana Lainnya",
       "pp28_sources": [
@@ -689,8 +688,8 @@
     },
     {
       "kode_kbli_2025": "68123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pengelolaan Kawasan Ekonomi Khusus",
       "pp28_sources": [
@@ -699,8 +698,8 @@
     },
     {
       "kode_kbli_2025": "68125",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Pengelolaan Pusat Perbelanjaan",
       "pp28_sources": [
@@ -710,8 +709,8 @@
     },
     {
       "kode_kbli_2025": "68126",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Penyewaan Gudang dan Fasilitas Penyimpanan Mandiri",
       "pp28_sources": [
@@ -720,8 +719,8 @@
     },
     {
       "kode_kbli_2025": "68127",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Pengelolaan Gedung Perkantoran",
       "pp28_sources": [
@@ -730,8 +729,8 @@
     },
     {
       "kode_kbli_2025": "68129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.G",
       "judul": "Aktivitas Real Estat (Bangunan dan Lahan) Nonhunian Lainnya Milik Sendiri atau Sewa",
       "pp28_sources": [
@@ -740,8 +739,8 @@
     },
     {
       "kode_kbli_2025": "70100",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Kantor Pusat",
       "pp28_sources": [
@@ -750,8 +749,8 @@
     },
     {
       "kode_kbli_2025": "72101",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Alam",
       "pp28_sources": [
@@ -760,8 +759,8 @@
     },
     {
       "kode_kbli_2025": "72103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Kedokteran dan Kesehatan",
       "pp28_sources": [
@@ -770,8 +769,8 @@
     },
     {
       "kode_kbli_2025": "72105",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Penelitian dan Pengembangan Ilmu Pertanian dan Kedokteran Hewan",
       "pp28_sources": [
@@ -796,8 +795,8 @@
     },
     {
       "kode_kbli_2025": "75001",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Personel Kesehatan Hewan Mandiri",
       "pp28_sources": [
@@ -806,8 +805,8 @@
     },
     {
       "kode_kbli_2025": "75002",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Pengelolaan Sarana Kesehatan Hewan",
       "pp28_sources": [
@@ -816,8 +815,8 @@
     },
     {
       "kode_kbli_2025": "75009",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Pengelolaan Kesehatan Hewan Lainnya",
       "pp28_sources": [
@@ -826,8 +825,8 @@
     },
     {
       "kode_kbli_2025": "77397",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.G",
       "judul": "Penyewaan dan Sewa Guna Usaha Mesin dan Peralatan Radiasi",
       "pp28_sources": [
@@ -836,8 +835,8 @@
     },
     {
       "kode_kbli_2025": "78109",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penempatan Tenaga Kerja Lainnya",
       "pp28_sources": [
@@ -854,16 +853,16 @@
     },
     {
       "kode_kbli_2025": "80190",
-      "reason_code": "A-serving/orphan",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Aktivitas Keamanan YTDL",
       "pp28_sources": []
     },
     {
       "kode_kbli_2025": "82911",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.h",
       "judul": "Aktivitas Agen Penagihan",
       "pp28_sources": [
@@ -1232,8 +1231,8 @@
     },
     {
       "kode_kbli_2025": "85321",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pendidikan Menengah Kejuruan Umum Pemerintah",
       "pp28_sources": [
@@ -1242,8 +1241,8 @@
     },
     {
       "kode_kbli_2025": "85323",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Pendidikan Menengah Kejuruan Keagamaan Islam",
       "pp28_sources": [
@@ -1252,8 +1251,8 @@
     },
     {
       "kode_kbli_2025": "85324",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Pendidikan Menengah Kejuruan Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu",
       "pp28_sources": [
@@ -1262,8 +1261,8 @@
     },
     {
       "kode_kbli_2025": "85330",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Pendidikan Pascamenengah Nontersier",
       "pp28_sources": [
@@ -1272,8 +1271,8 @@
     },
     {
       "kode_kbli_2025": "85401",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Pendidikan Tinggi Umum Pemerintah",
       "pp28_sources": [
@@ -1284,8 +1283,8 @@
     },
     {
       "kode_kbli_2025": "85403",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pendidikan Tinggi Keagamaan Pemerintah",
       "pp28_sources": [
@@ -1294,8 +1293,8 @@
     },
     {
       "kode_kbli_2025": "85404",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Pendidikan Tinggi Keagamaan Swasta",
       "pp28_sources": [
@@ -1400,8 +1399,8 @@
     },
     {
       "kode_kbli_2025": "86102",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Puskesmas",
       "pp28_sources": [
@@ -1410,8 +1409,8 @@
     },
     {
       "kode_kbli_2025": "86109",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Rumah Sakit Lainnya",
       "pp28_sources": [
@@ -1420,8 +1419,8 @@
     },
     {
       "kode_kbli_2025": "86201",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Praktik Dokter",
       "pp28_sources": [
@@ -1430,8 +1429,8 @@
     },
     {
       "kode_kbli_2025": "86202",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Praktik Dokter Spesialis",
       "pp28_sources": [
@@ -1440,8 +1439,8 @@
     },
     {
       "kode_kbli_2025": "86203",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Praktik Dokter Gigi",
       "pp28_sources": [
@@ -1578,8 +1577,8 @@
     },
     {
       "kode_kbli_2025": "90111",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Penciptaan Karya Sastra",
       "pp28_sources": [
@@ -1631,8 +1630,8 @@
     },
     {
       "kode_kbli_2025": "91212",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Museum yang Dikelola Swasta",
       "pp28_sources": [
@@ -1649,8 +1648,8 @@
     },
     {
       "kode_kbli_2025": "91222",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta",
       "pp28_sources": [
@@ -1693,8 +1692,8 @@
     },
     {
       "kode_kbli_2025": "91424",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Taman Wisata Alam",
       "pp28_sources": [
@@ -1703,8 +1702,8 @@
     },
     {
       "kode_kbli_2025": "91425",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Taman Hutan Raya",
       "pp28_sources": [
@@ -1749,8 +1748,8 @@
     },
     {
       "kode_kbli_2025": "93113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Fasilitas Gelanggang/Arena",
       "pp28_sources": [
@@ -1769,8 +1768,8 @@
     },
     {
       "kode_kbli_2025": "93115",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Fasilitas Olahraga Beladiri",
       "pp28_sources": [
@@ -1789,8 +1788,8 @@
     },
     {
       "kode_kbli_2025": "93121",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Sepak Bola",
       "pp28_sources": [
@@ -1799,8 +1798,8 @@
     },
     {
       "kode_kbli_2025": "93122",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Golf",
       "pp28_sources": [
@@ -1809,8 +1808,8 @@
     },
     {
       "kode_kbli_2025": "93123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Renang",
       "pp28_sources": [
@@ -1819,8 +1818,8 @@
     },
     {
       "kode_kbli_2025": "93124",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Tenis Lapangan",
       "pp28_sources": [
@@ -1829,8 +1828,8 @@
     },
     {
       "kode_kbli_2025": "93125",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Tinju",
       "pp28_sources": [
@@ -1839,8 +1838,8 @@
     },
     {
       "kode_kbli_2025": "93126",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Bela Diri",
       "pp28_sources": [
@@ -1849,8 +1848,8 @@
     },
     {
       "kode_kbli_2025": "93127",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Kebugaran/Fitness Dan Binaraga",
       "pp28_sources": [
@@ -1859,8 +1858,8 @@
     },
     {
       "kode_kbli_2025": "93128",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Boling",
       "pp28_sources": [
@@ -1869,8 +1868,8 @@
     },
     {
       "kode_kbli_2025": "93129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Klub Olahraga Lainnya",
       "pp28_sources": [
@@ -1889,8 +1888,8 @@
     },
     {
       "kode_kbli_2025": "93192",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Juri dan Wasit Profesional",
       "pp28_sources": [
@@ -1899,8 +1898,8 @@
     },
     {
       "kode_kbli_2025": "93193",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Perburuan di Kawasan Buru",
       "pp28_sources": [
@@ -1909,8 +1908,8 @@
     },
     {
       "kode_kbli_2025": "93194",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Badan Regulasi dan Liga Olahraga",
       "pp28_sources": [
@@ -1919,8 +1918,8 @@
     },
     {
       "kode_kbli_2025": "93195",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Olahraga Tradisional",
       "pp28_sources": [
@@ -1929,8 +1928,8 @@
     },
     {
       "kode_kbli_2025": "93197",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Olaharagawan/Atlet Independen",
       "pp28_sources": [
@@ -1939,8 +1938,8 @@
     },
     {
       "kode_kbli_2025": "93199",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL",
       "pp28_sources": [

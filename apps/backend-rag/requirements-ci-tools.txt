@@ -1,0 +1,17 @@
+# Pinned versions for CI ad-hoc tool installs (mypy, pip-audit).
+#
+# These are NOT runtime dependencies — they don't ship in requirements.lock.txt
+# because the app never imports them. They are dev/CI-only tools installed
+# fresh in every workflow run by .github/workflows/tests.yml.
+#
+# Day-1 CI honesty pass (2026-07-20): `pip install mypy` / `pip install
+# pip-audit` with no version pin silently drifts to whatever build happens to
+# be "latest" on PyPI the day CI runs — a tool bump with no corresponding code
+# change can turn a green PR red (new mypy strictness) or a red PR green (an
+# audit rule quietly relaxed). Pin here, bump deliberately after a local
+# verification run, never by osmosis.
+#
+# mypy>=2.2.0 floor already tracked informally in requirements-test.txt (used
+# by the .pre-commit-config.yaml mypy-dependencies-py hook) — 2.3.0 satisfies it.
+mypy==2.3.0
+pip-audit==2.10.1

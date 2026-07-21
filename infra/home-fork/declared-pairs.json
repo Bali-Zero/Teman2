@@ -195,6 +195,30 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/dropbox-intake-sync.sh",
+      "repo": "scripts/dropbox_intake_sync.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): live was UNDECLARED (basename mismatch — hyphen vs underscore is an INTENTIONAL rename done by infra/launchagents/install_dropbox_intake.sh's `install -m 0755 ... dropbox-intake-sync.sh`, not a fork). Confirmed byte-identical.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-pg-proxy-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.balizero.wr2.pg-proxy home_fork_target finding). Wrapper fixes a fly CLI v0.4.49 token regression (extracts access_token from config.yml, injects via FLY_ACCESS_TOKEN, validates before binding). Promoted verbatim; canon plist updated to match (ThrottleInterval 10->30).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/intake-gate-pusher-run.sh",
+      "repo": "infra/launchagents/wrappers/intake-gate-pusher-run.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.nuzantara.intake-gate-count-pusher home_fork_target finding). Sources BRIDGE_API_KEY from 0600 $HOME/.cell-bridge-state/wa-media.env (durable across reboot, replaces a fragile dedicated-keychain approach that macOS quarantined under concurrent launchd access). Promoted verbatim.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/wa-media-pull-run.sh",
+      "repo": "infra/launchagents/wrappers/wa-media-pull-run.sh",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): was UNDECLARED (com.nuzantara.wa-media-pull home_fork_target finding). Same $HOME/.cell-bridge-state/wa-media.env pattern as intake-gate-pusher-run.sh (WHATSAPP_ACCESS_TOKEN + BRIDGE_API_KEY, 0600, no secret in plist). Promoted verbatim.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/fly-qdrant-backup.sh",
       "repo": "scripts/fly-qdrant-backup.sh",
       "machines": ["pro"]

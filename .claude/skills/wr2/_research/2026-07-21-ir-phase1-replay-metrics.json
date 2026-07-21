@@ -1,0 +1,3549 @@
+{
+  "n_decks": 61,
+  "first_try_valid_rate": 1.0,
+  "valid_within_1_retry_rate": 1.0,
+  "fail_after_3_rate": 0.0,
+  "kind_histogram": {
+    "cover": 61,
+    "statement": 54,
+    "fact_stack": 68,
+    "timeline": 18,
+    "prose": 39,
+    "qa": 40,
+    "cta": 49,
+    "triad": 48,
+    "status_list": 8,
+    "citation": 38,
+    "stat": 24
+  },
+  "family_resolution": {
+    "resolved_pct": 1.0,
+    "per_family_counts": {
+      "cover-photo": 61,
+      "statement-bomb": 54,
+      "evidence-carved": 68,
+      "timeline-pinboard": 18,
+      "editorial-text": 39,
+      "qa-dialogue": 40,
+      "elegant-close": 49,
+      "numbered-forces-list": 48,
+      "dark-status-list": 8,
+      "source-citation": 38,
+      "stat-card-hero": 24
+    }
+  },
+  "per_deck": [
+    {
+      "id": "6ace6b26-70a2-43f2-9c28-cc7af433bac7",
+      "topic": "Indonesia's Golden Visa Overhaul: What the New 2025 Rules Mean for Investors",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "timeline",
+        "prose",
+        "statement",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 78.7
+    },
+    {
+      "id": "b194cd5e-495c-4197-a3ff-27e184cbd75e",
+      "topic": "Ukrainian National Arrested in Bali on Drug Suspicion and Visa Overstay",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "status_list",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 58.2
+    },
+    {
+      "id": "6110c101-6c6e-4d99-a610-b7c5d81075b7",
+      "topic": "Bali DPRD Seals KEK Kura-Kura After Illegal Mangrove Clearing — The 1997 Tukar Guling Resurfaces",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "timeline",
+        "stat",
+        "fact_stack",
+        "triad",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 74.8
+    },
+    {
+      "id": "96c34899-d530-48ed-bd72-89bd69684a2f",
+      "topic": "Coretax × Imigrasi: la fine dei silos per le PT PMA",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "timeline",
+        "triad",
+        "qa",
+        "stat",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 96.4
+    },
+    {
+      "id": "5ce38bf1-62e2-48ac-a68c-26e443bebe2a",
+      "topic": "PT PMA, KITAS, presenza fisica: sei nella zona rossa di Coretax?",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "prose",
+        "triad",
+        "timeline",
+        "stat",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 94.7
+    },
+    {
+      "id": "de69f035-7467-42e8-9ed4-95f600dfca90",
+      "topic": "Indonesia's Golden Visa: What the Government Is Actually Planning",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "prose",
+        "fact_stack",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 75.9
+    },
+    {
+      "id": "a3fd4007-52a6-47cc-be54-8452d8b2d530",
+      "topic": "Hotel, Restoran dan Kafe di Badung Bali Wajib Pilah-Olah Sampah Sendiri, Pelanggar Akan Disanksi",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "stat",
+        "prose",
+        "triad",
+        "statement",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 65.2
+    },
+    {
+      "id": "9a13e1d0-6c40-4bab-a0d0-1d85b67126cf",
+      "topic": "Bali 2026 Investment Visa Landscape: What Foreign Investors Must Know",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "stat",
+        "qa",
+        "cta",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 59.7
+    },
+    {
+      "id": "90f0cd7a-9b19-4f62-a551-a3755e7c36df",
+      "topic": "Indonesia's Golden Visa Pulls Rp4 Trillion: What the Numbers Mean",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "stat",
+        "triad",
+        "stat",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 61.7
+    },
+    {
+      "id": "e59bc84f-8492-4a17-9986-4d98cbb7d881",
+      "topic": "Indonesia's Family Sponsored KITAS E31: What Spouses and Dependents Must Know",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "qa",
+        "timeline",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 88.4
+    },
+    {
+      "id": "3fc8cb52-d6fa-4046-bc4c-a3e5b4d39e22",
+      "topic": "Bali Lifts Emergency Visa Shield for Middle East Flight Victims",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "fact_stack",
+        "citation",
+        "triad",
+        "cta",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 55.8
+    },
+    {
+      "id": "98521549-886c-4446-adb1-df98ba360ca9",
+      "topic": "Bali Immigration Sweeps Detain 62 Foreigners in Enforcement Push",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "timeline",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 49.4
+    },
+    {
+      "id": "23d8e67c-2e7e-4881-82f3-23ebc632c085",
+      "topic": "Ten Behaviors That Get Tourists Deported From Indonesia",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "prose",
+        "fact_stack",
+        "stat",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 63.9
+    },
+    {
+      "id": "73346d88-99d6-4d36-9376-c45a7926771f",
+      "topic": "PARADYSE & OXO Living Launch 80-Year Co-Ownership Model in Bali",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "citation",
+        "prose",
+        "qa",
+        "triad",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 106.4
+    },
+    {
+      "id": "8c5fa257-aa34-4377-8a89-50588245e076",
+      "topic": "Two Mauritius Hoteliers Bet Big on Bali's Luxury Frontier",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "prose",
+        "stat",
+        "triad",
+        "fact_stack",
+        "prose",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 84.8
+    },
+    {
+      "id": "24fdcb70-59d9-40b4-bfa0-5eab1e4910e5",
+      "topic": "Indonesia's Digital Tax Rules for Foreign Platforms: Final Regs Coming",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "fact_stack",
+        "timeline",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 77.0
+    },
+    {
+      "id": "3c6d7bc4-3377-4176-8192-f507d05477aa",
+      "topic": "Inside Bali's International School Landscape: What Expat Parents Need to Know",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "status_list",
+        "prose",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 72.3
+    },
+    {
+      "id": "3df3fa9e-1626-4691-969a-8a93bd4e2d89",
+      "topic": "Indonesia's Expat Service Market: What Jakarta Rivals Offer vs. Bali Zero",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "triad",
+        "fact_stack",
+        "timeline",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 97.7
+    },
+    {
+      "id": "c6a67957-aef2-476a-83ba-a5f4a0f6ba39",
+      "topic": "Indonesia Immigration Designates Parq as Ambassador to Court European Investors",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "stat",
+        "fact_stack",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 51.1
+    },
+    {
+      "id": "5f54ac18-8473-4470-a9a4-2c8808d7c735",
+      "topic": "OpenAI's Sam Altman Receives Indonesia Golden Visa as World Figure",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "qa",
+        "fact_stack",
+        "stat",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 78.8
+    },
+    {
+      "id": "0bfc6496-cb2a-4375-8615-1f8e1fe55d0c",
+      "topic": "321 Foreign Nationals Arrested in Jakarta Gambling Raid, All on Overstayed Visas",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": ["cover", "prose", "stat", "fact_stack", "triad", "qa", "cta"],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 124.0
+    },
+    {
+      "id": "e1c6619b-7cb8-4f2c-836f-eb18cf27e3b0",
+      "topic": "Globy Bets on Indonesia's Foreign Business Setup Market",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "qa",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 58.2
+    },
+    {
+      "id": "2f21e709-3c17-4483-aae1-d6b6f6af3744",
+      "topic": "Indonesia's Investor KITAS: The Complete Legal Framework for 2025",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "prose",
+        "triad",
+        "stat",
+        "prose",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 59.8
+    },
+    {
+      "id": "8e582ce0-fd89-439c-b4e4-69d9c8825967",
+      "topic": "E28A vs E28B: Indonesia's Investor KITAS Rules Apply to All Nationalities",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "triad",
+        "stat",
+        "fact_stack",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 58.9
+    },
+    {
+      "id": "b713c8fc-3053-411b-9932-769a5e63182b",
+      "topic": "ITAS vs KITAS in Bali: Every Stay Permit Type Decoded for 2026",
+      "status": "ok",
+      "attempts": 1,
+      "register": "pedagogico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "qa",
+        "triad",
+        "prose",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 70.4
+    },
+    {
+      "id": "62b6b577-b803-4195-967f-2465485d8519",
+      "topic": "Investor Claim, Tourist Reality: Two Pakistanis Deported From South Sumatra",
+      "status": "ok",
+      "attempts": 1,
+      "register": "ironico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "triad",
+        "citation",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 63.1
+    },
+    {
+      "id": "d4d1af38-cf1e-4b76-a00e-e20cdc534df0",
+      "topic": "Jokowi: Indonesia Will Lag Without Full Golden Visa Execution",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "triad",
+        "fact_stack",
+        "timeline",
+        "fact_stack",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 58.7
+    },
+    {
+      "id": "08bb5b2c-5ca1-4bd3-85fa-41ca57b36b74",
+      "topic": "Denpasar Immigration Queues Go Viral as Post-Holiday Backlog Hits",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": ["cover", "prose", "fact_stack", "qa", "triad", "prose", "cta"],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 83.7
+    },
+    {
+      "id": "de5dfd27-edad-4f46-b707-e81d2292f889",
+      "topic": "Inside the Corruption Playbook: How Indonesia's Residence Permit System Gets Gamed",
+      "status": "ok",
+      "attempts": 1,
+      "register": "militante",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "triad",
+        "fact_stack",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 95.6
+    },
+    {
+      "id": "efd58430-8537-4e83-87d4-e1d23f5959ce",
+      "topic": "Golden Visa Attracts Rp2 Trillion in Foreign Investment, Says DG Immigration",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "status_list",
+        "prose",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 101.4
+    },
+    {
+      "id": "4226ac34-5c53-4ac4-8dcd-fd8dd42cb0e1",
+      "topic": "School Holidays in Bali: What Expat Families Need to Know Before They Travel",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "fact_stack",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 64.9
+    },
+    {
+      "id": "aeb526e0-1b65-45a5-8897-180652dd08c0",
+      "topic": "250,000 'please explain' letters — now dropped straight into your Coretax inbox",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "stat",
+        "fact_stack",
+        "qa",
+        "prose",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 92.4
+    },
+    {
+      "id": "2b2ac7a2-a974-4fae-acca-6d839d8848e9",
+      "topic": "342 deported in six months: Bali's H1 enforcement scoreboard, violation by violation",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "stat",
+        "status_list",
+        "qa",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 87.0
+    },
+    {
+      "id": "a80130df-b0df-40d1-9d91-d5301b96bcc4",
+      "topic": "August 1: Tokopedia, Shopee, Lazada, Blibli start withholding 0.5% of your sales",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "timeline",
+        "fact_stack",
+        "qa",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 81.4
+    },
+    {
+      "id": "82e5a150-b5a9-4d28-a08a-02dd48844385",
+      "topic": "Skip one AHU data update and your PT can be declared inactive",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "citation",
+        "fact_stack",
+        "timeline",
+        "triad",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 71.2
+    },
+    {
+      "id": "38a274d0-88a2-4992-9fe0-60268a3ef7f1",
+      "topic": "Rp18,000 per dollar: what the rupiah slump means for your visa, villa and payroll",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": ["cover", "stat", "fact_stack", "triad", "qa", "prose", "cta"],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 77.6
+    },
+    {
+      "id": "5a90d59d-2fa1-4b25-b28e-1bfd87b8c659",
+      "topic": "Two bottle girls, one VoA, a blacklist: inside Bali's nightlife visa sweep",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "timeline",
+        "fact_stack",
+        "prose",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 75.9
+    },
+    {
+      "id": "afda5774-80b5-476f-9ce0-b6726c959ac7",
+      "topic": "Indonesia's Dubai play: 0% income tax proposed for its new financial hub",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "stat",
+        "triad",
+        "qa",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 90.9
+    },
+    {
+      "id": "2c6f55a0-befa-4cc4-b8a1-0086b2040aa3",
+      "topic": "Bali's Perda 4/2026 makes nominee land deals criminal — and the Rp10B PMA bar may rise",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "fact_stack",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 97.8
+    },
+    {
+      "id": "9eb458a7-3099-41b3-957c-58db78b37d1b",
+      "topic": "Coretax went dark for 24 hours — and the tax office is chasing a revenue shortfall",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "timeline",
+        "fact_stack",
+        "prose",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 84.2
+    },
+    {
+      "id": "79d3c3a9-0da3-4336-920e-72ff14778fd9",
+      "topic": "The 1-day-late LKPM panic is a myth — here is what actually kills your NIB",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "timeline",
+        "qa",
+        "triad",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 105.0
+    },
+    {
+      "id": "cf764680-89b1-413c-90bc-daa020d33544",
+      "topic": "Navigating Indonesia's Legal Maze: What Every Foreign Resident Must Know",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "status_list",
+        "triad",
+        "qa",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 69.6
+    },
+    {
+      "id": "1442820b-b214-487b-b408-ed15ae3e015e",
+      "topic": "Golden Visa Hits 1,274 Permits as Indonesia Books Rp52 Trillion",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "stat",
+        "timeline",
+        "qa",
+        "status_list",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 100.7
+    },
+    {
+      "id": "4ca7b22b-f6f0-40bf-8a5a-9e98bf260421",
+      "topic": "Indonesia Visa Revenue Breaks Rp2.8 Trillion Despite Global Uncertainty",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "status_list",
+        "qa",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 106.2
+    },
+    {
+      "id": "e5feefb1-25ec-432d-ae70-d61077487180",
+      "topic": "Indonesia's Immigration Chief Declares War on Investor ITAS Abuse",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "qa",
+        "triad",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 61.9
+    },
+    {
+      "id": "ca97eddd-45c2-4823-b65e-0cec3eb8eafe",
+      "topic": "Indonesia's Visa Revenue Climbs 6.42% in H1 2026 Despite Global Headwinds",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "stat",
+        "fact_stack",
+        "qa",
+        "prose",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 85.2
+    },
+    {
+      "id": "285eabda-edbb-487d-b808-714d7da24d5b",
+      "topic": "Bali Creator Crackdown: Australia Flags Visa Risk for Social Media Workers",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "citation",
+        "prose",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 90.9
+    },
+    {
+      "id": "31d6cd28-698e-404f-9f64-a46b74550e98",
+      "topic": "Indonesia's Simplified Foreign Digital Income Tax: What Expats Must Know",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "stat",
+        "triad",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 86.8
+    },
+    {
+      "id": "5160964b-5fc7-4852-93dd-e95d851c38e6",
+      "topic": "Indonesia Strips Red Tape for Sulteng Investors: No Guarantor, Auto Re-entry",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "prose",
+        "triad",
+        "timeline",
+        "citation",
+        "cta",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 130.3
+    },
+    {
+      "id": "a9e4e5d8-5afa-41ff-8c8a-dad947701037",
+      "topic": "AI Plans Your Bali Trip—Then Gets the Visa Rules Completely Wrong",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "qa",
+        "triad",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 65.5
+    },
+    {
+      "id": "36a619fa-e284-427b-ad96-7c69a1ef090e",
+      "topic": "Bali Property Trust Deficit: What Due Diligence Actually Costs",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "prose",
+        "triad",
+        "fact_stack",
+        "statement",
+        "fact_stack",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 106.7
+    },
+    {
+      "id": "8026cf3c-611b-43db-b6ad-1032fcbafefe",
+      "topic": "Chinese Digital Workers in Bali: The Tax Trap Most Miss Before Day 184",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "stat",
+        "prose",
+        "qa",
+        "triad",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 79.4
+    },
+    {
+      "id": "8c8d85fa-8c42-4ecf-b35a-34d5b4911e63",
+      "topic": "Australian Dies in Bali Immigration Custody; Family Left in Shock",
+      "status": "ok",
+      "attempts": 1,
+      "register": "militante",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "prose",
+        "triad",
+        "prose",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 94.3
+    },
+    {
+      "id": "b86f2e12-f3e1-4245-b64e-a8aacbc9109f",
+      "topic": "Indonesia Axes 87.91% of Visa-Free Access in Quality-Over-Quantity Pivot",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "stat",
+        "fact_stack",
+        "triad",
+        "fact_stack",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 63.7
+    },
+    {
+      "id": "feeb7d83-1ac1-412f-bd0c-b736fe6c4758",
+      "topic": "Indonesia Slashes Visit Visa Permits 87% in Six Months to Filter 'Quality' Foreigners",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "stat",
+        "fact_stack",
+        "triad",
+        "citation",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "stat",
+          "expected_family": "stat-card-hero",
+          "resolved_family": "stat-card-hero"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 75.6
+    },
+    {
+      "id": "1229c367-7703-40dd-9358-64abd35b91ac",
+      "topic": "Bali Deports Three Foreigners Caught Working on Tourist Visas",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "triad",
+        "citation",
+        "prose",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 77.1
+    },
+    {
+      "id": "2eafa7b8-56c5-43ae-aa40-ce8b6c6427c8",
+      "topic": "Indonesia Puts Influencers on Notice: Work Visa or Leave",
+      "status": "ok",
+      "attempts": 1,
+      "register": "pedagogico",
+      "slide_count": 10,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "triad",
+        "fact_stack",
+        "citation",
+        "timeline",
+        "prose",
+        "qa",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 91.5
+    },
+    {
+      "id": "5dafd28e-bb57-41b8-9a3e-f805183bd266",
+      "topic": "Indonesia Eyes Zero-Tax Red Carpet for Bali Foreign Investors",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "prose",
+        "fact_stack",
+        "triad",
+        "status_list",
+        "qa",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "status_list",
+          "expected_family": "dark-status-list",
+          "resolved_family": "dark-status-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 91.2
+    },
+    {
+      "id": "6855a105-a90f-4e25-98e5-9f01ad2d096e",
+      "topic": "Perkuat Pengawasan Orang Asing, Imigrasi Yogyakarta Tekankan Kewajiban Pelaporan Pengelola Penginapan via APOA – Website Resmi Kantor Imigrasi Kelas I TPI Yogyakarta",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 7,
+      "kinds": [
+        "cover",
+        "statement",
+        "prose",
+        "fact_stack",
+        "citation",
+        "qa",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 66.6
+    },
+    {
+      "id": "85ad875e-032e-4da3-b553-dd98e5ff5635",
+      "topic": "PP 28/2025: the map signs before the notary — RDTR coordinate checks now decide your NIB",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "statement",
+        "fact_stack",
+        "prose",
+        "triad",
+        "qa",
+        "citation",
+        "cta"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "citation",
+          "expected_family": "source-citation",
+          "resolved_family": "source-citation"
+        },
+        {
+          "kind": "cta",
+          "expected_family": "elegant-close",
+          "resolved_family": "elegant-close"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 56.8
+    },
+    {
+      "id": "811bdef1-fb62-463d-9989-3a131e6901c7",
+      "topic": "Bali slips to #6: record arrivals, rising complaints — inside the quality-tourism pivot",
+      "status": "ok",
+      "attempts": 1,
+      "register": "analitico",
+      "slide_count": 8,
+      "kinds": [
+        "cover",
+        "fact_stack",
+        "triad",
+        "prose",
+        "timeline",
+        "qa",
+        "prose",
+        "statement"
+      ],
+      "families": [
+        {
+          "kind": "cover",
+          "expected_family": "cover-photo",
+          "resolved_family": "cover-photo"
+        },
+        {
+          "kind": "fact_stack",
+          "expected_family": "evidence-carved",
+          "resolved_family": "evidence-carved"
+        },
+        {
+          "kind": "triad",
+          "expected_family": "numbered-forces-list",
+          "resolved_family": "numbered-forces-list"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "timeline",
+          "expected_family": "timeline-pinboard",
+          "resolved_family": "timeline-pinboard"
+        },
+        {
+          "kind": "qa",
+          "expected_family": "qa-dialogue",
+          "resolved_family": "qa-dialogue"
+        },
+        {
+          "kind": "prose",
+          "expected_family": "editorial-text",
+          "resolved_family": "editorial-text"
+        },
+        {
+          "kind": "statement",
+          "expected_family": "statement-bomb",
+          "resolved_family": "statement-bomb"
+        }
+      ],
+      "family_resolution_ok": true,
+      "wall_s": 45.1
+    }
+  ]
+}

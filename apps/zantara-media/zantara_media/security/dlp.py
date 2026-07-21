@@ -12,6 +12,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -43,8 +44,7 @@ FILENAME_TRIGGERS: list[str] = [
 
 # Compiled regex cache (compiled once at module load)
 _COMPILED_PATTERNS: dict[str, re.Pattern[str]] = {
-    name: re.compile(pattern)
-    for name, pattern in INDONESIAN_PII_PATTERNS.items()
+    name: re.compile(pattern) for name, pattern in INDONESIAN_PII_PATTERNS.items()
 }
 
 # Ollama config
@@ -63,6 +63,7 @@ _LLM_PROMPT = (
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DLPResult:
     """Result of a DLP check."""
@@ -71,11 +72,13 @@ class DLPResult:
     patterns: list[str] = field(default_factory=list)
     confidence: float = 0.0
     quarantine_reason: dict = field(default_factory=dict)
+    indeterminate: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 async def dlp_check(text: str, filename: str) -> DLPResult:
     """Run all three DLP layers on *text* / *filename*.
@@ -122,13 +125,21 @@ async def dlp_check(text: str, filename: str) -> DLPResult:
     # ------------------------------------------------------------------
     # Layer 3: LLM classifier (only reached when layers 1+2 found nothing)
     # ------------------------------------------------------------------
-    llm_result = await _llm_classify(text, filename)
+    llm_result = await _llm_classify(text)
+    if llm_result is None:
+        return DLPResult(
+            has_pii=True,
+            patterns=["LLM_CLASSIFIER_UNAVAILABLE"],
+            confidence=0.0,
+            quarantine_reason={"classifier_status": "unavailable"},
+            indeterminate=True,
+        )
     if llm_result.get("contains_pii", False):
         return DLPResult(
             has_pii=True,
             patterns=["LLM_CLASSIFIER"],
             confidence=0.5,
-            quarantine_reason={"llm_reason": llm_result.get("reason", "")},
+            quarantine_reason={"classifier_status": "pii_detected"},
         )
 
     return DLPResult(has_pii=False, confidence=0.0)
@@ -138,8 +149,9 @@ async def dlp_check(text: str, filename: str) -> DLPResult:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-async def _llm_classify(text: str, filename: str) -> dict:
-    """Call Ollama LLM classifier. Returns parsed JSON dict or empty dict on failure."""
+
+async def _llm_classify(text: str) -> dict[str, Any] | None:
+    """Call the local classifier, returning ``None`` when no model is authoritative."""
     truncated = text[:4000]  # keep prompt short
     full_prompt = f"{_LLM_PROMPT}\n\nText:\n{truncated}"
 
@@ -156,29 +168,42 @@ async def _llm_classify(text: str, filename: str) -> dict:
                     json=payload,
                 )
                 response.raise_for_status()
-                raw_response: str = response.json().get("response", "")
-                return _parse_llm_json(raw_response, filename)
+                payload_body = response.json()
+                if not isinstance(payload_body, dict):
+                    logger.warning("DLP LLM returned an invalid envelope (model=%s)", model)
+                    continue
+                raw_response = payload_body.get("response")
+                if not isinstance(raw_response, str):
+                    logger.warning("DLP LLM returned an invalid response (model=%s)", model)
+                    continue
+                parsed = _parse_llm_json(raw_response)
+                if parsed is not None:
+                    return parsed
+                logger.warning("DLP LLM returned an invalid classification (model=%s)", model)
         except httpx.TimeoutException:
-            logger.warning("DLP LLM timed out (model=%s) for %s", model, filename)
-            # On timeout, fail open — don't block content
-            return {}
-        except Exception as exc:
-            logger.warning("DLP LLM error (model=%s) for %s: %s", model, filename, exc)
+            logger.warning("DLP LLM timed out (model=%s)", model)
+        except Exception:
+            logger.warning("DLP LLM unavailable (model=%s)", model)
 
-    # Both models failed — fail open
-    return {}
+    return None
 
 
-def _parse_llm_json(raw: str, filename: str) -> dict:
-    """Extract JSON from raw LLM response text. On parse error, returns {}."""
+def _parse_llm_json(raw: str) -> dict[str, Any] | None:
+    """Extract a closed classifier result without retaining the raw response."""
     # Try to find a JSON object anywhere in the response
     start = raw.find("{")
     end = raw.rfind("}") + 1
     if start == -1 or end == 0:
-        logger.debug("DLP LLM returned no JSON for %s: %r", filename, raw[:200])
-        return {}
+        return None
     try:
-        return json.loads(raw[start:end])
-    except json.JSONDecodeError as exc:
-        logger.debug("DLP LLM JSON parse error for %s: %s | raw=%r", filename, exc, raw[:200])
-        return {}
+        parsed = json.loads(raw[start:end])
+    except json.JSONDecodeError:
+        return None
+    if (
+        not isinstance(parsed, dict)
+        or set(parsed) != {"contains_pii", "reason"}
+        or not isinstance(parsed.get("contains_pii"), bool)
+        or not isinstance(parsed.get("reason"), str)
+    ):
+        return None
+    return parsed

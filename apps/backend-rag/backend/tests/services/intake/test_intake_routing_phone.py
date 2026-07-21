@@ -216,7 +216,7 @@ async def test_resolve_entity_phone_match_no_strong() -> None:
 @pytest.mark.asyncio
 async def test_resolve_entity_strong_id_skips_phone_query() -> None:
     conn = FakeConn(
-        passport_rows=[{"id": 7, "full_name": "Alice Strong"}],
+        passport_rows=[{"id": 7, "full_name": "Alice Strong", "id_verified": True}],
         phone_rows=[{"id": 42, "full_name": "Wira Phone"}],
     )
     out = await rt.resolve_entity(
@@ -232,7 +232,7 @@ async def test_resolve_entity_strong_id_skips_phone_query() -> None:
 @pytest.mark.asyncio
 async def test_resolve_entity_itap_strong_id_skips_phone_query() -> None:
     conn = FakeConn(
-        kitas_rows=[{"id": 8, "full_name": "Permanent Stay"}],
+        kitas_rows=[{"id": 8, "full_name": "Permanent Stay", "id_verified": True}],
         phone_rows=[{"id": 42, "full_name": "Wira Phone"}],
     )
     out = await rt.resolve_entity(

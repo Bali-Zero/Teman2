@@ -2053,6 +2053,33 @@ def test_levers_to_css_grow_font_floor_and_cap():
     assert _grow_subhead_px(_levers_to_css({"text_stroke": True})) is None
 
 
+def test_body_lever_never_touches_statement_bomb_closer():
+    """Regression (2026-07-19, WR2 growth-loop): the statement-bomb closer's
+    <div class="statement" data-zone-type="text"> is Art-9.5 primary punch text
+    with its OWN sizing (72px), NOT body prose. The body lever's
+    [data-zone-type='text'] selector once matched it, and shrink_font:body's
+    `calc(1em*factor)` collapsed the closer to a ~10-15px micro-caption (1em = the
+    ~16px PARENT body, not the 72px statement). Photo-backed closers trigger it:
+    the photo's bottom edge reads as "bottom overflow" so the designer loop emits
+    shrink_font:body (designer_loop.py:476) — the "slide-7 closer renders tiny"
+    defect. The fix excludes .statement from BOTH the shrink and grow body-lever
+    selectors (proven with Playwright: closer+shrink_body_3 = 12.16px → 72px).
+
+    Guilt: the body-lever rule must NOT match .statement (the closer stays large).
+    Innocence: it must STILL target real prose (.body / .text) so editorial-text
+    body remains leverable."""
+    from wr2_html_renderer.composer import _levers_to_css
+
+    for lever in ({"shrink_body": 3}, {"grow_body": 3}):
+        css = _levers_to_css(lever)
+        # guilt: the emitted body-lever rule excludes the Art-9.5 closer statement
+        assert ":not(.statement)" in css, f"{lever}: body lever must exclude .statement"
+        # innocence: real body/prose text zones are still targeted
+        assert ".body" in css and ".text" in css, f"{lever}: body lever must still target prose"
+    # a non-body lever never emits the body selector (nor the exclusion) at all
+    assert ":not(.statement)" not in _levers_to_css({"grow_subhead": 1})
+
+
 def test_grow_subhead_never_exceeds_title_no_hierarchy_inversion():
     """BUG #2 (hierarchy inversion): the sub-headline (kicker) grow must NEVER
     reach or exceed the cover title font-size — at ANY step. The kicker is an

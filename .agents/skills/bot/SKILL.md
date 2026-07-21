@@ -20,8 +20,48 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-17 ~23:40 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-20 ~02:45 WITA — keep current)
 
+- **WA OUTBOX P0 (2026-07-19) — FIXED #2812 + DEPLOYED 12:45 UTC + VERIFIED**: the per-thread
+  advisory lock passed raw `int thread_id` into `hashtext('wa_outbox_thread_' || $1::text)` —
+  asyncpg types `$1` TEXT from the cast and refuses int (`DataError: expected str, got int`),
+  so the scheduler crashed EVERY tick and the bot was mute ~4h (2,495 crashes). Fix:
+  `str(thread_id)` at lock AND unlock (must hash to the same key). Unit mocks never caught it —
+  they don't do asyncpg's client-side type validation. Deploy got lost twice (concurrency-cancel
+  - ~2h runner queue); caught by the new fly-logs accumulator (O0-P1). Verified: zero
+    occurrences after 12:44 UTC. **Lesson: lock/unlock key args must be same TYPE, and mocks of
+    asyncpg conns lie about type checking.** **Client-side PROVE-LIVE**: backlog claimed at
+    12:13Z right after deploy; fresh inbound answered in 150ms (row 157); only failures =
+    `24h_window_closed` on a thread idle since June (correct Meta-policy behavior) —
+    independently confirmed by the wa-tester battery from Zero's own number (bot reply ~36s,
+    Meta `read` receipt, all corrected facts verbatim in Bahasa).
+- **PR #2825 (injection gap #23) MERGED + DEPLOYED + PROVEN**: overstay/penangkalan/deportation/
+  re-entry-ban keywords added to the visa domain classifier — queries previously classed
+  "general" never searched curated_qa. Prove-live: probe → log
+  `✅ [CuratedQA] Injected 2 curated evidence block(s)`, answer carries 60-day threshold /
+  10+10 ban / Rp 90jt pencabutan (PP 45/2024 VI.E).
+- **PR #2822 (QdrantClient.get) MERGED + DEPLOYED**: flags moved to JSON body (`with_payload`/
+  `with_vector`) — was silently returning empty payloads. Consumer-map finding: sole non-test
+  caller is the memory_vector router which is NOT mounted in prod (F29 note in handlers.py) →
+  preventive hardening, no live surface.
+- **CHATKB cantiere: 21 dossiers GATED (396 Q&A)** across visa/company/tax/property (Waves 1-3,
+  Fable gate 7/7+8/8+6/6 PASS). Zero ruling 2026-07-19: **promote ALL answers VERBATIM** (team
+  review after, not before) — execution gated on PR #2810 rails (pricing-detector, source
+  allowlist, `verbatim_eligible`, still OPEN); PR #2856 (compound-CONFIDENCE degrade at
+  harvest) MERGED. Team review packs: 21 batches Bahasa + 21 editable docx in
+  `~/Desktop/TEAM-REVIEW-2026-07-20/`.
+- **GARUDA-E23 law_refs delta-harvest LIVE**: Perpres 20/2018 (revoked in full by PP 34/2021)
+  re-cited to PP 34/2021 Pasal 19/6 on 2 prod points (Q2/Q6), answers untouched, neighbors
+  no-drift.
+- **Team-assistant V1 IN FLIGHT (task #29)**: sender-identity wiring into the live meta-inbox
+  path (resolve team/owner from `team_members.whatsapp` + env, profile.role into RAG payload →
+  TEAM/CREATOR persona finally reachable). Innocence contract: clients/unknown byte-identical.
+  Phase 2 (CRM scoped tools per assigned_to) parked pending Zero GO.
+- **wa-tester LID under-match (task #26, low-pri)**: isPaired fix PR #2820 live on Pro; the
+  battery's receive matcher `remoteJid !== BOT_JID` drops replies syncing under `@lid`
+  (WhatsApp LID rollout) → `reply_count:0` false negative even though the bot answered (ground
+  truth via Postgres — see the P0 prove-live above). Instrumentation-only, not a bot-behavior
+  bug.
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
   per-thread advisory lock, claim-token fencing, lease heartbeat, burst coalescing, K workers
@@ -47,8 +87,28 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   not done yet as of this update.
 - **Corner PR #2612 MERGED** (prior §1 refresh, superseded by this update).
 - **F2 (team check-in) NOT started** — begins after F1 ships. F3 (member profiles) after F2.
-- **Prompt v4 lane OPEN** (audit done, 7 findings — see §5). **Full-domain cache lane OPEN**
-  (design pending). Both tracked in the main session's task list.
+- **Prompt v4 + versioned door MERGED (#2629) AND prod FLIPPED `ZANTARA_PROMPT_VERSION=v4` —
+  PROVEN-LIVE 2026-07-18.** `zantara_core_v4.py` (deadline-neutral KBLI guidance, phantom KBLI
+  codes fixed 55130/55194→55203/55901/55400, `{today_wita}` date injection,
+  `_safe_template_fill()` — the WORKED_EXAMPLES `.format()` P0 stays fixed) + `prompt_builder.py`
+  imports `ZANTARA_MASTER_TEMPLATE` from `prompt_manager` (the door). Prod log proof:
+  `PromptManager: using zantara_core_v4` (clean INFO, no fallback); battery on the door 2/2 PASS.
+  **Gotcha that almost shipped**: v4 was drafted BEFORE the #2736 trigger fix and re-listed bare
+  visa codes ("C1","C2","D1"⊂"D12") as get_pricing triggers — auto-merge was disarmed, the fix
+  folded in (parity commit `9b0e9ac120`), THEN merged. The deploy alone would have REGRESSED
+  ask_legal to v3's stale copy — the env flip is part of the ship, not an afterthought. v2/v3's
+  stale trigger copies are now dead code behind the door. Design doc:
+  `research/operations/2026-07-17-zantara-prompt-v4-design.md`.
+- **Bot quality campaign 5 lanes SHIPPED+PROVEN (2026-07-18)** — memory
+  `ops_zantara_bot_quality_campaign_4_lanes_2026_07_18` holds full detail: (A) 60s timeouts
+  root-caused to a broken verifier minting fake score=0.5 on empty Gemini responses → doomed
+  ~23s self-correction loop (#2712 `verdict_available` flag; C1→KITAS 2×timeout→35.3s) + 6
+  missing Qdrant `status_vigensi` indexes + `ENABLE_RERANKER` secret unset; (B) Fonti leak
+  proven never-reached WA clients; (C) stale WA number purged from 70 prod pricing points
+  (#2708); (D) unsolicited price dumps killed (#2707 intent-gated boost, word-boundary); (E)
+  zantara_core.py v1 trigger fix (#2736, operator two-key window) — bare visa codes are NOT
+  pricing triggers, visa-TYPE questions ground on current codes names-only + one-line cost offer.
+- **Full-domain cache lane OPEN** (design pending). Tracked in the main session's task list.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
@@ -73,6 +133,10 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
    whatsapp_persona injects the full price list beside the "only get_pricing" rule; few-shots
    carry pre-BKPM-5/2025 capital claims. Cure = **v4 behind the same env flag**, one versioned
    entry point for ALL consumers + parity test. Never edit v1/v2/v3 in place.
+   **RESOLVED 2026-07-18**: door merged (#2629) and prod flipped to v4 — see §1. The audit
+   findings above are historical context; the split-brain no longer exists. Exception to
+   "never edit v1 in place" happened ONCE under operator two-key window (#2736 trigger fix,
+   before the door existed in prod) — with the door live, prompt changes go to v4 only.
 6. **Meta 24h window**: per-thread, resets on every user message, service replies inside it are
    free. Business-initiated outside it needs a paid approved template — which Zero has REJECTED
    for attendance nudges (reactive-only ruling).
@@ -137,6 +201,11 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   `DOMAIN_ABSTAIN_THRESHOLDS`.
 - **Corpora**: `data/curated_qa/*.jsonl` (E33 216 via `curated_qa_convert_e33.py`; golden 28).
 - **Team phone SSOT**: `team_members.whatsapp` (F2 detection key).
+- **Team-assistant V1 (task #29) IN FLIGHT since 2026-07-19**: upstream identity plumbing for
+  F2 (team check-in) — sender-identity resolution into the live meta-inbox path (see §1). A PR
+  for this track may already be open (or merging) by the time this note is read — a sibling
+  recovery lane was pushing it in parallel; check `gh pr list` for the current state rather
+  than trusting this line's snapshot.
 
 ## 7. Collaboration protocol (the TRACK)
 

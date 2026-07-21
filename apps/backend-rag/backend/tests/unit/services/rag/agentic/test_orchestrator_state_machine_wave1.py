@@ -918,6 +918,80 @@ class TestPipelineProcessing:
         assert pipeline.process.await_count == 2
         # corrected answer installed
         assert result_state.final_answer == "corrected answer"
+        # 2026-07-20 dead-wiring fix: the LAST computed score (post-correction,
+        # verdict_available implicitly True) must survive onto state — it
+        # used to stay at the schema default 0.0 forever (never assigned).
+        assert result_state.verification_score == 0.9
+
+    @pytest.mark.asyncio
+    async def test_pipeline_verdict_unavailable_skips_self_correction(self, engine):
+        """2026-07-18 verifier-timeout fix: verification_score < 0.7 but
+        verdict_available=False (empty/unparseable verifier response) must
+        NOT trigger self-correction — only 1 pipeline pass, only 1
+        send_message call (no wasted rephrase round-trip)."""
+        pipeline = MagicMock()
+        pipeline.process = AsyncMock(
+            return_value={
+                "response": "original answer",
+                "verification_score": 0.5,
+                "verdict_available": False,
+                "verification": {
+                    "reasoning": "Verifier LLM returned an empty response. Verdict unavailable.",
+                },
+            },
+        )
+        from backend.services.rag.agentic.reasoning import ReasoningEngine
+
+        local_engine = ReasoningEngine(tool_map={}, response_pipeline=pipeline)
+
+        state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
+        # Populate context so the (skipped) self-correction branch would be reachable
+        state.context_gathered = ["some context"]
+
+        call = {"i": 0}
+
+        async def send(*a, **k):
+            call["i"] += 1
+            return _llm_response("Final Answer: original answer")
+
+        gateway = _mk_gateway(send_message_side_effect=send, has_tools=True)
+
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
+            result_state, _, _, _ = await _run_loop(local_engine, gateway, state)
+
+        # Pipeline ran only once — NO re-run after a (skipped) self-correction
+        assert pipeline.process.await_count == 1
+        # send_message called only once (the original answer) — no rephrase call
+        assert call["i"] == 1
+        # Original (never "corrected") answer stands
+        assert result_state.final_answer == "original answer"
+        # 2026-07-20 dead-wiring fix, fail-closed half: verdict_available=False
+        # means the 0.5 score is a placeholder, not a real judgment — it must
+        # NOT be persisted onto state (that would swap "always lies 0.0" for
+        # "sometimes lies with a fake score"). AgentState is a plain
+        # dataclass with no declared verification_score field, so "never
+        # persisted" means the attribute stays genuinely absent — matching
+        # exactly how orchestrator_response.py reads it
+        # (getattr(state, "verification_score", 0.0)), which is what keeps
+        # CoreResult's derived status the honest "unchecked".
+        assert not hasattr(result_state, "verification_score")
+        assert getattr(result_state, "verification_score", 0.0) == 0.0
 
     @pytest.mark.asyncio
     async def test_pipeline_error_falls_back_to_post_process(self, engine):
@@ -957,3 +1031,56 @@ class TestPipelineProcessing:
         # R30: pipeline raised, but post_process_response installed a non-None result
         mock_pp.assert_called_once()
         assert result_state.final_answer == "post-processed fallback"
+
+    @pytest.mark.asyncio
+    async def test_pipeline_verification_passes_persists_score_on_state(self, engine):
+        """2026-07-20 dead-wiring fix, guilt case: the common happy path —
+        pipeline verifies successfully (score >= 0.7, verdict_available
+        True, no self-correction needed) — must persist the real score onto
+        state.verification_score so CoreResult (orchestrator_response.py's
+        getattr(state, "verification_score", 0.0)) reports the truth instead
+        of the schema default 0.0 it silently returned on every request."""
+        pipeline = MagicMock()
+        pipeline.process = AsyncMock(
+            return_value={
+                "response": "well-verified answer",
+                "verification_score": 0.95,
+                "verdict_available": True,
+                "verification_status": "passed",
+            },
+        )
+        from backend.services.rag.agentic.reasoning import ReasoningEngine
+
+        local_engine = ReasoningEngine(tool_map={}, response_pipeline=pipeline)
+
+        state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
+
+        gateway = _mk_gateway(
+            send_message_side_effect=lambda *a, **k: _llm_response(
+                "Final Answer: well-verified answer",
+            ),
+            has_tools=True,
+        )
+
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
+            result_state, _, _, _ = await _run_loop(local_engine, gateway, state)
+
+        # Only one pass — high score means no self-correction round-trip
+        assert pipeline.process.await_count == 1
+        assert result_state.verification_score == 0.95

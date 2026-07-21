@@ -80,6 +80,184 @@ async def test_extract_entities_classifies_domain_entities_and_primary_entity(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "What is the overstay penalty on a C1, and if I overstay do I pay for every day?",
+        "I heard about overstay fines, is that true?",
+        "What is penangkalan in Indonesian immigration law?",
+        "Could I face deportation if I stay too long?",
+        "Apakah saya bisa kena deportasi karena overstay?",
+        "Will I get a re-entry ban if I overstay?",
+    ],
+)
+async def test_extract_entities_classifies_overstay_family_keywords_as_visa(query: str) -> None:
+    """GUILT (task #23, injection-gap investigation 2026-07-19) — the exact
+    prod probe query plus each new visa keyword ("overstay", "penangkalan",
+    "deportation", "deportasi", "re-entry ban") individually must classify
+    as domain=visa, so `_inject_curated_qa_grounding()` is reachable instead
+    of bailing at the domain==general early-return."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == "visa"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("query", "expected_domain"),
+    [
+        ("How does PPh 21 work with NPWP?", "tax"),
+        ("Can a foreigner use Hak Pakai for a villa in Bali?", "property"),
+        ("Find KBLI 47911 for a PT PMA retail company", "kbli"),
+        ("Setup PT PMA for a Singaporean shareholder", "company"),
+    ],
+)
+async def test_extract_entities_overstay_keywords_do_not_shift_unrelated_domains(
+    query: str,
+    expected_domain: str,
+) -> None:
+    """INNOCENCE — representative tax/property/kbli/company queries (none
+    containing "overstay"/"penangkalan"/"deportation"/"deportasi"/"re-entry
+    ban") must keep their pre-existing classification unchanged by the new
+    visa keywords."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == expected_domain
+
+
+@pytest.mark.asyncio
+async def test_extract_entities_general_query_stays_general_after_overstay_addition() -> None:
+    """INNOCENCE — a query matching none of the domain keyword lists
+    (including the new overstay-family additions) must remain general."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities("What is the weather like in Bali today?")
+
+    assert entities["domain"] == "general"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "How do I dissolve my business in Bali?",
+        "What are my LKPM obligations?",
+        "How to close my PT?",
+        "I want to liquidate my company, what's the process?",
+        "What is the dissolution procedure for a PT PMA?",
+        "Do I still need to pay BPJS after closing my company?",
+        "How do I get izin usaha for a new branch?",
+        "Bagaimana cara tutup PT saya?",
+        "PT saya mau dibubarkan, apa langkahnya?",
+        "What does winding up a PT PMA involve?",
+    ],
+)
+async def test_extract_entities_classifies_company_closure_and_compliance_keywords(
+    query: str,
+) -> None:
+    """GUILT (company-domain classifier gap) — `_determine_domain()` only
+    matched 4 narrow company-setup phrases, so liquidation/closure/compliance
+    queries fell to domain=general and `_inject_curated_qa_grounding()`
+    early-returned before curated_qa was ever searched, even though
+    company-domain curated Q&A grounding exists for these topics (verified
+    against the real company-compliance.jsonl / company-liquidation-closure.jsonl
+    corpus, ops-populated and gitignored per apps/backend-rag/data/curated_qa/
+    README — see the entries below for verbatim-vocabulary coverage). Each
+    new keyword individually must classify as domain=company."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == "company"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Do we have to hold a RUPS every year?",
+        "Does our NIB expire, and do we need to renew it?",
+        "Who can act as our liquidator during a PT PMA closure?",
+        "What happens if we never file WLKP?",
+        "What is beneficial ownership reporting for our company?",
+        "What is the final step at Kemenkumham that ends our legal existence?",
+        "Do we have to pay severance when we shut the business down?",
+        "What does the Final CIT Return need to cover before we deregister?",
+        "What happens to our LKPM obligation while we're winding down?",
+        "How is a voluntary closure different from being forced to close?",
+    ],
+)
+async def test_extract_entities_classifies_real_corpus_company_vocabulary(
+    query: str,
+) -> None:
+    """GUILT, corpus-grounded — these phrasings are drawn from (or closely
+    paraphrase) the real questions in company-compliance.jsonl and
+    company-liquidation-closure.jsonl (read directly from the ops-populated,
+    gitignored corpus, not invented) to prove the fix rescues the ACTUAL
+    client-question vocabulary from domain=general, not just synthetic
+    keyword probes. RUPS/NIB/liquidator/WLKP/beneficial ownership/Kemenkumham/
+    severance/CIT return/winding down/voluntary closure must each classify
+    as domain=company on their own, without needing "pt pma" or another
+    already-covered keyword also present in the same query."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == "company"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("query", "expected_domain"),
+    [
+        ("How much is a KITAS?", "visa"),
+        ("How does PPh 21 work with NPWP?", "tax"),
+        ("Can a foreigner use Hak Pakai for a villa in Bali?", "property"),
+        ("Find KBLI 47911 for a PT PMA retail company", "kbli"),
+        ("Setup PT PMA for a Singaporean shareholder", "company"),
+        # Real corpus rows that legitimately belong to another domain
+        # because the query names that domain's own keyword too (priority
+        # order visa > tax > property > kbli > company is unchanged by this
+        # fix, deliberately not touched here) — company-liquidation-closure.jsonl
+        # asks both of these, and both are correctly tax/visa, not company.
+        ("How do we get our NPWP deregistered when we close the company?", "tax"),
+        ("What happens to my KITAS when the company closes?", "visa"),
+    ],
+)
+async def test_extract_entities_company_closure_keywords_do_not_shift_unrelated_domains(
+    query: str,
+    expected_domain: str,
+) -> None:
+    """INNOCENCE — representative visa/tax/property/kbli/company queries
+    (none containing the new liquidation/closure/compliance keywords) must
+    keep their pre-existing classification unchanged by the company-domain
+    keyword expansion."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities(query)
+
+    assert entities["domain"] == expected_domain
+
+
+@pytest.mark.asyncio
+async def test_extract_entities_general_query_stays_general_after_company_closure_addition() -> (
+    None
+):
+    """INNOCENCE — a query matching none of the domain keyword lists
+    (including the new company closure/compliance additions) must remain
+    general."""
+    service = EntityExtractionService()
+
+    entities = await service.extract_entities("What is the weather like in Bali today?")
+
+    assert entities["domain"] == "general"
+
+
+@pytest.mark.asyncio
 async def test_extract_entities_ignores_invalid_kbli_ranges() -> None:
     service = EntityExtractionService()
 

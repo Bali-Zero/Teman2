@@ -22,6 +22,7 @@ jobs:
   notify-deploy:
     name: Vercel deploy triggered
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Log
         env:

@@ -22,12 +22,18 @@ on:
       - "scripts/wr2_queue_writer.py"
       - "scripts/wr2_rerender_local.py"
       - "scripts/wr2_html_renderer/**"
+      - "scripts/wr2_carousel_ir.py"
+      - "scripts/wr2_ir_shadow_replay.py"
+      - "scripts/wr2_editorial_pregate.py"
+      - "scripts/wr2_pregate_shadow.py"
       - "scripts/tests/test_wr2_queue_hygiene.py"
       - "scripts/tests/test_wr2_visibility_chain.py"
       - "scripts/tests/test_wr2_rerender_requeue.py"
       - "scripts/tests/test_wr2_queue_locking.py"
       - "scripts/tests/test_wr2_pipeline_consolidation.py"
       - "scripts/tests/test_wr2_daily_reconciler.py"
+      - "scripts/tests/test_wr2_carousel_ir.py"
+      - "scripts/tests/test_wr2_editorial_pregate.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
       - ".github/workflows/wr2-queue-tests.yml"
@@ -43,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -61,4 +67,6 @@ jobs:
             scripts/tests/test_wr2_queue_locking.py \
             scripts/tests/test_wr2_pipeline_consolidation.py \
             scripts/tests/test_wr2_daily_reconciler.py \
+            scripts/tests/test_wr2_carousel_ir.py \
+            scripts/tests/test_wr2_editorial_pregate.py \
             -q

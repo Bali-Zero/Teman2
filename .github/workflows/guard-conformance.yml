@@ -31,6 +31,8 @@ on:
       - "scripts/test_guardrails_core_overmatch.py"
       - "infra/scar-gates/**"
       - "scripts/wr2_html_renderer/designer_loop.py"
+      - "scripts/wr2_editorial_pregate.py"
+      - "scripts/tests/test_wr2_editorial_pregate.py"
       - ".github/workflows/guard-conformance.yml"
 
 concurrency:
@@ -58,7 +60,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|\.github/workflows/guard-conformance\.yml)'; then
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|\.github/workflows/guard-conformance\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -67,7 +69,7 @@ jobs:
 
       - name: Set up Python
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 

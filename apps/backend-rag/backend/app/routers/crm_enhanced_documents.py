@@ -25,6 +25,8 @@ from backend.app.routers.crm_enhanced import (
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
+from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
+from backend.phone_lock import lock_cores, phone_core, phone_value_state
 from backend.services.common.background import spawn
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -47,6 +49,16 @@ def _parse_date_or_none(date_str: str | None) -> date | None:
             "crm_enhanced_documents.parse_date_invalid",
             extra={"raw": str(date_str)[:32]},
         )
+        return None
+
+
+def _row_get(row: Any, key: str) -> Any:
+    """Subscript a DB row (asyncpg Record / dict), tolerating missing keys —
+    test doubles built before a column was added must read as absent, not
+    crash the gate."""
+    try:
+        return row[key]
+    except (KeyError, TypeError):
         return None
 
 
@@ -547,6 +559,13 @@ class DocumentUploadBase64(BaseModel):
     family_member_id: int | None = None
     practice_id: int | None = None
     company_id: int | None = None
+    # Ownership token (Codex 2026-07-19 round 12, F12 gap 3): intake delivery
+    # resolves the target client BY PHONE in a separate earlier request; this
+    # carries the resolved phone core into the upload so the handler can prove,
+    # atomically with the documents INSERT, that the target row still owns that
+    # phone. Optional — human/frontend uploads address a reviewed client id and
+    # don't send it.
+    expected_phone_core: str | None = None
 
 
 @router.post("/clients/{client_id}/documents/upload")
@@ -589,12 +608,73 @@ async def upload_document_base64(
 
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
-                "SELECT id, full_name, google_drive_folder_id, client_type FROM clients WHERE id = $1",
+                "SELECT id, full_name, google_drive_folder_id, client_type,"
+                "       phone, phone_normalized, whatsapp"
+                "  FROM clients WHERE id = $1",
                 client_id,
             )
 
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+
+            def _owns_expected_core(row: Any) -> bool:
+                # Column CONSISTENCY, not membership (Codex round 13, F12g3):
+                # ownership is proven only when the row's phone columns agree
+                # on EXACTLY the expected core. A divergent row (phone=A,
+                # phone_normalized=B) is the same untrustworthy stale state the
+                # delivery gate fails closed on — expected∈{A,B} must refuse.
+                # Round 14 F19 + round 15 F23: absent/unusable/usable comes
+                # from THE shared primitive (phone_value_state) — 'absent'
+                # includes digit-free free-text like "n/a" (not a phone
+                # CLAIM), 'unusable' (digit signal but no core) fails closed.
+                # Round 16 F25: whatsapp joins the consistency set — the
+                # resolver (UPSERT_MATCH_SQL) finds whatsapp-only owners, so
+                # a row whose ONLY phone-ish value is whatsapp must be able
+                # to prove ownership here, or the resolver arm can never
+                # complete its own defining case.
+                cores = set()
+                for raw in (row["phone"], row["phone_normalized"], _row_get(row, "whatsapp")):
+                    state, core = phone_value_state(raw)
+                    if state == "absent":
+                        continue
+                    if state == "unusable":
+                        return False
+                    cores.add(core)
+                return cores == {data.expected_phone_core}
+
+            async def _sole_owner_is_target(_conn: Any) -> bool:
+                # Round 14, F18: the token asserts SOLE ownership, not just
+                # "the resolved row still owns the core" — a second legitimate
+                # owner (allow_duplicate_phone create) appeared since the
+                # resolve would make a fresh resolve ambiguous, so the upload
+                # must refuse too. All cooperative phone writers serialize on
+                # the phonecore advisory lock, making the authoritative in-TX
+                # run of this check race-safe against them.
+                rows = await _conn.fetch(
+                    CORE_OWNER_IDS_SQL, [data.expected_phone_core]
+                )
+                return [r["id"] for r in rows] == [client_id]
+
+            if data.expected_phone_core:
+                # Fast pre-check (Codex round 12, F12 gap 3): the caller
+                # resolved this client id BY PHONE in an earlier request; if
+                # the row no longer owns that core — or no longer owns it
+                # ALONE (F18) — uploading would attach the document to a
+                # possibly wrong identity. Refuse before any Drive work. The
+                # authoritative check re-runs under lock at INSERT.
+                if not _owns_expected_core(client):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="phone_ownership_changed — re-resolve the client before upload",
+                    )
+                if not await _sole_owner_is_target(conn):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "phone_ownership_ambiguous — the phone core has "
+                            "multiple live owners, re-resolve the client before upload"
+                        ),
+                    )
 
             if data.company_id is not None:
                 company_link = await conn.fetchrow(
@@ -763,31 +843,77 @@ async def upload_document_base64(
                     status_code=500, detail=f"Failed to upload to drive: {e}"
                 ) from e
 
-            # Create Document Record
-            doc_id = await conn.fetchval(
-                """
-                INSERT INTO documents (
-                    client_id, document_type, document_category,
-                    file_name, file_id, file_url, google_drive_file_url,
-                    status, storage_type, notes, subfolder, expiry_date, content_hash,
-                    family_member_id, practice_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
-                RETURNING id
-                """,
-                client_id,
-                data.document_type,
-                category,
-                data.file_name,
-                upload_result["id"],
-                upload_result.get("webViewLink"),
-                upload_result.get("webViewLink"),
-                data.notes,
-                subfolder_value,
-                _parse_date_or_none(data.expiry_date),
-                content_hash,
-                data.family_member_id,
-                data.practice_id,
-            )
+            # Create Document Record. When the caller sent an ownership token,
+            # the INSERT commits ATOMICALLY with a re-verification under the
+            # cooperative phonecore lock (Codex round 12, F12 gap 3): a
+            # cooperative writer moving this phone blocks on the lock until we
+            # commit; a non-cooperative move is caught by the locked re-read.
+            # The Drive file already exists either way — an orphaned Drive file
+            # is recoverable noise, a mis-attached document is not.
+            async with conn.transaction():
+                if data.expected_phone_core:
+                    await lock_cores(
+                        conn,
+                        data.expected_phone_core,
+                        phone_core(client["phone"]),
+                        phone_core(client["phone_normalized"]),
+                    )
+                    # FOR UPDATE (round 13, F12g3): the advisory locks stop
+                    # only COOPERATIVE writers — the row lock makes the
+                    # re-check atomic with the INSERT against direct writers
+                    # too (any concurrent UPDATE blocks until we commit).
+                    _recheck = await conn.fetchrow(
+                        "SELECT phone, phone_normalized, whatsapp FROM clients"
+                        " WHERE id = $1 FOR UPDATE",
+                        client_id,
+                    )
+                    if (
+                        _recheck is None
+                        or not _owns_expected_core(_recheck)
+                        or not await _sole_owner_is_target(conn)
+                    ):
+                        # F17: the Drive file already exists and has no
+                        # documents row — log the id as a structured
+                        # reconciliation marker (no delete API on the service;
+                        # an orphaned file is recoverable noise, a
+                        # mis-attached document is not).
+                        logger.error(
+                            "orphaned_drive_file file_id=%s client_id=%s "
+                            "reason=phone_ownership_changed",
+                            upload_result.get("id"),
+                            client_id,
+                        )
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                "phone_ownership_changed during upload — "
+                                "document NOT attached, re-resolve the client"
+                            ),
+                        )
+                doc_id = await conn.fetchval(
+                    """
+                    INSERT INTO documents (
+                        client_id, document_type, document_category,
+                        file_name, file_id, file_url, google_drive_file_url,
+                        status, storage_type, notes, subfolder, expiry_date, content_hash,
+                        family_member_id, practice_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
+                    RETURNING id
+                    """,
+                    client_id,
+                    data.document_type,
+                    category,
+                    data.file_name,
+                    upload_result["id"],
+                    upload_result.get("webViewLink"),
+                    upload_result.get("webViewLink"),
+                    data.notes,
+                    subfolder_value,
+                    _parse_date_or_none(data.expiry_date),
+                    content_hash,
+                    data.family_member_id,
+                    data.practice_id,
+                )
 
             company_document_id = None
             if data.company_id is not None:
