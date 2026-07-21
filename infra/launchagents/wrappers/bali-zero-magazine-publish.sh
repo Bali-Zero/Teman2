@@ -103,14 +103,19 @@ if ! zmodload zsh/system; then
     log "fatal mode=$MODE advisory_lock_module_unavailable"
     exit 70
 fi
-if ! zsystem flock -t 0 -f MAGAZINE_LOCK_FD "$LOCKFILE"; then
-    if [[ ! -f "$LOCKFILE" ]]; then
-        log "fatal mode=$MODE advisory_lock_path_changed"
+zsystem flock -t 0 -f MAGAZINE_LOCK_FD "$LOCKFILE"
+lock_rc="$?"
+case "$lock_rc" in
+    0) ;;
+    2)
+        log "duplicate suppressed mode=$MODE advisory_lock_busy"
+        exit 0
+        ;;
+    *)
+        log "fatal mode=$MODE advisory_lock_failed rc=$lock_rc"
         exit 70
-    fi
-    log "duplicate suppressed mode=$MODE advisory_lock_busy"
-    exit 0
-fi
+        ;;
+esac
 
 finish() {
     local rc=$?

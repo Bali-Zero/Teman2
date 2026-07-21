@@ -16,6 +16,11 @@ def test_magazine_wrapper_uses_process_held_advisory_lock() -> None:
     assert '[[ -e "$LOCKFILE" && ! -f "$LOCKFILE" ]]' in source
     assert "zmodload zsh/system" in source
     assert "zsystem flock -t 0 -f" in source
+    assert 'lock_rc="$?"' in source
+    assert 'case "$lock_rc" in' in source
+    assert '2)' in source
+    assert "advisory_lock_failed rc=$lock_rc" in source
+    assert "if ! zsystem flock" not in source
     assert "zsystem flock -u" in source
     assert 'mkdir "$LOCKDIR"' not in source
     assert 'rm -rf "$LOCKDIR"' not in source
