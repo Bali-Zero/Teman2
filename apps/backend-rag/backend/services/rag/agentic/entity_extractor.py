@@ -383,7 +383,30 @@ class EntityExtractionService:
             return self.DOMAIN_KBLI
 
         # Check for company domain
-        company_keywords = ["pt pma", "company setup", "establish company", "business setup"]
+        company_keywords = [
+            "pt pma",
+            "company setup",
+            "establish company",
+            "business setup",
+            "liquidation",
+            "liquidate",
+            "dissolution",
+            "dissolve",
+            "close company",
+            "close pt",
+            "close my pt",
+            "close my company",
+            "close my business",
+            "closing pt",
+            "tutup pt",
+            "bubar",
+            "compliance",
+            "lkpm",
+            "bpjs",
+            "izin usaha",
+            "wind up",
+            "winding up",
+        ]
         if any(kw in query_lower for kw in company_keywords):
             return self.DOMAIN_COMPANY
 
