@@ -10,6 +10,7 @@ sources:
   - Permenkumham 22/2023 jo. Permenkumham 11/2024 tentang Visa dan Izin Tinggal (dasar hukum cited on both official pages)
 status: verified
 author: deep-researcher (Bali Zero)
+adversarial_review: kimi-k3
 ---
 
 # C12 vs D12 Visa — Verification of 5 Disputed Claims (Draft vs Reviewer)
@@ -29,11 +30,14 @@ client-facing WhatsApp assistant — precision over speed.
 Primary source is the national Directorate General of Immigration visa index pages
 `imigrasi.go.id/wna/daftar-visa-indonesia/{C12,D12}`. To rule out a fetch-summary
 hallucination, the raw HTML of both pages was pulled and the Indonesian sentences
-below were extracted verbatim from that raw HTML (not from a model paraphrase). Both
-pages cite as legal basis: **UU 6/2011 Keimigrasian, PP 31/2013, PP 45/2024 (PNBP
-tariffs), Permenkumham 11/2024, and Permenkumham 22/2023 tentang Visa dan Izin Tinggal**
-— i.e. they reflect the current (2024→) index-visa regime, exactly the regulation the
-brief asked to check against.
+below were extracted verbatim from that raw HTML (not from a model paraphrase). The
+C12 page cites as legal basis **UU 6/2011 Keimigrasian, PP 31/2013, PP 45/2024 (PNBP
+tariffs), Permenkumham 11/2024, and Permenkumham 22/2023 tentang Visa dan Izin Tinggal**;
+the D12 page's *dasar hukum* list omits UU 6/2011 and PP 31/2013 (it cites PP 45/2024,
+Permenkumham 11/2024 + 22/2023, Kepmen M.IP-08.GR.01.01/2025, and PMK 9/2022 + 82/2023)
+— corrected 2026-07-21 after adversarial re-fetch, see Adversarial review below. Both
+still reflect the current (2024→) index-visa regime, exactly the regulation the brief
+asked to check against.
 
 ## Key citations (verbatim, official pages)
 
@@ -49,10 +53,10 @@ brief asked to check against.
 **D12 — `imigrasi.go.id/wna/daftar-visa-indonesia/D12`:**
 - Entry + stay: *"Visa D12 merupakan Visa Kunjungan untuk **beberapa kali masuk** ke Indonesia dengan izin tinggal **maksimal 180 hari setiap kedatangan**."*
 - Conversion: *"Izin tinggal dari visa ini bisa diperpanjang untuk 180 hari berikutnya **namun tidak bisa dialihkan menjadi izin tinggal terbatas**."*
-- Extension: *"Anda dapat memperpanjang izin tinggal ini satu kali hingga keseluruhan masa tinggal paling lama 12 bulan (1 tahun) atau [2 tahun]."*
-- Sponsor: *"Penjamin (Sponsor) — **Anda tidak membutuhkan penjamin/sponsor untuk mengajukan visa ini.** Orang asing harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa."*
+- Extension: *"Anda dapat memperpanjang izin tinggal ini satu kali hingga keseluruhan masa tinggal paling lama 12 bulan (1 tahun) atau 2 tahun, bergantung pada durasi visa yang Anda pilih."*
+- Sponsor: *"Penjamin (Sponsor) — **Anda tidak membutuhkan penjamin/sponsor untuk mengajukan visa ini.** Orang asing harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa."* (NB: the same page's extension clause says renewal *"dapat dilakukan secara online oleh sponsor"* and billing occurs *"setelah pengajuan visa oleh sponsor"* — DGI boilerplate that is internally inconsistent with the "no sponsor" line above; the "not required" claim is scoped to the **initial application** only, see Adversarial review.)
 - Funds: *"rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin **sebesar minimal USD5000**."*
-- Supporting docs: **"curriculum vitae, rencana perjalanan (travel itinerary)"** + institutional letter/invitation + return ticket. **CV and itinerary ARE required.**
+- Supporting docs: passport, proof of funds, pasfoto, **"curriculum vitae, rencana perjalanan (travel itinerary)"**, + institutional letter/invitation. **CV and itinerary ARE required. No return ticket is listed** (corrected 2026-07-21 — see Adversarial review).
 
 ## Findings — verdict per dispute
 
@@ -95,13 +99,44 @@ Official PNBP explicitly lists a 60-day tier (Rp 3,000,000) distinct from the 18
 | CV + travel itinerary | **Not required** (return ticket required) | **Required** (curriculum vitae + rencana perjalanan) |
 | Government fee (PNBP) | Rp 3,000,000 (60-day) / Rp 4,000,000 (180-day) | Per official D12 PNBP schedule (1-yr / 2-yr tiers) |
 | Visa validity (entry window) | 90 days from issuance | From issuance date |
-| Legal basis | Permenkumham 22/2023 jo. 11/2024; UU 6/2011; PP 31/2013; PP 45/2024 | Same |
+| Legal basis | Permenkumham 22/2023 jo. 11/2024; UU 6/2011; PP 31/2013; PP 45/2024 | Permenkumham 22/2023 jo. 11/2024; PP 45/2024 (page omits UU 6/2011 + PP 31/2013) |
 
 ## Checklist for action (Bali Zero)
 - [ ] **Fix the KB / bot answers** to: C12 converts onshore to KITAS, D12 does **not**; C12 needs a sponsor, D12 does **not**; C12 funds = **USD 2,000** (not 5,000); C12 has 60-day AND 180-day tiers.
 - [ ] **Reconcile with the reviewer** in person — show them the two verbatim official quotes (D12 "tidak bisa dialihkan"; D12 "tidak membutuhkan penjamin/sponsor") since their correction was repeated across 4 answers and will otherwise re-enter the KB.
 - [ ] **Confirm the real-world D12 → Investor-KITAS path** on a recent live case (new-KITAS-application vs in-place conversion) and document the exact mechanic before any client relies on "D12 cannot become a KITAS."
 - [ ] **Purge stale USD 5,000 / "D12 needs sponsor" figures** from any agent-sourced snippets in the KB; pin the imigrasi.go.id pages as the citation.
+
+## Adversarial review
+
+Reviewed by an independent seat (Kimi K3, `kimi-code/k3`) after this document was
+drafted — the seat re-fetched both official pages (including raw HTML) itself rather
+than reviewing the text-pack, and attempted to refute the 5 central claims plus the
+verbatim-quote fidelity.
+
+**Verdict: all 5 central claims independently re-confirmed verbatim against a fresh
+fetch of imigrasi.go.id/C12 and /D12 — none refuted.** 4 minor objections survived,
+none touching a central claim; all 4 have been fixed in this document (fixes applied
+2026-07-21, reflected above):
+
+1. The D12 "supporting docs" bullet asserted a return ticket was required — the
+   official D12 document list has no such item (the only "tiket kembali" on the page
+   is unrelated stateless-persons boilerplate). Fixed: removed.
+2. The Method section claimed "both pages" cite UU 6/2011 + PP 31/2013 as legal
+   basis — the D12 page's own *dasar hukum* list omits both. Fixed: legal-basis
+   claim now scoped per-page.
+3. The D12 extension quote was presented as verbatim with a bracketed `[2 tahun]`
+   insertion that silently truncated the source's trailing clause
+   ("...bergantung pada durasi visa yang Anda pilih"). Fixed: quote now exact.
+4. The D12 page's own boilerplate mentions a "sponsor" for extensions/billing even
+   though no sponsor is needed for the initial application — this document's "no
+   sponsor" claim is correct but didn't flag the source page's internal
+   inconsistency, which is plausibly part of the reviewer's original confusion.
+   Fixed: noted inline at the D12 sponsor citation.
+
+Everything else the seat probed — sponsor-quote verbatim fidelity (re-verified
+against raw HTML), USD figures, conversion rules, visa code identities, 60/180-day
+fee tiers — was independently re-confirmed, not merely re-asserted.
 
 ## Sources
 1. Official DGI — C12: https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C12 (raw HTML fetched + verbatim-extracted 2026-07-21)

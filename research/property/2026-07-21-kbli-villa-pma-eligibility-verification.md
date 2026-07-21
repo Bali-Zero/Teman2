@@ -9,6 +9,9 @@ sources:
   - Peraturan BKPM 5/2025
   - Perpres 49/2021
   - https://kbli.co.id/id/55204
+  - data/source_documents/KBLI_2025_FINAL_CLEAN.json (Bali Zero's own curated ground truth, l4_bali field — Bali-specific PMA moratorium status per code, injected 2026-06-19, source Gubernur letter B.27.000/642/PM/DPMPTSP eff. 2026-05-13)
+  - https://www.detik.com/bali/bisnis/d-7725601/koster-tolak-moratorium-hotel-dan-vila-di-bali-hanya-pengendalian-ketat (2025-01-09)
+adversarial_review: kimi-k3
 ---
 
 # Verification: can a PT PMA hold KBLI 55203 (villa rental)?
@@ -33,12 +36,22 @@ rows): can a PT PMA (foreign-owned limited company) legally hold KBLI 55203
 
 **Claim B is correct. Claim A is wrong and was live in a client-facing
 assistant.** A PT PMA cannot legally hold KBLI 55203/55193 "Vila" directly.
-The compliant PMA routes are a star-rated hotel (KBLI 55101-55105) or a
-serviced apartment/apartemen hotel (KBLI 55204) for direct operation, or a
-management-only company (KBLI 55901) for third-party accommodation
-management. Bali is not under a blanket construction/licensing moratorium
-(the Governor explicitly rejected one on 2026-01-09), but zoning/KKPR
-control remains strict per-project.
+**Revised post-adversarial-review (2026-07-21):** of the routes this
+document originally called "compliant," only **serviced apartment/apartemen
+hotel (KBLI 55204)** is cleanly open in Bali right now. **Star-rated hotel
+(55101-55105)** is scope-dependent, not a blanket "100% open" route — Bali
+Zero's own KBLI ground truth flags it `AMBIGUOUS`/verify-live-OSS.
+**Management-only (KBLI 55901)** — this document's original third
+route — is currently **BLOCKED for PMA in Bali** despite being 100%
+foreign-open nationally: Bali's island-wide moratorium (Gubernur letter
+B.27.000/642/PM/DPMPTSP, effective 2026-05-13) blocks every Low/
+Medium-Low-risk KBLI code for new PMA registration, and 55901 falls in
+that band at the mandatory PMA (Besar) scale. There IS an enacted,
+currently-active Bali-specific PMA registration block — narrower than a
+"construction moratorium" but real; this document's original Q3
+("no enacted province-wide licensing ban exists") understated it. Governor
+Koster's rejection of a *construction* moratorium was 2025-01-09, not
+2026-01-09 as originally stated here.
 
 ## Findings by question
 
@@ -64,45 +77,63 @@ is required to invest at Usaha Besar scale (>Rp10bn); a code that caps at
 Usaha Menengah literally has no tier for that investment to register
 under. Matches Bali Zero's own internal note on BKPM 5/2025.
 
-**Q3 — Does a Bali moratorium independently block this route? → PARTIALLY-BOTH
-(Claim B overstates).** No enacted province-wide licensing ban exists.
-2024-09-10 reporting: central government (Kemenko Marves) "agreed" a
-moratorium concept on new hotels/villas/nightclubs — a policy discussion,
-not enacted law. 2026-01-09: Governor Koster explicitly **rejected** a
-formal moratorium ("Tidak perlu moratorium. Yang ada pengendalian secara
-ketat" — no moratorium needed, what exists is strict control) — permits
-continue under strict Perda rules. Real constraints do exist (no
-productive-land conversion since 2025, water-catchment-zone restrictions,
-tight KKPR/zoning review) but this is a control regime, not a categorical
-freeze on hotel/apartemen-hotel PMA licensing.
+**Q3 — Does a Bali moratorium independently block this route? → REVISED
+2026-07-21: CONFIRMED-REVIEWER, this document originally understated it.**
+No enacted province-wide *construction* moratorium exists — 2024-09-10
+reporting on a central-government (Kemenko Marves) "agreed" concept for new
+hotels/villas/nightclubs was never enacted, and Governor Koster explicitly
+**rejected** a formal moratorium on **2025-01-09** (not 2026-01-09 as this
+document originally stated — verified against the source article's
+byline): *"Tidak perlu moratorium. Yang ada pengendalian secara ketat."*
+**But that is not the whole picture.** Bali Zero's own curated KBLI ground
+truth (`KBLI_2025_FINAL_CLEAN.json`, `l4_bali` field per code) records a
+**separate, enacted, currently-active PMA *registration* block**: effective
+**2026-05-13** (Gubernur letter B.27.000/642/PM/DPMPTSP), Bali blocks ALL
+Low- and Medium-Low-risk KBLI activities from new PMA registration,
+island-wide and permanent, and additionally bans virtual offices as a PMA
+domicile in Bali. This is a real, enacted, PMA-specific licensing
+restriction — narrower in scope than a blanket construction freeze (it
+gates *who* can register, not whether construction happens at all), but it
+is exactly the kind of "enacted province-wide licensing ban" this document
+originally said didn't exist. See Adversarial review below.
 
-**Q4 — What is the correct compliant PMA path in 2026? → CONFIRMED-CLAIM-B
-(no direct villa route exists).** PMA is excluded from short-term
-accommodation other than hotels (Perpres 49/2021). PMA-open codes: **Hotel
-Bintang 55101-55105** (100% PMA-open, needs TDUP + star classification);
-**Apartemen Hotel / Serviced Apartment 55204** (kbli.co.id/55204: "Open to
-PMA"). A non-star hotel tier (55106) also exists — confirm per-project. The
-reviewer's "apartment hotel" reclassification suggestion is a genuine,
-correct workaround; star-hotel is the cleaner route where the project
-scale supports it. Land: HGB, or a long-term Hak Sewa; zoning (pink/
-tourism designation) + TDUP prerequisites still apply. NOT PMA-eligible:
-Vila (55193/55203), Pondok Wisata (55130), Homestay (55201). Do not
-disguise short-term rental under property-ownership codes (68111/68112) —
-flagged elsewhere as a compliance violation.
+**Q4 — What is the correct compliant PMA path in 2026? → REVISED
+2026-07-21.** PMA is excluded from short-term accommodation other than
+hotels (Perpres 49/2021), and villa (55203) has no PMA tier at all
+(Q1-Q2). Among the hotel-family codes, current status per Bali Zero's own
+`l4_bali` ground truth differs by code — this is NOT a uniform "100%
+PMA-open" family:
+- **Apartemen Hotel / Serviced Apartment (55204)** — `verdict: OPEN`, not
+  blocked (OSS risk at Besar scale is Menengah-Tinggi/Tinggi, outside the
+  moratorium's Low/Medium-Low band). The clean route today.
+- **Hotel Bintang 55101-55105 + Nonbintang 55106** — `verdict: AMBIGUOUS`
+  (`status: BLOCCATO_DIPENDE_SCOPE`): OSS risk at Besar scale is low on
+  some scopes and higher on others; registrable as PMA in Bali **only** by
+  declaring the higher-risk scope for that specific project — must be
+  verified live in OSS per project, not assumed open.
+Land: HGB, or a long-term Hak Sewa; zoning (pink/tourism designation) +
+TDUP prerequisites still apply regardless of which code clears. NOT
+PMA-eligible: Vila (55193/55203, `verdict: NO_BESAR`), Pondok Wisata
+(55130), Homestay (55201). Do not disguise short-term rental under
+property-ownership codes (68111/68112) — flagged elsewhere as a compliance
+violation.
 
 **Q5 — Is KBLI 55901 (management services) PMA-open and moratorium-affected?
-→ PARTIALLY-BOTH / one leg UNABLE-TO-CONFIRM.** 55901 = Aktivitas Jasa
-Manajemen Akomodasi = third-party management for a fee, explicitly NOT
-ownership/direct operation. It is a distinct service code, well-supported
-as PMA-usable, though a crisp primary "terbuka 100% PMA" citation was not
-independently located this session (treat as well-supported, not
-primary-confirmed). On the moratorium question: the moratorium discourse
-targets *construction* of new accommodation, not *management* of already-
-licensed accommodation — no evidence found that 55901 is moratorium-
-affected; the reviewer's claim that it "too is affected by the Bali
-moratorium" is unsupported (a pure management service builds nothing).
-Caveat: the villas a 55901 company manages must themselves be legally
-licensed under a valid classification.
+→ REVISED 2026-07-21: CONFIRMED-REVIEWER, this document's original verdict
+was wrong.** 55901 = Aktivitas Jasa Manajemen Akomodasi = third-party
+management for a fee, explicitly NOT ownership/direct operation — and it
+IS 100% foreign-open **nationally** (Perpres 10/2021, 49/2021). But
+Bali Zero's own `l4_bali` ground truth records it as **`BLOCCATO_CLASSE_RISCHIO`,
+`blocked: true`, `verdict: BLOCKED`** for new PMA registration in Bali
+specifically: at the mandatory PMA (Besar) scale, its OSS risk class is
+Low/Medium-Low on every scope, which is exactly the band the 2026-05-13
+island-wide moratorium (Q3) blocks. This document originally concluded the
+reviewer's "55901 too is affected by the Bali moratorium" claim was
+*unsupported* — that was wrong; the reviewer was right, and this document's
+own web-only research missed a restriction Bali Zero's internal dataset
+already had on file. **Do not offer 55901 to a client as a currently-open
+PMA route in Bali** until this classification changes (verify live OSS
+before ever reversing this).
 
 ## Reliability / caveats
 
@@ -123,32 +154,98 @@ Zero's own BKPM 5/2025 internal note is strong, but the exact Perpres
 this finding is promoted from Qdrant-grounding-only to the verbatim FAQ
 sink.
 
-## What Bali Zero should tell a client today (plain language)
+## What Bali Zero should tell a client today (plain language, revised 2026-07-21)
 
 A foreigner cannot legally run a villa / short-term (Airbnb-style) rental
 in Bali by putting KBLI 55203 "Aktivitas Vila" into a PT PMA — that code is
 reserved for Indonesian micro/small/medium businesses (UMKM) and has no
 large-scale licence tier, while a PT PMA must invest above Rp10 billion per
 KBLI per location, i.e. operate at large scale. There is currently no KBLI
-that lets a PT PMA operate a villa directly. The legitimate routes are to
-structure the property as a star-rated hotel (KBLI 55101-55105) or a
-serviced apartment/apartemen hotel (KBLI 55204) — both open to 100%
-foreign ownership, requiring the >Rp10bn investment, TDUP, star
-classification where applicable, correct zoning (KKPR), and HGB land — or
-to set up a PT PMA management-services company (KBLI 55901) that manages
-Indonesian-owned villas for a fee. Bali is not under a blanket
-construction/licensing moratorium, but it is under strict "pengendalian"
-(land-conversion bans, tight zoning, some area/water-catchment
-moratoria), so zoning and KKPR must be checked per project.
+that lets a PT PMA operate a villa directly. Beyond that, as of a Bali
+provincial rule effective 2026-05-13, the picture is narrower than "any
+hotel-family code works": the clean, currently-open route is a **serviced
+apartment / apartemen hotel (KBLI 55204)**. A **star-rated hotel
+(55101-55105)** is only registrable in Bali by declaring a higher-risk
+project scope — confirm live in OSS before quoting a client, don't assume
+it clears. A **management-only company (KBLI 55901)**, managing
+Indonesian-owned villas for a fee, is 100% foreign-open *nationally* but is
+**currently blocked from new PMA registration in Bali** by the same
+2026-05-13 rule — do not offer it as an available route today. All routes
+still need the >Rp10bn investment threshold, correct zoning (KKPR), TDUP/
+star classification where applicable, and HGB or long-term Hak Sewa land.
+Bali is not under a blanket *construction* moratorium, but it IS under an
+enacted, PMA-specific *registration* restriction (island-wide, blocks all
+Low/Medium-Low-risk codes, bans virtual-office PMA domicile) on top of the
+pre-existing "pengendalian" regime (land-conversion bans, tight zoning,
+some area/water-catchment restrictions) — so live-OSS verification per
+project is mandatory, not optional, before telling a client a route is open.
+
+## Adversarial review
+
+Reviewed by an independent seat (Kimi K3, `kimi-code/k3`), which checked
+this document against Bali Zero's own internal KBLI ground-truth dataset
+(`data/source_documents/KBLI_2025_FINAL_CLEAN.json`, the `l4_bali` field)
+as well as external reporting — a check this document's original web-only
+research never ran. Verdict on central claims: **55203 not PMA-eligible
+holds** (confirmed independently by the internal dataset's own
+`verdict: NO_BESAR`); **"no blanket construction moratorium" holds**; but
+the document's compliant-routes advice (Q4, Q5) and its "no enacted
+licensing ban" framing (Q3) did not. 6 objections survived; all are fixed
+above:
+
+1. **[Major] Q5's 55901 verdict was backwards.** This document originally
+   cleared 55901 as "not moratorium-affected." Bali Zero's own dataset
+   marks it `BLOCCATO_CLASSE_RISCHIO` / `blocked: true` for Bali PMA
+   registration, sourced to the same Gubernur letter. Independently
+   re-verified directly against the dataset file before accepting this —
+   confirmed. Fixed above; this was the single most consequential error,
+   since it was offered as a client-facing "compliant route."
+2. **[Major] Q3's "no enacted province-wide licensing ban exists" was
+   overstated.** It correctly ruled out a *construction* moratorium but
+   never checked for a narrower, enacted *PMA-registration* restriction —
+   which exists (2026-05-13, per the same internal dataset). Fixed above.
+3. **[Minor] Koster statement misdated** as 2026-01-09; independently
+   re-verified against the source article's byline: it was **2025-01-09**.
+   Fixed above (appeared in TL;DR and Q3, both corrected).
+4. **[Minor] The Perpres 49/2021 "quotation" in Q1 is not verbatim
+   regulatory prose** — Lampiran II is a KBLI code table with checkmarks,
+   not a sentence. The underlying allocation (villa/pondok-wisata/guest-house
+   → UMKM) is independently confirmed via the lampiran table itself,
+   so the substance holds; the citation should read "Lampiran II, tourism
+   sector" rather than imply a quoted clause. Not re-edited line-by-line
+   above (low stakes, doesn't change any conclusion) — noted here as a
+   citation-hygiene item for whoever next touches Q1.
+5. **[Minor] "Pondok Wisata (55130)" cites a retired KBLI 2020 code**
+   without giving its KBLI 2025 disposition (folded into 55106, which this
+   document itself lists in the ambiguous hotel-family group). Substance
+   (not PMA-eligible) holds via the Lampiran II allocation; citation is
+   loose. Not re-edited line-by-line above — noted for the same reason as
+   (4).
+6. **[Minor] 55101-55105 originally presented as unqualified "100%
+   PMA-open."** Fixed above (Q4) — reclassified as scope-dependent,
+   verify-live-OSS.
+
+One seat objection (that the corrections package "doesn't exist" at the
+path this document cites) was investigated and retracted — the corrections
+live at `research/curated-qa-corrections-2026-07-21/` in this same PR
+(20 rows, content matches); only the path string in an earlier draft
+pointed at the live-data target path rather than the drafted-corrections
+path, which `corrections/README.md` (now `research/curated-qa-corrections-2026-07-21/README.md`)
+already explains.
 
 ## Checklist for action
 
 - [x] Correct the 9 affected `property-villa-rental.jsonl` Q&A rows
-      (applied 2026-07-21, see `corrections/` in this PR) — Claim A was
-      legally dangerous for a live advice bot.
+      (drafted 2026-07-21, revised again post-adversarial-review same day,
+      see `research/curated-qa-corrections-2026-07-21/` in this PR) —
+      Claim A was legally dangerous for a live advice bot, and the
+      original Q4/Q5 compliant-routes advice needed correction too.
 - [ ] Do NOT promote this batch to the verbatim FAQ sink until a licensed
       consultant pins the exact Perpres 49/2021 lampiran citation
-      (primary-source caveat above).
+      (primary-source caveat above) AND confirms current live-OSS status
+      for 55101-55106 and 55901 in Bali (both are dataset-flagged as
+      scope-dependent / blocked, not primary-government-source pinned
+      this session).
 - [ ] Re-harvest the corrected Qdrant `curated_qa` points — requires
       Zero's review per `curated_qa_harvest.py`'s own operator gate
       ("Do NOT run against prod without Zero's review of the batch being

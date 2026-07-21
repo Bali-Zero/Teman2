@@ -14,6 +14,9 @@ sources:
   - https://mpgbali.com/indonesia-introduces-new-retirement-kitas/
   - https://peraturan.bpk.go.id/details/272044/permenkumham-no-22-tahun-2023
   - UU 6/2011 Keimigrasian + PP 31/2013
+  - Permenkumham 22/2023 primary PDF text (data/source_documents/t0_regulations/, pdftotext-extracted 2026-07-21)
+  - Permenkumham 11/2024 primary PDF text (data/source_documents/t0_regulations/permenkumham_11_2024_perubahan_visa.pdf, pdftotext-extracted 2026-07-21)
+adversarial_review: kimi-k3
 ---
 
 # Verification: E31J age limit · E33F cumulative cap · KITAP-RET income threshold
@@ -81,15 +84,22 @@ published fact.
 
 ### Dispute 2 — E33F cumulative cap (CONFIRMED-REVIEWER)
 
-Two structural claims both hold: (a) the general rule exists — an ordinary
-ITAS whose first grant runs less than 5 years (UU 6/2011 + PP 31/2013) is
-cumulatively capped at 6 years total via extensions; the 5-or-10-year
-up-front categories (investor/penanaman modal, rumah kedua/Second Home,
-repatriasi, penyatuan keluarga long-track — Permenkumham 22/2023 Pasal 185)
-are the explicit EXCEPTIONS to that baseline. (b) E33F is not one of those
-exceptions — it is the 1-year retirement ITAS (E33E is the 5-year
-sibling), a first grant under 5 years, therefore ordinary/capped, not an
-up-front 5/10-year exception grant. Conclusion: the draft's uncertainty
+Two structural claims both hold, but the citation was wrong and has been
+corrected post-adversarial-review (see below): (a) the general rule —
+**Permenkumham 22/2023 Pasal 113** (not UU 6/2011 + PP 31/2013, which
+carry an older, separate flat rule) — an ordinary ITAS whose first grant
+runs less than 5 years is cumulatively capped at 6 years total via
+extensions (ayat 1); a first grant of 5+ years is capped at 10 years
+(ayat 2). Pasal 185 does NOT list "exceptions" to Pasal 113 — it separately
+defines that 4 activities (penanaman modal/investment, penyatuan
+keluarga/family reunification, repatriasi, rumah kedua/Second Home) are
+themselves GRANTED for 5-or-10 years as their first-grant duration (ayat
+2), which is what lands them in Pasal 113's higher (10-year) bucket — not
+a blanket exemption from any cap. (b) E33F is not one of those 4
+Pasal-185 activities and its own official page confirms a 1-year first
+grant (E33E is the 5-year sibling, under Pasal 185(1)(d) rumah kedua),
+so it falls under Pasal 113(1)'s 6-year bucket by the ordinary mechanism,
+not an up-front 5/10-year grant. Conclusion: the draft's uncertainty
 ("maybe no cumulative cap / indefinite renewal") is wrong — a cap applies.
 Operative client-facing figure: valid 1 year, renewable annually up to
 roughly 5 years of total stay under this track, then convert to Retirement
@@ -109,9 +119,15 @@ SUPERSEDED pre-2024 figure — explicit history found: "The 1-year
 Retirement KITAS previously required USD 1,500/month, while the new visa
 requires USD 3,000/month" (mpgbali.com). One 2025 guide (cptcorporate.com)
 still quotes ~USD 1,500 — this is precisely the stale number the draft "saw
-quoted" and correctly flagged as unresolved; it is now resolved. Also
-required for E33F: state-bank deposit/guarantee ≥ USD 50,000 within 90
-days of entry; minimum age 55.
+quoted" and correctly flagged as unresolved; it is now resolved. Minimum
+age for E33F is 55 — confirmed via primary text of Permenkumham 11/2024
+(which amends Pasal 33/61/62 of 22/2023 from 60 to "55 (lima puluh lima)
+tahun atau lebih"), see Adversarial review below. **Correction (2026-07-21,
+post-adversarial-review): the "USD 50,000 state-bank deposit" requirement
+belongs to E33E only, not E33F** — E33F's official page and Permenkumham
+22/2023 Pasal 61 show only the USD 3,000/month income test; the deposit
+line (Pasal 62) is the E33E/"Silver Hair" 5-year track. This document
+originally conflated the two; see Adversarial review.
 
 ## Disagreements / open questions
 
@@ -127,6 +143,66 @@ days of entry; minimum age 55.
   verified instead via kemenkumham/imigrasi summaries + the UU/PP text.
 - Dispute 3: none — official page is unambiguous.
 
+## Adversarial review
+
+Reviewed by an independent seat (Kimi K3, `kimi-code/k3`), which pulled the
+Permenkumham 22/2023 primary text itself (bypassing the bpk.go.id 403 via a
+mirror PDF + `pdftotext`) rather than reviewing the text-pack. Verdict on
+the seat's own central-claims check: **all 3 disputed conclusions hold**
+(E31J age unconfirmed — correct to leave unhardcoded; E33F capped ~5yr→KITAP;
+USD 3,000 current/1,500 superseded). It raised 7 objections; after
+independently checking each against primary-source PDFs, 4 were real and
+have been fixed above, 1 was investigated and found to be the reviewer's
+own error (not fixed — see below), and 2 are citation-precision notes
+folded into the fixes:
+
+**Fixed (confirmed real):**
+1. The "USD 50,000 state-bank deposit" was wrongly attached to E33F in
+   this document's Dispute-3 section — that deposit belongs to E33E
+   (Pasal 62), not E33F (Pasal 61, income-only). Fixed above. (The
+   client-facing KB rows already had this right — only this research
+   document's summary line was wrong.)
+2. The cumulative-cap rule (Dispute 2) was mis-cited to "UU 6/2011 + PP
+   31/2013" — the actual operative article, independently confirmed via
+   primary PDF text, is **Permenkumham 22/2023 Pasal 113**. Fixed above.
+3. Pasal 185 was mischaracterized as an "exceptions" clause — primary
+   text confirms it instead defines which 4 activities get a 5-or-10-year
+   *first grant* (investment/family/repatriation/second-home), which is
+   what lands them in Pasal 113's higher cap bucket. Fixed above.
+4. The mpgbali.com "1,500→3,000 history" quote could not be re-found
+   verbatim at the cited URL by the seat's fresh fetch — the underlying
+   fact is independently corroborated by 3 other sources (cptcorporate,
+   cekindo, affordableretirementabroad) so the conclusion is unaffected,
+   but the citation should not claim that exact sentence lives at that URL.
+
+**Investigated and NOT fixed — the seat's objection was itself wrong:**
+5. The seat flagged "minimum age 55" for E33F as contradicted by
+   Permenkumham 22/2023, which does say 60 (Pasal 33(2)(j)(4), Pasal 61,
+   Pasal 62 all read "60 (enam puluh) tahun" in the base 2023 text). The
+   seat explicitly identified the necessary next check — whether
+   **Permenkumham 11/2024** amends this — but could not complete it
+   (same bpk.go.id 403). Independently pulling
+   `permenkumham_11_2024_perubahan_visa.pdf` (already present in this
+   repo's `data/source_documents/t0_regulations/`) and running
+   `pdftotext` on it confirms: **Pasal 33 is explicitly restated
+   ("Ketentuan Pasal 33 diubah sehingga berbunyi sebagai...") with "55
+   (lima puluh lima) tahun atau lebih"**, and Pasal 61 + Pasal 62 both
+   carry the same "55" text post-amendment. So the original "minimum age
+   55" claim was correct all along — the seat's objection is a case of
+   checking the base regulation and not completing the check on its own
+   amending regulation, exactly the failure mode this repo's scars call
+   "even the refuter hallucinates" (W65) / "the ground-truth can itself
+   be stale" (W90). No KB or research-doc change made on this point.
+
+**Minor, not touching any conclusion (noted, not separately fixed):**
+6. TL;DR/body internal-math phrasing ("~5 annual renewals" vs "~5 years
+   total stay") — cosmetic; the operative client-facing guidance ("plan
+   the KITAP conversion into the timeline from year one") is unaffected.
+7. "Permenkumham 22/2023, effective 2024" is loosely worded (promulgated
+   2023, the retiree-track amendment is via Permenkumham 11/2024,
+   ditetapkan 1 April 2024) — the practical "pre-2024 vs current" framing
+   for the USD 1,500→3,000 dispute is unaffected.
+
 ## Checklist for action
 
 - [x] Keep the draft's cautious E31J wording; do NOT hard-code "E31J max
@@ -135,12 +211,12 @@ days of entry; minimum age 55.
       "possibly indefinite renewal" language; state "1-year, annually
       renewable up to ~5 years → Retirement KITAP; not exempt from the
       general ITAS cumulative cap." (applied 2026-07-21, see
-      `corrections/` in this PR)
+      `research/curated-qa-corrections-2026-07-21/` in this PR)
 - [x] Fix the KITAP-RET row in `visa-catalog-sweep.jsonl`: set retiree
       income to USD 3,000/month as the current governing figure; state
       USD 1,500/month explicitly as the superseded pre-2024 figure, not an
       unresolved regional variance. (applied 2026-07-21, see
-      `corrections/` in this PR)
+      `research/curated-qa-corrections-2026-07-21/` in this PR)
 - [ ] If a live client quote ever hinges on the exact ITAS cumulative-cap
       article number, pull the Permenkumham 22/2023 primary PDF directly
       (bpk.go.id returned 403 to automated fetch on 2026-07-21; try a
