@@ -135,7 +135,35 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
-- **2026-07-21 — WAVE-1 EXECUTED (Zero GO) — 198 contatti creati, PR #2879 mergiata.**
+- **2026-07-21 — WAVE-2 EXECUTED (Zero GO #2) — 94 contatti creati, reroute in self-heal.**
+  Secondo "go" di Zero ricevuto subito dopo la chiusura del wave-1. Census fresco: 94
+  candidati residui (passport 84/kitas 10), sotto l'hard-cap → un solo lotto. Riapplicata
+  la stessa procedura sicura del wave-1 (worker vivo+throttled, 3 flag auto-attach
+  rimossi, `dropbox-intake` in pausa). Primo tentativo REFUSED (`deploy_bytes_mismatch`
+  su routing.py/client_enricher.py/writer.py): il worktree era rimasto indietro rispetto
+  a `~/nuzantara-deploy` — una PR non correlata aveva aggiunto un nuovo gate GATE-11
+  (backfill non verificato) a `routing.py` nel frattempo. Risolto ricaricando il worktree
+  su `origin/main` fresco (diff 3/3 file confermato identico al deploy) prima di
+  ripetere census+apply. **Batch `w1-20260721T000636Z-9f3c17f5`: created=94/94 (tutti i
+  candidati), 0 skip.** Il passaggio POST-CREATE REROUTE si è però bloccato: drain-poll
+  di `_reroute_lot` (300s) scaduto con 107/107 code ancora pending. Causa reale (non un
+  errore specifico del wave-2): `RESET_QUEUE_SQL` rimanda le code a `stage='validate'`,
+  richiedendo che il worker VIVO le rielabori (OCR/vision) fino a `stage='route'`; il
+  backend Ollama locale (`INTAKE_OLLAMA_MAX_INFLIGHT=1`) ha mostrato nei log fino a ~240s
+  per singola chiamata vision sotto carico — 107 code non possono drenare in 300s a
+  quella velocità, indipendentemente dal throttle del poll-interval (che probabilmente
+  non congela nulla di rilevante: con un backlog permanente di ~8k documenti il worker
+  probabilmente non dorme mai comunque). `--verify-batch` immediato: **owner_violations=[]
+  e name_violations=[] entrambi puliti** (i gate di sicurezza reali) — solo
+  `reroute_unverified_ledger_ids` popolato (tutti i 94), che per design è bookkeeping,
+  non un gate di sicurezza (vedi riga R13-4 in PENDING-ARMS). Daemon ripristinato
+  immediatamente dopo il create (plist diff-verificato, entrambi i servizi `running`
+  con PID freschi) — nessun beneficio a tenere la produzione degradata durante la
+  diagnosi. **Residuo tracciato**: verifica se le 107 code si auto-guariscono via la
+  pipeline live ora ripristinata (atteso ma non ancora osservato) — riga PENDING-ARMS
+  dedicata.
+
+- **2026-07-20→21 — WAVE-1 EXECUTED (Zero GO) — 198 contatti creati, PR #2879 mergiata.**
   Zero GO (bare "go") ricevuto subito dopo la chiusura Lane B. Primo tentativo REFUSED
   (exit 3, zero scritture — fail-closed come da design): `_worker_attestation()` rifiuta
   perché il daemon `intake-worker` porta permanentemente armati i 3 flag auto-attach di
