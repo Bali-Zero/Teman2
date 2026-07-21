@@ -11,6 +11,7 @@ from PIL import Image
 from zantara_media.magazine import media_resolver
 from zantara_media.magazine.media_resolver import (
     AssetFingerprintLedger,
+    RasterFingerprint,
     _flowkit_generator,
     resolve_asset_manifest,
     select_asset_target,
@@ -121,14 +122,16 @@ def test_prompt_excludes_summary_and_uses_only_sanitized_editorial_fields(
     assert len(target.prompt) <= 1400
 
 
-def _image_bytes(*, color: str = "#C8102E", animated: bool = False) -> bytes:
+def _image_bytes(
+    *, color: str = "#C8102E", animated: bool = False, compress_level: int = 6
+) -> bytes:
     stream = io.BytesIO()
     first = Image.new("RGB", (1200, 675), color)
     if animated:
         second = Image.new("RGB", (1200, 675), "#F4C430")
         first.save(stream, format="WEBP", save_all=True, append_images=[second], duration=100)
     else:
-        first.save(stream, format="PNG")
+        first.save(stream, format="PNG", compress_level=compress_level)
     return stream.getvalue()
 
 
@@ -195,6 +198,61 @@ async def test_generation_failure_keeps_typographic_fallback(
 
 
 @pytest.mark.asyncio
+async def test_generation_exception_removes_partial_output(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory(story=story_factory(asset_digests=[]))
+    output_dir = tmp_path / "generated"
+
+    async def generate(_prompt: str, destination: Path) -> Path:
+        destination.write_bytes(_image_bytes())
+        raise RuntimeError("provider failed after writing")
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=output_dir,
+        ledger=AssetFingerprintLedger(tmp_path / "fingerprints.jsonl"),
+        generate=generate,
+    )
+
+    assert result.fallback_reason == "generation_failed"
+    assert list(output_dir.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_untrusted_story_fields_never_control_output_path(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory(story=story_factory(asset_digests=[]))
+    packet["story"]["story_id"] = "../../outside-story"
+    packet["story"]["slug"] = "../../../outside-slug"
+    output_dir = tmp_path / "generated"
+    observed: list[Path] = []
+
+    async def generate(_prompt: str, destination: Path) -> Path:
+        observed.append(destination)
+        raise RuntimeError("stop after observing safe destination")
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=output_dir,
+        ledger=AssetFingerprintLedger(tmp_path / "fingerprints.jsonl"),
+        generate=generate,
+    )
+
+    assert result.fallback_reason == "generation_failed"
+    assert observed[0].parent == output_dir.resolve()
+    assert "outside-story" not in observed[0].name
+    assert "outside-slug" not in observed[0].name
+
+
+@pytest.mark.asyncio
 async def test_obvious_pii_is_rejected_before_cloud_generation(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],
@@ -245,6 +303,7 @@ async def test_animated_or_pii_asset_fails_closed(
     )
     assert animated.manifest.intents == ()
     assert animated.fallback_reason == "invalid_raster"
+    assert list((tmp_path / "animated").iterdir()) == []
 
     async def safe_generate(_prompt: str, destination: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -268,6 +327,7 @@ async def test_animated_or_pii_asset_fails_closed(
     )
     assert detected.manifest.intents == ()
     assert detected.fallback_reason == "dlp_rejected"
+    assert list((tmp_path / "pii").iterdir()) == []
 
 
 @pytest.mark.asyncio
@@ -292,6 +352,7 @@ async def test_oversized_or_indeterminate_asset_fails_closed(
     )
     assert too_large.manifest.intents == ()
     assert too_large.fallback_reason == "invalid_raster"
+    assert list((tmp_path / "oversized").iterdir()) == []
 
     async def generate(_prompt: str, destination: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -315,6 +376,7 @@ async def test_oversized_or_indeterminate_asset_fails_closed(
     )
     assert uncertain.manifest.intents == ()
     assert uncertain.fallback_reason == "dlp_rejected"
+    assert list((tmp_path / "indeterminate").iterdir()) == []
 
 
 @pytest.mark.asyncio
@@ -345,10 +407,15 @@ async def test_perceptual_duplicate_is_not_silently_reused(
 ) -> None:
     packet = breaking_factory(story=story_factory(asset_digests=[]))
     ledger = AssetFingerprintLedger(tmp_path / "fingerprints.jsonl")
+    generation_count = 0
 
     async def generate(_prompt: str, destination: Path) -> Path:
+        nonlocal generation_count
+        generation_count += 1
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(_image_bytes(color="#000000"))
+        destination.write_bytes(
+            _image_bytes(color="#000000", compress_level=0 if generation_count == 1 else 9)
+        )
         return destination
 
     async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
@@ -379,3 +446,21 @@ async def test_perceptual_duplicate_is_not_silently_reused(
     assert len(first.manifest.intents) == 1
     assert second.manifest.intents == ()
     assert second.fallback_reason == "duplicate_asset"
+    assert list((tmp_path / "second").iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_perceptual_hashes_outside_threshold_are_both_reserved(
+    tmp_path: Path,
+) -> None:
+    ledger = AssetFingerprintLedger(tmp_path / "fingerprints.jsonl")
+
+    first = await ledger.reserve(
+        RasterFingerprint(sha256="a" * 64, dhash="0000000000000000"), "hero-first"
+    )
+    second = await ledger.reserve(
+        RasterFingerprint(sha256="b" * 64, dhash="ffffffffffffffff"), "hero-second"
+    )
+
+    assert first is True
+    assert second is True

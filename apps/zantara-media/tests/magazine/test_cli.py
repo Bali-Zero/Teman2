@@ -314,6 +314,114 @@ async def test_prebound_manifest_is_never_replaced(
 
 
 @pytest.mark.asyncio
+async def test_intact_generated_manifest_is_reused(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = breaking_factory()
+    output_dir = tmp_path / "generated"
+    output_dir.mkdir()
+    source = output_dir / "hero.png"
+    source.write_bytes(PNG)
+    existing = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            AssetIntentV1(
+                asset_id=f"hero-{hashlib.sha256(PNG).hexdigest()}",
+                source_path=source,
+                story_ids=(str(packet["story"]["story_id"]),),
+                captured_at=str(packet["verified_at"]),
+                alt_text="Generated editorial hero",
+                source="Bali Zero editorial generator",
+                source_url=None,
+                rights_basis="generated",
+                rights_status="approved",
+                usage_status="approved",
+                dlp_status="passed",
+                sanitization_status="passed",
+                perceptual_dedup_status="unique",
+            ),
+        ),
+    )
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
+    monkeypatch.setenv("MAGAZINE_ASSET_OUTPUT_DIR", str(output_dir))
+
+    async def unexpected(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        raise AssertionError("intact generated asset must be reused")
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", unexpected)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert result.manifest == existing
+    assert result.fallback_reason is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("damage", ["missing", "tampered"])
+async def test_invalid_generated_manifest_is_regenerated(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+    damage: str,
+) -> None:
+    packet = breaking_factory()
+    output_dir = tmp_path / "generated"
+    output_dir.mkdir()
+    source = output_dir / "hero.png"
+    source.write_bytes(PNG)
+    existing = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            AssetIntentV1(
+                asset_id=f"hero-{hashlib.sha256(PNG).hexdigest()}",
+                source_path=source,
+                story_ids=(str(packet["story"]["story_id"]),),
+                captured_at=str(packet["verified_at"]),
+                alt_text="Generated editorial hero",
+                source="Bali Zero editorial generator",
+                source_url=None,
+                rights_basis="generated",
+                rights_status="approved",
+                usage_status="approved",
+                dlp_status="passed",
+                sanitization_status="passed",
+                perceptual_dedup_status="unique",
+            ),
+        ),
+    )
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
+    monkeypatch.setenv("MAGAZINE_ASSET_OUTPUT_DIR", str(output_dir))
+    if damage == "missing":
+        source.unlink()
+    else:
+        source.write_bytes(PNG + b"tampered")
+    calls = 0
+
+    async def resolve(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        nonlocal calls
+        calls += 1
+        return AssetResolutionResult(
+            manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=()),
+            fallback_reason="generation_failed",
+        )
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", resolve)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert calls == 1
+    assert result.fallback_reason == "generation_failed"
+    assert not source.exists()
+    assert AssetIntentManifestV1.model_validate_json(manifest_path.read_bytes()).intents == ()
+
+
+@pytest.mark.asyncio
 async def test_auto_assets_kill_switch_preserves_empty_manifest(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],

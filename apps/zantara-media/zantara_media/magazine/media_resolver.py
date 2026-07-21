@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import sys
+import uuid
 import warnings
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -125,15 +126,22 @@ async def resolve_asset_manifest(
 
     output_dir = output_dir.resolve()
     await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
-    destination = output_dir / f"{target.slug[:80]}-{target.story_id[:24]}.png"
+    packet_id = str(packet.get("packet_id", ""))
+    target_key = hashlib.sha256(f"{packet_id}:{target.story_id}".encode()).hexdigest()[:24]
+    attempt_id = uuid.uuid4().hex
+    destination = (output_dir / f".pending-hero-{target_key}-{attempt_id}.png").resolve()
+    if destination.parent != output_dir:
+        return _fallback("generation_failed")
     generator = generate or _flowkit_generator(flowkit_cli)
     try:
         source_path = (await generator(target.prompt, destination)).resolve()
     except Exception:
+        await _discard(destination, output_dir)
         logger.warning("Magazine asset generation failed", extra={"reason": "generation_failed"})
         return _fallback("generation_failed")
-    if source_path.parent != output_dir or not source_path.is_file():
+    if source_path != destination or not source_path.is_file():
         await _discard(source_path, output_dir)
+        await _discard(destination, output_dir)
         return _fallback("generation_failed")
 
     try:
@@ -171,25 +179,29 @@ async def resolve_asset_manifest(
         await _discard(source_path, output_dir)
         return _fallback("dlp_rejected")
 
-    packet_id = str(packet.get("packet_id", ""))
-    asset_id = (
-        "hero-"
-        + hashlib.sha256(
-            f"{packet_id}:{target.story_id}:{fingerprint.sha256}".encode()
-        ).hexdigest()[:24]
-    )
+    asset_id = f"hero-{fingerprint.sha256}"
+    approved_path = (output_dir / f"hero-{fingerprint.sha256}-{attempt_id}.png").resolve()
+    if approved_path.parent != output_dir:
+        await _discard(source_path, output_dir)
+        return _fallback("generation_failed")
+    try:
+        await asyncio.to_thread(source_path.replace, approved_path)
+    except OSError:
+        await _discard(source_path, output_dir)
+        await _discard(approved_path, output_dir)
+        return _fallback("generation_failed")
     try:
         unique = await ledger.reserve(fingerprint, asset_id)
     except (OSError, ValueError):
-        await _discard(source_path, output_dir)
+        await _discard(approved_path, output_dir)
         return _fallback("duplicate_check_failed")
     if not unique:
-        await _discard(source_path, output_dir)
+        await _discard(approved_path, output_dir)
         return _fallback("duplicate_asset")
 
     intent = AssetIntentV1(
         asset_id=asset_id,
-        source_path=source_path,
+        source_path=approved_path,
         story_ids=(target.story_id,),
         captured_at=target.captured_at,
         alt_text=target.alt_text,
@@ -206,6 +218,38 @@ async def resolve_asset_manifest(
         manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
         fallback_reason=None,
     )
+
+
+async def generated_manifest_is_intact(
+    manifest: AssetIntentManifestV1,
+    *,
+    output_dir: Path,
+) -> bool:
+    """Verify that approved generated intents still bind to their original bytes."""
+
+    output_dir = output_dir.resolve()
+    for intent in manifest.intents:
+        source_path = intent.source_path.resolve()
+        if source_path.parent != output_dir or not source_path.is_file():
+            return False
+        try:
+            file_data = await asyncio.to_thread(source_path.read_bytes)
+            fingerprint = await asyncio.to_thread(_inspect_raster, file_data)
+        except (
+            EOFError,
+            OSError,
+            SyntaxError,
+            ValueError,
+            Image.DecompressionBombError,
+            Image.DecompressionBombWarning,
+            Image.UnidentifiedImageError,
+        ):
+            await _discard(source_path, output_dir)
+            return False
+        if intent.asset_id != f"hero-{fingerprint.sha256}":
+            await _discard(source_path, output_dir)
+            return False
+    return True
 
 
 def _fallback(reason: str | None) -> AssetResolutionResult:

@@ -35,6 +35,7 @@ from zantara_media.magazine.loaders import load_named_projection
 from zantara_media.magazine.media_resolver import (
     AssetFingerprintLedger,
     AssetResolutionResult,
+    generated_manifest_is_intact,
     resolve_asset_manifest,
 )
 from zantara_media.magazine.ranking import score_candidate
@@ -355,28 +356,6 @@ async def _resolve_assets_if_needed(
         if manifest_exists
         else empty_manifest
     )
-    if manifest.intents:
-        try:
-            validate_asset_intent_targets(packet, manifest, breaking=breaking)
-        except ValueError:
-            automatic = all(
-                item.rights_basis == "generated"
-                and item.source == "Bali Zero editorial generator"
-                for item in manifest.intents
-            )
-            if not automatic:
-                raise
-            manifest = empty_manifest
-            manifest_exists = False
-        else:
-            return AssetResolutionResult(manifest=manifest, fallback_reason=None)
-    if not _environment_enabled("MAGAZINE_AUTO_ASSETS", default=True):
-        if not manifest_exists:
-            await _write_asset_manifest(asset_manifest_path, manifest)
-        return AssetResolutionResult(
-            manifest=manifest, fallback_reason="auto_assets_disabled"
-        )
-
     state_root = Path(
         os.environ.get(
             "MAGAZINE_ASSET_STATE_DIR",
@@ -395,6 +374,33 @@ async def _resolve_assets_if_needed(
             str(state_root / "fingerprints.jsonl"),
         )
     )
+    if manifest.intents:
+        automatic = all(
+            item.rights_basis == "generated"
+            and item.source == "Bali Zero editorial generator"
+            for item in manifest.intents
+        )
+        try:
+            validate_asset_intent_targets(packet, manifest, breaking=breaking)
+        except ValueError:
+            if not automatic:
+                raise
+            manifest = empty_manifest
+            manifest_exists = False
+        else:
+            if not automatic or await generated_manifest_is_intact(
+                manifest, output_dir=output_dir
+            ):
+                return AssetResolutionResult(manifest=manifest, fallback_reason=None)
+            manifest = empty_manifest
+            manifest_exists = False
+    if not _environment_enabled("MAGAZINE_AUTO_ASSETS", default=True):
+        if not manifest_exists:
+            await _write_asset_manifest(asset_manifest_path, manifest)
+        return AssetResolutionResult(
+            manifest=manifest, fallback_reason="auto_assets_disabled"
+        )
+
     result = await resolve_asset_manifest(
         packet,
         breaking=breaking,
