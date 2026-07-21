@@ -78,9 +78,10 @@
   --state-warning: var(--color-state-warning);
   --state-danger: var(--color-state-danger);
   --state-info: var(--color-state-info);
-  /* Critical tier above danger (WS1, 2026-07-21): deep red, legible on both
-     dark and light surfaces, so no per-theme variant — matching the rest of
-     this section, which also ships no [data-theme] overrides. */
+  /* Critical tier above danger (WS1, 2026-07-21): bali-zero-brand status red.
+     Usage constraint (contrast): as a FILL with white text, or as TEXT only on
+     white/light surfaces — #c8102e on operative anthracite is ~2.54:1, so
+     never use it for text on dark surfaces (use --state-danger there). */
   --status-critical: #c8102e;
 
   /* ─── Fact badge (WS1, 2026-07-21) ─────────────────────────────
