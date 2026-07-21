@@ -41,6 +41,79 @@ Both are no-ops when absent from the entry (Fase 1 / Lot 1 specs are
 unaffected). Applied independently of the detach — a record can get a
 metadata-only correction, a detach-only cure, or both in the same apply.
 
+Standalone metadata-fix extension (2026-07-19, e.g. 52101/46100/10433 —
+OSS-native codes with a HEALTHY, non-empty per_skala that must NEVER be
+detached, even though a crosswalk-metadata defect needs curing):
+
+  - "action": "metadata_only" (OPTIONAL spec-entry key) — when present, this
+    entry's per_skala (and any disputed key) is placed COMPLETELY out of
+    scope: `needs_detach` is forced False regardless of the record's current
+    per_skala emptiness, and `apply_cure` never touches per_skala at all (no
+    fold, no []-write, no disputed-key write). Without this key, the
+    pre-existing behavior is UNCHANGED: `needs_detach` is derived purely from
+    whether the record's CURRENT per_skala is already `[]` (the Fase-1/Lot-1/
+    Lot-2/Lot-3 detach specs never set this key and are byte-for-byte
+    unaffected). This is the ONLY way to apply a metadata correction to a
+    record whose per_skala is currently non-empty without also detaching it —
+    the un-flagged code path always detaches a non-empty per_skala, by design,
+    for every prior lot.
+  - pp28_sources_correction: new canonical pp28_sources value (a list),
+    mirroring status_mapping_correction/whatChanged_correction exactly — a
+    no-op when absent, applied verbatim (deep-copied) when present and
+    different from the current value. Same discipline as data_note: this
+    script never invents a replacement list, only writes what the spec
+    author already independently verified.
+
+Zantara-opener metadata-fix extension (2026-07-20, e.g. 93122 — a code whose
+per_skala detach already ran in a prior lot but whose intel_2026.zantaraOpener
+marketing copy independently asserted a risk-tier fact that was part of the
+now-detached payload):
+
+  - zantaraOpener_correction: new canonical intel_2026.zantaraOpener value,
+    mirroring whatChanged_correction exactly — a no-op when absent, applied
+    verbatim when present and different from the current value. Same
+    discipline as the other *_correction keys: this script never invents a
+    replacement string, only writes what the spec author already
+    independently verified.
+
+Tier-scoped partial detach extension (2026-07-21, PENDING-ARMS L8 gate
+§3.4/§5.1b — e.g. 93114/93191/93193: records with ONE genuinely sound
+per_skala tier and ONE genuinely defective tier, where a full-array detach
+would destroy the sound tier's verified provenance):
+
+  - "action": "partial_detach" (OPTIONAL spec-entry key, mutually exclusive
+    with "metadata_only") — when present, REQUIRES a companion
+    "tier_selector" dict (see below). Only the per_skala row(s) matching the
+    selector are moved into the disputed key; every other row in the same
+    per_skala array is left in place, byte-identical.
+  - tier_selector: a dict of field -> expected-value constraints a per_skala
+    row must ALL satisfy to be selected for detach. `skala_usaha` is
+    compared as a SET (order-independent — the same logical tier can be
+    re-serialized with a different array order across lots/re-pulls); every
+    other key (typically `kategori_risiko`, optionally `jangka_waktu` or
+    another discriminator already present on the row) is compared by plain
+    equality. An array-INDEX selector was deliberately rejected: per_skala's
+    row order is not a guaranteed-stable contract across dataset
+    regenerations, so indexing could silently detach the wrong tier if the
+    source ever reorders rows — matching on content (kategori_risiko +
+    skala_usaha) is the robust choice.
+  - Idempotent + no-clobber, same discipline as the full detach: if NO row
+    in the record's current per_skala matches the selector, this is either
+    (a) already cured — a prior run already moved it and disputed_key is
+    present, so needs_detach is False and only other requested corrections
+    (if any) still apply — or (b) an unrecognised prior state (no
+    disputed_key either) — "ambiguous-skip", exactly like the full-detach
+    guard: never touched, no clobber.
+  - Appends to (never overwrites) an existing disputed_key value when one is
+    already present as a list — e.g. a second partial_detach on the same
+    record curing a second tier in a later lot. Raises CureError if the
+    existing disputed_key value isn't a list (an incompatible prior shape
+    this compiler does not know how to merge into safely).
+  - NOT YET SUPPORTED: a record carrying `per_skala_legacy` combined with
+    `action: partial_detach` raises CureError rather than guessing how the
+    two folding rules should interact — nothing in the current backlog needs
+    that combination.
+
 Usage:
   # dry run (default) — prints a per-code diff summary, writes nothing
   python scripts/kbli_filiera/cure_canonical_collisions.py
@@ -113,10 +186,12 @@ class CurePlan:
     status:
       "apply"          — record will be mutated: detach (per_skala -> []) and/or the
                          honest-gap intel_2026.whatYouNeed rewrite and/or a
-                         status_mapping / whatChanged metadata correction (see the flags)
+                         status_mapping / whatChanged / pp28_sources metadata
+                         correction (see the flags)
       "already-cured"  — detach already done (per_skala == []) AND whatYouNeed already
                          matches the spec (or spec supplies none) AND any requested
-                         metadata correction already matches: idempotent no-op
+                         metadata correction (status_mapping / whatChanged /
+                         pp28_sources / zantaraOpener) already matches: idempotent no-op
       "ambiguous-skip" — per_skala == [] but NO disputed_key: an unrecognised prior
                          state — refuse to touch the record at all, skip
       "missing"        — code not found in canonical at all
@@ -135,6 +210,10 @@ class CurePlan:
         needs_whatyouneed: bool = False,
         needs_status_mapping: bool = False,
         needs_whatchanged: bool = False,
+        needs_pp28_sources: bool = False,
+        needs_zantaraopener: bool = False,
+        metadata_only: bool = False,
+        partial_detach: bool = False,
     ) -> None:
         self.code = code
         self.status = status
@@ -146,6 +225,10 @@ class CurePlan:
         self.needs_whatyouneed = needs_whatyouneed
         self.needs_status_mapping = needs_status_mapping
         self.needs_whatchanged = needs_whatchanged
+        self.needs_pp28_sources = needs_pp28_sources
+        self.needs_zantaraopener = needs_zantaraopener
+        self.metadata_only = metadata_only
+        self.partial_detach = partial_detach
 
     def describe(self) -> str:
         note_preview = (self.data_note[:80] + "…") if len(self.data_note) > 80 else self.data_note
@@ -159,7 +242,12 @@ class CurePlan:
                 f"{self.disputed_key!r} key; could be a different prior cure"
             )
         actions: list[str] = []
-        if self.needs_detach:
+        if self.needs_detach and self.partial_detach:
+            actions.append(
+                f"per_skala {self.current_row_count} matched row(s) -> moved to "
+                f"{self.disputed_key} (sibling tier(s) left untouched)"
+            )
+        elif self.needs_detach:
             actions.append(
                 f"per_skala {self.current_row_count} row(s) -> 0 "
                 f"(fold per_skala_legacy: {self.folds_legacy}, disputed_key: {self.disputed_key})"
@@ -170,6 +258,12 @@ class CurePlan:
             actions.append("status_mapping -> metadata-corrected")
         if self.needs_whatchanged:
             actions.append("intel_2026.whatChanged -> metadata-corrected")
+        if self.needs_pp28_sources:
+            actions.append("pp28_sources -> metadata-corrected")
+        if self.needs_zantaraopener:
+            actions.append("intel_2026.zantaraOpener -> metadata-corrected")
+        if self.metadata_only:
+            actions.append("[metadata_only: per_skala NOT touched]")
         return f"{self.code}: {' | '.join(actions)} | _data_note: {note_preview!r}"
 
 
@@ -183,18 +277,96 @@ def _current_whatchanged(record: dict[str, Any]) -> Any:
     return intel.get("whatChanged") if isinstance(intel, dict) else None
 
 
+def _current_zantaraopener(record: dict[str, Any]) -> Any:
+    intel = record.get("intel_2026")
+    return intel.get("zantaraOpener") if isinstance(intel, dict) else None
+
+
+def _tier_matches(row: Any, selector: dict[str, Any]) -> bool:
+    """True when every key in `selector` matches `row`'s corresponding field.
+
+    `skala_usaha` is compared as a SET (order-independent — the same
+    logical tier can be re-serialized with a different array order across
+    lots/PP28 re-pulls); every other key is compared by plain equality
+    (typically `kategori_risiko`, optionally another discriminator already
+    present on the row).
+    """
+    if not isinstance(row, dict):
+        return False
+    for key, wanted in selector.items():
+        if key == "skala_usaha":
+            actual = row.get("skala_usaha")
+            if not isinstance(actual, list) or set(actual) != set(wanted):
+                return False
+        elif row.get(key) != wanted:
+            return False
+    return True
+
+
+def _split_tiers(
+    current_per_skala: Any, tier_selector: dict[str, Any]
+) -> tuple[list[Any], list[Any]]:
+    """Split a per_skala list into (matching, remaining) per `tier_selector`.
+
+    Matching on content (never on array index — see the module docstring's
+    "Tier-scoped partial detach extension" for why index would be fragile).
+    """
+    matching: list[Any] = []
+    remaining: list[Any] = []
+    if not isinstance(current_per_skala, list):
+        return matching, remaining
+    for row in current_per_skala:
+        if _tier_matches(row, tier_selector):
+            matching.append(row)
+        else:
+            remaining.append(row)
+    return matching, remaining
+
+
 def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> CurePlan:
     code = entry["code"]
+    action = entry.get("action")
+    metadata_only = action == "metadata_only"
+    partial_detach = action == "partial_detach"
     current_per_skala = record.get("per_skala")
-    has_disputed = disputed_key in record
-    is_empty = current_per_skala == []
 
-    # per_skala already empty with no disputed marker: an unrecognised prior state.
-    # Refuse to touch the record at all (do not even rewrite whatYouNeed) — no clobber.
-    if is_empty and not has_disputed:
-        return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+    matching_rows: list[Any] = []
+    if partial_detach:
+        if "per_skala_legacy" in record:
+            raise CureError(
+                f"{code}: action='partial_detach' combined with per_skala_legacy is not "
+                "supported by this compiler yet"
+            )
+        tier_selector = entry.get("tier_selector")
+        if not isinstance(tier_selector, dict) or not tier_selector:
+            raise CureError(
+                f"{code}: action='partial_detach' requires a non-empty 'tier_selector' dict"
+            )
+        matching_rows, _remaining = _split_tiers(current_per_skala, tier_selector)
+        has_disputed = disputed_key in record
+        # No row currently matches the selector: either already cured (a
+        # prior run already moved it, disputed_key present) or an
+        # unrecognised prior state (no disputed_key either) — same
+        # no-clobber discipline as the full-detach ambiguous-skip below.
+        if not matching_rows and not has_disputed:
+            return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+        needs_detach = bool(matching_rows)
+    elif metadata_only:
+        # per_skala is COMPLETELY out of scope for a metadata_only entry —
+        # never detached, never folded, never checked for the ambiguous prior
+        # -state (that gate exists only to protect an about-to-detach write
+        # from clobbering an unknown disputed block; it does not apply here
+        # because this entry will never write per_skala at all).
+        needs_detach = False
+    else:
+        has_disputed = disputed_key in record
+        is_empty = current_per_skala == []
+        # per_skala already empty with no disputed marker: an unrecognised prior state.
+        # Refuse to touch the record at all (do not even rewrite whatYouNeed) — no clobber.
+        if is_empty and not has_disputed:
+            return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+        needs_detach = not is_empty
 
-    needs_detach = not is_empty
     target_wyn = entry.get("whatYouNeed")
     needs_whatyouneed = bool(target_wyn) and _current_whatyouneed(record) != target_wyn
 
@@ -206,44 +378,128 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
     target_whatchanged = entry.get("whatChanged_correction")
     needs_whatchanged = bool(target_whatchanged) and _current_whatchanged(record) != target_whatchanged
 
-    if not (needs_detach or needs_whatyouneed or needs_status_mapping or needs_whatchanged):
+    target_pp28_sources = entry.get("pp28_sources_correction")
+    needs_pp28_sources = (
+        target_pp28_sources is not None and record.get("pp28_sources") != target_pp28_sources
+    )
+
+    target_zantaraopener = entry.get("zantaraOpener_correction")
+    needs_zantaraopener = (
+        bool(target_zantaraopener) and _current_zantaraopener(record) != target_zantaraopener
+    )
+
+    if not (
+        needs_detach
+        or needs_whatyouneed
+        or needs_status_mapping
+        or needs_whatchanged
+        or needs_pp28_sources
+        or needs_zantaraopener
+    ):
         return CurePlan(code, "already-cured", disputed_key=disputed_key)
 
-    row_count = len(current_per_skala) if isinstance(current_per_skala, list) else 0
+    if partial_detach:
+        row_count = len(matching_rows)
+    else:
+        row_count = len(current_per_skala) if isinstance(current_per_skala, list) else 0
     return CurePlan(
         code,
         "apply",
         current_row_count=row_count,
-        folds_legacy="per_skala_legacy" in record,
+        folds_legacy=(not partial_detach) and "per_skala_legacy" in record,
         disputed_key=disputed_key,
         data_note=entry["data_note"],
         needs_detach=needs_detach,
         needs_whatyouneed=needs_whatyouneed,
         needs_status_mapping=needs_status_mapping,
         needs_whatchanged=needs_whatchanged,
+        needs_pp28_sources=needs_pp28_sources,
+        needs_zantaraopener=needs_zantaraopener,
+        metadata_only=metadata_only,
+        partial_detach=partial_detach,
     )
 
 
 def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> dict[str, Any]:
-    """Return a NEW record dict with the cure applied. Three idempotent parts:
+    """Return a NEW record dict with the cure applied. Four idempotent parts:
 
-    1. DETACH — only when per_skala is non-empty: move the current per_skala (folding
-       per_skala_legacy if present) into the disputed key inserted immediately after
-       per_skala, and set per_skala -> []. If per_skala is ALREADY [], this is skipped
-       so a re-run never clobbers the previously-preserved disputed block with [].
+    1. DETACH — three mutually exclusive modes, driven by the spec entry's
+       "action" key:
+       - (default, no "action" key) FULL DETACH — only when per_skala is
+         non-empty: move the current per_skala (folding per_skala_legacy if
+         present) into the disputed key inserted immediately after
+         per_skala, and set per_skala -> []. If per_skala is ALREADY [],
+         this is skipped so a re-run never clobbers the previously-preserved
+         disputed block with [].
+       - "action": "metadata_only" — per_skala (and any disputed key) is
+         copied through completely untouched, even when currently
+         non-empty (the standalone metadata-fix class: a HEALTHY OSS-native
+         per_skala that must never be detached).
+       - "action": "partial_detach" — only the per_skala row(s) matching the
+         entry's "tier_selector" are moved into the disputed key (appended
+         if one already exists as a list); every other row stays in
+         per_skala, byte-identical. If NO row currently matches the
+         selector, per_skala/disputed_key are copied through untouched
+         (either already cured by a prior run, or nothing to do).
     2. WHATYOUNEED — when the spec supplies `whatYouNeed`, (re)write
        intel_2026.whatYouNeed to the honest-gap text (existing sub-key, order preserved).
-    3. METADATA CORRECTION (Lot 2 extension) — when the spec supplies
-       `status_mapping_correction` and/or `whatChanged_correction`, (re)write those
-       fields verbatim from the spec. Independent of (1): a record may get a
-       metadata-only correction with no detach, or both together.
+    3. METADATA CORRECTION (Lot 2 extension + 2026-07-19 pp28_sources_correction +
+       2026-07-20 zantaraOpener_correction) — when the spec supplies
+       `status_mapping_correction` and/or `whatChanged_correction` and/or
+       `pp28_sources_correction` and/or `zantaraOpener_correction`, (re)write
+       those fields verbatim from the spec. Independent of (1): a record may
+       get a metadata-only correction with no detach, or both together.
     4. _data_note is (re)set at the end (same string -> idempotent).
     """
+    action = entry.get("action")
+    metadata_only = action == "metadata_only"
+    partial_detach = action == "partial_detach"
     current_per_skala = record.get("per_skala")
 
-    if current_per_skala == []:
-        # already detached — preserve the existing disputed block, only touch (2)+(3)
-        new_record: dict[str, Any] = dict(record)
+    if partial_detach:
+        if "per_skala_legacy" in record:
+            raise CureError(
+                f"{entry['code']}: action='partial_detach' combined with per_skala_legacy "
+                "is not supported by this compiler yet"
+            )
+        tier_selector = entry.get("tier_selector")
+        if not isinstance(tier_selector, dict) or not tier_selector:
+            raise CureError(
+                f"{entry['code']}: action='partial_detach' requires a non-empty "
+                "'tier_selector' dict"
+            )
+        matching_rows, remaining_rows = _split_tiers(current_per_skala, tier_selector)
+        if not matching_rows:
+            # Nothing currently matches the selector: already moved by a
+            # prior run (or nothing to do) — copy through untouched, do not
+            # touch the disputed key at all (no-clobber).
+            new_record: dict[str, Any] = dict(record)
+        else:
+            existing_disputed = record.get(disputed_key)
+            if existing_disputed is None:
+                disputed_value: Any = matching_rows
+            elif isinstance(existing_disputed, list):
+                disputed_value = list(existing_disputed) + matching_rows
+            else:
+                raise CureError(
+                    f"{entry['code']}: existing {disputed_key!r} is not a list — cannot "
+                    "append a partial_detach tier to an incompatible disputed shape"
+                )
+            new_record = {}
+            for key, value in record.items():
+                if key == disputed_key:
+                    continue  # re-written (possibly appended-to) at the per_skala position below
+                if key == "per_skala":
+                    new_record["per_skala"] = copy.deepcopy(remaining_rows)
+                    new_record[disputed_key] = copy.deepcopy(disputed_value)
+                    continue
+                new_record[key] = value
+    elif metadata_only or current_per_skala == []:
+        # metadata_only: per_skala is out of scope entirely, whatever its
+        # current value — copy the record through as-is, touch only (2)-(4).
+        # Already-detached (non-metadata_only, non-partial_detach): preserve
+        # the existing disputed block, only touch (2)+(3)+(4).
+        new_record = dict(record)
     else:
         disputed_value: Any
         if "per_skala_legacy" in record:
@@ -287,6 +543,21 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
             )
         intel = dict(intel)
         intel["whatChanged"] = target_whatchanged
+        new_record["intel_2026"] = intel
+
+    target_pp28_sources = entry.get("pp28_sources_correction")
+    if target_pp28_sources is not None:
+        new_record["pp28_sources"] = copy.deepcopy(target_pp28_sources)
+
+    target_zantaraopener = entry.get("zantaraOpener_correction")
+    if target_zantaraopener:
+        intel = new_record.get("intel_2026")
+        if not isinstance(intel, dict):
+            raise CureError(
+                f"{entry['code']}: cannot set zantaraOpener — intel_2026 is missing or not a dict"
+            )
+        intel = dict(intel)
+        intel["zantaraOpener"] = target_zantaraopener
         new_record["intel_2026"] = intel
 
     new_record["_data_note"] = entry["data_note"]

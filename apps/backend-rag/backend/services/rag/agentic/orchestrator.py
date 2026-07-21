@@ -348,6 +348,8 @@ class AgenticRAGOrchestrator:
         conversation_history: list[dict] | None = None,
         start_time: float | None = None,
         session_id: str | None = None,
+        profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
     ) -> CoreResult:
         """
         Process query with full RAG pipeline - Delegates to OrchestratorCore.
@@ -358,6 +360,14 @@ class AgenticRAGOrchestrator:
             conversation_history: Optional conversation history
             start_time: Optional start time (defaults to now)
             session_id: Optional session ID
+            profile: Optional caller-supplied profile override (WA
+                team-assistant V1 — merged into user_context["profile"] by
+                OrchestratorCore, on top of whatever the DB-keyed context
+                lookup found). None is a no-op for every existing caller.
+            max_steps: Optional ReAct step-cap override for latency-sensitive
+                callers (e.g. WhatsApp). OrchestratorCore only ever LOWERS
+                the default cap with this value, never raises it. None is a
+                no-op for every existing caller.
 
         Returns:
             CoreResult with answer, sources, and metadata
@@ -390,6 +400,8 @@ class AgenticRAGOrchestrator:
                 start_time=start_time,
                 session_id=session_id,
                 tool_execution_counter=tool_execution_counter,
+                profile=profile,
+                max_steps=max_steps,
             )
 
             # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)

@@ -285,15 +285,17 @@ async def update_visa_type(
         values = []
         param_idx = 1
 
-        # Fields that are JSONB and need serialization
+        # Fields that are genuine JSONB (dict) columns and need to_jsonb()
+        # serialization. requirements/restrictions/allowed_activities/
+        # benefits/process_steps/tips are native Postgres `text[]` columns
+        # (verified via information_schema, 2026-07-20) — NOT jsonb. Casting
+        # them ::text::jsonb here was a hard Postgres type error ("column X
+        # is of type text[] but expression is of type jsonb") that broke
+        # every PUT touching those fields; they must be bound as plain
+        # Python lists via the "else" branch below, same as migration_043's
+        # proven-working direct UPDATE pattern.
         jsonb_fields = {
             "cost_details",
-            "requirements",
-            "restrictions",
-            "allowed_activities",
-            "benefits",
-            "process_steps",
-            "tips",
             "metadata",
         }
 
@@ -390,9 +392,9 @@ async def create_visa_type(
                 foreign_eligible, metadata, created_at, last_updated
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                $13::text::jsonb, $14::text::jsonb, $15::text::jsonb,
-                $16::text::jsonb, $17::text::jsonb, $18::text::jsonb,
-                $19::text::jsonb, $20, $21::text::jsonb, NOW(), NOW()
+                $13::text::jsonb, $14, $15,
+                $16, $17, $18,
+                $19, $20, $21::text::jsonb, NOW(), NOW()
             )
             RETURNING *
             """,
@@ -408,17 +410,24 @@ async def create_visa_type(
             visa.processing_timeline,
             visa.cost_visa,
             visa.cost_extension,
-            # ::text::jsonb on all 8 jsonb columns below — the app pools
-            # register a jsonb codec (encoder=json.dumps); a bare param
-            # inferred as jsonb double-encodes to_jsonb()'s already-serialized
-            # string into a jsonb string scalar.
+            # ::text::jsonb only for genuine JSONB columns (cost_details,
+            # metadata) — the app pools register a jsonb codec
+            # (encoder=json.dumps); a bare param inferred as jsonb double-
+            # encodes to_jsonb()'s already-serialized string into a jsonb
+            # string scalar, so those two go through to_jsonb()+cast.
+            # requirements/restrictions/allowed_activities/benefits/
+            # process_steps/tips are native Postgres text[] columns (verified
+            # via information_schema, 2026-07-20) — bind the Python list
+            # directly, no cast, no to_jsonb(): a ::text::jsonb cast against
+            # text[] is a hard Postgres type error, same root cause as the
+            # broken PUT (migration_043 uses this same direct-list pattern).
             to_jsonb(visa.cost_details),
-            to_jsonb(visa.requirements),
-            to_jsonb(visa.restrictions),
-            to_jsonb(visa.allowed_activities),
-            to_jsonb(visa.benefits),
-            to_jsonb(visa.process_steps),
-            to_jsonb(visa.tips),
+            visa.requirements,
+            visa.restrictions,
+            visa.allowed_activities,
+            visa.benefits,
+            visa.process_steps,
+            visa.tips,
             visa.foreign_eligible,
             to_jsonb(visa.metadata),
         )

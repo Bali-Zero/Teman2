@@ -27,7 +27,7 @@ is an infrastructure failure masquerading as calm. Exit 2, never exit 0, on 0 se
 probed.
 
 Usage:
-    python3 scripts/arsenal_probe.py                       # probe all 7 seats, write report
+    python3 scripts/arsenal_probe.py                       # probe all seats, write report
     python3 scripts/arsenal_probe.py --seats claude,glm     # subset
     python3 scripts/arsenal_probe.py --json                 # full report to stdout
     python3 scripts/arsenal_probe.py --quiet                # one summary line
@@ -79,20 +79,24 @@ STRICT_FAIL = {AUTH_DEAD, BALANCE_DEAD, MODEL_ERR, UNKNOWN_ERR}
 # A host limitation, not a seat death — never strict-fails regardless of required-ness.
 CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 
-ALL_SEATS = ["claude", "glm", "agy", "codex", "deepseek", "ollama", "nlm"]
+# deepseek RETIRED 2026-07-19 (owner order, pre-auth revoked — never top up) —
+# replacement seat kimi already present.
+ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "ollama", "nlm"]
 
 REQUIRED_SEATS = {
-    "mini": ["claude", "glm", "codex", "ollama"],
-    "pro": ["claude", "codex", "deepseek", "ollama", "nlm"],
-    "m5": ["claude", "glm", "agy", "codex"],
+    # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
+    # authorized by the operator same day).
+    "mini": ["claude", "glm", "codex", "kimi", "ollama"],
+    "pro": ["claude", "codex", "kimi", "ollama", "nlm"],
+    "m5": ["claude", "glm", "agy", "codex", "kimi"],
 }
 
 DEFAULT_TIMEOUTS = {
     "claude": 120,
     "glm": 45,
+    "kimi": 120,
     "agy": 120,
     "codex": 180,
-    "deepseek": 45,
     "ollama": 30,
     "nlm": 60,
 }
@@ -404,6 +408,32 @@ def probe_agy(timeout: float) -> tuple[str, str, int]:
     return status, ev, latency_ms
 
 
+def probe_kimi(timeout: float) -> tuple[str, str, int]:
+    t0 = time.monotonic()
+    binp = resolve_bin("kimi", ["~/.kimi-code/bin/kimi"])
+    if not binp:
+        return NOT_INSTALLED, "kimi binary not found", 0
+    res = run_probe_cmd(
+        [binp, "-p", PONG_PROMPT, "-m", "kimi-code/k3"],
+        timeout=timeout,
+        stdin_devnull=True,
+    )
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    ev = evidence_tail(res.stdout + " " + res.stderr)
+    if res.timed_out:
+        return TIMEOUT, ev or "probe timed out", latency_ms
+    live = "PONG" in res.stdout
+    combined = res.stdout + res.stderr
+    # kimi-code's unauthenticated state prints "No providers configured" /
+    # "not logged in" with no 401 marker — that is a credential death (cure:
+    # `kimi login`, operator device-code flow). Matched locally so the shared
+    # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
+    if not live and re.search(r"no providers configured|not logged in", combined, re.IGNORECASE):
+        return AUTH_DEAD, ev or "kimi not logged in", latency_ms
+    status = classify_generic(combined, live, "kimi", is_ssh_context())
+    return status, ev, latency_ms
+
+
 def probe_codex(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
     binp = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
@@ -421,24 +451,6 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
     live = "PONG" in res.stdout
     status = classify_generic(res.stdout + res.stderr, live, "codex", is_ssh_context())
     return status, ev, latency_ms
-
-
-def probe_deepseek(timeout: float) -> tuple[str, str, int]:
-    t0 = time.monotonic()
-    key, cred_note = load_env_master_key("DEEPSEEK_API_KEY")
-    if key is None:
-        return CRED_UNAVAILABLE, cred_note or "credential unavailable", int((time.monotonic() - t0) * 1000)
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    body = {"model": "deepseek-v4-flash", "max_tokens": 1, "messages": [{"role": "user", "content": PONG_PROMPT}]}
-    status_code, ev = http_post_json(
-        "https://api.deepseek.com/chat/completions", headers, body, timeout, [key]
-    )
-    latency_ms = int((time.monotonic() - t0) * 1000)
-    if status_code is None:
-        return TIMEOUT if "timed out" in ev else UNKNOWN_ERR, ev, latency_ms
-    live = status_code == 200
-    status = classify_generic(f"HTTP {status_code} {ev}", live, "deepseek", is_ssh_context())
-    return status, f"HTTP {status_code} {ev}", latency_ms
 
 
 def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]:
@@ -493,9 +505,9 @@ def probe_nlm(timeout: float) -> tuple[str, str, int]:
 PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "claude": probe_claude,
     "glm": probe_glm,
+    "kimi": probe_kimi,
     "agy": probe_agy,
     "codex": probe_codex,
-    "deepseek": probe_deepseek,
     "ollama": probe_ollama,
     "nlm": probe_nlm,
 }

@@ -148,13 +148,19 @@ def test_boring_as_expected_never_emitted_as_a_verdict(js_source: str) -> None:
 
 def test_verdict_enums_use_only_frozen_taxonomy(js_source: str) -> None:
     """Every `enum: [...]` block that includes a verdict-shaped token set must be exactly the
-    frozen three (order-independent) — catches a schema silently regaining a 4th state."""
+    frozen three (order-independent) — catches a schema silently regaining a 4th state.
+
+    UPDATE (2026-07-19, Lot 5 schema-neutralization v2): the ONLY schema that ever validated a
+    seat-emitted `verdict` enum was INNOCENCE_SCHEMA, now retired (section 7 below) — D1_SCHEMA/
+    D5_SCHEMA/D2_SCHEMA never had a verdict field; every result's verdict is 100% deterministic JS
+    (diffD1D5() / d2SelfConfirmFailed ternary), never itself a seat-validated enum. Zero qualifying
+    enum blocks is therefore the CORRECT, stronger post-fix state (no seat can emit a verdict at
+    all, let alone a 4th token) — this test tolerates that explicitly rather than requiring one."""
     enum_blocks = re.findall(r"enum:\s*\[([^\]]*)\]", js_source)
     verdict_like = [
         blk for blk in enum_blocks
         if any(tok in blk for tok in FROZEN_TAXONOMY)
     ]
-    assert verdict_like, "expected at least one verdict enum block in the lot runner"
     for blk in verdict_like:
         tokens = {t.strip().strip('"').strip("'") for t in blk.split(",") if t.strip()}
         assert tokens == set(FROZEN_TAXONOMY), f"verdict enum block drifted from frozen taxonomy: {tokens}"
@@ -171,7 +177,10 @@ def test_abstain_classes_marked_out_of_scope(js_source: str) -> None:
     # and it must be reachable from the shared out-of-scope notice actually interpolated into
     # every seat prompt function, not just mentioned in a header comment
     assert "OUT_OF_SCOPE_NOTICE" in js_source
-    for fn in ("d1Prompt", "d5Prompt", "d2Prompt", "innocencePrompt"):
+    # innocencePrompt is deliberately NOT in this list (2026-07-19, Lot 5 schema-neutralization v2):
+    # it no longer exists — a control now reads d1Prompt/d5Prompt/d2Prompt via adjudicateCode(),
+    # already covered here.
+    for fn in ("d1Prompt", "d5Prompt", "d2Prompt"):
         fn_match = re.search(rf"function {fn}\([^)]*\)\s*{{(.*?)\n}}", js_source, re.DOTALL)
         assert fn_match, f"could not locate {fn} in lot runner"
         assert "OUT_OF_SCOPE_NOTICE" in fn_match.group(1), f"{fn} does not interpolate the out-of-scope notice"
@@ -277,7 +286,13 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
     """GUILT: a certified verdict whose D2 extraction failed self-confirmation
     (code_appears_in_row !== true) or came back with empty per_skala_rows MUST retro-demote to
     quarantined — the regression guard for code 38222 in Lot A-L1 (D1/D5 agreed clean, D2's
-    evidence page only had the parent code 38220, but the runner still emitted certified)."""
+    evidence page only had the parent code 38220, but the runner still emitted certified).
+
+    UPDATE (2026-07-19, Lot 6 conductor gate BLOCKER 2 — certification-contract patch): the
+    verdict line now ORs in a second independent gate, factsInventoryFailed (see
+    test_guilt_facts_inventory_failure_retro_demotes_certified below) — the regex is widened to
+    `d2SelfConfirmFailed || factsInventoryFailed ? ...` while still asserting d2SelfConfirmFailed
+    is one of the two conditions gating the demotion (never dropped)."""
     assert re.search(r"d2SelfConfirmFailed", js_source), (
         "no d2SelfConfirmFailed guard found — a failed D2 self-confirmation could still reach certified"
     )
@@ -288,22 +303,509 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
         "d2SelfConfirmFailed does not check for an empty per_skala_rows extraction"
     )
     assert re.search(
-        r'verdict\s*=\s*d2SelfConfirmFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
+        r'verdict\s*=\s*\n?\s*d2SelfConfirmFailed\s*\|\|\s*factsInventoryFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
         js_source,
-    ), "the final verdict is not gated on d2SelfConfirmFailed — retro-demote is not wired"
+    ), "the final verdict is not gated on d2SelfConfirmFailed (OR'd with factsInventoryFailed) — retro-demote is not wired"
     assert '"unresolvable_source_pointer"' in js_source
+
+
+# NOTE (2026-07-19, Lot 5 conductor gate SECOND SIGNING, §1 BLOCKER): the two guilt/innocence tests
+# that used to live here (test_guilt_innocence_prompt_never_announces_expected_verdict,
+# test_innocence_neutral_symmetric_prompt_exists) guarded innocencePrompt()'s WORDING — but the red-
+# team proved the Lot 4 prompt-only fix begat a twin bug on a DIFFERENT channel: INNOCENCE_SCHEMA's
+# field descriptions leaked the control's nature and expected outcome even with a neutral prompt in
+# place (both control seats' own notes self-identified as "innocence control"). The durable fix
+# retires innocencePrompt()/INNOCENCE_SCHEMA entirely — a control now shares the EXACT D1/D5/D2
+# schema+prompt a member code gets (see adjudicateInnocence() delegating to adjudicateCode() in the
+# lot runner) — so there is no longer a standalone prompt to word-check; those two tests are
+# SUPERSEDED by the schema-neutralization-v2 section below (section 7), which scans every seat-
+# visible channel (prompt body AND schema property descriptions AND the label/phase/model literals
+# passed to agent()) at once, per the gate report §6 lesson: a guilt test that only re-checks the
+# channel that bit last time invites the next twin bug on yet another channel.
 
 
 def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None:
     """INNOCENCE: a SUCCESSFUL D2 extraction (self-confirmed, non-empty rows) must NOT be
     downgraded, and a code that never triggers D2 at all must be unaffected — proves the
     retro-demote fires only on a genuine D2 failure, never on every D2 call or on codes where D2
-    never ran (d2 stays null)."""
+    never ran (d2 stays null).
+
+    UPDATE (2026-07-19, Lot 6 conductor gate BLOCKER 2 — certification-contract patch): widened
+    the same way as the guilt test above — the verdict line now also ORs in factsInventoryFailed,
+    so a D2 self-confirm success alone is not sufficient to prove "stays certified" (see the
+    dedicated facts-inventory innocence test below for that half)."""
     assert re.search(
-        r'const verdict = d2SelfConfirmFailed \? "quarantined" : preD2Verdict;',
+        r'const verdict =\s*\n?\s*d2SelfConfirmFailed \|\| factsInventoryFailed \? "quarantined" : preD2Verdict;',
         js_source,
     ), "verdict computation does not fall back to preD2Verdict when D2 self-confirms successfully"
     assert re.search(r"d2SelfConfirmFailed\s*=\s*\n?\s*d2\s*!==\s*null\s*&&", js_source), (
         "d2SelfConfirmFailed is not gated on d2 !== null — a code that never ran D2 could be "
         "wrongly demoted"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 7. INNOCENCE_SCHEMA neutralization v2 (Lot 5 conductor gate second signing, §1 BLOCKER /
+#    §6 meta-pattern): the schema-shaped twin of the Lot-4 prompt fix. A control must now share the
+#    EXACT D1/D5/D2 schema+prompt a member code gets — scanned across every seat-visible channel at
+#    once (prompt body, schema property descriptions, and the label/phase/model literals passed to
+#    agent()), not just the one channel ("boring"/"innocence control" prompt wording) that bit last
+#    time (gate report §6: "the guard-fix-begets-twin-bug shape now has a THIRD instance").
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_innocence_schema_and_prompt_are_retired(js_source: str) -> None:
+    """GUILT: INNOCENCE_SCHEMA and innocencePrompt() must no longer be declared anywhere in the
+    runner — their mere existence, even unused, is exactly the kind of residue that regrows a
+    seat-visible surface later. Controls must have NO schema or prompt of their own left to leak
+    from, under any name."""
+    assert not re.search(r"\bconst\s+INNOCENCE_SCHEMA\b", js_source), (
+        "INNOCENCE_SCHEMA is still declared — this is the exact schema-channel leak the Lot 5 "
+        "gate's BLOCKER identified (field descriptions revealed control nature + expected outcome); "
+        "controls must share D1_SCHEMA/D5_SCHEMA/D2_SCHEMA, never their own schema"
+    )
+    assert not re.search(r"\bfunction\s+innocencePrompt\b", js_source), (
+        "innocencePrompt() is still declared — controls must share d1Prompt/d5Prompt/d2Prompt, "
+        "never their own prompt, so there is nothing schema- or prompt-shaped left to leak from"
+    )
+
+
+def test_guilt_adjudicate_innocence_delegates_to_adjudicate_code(js_source: str) -> None:
+    """GUILT: adjudicateInnocence must dispatch through adjudicateCode(code) — the EXACT function
+    member codes use (same d1Prompt/D1_SCHEMA, d5Prompt/D5_SCHEMA, d2Prompt/D2_SCHEMA, same
+    label/phase/model shape passed to agent(), same diffD1D5() compiler diff) — and must NOT call
+    agent() directly itself. A direct agent() call here would mean a bespoke seat-visible surface
+    still exists for controls, exactly the defect this fix eliminates."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert re.search(r"\badjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence does not call adjudicateCode(code) — it must delegate to the shared "
+        "member pipeline rather than build any schema/prompt/label of its own"
+    )
+    assert "agent(" not in body, (
+        "adjudicateInnocence still calls agent() directly — all seat dispatch for a control must "
+        "happen exclusively inside adjudicateCode(), never in a separate call here"
+    )
+
+
+def test_innocence_shared_pipeline_body_carries_no_control_identifying_marker(js_source: str) -> None:
+    """INNOCENCE (scans EVERY seat-visible channel at once — prompt bodies AND schema property
+    descriptions — since adjudicateCode is now the SOLE dispatch path for both members and
+    controls): d1Prompt/d5Prompt/d2Prompt bodies AND the D1_SCHEMA/D5_SCHEMA/D2_SCHEMA object
+    literals must never mention 'innocence'/'control'/'boring' in any form — proves the actual text
+    an agent() call sends to the model is genuinely agnostic to which kind of code invoked it.
+
+    adjudicateCode's OWN runner-side bookkeeping (e.g. the `innocenceControl: false` field on its
+    RETURN object) is intentionally OUT of scope here: that field is a value this JS computes AFTER
+    the seat has already answered, never part of the prompt string or schema object handed to
+    agent() — same distinction the gate report draws between 'seat-visible' and 'runner-side'.
+
+    Word-boundary matching (scar-family #3 antidote, guard over-match): a bare substring check for
+    'boring' false-positives inside 'NEIGHBORING'/'neighboring_codes' (both legitimate, in d2Prompt's
+    body and D2_SCHEMA's own field name) — matched here with \\b so the marker can only fire on the
+    real word (or a suffixed form, e.g. 'controls'/'controlled'), never a substring of an unrelated
+    word."""
+    marker_res = {
+        "innocence": re.compile(r"\binnocence\w*\b"),
+        "control": re.compile(r"\bcontrol\w*\b"),
+        "boring": re.compile(r"\bboring\b"),
+    }
+    for fn in ("d1Prompt", "d5Prompt", "d2Prompt"):
+        _params, body = _function_signature_and_body(js_source, fn)
+        lowered = body.lower()
+        for marker, pattern in marker_res.items():
+            assert not pattern.search(lowered), (
+                f"{fn} body contains {marker!r} — this prompt is sent VERBATIM to the seat for "
+                "both members and controls; it must carry zero control-identifying text"
+            )
+    for schema_name in ("D1_SCHEMA", "D5_SCHEMA", "D2_SCHEMA"):
+        m = re.search(rf"const {schema_name} = {{(.*?)\n}};", js_source, re.DOTALL)
+        assert m, f"could not locate {schema_name} in lot runner"
+        lowered = m.group(1).lower()
+        for marker, pattern in marker_res.items():
+            assert not pattern.search(lowered), (
+                f"{schema_name} contains {marker!r} in a property description — this schema is "
+                "handed VERBATIM to agent() for both members and controls; it must carry zero "
+                "control-identifying text (this is exactly the channel the Lot 5 gate's BLOCKER "
+                "found leaking on the retired INNOCENCE_SCHEMA)"
+            )
+
+
+def test_innocence_result_shape_still_reports_verdict_taxonomy(js_source: str) -> None:
+    """INNOCENCE: the fix must not just delete the old defect — a runner-side (deterministic JS,
+    executed AFTER the seat-blind adjudicateCode() call returns, never seen or executed by any seat)
+    normalization must still tag the result innocenceControl/innocence, proving this is a delegate-
+    then-relabel treatment swap, not a gutted no-op that silently drops the control marker."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert "innocenceControl: true" in body
+    assert "innocence: true" in body
+    # the relabeling must happen strictly AFTER adjudicateCode's own (await-ed) result is in hand —
+    # never interpolated into anything passed TO the seat call.
+    assert re.search(r"await\s+adjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence must await adjudicateCode(code) before doing any runner-side relabeling"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. CERTIFICATION-CONTRACT PATCH (2026-07-19, Lot 6 conductor gate BLOCKER 2, mandatory —
+#    research/operations/2026-07-19-kbli-batch-a-lot6-conductor-gate.md §3.4/§5.3): the runner
+#    used to let a "certified" verdict through the moment D1/D5 agreed clean on
+#    {mapping_type, licensing_inherits, problem_found} — it never checked whether the record's OWN
+#    client-facing facts (risk tier, timeframe, scope, fiktif_positif, the derived license) carried
+#    a verifiable source, and D2 (the only provenance check) fired only when
+#    `licensing_inherits===true` — a BPS_ONLY/empty-pp28_sources record (exactly 80190's shape)
+#    could certify with NO provenance check at all. These textual-invariant tests complement the
+#    BEHAVIORAL regression suite at infra/workflows/tests/test-kbli-certification-contract.mjs
+#    (run: `node infra/workflows/tests/test-kbli-certification-contract.mjs`), which drives the
+#    actual diffD1D5()/factsInventoryUnverified()/adjudicateCode() logic end-to-end with a stubbed
+#    agent() — these tests instead verify the textual shape of the patch (schema field present,
+#    gate wired, category reused from the closed registry, never gates on licensing_inherits).
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_d5_schema_requires_exposed_facts_inventory(js_source: str) -> None:
+    """GUILT: D5_SCHEMA must REQUIRE exposed_facts_inventory (not merely offer it as optional) —
+    an optional field a seat can silently omit is exactly how 80190's Tinggi/7-day/scope facts
+    went unverified the first time."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    required_match = re.search(r"required:\s*\[(.*?)\]", schema_body, re.DOTALL)
+    assert required_match, "could not locate D5_SCHEMA's required array"
+    assert "exposed_facts_inventory" in required_match.group(1), (
+        "D5_SCHEMA.required does not include exposed_facts_inventory — the field must be "
+        "mandatory, not optional, or a seat can silently omit it and certification stays unsafe"
+    )
+    assert "exposed_facts_inventory: {" in schema_body, (
+        "D5_SCHEMA does not declare an exposed_facts_inventory property"
+    )
+    assert '"verified"' in schema_body and '"absent"' in schema_body, (
+        "D5_SCHEMA.exposed_facts_inventory items must enumerate status: verified|absent"
+    )
+
+
+def test_guilt_facts_inventory_failure_retro_demotes_certified(js_source: str) -> None:
+    """GUILT: factsInventoryUnverified() must exist, fail-closed on a missing/non-array inventory,
+    and flag any entry whose status is not "verified" — and the final verdict computation must be
+    gated on it (OR'd with d2SelfConfirmFailed, never replacing it)."""
+    assert re.search(r"function\s+factsInventoryUnverified\s*\(\s*d5\s*\)", js_source), (
+        "factsInventoryUnverified(d5) not found — the certification-contract patch is not wired"
+    )
+    _params, body = _function_signature_and_body(js_source, "factsInventoryUnverified")
+    assert re.search(r"return\s+true", body), (
+        "factsInventoryUnverified does not fail-closed (return true) on a missing/malformed inventory"
+    )
+    assert re.search(r'entry\.status\s*!==\s*"verified"', body), (
+        "factsInventoryUnverified does not check entry.status !== \"verified\""
+    )
+    assert re.search(
+        r"const factsInventoryFailed =\s*\n?\s*preD2Verdict === \"certified\" && factsInventoryUnverified\(d5\)",
+        js_source,
+    ), "factsInventoryFailed is not gated on preD2Verdict===\"certified\" && factsInventoryUnverified(d5)"
+    assert re.search(
+        r'verdict\s*=\s*\n?\s*d2SelfConfirmFailed\s*\|\|\s*factsInventoryFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
+        js_source,
+    ), "the final verdict is not gated on factsInventoryFailed"
+
+
+def test_innocence_facts_inventory_gate_never_promotes_a_quarantine(js_source: str) -> None:
+    """INNOCENCE: factsInventoryFailed is computed ONLY when preD2Verdict==="certified" — the gate
+    must be structurally incapable of ever promoting an already-quarantined/abstained verdict to
+    certified (certification becomes STRICTER only, never a new path TO certified)."""
+    assert re.search(
+        r'const factsInventoryFailed =\s*\n?\s*preD2Verdict === "certified"',
+        js_source,
+    ), (
+        "factsInventoryFailed must be gated on preD2Verdict===\"certified\" — otherwise it could "
+        "be evaluated (and potentially misused) on a path that was never headed to certified"
+    )
+    # the category assignment for a facts-inventory failure must reuse an EXISTING closed-registry
+    # label (source_absent_in_vault) — the patch must not grow the m3 category registry.
+    assert re.search(
+        r'factsInventoryFailed\s*\n?\s*\?\s*"source_absent_in_vault"',
+        js_source,
+    ), "a facts-inventory failure must categorize as the existing closed-registry label source_absent_in_vault"
+
+
+def test_guilt_d2_gate_condition_on_licensing_inherits_is_unchanged(js_source: str) -> None:
+    """GUILT+INNOCENCE: the D2 dispatch condition itself (`preD2Verdict==="certified" &&
+    d1.licensing_inherits===true`) must remain EXACTLY as it was — the certification-contract patch
+    adds a SECOND, independent gate rather than widening D2's own trigger, per the mandate's
+    "keep the change surgical" requirement. This is the regression guard proving the fix is a new
+    parallel check, not a rewrite of the existing (still narrower, still D2-specific) gate."""
+    assert re.search(
+        r'preD2Verdict === "certified" && d1 && d1\.licensing_inherits === true',
+        js_source,
+    ), "the D2 dispatch condition drifted — this patch must not alter it, only ADD a second gate"
+
+
+def test_innocence_d5_prompt_instructs_the_inventory_regardless_of_empty_pp28_sources(js_source: str) -> None:
+    """INNOCENCE (proves the seat-visible prompt text, not just the schema, carries the fix): d5Prompt
+    must instruct the seat to populate exposed_facts_inventory and explicitly say an empty
+    pp28_sources is not a reason to skip it — killing the circular "N/A because pp28_sources is
+    empty" read the gate's BLOCKER 2 identified."""
+    _params, body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "exposed_facts_inventory" in body, (
+        "d5Prompt does not mention exposed_facts_inventory — the seat is never told to populate it"
+    )
+    assert "pp28_sources is empty" in body, (
+        "d5Prompt does not explicitly say an empty pp28_sources is not a reason to skip the "
+        "facts inventory — the circular NOT_APPLICABLE read this patch kills is not addressed in "
+        "the prompt text a seat actually reads"
+    )
+
+
+def test_guilt_d5_schema_and_prompt_carry_oss_native_locator_clause(js_source: str) -> None:
+    """GUILT (Lot 6 conductor gate finding, foreseeable Lot-7 control artifact): a fact may be
+    marked verified via EITHER a page/row citation from RENDERED evidence (PP28/crosswalk) OR —
+    ONLY for a record whose canonical carries the marker _l2_source=OSS_RBA_resiko_2025 — the
+    matching OSS probe file under the code's dossier oss/ directory. Without this clause, a
+    literal seat marks every OSS-native per_skala fact "absent" (that record class has no
+    PP28/crosswalk render to cite at all), flipping the recurring innocence controls
+    59140/59201 (and any other OSS-native code) to quarantined at Lot 7 — a control
+    false-positive of the guard's own making, not a genuine finding. This regex-contract check
+    pins the clause on BOTH seat-visible surfaces (the schema field description AND d5Prompt) so
+    a future edit cannot silently regress it on either channel alone — the exact
+    fix-on-one-channel-only shape superscar #3 (W83->W84) already burned this program on once."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    assert "_l2_source=OSS_RBA_resiko_2025" in schema_body, (
+        "D5_SCHEMA's exposed_facts_inventory/source_locator description does not mention the "
+        "OSS-native marker _l2_source=OSS_RBA_resiko_2025 — an OSS-native record's per_skala "
+        'facts have no PP28/crosswalk render to cite, so a literal seat marks them all "absent" '
+        "and flips an innocent OSS-native code to quarantined"
+    )
+    assert re.search(r"oss/[\w.]+\.json", schema_body), (
+        "D5_SCHEMA does not point the seat at the dossier's oss/ probe file as an alternate "
+        "verified-status locator for OSS-native records"
+    )
+
+    _params, prompt_body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "_l2_source=OSS_RBA_resiko_2025" in prompt_body, (
+        "d5Prompt does not mention the OSS-native marker _l2_source=OSS_RBA_resiko_2025 — the "
+        "seat-visible prompt text must carry the same OSS-native locator exception as the "
+        "schema, or the fix lives on only one of the two seat-visible channels"
+    )
+    assert re.search(r"oss/[\w.]+\.json", prompt_body), (
+        "d5Prompt does not point the seat at the dossier's oss/ probe file as an alternate "
+        "verified-status locator for OSS-native records"
+    )
+    # the pre-existing "pp28_sources empty is never a skip reason" guarantee must still hold —
+    # the OSS-native clause is an ADDITIONAL verified-path, never a replacement for the existing
+    # honest-absent default.
+    assert "pp28_sources is empty" in prompt_body, (
+        "the OSS-native locator amendment must not have displaced the pre-existing "
+        '"pp28_sources is empty is never a reason to skip" guarantee'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 9. DERIVED-FACT CERTIFICATION RULE (contract refinement #2, 2026-07-19 Lot 7 conductor gate
+#    §3.5/§5.4, precondition for Lot 8 — mandatory cure deliverable): a rule-DERIVED
+#    exposed_facts_inventory entry (fiktif_positif / derived_license) can never carry its own
+#    page/row locator — it is a legal consequence the OSS-RBA platform attaches once its BASE
+#    facts (kategori_risiko, jangka_waktu, same per_skala tier) are themselves verified, per PP
+#    28/2025 Pasal 225(1) (Menengah Tinggi) / Pasal 230 (Tinggi); Pasal 124(4) is the SEPARATE
+#    derived-license rule. These are textual-invariant checks (schema/prompt shape, gate wired);
+#    the BEHAVIORAL guilt+innocence regression suite lives at
+#    infra/workflows/tests/test-kbli-certification-contract.mjs (tests 6-9), which drives the
+#    actual derivedEntryUnverified()/factsInventoryUnverified()/adjudicateCode() logic end-to-end.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_derived_fields_registry_is_scoped_to_fiktif_positif_and_derived_license(
+    js_source: str,
+) -> None:
+    """GUILT: the stricter derived-fact rule must apply ONLY to fiktif_positif/derived_license —
+    never accidentally widened to kategori_risiko/jangka_waktu/scope_uraian (which still need only
+    a plain page/row locator, per the Lot 6 patch). A DERIVED_FIELDS registry that silently grew
+    to include a base fact would make ordinary crosswalk facts subject to a citation requirement
+    they were never meant to carry."""
+    assert re.search(
+        r'const DERIVED_FIELDS = \[\s*"fiktif_positif",\s*"derived_license",?\s*\]', js_source
+    ), "DERIVED_FIELDS must be exactly [fiktif_positif, derived_license] — no base fact included"
+
+
+def test_guilt_derived_entry_unverified_checks_base_facts_and_citation(js_source: str) -> None:
+    """GUILT (the mandate's guilt test, verbatim): base facts absent -> derived absent -> no
+    certification. derivedEntryUnverified() must check BOTH the base kategori_risiko AND
+    jangka_waktu entries are themselves verified with a non-empty source_locator before it will
+    ever accept a derived field's own status="verified" at face value."""
+    assert re.search(r"function\s+derivedEntryUnverified\s*\(\s*entry\s*,\s*inventory\s*\)", js_source), (
+        "derivedEntryUnverified(entry, inventory) not found — the derived-fact rule is not wired"
+    )
+    _params, body = _function_signature_and_body(js_source, "derivedEntryUnverified")
+    assert re.search(r'riskEntry\.status\s*===\s*"verified"', body), (
+        "derivedEntryUnverified does not check the base kategori_risiko entry's own verified status"
+    )
+    assert re.search(r'jwEntry\.status\s*===\s*"verified"', body), (
+        "derivedEntryUnverified does not check the base jangka_waktu entry's own verified status"
+    )
+    assert "source_locator" in body, (
+        "derivedEntryUnverified does not require a non-empty source_locator on the base facts"
+    )
+    assert re.search(r"if\s*\(\s*!baseFactsVerified\s*\)\s*return\s+true", body), (
+        "derivedEntryUnverified does not fail-closed (return true) when base facts are unverified"
+    )
+
+
+def test_innocence_derived_entry_can_resolve_verified_when_fully_cited(js_source: str) -> None:
+    """INNOCENCE (the mandate's innocence test, verbatim): base verified + formula cited ->
+    derived verified -> certification possible. derivedEntryUnverified() must have a path that
+    returns false (i.e. the field counts as verified) — proves the rule does not make a genuinely
+    derived, correctly-cited fact impossible to certify."""
+    _params, body = _function_signature_and_body(js_source, "derivedEntryUnverified")
+    assert re.search(r"return\s+false\s*;\s*$", body.strip()), (
+        "derivedEntryUnverified has no reachable `return false` path — a fully verified+cited "
+        "derived fact could never certify, contradicting the mandate's innocence requirement"
+    )
+
+
+def test_guilt_expected_article_matches_pasal_225_230_124(js_source: str) -> None:
+    """GUILT: the article-choice function must cite the EXACT legal bases from the gate report
+    (§3.5, adversarial BLOCKER, corrected legal base): Pasal 225(1) for Menengah Tinggi
+    (Sertifikat Standar deemed verified), Pasal 230 for Tinggi (Izin auto-issued), Pasal 124(4)
+    ONLY for the separate derived_license field — never swapped or conflated (the exact defect
+    the first-signing BLOCKER corrected: citing 230/124(4) for a Menengah Tinggi record)."""
+    assert re.search(r"function\s+expectedArticleFor\s*\(\s*field\s*,\s*riskValue\s*\)", js_source), (
+        "expectedArticleFor(field, riskValue) not found"
+    )
+    _params, body = _function_signature_and_body(js_source, "expectedArticleFor")
+    assert '"225(1)"' in body and "Menengah Tinggi" in body, (
+        "expectedArticleFor does not map Menengah Tinggi -> Pasal 225(1)"
+    )
+    assert '"230"' in body and '"Tinggi"' in body, (
+        "expectedArticleFor does not map Tinggi -> Pasal 230"
+    )
+    assert '"124(4)"' in body and "derived_license" in body, (
+        "expectedArticleFor does not map derived_license -> Pasal 124(4)"
+    )
+
+
+def test_guilt_derivation_citation_pins_the_versioned_script(js_source: str) -> None:
+    """GUILT: derivationCitationValid() must require the EXACT versioned script path
+    (scripts/derive_fiktif_positif.py) and the PP 28/2025 instrument — a citation naming a
+    different script or no instrument at all must not validate (never a bare "trust me" flag)."""
+    assert re.search(r"function\s+derivationCitationValid\s*\(", js_source), (
+        "derivationCitationValid() not found"
+    )
+    _params, body = _function_signature_and_body(js_source, "derivationCitationValid")
+    assert "scripts/derive_fiktif_positif.py" in body, (
+        "derivationCitationValid does not pin the versioned script scripts/derive_fiktif_positif.py"
+    )
+    assert "28" in body and "2025" in body, (
+        "derivationCitationValid does not check for the PP 28/2025 instrument"
+    )
+
+
+def test_guilt_facts_inventory_unverified_dispatches_derived_fields_to_the_stricter_rule(
+    js_source: str,
+) -> None:
+    """GUILT: factsInventoryUnverified() must route a derived field's entry through
+    derivedEntryUnverified() BEFORE accepting its own status="verified" at face value — otherwise
+    the stricter rule is defined but never actually wired into the certification gate."""
+    _params, body = _function_signature_and_body(js_source, "factsInventoryUnverified")
+    assert re.search(r'entry\.status\s*!==\s*"verified"', body), (
+        "factsInventoryUnverified must still check entry.status !== \"verified\" as the first, "
+        "universal guard (unchanged from the Lot 6 patch)"
+    )
+    assert re.search(r"isDerivedField\s*\(\s*entry\.field\s*\)", body), (
+        "factsInventoryUnverified does not dispatch derived fields to isDerivedField()"
+    )
+    assert re.search(r"derivedEntryUnverified\s*\(\s*entry\s*,\s*inventory\s*\)", body), (
+        "factsInventoryUnverified does not call derivedEntryUnverified(entry, inventory) for a "
+        "derived field — the stricter rule is defined but not wired into the certification gate"
+    )
+
+
+def test_innocence_d5_schema_and_prompt_describe_derivation_citation(js_source: str) -> None:
+    """INNOCENCE (proves the seat-visible surface, not just the deterministic gate, carries the
+    fix): D5_SCHEMA's exposed_facts_inventory item schema AND d5Prompt's body must both describe
+    derivation_citation and the three articles — a seat that never reads about this requirement
+    cannot be expected to supply it."""
+    schema_match = re.search(r"const D5_SCHEMA = \{(.*?)\n\};", js_source, re.DOTALL)
+    assert schema_match, "could not locate D5_SCHEMA in lot runner"
+    schema_body = schema_match.group(1)
+    assert "derivation_citation" in schema_body, (
+        "D5_SCHEMA does not declare a derivation_citation property on exposed_facts_inventory items"
+    )
+    assert "225(1)" in schema_body and "230" in schema_body and "124(4)" in schema_body, (
+        "D5_SCHEMA's derivation_citation description does not name all three articles"
+    )
+
+    _params, prompt_body = _function_signature_and_body(js_source, "d5Prompt")
+    assert "derivation_citation" in prompt_body, (
+        "d5Prompt does not instruct the seat to populate derivation_citation"
+    )
+    assert "scripts/derive_fiktif_positif.py" in prompt_body, (
+        "d5Prompt does not name the versioned script scripts/derive_fiktif_positif.py"
+    )
+    assert "225(1)" in prompt_body and "230" in prompt_body and "124(4)" in prompt_body, (
+        "d5Prompt does not name all three articles (225(1) MT / 230 Tinggi / 124(4) derived-license)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. JOURNAL PROVENANCE (Lot 7 gate adversarial MINOR #5, §5.6b — mandatory cure deliverable):
+#     every seat result must carry label + prompt sha256 + schema sha256 + runner blob sha256, and
+#     a control's provenance is tagged control_tag_applied_after=true strictly AFTER the seat-blind
+#     adjudicateCode() call already returned. The BEHAVIORAL guilt+innocence regression suite
+#     (tests 10-11) lives at infra/workflows/tests/test-kbli-certification-contract.mjs.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_seat_provenance_computed_from_the_real_prompt_and_schema(js_source: str) -> None:
+    """GUILT: promptSha256/schemaSha256 must be computed from the ACTUAL prompt text and schema
+    object handed to agent() (via callSeat()) — never a placeholder or a hash of the label alone,
+    which would defeat the whole "prove which prompt produced which verdict" purpose."""
+    assert re.search(r"function\s+sha256Hex\s*\(\s*message\s*\)", js_source), (
+        "sha256Hex(message) not found — journal provenance has no hashing primitive"
+    )
+    assert re.search(r"async function\s+callSeat\s*\(", js_source), (
+        "callSeat() wrapper not found — seat calls are not instrumented for provenance"
+    )
+    _params, body = _function_signature_and_body(js_source, "callSeat")
+    assert re.search(r"sha256Hex\s*\(\s*promptText\s*\)", body), (
+        "callSeat does not hash the actual prompt text"
+    )
+    assert re.search(r"sha256Hex\s*\(\s*JSON\.stringify\s*\(\s*opts\.schema\s*\)\s*\)", body), (
+        "callSeat does not hash the actual schema object (JSON.stringify(opts.schema))"
+    )
+    assert "runnerBlobSha256" in body, "callSeat does not attach runnerBlobSha256 to the provenance record"
+    assert "label: opts.label" in body, "callSeat does not carry the seat's own label into the provenance record"
+
+
+def test_guilt_adjudicate_code_returns_seat_provenance_for_d1_and_d5(js_source: str) -> None:
+    """GUILT: adjudicateCode's return object must expose seat_provenance for D1 and D5 (and D2
+    when it ran) — a provenance mechanism that computes hashes but never surfaces them on the
+    result would be dead code, unusable by any downstream audit."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateCode")
+    assert "seat_provenance" in body, "adjudicateCode's return object does not include seat_provenance"
+    assert re.search(r"D1:\s*d1Call\.provenance", body), (
+        "adjudicateCode does not surface D1's provenance on the result"
+    )
+    assert re.search(r"D5:\s*d5Call\.provenance", body), (
+        "adjudicateCode does not surface D5's provenance on the result"
+    )
+
+
+def test_innocence_control_tag_applied_after_adjudicate_code_returns(js_source: str) -> None:
+    """INNOCENCE: control_tag_applied_after must be added to the provenance record ONLY inside
+    adjudicateInnocence(), strictly AFTER awaiting adjudicateCode(code) — proving the tag is
+    runner-side bookkeeping applied post-hoc, never something a seat call could see or be biased
+    by (same SYMMETRIC BLIND TREATMENT v2 discipline as innocenceControl/innocence below it).
+    Reuses the existing agent()-absence guilt check for this function (section 7 above) — this
+    test only adds the control_tag_applied_after-specific assertions."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert re.search(r"await\s+adjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence must await adjudicateCode(code) before any provenance tagging"
+    )
+    assert "control_tag_applied_after: true" in body, (
+        "adjudicateInnocence does not tag control_tag_applied_after: true onto the seat provenance"
+    )
+    # the tag must be applied to the ALREADY-RETURNED adjudication's provenance, never built from
+    # scratch or passed to a fresh seat call.
+    assert re.search(r"adjudication\.seat_provenance", body), (
+        "control_tag_applied_after is not derived from adjudication.seat_provenance — it must be "
+        "a post-hoc relabeling of the seat-blind result, not an independently constructed value"
     )

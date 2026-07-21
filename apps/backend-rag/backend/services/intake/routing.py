@@ -35,6 +35,12 @@ Decision matrix (C4)
 --------------------
 * ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
   (passport / npwp / nib / akta number) → high confidence, no human needed.
+  EXCEPTION (GATE-11): a person-strong match whose ``passport_number`` /
+  ``kitas_number`` was written by the unverified identity-backfill batch
+  (``clients.custom_fields.identity_backfill.<column>.verified == false``)
+  degrades to ``LINK_CANDIDATE`` — an unconfirmed backfilled id must never
+  trigger a confident auto-attach on its own (error-contagion / MDM anti-
+  cascade, 2026-07-18).
 * ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
   (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
   via fuzzy name only (no strong identifier) → human confirmation recommended.
@@ -69,6 +75,28 @@ logger = logging.getLogger("zantara.intake.routing")
 # bumped the version on the queue row but left a reader on the old constant
 # produced orphaned/duplicate proposals. Keep this an ALIAS, never a literal.
 PIPELINE_VERSION_DEFAULT = PIPELINE_VERSION
+
+# Pipeline tags whose reroutes must NEVER auto-attach (drive contact
+# auto-create batches — the cards are minted FROM these docs, so gate
+# "corroboration" against them would be circular; design gate 2026-07-19
+# R3-6). Checked at the single gate chokepoint in
+# ``_try_auto_attach_after_route``.
+AUTO_ATTACH_SUPPRESSED_PIPELINE_VERSIONS = frozenset({"v2.3-drive-autocreate"})
+
+
+def _pipeline_version_suppressed(pv: str) -> bool:
+    """True for a suppressed tag, exact OR batch-qualified (``tag:batch``).
+
+    The autocreate program stamps ``v2.3-drive-autocreate:<batch_id>`` so a
+    reroute generation is attributable to ONE batch (gate R10-2: a global
+    tag made two invocations indistinguishable to the rollback CAS). The
+    ``:`` separator is required — ``v2.3-drive-autocreate-other`` is NOT
+    suppressed (guard family #3: exact-or-separator, never bare prefix).
+    """
+    return any(
+        pv == p or pv.startswith(p + ":")
+        for p in AUTO_ATTACH_SUPPRESSED_PIPELINE_VERSIONS
+    )
 
 # --- Decision-matrix C4 outcomes ---
 DECISION_AUTO_ATTACH = "AUTO_ATTACH"
@@ -290,6 +318,20 @@ def _digits_only(value: Any) -> str | None:
     return d or None
 
 
+def _ascii_digits(value: Any) -> str | None:
+    """ASCII-only digit projection — the exact mirror of SQL ``[^0-9]``.
+
+    Python's ``\\d``/``\\D`` are Unicode-aware (Arabic-Indic, full-width and
+    Devanagari digits survive :func:`_digits_only`), while Postgres ``\\d`` is
+    locale-dependent — comparing the two classes is an environment-dependent
+    mismatch. Strong-id npwp matching uses THIS projection on both sides.
+    """
+    if value is None:
+        return None
+    d = re.sub(r"[^0-9]", "", str(value))
+    return d or None
+
+
 def _looks_like_company_name(value: str) -> bool:
     """True for common Indonesian company/entity prefixes."""
     normalized = re.sub(r"\s+", " ", value.strip().upper())
@@ -329,7 +371,7 @@ def normalize_sender_phone(value: Any) -> str | None:
 async def _match_person_strong(
     conn: asyncpg.Connection, extracted: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Strong-identifier match against ``clients`` (passport / kitas number)."""
+    """Strong-identifier match against ``clients`` (passport / kitas / npwp)."""
     candidates: list[dict[str, Any]] = []
 
     passport = _field_value(extracted, "passport_no") or _field_value(extracted, "passport_number")
@@ -340,7 +382,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,passport_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -351,7 +397,7 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "passport_number", "score": CONF_STRONG_EXACT,
-                    "matched_value": norm,
+                    "matched_value": norm, "id_verified": r["id_verified"],
                 })
 
     kitas = (
@@ -366,7 +412,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,kitas_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -377,6 +427,32 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "kitas_number", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm, "id_verified": r["id_verified"],
+                })
+
+    npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
+    if npwp:
+        norm = _ascii_digits(npwp)
+        # NPWP is EXACTLY 15 (legacy) or 16 (post-2024 NIK-format) digits.
+        # Shorter = partial OCR read; longer = concatenated/garbled OCR —
+        # either way an "exact" match on malformed digits is a false strong-id
+        # (malformed CRM data can mirror malformed OCR).
+        if norm and len(norm) in (15, 16):
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND npwp IS NOT NULL
+                  AND REGEXP_REPLACE(npwp, '[^0-9]', '', 'g') = $1
+                ORDER BY id
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "npwp", "score": CONF_STRONG_EXACT,
                     "matched_value": norm,
                 })
 
@@ -409,13 +485,18 @@ async def _match_company_strong(
 
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
     if npwp:
-        norm = _digits_only(npwp)
-        if norm:
+        norm = _ascii_digits(npwp)
+        # Same exact-length gate as the person side (m248): NPWP is 15 or 16
+        # digits, period. 14 live companies carry an 11-14-digit npwp_company —
+        # a partial OCR fragment exact-matching one of those would become a
+        # unique CONF_STRONG_EXACT candidate and, with the decision matrix
+        # being method-agnostic, an AUTO_ATTACH.
+        if norm and len(norm) in (15, 16):
             rows = await conn.fetch(
                 """
                 SELECT id, company_name
                 FROM companies
-                WHERE REGEXP_REPLACE(npwp_company, '\\D', '', 'g') = $1
+                WHERE REGEXP_REPLACE(npwp_company, '[^0-9]', '', 'g') = $1
                 """,
                 norm,
             )
@@ -723,9 +804,27 @@ def _classify_decision(
     #    document identifier describes the SUBJECT, the phone only the SENDER.
     if uniq_strong:
         if len(uniq_strong) == 1:
+            only = uniq_strong[0]
+            # GATE-11 (error contagion / MDM anti-cascade, 2026-07-18): an id
+            # written by the unverified identity-backfill batch must NOT be
+            # able to trigger a confident one-click attach on its own — a
+            # wrong fill would otherwise cascade into a wrong attach. `.get`
+            # with a True default keeps company-strong candidates and any
+            # pre-GATE-11 caller (no "id_verified" key at all) on today's
+            # AUTO_ATTACH behavior; only an EXPLICIT False (backfilled,
+            # unconfirmed) downgrades to human confirm.
+            if only.get("id_verified", True) is False:
+                return DECISION_LINK_CANDIDATE, uniq_strong, {
+                    "reason": (
+                        "single strong-identifier match on a backfilled-unverified "
+                        "id — human confirm required (GATE-11)"
+                    ),
+                    "method": only["method"],
+                    "backfilled_unverified": True,
+                }
             return DECISION_AUTO_ATTACH, uniq_strong, {
                 "reason": "single strong-identifier match",
-                "method": uniq_strong[0]["method"],
+                "method": only["method"],
             }
         # >1 distinct row sharing the same strong identifier = data collision.
         return DECISION_AMBIGUOUS, uniq_strong, {
@@ -861,16 +960,41 @@ async def resolve_entity(
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
         # doc-type is company-ish OR when a company strong-id is present.
-        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt"}:
+        # 'unknown' probes here too (m248): an unclassified doc carrying a
+        # company strong-id field must not skip the company book and land on a
+        # person by npwp alone — the probe is a no-op without company fields.
+        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt", "unknown"}:
             strong += await _match_company_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "company"
 
-        # PERSON-side identifiers (passport/kitas) — and person npwp fallback.
+        # PERSON-side identifiers (passport/kitas/npwp).
         if not strong and (dt in _PERSON_DOC_TYPES or dt == "npwp" or dt == "unknown"):
             strong += await _match_person_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "person"
+        elif strong and subject_kind == "company":
+            # m248 npwp cross-table collision guard: the same 15/16-digit value
+            # on clients.npwp AND companies.npwp_company is a data error (one
+            # tax number cannot belong to both books). Company-first must not
+            # silently crown the company — surface the person hit too and let
+            # the matrix degrade to AMBIGUOUS (>1 distinct strong row).
+            company_npwp_vals = {
+                c.get("matched_value")
+                for c in strong
+                if c.get("method") == "npwp_company"
+            }
+            if company_npwp_vals:
+                person_hits = await _match_person_strong(conn, extracted_fields)
+                collisions = [
+                    c
+                    for c in person_hits
+                    if c.get("method") == "npwp"
+                    and c.get("matched_value") in company_npwp_vals
+                ]
+                if collisions:
+                    strong += collisions
+                    subject_kind = "unknown"
 
         # If still nothing strong and doc is company-ish, also try person strong
         # (defensive: a misclassified doc still gets a chance).
@@ -1174,6 +1298,29 @@ async def _try_auto_attach_after_route(
     """
     if proposal_id is None or effective_status != "review_pending":
         return None
+
+    # Per-batch suppression (drive contact auto-create, design gate R3-6): a
+    # reroute tagged with a suppressed pipeline_version must NEVER evaluate the
+    # attach gates, even with every killswitch armed — the batch mints cards
+    # FROM these very docs, so a LEVA-3 "corroboration" against them would be
+    # circular self-confirmation, not evidence. ``build_routing_proposal`` puts
+    # pipeline_version at the TOP LEVEL of the proposal payload (NOT inside
+    # the ``routing`` sub-dict — round-4 gate caught the first draft reading a
+    # nested shape that does not exist in production); the nested read stays
+    # only as tolerance for hand-built payloads.
+    _pv = str(
+        proposal.get("pipeline_version")
+        or (proposal.get("routing") or {}).get("pipeline_version")
+        or ""
+    )
+    if _pipeline_version_suppressed(_pv):
+        logger.info(
+            "route(FASE4): auto-attach SUPPRESSED for proposal_id=%s "
+            "(pipeline_version=%s)",
+            proposal_id,
+            _pv,
+        )
+        return {"skipped": "suppressed_pipeline_version", "pipeline_version": _pv}
 
     decision = proposal["entity_resolution"]["decision"]
     from backend.services.intake.auto_attach import (

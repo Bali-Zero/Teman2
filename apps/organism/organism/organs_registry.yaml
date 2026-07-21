@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: cf2a710add0066991f19e42041d7a2186f60a4e0c4288db9ff4979312b3ae763
+checksum: c779ca09b3ccd364372910e2d39a781ac0a283fec0a432584fae70c6240aa179
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2085,5 +2085,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.log_rotate.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.fly_logs_accumulator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/fly_logs_accumulator.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.fly-logs-accumulator
+  severity_on_silence: warning
+  notes: Fly logs follower for nuzantara-rag — daily rotated files under ~/logs/fly,
+    14d retention, local disk only (Law 2). Kill switch FLY_LOGS_ACCUMULATOR_ENABLED=false.
+    (O0-P1, approved by Zero 2026-07-19)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fly_logs_accumulator.json
     timestamp_field: ts
     status_field: status

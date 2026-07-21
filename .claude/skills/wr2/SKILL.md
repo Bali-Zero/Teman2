@@ -29,7 +29,7 @@ back into the next editorial decision. Growth = the standing loop in §4.
 **Legge 5 (absolute)**: publishing to Instagram is Zero's act. The pipeline stops at `drafted`
 in the review queue. No session ever publishes autonomously.
 
-## 1. LIVE STATE (last update 2026-07-18 — keep current)
+## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
 **Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
@@ -85,7 +85,48 @@ findings below) + the sumber+kontak pattern.
 
 **Open wounds / next targets:**
 
-- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR (do NOT force — the nightly auto-publishes):** tonight's 2026-07-19 01:00 nightly → expect live pool NON-empty (developing→60 ≥ 40 filter) and a developing/breaking item picked in `~/logs/wr2_topic_selector.log`. If a post-patch nightly STILL yields an empty live pool → THEN it is a residual break (LLM over-classifying evergreen, or a persistence gap) to investigate. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
+- **Adaptive-production program (2026-07-20).** Empirical DB diagnosis (30d corpus): kicker frozen
+  30/30 on "Our read:" through 2026-07-15, then 3/3 on "THE SIGNAL" post-#2544 — same
+  single-example-anchoring bug, one position over; narrative arc identical 33/33
+  (`cover → take → body×N → CTA`) regardless of domain/liveness; cover subheads formulaic (3-example
+  pool recycled); 4/9 layout families ever selected because the generator never emits the structured
+  fields the other 5 need. **The one axis that varies is the one axis with a DB lookback armed
+  (register/tone) — injected state beats stated intent, every time.** Kicker/subhead DB-lookback cure
+  (generalizing the register/tone mechanism to those 2 axes) is IN FLIGHT in worktree
+  `wr2-kicker-variety`, second red-team round as of this entry. Full 3-seat deep research (Kimi K3
+  world-class-mechanisms + Gemini 3.1 Pro OSS-harvest + Codex sol-ultra architecture-review, +
+  independent Fable visual review of the last 3 decks) archived at
+  `_research/2026-07-20-adaptive-production-3seat-research.md`, with an adoption roadmap ruled by
+  Fable as final gate: **Fase 1 (adopt now)** = typed Carousel IR (slide-shape contract:
+  prose/statement/fact_stack/qa_dialogue/status_list/stat_card/citation) + Creative Ledger
+  (per-draft decision-vector signatures, generalizing the kicker/subhead fix) + closer-contract unify;
+  **Fase 2** = arc grammar + Planner/Slot-Writer split, gated on Fase 1; **metrics-gated** (n≥200) =
+  feedback bandit + portfolio content matrix + art-direction cards; several items are **Zero-gated**
+  (Legge 5/brand — franchise slot "The Bali Zero read", all-caps body doctrine, palette rotation).
+  Codex fresh-eyes findings A-J on the live codebase: **finding A is the root cause of the CTA being
+  absent on every single rendered deck** — the generator requires the last slide to carry a CTA while
+  the `statement-bomb` layout contract explicitly forbids one and renders only a short statement;
+  constitutional split-brain, not a copy-quality bug. **SHIPPED + PROVEN-LIVE (2026-07-20).** Kicker/
+  subhead cure merged `84a1e347c0` (#2873); 3-seat research archive merged `6addafc333` (#2870).
+  Deployed: both Pro checkouts (`~/Desktop/nuzantara` + `~/nuzantara-deploy`) pulled ff-only — the
+  deploy checkout required removing a stale orphaned `.git/index.lock` (confirmed no live process
+  held it via `lsof` before removal). `com.balizero.wr2.draft-generator` kickstarted; no briefed
+  draft was queued at kickstart time (log: "No briefed drafts to process") so a full end-to-end
+  generation could not be observed this session. PROVE-LIVE done via a direct function-level probe
+  through the production wrapper (`wr2-script-wrapper.sh`, real secrets + `DATABASE_URL_LOCAL` via
+  pg-proxy) against the real DB: `fetch_recent_editorial_signatures` returned the real historical
+  signatures `KICKERS: ['THE SIGNAL', 'Our read']` (exactly the two pathological kickers the
+  diagnosis found) + 8 real cover subheads; `_build_variety_steer` produced a 605-char steer block
+  containing "MUST NOT"; `_render_system_instructions` showed zero token leaks
+  (`__KICKER_EXAMPLES__`/`__KICKER_EXAMPLE_TAKE__` both absent from the rendered prompt). No
+  synthetic draft was injected into `war_room_drafts` to avoid polluting prod editorial state (W96
+  discipline) — the collision-regen-guard's full generation-loop behavior remains covered by the 93
+  local tests (50 dedicated) rather than a live end-to-end run; this is the REMAINING natural-proof
+  item, same pattern as the 2026-07-18 liveness wound (receptor = next natural draft generation, not
+  forced). Both worktrees (`wr2-kicker-variety`, `wr2-research-archive`) reaped after confirming
+  content-on-main via blob-per-file compare (W88 discipline) — GitHub had already auto-deleted both
+  remote branches post-squash-merge.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR FIRED POSITIVE → WOUND CLOSED 2026-07-19 ~02:03 WITA.** The first post-patch natural nightly (`run_20260719_010004.json`, 25 articles / 15 classified) emitted **tiers {evergreen:12, developing:3}** with **distinct scores {0, 60}** — the DETERMINISTIC `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} (#2635), NOT the old additive 30/50, and NOT stuck all-evergreen. The 3 developing items score 60 ≥ 40 → they pass the `WR2_PREFER_LIVE_NEWS` filter and will fill the live pool at the next selector run (04:24/05:10; not forced — Legge-5-adjacent). #2631+#2635 chain proven end-to-end on a natural nightly (not just composition). Only remaining passive confirmation: the selector actually picking one. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
   cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
@@ -127,15 +168,25 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
 - **Accessibility/legibility SOTA is in the external benches, NOT a separate amendments file.** Verified 2026-07-18 (M5 + Pro): `_proposed-amendments/2026-07-16-accessibility-discipline.md` does NOT exist on either machine and no "4 accessibility amendments" content is in the brand skill — the prior reference was phantom (scar #6). The real, still-UN-shipped accessibility work is grounded in `_external-bench-2026-06.md`: **Art 14.7 AI-disclosure label** (Meta AI-label + EU AI Act pressure; constitution silent, Art 5.4 covers faces only) + **translucent-caption-pill** legibility scrim. Grounding these into constitution articles is the real (Zero-gated brand judgment) work — there is no lost amendments file to reconcile.
-- **Slide-7 closer micro-text** — ⚠️ corner-note was WRONG, corrected 2026-07-18 (growth-loop B): the
-  deportation-remake closer is NOT elegant-close. DB `slides_json`: `slide_type=cta`, `layout_family`
-  empty → `composer._pick_layout` routes it to **statement-bomb** (Art 9.5 hard rule) with a hero photo
-  injected behind it, and the mandated closing statement ("WHERE THIS LEAVES YOU") renders as a **tiny
-  micro-caption over the full-bleed photo** (`07.png` examined). First "thumbnail-legibility" hypothesis
-  refuted by `claude_vision.py` (secondary text is judged at full size). Real fix surface = the
-  photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
-  TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
-  **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
+- **Slide-7 closer micro-text — ✅ MECHANISM PINNED + FIXED + LIVE 2026-07-19 (#2767, growth-loop B).**
+  Corner-note was WRONG (corrected 2026-07-18): the closer is NOT elegant-close — a true-last
+  `cta`/empty-`layout_family` slide routes to **statement-bomb** (Art 9.5). The tiny rendering was a
+  **SIZE COLLAPSE, not a contrast problem**: the injected hero photo's bottom edge → `bottom_ink_ratio≈0.497`
+  → the designer-loop geometry critic reads "bottom overflow" → emits `shrink_font:body`, which rendered
+  `[data-zone-type='text']{font-size:calc(1em*factor)}`; the statement-bomb `.statement` carries
+  `data-zone-type="text"` (over-match) and `1em` resolves to the ~16px PARENT → the Art-9.5 closer collapsed
+  72px→~10px. A black-bg closer has no photo → no false overflow → no lever → stays 72px. **Fix (LIVE):**
+  exclude `.statement` from both the shrink AND grow body-lever selectors (`:not(.statement)`, `composer.py`) —
+  Playwright prove-live on Pro `~/nuzantara-deploy`: closer+shrink_body **72px** (was 12.16px), editorial prose
+  still shrinks (non-regression), 139/139 tests + a regression test; Codex R2 approved scoped.
+  **Still open (SEPARATE axes, ledgered PENDING-ARMS 2026-07-19):** (a) **W89** — the `[data-zone-type='text']`
+  arm over-matches OTHER primary-text leaves (dark-status-list `.heading` 56→12px CONFIRMED); root-cure =
+  prose-only selector + fix `calc(1em*factor)`, render-QA'd across the layout library (NOT a `:not()` whack-a-mole
+  = scar #3); (b) an over-long closer now has neither auto-shrink nor hard-fail (72px unbounded — strictly better
+  than the old ~10px collapse); (c) the **translucent-caption-pill** contrast device
+  (`_external-bench-2026-06.md:57`) for text-over-photo LEGIBILITY stays a separate Zero-gated brand BUILD (it
+  addresses contrast, NOT the size collapse this fixed). Memory
+  `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18` (RESOLVED section).
 - **Render/visual-QA is research-SATURATED + build-partial + armed-live — do NOT re-research** (growth-loop
   R, 2026-07-18). The 2026-06-07 pair (`design-critic-loop-sota` + `html-css-carousel-renderer-sota`) is the
   authoritative render-QA SOTA. Built + armed-live on the Pro (ssh-verified: `WR2_VISION_REQUIRED=1`,
@@ -316,6 +367,8 @@ cover copy measured via the metrics loop.
 - DB access RO: `mcp__postgres-nuzantara__query` / `scripts/pg.sh`; writes ONLY via backend
   code from Pro env (never MCP).
 - IG token: Pro `.env.master` — grep into env vars, never print (scar #4).
+- Adaptive-production 3-seat research (2026-07-20): `_research/2026-07-20-adaptive-production-3seat-research.md`
+  (Kimi K3 + Gemini 3.1 Pro + Codex sol-ultra, full verbatim seat reports + Fable synthesis/adoption ruling).
 
 > Chi cambia lo stato AGGIORNA la §1. Un corner stantio è peggio di nessun corner (W90: anche il
 > ground-truth invecchia).

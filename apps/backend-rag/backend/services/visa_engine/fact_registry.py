@@ -16,32 +16,42 @@ spec's compiler-only invariants: "no ``commercial.*`` fact in a legal-stage
 rule" and "fact-path-specific literal types" (an ``eq`` against a boolean
 fact must carry a boolean literal, etc.).
 
-PR1 scope note: the spec's own ``fact_registry.py`` snippet additionally
-declares ``FactRegistry.derive(facts: ApplicantFacts, *, effective_at) ->
-FactSnapshot`` and a ``FactSnapshot``/``KnownFact``/``UnknownFact`` runtime
-shape. That is the *evaluator's* fact-resolution step (turning a raw
-``ApplicantFacts`` payload into the typed snapshot ``ast.evaluate_condition``
-would consume) — deliberately deferred to PR3 alongside the evaluator itself
-(the task brief scopes PR1's ``fact_registry.py`` to "typed fact catalog ...
-validation that a RulePack's required_facts subset-of registry", not fact
-derivation). ``ApplicantFacts`` itself is not modelled in PR1 for the same
-reason — see ``models.py``'s module docstring.
+PR3 addition: ``FactRegistry.derive(facts: ApplicantFacts, *, effective_at)
+-> FactSnapshot`` — the evaluator's fact-resolution step, turning a raw
+``ApplicantFacts`` wire payload into the typed snapshot
+``ast.evaluate_condition`` consumes, plus ``canonical_fact_payload()`` (a
+deterministic, sorted-key view of ``ApplicantFacts.facts`` for future
+fingerprinting). ``FactSnapshot``/``KnownFact``/``UnknownFact`` themselves
+live in ``ast.py``, not here — see that module's docstring for the
+import-cycle rationale (``fact_registry.py`` needing ``models.ApplicantFacts``
+directly, post the PR3 ``models.py`` FactPath-import redirect, would recreate
+a cycle if ``FactSnapshot`` also lived here and ``ast.py`` needed it back).
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
 from types import MappingProxyType
-from typing import Literal
+from typing import Literal, TypeAlias
 
+from backend.services.visa_engine.ast import FactSnapshot, KnownFact, UnknownFact
 from backend.services.visa_engine.enums import (
     COMMERCIAL_FACT_PATHS,
     FactPath,
     FactValueKind,
     PiiClass,
+    UnknownReason,
 )
 from backend.services.visa_engine.errors import FactValidationError
+from backend.services.visa_engine.models import ApplicantFacts
+
+JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+"""A JSON-safe value — what :func:`canonical_fact_payload` returns members of."""
+
+_INDONESIA_COUNTRY_CODE = "ID"
+_MINOR_AGE_THRESHOLD = 18
 
 
 @dataclass(frozen=True, slots=True)
@@ -410,6 +420,106 @@ class FactRegistry:
             if path not in known:
                 missing.add(str(raw))
         return frozenset(missing)
+
+    def derive(self, facts: ApplicantFacts, *, effective_at: datetime) -> FactSnapshot:
+        """Turn a validated ``ApplicantFacts`` wire object into a
+        :class:`~backend.services.visa_engine.ast.FactSnapshot` ready for
+        ``ast.evaluate_condition``.
+
+        Canonicalizes dates to ISO-8601 strings (already the wire shape —
+        ``KnownDate.value`` is an ``IsoDate`` string), ``STRING_SET``-kind
+        facts to ``frozenset[str]``, and computes the 3 ``derived.*`` facts
+        (``age_years``, ``is_minor``, ``has_indonesian_citizenship``).
+        """
+
+        if effective_at.tzinfo is None:
+            raise FactValidationError(
+                "effective_at must be timezone-aware (UTC); a naive datetime is "
+                "ambiguous and would silently change the derived age by up to a day."
+            )
+
+        raw = facts.facts.model_dump(by_alias=True, mode="json")
+        values: dict[FactPath, KnownFact | UnknownFact] = {
+            FactPath(path): self._wire_to_runtime(path, wire_fact)
+            for path, wire_fact in raw.items()
+        }
+
+        values[FactPath.DERIVED_AGE_YEARS] = self._derive_age_years(values, effective_at)
+        values[FactPath.DERIVED_IS_MINOR] = self._derive_is_minor(values, effective_at)
+        values[FactPath.DERIVED_HAS_INDONESIAN_CITIZENSHIP] = (
+            self._derive_has_indonesian_citizenship(values)
+        )
+
+        return FactSnapshot(values=MappingProxyType(values))
+
+    def _wire_to_runtime(self, path: str, wire_fact: Mapping[str, object]) -> KnownFact | UnknownFact:
+        if wire_fact["status"] == "UNKNOWN":
+            return UnknownFact(reason=UnknownReason(wire_fact["reason"]))
+
+        value = wire_fact["value"]
+        spec = self._specs.get(FactPath(path))
+        if spec is not None and spec.kind is FactValueKind.STRING_SET:
+            value = frozenset(value)  # type: ignore[arg-type]
+        return KnownFact(value=value)
+
+    @staticmethod
+    def _derive_age_years(
+        values: Mapping[FactPath, KnownFact | UnknownFact],
+        effective_at: datetime,
+    ) -> KnownFact | UnknownFact:
+        birth = values[FactPath.PERSON_BIRTH_DATE]
+        if isinstance(birth, UnknownFact):
+            return UnknownFact(reason=birth.reason)
+
+        birth_date = date.fromisoformat(str(birth.value))
+        reference_date = effective_at.astimezone(timezone.utc).date()
+        if birth_date > reference_date:
+            # A birth date after the evaluation instant is logically impossible;
+            # never turn contradictory evidence into a definite legal age/minor
+            # boolean — fail closed to UNKNOWN (2-seat review F2, 2026-07-18).
+            return UnknownFact(reason=UnknownReason.CONFLICTING)
+        years = (
+            reference_date.year
+            - birth_date.year
+            - ((reference_date.month, reference_date.day) < (birth_date.month, birth_date.day))
+        )
+        return KnownFact(value=years)
+
+    @classmethod
+    def _derive_is_minor(
+        cls,
+        values: Mapping[FactPath, KnownFact | UnknownFact],
+        effective_at: datetime,
+    ) -> KnownFact | UnknownFact:
+        age = cls._derive_age_years(values, effective_at)
+        if isinstance(age, UnknownFact):
+            return UnknownFact(reason=age.reason)
+        return KnownFact(value=bool(age.value < _MINOR_AGE_THRESHOLD))
+
+    @staticmethod
+    def _derive_has_indonesian_citizenship(
+        values: Mapping[FactPath, KnownFact | UnknownFact],
+    ) -> KnownFact | UnknownFact:
+        nationalities = values[FactPath.PERSON_NATIONALITIES]
+        if isinstance(nationalities, UnknownFact):
+            return UnknownFact(reason=nationalities.reason)
+        return KnownFact(value=_INDONESIA_COUNTRY_CODE in nationalities.value)
+
+
+def canonical_fact_payload(facts: ApplicantFacts) -> dict[str, JsonValue]:
+    """A deterministic, sorted-key, ``json.dumps``-serializable view of
+    ``facts.facts``.
+
+    Intended for a future facts HMAC fingerprint (``models.Fingerprint``).
+    Pure function: same input always yields the same, key-sorted output.
+    Returns a **plain** ``dict`` — not a ``types.MappingProxyType`` — because
+    the latter is not JSON-serializable (``json.dumps(MappingProxyType(...))``
+    raises ``TypeError``), which would defeat the "fingerprint this over the
+    wire" purpose the function exists for.
+    """
+
+    raw = facts.facts.model_dump(by_alias=True, mode="json")
+    return dict(sorted(raw.items()))
 
 
 #: Module-level default instance for convenience callers (compiler.py's own

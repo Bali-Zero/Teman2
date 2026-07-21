@@ -26,7 +26,33 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-18 — keep current)
+## 1. LIVE STATE (last update 2026-07-20 — keep current)
+
+**Lot 8 (A-L8) — D6 gate SECOND SIGNED 2026-07-20, MERGED to main** (PR #2892, squash
+`66ee3932e4`; report `research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`):
+15/15 codes adjudicated (13 members + 2 controls) — 0 certified, 13 quarantined, both calibration
+floors breached (m1 0.615<0.75, m2 0.000 outside [0.2,0.85]) but root-caused as a genuine finding,
+not a pipeline defect: this activity family (91425 + the whole 931xx sport/klub cluster) has
+unusually poor PP28 primary-source-locatability. Findings: 1 genuine `payload_cross_contamination`
+(91425 — pp28_sources cited a wrong neighbor code, conductor-eye image-verified), 6 genuine
+`source_absent_in_vault` on exhaustive 21-file/11,208-page scans (93113/93115/93122/93123/93125/93126),
+1 wrong-pointer via a reproducible "hot trap page" (93121, same trap page also hit control 63101 —
+2nd sighting), 1 both-tiers-absent (93124), and 4 held UN-cured because the underlying crosswalk+
+licensing is genuinely sound and only a synthetic derived field lacks formula coverage (93111/93112/ 93119) or the compiler lacks a tier-scoped detach primitive (93114) — detaching these would destroy
+good data, not fix a defect (see PENDING-ARMS for both open items). Cure spec
+(`scripts/kbli_filiera/cure_specs/batch_a_lot8.json`, 9 codes) dry-run clean.
+**Red-team: Codex/agy both unavailable** (Codex re-authenticated but hard quota-limited until
+2026-08-19 on this ChatGPT account; `agy` hung on two independent re-probes) — **Kimi K3 used as
+cross-family substitute seat** instead of waiting a month, verdict **CONFIRMED-WITH-NOTES** (none
+of the 13 dispositions refuted; 2 MEDIUM + 3 LOW audit-trail defects found and cured in the second
+signing — canonical hash pin, disputed-key report/spec mismatch, a lampiran-letter mislabel, a
+line citation, one typo). Full findings in the report's Adversarial review section. Also an
+evidence-loss incident this cycle (first launch hit an empty evidenceRoot, all ~15 seats correctly
+fail-closed rather than hallucinate — re-pulled and independently re-verified before relaunch,
+PULL COMPLETE 15/15). **Next: cure PR (apply the 9-code spec to canonical), cross-family GLM
+Appendix A screen, surfaces (KG detach/Qdrant clear/cache bust/prove-live).** Lot 9 D0 (10
+remaining sport-cluster members: 93127-93199 + 2 fresh controls 46201/96300) evidence already
+pulled and independently verified, pins at `/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md`.
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -61,6 +87,38 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
 - **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
+**Surfaces 4-6 + capital doctrine + Batch-B (M5 conductor-verified 2026-07-19):**
+
+- **Surface 4 — `kbli_documents` Postgres table, CURED IN PROD** (#2796 merged + fly apply): table
+  seeded 2026-02-18, no builder, injected VERBATIM into `chat_kbli`'s LLM context
+  (`kbli_notebook_chat.py:635/:699`) — served fabricated licensing for quarantined codes (live
+  proof: 50113 asserted Menengah Tinggi/KSOP/BKI/STCW + Rp10bn from the revoked BKPM 4/2021).
+  Cure `backend/scripts/kbli_documents_cure.py` (provenance-bound, dry-run default, `--only`
+  mandatory) applied to 86 codes (85 gap→`PENDING_REGULATION`, 49213 restored rows preserved);
+  forensic archive `kbli_documents_archive` (86 rows, one-shot); PROVE-LIVE: `chat_kbli` 50113
+  now serves the honest gap. PENDING-ARMS: whole-table refresh (~1,473 unmanaged rows), KG
+  variant-node cleanup, `search_kbli` "Unknown" label.
+- **Generation-layer capital doctrine corrected** (#2813, armed, in CI): `chat_kbli`'s prompt had
+  Rp10bn-as-paid-up HARDCODED in 5 places; corrected to the BKPM 5/2025 two-threshold doctrine
+  (modal disetor 2.5bn ≠ investment value >10bn/KBLI/location) + a new abstention rule (never
+  estimate a risk tier by analogy).
+- **Surfaces 5 & 6 — `apps/kbli-navigator` (knowledge.balizero.com; it is a Next.js/Vercel+Netlify
+  app, NOT the "native desktop app" §5 describes — mislabel found during Batch-B design work,
+  ALIGN-FLEET TODO):** (5) its `data/kbli-2025.json` was untracked in the 2026-03-28 cleanup and
+  rotted (1,563 records, zero quarantine markers, 68112 still MICE) — **cure lane in flight**,
+  branch `agent/air-m5/frontend/kbli-navigator-dataset-desync` (conductor-gated), re-tracking +
+  extending `scripts/sync_kbli_dataset.sh`/`check-kbli-dataset-sync`. (6)
+  `apps/kbli-navigator/lib/kbli-gold-content.ts` (~45K lines, hand-authored, separate from mouth
+  gold) OVERRIDES cured data on 68112/49213 pages (verified in built HTML) — **OPEN, queued, task
+  #19**.
+- **Mouth gold cure LIVE** (#2794): 10 gold records' detached-code echoes cured
+  (whatYouNeed/zantaraOpener/baliContext), PROVE-LIVE on 68123/60103; 63-phantom triage table
+  `scripts/kbli_gold_remap_table_status.json` (48 unmapped / 8 ambiguous-SPLIT / 7
+  single-candidate).
+- **Batch-B pre-registration design SIGNED** (#2801 merged, REV-4b): determinism gate closed after
+  4 Codex xhigh rounds + Gemini; OPEN gates before any lot: Phase-0 parser build + Zero's Legge-5
+  ratifications. See §5.
+
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
 phantom gold-remap rows · Batches A(remainder)/B/C/D of the Filiera sweep. See §5.
@@ -74,7 +132,7 @@ proven-live 4,959/4,959 at `nuzantara-backups/kbli-vault/` · OSS coverage 6,236
 vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1 missing
 (Turnstile → browser lane) · Perpres-annex compiler not built · absence ≥72h window needs one
 probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
-(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 addendum HELD until AFTER Pilota A1** — Zero ruling 2026-07-18 (_"aspetti dopo il Pilota A1 così misuriamo prima su vault-core pulito"_): Perpres 10/49 + Bali/Kepmenaker + per-instrument status snapshots come as a SECOND vault wave; `pma_status`/`l4_bali`/TKA facets **abstain fail-safe** (A1/A5/A6) this pass and are lifted later — never published wrong. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
+(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 UNBLOCKED — LANE CLAIM (D12 anti-collision): the P1-v2 second vault wave is OWNED by the S2/Pro conductor session (MANDATO GARUDA), claimed 2026-07-19 on Zero's GO** (supersedes the 2026-07-18 HELD ruling _"aspetti dopo il Pilota A1"_ — Pilota A1 measured, GO issued). Scope of the claimed lane: fetch + sha256 + vault manifest ADDENDUM on Mini (via ssh) for Perpres 10/2021 + 49/2021 investment annexes, Bali (Gubernur letter B.27.000/642/PM/DPMPTSP) + Kepmenaker 228/2019, with DATED per-instrument status snapshots and per-instrument provenance. Facet rules (Zero, verbatim intent): `pma_status`/`l4_bali`/TKA facets stay **abstain fail-safe** (A1/A5/A6) and unlock ONLY per-code where the wave is grounded — **never a global lift**; current Batch-A lots continue in parallel under abstain until the wave is ready. **Wave status 2026-07-19: DELIVERED** — 8 instrument blobs fetched + sha256'd on the Mini vault (`~/nuzantara-vault/p1v2/`) with 4 dated per-instrument status snapshots; manifest addendum `data/kbli-filiera/manifest/vault-manifest-p1v2-2026-07-19.json` MERGED (#2811, hashes independently re-verified via ssh; claim PR #2808). Next: per-code facet-unlock design (fase 2 — no facet unlocks yet, abstain still in force everywhere). **Disjointness: the M5 Fable session owns Batch B (branch `agent/air-m5/docs/batch-b-design`) — this lane does not touch Batch-B artifacts; the M5 lane does not touch the P1-v2 vault wave.** First-writer-owns per scar D12. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
 **Batch-A Lot 1 conductor gate SIGNED, second signing post-red-team (2026-07-18, MANDATO S2
 session):** final verdict **13/13 quarantine, 0 certified** on the first A-serving lot (a
@@ -112,6 +170,80 @@ whole remainder (~101 in-scope codes, lots 2→~9) under the amended lane protoc
 needed; Zero is notified at Lot 2 kickoff. A-6(c) precondition (calibration registry v2
 re-emission on the cured canonical) ships in the governance PR before the Lot 2 lane starts.**
 
+**Batch-A SWEEP PROGRESS — Lots 1-5 (dense recap 2026-07-19, MANDATO S2 continuous run; supersedes the Lot-1-only block above for current state):**
+
+- **91/114 original in-scope adjudicated across 7 lots — 91/91 QUARANTINED, 0 certified.
+  L7 fully applied+surfaced (cured-and-live cumulative 91/1,559 incl. pilot).**
+  Census by lot: L1 13 (div 01→39, gate report 2026-07-18-...lot1..., cure applied+surfaced) ·
+  L2 13 (#2753 gate, #2761 cure) · L3 13 (#2768 gate, #2769 cure) · L4 13 (#2774 gate, #2776
+  cure incl. runner innocence-PROMPT fix; 64955 wrong-parent flagship; ALL TEN 66xxx carry the
+  identical cooperative-rating payload) · L5 13 (gate #2788 MERGED, cure #2778 merged incl.
+  runner INNOCENCE_SCHEMA symmetric-blind fix; members 66192→70100) · **L6 13 (#2803 gate —
+  incl. the 80190 certification REVOKED→re-quarantined, W100-L6 rule "conductor's eyes on the
+  FULL canonical record for every certification"; #2800 cure incl. certification-contract gen-2:
+  `exposed_facts_inventory` REQUIRED + fail-closed `factsInventoryUnverified`; surfaces 13/13
+  PROVEN-LIVE, spot-check 80190)** · **L7 13 CLOSED end-to-end (gate #2837, cure spec+contract
+  #2831, data-apply #2878, surfaces PROVEN-LIVE 2026-07-20 — conductor spot-check on the largest
+  cluster 86201/27 disputed-edges + 86203/91424, independent of the applier's own report): 6
+  source_absent {85403,85404,86109,86201,86202,86203} / 4 payload {85330 aviation PAGE-BLEED,
+  85401 51108-fan, 86102, 91212} / 1 collision {90111, ISO-9001 matcher-trap} / 1
+  illegitimate-inheritance {91222} / 1 unresolvable {91424}; Appendix A cross-family GLM
+  adjudicated (m1 5/5 no verdict overturned, NEG surfaced 2 real editorial-layer deviations on
+  52239/68127 — FILED, POS 2/2 clean); 41013 control re-run LIVE post-refinement (wf_644964d5-783):
+  refinement #2 (derived-fact rule, Pasal 225(1) MT / 230 Tinggi / 124(4) derived-license)
+  VALIDATED, 41013 converts to "contract artifact" but stays quarantined pending refinement #3
+  (tier-label join, FILED). 96 KG REQUIRES edges removed (86201 alone = 27), Qdrant risk cleared,
+  13 cache keys busted, `kbli_documents` 4th surface applied (13/99 cumulative, whole-table
+  builder still missing). **In-scope remainder: 23** (of 221 total, invariant) → **2 lots to
+  finish** (L8 12+1/L9 10 — see membership split below; L8 gated on refinement #2, now shipped).
+  Surfaces: L1-L4 + L6 + L7 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
+  cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces
+  INDEPENDENTLY RE-PROVEN 2026-07-19** (prod KG query: 13/13 zero REQUIRES edges +
+  `PENDING_REGULATION` + disputed archived; live `inspect/66192` returns risk "Not classified",
+  licenses []). Governance: calibration **v3\*\* on main (#2777, supersedes conflicted #2772) — NEG
+  47 salt "v3", POS 8, `pos_preverification_required`, burned-set 16 (extended to 119+ post-L7 D0
+  back-reconstruction, see Lot 8 pins).
+- **Per-lot cycle (proven 5×, ~2h):** lane Workflow (launcher `/tmp/kbli-conductor-a1-0718/
+lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fence) → conductor
+  D6 gate + by-eye renders → FIRST signing → codex sol xhigh red-team (FULL-output capture, W97)
+  → cures → SECOND signing (now with immutable artifact manifest: sha256 of raw/journal/renders/
+  canonical + runner blob — L5 innovation, keep it) → cross-family GLM 5.2 pass (m1 sample +
+  m5-NEG + m5-POS w/ conductor exposed-codes screen) → Appendix A adjudication → gate PR →
+  cure PR (conductor gates the diff, then arms auto-merge) → surfaces → next lot.
+  **W100 held 5/5 lots: every first signing was FIX-FIRSTed; substance (quarantine verdicts)
+  survived every pass — the errors live in the conductor's audit trail, never in the verdicts.**
+- **Program-level discoveries (L4-L5):** (a) cooperative-payload ROOT traced: PP28 lampiran row
+  66292 is KBLI-2020-vintage ("Pemeringkat UMKM dan Koperasi", true 2025 home = 66198); one
+  vintage-blind digit-string join poisoned 17+ codes across div 66. (b) The 68-division fan
+  (2020-68111 → 7 children incl. BOTH halves of the pilot's 68112 collision: residential←68111,
+  MICE→68124) is conductor-eye-verified on the BPS table — the collision factory. (c)
+  Vision-read STRUCTURED labels (mapping_type) are soft — verdict bits + citations are the
+  load-bearing signal; never use structured labels as concordance keys (L4 Appendix A meta-note).
+  (d) The metadata-crosswalk disease also lives in the 1,336 "verified" OSS-native set
+  (FATAL-4 candidate — Zero/Legge-5 product decision pending). (e) Innocence-control blindness
+  took TWO generations to fix: prompt leak (#2776) then SCHEMA leak (#2778 symmetric pipeline,
+  runner-side normalization) — third instance of the fix-begets-twin-bug family; controls from
+  L1-L5 are all recorded as ANCHORED NON-BLIND FIXTURES. **True-blind era (L6-L7): the symmetric
+  path ran live; 59140/59201 RETIRED after 4 reuses; from L7 every lot draws FRESH controls,
+  burned after one use. The L7 fresh pair proved the policy's worth: 20232 (picked for expected
+  cleanliness) itself carries a false MATCH_LANGSUNG, and 41013 asserts fiktif_positif with no
+  citable provenance (correct fail-closed demote → drove contract refinement #2).**
+- **Standing infra state:** Redis lease registry NOAUTH from sessions → LEASE-GUARD SKIPPED
+  declared in every gate with compensating isolation. Local vault mirror on Pro
+  (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
+  `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
+- **Standalone metadata cure-list BACKLOG (grows lot-by-lot, not yet a dedicated spec+PR — the
+  only place this list is currently tracked; update here when it changes):** `01629` + `71204`
+  (Lot 5 gate §m5-POS, 2026-07-19 — multi-parent crosswalk metadata false, evidence-gated) ·
+  `59140` pp28-label (Lot 6 gate §3.4 — OSS-native, pp28_sources unverifiable, per_skala provenance
+  sound by marker) · **`20232` (Lot 7 gate §3.4, 2026-07-19 — fresh SELECTED control, conductor-eye
+  SPLIT on lampiran5_p156-156.png printed p.142: canonical `status_mapping='MATCH_LANGSUNG'`/"scope
+  unchanged" refuted by two consecutive rows, 2025-20232 + 2025-20235; per rule #9 NOT detached in
+  the Lot 7 cure — OSS-native, healthy per_skala).** All four are `metadata_only` candidates (same
+  compiler action as 52101/46100/10433/`metadata_fixes_2026_07_19.json` — status_mapping/whatChanged/
+  pp28_sources correction, per_skala untouched) pending a dedicated evidence-gated spec+PR; none has
+  a canonical write yet.
+
 **Governance flags:**
 
 - **Filiera methodology**: panel CONCLUDED. Doc `research/operations/2026-07-16-kbli-filiera-methodology.md`
@@ -134,6 +266,35 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
   `infra/claude-hooks/data-plane-registry.json` is the extension point. Kill switch
   `DATA_PLANE_GUARD_OFF=1`. (gold `kbli-gold-all.json` is NOT yet registered — editable, but pin
   every change with a regression test, cf. the 49213/50115 gold cure.)
+
+**CHATKB cantiere `company-kbli-signed-lots` — 3-seat review (GLM+Claude+Codex), ARBITER-verified
+(2026-07-19).** Dossier on M5:
+`~/Desktop/CHATKB-CANTIERE-2026-07-19/company-kbli-signed-lots/{FINAL.md,gate-verdict.md,contested.md}`
+(not shipped to `curated_qa` yet). **Established truth added to §2 below**: PP 28/2025
+primary-verified via BPK registry `peraturan.bpk.go.id/Details/319773` ("Mencabut: PP No. 5 Tahun
+2021") — the current in-force licensing instrument, GLM-live-checked. **Open follow-ups for this
+corner (flagged only, nothing fixed here):**
+
+1. **HIGH-PRIORITY unresolved**: 78109 and 80190 "TERBUKA 100%" ownership claims flagged against
+   historical precedent (78xx labour-placement family; BUJP private-security regime) — two
+   independent web passes found neither confirmation nor refutation. Needs a direct DPI-annex
+   (Perpres 10/2021 jo. 49/2021 lampiran) read before either claim is committed client-facing.
+2. **PROD self-contradiction risk**: live `inspect_kbli`/`chat_kbli` still serve the disproven
+   contaminated payloads for 78109 (LPK-mixed, `risk_profile: "Menengah Tinggi"`, 16 license rows
+   incl. the disproven LPK block) and 80190 (`risk_profile: "Tinggi"`) — KG/Qdrant resync pending.
+   A live tool call mid-conversation can still contradict the cured dossier answer for either code.
+3. **85321 crosswalk parent implausible**: the dossier's claimed true crosswalk parent {51108
+   "Angkutan Udara Bukan Niaga" air-transport} is flagged implausible for a vocational-education
+   code — re-check the BPS Vol.2 Lampiran 5 p.193 render. Confirmed separately: 85321's own title is
+   "...Pemerintah" (government-operated type only); the private route is sibling code **85322**,
+   whose ownership status is NOT yet verified.
+4. **70100 ≠ passive holding**: the official OSS scope note for 70100 (Aktivitas Kantor Pusat)
+   explicitly EXCLUDES passive holding-company activity → redirects to KBLI **64200**, whose
+   ownership status is NOT yet verified.
+5. **Q14/39001 provenance gap**: the dossier cites "BPS Vol.2 Lampiran 5 p.170, image-verified" for
+   39001 with NO Lot number / workflow run-ID (every other code in this dossier cites one) — confirm
+   the real Lot number for 39001 from `cure_specs`/workflow records before this row ships to
+   `curated_qa`.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
@@ -178,6 +339,10 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
     takes precedence over intel_2026 for editorial fields on /kbli/<code>** (kbli-data.server.ts
     merges gold first; LicensingSection.tsx parses gold.whatYouNeed DIRECTLY) — so a canonical fix
     is invisible on a gold code until gold is cured too (49213/50115 lesson, 2026-07-17).
+11. **PP 28/2025 is primary-source-verified as the current in-force licensing instrument**: BPK
+    registry `peraturan.bpk.go.id/Details/319773` ("Mencabut: PP No. 5 Tahun 2021"), GLM-live-checked
+    2026-07-19 during the CHATKB `company-kbli-signed-lots` 3-seat review. Supersedes any lingering
+    "PP 28/2019" reference — the correct current-instrument citation for this corner.
 
 ## 3. ARTIFACTS & ACCESS (verified paths — check before use, cf. anti-hallucination)
 
@@ -241,9 +406,15 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
    of TEXT, never of DIGITS.
 6. **Consumer-map before scoping any data fix**: canonical → mouth `/kbli/<code>` SSR · **gold →
    same pages, and gold WINS over intel_2026** · KG/Qdrant → WA/webchat via `inspect_kbli` ·
-   intel_2026/editorial → baked prose · native `kbli-navigator` desktop app (M5/Pro/Mini) reads the
-   canonical too · NB sources. Fix the class across ALL consumers or explicitly park the rest;
-   "merged" ≠ "live" ≠ "every surface".
+   **`kbli_documents` (Postgres) → `chat_kbli` LLM context via
+   `_fetch_parent_documents_from_kbli_table()` + direct 5-digit lookup
+   (`apps/backend-rag/backend/app/routers/kbli_notebook_chat.py:635,699`) — the 4th surface,
+   cured for the 73 quarantined rows by `kbli_documents_cure.py` (#2796, 2026-07-19), whole-table
+   builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
+   app (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
+   `data/kbli-2025.json` fork (stale, cure in flight) AND its own `lib/kbli-gold-content.ts`
+   override layer (OPEN, task #19) · NB sources. Fix the class across ALL consumers or explicitly
+   park the rest; "merged" ≠ "live" ≠ "every surface".
 7. **Derived layers need invalidation**: after correcting any source fact, list which derived fields
    (gold whatYouNeed, editorial, l4_bali reason, KG properties, NB) were generated FROM it and
    schedule them; guards on markers won't catch baked prose.
@@ -307,6 +478,11 @@ Each batch pins a vault-manifest revision; per-code lease `agent_lock:kbli-dossi
 
 Processed in taxonomy order. Sampling = ISO-2859-spirit AQL (start tightened, loosen only on a
 clean run of batches), NOT naive 10%/min-12 (red-team F6). No throughput promises before measurement.
+
+**Batch B design SIGNED 2026-07-19** (REV-4b, `research/operations/2026-07-19-kbli-batch-b-design.md`,
+#2801 merged) — pre-registration determinism gate closed after 4 Codex xhigh rounds + Gemini; OPEN
+gates before any lot: Phase-0 parser build + Zero's Legge-5 ratifications (AQL default, Tier-4
+volume). See LIVE STATE.
 
 ### The four phases (methodology doc §rollout)
 

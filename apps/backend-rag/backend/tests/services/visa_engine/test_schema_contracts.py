@@ -402,7 +402,7 @@ class TestSchemaExportInvariants:
         schemas = SE.build_schemas()
         condition_schema = schemas["condition.schema.json"]
         rendered = str(condition_schema)
-        for op in ConditionOperator:
+        for op in list(ConditionOperator):
             assert op.value in rendered, f"operator {op.value!r} missing from exported schema"
 
     def test_export_schemas_writes_files_to_disk(self, tmp_path: Path) -> None:
@@ -437,13 +437,13 @@ class TestSchemaExportInvariants:
     def test_decision_state_present_in_contract(self) -> None:
         schemas = SE.build_schemas()
         rendered = str(schemas["contract.schema.json"])
-        for state in DecisionState:
+        for state in list(DecisionState):
             assert state.value in rendered
 
     def test_unknown_reason_present_in_contract(self) -> None:
         schemas = SE.build_schemas()
         rendered = str(schemas["contract.schema.json"])
-        for reason in UnknownReason:
+        for reason in list(UnknownReason):
             assert reason.value in rendered
 
 
@@ -1611,3 +1611,39 @@ class TestIsoDatePatternAsciiOnly:
         assert Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
             "2026-07-17"
         ) is True
+
+
+class TestIntegerParityDivergencePinned:
+    """PR1b item 5 (residual, twin-race adjudication 2026-07-19): JSON Schema
+    2020-12 ``"type": "integer"`` is defined as "a number with a zero
+    fractional part" — it accepts the float ``2.0`` as a valid integer
+    instance. Pydantic's ``strict=True`` int fields (used throughout this
+    engine, see ``Rule.priority`` / ``PriceQuote.amount``) reject ANY float,
+    including whole-valued ones like ``2.0`` — Python's ``bool``-is-``int``
+    strict-mode carve-out aside, there is no way to express "reject
+    whole-valued floats" in pure JSON Schema 2020-12; ``multipleOf``/
+    ``type: integer`` both accept 2.0 as-is.
+
+    This is a genuine, permanent, inexpressible-in-JSON-Schema divergence
+    between the exported contract and the Pydantic model that produced it
+    -- not a bug to fix. These two tests pin BOTH directions so the
+    divergence stays visible and intentional (a regression in either
+    direction — the schema starting to reject 2.0, or the model starting to
+    accept it — would silently erase the documented gap this class exists
+    to guard).
+    """
+
+    def test_exported_schema_accepts_float_valued_integer_for_priority(self) -> None:
+        contract = SE.build_schemas()["contract.schema.json"]
+        priority_schema = contract["$defs"]["Rule"]["properties"]["priority"]
+        assert priority_schema["type"] == "integer"
+        validator = Draft202012Validator(priority_schema)
+        assert validator.is_valid(2.0) is True
+
+    def test_model_rejects_the_same_float_valued_integer_for_priority(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["priority"] = 2.0
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
