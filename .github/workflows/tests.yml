@@ -106,15 +106,16 @@ jobs:
           # before handing the file to pip-audit, same rationale as before.
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
+          # NO --require-hashes (corrected premise, 2026-07-21): uv deliberately
+          # leaves torch's nvidia/cuda transitive subtree UNPINNED in the lock
+          # (resolved at install time — see the install step's comment), so in
+          # hash mode pip fails the closure on cuda-toolkit/cuda-bindings/… no
+          # matter what we pin ad-hoc. Version pins (==) still prevent the
+          # re-resolution drift this step was designed to kill: pip installs
+          # exactly the locked versions, and the unpinned cuda family resolves
+          # the same way the install step just resolved it.
           grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit.txt
-          # cuda-toolkit is an un-pinned transitive dep that uv resolves at
-          # install time (see the install step above) — pip still pulls it into
-          # the audit closure and --require-hashes then demands a hash for it
-          # (seen failing live 2026-07-21). Pin it explicitly with the observed
-          # archive hash so the audit stays hash-pinned without touching the
-          # uv-managed lockfile.
-          echo 'cuda-toolkit==13.0.3 --hash=sha256:d693caaa261214ddd7dbb60d68e71cbed884e68c2be7509778f3051da0b91c3f' >> /tmp/requirements-audit.txt
-          pip-audit --strict --require-hashes --requirement /tmp/requirements-audit.txt \
+          pip-audit --strict --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855 \
             --ignore-vuln PYSEC-2025-217 \
             --ignore-vuln CVE-2025-62800 \
