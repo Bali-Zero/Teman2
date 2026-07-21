@@ -1,3 +1,9 @@
+---
+date: 2026-07-21
+domain: visa+property
+adversarial_review: exempt-corrections-index
+---
+
 # Curated-QA corrections — 2026-07-21 (ready to apply, NOT yet applied)
 
 Drafted after independently verifying 8 disputed team-review corrections
