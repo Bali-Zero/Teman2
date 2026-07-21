@@ -313,15 +313,17 @@ class TestAuthorizeDecisions:
 
 class TestSensitiveToolTourniquet:
     """
-    Public CRM/PII exposure tourniquet: crm_query/timesheet must be denied
-    for agent_role=None (blog/ask, WA-unknown), even though every OTHER
-    tool keeps the legacy passthrough. See memory
+    Public CRM/PII exposure tourniquet: crm_query/timesheet/team_knowledge
+    must be denied for agent_role=None (blog/ask, WA-unknown), even though
+    every OTHER tool keeps the legacy passthrough. See memory
     `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
+    `team_knowledge` was added in round 2 after the round-1 diff's Codex
+    red-team caught it (empty search_term dumps all 19 staff records).
     """
 
     def test_sensitive_tools_frozenset_exact_values(self) -> None:
         """Guard the exact-match contract — no substring surprises later."""
-        assert SENSITIVE_TOOLS == frozenset({"crm_query", "timesheet"})
+        assert SENSITIVE_TOOLS == frozenset({"crm_query", "timesheet", "team_knowledge"})
 
     # ── GUILT: no-principal caller must be denied ──────────────────────
 
@@ -356,6 +358,22 @@ class TestSensitiveToolTourniquet:
         assert "authenticated" in r.reason.lower()
 
     @pytest.mark.asyncio
+    async def test_team_knowledge_denied_for_no_principal(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Round 2: team_knowledge's search branch dumps whole records for an
+        empty search_term — a no-principal caller must never reach it."""
+        r = await authorizer.authorize(
+            user_email=None,
+            agent_role=None,
+            tool_name="team_knowledge",
+            args={"query_type": "search_by_name"},
+        )
+        assert r.is_denied
+        assert "authenticated" in r.reason.lower()
+
+    @pytest.mark.asyncio
     async def test_sensitive_deny_audited(self, authorizer: ToolAuthorizer, caplog) -> None:
         """The new deny path must still leave a trace in the audit log."""
         with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
@@ -380,7 +398,7 @@ class TestSensitiveToolTourniquet:
         authorizer: ToolAuthorizer,
     ) -> None:
         """Blog/marketing flows must not regress — only SENSITIVE_TOOLS are gated."""
-        for tool in ("vector_search", "pricing", "team_knowledge", "web_search"):
+        for tool in ("vector_search", "pricing", "knowledge_graph", "web_search"):
             r = await authorizer.authorize(
                 user_email=None,
                 agent_role=None,
@@ -416,6 +434,20 @@ class TestSensitiveToolTourniquet:
             agent_role=ROLE_VISA_SPECIALIST,
             tool_name="timesheet",
             args={"action": "clock_in", "email": "damar@balizero.com"},
+        )
+        assert r.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_team_knowledge_allowed_for_authenticated_staff(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """visa_specialist has team_knowledge in allowed_read_tools — must still work."""
+        r = await authorizer.authorize(
+            user_email="damar@balizero.com",
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="team_knowledge",
+            args={"query_type": "list_all"},
         )
         assert r.is_allowed
 

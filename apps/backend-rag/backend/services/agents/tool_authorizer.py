@@ -70,11 +70,17 @@ logger = logging.getLogger(__name__)
 # memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`).
 # The module docstring's "zero CRM tools" claim stopped being true once
 # `create_agentic_rag` (agentic/__init__.py) registered CRMTool (name
-# "crm_query") and TimeSheetTool (name "timesheet") into the shared tool
-# list — both then rode the blanket no-principal passthrough below. Exact
-# `.name` values verified against tools.py (CRMTool ~1009, TimeSheetTool
-# ~919); exact match only, never substring (cicatrix-superscar #3).
-SENSITIVE_TOOLS = frozenset({"crm_query", "timesheet"})
+# "crm_query"), TimeSheetTool (name "timesheet"), and TeamKnowledgeTool
+# (name "team_knowledge") into the shared tool list — all three then rode
+# the blanket no-principal passthrough below. Exact `.name` values verified
+# against tools.py (CRMTool ~1009, TimeSheetTool ~919, TeamKnowledgeTool
+# ~530); exact match only, never substring (cicatrix-superscar #3).
+# `team_knowledge` added round-2 (Codex red-team on the round-1 diff): its
+# search branch does `search_term in json.dumps(record).lower()` — an empty
+# search_term (the schema default) matches every record, dumping all staff
+# PII (email/pin/religion/notes/...) for 19 team members to any no-principal
+# caller (blog/ask, WA-unknown).
+SENSITIVE_TOOLS = frozenset({"crm_query", "timesheet", "team_knowledge"})
 
 
 def _truncate(value: Any, max_len: int = 40) -> str:

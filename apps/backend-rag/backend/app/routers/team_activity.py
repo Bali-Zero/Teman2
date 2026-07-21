@@ -134,26 +134,49 @@ async def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
-def _enforce_self_or_admin(current_user: dict, requested_email: str) -> None:
+def _resolve_actor_identity(
+    current_user: dict,
+    requested_user_id: str,
+    requested_email: str,
+) -> tuple[str, str]:
     """
-    Clock-in/out identity gate (tourniquet, 2026-07-21).
+    Resolve the (user_id, email) pair a team-member endpoint acts on
+    (tourniquet, 2026-07-21 — round 2, Codex red-team on the round-1 diff).
 
-    Admins may act on behalf of any team member (unchanged precedent).
-    Everyone else may only clock themselves — the body's email must match
-    the authenticated principal's email exactly (case-insensitive). No
-    silent rewrite: a mismatch is a 403, not a fallback to the token's
-    identity, so a caller relying on impersonation fails loudly instead of
-    quietly clocking the wrong person in/out.
+    Round 1 only compared `request.email` against the token. That missed
+    that `team_timesheet_service` keys every row — the INSERT and the
+    "already clocked in" lookup — on `user_id`, which round 1 still took
+    verbatim from the body. A non-admin could send their own (token-
+    matching) email with a VICTIM's user_id and clock the victim in/out
+    under their own attendance record.
+
+    Fix: for non-admin callers, identity is ALWAYS the authenticated
+    principal's own (user_id, email) — the caller-supplied values are
+    ignored outright, not validated-then-trusted, so there is no mismatch
+    check left to defeat. Admins keep acting on behalf of another team
+    member (existing `is_crm_admin` precedent).
+
+    `current_user["user_id"]` comes from `get_current_user()`, which for
+    the live kita cookie-auth path resolves to `HybridAuthMiddleware`'s
+    `request.state.user["id"]` = the JWT `sub` claim = `str(user["id"])` —
+    verified to equal the same value the kita frontend independently sends
+    as `userProfile.id` in the request body, so this never breaks a
+    legitimate caller's own clock-in/out/status.
     """
     if verify_admin(current_user):
-        return
+        return requested_user_id, requested_email
 
-    token_email = (current_user.get("email") or "").strip().lower()
-    if not token_email or requested_email.strip().lower() != token_email:
-        raise HTTPException(
-            status_code=403,
-            detail="You may only clock yourself in/out.",
+    own_user_id = str(current_user.get("user_id") or current_user.get("email") or "")
+    own_email = str(current_user.get("email") or "")
+    if requested_user_id != own_user_id or requested_email.strip().lower() != own_email.strip().lower():
+        logger.warning(
+            "team_activity identity override: non-admin %s requested identity (user_id=%s, "
+            "email=%s) — using own principal identity instead",
+            own_email,
+            requested_user_id,
+            requested_email,
         )
+    return own_user_id, own_email
 
 
 # ============================================================================
@@ -177,15 +200,17 @@ async def clock_in(
     this endpoint previously had no `Depends`, trusting user_id/email from
     the request body — anyone could clock any team member in/out with a
     bare unauthenticated POST. Now requires a valid session (401 if
-    missing/invalid). Non-admin callers may only clock THEMSELVES in: the
-    body's email must match the authenticated principal's, or the request
-    is rejected outright (never silently rewritten — a caller relying on
-    impersonation should fail loudly). Admins keep the ability to act on
+    missing/invalid). Non-admin callers ALWAYS clock themselves in — the
+    body's identity is ignored, not merely validated, per
+    `_resolve_actor_identity` (round 2: round 1's email-only check still
+    let user_id through unverified). Admins keep the ability to act on
     behalf of another team member (existing `is_crm_admin` precedent, see
     `get_admin_user` above) — the only live caller (kita app) always sends
     the logged-in user's own profile, so this does not change that path.
     """
-    _enforce_self_or_admin(current_user, request.email)
+    actor_user_id, actor_email = _resolve_actor_identity(
+        current_user, request.user_id, request.email
+    )
 
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
@@ -195,8 +220,8 @@ async def clock_in(
 
     try:
         result = await service.clock_in(
-            user_id=request.user_id,
-            email=request.email,
+            user_id=actor_user_id,
+            email=actor_email,
             metadata=request.metadata,
         )
         return ClockResponse(**result)
@@ -219,7 +244,9 @@ async def clock_out(
     SECURITY (tourniquet, 2026-07-21): same identity gate as `clock_in`
     above — see that docstring for the full rationale.
     """
-    _enforce_self_or_admin(current_user, request.email)
+    actor_user_id, actor_email = _resolve_actor_identity(
+        current_user, request.user_id, request.email
+    )
 
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
@@ -229,8 +256,8 @@ async def clock_out(
 
     try:
         result = await service.clock_out(
-            user_id=request.user_id,
-            email=request.email,
+            user_id=actor_user_id,
+            email=actor_email,
             metadata=request.metadata,
         )
         return ClockResponse(**result)
@@ -240,7 +267,10 @@ async def clock_out(
 
 
 @router.get("/my-status", response_model=UserStatusResponse)
-async def get_my_status(user_id: str = Query(..., description="User ID")) -> UserStatusResponse:
+async def get_my_status(
+    user_id: str = Query(..., description="User ID"),
+    current_user: dict = Depends(get_current_user),
+) -> UserStatusResponse:
     """
     Get my current work status
 
@@ -248,7 +278,17 @@ async def get_my_status(user_id: str = Query(..., description="User ID")) -> Use
     - Current online/offline status
     - Today's hours worked
     - This week's summary
+
+    SECURITY (tourniquet round-2, 2026-07-21 — class-audit sibling of
+    clock-in/out, same PII exposure class): this endpoint previously took
+    `user_id` from an unauthenticated query param — anyone could read
+    anyone's online status / hours by enumerating user_id. Same identity
+    rule as clock-in/out: non-admin always gets THEIR OWN status
+    (`_resolve_actor_identity` ignores the query value); admin can still
+    query anyone.
     """
+    resolved_user_id, _ = _resolve_actor_identity(current_user, user_id, "")
+
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
@@ -256,7 +296,7 @@ async def get_my_status(user_id: str = Query(..., description="User ID")) -> Use
         raise HTTPException(status_code=503, detail="Timesheet service unavailable")
 
     try:
-        status = await service.get_my_status(user_id)
+        status = await service.get_my_status(resolved_user_id)
         return UserStatusResponse(**status)
     except Exception as e:
         logger.error("❌ Get status failed: %s", e)
