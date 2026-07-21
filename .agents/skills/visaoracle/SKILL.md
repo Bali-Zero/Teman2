@@ -264,6 +264,10 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (one pre-existing executor-role skip). **No PR, merge, deploy, secret change, SHADOW activation, or
   ENFORCE activation performed.** Receipt:
   `research/visa/2026-07-21-shadow-evidence-collection.md`.
+- 2026-07-22 (Pro, SHADOW evidence lane): Kimi review follow-up adds direct G-c,
+  collector, CLI, and legacy fail-closed coverage; `duplicate_evaluations` now counts only
+  repeated valid 32-byte fingerprints. The focused local-test-DB suite is green (57 tests;
+  SHADOW evidence module 85.30% branch coverage). **L3/L4 remain deferred; ENFORCE remains OFF.**
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

@@ -110,6 +110,7 @@ def evaluate_shadow_evidence(
 
     window_duration = window_end.astimezone(timezone.utc) - window_start.astimezone(timezone.utc)
     fingerprints: set[bytes] = set()
+    valid_fingerprint_evaluations = 0
     categories: Counter[str] = Counter()
     candidate_codes: set[str] = set()
     active_days: set[date] = set()
@@ -157,6 +158,7 @@ def evaluate_shadow_evidence(
         elif isinstance(fingerprint, bytearray):
             fingerprint = bytes(fingerprint)
         if isinstance(fingerprint, bytes) and len(fingerprint) == 32:
+            valid_fingerprint_evaluations += 1
             fingerprints.add(fingerprint)
         else:
             missing_request_fingerprints += 1
@@ -315,7 +317,7 @@ def evaluate_shadow_evidence(
         minimum_window_duration_hours=MIN_CONSECUTIVE_DAYS * 24,
         distinct_requests=len(fingerprints),
         minimum_distinct_requests=MIN_DISTINCT_REQUESTS,
-        duplicate_evaluations=max(0, len(rows) - len(fingerprints)),
+        duplicate_evaluations=valid_fingerprint_evaluations - len(fingerprints),
         active_utc_days=len(active_days),
         longest_consecutive_utc_day_streak=longest_streak,
         minimum_consecutive_days=MIN_CONSECUTIVE_DAYS,
