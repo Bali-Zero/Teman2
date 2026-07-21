@@ -1,0 +1,63 @@
+name: token-lint
+
+# WS1 token-SSOT gate: blocks NEW hardcoded brand hex colors from entering the
+# redesigned route groups — apps/mouth/src/app/(workspace)/** and
+# apps/mouth/src/app/portal/** (exactly the groups verified to exist on disk;
+# see SCOPED_PREFIXES in scripts/token_lint.py). Only ADDED lines in the PR diff
+# are judged (`git diff --unified=0 base...HEAD`): the ~600 legacy hexes
+# repo-wide are NOT flagged — this gate stops new ones. Deterministic,
+# stdlib-only scanner — see scripts/token_lint.py for the full contract and
+# scripts/tests/test_token_lint.py for its guilt+innocence proof
+# (cicatrix-superscar.md #3). Fail-closed: a scanner error exits 2 and blocks.
+#
+# env-var indirection (BASE_REF in `env:`, never inline into `run:`) per
+# workflow-injection hygiene — the PR base-ref name never gets shell-expanded
+# directly into a command string (mirrors adversarial-review-gate.yml).
+#
+# NO `paths:` filter, deliberately: this check is meant to be REQUIRED on main
+# branch protection. A path-filtered required check never reports on PRs
+# outside its paths, which leaves them stuck at "Expected — waiting for status"
+# forever (same reasoning as adversarial-review-gate.yml / actionlint.yml). The
+# scanner already handles the no-scoped-changes case (exit 0, clean) in ~5s,
+# so running on every PR blocks nothing innocent.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: token-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: token-lint — no new hardcoded brand hex in redesigned surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the PR base ref is resolvable for the diff
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Fetch base ref
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # NO --depth=1 here: a shallow fetch re-points origin/<base> to a tip with
+        # severed history, so if base advanced between checkout and this step the
+        # merge-base with HEAD is unreachable -> "fatal: no merge base" (seen live
+        # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
+        run: git fetch origin "$BASE_REF" || true
+
+      - name: token-lint — scan added lines for hardcoded hex colors
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # Exit 0 clean / exit 1 violations (one `path:line: #hex — ...` line
+        # each + summary, printed by the script) / exit 2 scanner error
+        # (fail-closed). All three are non-zero-but-honest CI signals.
+        run: python scripts/token_lint.py --base "origin/${BASE_REF}"
