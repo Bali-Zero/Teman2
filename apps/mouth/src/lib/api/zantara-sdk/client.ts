@@ -267,10 +267,13 @@ export class ZantaraSDK {
   }
 
   async acknowledgeAlert(alertId: string): Promise<{ success: boolean }> {
+    // Backend exposes POST /api/compliance/alerts/{id}/outcome (there is no
+    // /acknowledge route — the old path 404'd).
     return this.request<{ success: boolean }>(
-      `/api/compliance/alerts/${alertId}/acknowledge`,
+      `/api/compliance/alerts/${alertId}/outcome`,
       {
         method: "POST",
+        body: JSON.stringify({ outcome: "acknowledged" }),
       },
     );
   }

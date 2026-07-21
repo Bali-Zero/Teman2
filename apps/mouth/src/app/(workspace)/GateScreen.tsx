@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { GateStatus } from "@/lib/api";
+import type { ComplianceAlertItem, GateStatus } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 
@@ -17,10 +17,11 @@ import { logger } from "@/lib/logger";
  * Spec: research/operations/2026-06-06-intake-login-gate-spec.md §3, §5, §11.
  * Binding fixes folded in: F6 (admin override), F8 (high-volume affordance).
  *
- * NOTE on routing targets: the frontend has no dedicated intake-review or
- * compliance-alerts surfaces yet, so Documents deep-links to /process and
- * Deadlines deep-links to /clients. On return, the layout's per-route gate
- * re-fetch (F5) refreshes the counts. See the TODO(gate) markers below.
+ * NOTE on clearing paths: Late note and Deadlines are cleared INLINE on this
+ * screen (late-reason form; per-alert Acknowledge buttons). Documents deep-
+ * links to /review — the ONE workspace route the layout leaves reachable
+ * while blocked. Anything else would loop back into this wall (the original
+ * /process and /clients deep-link bugs).
  */
 
 interface GateScreenProps {
@@ -35,6 +36,191 @@ interface GateScreenProps {
 
 /** Threshold above which the gate surfaces a "request help" affordance (F8). */
 const HIGH_VOLUME_THRESHOLD = 15;
+
+/**
+ * Mirror of the backend gate horizon (gate_evaluator.DEADLINE_HORIZON_DAYS):
+ * only alerts with deadline <= today + N days block the gate, so only those
+ * are listed for inline acknowledge.
+ */
+const DEADLINE_HORIZON_DAYS = 7;
+
+/**
+ * Inline clearable list for the Deadlines section. Fetches the user's
+ * pending/sent compliance alerts (auto-scoped server-side to their assigned
+ * clients), keeps only those inside the gate horizon, and acknowledges them
+ * one by one via POST /api/compliance/alerts/{id}/outcome — the route is on
+ * the gate-enforcement allowlist, so it works while blocked.
+ */
+function GateDeadlinesList({
+  count,
+  asOf,
+  onAcknowledged,
+}: {
+  /** Gate-probe count — used to (re)load and as a sanity cross-check. */
+  count: number;
+  /** Probe timestamp — changes on every refresh, triggering a reload. */
+  asOf: string;
+  /** Called after each successful acknowledge so the layout re-probes. */
+  onAcknowledged: () => Promise<void>;
+}) {
+  const { success, error: toastError } = useToast();
+  const [alerts, setAlerts] = useState<ComplianceAlertItem[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [ackInFlight, setAckInFlight] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (count <= 0) return;
+    let cancelled = false;
+    setLoadFailed(false);
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + DEADLINE_HORIZON_DAYS);
+    (async () => {
+      try {
+        const [pending, sent] = await Promise.all([
+          api.listMyComplianceAlerts({ status: "pending" }),
+          api.listMyComplianceAlerts({ status: "sent" }),
+        ]);
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const items = [...pending.items, ...sent.items]
+          .filter((a) => {
+            if (seen.has(a.alert_id)) return false;
+            seen.add(a.alert_id);
+            // Mirror the gate: deadline <= today + horizon (overdue included).
+            return new Date(a.deadline) <= horizon;
+          })
+          .sort((a, b) => a.deadline.localeCompare(b.deadline));
+        setAlerts(items);
+      } catch (err) {
+        if (cancelled) return;
+        logger.error(
+          "Failed to load deadline alerts",
+          { component: "GateScreen", action: "listDeadlines" },
+          err instanceof Error ? err : new Error(String(err)),
+        );
+        setLoadFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [count, asOf]);
+
+  const handleAck = async (alertId: string) => {
+    setAckInFlight(alertId);
+    try {
+      await api.acknowledgeComplianceAlert(alertId);
+      setAlerts((prev) =>
+        prev ? prev.filter((a) => a.alert_id !== alertId) : prev,
+      );
+      success("Deadline acknowledged");
+      await onAcknowledged();
+    } catch (err) {
+      logger.error(
+        "Failed to acknowledge deadline alert",
+        { component: "GateScreen", action: "ackDeadline" },
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      toastError(
+        "Could not acknowledge",
+        "Please try again. If it persists, contact an admin.",
+      );
+    } finally {
+      setAckInFlight(null);
+    }
+  };
+
+  if (loadFailed) {
+    return (
+      <p className="text-sm" style={{ color: "var(--bz-text-3)" }} role="alert">
+        Could not load the deadlines list — use “Refresh status” below to retry.
+      </p>
+    );
+  }
+
+  if (alerts === null) {
+    return (
+      <p className="text-sm" style={{ color: "var(--bz-text-3)" }}>
+        Loading deadlines…
+      </p>
+    );
+  }
+
+  if (alerts.length === 0) {
+    // Count probe and list disagree (e.g. alerts just acknowledged elsewhere)
+    // — a Refresh will reconcile the gate.
+    return (
+      <p className="text-sm" style={{ color: "var(--bz-text-3)" }}>
+        No actionable deadlines found — press “Refresh status” below.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2">
+      {alerts.map((alert) => {
+        const overdue = alert.days_until < 0;
+        const message =
+          alert.message_en || alert.message_it || alert.message_id || "";
+        return (
+          <li
+            key={alert.alert_id}
+            className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+            style={{
+              borderColor: "var(--bz-border)",
+              background: "var(--bz-surface)",
+            }}
+          >
+            <div className="flex flex-col gap-0.5">
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--bz-text-1)" }}
+              >
+                <span
+                  className="mr-2 inline-block rounded px-1.5 py-0.5 text-xs font-semibold uppercase"
+                  style={{
+                    background:
+                      alert.severity === "critical" || overdue
+                        ? "var(--bz-error, #b0433a)"
+                        : "var(--bz-warning, #b58a2a)",
+                    color: "var(--bz-base)",
+                  }}
+                >
+                  {overdue
+                    ? `overdue ${Math.abs(alert.days_until)}d`
+                    : `${alert.days_until}d left`}
+                </span>
+                {alert.category.replace(/_/g, " ")}
+              </p>
+              {message && (
+                <p className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+                  {message}
+                </p>
+              )}
+              <p className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+                Deadline: {new Date(alert.deadline).toLocaleDateString()}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleAck(alert.alert_id)}
+              disabled={ackInFlight !== null}
+              className="self-start rounded-md px-3 py-1.5 text-sm font-medium transition-opacity disabled:opacity-50 sm:self-center"
+              style={{
+                background: "var(--bz-accent)",
+                color: "var(--bz-base)",
+              }}
+            >
+              {ackInFlight === alert.alert_id
+                ? "Acknowledging…"
+                : "Acknowledge"}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export default function GateScreen({
   status,
@@ -280,21 +466,14 @@ export default function GateScreen({
                 {deadlines.count === 1 ? "" : "s"} within 7 days need
                 acknowledging.
               </p>
-              {/* TODO(gate): dedicated compliance-alerts route — deep-link to /clients for v1.
-                  Per-alert acknowledge needs the alert ids, which the count probe does not
-                  return, so v1 deep-links to where they can be acknowledged, then re-fetches. */}
-              <button
-                type="button"
-                onClick={() => router.push("/clients")}
-                className="self-start rounded-md border px-4 py-2 text-sm font-medium"
-                style={{
-                  borderColor: "var(--bz-border)",
-                  background: "var(--bz-surface)",
-                  color: "var(--bz-text-1)",
-                }}
-              >
-                Review deadlines →
-              </button>
+              {/* Cleared inline: per-alert Acknowledge buttons (the /clients
+                  deep-link looped back into this wall — the layout intercepts
+                  every route except /review while blocked). */}
+              <GateDeadlinesList
+                count={deadlines.count}
+                asOf={status.as_of}
+                onAcknowledged={onRefresh}
+              />
             </div>
           ) : (
             <p

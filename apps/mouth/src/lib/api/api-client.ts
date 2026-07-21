@@ -62,6 +62,27 @@ export interface GateStatus {
 }
 
 /**
+ * A compliance deadline alert as returned by GET /api/compliance/alerts.
+ * Team members are auto-scoped server-side to alerts on clients assigned to
+ * them (clients.assigned_to = their email). Fields mirror migration 114.
+ */
+export interface ComplianceAlertItem {
+  alert_id: string;
+  client_id: number;
+  category: string;
+  severity: "info" | "warning" | "urgent" | "critical";
+  status: "pending" | "sent" | "acknowledged" | "resolved" | "expired";
+  /** ISO date (YYYY-MM-DD) of the statutory deadline */
+  deadline: string;
+  days_until: number;
+  message_it?: string | null;
+  message_en?: string | null;
+  message_id?: string | null;
+  suggested_action?: string | null;
+  estimated_cost_idr?: number | null;
+}
+
+/**
  * Unified API Client that composes all domain-specific API modules.
  * This maintains backward compatibility with the original ApiClient interface.
  */
@@ -200,6 +221,24 @@ export class ApiClient extends ApiClientBase {
     return this.post<{ success?: boolean; status?: string }>(
       `/api/compliance/alerts/${alertId}/outcome`,
       { outcome: "acknowledged", note },
+    );
+  }
+
+  /**
+   * List compliance deadline alerts visible to the current user (team members
+   * are auto-scoped server-side to their assigned clients). Used by the
+   * login-gate Deadlines section so it can be cleared inline. The backend
+   * `status` filter is single-valued — call once per status and merge.
+   */
+  async listMyComplianceAlerts(options?: {
+    status?: string;
+    limit?: number;
+  }): Promise<{ items: ComplianceAlertItem[] }> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    params.set("limit", String(options?.limit ?? 500));
+    return this.get<{ items: ComplianceAlertItem[] }>(
+      `/api/compliance/alerts?${params.toString()}`,
     );
   }
 
