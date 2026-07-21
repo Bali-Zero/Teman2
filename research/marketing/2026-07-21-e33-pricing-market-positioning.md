@@ -3,7 +3,7 @@ date: 2026-07-21
 domain: marketing
 client_case: none (internal strategy — E33 Second Home Residency service line)
 author: deep-researcher (multi-LLM: Opus 4.8 synthesis + Gemini 3.1 Pro + Kimi K3 + WebSearch/WebFetch)
-status: draft
+status: SUPERSEDED — pricing bands invalid; see 2026-07-21-e33-competitor-price-scan-indonesia.md (PR #2975)
 adversarial_review: kimi
 sources:
   - WebFetch flado.id/price + flado.id product pages (2026-07-21)
@@ -14,6 +14,8 @@ sources:
 disclaimer: No number here is client-facing or authorized. All figures are "market comparable" or "recommended band." Any price used with a client MUST route through Bali Zero PricingTool + explicit Zero sign-off.
 fx: USD conversions at ~IDR 16,400/USD (mid-2026)
 ---
+
+> ⚠️ **SUPERSEDED (2026-07-21).** This draft's **price bands are wrong**: they were anchored on the Malaysia MM2H / international HNW advisory market (USD 8.8–15.5k), which does not reflect the Indonesian E33 market. The verified Indonesian going rate is **IDR 35–45M all-in (~USD 2,130–2,740)** — see `2026-07-21-e33-competitor-price-scan-indonesia.md` (PR #2975), the **pricing SSOT**. What remains valid here is the **positioning narrative only** (white-space thesis, renewal-retainer gap, modular model as an idea). Do NOT quote any price band from this file.
 
 # E33 "Second Home Residency" — Pricing & Market Positioning Research
 
