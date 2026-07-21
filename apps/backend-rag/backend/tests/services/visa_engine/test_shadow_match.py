@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
@@ -211,7 +212,9 @@ class TestBuildShadowFacts:
 
 class TestShadowEvaluateMatchNoopPaths:
     async def test_no_active_pack_is_a_silent_noop(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        async def _fake_resolver(pool: object, *, environment: str, effective_at: datetime, observed_at: datetime):
+        async def _fake_resolver(
+            pool: object, *, environment: str, effective_at: datetime, observed_at: datetime
+        ):
             return None
 
         save_calls: list[object] = []
@@ -267,10 +270,23 @@ class TestShadowEvaluateMatchNoopPaths:
         pack = RulePack.model_validate(envelope)
         compiled = build_compiled_pack(pack)
 
-        async def _fake_resolver(pool: object, *, environment: str, effective_at: datetime, observed_at: datetime):
-            return shadow._PackBinding(id=uuid.uuid4(), environment="PRODUCTION", raw_envelope=envelope)
+        async def _fake_resolver(
+            pool: object, *, environment: str, effective_at: datetime, observed_at: datetime
+        ):
+            return shadow._PackBinding(
+                rule_pack_id=uuid.uuid4(),
+                ruleset_activation_id=uuid.uuid4(),
+                environment="PRODUCTION",
+                raw_envelope=envelope,
+            )
 
-        def _fake_verify(raw_envelope: object, *, trust_store: object, observed_at: datetime, allow_unsigned: bool = False):
+        def _fake_verify(
+            raw_envelope: object,
+            *,
+            trust_store: object,
+            observed_at: datetime,
+            allow_unsigned: bool = False,
+        ):
             return VerifiedRulePack(
                 pack=pack, canonical_payload=b"", payload_sha256=b"\x00" * 32, unsigned_dev=False
             )
@@ -346,10 +362,23 @@ class TestShadowEvaluateMatchNoopPaths:
         pack = RulePack.model_validate(envelope)
         compiled = build_compiled_pack(pack)
 
-        async def _fake_resolver(pool: object, *, environment: str, effective_at: datetime, observed_at: datetime):
-            return shadow._PackBinding(id=uuid.uuid4(), environment="PRODUCTION", raw_envelope=envelope)
+        async def _fake_resolver(
+            pool: object, *, environment: str, effective_at: datetime, observed_at: datetime
+        ):
+            return shadow._PackBinding(
+                rule_pack_id=uuid.uuid4(),
+                ruleset_activation_id=uuid.uuid4(),
+                environment="PRODUCTION",
+                raw_envelope=envelope,
+            )
 
-        def _fake_verify(raw_envelope: object, *, trust_store: object, observed_at: datetime, allow_unsigned: bool = False):
+        def _fake_verify(
+            raw_envelope: object,
+            *,
+            trust_store: object,
+            observed_at: datetime,
+            allow_unsigned: bool = False,
+        ):
             return VerifiedRulePack(
                 pack=pack, canonical_payload=b"", payload_sha256=b"\x00" * 32, unsigned_dev=False
             )
@@ -421,7 +450,8 @@ class TestMaybeSpawnShadowMatch:
             duration_months=1,
             match_hash="enabled-hash",
         )
-        assert spawned_names == ["shadow-match-enabled-hash"]
+        trace = hashlib.sha256(b"enabled-hash").hexdigest()[:12]
+        assert spawned_names == [f"shadow-match-{trace}"]
 
     def test_resolve_shadow_enabled_raising_never_propagates(
         self, monkeypatch: pytest.MonkeyPatch
@@ -468,12 +498,13 @@ class TestMaybeSpawnShadowMatch:
         # spawn WAS reached (the SHADOW gate opened) and its RuntimeError was
         # swallowed inside maybe_spawn; reaching this assertion proves it never
         # propagated into the request handler.
-        assert spawn_calls == ["shadow-match-boom-hash-2"]
+        trace = hashlib.sha256(b"boom-hash-2").hexdigest()[:12]
+        assert spawn_calls == [f"shadow-match-{trace}"]
 
 
 # ---------------------------------------------------------------------------
-# §5 — integration fixtures: layer migration 252 on top of conftest.py's own
-# db_pool/visa_schema (250+251+253). Defensively rolls back 252 first
+# §5 — integration fixtures: layer migrations 252+255 on conftest.py's own
+# db_pool/visa_schema (250+251+253+254). Defensively rolls back 252 first
 # (mirrors visa_schema's own rollback-then-forward convention) so this is
 # correct whether or not the shared test DB already carries 252 from a prior
 # full "apply-all" migration run — every statement in 252's rollback is
@@ -484,6 +515,7 @@ class TestMaybeSpawnShadowMatch:
 
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_252_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "252_visa_engine_write_substrate.sql"
+_MIGRATION_255_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "255_visa_shadow_evidence.sql"
 
 
 def _read_migration_252() -> tuple[str, str]:
@@ -493,14 +525,25 @@ def _read_migration_252() -> tuple[str, str]:
     return forward, rollback
 
 
+def _read_migration_255() -> tuple[str, str]:
+    sql = _MIGRATION_255_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 255 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
 @pytest_asyncio.fixture
 async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterator[None]:
     forward_252, rollback_252 = _read_migration_252()
+    forward_255, rollback_255 = _read_migration_255()
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_255)
         await conn.execute(rollback_252)
         await conn.execute(forward_252)
+        await conn.execute(forward_255)
     yield
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_255)
         await conn.execute(rollback_252)
 
 
@@ -557,7 +600,7 @@ async def test_resolve_active_pack_binding_finds_active_pack_and_none_otherwise(
         payload_sha256=_pack_hash(7),
         environment=_ENV,
     )
-    await repo.activate_rule_pack(
+    activation_id = await repo.activate_rule_pack(
         rule_pack_id=pack_id, activated_by="shadow-test", activation_reason="w6c-resolver-test"
     )
 
@@ -568,7 +611,8 @@ async def test_resolve_active_pack_binding_finds_active_pack_and_none_otherwise(
         db_pool, environment=_ENV, effective_at=effective_at, observed_at=observed_at
     )
     assert binding is not None
-    assert binding.id == pack_id
+    assert binding.rule_pack_id == pack_id
+    assert binding.ruleset_activation_id == activation_id
     assert binding.environment == _ENV
     assert binding.raw_envelope["payload_sha256"] == _pack_hash(7).hex()
     assert binding.raw_envelope["canonicalization"] == "RFC8785"
@@ -597,16 +641,28 @@ async def test_save_shadow_decision_inserts_one_row_and_dedupes_on_conflict(
     rule_pack_db_id = kwargs["id"]
     repo = VisaEngineRepository(db_pool)
     await repo.insert_rule_pack(**kwargs)
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=rule_pack_db_id,
+        activated_by="shadow-writer-test",
+        activation_reason="shadow-evidence-writer",
+    )
+    observed_at = datetime.now(timezone.utc) + timedelta(seconds=1)
 
     decision = evaluator.evaluate(
         persona.facts,
         compiled,
         effective_at=gold_loader.GOLD_EFFECTIVE_AT,
-        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=observed_at,
     )
 
     await shadow._save_shadow_decision(
-        db_pool, decision=decision, rule_pack_db_id=rule_pack_db_id, environment="TEST"
+        db_pool,
+        decision=decision,
+        rule_pack_db_id=rule_pack_db_id,
+        ruleset_activation_id=activation_id,
+        environment="TEST",
+        request_fingerprint=shadow._request_fingerprint("writer-hash"),
+        request_category=Purpose.OTHER,
     )
 
     async with db_pool.acquire() as conn:
@@ -619,14 +675,30 @@ async def test_save_shadow_decision_inserts_one_row_and_dedupes_on_conflict(
     assert row["engine_surface"] == "MATCH"
     assert row["verdict"] == decision.state.value
     assert row["rule_pack_id"] == rule_pack_db_id
-    assert row["ruleset_activation_id"] is None
+    assert row["ruleset_activation_id"] == activation_id
     assert row["engine_version"] == shadow.ENGINE_VERSION
     assert row["environment"] == "TEST"
+    assert row["request_fingerprint"] == hashlib.sha256(b"writer-hash").digest()
+    assert row["request_category"] == Purpose.OTHER.value
+    candidate_summary = json.loads(row["candidate_summary"])
+    grounding_summary = json.loads(row["grounding_summary"])
+    citations = json.loads(row["citations"])
+    assert isinstance(candidate_summary, list)
+    assert grounding_summary[0]["claim_kind"] == "VERDICT"
+    assert {item["source_record_id"] for item in citations} == set(
+        grounding_summary[0]["source_record_ids"]
+    )
 
     # Calling again with the SAME decision (same decision_id) is an
     # idempotent no-op — ON CONFLICT (decision_id) DO NOTHING.
     await shadow._save_shadow_decision(
-        db_pool, decision=decision, rule_pack_db_id=rule_pack_db_id, environment="TEST"
+        db_pool,
+        decision=decision,
+        rule_pack_db_id=rule_pack_db_id,
+        ruleset_activation_id=activation_id,
+        environment="TEST",
+        request_fingerprint=shadow._request_fingerprint("writer-hash"),
+        request_category=Purpose.OTHER,
     )
     async with db_pool.acquire() as conn:
         count = await conn.fetchval(
@@ -657,11 +729,29 @@ async def test_shadow_match_end_to_end_via_maybe_spawn_writes_one_row(
     rule_pack_db_id = kwargs["id"]
     repo = VisaEngineRepository(db_pool)
     await repo.insert_rule_pack(**kwargs)
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=rule_pack_db_id,
+        activated_by="shadow-flow-test",
+        activation_reason="shadow-evidence-flow",
+    )
 
-    async def _fake_resolver(pool: asyncpg.Pool, *, environment: str, effective_at: datetime, observed_at: datetime):
-        return shadow._PackBinding(id=rule_pack_db_id, environment="TEST", raw_envelope=raw)
+    async def _fake_resolver(
+        pool: asyncpg.Pool, *, environment: str, effective_at: datetime, observed_at: datetime
+    ):
+        return shadow._PackBinding(
+            rule_pack_id=rule_pack_db_id,
+            ruleset_activation_id=activation_id,
+            environment="TEST",
+            raw_envelope=raw,
+        )
 
-    def _fake_verify(raw_envelope: object, *, trust_store: object, observed_at: datetime, allow_unsigned: bool = False):
+    def _fake_verify(
+        raw_envelope: object,
+        *,
+        trust_store: object,
+        observed_at: datetime,
+        allow_unsigned: bool = False,
+    ):
         return VerifiedRulePack(
             pack=pack_model, canonical_payload=b"", payload_sha256=b"\x00" * 32, unsigned_dev=False
         )

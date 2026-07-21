@@ -9,20 +9,21 @@ visa_engine (``evaluator.evaluate``) against whatever rule pack is active
 for the resolved environment, writing exactly one ``visa_decisions`` row
 (migration 252's SHADOW-minimal write substrate). NEVER rendered to the
 caller, NEVER able to raise into the request/response path, NEVER logs raw
-applicant facts (nationality/purpose/duration) — only ``match_hash``,
-verdict, and candidate counts (SYMBIOSIS Law 2 / UU PDP PII boundary).
+applicant facts (nationality/purpose/duration) or the public ``match_hash``
+token — only a truncated SHA-256 trace, verdict, and candidate counts
+(SYMBIOSIS Law 2 / UU PDP PII boundary).
 
-PROD today is a no-op by construction (see the design doc's §5 "Honest
-limitations"): no rule pack is activated for PRODUCTION yet, and even once
-one is, the default placeholder identity provider fail-closes on any
-non-TEST environment (``evaluator.PlaceholderIdentityNotAllowedError`` —
-STEP-6d ships the real crypto-backed identity provider). SHADOW rows land
-for real only against a TEST-environment activated pack in the meantime;
-the plumbing is exercised end-to-end by this module's own tests.
+PROD remains a no-op until all runtime prerequisites are present together:
+an active signed PRODUCTION pack, trust-store keys, a PRODUCTION facts-
+fingerprint key, and ``VISA_ENGINE_MATCH_MODE=SHADOW``. Missing identity
+material fail-closes through ``PlaceholderIdentityNotAllowedError`` /
+``FactsFingerprintKeyUnavailableError``. The plumbing is exercised end-to-
+end by this module's own tests without arming any production flag.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -324,10 +325,10 @@ def _b64url_nopad_encode(raw: bytes) -> str:
 
 @dataclass(frozen=True, slots=True)
 class _PackBinding:
-    """The DB primary key + environment + raw wire envelope for the single
-    active rule pack resolved by ``_resolve_active_pack_binding``."""
+    """The selected pack/activation identities and signed wire envelope."""
 
-    id: uuid.UUID
+    rule_pack_id: uuid.UUID
+    ruleset_activation_id: uuid.UUID
     environment: str
     raw_envelope: dict[str, JsonValue]
 
@@ -355,7 +356,8 @@ async def _resolve_active_pack_binding(
         row = await conn.fetchrow(
             """
             SELECT
-                p.id,
+                p.id AS rule_pack_id,
+                a.id AS ruleset_activation_id,
                 p.environment,
                 p.protected_header,
                 p.payload,
@@ -381,7 +383,8 @@ async def _resolve_active_pack_binding(
         return None
 
     return _PackBinding(
-        id=row["id"],
+        rule_pack_id=row["rule_pack_id"],
+        ruleset_activation_id=row["ruleset_activation_id"],
         environment=row["environment"],
         raw_envelope={
             "canonicalization": "RFC8785",
@@ -393,21 +396,95 @@ async def _resolve_active_pack_binding(
     )
 
 
-def _collect_citations(decision: Decision) -> list[dict[str, str]]:
-    """Flatten ``decision.candidates[].source_refs`` into the
-    ``visa_decisions.citations`` JSONB array shape (migration 252's own
-    "element shape is application-layer's choice" — a bare
-    ``{"source_record_id": "<uuid>"}`` object per distinct source),
-    preserving first-seen order and de-duplicating."""
+def _request_fingerprint(match_hash: str) -> bytes:
+    """Return a non-reversible request correlator; never persist the token."""
 
-    seen: set[uuid.UUID] = set()
-    citations: list[dict[str, str]] = []
+    return hashlib.sha256(match_hash.encode("utf-8")).digest()
+
+
+def _request_trace(match_hash: str) -> str:
+    """Short, non-reversible correlation value safe for operational logs."""
+
+    return _request_fingerprint(match_hash).hex()[:12]
+
+
+def _build_candidate_summary(decision: Decision) -> list[dict[str, JsonValue]]:
+    """Build the PII-free product breadth projection used by gate G-a."""
+
+    return [
+        {
+            "rank": candidate.rank,
+            "product_version_id": str(candidate.product_version_id),
+            "product_code": str(candidate.product_code),
+            "support_rule_ids": [str(rule_id) for rule_id in candidate.support_rule_ids],
+            "source_record_ids": [str(ref) for ref in candidate.source_refs],
+            "reason_codes": [str(code) for code in candidate.reason_codes],
+        }
+        for candidate in decision.candidates
+    ]
+
+
+def _build_grounding_summary(decision: Decision) -> list[dict[str, JsonValue]]:
+    """Map every persisted verdict/claim to source-record identifiers.
+
+    The top-level VERDICT claim is deliberate: a NEEDS_INPUT/abstention row
+    with no grounded reason remains visible as a G-c failure instead of being
+    silently treated as "no claims".
+    """
+
+    claims: list[dict[str, JsonValue]] = []
+    verdict_refs: list[uuid.UUID] = []
+    seen_verdict_refs: set[uuid.UUID] = set()
+
+    def add_claim(kind: str, code: str, refs: tuple[uuid.UUID, ...]) -> None:
+        for ref in refs:
+            if ref not in seen_verdict_refs:
+                seen_verdict_refs.add(ref)
+                verdict_refs.append(ref)
+        claims.append(
+            {
+                "claim_kind": kind,
+                "claim_code": code,
+                "source_record_ids": [str(ref) for ref in refs],
+            }
+        )
+
     for candidate in decision.candidates:
-        for ref in candidate.source_refs:
+        add_claim("CANDIDATE", str(candidate.product_code), candidate.source_refs)
+    for reason in decision.review_reasons:
+        add_claim("REVIEW_REASON", str(reason.code), reason.source_refs)
+    for reason in decision.no_path_reasons:
+        add_claim("NO_PATH_REASON", str(reason.code), reason.source_refs)
+    for notice in decision.notices:
+        add_claim("NOTICE", str(notice.code), notice.source_refs)
+
+    return [
+        {
+            "claim_kind": "VERDICT",
+            "claim_code": decision.state.value,
+            "source_record_ids": [str(ref) for ref in verdict_refs],
+        },
+        *claims,
+    ]
+
+
+def _collect_citations(
+    grounding_summary: list[dict[str, JsonValue]],
+) -> list[dict[str, str]]:
+    """Flatten every claim's sources into migration 252's citation shape."""
+
+    seen: set[str] = set()
+    citations: list[dict[str, str]] = []
+    for claim in grounding_summary:
+        refs = claim.get("source_record_ids", [])
+        if not isinstance(refs, list):
+            continue
+        for ref_value in refs:
+            ref = str(ref_value)
             if ref in seen:
                 continue
             seen.add(ref)
-            citations.append({"source_record_id": str(ref)})
+            citations.append({"source_record_id": ref})
     return citations
 
 
@@ -416,7 +493,10 @@ async def _save_shadow_decision(
     *,
     decision: Decision,
     rule_pack_db_id: uuid.UUID,
+    ruleset_activation_id: uuid.UUID,
     environment: str,
+    request_fingerprint: bytes,
+    request_category: Purpose,
 ) -> None:
     """INSERT one ``visa_decisions`` row for a SHADOW ``Decision``.
 
@@ -427,10 +507,10 @@ async def _save_shadow_decision(
     not schema-enforced to be equal, so the writer must resolve the DB PK
     itself rather than trust the Decision's self-reported one.
 
-    ``ruleset_activation_id`` is always left ``NULL`` (STEP-6c scope; the
-    binding trigger's activation-containment checks only run when it is
-    set, so leaving it NULL is a valid, narrower-scoped row). ``engine_mode``
-    is always ``'SHADOW'`` — this writer never produces an ENFORCE row.
+    ``ruleset_activation_id`` is the exact activation selected alongside the
+    pack, so migration 252's trigger re-proves both bitemporal containment
+    checks at INSERT time. ``engine_mode`` is always ``'SHADOW'`` — this
+    writer never produces an ENFORCE row.
 
     ``ON CONFLICT (decision_id) DO NOTHING`` guards ONLY against an exact
     double-insert of the SAME decision (same ``decision_id``) — e.g. a
@@ -448,7 +528,9 @@ async def _save_shadow_decision(
     rule_pack_sha256 = (
         bytes.fromhex(decision.rule_pack.payload_sha256) if decision.rule_pack is not None else None
     )
-    citations = _collect_citations(decision)
+    candidate_summary = _build_candidate_summary(decision)
+    grounding_summary = _build_grounding_summary(decision)
+    citations = _collect_citations(grounding_summary)
 
     async with db_pool.acquire() as conn:
         await conn.execute(
@@ -456,9 +538,12 @@ async def _save_shadow_decision(
             INSERT INTO visa_decisions (
                 decision_id, environment, engine_surface, engine_mode,
                 rule_pack_id, ruleset_activation_id, rule_pack_sha256, verdict,
-                citations, engine_version, effective_at, observed_at, evaluated_at
+                citations, engine_version, effective_at, observed_at, evaluated_at,
+                request_fingerprint, request_category, candidate_summary,
+                grounding_summary
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb, $10, $11, $12, $13
+                $1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb, $10, $11, $12, $13,
+                $14, $15, $16::text::jsonb, $17::text::jsonb
             )
             ON CONFLICT (decision_id) DO NOTHING
             """,
@@ -467,7 +552,7 @@ async def _save_shadow_decision(
             EngineSurface.MATCH.value,
             EngineMode.SHADOW.value,
             rule_pack_db_id,
-            None,
+            ruleset_activation_id,
             rule_pack_sha256,
             decision.state.value,
             json.dumps(citations),
@@ -475,6 +560,10 @@ async def _save_shadow_decision(
             decision.effective_at,
             decision.observed_at,
             decision.evaluated_at,
+            request_fingerprint,
+            request_category.value,
+            json.dumps(candidate_summary),
+            json.dumps(grounding_summary),
         )
 
 
@@ -495,14 +584,15 @@ async def _shadow_evaluate_match(
     this fire-and-forget via ``spawn()``, but this function must also stay
     safe if ever awaited directly, e.g. by a test).
 
-    NEVER logs ``nationality``/``purpose``/``duration_months``/facts —
-    every log line below carries only ``match_hash``, the resolved
-    environment, the verdict, and/or a candidate count.
+    NEVER logs ``nationality``/``purpose``/``duration_months``/facts or the
+    public ``match_hash`` — every log line below carries only a hash trace,
+    the resolved environment, the verdict, and/or a candidate count.
     """
 
     try:
         now = datetime.now(timezone.utc)
         environment = _resolve_match_environment()
+        request_trace = _request_trace(match_hash)
 
         binding = await _resolve_active_pack_binding(
             db_pool,
@@ -512,9 +602,9 @@ async def _shadow_evaluate_match(
         )
         if binding is None:
             logger.debug(
-                "shadow match: no active rule pack for environment=%s, skipping (hash=%s)",
+                "shadow match: no active rule pack for environment=%s, skipping (trace=%s)",
                 environment,
-                match_hash,
+                request_trace,
             )
             return
 
@@ -526,7 +616,8 @@ async def _shadow_evaluate_match(
         )
         if facts is None:
             logger.warning(
-                "shadow match: could not build applicant facts, skipping (hash=%s)", match_hash
+                "shadow match: could not build applicant facts, skipping (trace=%s)",
+                request_trace,
             )
             return
 
@@ -559,16 +650,16 @@ async def _shadow_evaluate_match(
             logger.warning(
                 "shadow match: active pack environment=%s needs a real crypto "
                 "identity_provider (STEP-6d) / a provisioned facts-fingerprint "
-                "key, skipping (hash=%s)",
+                "key, skipping (trace=%s)",
                 environment,
-                match_hash,
+                request_trace,
             )
             return
         except FactsFingerprintKeyError:
             logger.warning(
                 "shadow match: malformed facts-fingerprint key config "
-                "(VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON), skipping (hash=%s)",
-                match_hash,
+                "(VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON), skipping (trace=%s)",
+                request_trace,
             )
             return
         except Exception as exc:  # defense-in-depth — evaluate() is documented pure/total
@@ -581,17 +672,24 @@ async def _shadow_evaluate_match(
         await _save_shadow_decision(
             db_pool,
             decision=decision,
-            rule_pack_db_id=binding.id,
+            rule_pack_db_id=binding.rule_pack_id,
+            ruleset_activation_id=binding.ruleset_activation_id,
             environment=environment,
+            request_fingerprint=_request_fingerprint(match_hash),
+            request_category=purpose,
         )
         logger.info(
-            "shadow match decision written: hash=%s verdict=%s candidates=%d",
-            match_hash,
+            "shadow match decision written: trace=%s verdict=%s candidates=%d",
+            request_trace,
             decision.state.value,
             len(decision.candidates),
         )
     except Exception:
-        logger.warning("shadow match evaluation failed (hash=%s)", match_hash, exc_info=True)
+        logger.warning(
+            "shadow match evaluation failed (trace=%s)",
+            _request_trace(match_hash),
+            exc_info=True,
+        )
 
 
 def maybe_spawn_shadow_match(
@@ -613,6 +711,7 @@ def maybe_spawn_shadow_match(
 
     try:
         if resolve_match_shadow_enabled():
+            request_trace = _request_trace(match_hash)
             spawn(
                 _shadow_evaluate_match(
                     db_pool,
@@ -621,12 +720,12 @@ def maybe_spawn_shadow_match(
                     duration_months=duration_months,
                     match_hash=match_hash,
                 ),
-                name=f"shadow-match-{match_hash}",
+                name=f"shadow-match-{request_trace}",
             )
     except Exception:
         logger.warning(
-            "maybe_spawn_shadow_match: failed to schedule shadow evaluation (hash=%s)",
-            match_hash,
+            "maybe_spawn_shadow_match: failed to schedule shadow evaluation (trace=%s)",
+            _request_trace(match_hash),
             exc_info=True,
         )
 
