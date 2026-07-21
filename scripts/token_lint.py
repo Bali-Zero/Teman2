@@ -28,15 +28,24 @@ SCOPE (verified against the actual repo tree 2026-07-19 — golden rule #9,
 
 EXEMPTIONS (each one has a dedicated innocence test):
   1. Comment lines — a line whose left-trimmed content starts with `//`,
-     `/*`, `*`, or `<!--`. This covers full-line comments AND the interior
-     of block comments (whose lines conventionally start with `*`). Known
+     `/*`, or `<!--`, plus block-comment CONTINUATION lines matching `^\\*\\s`
+     (`*` + whitespace) that do NOT contain any of `{`, `:`, `;`
+     (Tri-LLM hardening, PR #2987 round-2: a bare-`*` prefix test let the
+     CSS universal selector `* { color: #fff; }` masquerade as a comment —
+     a continuation line carrying CSS-rule characters is judged as code,
+     even when it is a commented-out rule inside a real comment block;
+     exemption 3's reasoned marker covers legitimate doc cases). Known
      limit, documented not fixed: a block-comment continuation line NOT
-     starting with `*` is judged as code. Tracking true comment state would
-     require the whole file, and this gate only ever sees added lines.
-  2. Token-source paths — files under `packages/core/tokens/` or
-     `apps/mouth/src/styles/`, and any file whose basename matches
-     `tokens*.css` or `*.tokens.*`. Hexes LIVE there by design (that is the
-     SSOT the gate protects).
+     starting with `* ` is judged as code. Tracking true comment state
+     would require the whole file, and this gate only ever sees added lines.
+  2. Token-source paths — (a) anything under `packages/core/tokens/`,
+     (b) anything under `apps/mouth/src/styles/`, (c) any file inside a
+     directory named exactly `tokens/` (a PATH SEGMENT, never a basename),
+     (d) nothing else. Hexes LIVE there by design (that is the SSOT the
+     gate protects). Tri-LLM hardening (PR #2987 round-2): the v1 rule
+     matched BASENAMES (`tokens*.css`, `*.tokens.*`), so a route-local
+     `apps/mouth/src/app/portal/tokens.css` or `anything.tokens.tsx` got a
+     free pass OUTSIDE the token SSOT — basename matching is gone.
   3. `token-lint-ok` marker — a line carrying `token-lint-ok:` followed by a
      NON-EMPTY reason (e.g. `// token-lint-ok: brand logo asset`). A bare
      `token-lint-ok` without colon+reason does NOT exempt — the reason is
@@ -49,6 +58,22 @@ like `&#039;` are excluded via the lookbehind). Deliberately simple per
 spec: all matches are flagged, then the exemptions above apply. Rare false
 positives (e.g. an SVG `url(#abc123)` gradient reference in a scoped file)
 are handled by exemption 3 with its mandatory reason.
+
+RELATION TO brand_token_lint.py (the OTHER color gate — do not drift)
+----------------------------------------------------------------------
+`scripts/brand_token_lint.py` (pre-existing, consumed by
+`.github/workflows/p8-brand-api.yml`) guards GENERATED surfaces: the
+brand-api build artifacts (`packages/design-system/brand-api/**`) and the
+agent-authored tool modules (`apps/admin-dashboard/**/tools/**`). It scans
+whole FILES on disk for any raw color literal (hex, rgb/hsl functions) —
+its promise is "the generator never emits raw colors" (P8 FASE-5 gate G2).
+THIS gate (`token_lint.py`) guards the human-edited REDESIGN surfaces —
+the `(workspace)` + `portal` route groups — and judges only ADDED lines in
+a PR diff (hex only, no rgb/hsl): its promise is "no NEW hardcoded brand
+hex enters the redesigned routes" (WS1 token SSOT). Different surfaces,
+different units of judgment (whole file vs diff-added lines), different
+escape hatches (`brand-token-lint: allow` vs `token-lint-ok: <reason>`).
+If you change one gate's scope, do NOT assume the other follows.
 
 CONTRACT
 --------
@@ -89,7 +114,6 @@ Run:
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import json
 import re
 import subprocess
@@ -112,11 +136,14 @@ SCOPED_PREFIXES: tuple[str, ...] = (
 )
 
 # Token-source paths — where hexes are SUPPOSED to live (WS1 SSOT).
+# Hardened 2026-07-19 (PR #2987 round-2): prefix/segment matching ONLY —
+# the v1 basename globs (tokens*.css, *.tokens.*) were a bypass (a
+# route-local portal/tokens.css got the SSOT free pass).
 TOKEN_SOURCE_PREFIXES: tuple[str, ...] = (
     "packages/core/tokens/",
     "apps/mouth/src/styles/",
 )
-TOKEN_SOURCE_BASENAME_GLOBS: tuple[str, ...] = ("tokens*.css", "*.tokens.*")
+TOKEN_SOURCE_DIR_SEGMENT = "tokens"
 
 # `#` + 3/4/6/8 hex digits, longest-first so `#aabbccdd` is ONE 8-digit match.
 # Lookbehind excludes alphanumerics, a second `#` (markdown `## Heading`) and
@@ -129,7 +156,14 @@ HEX_RE = re.compile(
 # Marker requires a colon AND a non-empty reason: `token-lint-ok: <reason>`.
 OK_MARKER_RE = re.compile(r"token-lint-ok\s*:\s*\S+")
 
-COMMENT_PREFIXES: tuple[str, ...] = ("//", "/*", "*", "<!--")
+COMMENT_PREFIXES: tuple[str, ...] = ("//", "/*", "<!--")
+
+# Block-comment continuation = `*` + whitespace (so `*/` and `* {` are NOT
+# comments) AND no CSS-rule characters anywhere on the line (PR #2987
+# round-2: the universal selector `* { color: ... }` must not read as a
+# block-comment continuation).
+BLOCK_COMMENT_CONT_RE = re.compile(r"^\*\s")
+CSS_RULE_CHARS_RE = re.compile(r"[{:;]")
 
 VIOLATION_MESSAGE = (
     "hardcoded color in redesigned surface; use a semantic token from "
@@ -216,8 +250,10 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
 
     Raises DiffParseError on: a hunk header that does not parse, a hunk
     header before any `+++` file header, a hunk-body line with an unknown
-    sigil, or a hunk body that overruns its declared counts. All of these
-    mean "the scanner cannot trust what it saw" -> caller fails closed.
+    sigil, a hunk body that overruns its declared counts, a diff-content
+    line outside any hunk, or EOF arriving before a hunk has consumed its
+    declared counts (truncated diff — PR #2987 round-2). All of these mean
+    "the scanner cannot trust what it saw" -> caller fails closed.
     """
     added: list[AddedLine] = []
     current_path: str | None = None
@@ -285,6 +321,15 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
         if remaining_old == 0 and remaining_new == 0:
             in_hunk = False
 
+    # Fail-closed (PR #2987 round-2): EOF with a hunk still open means the
+    # diff was truncated mid-body — line numbers beyond this point are
+    # unknowable, so the input cannot be trusted and must not exit clean.
+    if in_hunk:
+        raise DiffParseError(
+            "EOF inside a hunk — declared line counts not consumed "
+            "(truncated diff)"
+        )
+
     return added
 
 
@@ -294,20 +339,31 @@ def is_scoped(path: str) -> bool:
 
 
 def is_token_source(path: str) -> bool:
-    """True iff `path` is a place where hexes are the SSOT, not a violation."""
+    """True iff `path` is a place where hexes are the SSOT, not a violation:
+    (a) under a TOKEN_SOURCE_PREFIX, or (b) inside a directory named exactly
+    `tokens` — a path SEGMENT, never a basename, so a route-local
+    `portal/tokens.css` is NOT exempt (PR #2987 round-2)."""
     if any(path.startswith(prefix) for prefix in TOKEN_SOURCE_PREFIXES):
         return True
-    basename = path.rsplit("/", 1)[-1]
-    return any(
-        fnmatch.fnmatchcase(basename, glob) for glob in TOKEN_SOURCE_BASENAME_GLOBS
-    )
+    segments = path.split("/")
+    return TOKEN_SOURCE_DIR_SEGMENT in segments[:-1]
 
 
 def is_comment_line(content: str) -> bool:
-    """True iff the (added) line is a full-line comment or a block-comment
-    interior line (left-trimmed content starts with //, /*, *, or <!--)."""
+    """True iff the (added) line is a full-line comment (`//`, `/*`, `<!--`)
+    or a block-comment continuation line: `*` + whitespace AND no CSS-rule
+    characters (`{`, `:`, `;`) on the line. The conjunction is what keeps
+    the CSS universal selector `* { color: #fff; }` from bypassing the gate
+    as a "comment" (PR #2987 round-2); the cost — a commented-out CSS rule
+    like `* color: #fff;` inside a real comment block is now judged as code
+    — is accepted and documented in the module docstring (exemption 1)."""
     stripped = content.lstrip()
-    return stripped.startswith(COMMENT_PREFIXES)
+    if stripped.startswith(COMMENT_PREFIXES):
+        return True
+    return (
+        BLOCK_COMMENT_CONT_RE.match(stripped) is not None
+        and CSS_RULE_CHARS_RE.search(stripped) is None
+    )
 
 
 def has_ok_marker(content: str) -> bool:

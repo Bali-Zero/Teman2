@@ -155,17 +155,32 @@ def test_guilt_eight_digit_hex_matches_once() -> None:
 
 def test_innocence_1_token_source_file() -> None:
     """Innocence-1 (mandate): the same hex in `packages/core/tokens/x.css`
-    passes — that file IS the SSOT the gate protects. Also proves the
-    basename glob for a `tokens*.css` file sitting INSIDE a scoped route."""
+    passes — that file IS the SSOT the gate protects. The hardened rule
+    (PR #2987 round-2) also exempts a file inside ANY directory named
+    exactly `tokens/` — a path SEGMENT, never a basename."""
     result = tl.scan(make_diff(TOKEN_FILE, ["--accent-funnel: #d4845a;"]), [TOKEN_FILE])
     assert result.violations == []
     assert tl.is_token_source(TOKEN_FILE)
-    scoped_tokens = "apps/mouth/src/app/portal/tokens.css"
-    result = tl.scan(make_diff(scoped_tokens, ["--x: #d4845a;"]), [scoped_tokens])
+    segment_dir = "apps/mouth/src/app/portal/tokens/theme.css"
+    assert tl.is_token_source(segment_dir)  # `tokens/` is a real path segment
+    result = tl.scan(make_diff(segment_dir, ["--x: #d4845a;"]), [segment_dir])
     assert result.violations == []
-    scoped_glob = "apps/mouth/src/app/(workspace)/brand.tokens.css"
-    result = tl.scan(make_diff(scoped_glob, ["--x: #d4845a;"]), [scoped_glob])
-    assert result.violations == []
+
+
+def test_guilt_basename_trap_tokens_files() -> None:
+    """GUILT (PR #2987 round-2, Tri-LLM finding 1): the v1 basename globs
+    (`tokens*.css`, `*.tokens.*`) gave a free SSOT pass to files that merely
+    LOOK token-ish by name. A route-local `portal/tokens.css` or a
+    `brand.tokens.tsx` inside a scoped route MUST be flagged — only real
+    token-source LOCATIONS (prefix or `tokens/` segment) exempt."""
+    basename_trap = "apps/mouth/src/app/portal/tokens.css"
+    assert not tl.is_token_source(basename_trap)
+    result = tl.scan(make_diff(basename_trap, ["--x: #d4845a;"]), [basename_trap])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
+    glob_trap = "apps/mouth/src/app/(workspace)/brand.tokens.tsx"
+    assert not tl.is_token_source(glob_trap)
+    result = tl.scan(make_diff(glob_trap, ['const C = "#d4845a";']), [glob_trap])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
 
 
 def test_innocence_1b_styles_directory() -> None:
@@ -178,17 +193,46 @@ def test_innocence_1b_styles_directory() -> None:
 
 def test_innocence_2_full_line_comment() -> None:
     """Innocence-2 (mandate): a hex in a full-line comment passes — every
-    comment shape the module recognizes."""
+    comment shape the module recognizes, including the hardened `^\\*\\s`
+    (star + whitespace, no CSS-rule chars) block-continuation shape."""
     comment_lines = [
         "// brand orange: #d4845a",
         "/* legacy: #d4845a */",
         "* #d4845a (inside a block comment)",
         "   * indented block-comment interior #d4845a",
         "<!-- #d4845a -->",
+        " * see tokens.css for values",
     ]
     for line in comment_lines:
+        assert tl.is_comment_line(line), f"not recognized as comment: {line!r}"
         result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
         assert result.violations == [], f"comment line was flagged: {line!r}"
+
+
+def test_guilt_universal_selector_not_a_comment() -> None:
+    """GUILT (PR #2987 round-2, Tri-LLM finding 2): `* { color: #d4845a; }`
+    is the CSS universal selector, NOT a block-comment continuation — the
+    v1 bare-`*` prefix test waved it through the comment exemption."""
+    line = "* { color: #d4845a; }"
+    assert not tl.is_comment_line(line)
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
+    # `*/` is a block-comment ENDER, not a continuation — it no longer
+    # matches the predicate at all (it never carries a hex, but lock the
+    # predicate shape honestly).
+    assert not tl.is_comment_line("*/")
+
+
+def test_guilt_commented_out_css_rule_judged_as_code() -> None:
+    """Documented honest cost of the finding-2 fix (module docstring,
+    exemption 1): `* color: #d4845a;` inside a real comment block carries
+    CSS-rule characters, so it is judged as code, not as a comment.
+    Legitimate doc lines carrying a hex use exemption 3
+    (`token-lint-ok: <reason>`)."""
+    line = "* color: #d4845a;"
+    assert not tl.is_comment_line(line)
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
 
 
 def test_innocence_3_ok_marker_with_reason() -> None:
@@ -258,9 +302,30 @@ def test_error_hunk_body_overrun() -> None:
 
 
 def test_error_hunk_body_bad_sigil() -> None:
-    bad = f"+++ b/x\n@@ -0,0 +1,1 @@\n?a\n"
+    bad = "+++ b/x\n@@ -0,0 +1,1 @@\n?a\n"
     with pytest.raises(tl.DiffParseError):
         tl.parse_unified_diff(bad)
+
+
+def test_error_truncated_hunk_at_eof() -> None:
+    """GUILT (PR #2987 round-2, Tri-LLM finding 3): EOF arriving BEFORE a
+    hunk consumes its declared counts is a truncated diff — the parser must
+    raise (fail-closed), not return a partial, trustworthy-looking result
+    that could silently under-report violations."""
+    truncated = "+++ b/x\n@@ -0,0 +1,5 @@\n+a\n+b\n"  # declares 5, delivers 2
+    with pytest.raises(tl.DiffParseError):
+        tl.parse_unified_diff(truncated)
+
+
+def test_innocence_exact_count_hunk_then_eof() -> None:
+    """INNOCENCE (finding 3 counterpart): a hunk that consumes EXACTLY its
+    declared counts and then hits EOF is a complete, well-formed diff —
+    normal parse, normal scan, no error."""
+    exact = "+++ b/x\n@@ -0,0 +1,2 @@\n+a\n+b\n"
+    added = tl.parse_unified_diff(exact)
+    assert [(a.line, a.content) for a in added] == [(1, "a"), (2, "b")]
+    result = tl.scan(exact, ["x"])
+    assert result.violations == []  # out of scope, but parses clean
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +403,15 @@ def test_cli_stdin_clean_exit_0() -> None:
 def test_cli_stdin_malformed_exit_2() -> None:
     bad = "+++ b/x\n@@ not-a-hunk @@\n+color: #d4845a;\n"
     proc = _run_cli(["--stdin", "--files", "x"], bad)
+    assert proc.returncode == 2
+    assert "fail-closed" in proc.stderr
+
+
+def test_cli_stdin_truncated_hunk_exit_2() -> None:
+    """CLI contract for finding 3: a truncated diff (declared 5, got 2)
+    exits 2 with the fail-closed message, never a clean/partial result."""
+    truncated = "+++ b/x\n@@ -0,0 +1,5 @@\n+a\n+b\n"
+    proc = _run_cli(["--stdin", "--files", "x"], truncated)
     assert proc.returncode == 2
     assert "fail-closed" in proc.stderr
 

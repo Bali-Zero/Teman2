@@ -54,6 +54,16 @@ jobs:
         # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
         run: git fetch origin "$BASE_REF" || true
 
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      - name: token-lint proof suite (guilt+innocence)
+        # The gate's own proof runs IN CI (mirrors broker-hygiene.yml: a lint's
+        # scripts/tests suite runs in the same workflow that wields it): if the
+        # scanner's guilt/innocence logic is broken, the gate cannot be trusted
+        # — fail fast before scanning.
+        run: python -m pytest scripts/tests/test_token_lint.py -q
+
       - name: token-lint — scan added lines for hardcoded hex colors
         env:
           BASE_REF: ${{ github.base_ref }}
