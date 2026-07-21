@@ -799,11 +799,22 @@ _FACTS_FINGERPRINT_KEY_ID = "pr5-unsigned-dev-placeholder-v1"
 _DECISION_ID_NAMESPACE = uuid.UUID("2f6a8b2e-6a3b-4b8e-9b0a-6f1a8b2e6a3b")
 
 
-def _facts_fingerprint(facts: ApplicantFacts) -> Fingerprint:
+def _facts_fingerprint(
+    facts: ApplicantFacts,
+    *,
+    key: bytes = _FACTS_FINGERPRINT_PLACEHOLDER_KEY,
+    key_id: str = _FACTS_FINGERPRINT_KEY_ID,
+) -> Fingerprint:
+    """HMAC-SHA256 over ``canonical_fact_payload(facts)``. ``key``/``key_id``
+    default to the NON-SECRET placeholder (see module docstring); the real
+    crypto-backed provider (``crypto.build_identity_provider``, STEP-6d) passes
+    the operator's secret + its ``kid`` here — the ONLY thing that differs
+    between the placeholder and the real identity, by design.
+    """
     canonical = canonical_fact_payload(facts)
     payload_bytes = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    digest = hmac.new(_FACTS_FINGERPRINT_PLACEHOLDER_KEY, payload_bytes, hashlib.sha256).hexdigest()
-    return Fingerprint(algorithm="HMAC-SHA256", key_id=_FACTS_FINGERPRINT_KEY_ID, digest=digest)
+    digest = hmac.new(key, payload_bytes, hashlib.sha256).hexdigest()
+    return Fingerprint(algorithm="HMAC-SHA256", key_id=key_id, digest=digest)
 
 
 def _deterministic_ids(
@@ -863,6 +874,40 @@ class DecisionIdentity:
 IdentityProvider = Callable[[ApplicantFacts, RulePackRef, datetime, Environment], DecisionIdentity]
 
 
+def build_decision_identity(
+    facts: ApplicantFacts,
+    rule_pack_ref: RulePackRef,
+    effective_at: datetime,
+    *,
+    fingerprint_key: bytes,
+    fingerprint_key_id: str,
+) -> DecisionIdentity:
+    """Assemble the three DERIVED identity values from a given HMAC key — the
+    SINGLE source of truth for the derivation, shared by
+    ``_placeholder_identity_provider`` (non-secret placeholder key) and the real
+    crypto-backed provider (``crypto.build_identity_provider``, STEP-6d, operator
+    secret). One derivation guarantees the module-docstring divergence-#4
+    invariant: the real provider differs from the placeholder in EXACTLY the
+    HMAC key; ``decision_id``/``public_id`` are the same UUIDv5/SHA-256
+    derivation and change only because their ``facts_digest`` input changes with
+    the key (the point — a secret-keyed digest makes ``public_id`` genuinely
+    unguessable). PURE: no I/O, no wall-clock.
+    """
+    facts_fingerprint = _facts_fingerprint(
+        facts, key=fingerprint_key, key_id=fingerprint_key_id
+    )
+    decision_id, public_id = _deterministic_ids(
+        assessment_id=facts.assessment_id,
+        rule_pack_id=rule_pack_ref.rule_pack_id,
+        sequence=rule_pack_ref.sequence,
+        facts_digest=facts_fingerprint.digest,
+        effective_at=effective_at,
+    )
+    return DecisionIdentity(
+        decision_id=decision_id, public_id=public_id, facts_fingerprint=facts_fingerprint
+    )
+
+
 def _placeholder_identity_provider(
     facts: ApplicantFacts,
     rule_pack_ref: RulePackRef,
@@ -886,16 +931,12 @@ def _placeholder_identity_provider(
             "identity_provider (evaluate(..., identity_provider=...)) for "
             "STAGING/PRODUCTION."
         )
-    facts_fingerprint = _facts_fingerprint(facts)
-    decision_id, public_id = _deterministic_ids(
-        assessment_id=facts.assessment_id,
-        rule_pack_id=rule_pack_ref.rule_pack_id,
-        sequence=rule_pack_ref.sequence,
-        facts_digest=facts_fingerprint.digest,
-        effective_at=effective_at,
-    )
-    return DecisionIdentity(
-        decision_id=decision_id, public_id=public_id, facts_fingerprint=facts_fingerprint
+    return build_decision_identity(
+        facts,
+        rule_pack_ref,
+        effective_at,
+        fingerprint_key=_FACTS_FINGERPRINT_PLACEHOLDER_KEY,
+        fingerprint_key_id=_FACTS_FINGERPRINT_KEY_ID,
     )
 
 

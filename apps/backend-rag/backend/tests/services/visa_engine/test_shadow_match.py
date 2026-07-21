@@ -236,6 +236,13 @@ class TestShadowEvaluateMatchNoopPaths:
     async def test_production_pack_placeholder_identity_is_a_silent_noop(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
+        """Valid ONLY when ``VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`` is
+        UNSET (STEP-6d): ``resolve_identity_provider()`` then returns the
+        default placeholder, which still fail-closes on a PRODUCTION pack —
+        see ``test_provisioned_prod_key_writes_a_real_shadow_row`` below for
+        the sibling case where a PRODUCTION key IS provisioned and a row
+        gets written instead."""
+        monkeypatch.delenv("VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON", raising=False)
         src = builders.source_record()
         product_id = builders.new_uuid()
         prod = builders.product(source_id=src["source_record_id"], product_id=product_id)
@@ -286,6 +293,92 @@ class TestShadowEvaluateMatchNoopPaths:
             )
 
         assert any("STEP-6d" in r.getMessage() for r in caplog.records)
+
+    async def test_provisioned_prod_key_writes_a_real_shadow_row(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sibling of the noop test above (STEP-6d): with a PRODUCTION
+        facts-fingerprint key provisioned via
+        ``VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON``, the same PRODUCTION pack
+        no longer hits the placeholder fail-closed guard — the real
+        crypto-backed identity provider succeeds and the SHADOW writer
+        (``_save_shadow_decision``) IS invoked (still an audit-only SHADOW
+        row, never rendered to any caller)."""
+        import base64
+        import json as json_module
+
+        secret = base64.urlsafe_b64encode(b"\x00" * 32).rstrip(b"=").decode("ascii")
+        monkeypatch.setenv(
+            "VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON",
+            json_module.dumps(
+                [
+                    {
+                        "kid": "prod-key-1",
+                        "secret": secret,
+                        "environment": "PRODUCTION",
+                        "valid_from": "2020-01-01T00:00:00+00:00",
+                    }
+                ]
+            ),
+        )
+
+        src = builders.source_record()
+        product_id = builders.new_uuid()
+        prod = builders.product(source_id=src["source_record_id"], product_id=product_id)
+        rule = builders.rule(
+            rule_id="el.tiny.tourism",
+            stage="ELIGIBILITY",
+            scope="PRODUCTS",
+            product_version_ids=[product_id],
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "TOURISM_SUPPORTED",
+                "covered_purposes": ["TOURISM"],
+            },
+            source_id=src["source_record_id"],
+            required_facts=["intent.purposes"],
+        )
+        payload = builders.rule_pack_payload(
+            rules=[rule], products=[prod], source_records=[src], environment="PRODUCTION"
+        )
+        envelope = builders.rule_pack_envelope(payload)
+        pack = RulePack.model_validate(envelope)
+        compiled = build_compiled_pack(pack)
+
+        async def _fake_resolver(pool: object, *, environment: str, effective_at: datetime, observed_at: datetime):
+            return shadow._PackBinding(id=uuid.uuid4(), environment="PRODUCTION", raw_envelope=envelope)
+
+        def _fake_verify(raw_envelope: object, *, trust_store: object, observed_at: datetime, allow_unsigned: bool = False):
+            return VerifiedRulePack(
+                pack=pack, canonical_payload=b"", payload_sha256=b"\x00" * 32, unsigned_dev=False
+            )
+
+        def _fake_compile(rule_pack: object, *, fact_registry: object = None):
+            return compiled
+
+        save_calls: list[object] = []
+
+        async def _recording_save(pool: object, **kwargs: object) -> None:
+            save_calls.append(kwargs)
+
+        monkeypatch.setattr(shadow, "_resolve_active_pack_binding", _fake_resolver)
+        monkeypatch.setattr(shadow, "verify_rule_pack", _fake_verify)
+        monkeypatch.setattr(shadow, "build_compiled_pack", _fake_compile)
+        monkeypatch.setattr(shadow, "_save_shadow_decision", _recording_save)
+        monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", "[]")
+
+        await shadow._shadow_evaluate_match(
+            object(),  # sentinel: never dereferenced — _save_shadow_decision is monkeypatched
+            nationality="US",
+            purpose=Purpose.LONG_TOURISM,
+            duration_months=1,
+            match_hash="prod-provisioned-hash",
+        )
+
+        assert len(save_calls) == 1
+        written_decision = save_calls[0]["decision"]
+        assert written_decision.facts_fingerprint.key_id == "prod-key-1"
 
 
 # ---------------------------------------------------------------------------

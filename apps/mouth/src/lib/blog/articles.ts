@@ -84,14 +84,62 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
  * wrapped). This is the single boundary where tags become iterable — every
  * downstream consumer (`.map`, `.length`, `[...tags]`) is then safe.
  */
+// Render-layer backstop for the 2026-07-21 "/insights?tag= prompt leak": an old
+// translation pipeline wrote raw LLM chain-of-thought into `tags:` frontmatter
+// ("Wait, the input text is:", "Input:", "Thinking..."). Those tags rendered as
+// `/insights?tag=<garbage>` links that Google crawled. The durable fixes are the
+// CI guard (scripts/lint_content_reasoning_leak.py) + content re-translation, but
+// this is the LAST boundary before a tag becomes a crawlable URL, so it drops any
+// unmistakable reasoning-leak tag and trims the title-split punctuation artefacts
+// ("unexpected:" -> "unexpected"). Conservative by design — legit multi-word tags
+// ("pt pma", "second home visa", "output vat") must survive (see articles.test.ts).
+const REASONING_LEAK_TAG = [
+  /(^|\W)(input|output)\s*:/i, // "Input:" / "Output:" (colon = the leak form; "output vat" is safe)
+  /(^|\W)wait\s*,/i, // "Wait, looking at the input..."
+  /\bthinking\.\.\./i,
+  /\bthe (input|source|original)\b/i,
+  /\blooking at the\b/i,
+  /\bword for word\b/i,
+  /\bno explanations?\b[\s.,:*]*(only|output|the translation)/i,
+  /\bas an ai\b/i,
+  /\brispondi solo\b/i,
+  /\btesto da tradurre\b/i,
+  /\*+\s*self[-\s]?correction/i,
+] as const;
+
+function isReasoningLeakTag(tag: string): boolean {
+  if (tag.length > 45) return true; // tags are short labels, not sentences
+  if (tag.trim().split(/\s+/).length >= 5) return true; // sentence-like
+  return REASONING_LEAK_TAG.some((rx) => rx.test(tag));
+}
+
+/** Strip title-split punctuation artefacts: "unexpected:" -> "unexpected". Keeps
+ *  internal apostrophes/hyphens/spaces ("tempeh's", "pt pma"). */
+function cleanTag(tag: string): string {
+  return tag
+    .replace(/^[\s"'*.:,;–—-]+/, "")
+    .replace(/[\s"'*.:,;–—-]+$/, "")
+    .trim();
+}
+
 export function normalizeTags(raw: unknown): string[] {
-  if (Array.isArray(raw)) {
-    return raw.filter((t): t is string => typeof t === "string");
+  const arr = Array.isArray(raw)
+    ? raw.filter((t): t is string => typeof t === "string")
+    : typeof raw === "string" && raw.trim().length > 0
+      ? [raw.trim()]
+      : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of arr) {
+    if (isReasoningLeakTag(t)) continue; // drop garbage before it can become a URL
+    const c = cleanTag(t);
+    if (!c) continue;
+    const key = c.toLowerCase();
+    if (seen.has(key)) continue; // de-dup after cleaning ("roots:" and "roots")
+    seen.add(key);
+    out.push(c);
   }
-  if (typeof raw === "string" && raw.trim().length > 0) {
-    return [raw.trim()];
-  }
-  return [];
+  return out;
 }
 
 /**
