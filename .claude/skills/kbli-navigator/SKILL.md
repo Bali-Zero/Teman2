@@ -26,7 +26,24 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-20 — keep current)
+## 1. LIVE STATE (last update 2026-07-21 — keep current)
+
+**Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
+(113 A-serving/pp28 + 80190 A-serving/orphan) is done. Final tally: 109 full detach + 2
+tier-scoped partial detach (93114, 93191 — first production use of PR #2921's
+`partial_detach` primitive, built after the SAME gap was confirmed twice, Lot 8 then Lot 9) +
+3 certified-clean/no-cure (93111, 93112, 93119 — quarantine was a tooling artifact, not a
+record defect; resolved via PP28 Pasal 8(1) grounding + derived_license inapplicability).
+Lot 10 report: research/operations/2026-07-21-kbli-batch-a-lot10-conductor-gate.md. Program
+closure synthesis: research/operations/2026-07-21-kbli-batch-a-closure.md.
+**Residual: PR #2926** (one-off KG/Qdrant partial-detach for 93114/93191, audit-trail only —
+production already correct, independently re-verified live) is OPEN, blocked by an unrelated
+npm-audit CI gate that PR #2931 healed on main AFTER #2926's own CI ran — a rebase was pushed
+2026-07-21 to pick up the fix; check PR #2926's current state before assuming still-blocked.
+**What's NOT done:** Batch A was a SUBSET of the ~221 no-scope population (8 pilot + 114 Batch
+A = 122 adjudicated; ≈99 genuinely untouched remain — supersedes the stale "~213" figure
+below, which pre-dates Batch A's closure). Batch B has a SIGNED design (#2801) but NO Zero GO
+— per this program's own per-batch phase-gate rule, Batch B does not start without one.
 
 **Lot 8 (A-L8) — D6 gate SECOND SIGNED 2026-07-20, MERGED to main** (PR #2892, squash
 `66ee3932e4`; report `research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`):
