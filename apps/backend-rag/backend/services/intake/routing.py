@@ -35,6 +35,12 @@ Decision matrix (C4)
 --------------------
 * ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
   (passport / npwp / nib / akta number) → high confidence, no human needed.
+  EXCEPTION (GATE-11): a person-strong match whose ``passport_number`` /
+  ``kitas_number`` was written by the unverified identity-backfill batch
+  (``clients.custom_fields.identity_backfill.<column>.verified == false``)
+  degrades to ``LINK_CANDIDATE`` — an unconfirmed backfilled id must never
+  trigger a confident auto-attach on its own (error-contagion / MDM anti-
+  cascade, 2026-07-18).
 * ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
   (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
   via fuzzy name only (no strong identifier) → human confirmation recommended.
@@ -376,7 +382,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,passport_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -387,7 +397,7 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "passport_number", "score": CONF_STRONG_EXACT,
-                    "matched_value": norm,
+                    "matched_value": norm, "id_verified": r["id_verified"],
                 })
 
     kitas = (
@@ -402,7 +412,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,kitas_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -413,7 +427,7 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "kitas_number", "score": CONF_STRONG_EXACT,
-                    "matched_value": norm,
+                    "matched_value": norm, "id_verified": r["id_verified"],
                 })
 
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
@@ -790,9 +804,27 @@ def _classify_decision(
     #    document identifier describes the SUBJECT, the phone only the SENDER.
     if uniq_strong:
         if len(uniq_strong) == 1:
+            only = uniq_strong[0]
+            # GATE-11 (error contagion / MDM anti-cascade, 2026-07-18): an id
+            # written by the unverified identity-backfill batch must NOT be
+            # able to trigger a confident one-click attach on its own — a
+            # wrong fill would otherwise cascade into a wrong attach. `.get`
+            # with a True default keeps company-strong candidates and any
+            # pre-GATE-11 caller (no "id_verified" key at all) on today's
+            # AUTO_ATTACH behavior; only an EXPLICIT False (backfilled,
+            # unconfirmed) downgrades to human confirm.
+            if only.get("id_verified", True) is False:
+                return DECISION_LINK_CANDIDATE, uniq_strong, {
+                    "reason": (
+                        "single strong-identifier match on a backfilled-unverified "
+                        "id — human confirm required (GATE-11)"
+                    ),
+                    "method": only["method"],
+                    "backfilled_unverified": True,
+                }
             return DECISION_AUTO_ATTACH, uniq_strong, {
                 "reason": "single strong-identifier match",
-                "method": uniq_strong[0]["method"],
+                "method": only["method"],
             }
         # >1 distinct row sharing the same strong identifier = data collision.
         return DECISION_AMBIGUOUS, uniq_strong, {

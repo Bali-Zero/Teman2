@@ -334,7 +334,10 @@ Cure scope: **9 full-detach codes** (91425, 93113, 93115, 93121, 93122, 93123, 9
 73100 — not Batch-A members, no spec entry). The red-team pass found 2 MEDIUM + 3 LOW audit-trail
 defects (canonical hash pin, disputed-key report/spec contradiction, a cure-spec lampiran mislabel,
 a wrong line citation, one typo) — all cured in THIS signing — and refuted NONE of the 13
-dispositions. Next: cross-family GLM Appendix A screen, gate PR, cure PR, data-apply PR, surfaces.
+dispositions. Gate PR + cure PR + data-apply PR + surfaces: MERGED. Appendix A cross-family
+screen (Kimi K3, m1/NEG/POS below): COMPLETE — m1 2/2 match, NEG found a real gold-layer staleness
+bug (6 codes) + one stale canonical zantaraOpener (93122), FIXED same session (PR #2906), POS
+nothing new. Lot 8 fully closed.
 
 ## Adversarial review — VERDICT AND CURES
 
@@ -360,3 +363,55 @@ the m1 blind-concordance figure (seat journals not in the evidence root, taken o
 whether the Codex/agy outage was genuinely live at authoring time (not re-probed by Kimi — the
 conductor re-probed independently and confirmed both, see §5b). No F12 wording violation found
 across any of the nine `whatYouNeed` texts.
+
+## Appendix A — cross-family screen (Kimi K3, m1 + NEG + POS)
+
+Two genuinely separate `kimi -m kimi-code/k3` invocations (fresh process each, no shared context —
+Part 1's blindness verified real by reading its own tool-call transcript, confirming it never
+touched a forbidden path). Prompt + full transcripts:
+`/tmp/kbli-conductor-a1-0718/kimi-appendix-a-lot8-prompt.txt` /
+`/tmp/kbli-conductor-a1-0718/kimi-appendix-a-lot8-output.log`.
+
+**m1 — blind independent re-derivation (91425 + 93124): MATCH on both, plus one bonus lead.**
+Given ONLY the two codes' raw evidence folders (canonical.json, evidence-index.json,
+crosswalk/pp28 PNGs or ABSENT.json — no gate report, no cure spec, no vocabulary), Kimi
+independently reproduced this gate's own committed verdicts: 91425 = borrowed from a different
+KBLI-2020 activity (91025 "Taman Budaya", which the crosswalk actually maps to 90310, not 91425);
+93124 = source absent from vault, 21/21 files / 11,208 pages exhaustively scanned. Bonus finding
+(does not change the cure — already full-detach): 93124's own Tier-2 (Menengah/Besar, Tinggi)
+`kewajiban` text literally reads "Menerapkan standar usaha **Fasilitas Lapangan Golf**" — golf-club
+facility standards, inside a *tennis club* record — suggesting genuine content cross-contamination
+from the neighboring golf code 93122, not mere unlocatability.
+
+**NEG — editorial staleness: CONFIRMED, a real live production bug (already fixed, see below).**
+Canonical (`KBLI_2025_FINAL_CLEAN.json`) is clean for all 9 cured codes. But
+`apps/mouth/data/kbli-gold-all.json` — a separate 428-entry editorial layer — still carried the
+OLD pre-cure `whatYouNeed` prose for **6 of the 9** (91425, 93113, 93115, 93122, 93123, 93124),
+and the live `/kbli/<code>` page renders `gold.whatYouNeed` (via `LicensingSection.tsx`) in
+preference to canonical's cured `intel_2026.whatYouNeed` whenever a gold entry exists — so the
+cure never actually reached these 6 codes' live pages, even though `deriveProvenance` correctly
+badged them `not_classifiable` (an honest badge sitting next to stale, disproven licensing prose —
+self-contradictory page). Independently: canonical's own `intel_2026.zantaraOpener` for 93122 also
+still asserted a stale "medium-high risk classification" fact, masked on the gold page but live on
+any non-gold consumer of canonical. Cross-lot contamination scan: clean, no other already-cured
+lot's editorial content references any of these 9 codes. Same disease class as the established
+49213/50115 gold-cure precedent (`aa01a46b8b`, #2794) and Lot 2's still-open PENDING-ARMS line.
+**FIXED same session, before this Appendix A note was written**: PR #2906 (merged/merging) rewrote
+gold's `whatYouNeed` for the 6 codes to canonical's own honest-gap text verbatim, and corrected
+93122's `zantaraOpener` via a new `zantaraOpener_correction` compiler action — 102/102 tests,
+independent Kimi K3 review of the fix itself (separate from this screen) returned PASS, no
+rubber-stamp findings.
+
+**POS — missed false-friend screen (outside division 93/91): nothing new.** The only outside-scope
+code with a genuine open (un-cured) finding is 63101 (§4, `mapping_metadata_false`, already
+adjudicated as a borrowed innocence control, noted for the corner — not new). Broader screen of
+PENDING-ARMS.md + research/operations/ for the same defect classes (hot-trap-page hit,
+code-proximity payload borrow) outside division 93/91: nothing unadjudicated found. The hot-trap
+page `394938_p761-761.png` has exactly its two known sightings program-wide (93121 + 63101), both
+already covered in §5.1/§4.
+
+Caveats Kimi declared: did not run a Next.js build to literally confirm render output (conclusions
+from static code reading of the actual merge/render functions); the cross-lot NEG scan is
+code-number-string based (a paraphrase never naming a code number could slip through); could not
+verify the m1 blind-concordance figure or D1/D5 seat journals (not in evidence root, not asked to
+in this task).

@@ -43,6 +43,7 @@ import {
   buildQuestionResult,
   buildTranscript,
   extractMessageText,
+  isBotReplyJid,
   isPairedFromCreds,
   parseMessageTimestampMs,
   shouldReconnect,
@@ -333,8 +334,43 @@ async function connectPairedSocket(): Promise<WASocket> {
   return sock;
 }
 
+/**
+ * Reverse-resolves a `@lid` (Linked Identity Device) JID to the phone
+ * number WhatsApp has it mapped to, via Baileys' own in-session signal
+ * store — same API surface as bridge/session.ts's `resolveLidToPhone`
+ * (FIX 3, 2026-05-26), but WITHOUT that fix's Postgres write-back:
+ * wa-tester's boundary is explicitly "does NOT touch Postgres/CRM" (see
+ * file header), and this is a one-shot on-demand tool, not a persistent
+ * mirror worth caching for. Fails CLOSED (returns null) on any error or
+ * unresolved LID — `isBotReplyJid` treats null as "not the bot".
+ */
+async function resolveLidToPhoneDigits(
+  sock: WASocket,
+  lid: string,
+): Promise<string | null> {
+  try {
+    const sockAny = sock as unknown as {
+      signalRepository?: {
+        lidMapping?: {
+          getPNForLID?: (lid: string) => Promise<string | null>;
+        };
+      };
+    };
+    const result = await sockAny.signalRepository?.lidMapping?.getPNForLID?.(
+      lid.includes("@") ? lid : `${lid}@lid`,
+    );
+    if (!result) return null;
+    const digits = result.split("@")[0]?.split(":")[0]?.replace(/\D/g, "");
+    return digits && digits.length > 0 ? digits : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Subscribes to messages.upsert scoped ONLY to the bot's JID conversation.
- * Privacy rail: every other chat/event is ignored and never logged. */
+ * Privacy rail: every other chat/event is ignored and never logged.
+ * Matches BOTH the bot's phone-JID and its `@lid` form (scar #3 UNDER-match
+ * fix, 2026-07-20) — see isBotReplyJid's doc comment in wa-tester-core.ts. */
 function collectReplies(
   sock: WASocket,
   sentAtMs: number,
@@ -346,10 +382,15 @@ function collectReplies(
     quietPeriodS: QUIET_PERIOD_S,
   });
 
-  const onUpsert = (event: BaileysEventMap["messages.upsert"]) => {
+  const onUpsert = async (event: BaileysEventMap["messages.upsert"]) => {
     if (event.type !== "notify") return;
     for (const m of event.messages) {
-      if (m.key?.remoteJid !== BOT_JID) continue; // ignore every other chat, no exceptions
+      const remoteJid = m.key?.remoteJid;
+      let resolvedLidPhoneDigits: string | null = null;
+      if (remoteJid?.endsWith("@lid")) {
+        resolvedLidPhoneDigits = await resolveLidToPhoneDigits(sock, remoteJid);
+      }
+      if (!isBotReplyJid(remoteJid, resolvedLidPhoneDigits)) continue; // ignore every other chat, no exceptions
       if (m.key?.fromMe) continue; // our own outbound echo, not a bot reply
       const text = extractMessageText(m.message);
       if (!text) continue;

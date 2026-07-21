@@ -419,3 +419,199 @@ def test_non_metadata_only_entry_on_healthy_per_skala_still_detaches_as_before()
     out = cure.apply_cure(rec, entry, DISPUTED_KEY)
     assert out["per_skala"] == []
     assert out[DISPUTED_KEY] == [{"kategori_risiko": "Rendah"}]
+
+
+
+# ---------------------------------------------------------------------------
+# Tier-scoped partial detach extension (2026-07-21, PENDING-ARMS L8 gate
+# §3.4/§5.1b) — "action": "partial_detach" + "tier_selector". Unblocks curing
+# multi-tier records with one sound + one defective tier (93114/93191/93193)
+# without destroying verified provenance in the sound tier.
+# ---------------------------------------------------------------------------
+
+
+def _two_tier_rows():
+    """A synthetic two-tier per_skala shaped like a real multi-tier record
+    (e.g. 93114): one Menengah Rendah tier (the sound one) and one Tinggi
+    tier (the one flagged for detach). Fixture data only — not a real code."""
+    return [
+        {
+            "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+            "kategori_risiko": "Menengah Rendah",
+            "perizinan": "NIB dan Sertifikat Standar",
+            "fiktif_positif": True,
+        },
+        {
+            "skala_usaha": ["Menengah", "Besar"],
+            "kategori_risiko": "Tinggi",
+            "perizinan": "NIB dan Izin",
+            "fiktif_positif": True,
+        },
+    ]
+
+
+TIER_SELECTOR_TINGGI = {"kategori_risiko": "Tinggi", "skala_usaha": ["Besar", "Menengah"]}
+
+
+def test_guilt_full_detach_on_multitier_record_still_detaches_fully() -> None:
+    """INNOCENCE control for the new action flag: an entry with NO 'action'
+    key (or action absent), on a MULTI-tier per_skala, must still detach the
+    WHOLE array exactly as before — the new partial_detach capability must
+    never leak into the default code path."""
+    rows = _two_tier_rows()
+    rec = _record(per_skala=rows)
+    entry = {"code": "51103", "data_note": "n", "whatYouNeed": "gap"}
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is True
+    assert plan.partial_detach is False
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == [], "full detach empties per_skala entirely, both tiers included"
+    assert out[DISPUTED_KEY] == rows, "both tiers preserved verbatim in the disputed key"
+
+
+def test_plan_partial_detach_flags_only_matched_tier() -> None:
+    rows = _two_tier_rows()
+    rec = _record(per_skala=rows)
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "Tinggi/golf tier has zero PP28 backing",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is True
+    assert plan.partial_detach is True
+    assert plan.current_row_count == 1, "only the ONE matched row, not both tiers"
+
+
+def test_apply_partial_detach_moves_only_flagged_tier_sound_tier_byte_identical() -> None:
+    """The core guilt+innocence guarantee for this primitive: the flagged
+    (Tinggi) tier moves to the disputed key; the sound (Menengah Rendah) tier
+    survives in per_skala BYTE-IDENTICAL (same dict content, untouched)."""
+    rows = _two_tier_rows()
+    sound_tier = copy.deepcopy(rows[0])
+    defective_tier = copy.deepcopy(rows[1])
+    rec = _record(per_skala=rows)
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "Tinggi/golf tier has zero PP28 backing",
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+    assert out["per_skala"] == [sound_tier], "sound tier survives alone in per_skala, byte-identical"
+    assert out[DISPUTED_KEY] == [defective_tier], "only the flagged tier moved to the disputed key"
+    assert out["_data_note"] == "Tinggi/golf tier has zero PP28 backing"
+    # the input record itself must never be mutated (defensive-copy discipline)
+    assert rec["per_skala"] == rows, "apply_cure must not mutate its input record in place"
+
+
+def test_partial_detach_is_idempotent_second_run_is_a_noop() -> None:
+    rows = _two_tier_rows()
+    sound_tier = copy.deepcopy(rows[0])
+    defective_tier = copy.deepcopy(rows[1])
+    rec = _record(per_skala=rows)
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "n",
+    }
+    once = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    plan_again = cure.plan_cure(once, entry, DISPUTED_KEY)
+    assert plan_again.status == "already-cured", "re-run must recognise the prior partial detach"
+    twice = cure.apply_cure(once, entry, DISPUTED_KEY)
+    assert twice["per_skala"] == [sound_tier]
+    assert twice[DISPUTED_KEY] == [defective_tier], "second run must not duplicate the moved tier"
+
+
+def test_plan_partial_detach_ambiguous_skip_when_selector_matches_nothing() -> None:
+    """Same no-clobber discipline as the full-detach guard: if the selector
+    matches no row AND there is no pre-existing disputed key, refuse to
+    touch the record (a spec/selector bug must not silently no-op)."""
+    rec = _record(per_skala=[_two_tier_rows()[0]])  # only the sound tier present
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "n",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "ambiguous-skip"
+
+
+def test_partial_detach_requires_tier_selector() -> None:
+    rec = _record(per_skala=_two_tier_rows())
+    entry = {"code": "93114", "action": "partial_detach", "data_note": "n"}
+    with pytest.raises(cure.CureError):
+        cure.plan_cure(rec, entry, DISPUTED_KEY)
+    with pytest.raises(cure.CureError):
+        cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+def test_partial_detach_rejects_per_skala_legacy_combination() -> None:
+    rec = _record(per_skala=_two_tier_rows())
+    rec["per_skala_legacy"] = [{"kategori_risiko": "old"}]
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "n",
+    }
+    with pytest.raises(cure.CureError):
+        cure.plan_cure(rec, entry, DISPUTED_KEY)
+    with pytest.raises(cure.CureError):
+        cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+def test_apply_partial_detach_appends_to_existing_disputed_list() -> None:
+    """A second partial_detach on the same record (a later lot curing a
+    second tier) must APPEND to the existing disputed list, never overwrite
+    it — the first tier's preserved provenance must survive."""
+    rows = _two_tier_rows()
+    prior_disputed_tier = {"kategori_risiko": "Rendah", "skala_usaha": ["Mikro"], "src": "prior lot"}
+    rec = _record(per_skala=rows)
+    rec[DISPUTED_KEY] = [prior_disputed_tier]
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "n",
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out[DISPUTED_KEY] == [prior_disputed_tier, rows[1]], "appended, prior entry preserved"
+    assert out["per_skala"] == [rows[0]]
+
+
+def test_apply_partial_detach_raises_on_incompatible_existing_disputed_shape() -> None:
+    rows = _two_tier_rows()
+    rec = _record(per_skala=rows)
+    rec[DISPUTED_KEY] = {"per_skala": rows, "per_skala_legacy": []}  # legacy-fold shape, not a list
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": TIER_SELECTOR_TINGGI,
+        "data_note": "n",
+    }
+    with pytest.raises(cure.CureError):
+        cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+def test_tier_selector_skala_usaha_matches_regardless_of_order() -> None:
+    """skala_usaha is compared as a SET — a reordered array (e.g. a re-pull
+    that changed serialization order) must still match the same tier."""
+    rows = _two_tier_rows()
+    rows[1]["skala_usaha"] = list(reversed(rows[1]["skala_usaha"]))  # ["Besar", "Menengah"]
+    rec = _record(per_skala=rows)
+    entry = {
+        "code": "93114",
+        "action": "partial_detach",
+        "tier_selector": {"kategori_risiko": "Tinggi", "skala_usaha": ["Menengah", "Besar"]},
+        "data_note": "n",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.current_row_count == 1

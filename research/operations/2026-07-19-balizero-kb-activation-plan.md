@@ -26,13 +26,13 @@ sources:
 | 2 | **Reranker in prod** | Code-complete, `enable_reranker=False` ("Saves ~5GB Docker image"); `visa_oracle.py:918` says "cross-encoder not available on Fly"; nuzantara-rag = shared-2x/2GB RAM | NOT a blind flip. Spike doc comparing: (a) torch-free ONNX cross-encoder in rag process, (b) zerank2/ZeroEntropy external API, (c) stay off. Measure answer-quality delta on gold sets. Same abstain-recalibration gate as lever #1 (F4). **PDP egress gate (adversarial K4): option (b) sends raw query+chunk text to a third party — queries/chunks can carry client PII, so (b) is admissible ONLY behind an explicit redaction gate + DPA review; "already wired" is plumbing, not compliance. Default preference: (a) local ONNX or (c) stay off** | session lane (spike) | Image size + RAM ceiling on 2GB machine; external API = new cost → needs Zero if paid, AND PDP gate (K4) regardless of cost |
 | 3 | **Migration 250 applied to prod** | Re-verified live this morning via `scripts/pg.sh`: tracker tops at `248_clients_npwp_strongid` (03:00 UTC). PR #2804 merged, file on main | Belongs to **lane S3 (visa-engine session)** — do not touch from other lanes (quad-session anti-collision). If still unapplied at next reconciliation, raise with Zero | lane S3 | Migration class = operator-adjacent gates; DB-state probe after apply per modus SHIP |
 | 4 | **Visa rule-pack CONTENT + activation writer** | Substrate shipped (250), key ceremony done 2026-07-19 (session memory; visaoracle skill not yet updated), but zero production rule content, no writer (deferred "STEP 6") | Lane S3 roadmap: author first real rule-packs (114-code catalog → declarative rules), build activation writer | lane S3 | The engine stays ornamental until cargo loads (charter principle #1) |
-| 5 | **`/api/drive/*` regression fix** | ~~ALL 3 endpoints broken~~ — corrected 2026-07-20: 2 distinct bugs, not 3 symptoms of 1. `FileItem` Pydantic model requires `type`, manager returned raw payloads (500 files / 500 search) — FIXED, PR #2816 merged 2026-07-19. `/api/drive/stats` (404) is unrelated: the route never existed at all, despite the `get_drive_storage_stats` MCP tool calling it since inception — FIXED, PR #2898 (this session, auto-merge armed) | DONE pending PROVE-LIVE (#2898) | this session | Small, CI-gated; L2 auto-merge |
+| 5 | **`/api/drive/*` regression fix** | ~~ALL 3 endpoints broken~~ — corrected 2026-07-20: 2 distinct bugs, not 3 symptoms of 1. `FileItem` Pydantic model requires `type`, manager returned raw payloads (500 files / 500 search) — FIXED, PR #2816 merged 2026-07-19. `/api/drive/stats` (404) is unrelated: the route never existed at all — FIXED, PR #2898; follow-up wall-clock fix PR #2900 after a real-prod-data perf finding. **DONE — PROVE-LIVE confirmed 2026-07-20** (see narrative below) | DONE (#2816, #2898, #2900) | this session | Closed. 1 pre-existing out-of-scope finding flagged, not fixed (SYSTEM OAuth token dead → SA fallback, zero quota) |
 | 6 | **Peraturan feeder (Sheet→PDF→NB-6)** | Dead 5+ weeks: every run fails on missing `GOOGLE_SERVICE_ACCOUNT_JSON` (log last entry 2026-06-16) | Operator provides/rotates the credential; then session re-arms + proves one green run end-to-end | operator[credential] → session | Without it NB-6 compliance ground truth stales |
-| 7 | **Regulatory-watcher cadence** | 33 deltas over 64 days ≈ 52% day-coverage (gaps 05-31→06-10, 06-18→06-28); per-day quality high | Read the wrapper's own logs for gap-days: quota-cascade vs launchd death vs TCC (W84 class). Fix the actual cause, add day-coverage metric to proprioception | session lane | Don't guess the cause — read the log first (anti-pattern rule) |
+| 7 | **Regulatory-watcher cadence** | ~~33 deltas over 64 days ≈ 52% day-coverage~~ — superseded 2026-07-20: live run found a NEW failure mode (false-clean, not a coverage gap) — ollama tier emitted a schema-valid `{partial:true}` stub the old check couldn't distinguish from a real scan | **DONE (#2877)**: `ensure_full_delta()` rejects+cascades partial stubs past tiers 1-3; tier 4 marks DEGRADED via heartbeat instead of logging as clean. Home-fork synced | this session | Closed. Day-coverage metric to proprioception NOT added — narrower fix shipped for the live-found bug, not the original coverage-gap framing (predates W81/W84 hardening, not reproduced live) |
 | 8 | **KBLI schema drift vs CLAUDE.md §9** | Live table `kbli_documents`: `sektor_id`/`pma_status` NESTED in `metadata` jsonb on all 1,563 rows; `kategori_risiko` absent everywhere; `skala_usaha`→`per_skala`. CLAUDE.md §9 says flat/never-nested | Reconcile WITH the kbli-navigator lane: either the invariant doc is stale (likely — table carries newer keys like `kode_kbli_2025`, `pp28_sources`) or the table regressed. Update whichever is wrong; add tripwire test | kbli lane + session | CLAUDE.md §9 is marked NEVER VIOLATE — the contradiction itself is the bug |
 | 9 | **NAGA claim ledger** | 3,119 claims / 6,980 evidence rows, stale since 2026-05-07 | Zero decides: revive as the claim-verification organ (charter L3 wants it alive) or archive formally. No zombie middle state | operator[business] | — |
 | 10 | **NB hygiene** | 96 NBs / 5,643 sources; 24 empty shells, 11 never-populated "Research" shells, 6 self-marked deprecated (MERGED/ARCHIVED 2026-05-07) still live | Propose deletion/merge list to Zero (NB deletion = confirm-gated); populate-or-delete ruling for the 11 shells | session proposes, Zero confirms | notebook_delete is destructive → explicit confirm |
-| 11 | **MCP observability lies** | `get_collection_stats` + `get_qdrant_metrics` return the same zeroed op-counter, NOT per-collection stats (tool description promises otherwise); MCP caller has RBAC role `unknown` → all content tools 403 | Fix handlers to hit Qdrant `/collections` for real. **Identity-first rule (adversarial K7): the RBAC role resolving as `unknown` is the defect — fix identity resolution FIRST; a role is granted only to an IDENTIFIED principal, never to whatever `unknown` happens to be. If the block is intended, document it; never grant-to-unknown as a shortcut** | session lane | Small; restores self-inspection ability the audit had to work around |
+| 11 | **MCP observability lies** | ~~`get_collection_stats` + `get_qdrant_metrics` return the same zeroed op-counter... MCP caller has RBAC role `unknown` → all content tools 403~~ — corrected 2026-07-20 (re-grounded from scratch, not trusted from the audit): `get_collection_stats` repointed at `/health/collections` (real per-collection walk) — **FIXED, #2877**, PROVE-LIVE 2026-07-20 via direct `curl https://nuzantara-rag.fly.dev/health/collections` (no auth gate on `/health/*`): 15 collections, 121,252 total documents, real `live_points`/`status`/`vector_size`/`distance`/`segments_count` per collection. `get_qdrant_metrics`'s own docstring was NEVER mismatched with its behavior (promises op-counters, delivers op-counters) — not actually a bug, just less interesting data on a fresh process; left as-is. "All content tools 403" was FALSE — AST census found 41/131 tools RBAC-gated in `nuzantara-mcp` (2/6 content tools), ZERO in `nuzantara-mcp-advanced` (where `get_collection_stats` lives) | **DONE (#2877)** for the real half; RBAC `unknown`-role half correctly left as `operator[business]` — see `§Solo-operatore` note below, not a bug (deliberate fail-closed default, no scoped role exists to grant) | this session | Closed except the flagged operator decision. **Session-local note**: this session's own long-lived local `nuzantara-mcp-advanced` MCP process still returns the pre-fix op-counter shape (loaded the old code before #2877 merged, doesn't hot-reload) — verified via direct endpoint call instead; a session/MCP-connection restart would pick up the fix, not a code issue |
 | 12 | **Orphan corpora** | `apps/kb/data/immigration/` 84 raw txt (unreferenced anywhere); `apps/kbli-navigator/data/` second KBLI dataset copy, sync unverified; `backend/kb/raw/top5_wave3/` empty stubs | Archive or re-wire the 84 txt; add sync check (or single-source) for kbli-navigator data; delete stub scaffold | session lane | Low; reduces fragmentation (audit found ≥6 uncoordinated KB locations) |
 | 13 | **Tier1 legal PDFs → automated re-ingestion** | 517MB verified on disk (`data/kb_sources/`), wired to `ingest_tier1_gaps.py`/`ingest_2026_laws.py` but MANUAL invocation only; Qdrant freshness unconfirmed | Run a verified re-ingestion pass (dry-run → apply), then decide cadence (event-driven on new PDFs, not blind cron). **Embedding-invariant gate (adversarial F5): the pass MUST pin `text-embedding-3-small`/1536 dims explicitly, keep chunking config byte-identical to the collections' existing strategy, and use deterministic point IDs (idempotent re-runs, no silent duplicates). Proof = point-count delta AND per-vector spot-check (named-vector config + dims + a sampled cosine sanity on unchanged docs) — count alone cannot detect mixed embeddings (frozen-invariant breach)** | session lane | Needs Qdrant write path + before/after proof per the F5 gate (Legge 7) |
 
@@ -66,6 +66,51 @@ sources:
   PROVE-LIVE per standing rule #1. Confirmed-safe leftover branch
   `fix/team-drive-fileitem-type` (content-identical to #2816's squash-merge,
   W88-verified via blob diff) deleted as part of this cleanup.
+  **PROVE-LIVE attempt on #2898 surfaced 2 real, distinct production findings**
+  (via `fly ssh console` running the real service-layer code directly, once
+  with `db_pool=None` — isolated a real perf bug but broke OAuth lookup as a
+  side effect — then again with a correctly-wired `asyncpg` pool to rule that
+  confound out): (1) the walk's only cap was `max_pages` (a page COUNT), which
+  doesn't bound wall-clock latency — against the real Team Drive it took
+  **45.5s for 20 pages, still truncated**, causing 2 real 30s MCP client
+  timeouts; (2) the "system" OAuth token this endpoint depends on is
+  genuinely dead in prod (fails to refresh even with a correctly-wired DB
+  pool), forcing a Service-Account fallback whose own storage quota is
+  genuinely ~0 — pre-existing, affects the whole `team_drive.py` router
+  (shared `user_email="system"` auth path), NOT introduced by this diff.
+  **Fix shipped in follow-up PR #2900** (auto-merged 2026-07-20T11:10:26Z,
+  merge commit `ba7531cd4c`, verified on `origin/main` by content per W88):
+  added a `max_seconds=10.0` wall-clock deadline alongside `max_pages` (walk
+  truncates honestly on whichever hits first) — the actual root cause of the
+  timeout, not just a smaller page-count guess; and a `quota_measured_as`
+  field (from `about.get`'s `user.emailAddress`) so a `storage_used_bytes: 0`
+  is never silently mistaken for the real account's usage. Cross-family
+  adversarial review (Kimi K3 — Codex MCP/CLI and GLM all confirmed dead this
+  session) caught a real bug in the diff's OWN test: the wall-clock
+  "innocence" test used a single page with no `nextPageToken`, so the loop
+  broke via `if not page_token` *before* the deadline check was ever reached
+  — vacuous, would have passed even with the condition replaced by `or True`.
+  Verified independently (re-read the real break-before-check ordering, then
+  mutation-tested: forced the condition to `or True`, confirmed the original
+  test passed silently and the fixed 2-page version correctly failed, then
+  reverted the mutation cleanly). Fixed + full suite re-verified twice
+  (19,270 passed both times) before/after the review fix.
+  **PROVE-LIVE (2026-07-20, real `mcp__nuzantara-mcp__get_drive_storage_stats()`
+  call post-deploy):** fast response, no timeout — `scanned_pages: 5,
+  truncated: true` (deadline tripped well before the `max_pages=20` cap,
+  exactly as designed), real `files_count`/`folders_count`/`storage_by_type`
+  data returned. `quota_measured_as` confirmed the predicted Service-Account
+  fallback identity, not a `@balizero.com` address — the SYSTEM OAuth finding
+  is real and still live. **Deliberately NOT fixed here** (out of proportional
+  scope for a "the route was 404" hotfix, pre-existing, affects a shared auth
+  path other endpoints already silently depend on) — flagged instead: the
+  SYSTEM OAuth token needs operator re-auth via
+  `https://kita.balizero.com/settings/integrations` (documented flow, CLAUDE.md
+  §Drive OAuth lifecycle) to restore the real 30TB account's quota reporting.
+  `largest_files` in the live response contains real client document
+  filenames (PII) — verified the fix works from the response shape/counts
+  only, per the standing PII-output boundary (SYMBIOSIS Law 2); no filenames
+  transcribed anywhere in this ledger, memory, or any commit.
 - **Lever #12 re-grounded + partially DONE** (2026-07-20, fresh re-verification —
   the original row's claims were checked again on disk, not trusted from memory):
   - `apps/kb/data/immigration/`: **87** raw txt (audit said 84 — corrected), zero
