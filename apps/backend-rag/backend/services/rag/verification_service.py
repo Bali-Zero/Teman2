@@ -7,7 +7,6 @@ UPDATED 2025-12-23:
 - Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
-import json
 import logging
 import os
 from enum import Enum
@@ -15,7 +14,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
-from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, LLMStructuredOutputError
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +60,19 @@ class VerificationResult(BaseModel):
     corrected_answer: str | None = None
     missing_citations: list[str] = []
     verdict_available: bool = True
+
+
+class VerifierVerdict(BaseModel):
+    """Schema the verifier LLM is constrained to via generate_structured()'s
+    response_schema (JSON mode — response_mime_type="application/json",
+    no markdown fence, ever; PR #311 convention: `reasoning` FIRST forces
+    think-before-commit)."""
+
+    reasoning: str
+    status: str
+    score: float
+    corrections: str | None = None
+    missing_citations: list[str] = []
 
 
 class VerificationService:
@@ -161,83 +173,44 @@ Return a JSON object with this exact structure:
 }}
 """
 
+        # Use low temperature for deterministic evaluation.
+        # Verdict JSON (status/score/reasoning/corrections/missing_citations)
+        # is small — 8192 was a leftover generation-sized cap for a
+        # judge-sized output. Trimmed to 2048 (increment-1, latency): a
+        # representative sample verdict on this exact prompt schema
+        # measured ~95 output tokens (see scripts/verifier_model_ab.py /
+        # self-correction-speed-design.md validation note), leaving ~20x
+        # headroom. generate_structured() (PR #311) forces JSON mode
+        # (response_mime_type="application/json" + response_schema) — the
+        # model can no longer wrap its verdict in a markdown ```json fence,
+        # which is what silently killed the fact-check gate in prod (the
+        # fence made json.loads() raise, minting a fake score=0.5 that
+        # reasoning.py's self-correction gate treated as a real verdict).
+        # Failure mode if the model still can't produce schema-valid JSON
+        # (after generate_structured's own one retry) is safe-by-design:
+        # LLMStructuredOutputError, caught below as verdict_available=False
+        # — never a corrupted verdict silently gating downstream behavior.
         try:
-            # Use low temperature for deterministic evaluation
-            # Verdict JSON (status/score/reasoning/corrections/missing_citations)
-            # is small — 8192 was a leftover generation-sized cap for a
-            # judge-sized output. Trimmed to 2048 (increment-1, latency): a
-            # representative sample verdict on this exact prompt schema
-            # measured ~95 output tokens (see scripts/verifier_model_ab.py /
-            # self-correction-speed-design.md validation note), leaving
-            # ~20x headroom. Failure mode if ever exceeded is safe-by-design:
-            # a truncated response fails json.loads below and is caught by
-            # the except clause as verdict_available=False (no self-correction
-            # triggered on a corrupted verdict), never a corrupted verdict
-            # silently gating downstream behavior.
-            result = await self._genai_client.generate_content(
+            verdict = await self._genai_client.generate_structured(
                 contents=prompt,
+                response_schema=VerifierVerdict,
                 model=self.model_name,
                 temperature=0.0,
                 max_output_tokens=2048,
+                endpoint="rag.verifier",
             )
-
-            # Gemini can return an EMPTY string for `text` (safety block or
-            # content filter). The `"{}"` default on .get() only applies when
-            # the key is MISSING, not when its value is "" — json.loads("")
-            # raises, which used to fall through to the blanket except below
-            # and mint a fake score=0.5. Downstream (reasoning.py) treated
-            # that fake 0.5 as a real "half-supported" verdict and triggered
-            # a wasted self-correction round-trip (rephrase LLM call, then
-            # re-verify — same empty-response bug, ~23s wasted on a query
-            # that was correct the first time). Guard explicitly so callers
-            # can tell "no verdict" from "verdict genuinely says 0.5".
-            text = (result.get("text") or "").strip()
-            if not text:
-                logger.warning(
-                    "🛡️ [Verifier] LLM returned empty response "
-                    "(possible safety block or content filter) — "
-                    "verdict unavailable, passing through",
-                )
-                return VerificationResult(
-                    is_valid=True,
-                    status=VerificationStatus.PARTIALLY_VERIFIED,
-                    score=0.5,
-                    reasoning="Verifier LLM returned an empty response. Verdict unavailable.",
-                    verdict_available=False,
-                )
-
-            result_json = json.loads(text)
-
-            status = VerificationStatus(result_json.get("status", "unverified"))
-            score = float(result_json.get("score", 0.0))
-
-            # Determine validity threshold (strict)
-            is_valid = score >= 0.7  # Allow minor deviations, but reject major issues
-
-            logger.info("🛡️ [Verifier] Status: %s | Score: %s", status, score)
-
-            return VerificationResult(
-                is_valid=is_valid,
-                status=status,
-                score=score,
-                reasoning=result_json.get("reasoning", ""),
-                corrected_answer=result_json.get("corrections"),
-                missing_citations=result_json.get("missing_citations", []),
+        except LLMStructuredOutputError as e:
+            logger.warning(
+                "🛡️ [Verifier] Model failed to produce a schema-valid verdict: %s",
+                e,
             )
-
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            # Verdict could not be parsed (malformed JSON / invalid status
-            # enum / missing key). Never a real verdict — never let it gate
-            # self-correction downstream.
-            logger.warning("🛡️ [Verifier] Could not parse verifier verdict: %s", e)
             return VerificationResult(
                 is_valid=True,
                 status=VerificationStatus.PARTIALLY_VERIFIED,
                 score=0.5,
-                reasoning=f"Verifier verdict could not be parsed: {e}",
+                reasoning=f"Verifier verdict unavailable: {e}",
                 verdict_available=False,
             )
-
         except Exception as e:
             # Unexpected error (network, API, etc.). Fail safe: allow it but
             # log error — and, same as above, never let the placeholder
@@ -250,6 +223,26 @@ Return a JSON object with this exact structure:
                 reasoning=f"Verification failed processing: {e}",
                 verdict_available=False,
             )
+
+        try:
+            status = VerificationStatus(verdict.status)
+        except ValueError:
+            status = VerificationStatus.UNVERIFIED
+        score = float(verdict.score)
+
+        # Determine validity threshold (strict)
+        is_valid = score >= 0.7  # Allow minor deviations, but reject major issues
+
+        logger.info("🛡️ [Verifier] Status: %s | Score: %s", status, score)
+
+        return VerificationResult(
+            is_valid=is_valid,
+            status=status,
+            score=score,
+            reasoning=verdict.reasoning,
+            corrected_answer=verdict.corrections,
+            missing_citations=verdict.missing_citations,
+        )
 
 
 verification_service = VerificationService()
