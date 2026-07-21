@@ -3,7 +3,7 @@ date: 2026-07-21
 domain: company
 dossier: company-kbli-signed-lots (CHATKB dossier 11, 20 Q&A)
 round: 5 (ground-truth sweep after team-review round 4)
-adversarial_review: done (Kimi-subagent seat; Codex MCP+CLI unavailable — see §Adversarial review)
+adversarial_review: kimi
 ---
 
 # Dossier 11 (company-kbli-signed-lots) — round-5 verification of team review
