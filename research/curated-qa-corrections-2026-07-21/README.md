@@ -4,7 +4,13 @@ domain: visa+property
 adversarial_review: exempt-corrections-index
 ---
 
-# Curated-QA corrections — 2026-07-21 (ready to apply, NOT yet applied)
+# Curated-QA corrections — 2026-07-21
+
+> **Status:** Rounds 1-2 (`property-villa-rental`, `visa-second-home-variants`,
+> `visa-catalog-sweep`) were applied + re-harvested to prod on 2026-07-20.
+> **Round 3 (this PR)** adds 2 more files — `visa-golden-investor.jsonl` +
+> `visa-working-kitas-depth.jsonl` — NOT yet applied (harvest recipe in the
+> "Round 3" section at the end). Round 1-2 detail below is preserved as-is.
 
 Drafted after independently verifying 8 disputed team-review corrections
 against official sources (see the 3 research captures in `research/property/`
@@ -140,3 +146,74 @@ this section documents what changed and why):
 have shipped a genuinely dangerous error (offering a blocked KBLI as a
 compliant route). The adversarial-review step is not decorative — treat
 any future single-pass correction to this KB with the same suspicion.
+
+## Round 3 — 4 "suspicious / generic-hedging" review files (2026-07-21, this PR)
+
+The team returned 4 more review files — `02 golden-investor`, `03 business-multientry`,
+`07 student`, `18 working-kitas-depth`. Unlike the round-1/2 files, these 4 had ALREADY
+been through a rigorous 2026-07-19 arbiter pass (primary-source pdftotext/OCR of PP 34/2021,
+Permenaker 8/2021, Permenkumham 22/2023 + 11/2024, plus verbatim imigrasi-page fetches). And
+the 4 reviewers were uniformly **legal-cautious** — almost every note is "verify X / don't
+state as absolute," a *hedging request*, NOT a concrete factual dispute. Mechanically
+softening every such note would degrade the KB (turn precise, sourced, brand-appropriate
+answers into hedge-mush) and violate Bali Zero's own voice ("cite the regulation verbatim").
+So each concrete, checkable claim was validated against primary/official sources, and only the
+genuine ones were applied.
+
+**Result: 3 rows corrected across 2 of the 4 files. The other 2 files
+(`business-multientry`, `student`) are clean** — every concrete reviewer point there was
+already addressed + primary-sourced in the current version.
+
+### The 3 validated corrections
+
+1. **`visa-golden-investor.jsonl` Q17 (E33 vs E28 comparison) — factual error, fixed.**
+   Draft said base E33 Second Home gives "broad freedom to also tour, visit family, **work**,
+   or study." **E33 is not a work visa.** Base E33 (the USD 130k-deposit / USD 1M-property
+   route) is a pure *residence* permit; it does not authorize employment — paid work needs a
+   separate work permit/KITAS. (Work appears only on the government-sponsored E33A/E33C
+   variants, with dual-activity "rangkap kegiatan" reporting — see `visa-second-home-variants.jsonl`
+   in this same dir, derived from live imigrasi fetches 2026-07-19.) The reviewer caught it,
+   and it was internally inconsistent with this KB's own director-vs-worker line (golden Q14;
+   student Q11/Q12). "work" removed; "E33 is not a work visa" stated explicitly.
+
+2. **`visa-golden-investor.jsonl` Q5 (E28D) — missing figures added.** The draft
+   conservatively omitted E28D's investment threshold. The official imigrasi E28D page states
+   verbatim **US$25.000.000** (5-year) / **US$50.000.000** (10-year) — re-fetched 2026-07-21,
+   corroborated by the reviewer's independent field claim. Amounts added.
+
+3. **`visa-working-kitas-depth.jsonl` Q10 (RPTKA) — over-statement softened.** Draft said
+   "every employer must have an approved RPTKA." **PP 34/2021 Pasal 19** (primary text,
+   pdftotext 2026-07-21) exempts a narrow set from the RPTKA requirement itself:
+   director/commissioner-shareholders, diplomatic/consular staff, and short-term
+   emergency/vocational/start-up/business-visit/research workers. The KB already cited Pasal 19
+   elsewhere (golden Q14) — this row just failed to reflect it. Exemptions added.
+
+### Investigated, NOT changed (validated correct as-is)
+
+- **golden Q18 fine schedule** — "Rp 6M → 36M by month six + 2%/month" is PP 34/2021 **Pasal 37**
+  verbatim (Rp 6/12/18/24/30/36M) + Pasal 38 (2%/month). Exactly right; the reviewer's "verify"
+  is satisfied, no change.
+- **All of `visa-business-multientry.jsonl`** — C2-onshore-convert / D1-D2-cannot, 30-day
+  alih-status, 60-day/3-day bridging visa, the explicit "31-day is wrong" correction, overstay
+  10+10yr/lifetime — all already primary-sourced (Permenkumham 11/2024 pdftotext, PP 45/2024,
+  UU 63/2024). No change.
+- **All of `visa-student.jsonl`** — the reviewer's notes were 100% "verify against latest
+  regulations"; the content is already imigrasi-page-verbatim + Permenkumham-22/2023-pdftotext
+  sourced (one-visa-one-permit rule, C9/C9B, C22A/C22B, part-time-work prohibition). No change.
+
+### How to apply Round 3 (2 files, operator-gated harvest)
+
+```bash
+cp research/curated-qa-corrections-2026-07-21/visa-golden-investor.jsonl \
+   research/curated-qa-corrections-2026-07-21/visa-working-kitas-depth.jsonl \
+   apps/backend-rag/data/curated_qa/
+cd apps/backend-rag && source .venv/bin/activate
+PYTHONPATH=. python scripts/curated_qa_harvest.py --write-manifest data/curated_qa/visa-golden-investor.jsonl
+PYTHONPATH=. python scripts/curated_qa_harvest.py --write-manifest data/curated_qa/visa-working-kitas-depth.jsonl
+PYTHONPATH=. python scripts/curated_qa_harvest.py --qdrant
+```
+
+(Re-harvest is an in-place upsert — `_stable_point_id(question, domain)` is domain-scoped and
+answer-independent — so no stale-point purge is needed. `--faq` not required: none of the 3
+corrected rows change FAQ-sink eligibility in a way that needs the exact-match cache rebuilt
+for this fix.)
