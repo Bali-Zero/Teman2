@@ -160,6 +160,20 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
   self-heal-check. Daemon ripristinato (plist diff-verificato byte-identico al backup
   pre-wave-1, entrambi i servizi `running` con PID freschi).
 
+- **2026-07-21 — WAVE-2 REROUTE SELF-HEAL CONFIRMATO — 94/94, ledger chiuso.** Ricontrollo
+  diretto ~5h23m dopo l'apply: tutte e 107 le code sorgente avevano raggiunto
+  `stage='route',status='done'` (drain completato naturalmente col daemon a piena
+  velocità, solo oltre la finestra di 300s originale). Sicurezza riverificata: 107
+  proposte originali `superseded`, la proposta viva per ogni coda è in
+  `review_pending` col nuovo cliente come candidato — **0 auto_routed**, la
+  soppressione auto-attach ha tenuto per l'intera finestra. Stato corretto per
+  design (questo programma crea contatti, non aggancia mai automaticamente).
+  Unico gap: il flag `reroute_verified` non si aggiorna mai da solo (nessun
+  meccanismo ambientale ri-esegue la verifica post-drain di un batch già
+  concluso) — chiuso manualmente con un UPDATE mirato, giustificato dalla
+  riverifica diretta delle due condizioni sostanziali (0 auto_routed + code
+  fresche a done/route) immediatamente prima. `reroute_verified` ora 94/94 true.
+
 - **2026-07-21 — WAVE-2 EXECUTED (Zero GO #2) — 94 contatti creati, reroute in self-heal.**
   Secondo "go" di Zero ricevuto subito dopo la chiusura del wave-1. Census fresco: 94
   candidati residui (passport 84/kitas 10), sotto l'hard-cap → un solo lotto. Riapplicata
