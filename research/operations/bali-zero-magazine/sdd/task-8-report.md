@@ -1,6 +1,6 @@
 ---
-adversarial_review: codex
-adversarial_review_date: 2026-07-21
+date: 2026-07-21
+adversarial_review: exempt-execution-report-umbrella-spot-check-in-sdd/REVIEW.md
 ---
 
 # Task 8 Report — Guarded Operations Room
@@ -195,14 +195,6 @@ cd apps/zantara-media && .venv/bin/python -m pytest tests/magazine/test_operatio
 cd apps/bali-zero-magazine && npm run test:unit -- --test-name-pattern='operations'
 160 passed
 
-
-## Adversarial review
-
-Codex challenged whether the Operations room could execute arbitrary effects or
-bypass review through a forged lifecycle transition. The five-kind dispatcher,
-role checks, transition guards, single-use attestations, and effect receipts
-answer those objections. Live effect execution remains outside Sites and is not
-proven until the protected Pro worker bindings are configured.
 cd apps/zantara-media && .venv/bin/ruff check zantara_media/magazine/operations_worker.py tests/magazine/test_operations_worker.py
 All checks passed!
 

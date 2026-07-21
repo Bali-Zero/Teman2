@@ -1,6 +1,6 @@
 ---
-adversarial_review: codex
-adversarial_review_date: 2026-07-21
+date: 2026-07-21
+adversarial_review: exempt-execution-report-umbrella-spot-check-in-sdd/REVIEW.md
 ---
 
 # Task 6 Report — Pro Editorial Publisher and Automatic Cadence
@@ -180,11 +180,3 @@ The publisher submits public receipts to the Task 5 Sites ingress target and fai
 closed unless Sites returns `created` or `replay`. This task does not deploy or
 mutate the Sites runtime; enabling the cadence still requires the normal protected
 PR/CI/deployment flow and configured environment secrets.
-
-## Adversarial review
-
-Codex challenged the title's Automatic Cadence wording against the operational
-state. The publisher and schedules are prepared, but no autonomous cadence is
-active until the protected merge, runtime secrets, Sites deployment, and
-LaunchAgent loading occur. That activation boundary survives the review and is
-explicitly retained; no claim of live publication is made.

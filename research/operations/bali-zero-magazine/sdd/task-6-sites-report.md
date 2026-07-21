@@ -1,6 +1,6 @@
 ---
-adversarial_review: codex
-adversarial_review_date: 2026-07-21
+date: 2026-07-21
+adversarial_review: exempt-execution-report-umbrella-spot-check-in-sdd/REVIEW.md
 ---
 
 # Task 6 Sites audit-anchor ingress report
@@ -64,11 +64,3 @@ The cryptographic wire format follows RFC 8785 JCS and the Cloudflare Workers
 Web Crypto Ed25519 surface. No reusable in-repository audit-anchor ingress
 existed; the implementation extends the existing audit-chain, machine-HMAC,
 publication-repository, and runtime-binding primitives.
-
-## Adversarial review
-
-Codex challenged whether focused SQLite and Web Crypto tests establish
-production-runtime readiness. They establish the signed protocol behavior, but
-the missing migrated-D1 and injected-binding smoke remains a deployment risk.
-The report already discloses that limitation; it survives review as a required
-post-deployment verification.
