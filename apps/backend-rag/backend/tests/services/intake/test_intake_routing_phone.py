@@ -160,12 +160,20 @@ class FakeConn:
         self.queries: list[str] = []
         self.fetchrow_queries: list[tuple[str, tuple[Any, ...]]] = []
 
+    @staticmethod
+    def _with_id_verified(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # The merged strong-match SELECTs (routing._match_person_strong) also
+        # project id_verified (coalesce from custom_fields identity_backfill).
+        # Fixture rows authored before that projection existed default to
+        # verified — their presence in the fake result IS the attestation.
+        return [r if "id_verified" in r else {**r, "id_verified": True} for r in rows]
+
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         self.queries.append(query)
         if "passport_number" in query:
-            return self.passport_rows
+            return self._with_id_verified(self.passport_rows)
         if "kitas_number" in query:
-            return self.kitas_rows
+            return self._with_id_verified(self.kitas_rows)
         if "phone_normalized" in query:
             return self.phone_rows
         if "similarity" in query:
