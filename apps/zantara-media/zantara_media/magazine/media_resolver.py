@@ -500,11 +500,18 @@ def validate_manifest_publication_binding(
 
     validate_asset_intent_targets(packet, manifest, breaking=breaking)
     packet_id = str(packet.get("packet_id", ""))
+    generated_items: list[AssetIntentV1] = []
     for item in manifest.intents:
         generated_rights = item.rights_basis == "generated"
         generated_source = item.source == "Bali Zero editorial generator"
         if generated_rights != generated_source:
             raise ValueError("asset has inconsistent generated provenance")
+        if generated_rights:
+            generated_items.append(item)
+    if len(generated_items) > 1:
+        raise ValueError("publication context permits only one generated hero")
+    for item in manifest.intents:
+        generated_rights = item.rights_basis == "generated"
         if item.approved_for_packet_id != packet_id:
             raise ValueError("asset is not approved for packet")
         if generated_rights:

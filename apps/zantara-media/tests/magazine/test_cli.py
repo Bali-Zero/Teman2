@@ -458,6 +458,29 @@ def test_mixed_manifest_cannot_bypass_generated_context_binding(
         validate_manifest_publication_binding(manifest, packet, breaking=True)
 
 
+def test_multiple_generated_assets_cannot_bypass_single_hero_contract(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
+    first_path = tmp_path / "generated-1.png"
+    second_path = tmp_path / "generated-2.png"
+    first_path.write_bytes(PNG)
+    second_bytes = PNG + b"second"
+    second_path.write_bytes(second_bytes)
+    manifest = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            _automatic_intent(packet, first_path),
+            _automatic_intent(packet, second_path, source_bytes=second_bytes),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="one generated hero"):
+        validate_manifest_publication_binding(manifest, packet, breaking=True)
+
+
 def test_explicit_asset_without_approved_digest_fails_closed(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],

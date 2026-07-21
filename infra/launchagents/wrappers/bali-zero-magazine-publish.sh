@@ -36,7 +36,7 @@ OUTPUT_DIR="${MAGAZINE_OUTPUT_DIR:-$STATE_DIR/packets}"
 LOG_DIR="${MAGAZINE_LOG_DIR:-$HOME/logs}"
 DATE_WITA="$(TZ=Asia/Makassar date +%Y-%m-%d)"
 LOG="$LOG_DIR/bali-zero-magazine-${MODE}.log"
-LOCKFILE="$STATE_DIR/${MODE}.lock"
+LOCKFILE="$STATE_DIR/${MODE}.flock"
 TIMEOUT_SECONDS="${MAGAZINE_TIMEOUT_SECONDS:-840}"
 PUBLISH_ENABLED="${MAGAZINE_PUBLISH_ENABLED:-true}"
 export MAGAZINE_AUTO_ASSETS="${MAGAZINE_AUTO_ASSETS:-true}"
@@ -91,12 +91,23 @@ load_secret_from_keychain MAGAZINE_SIWC_BEARER_TOKEN siwc-bearer-token
 load_secret_from_keychain MAGAZINE_HMAC_SECRET hmac-secret
 load_secret_from_keychain MAGAZINE_AUDIT_PRIVATE_KEY_B64 audit-private-key-b64
 
-touch "$LOCKFILE"
+if [[ -e "$LOCKFILE" && ! -f "$LOCKFILE" ]]; then
+    log "fatal mode=$MODE advisory_lock_path_not_regular"
+    exit 70
+fi
+if ! touch "$LOCKFILE"; then
+    log "fatal mode=$MODE advisory_lock_path_unavailable"
+    exit 70
+fi
 if ! zmodload zsh/system; then
     log "fatal mode=$MODE advisory_lock_module_unavailable"
     exit 70
 fi
 if ! zsystem flock -t 0 -f MAGAZINE_LOCK_FD "$LOCKFILE"; then
+    if [[ ! -f "$LOCKFILE" ]]; then
+        log "fatal mode=$MODE advisory_lock_path_changed"
+        exit 70
+    fi
     log "duplicate suppressed mode=$MODE advisory_lock_busy"
     exit 0
 fi
