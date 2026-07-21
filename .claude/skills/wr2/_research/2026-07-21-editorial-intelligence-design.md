@@ -1,7 +1,7 @@
 ---
 title: WR2 Editorial Intelligence — design accurato (dal disco-rotto al planner editoriale)
 date: 2026-07-21
-status: SPEC v1 — RED-TEAMED (2 grader indipendenti, §7). Attende ratifica Zero (Legge 5 su brand/costituzione) + i 3 pre-build gate come condizione di BUILD.
+status: SPEC v1.1 — §8 brand decisions RATIFIED by Zero 2026-07-21 (all 4 as recommended); Phase 1 (Mossa A) SHIPPED #2942 + replay gate PASSED (61/61 first-try, 0 fail, 11/11 kinds, 100% family-resolution)
 mandate: Zero — "come diamo alla WR2 una intelligenza editoriale tale, e non un disco rotto che ripete schemi fissi" + "disegnamolo con accuratezza e vediamo se altri sistemi nel mondo possiamo vedere il loro codice"
 method: session architect (Fable) + 3 seat che hanno LETTO IL CODICE REALE (repo clonati, commit SHA, file:line) + 2 red-team indipendenti (Sonnet con accesso-repo & DB-live; Kimi K3 cross-family)
 grounded_by: WR2 file:line VERIFICATI su disco 2026-07-21 (ri-letti da un secondo grader + query sul DB live); STORM/gpt-researcher/gpt-newspaper/instructor/outlines/pydantic codice reale letto
@@ -339,6 +339,19 @@ successo si dichiara sull'esito IG + sul tasso-di-riscrittura-umana a `drafted`,
 
 Il BUILD parte solo dopo ratifica di questi (più i 3 pre-build gate: fail-rate-replay, guilt+innocence
 corpus, sizing-quota):
+
+> **RATIFIED by Zero, 2026-07-21 — all 4 as recommended:**
+>
+> 1. **Arc library = the 7-slate**: `news_alert`, `deadline`, `myth_buster`, `worked_example`,
+>    `comparison`, `explainer`, `status_roundup`. Breaking topics → tight 5-6 slide decks via arcs 1/2;
+>    evergreen topics → rich 8-9 slide decks via arcs 4/6.
+> 2. **Caps only on headings, never on bodies.**
+> 3. **"The Bali Zero read"** = recurring CLOSER slot-franchise.
+> 4. **Palette rotation per DOMAIN**: immigration = carbon `#373D42` + yellow `#F4C430` ·
+>    tax = carbon + red `#C8102E` · company/KBLI = black + yellow · property = paper/cream + carbon ·
+>    breaking = red-forward.
+
+Opzioni originali valutate (record storico, mantenute sotto per riferimento):
 
 1. La libreria degli **archi** (quali 6-8, e le loro sequenze di ruoli) — è voce editoriale/brand.
 2. La regola **"caps solo su heading, mai sui body"** (già matura, Zero-gated).
