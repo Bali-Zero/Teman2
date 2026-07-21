@@ -38,6 +38,7 @@ from backend.services.common.background import spawn
 from backend.services.visa_check.match_tree import Purpose
 from backend.services.visa_engine.bundle import StaticTrustStore, verify_rule_pack
 from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.crypto import resolve_identity_provider
 from backend.services.visa_engine.enums import (
     APPLICANT_FACT_PATHS,
     EngineMode,
@@ -47,6 +48,8 @@ from backend.services.visa_engine.enums import (
     VisaPurpose,
 )
 from backend.services.visa_engine.errors import (
+    FactsFingerprintKeyError,
+    FactsFingerprintKeyUnavailableError,
     PlaceholderIdentityNotAllowedError,
     RulePackCompilationError,
     RulePackVerificationError,
@@ -544,12 +547,27 @@ async def _shadow_evaluate_match(
             return
 
         try:
-            decision = evaluate(facts, compiled, effective_at=now, observed_at=now)
-        except PlaceholderIdentityNotAllowedError:
+            identity_provider = resolve_identity_provider()
+            decision = evaluate(
+                facts,
+                compiled,
+                effective_at=now,
+                observed_at=now,
+                identity_provider=identity_provider,
+            )
+        except (PlaceholderIdentityNotAllowedError, FactsFingerprintKeyUnavailableError):
             logger.warning(
                 "shadow match: active pack environment=%s needs a real crypto "
-                "identity_provider (STEP-6d), skipping (hash=%s)",
+                "identity_provider (STEP-6d) / a provisioned facts-fingerprint "
+                "key, skipping (hash=%s)",
                 environment,
+                match_hash,
+            )
+            return
+        except FactsFingerprintKeyError:
+            logger.warning(
+                "shadow match: malformed facts-fingerprint key config "
+                "(VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON), skipping (hash=%s)",
                 match_hash,
             )
             return

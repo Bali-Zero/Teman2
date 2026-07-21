@@ -26,10 +26,36 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-20 — keep current)
+## 1. LIVE STATE (last update 2026-07-21 — keep current)
 
-**Lot 8 (A-L8) — D6 gate SECOND SIGNED 2026-07-20, MERGED to main** (PR #2892, squash
-`66ee3932e4`; report `research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`):
+**Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
+(113 A-serving/pp28 + 80190 A-serving/orphan) is done. Final tally: 109 full detach + 2
+tier-scoped partial detach (93114, 93191 — first production use of PR #2921's
+`partial_detach` primitive, built after the SAME gap was confirmed twice, Lot 8 then Lot 9) +
+3 certified-clean/no-cure (93111, 93112, 93119 — quarantine was a tooling artifact, not a
+record defect; resolved via PP28 Pasal 8(1) grounding + derived_license inapplicability).
+Lot 10 report: research/operations/2026-07-21-kbli-batch-a-lot10-conductor-gate.md. Program
+closure synthesis: research/operations/2026-07-21-kbli-batch-a-closure.md.
+**Residual: PR #2926** (one-off KG/Qdrant partial-detach for 93114/93191, audit-trail only —
+production already correct, independently re-verified live) is OPEN, blocked by an unrelated
+npm-audit CI gate that PR #2931 healed on main AFTER #2926's own CI ran — a rebase was pushed
+2026-07-21 to pick up the fix; check PR #2926's current state before assuming still-blocked.
+**What's NOT done:** Batch A was a SUBSET of the ~221 no-scope population (8 pilot + 114 Batch
+A = 122 adjudicated; ≈99 genuinely untouched remain — supersedes the stale "~213" figure
+below, which pre-dates Batch A's closure). Batch B has a SIGNED design (#2801) but NO Zero GO
+— per this program's own per-batch phase-gate rule, Batch B does not start without one.
+
+**Lot 7 (A-L7) — CLOSED 2026-07-20** (closure PR #2885, squash `7fc6c18f3c`, merged
+2026-07-20T11:01:47Z — pure-docs: gate reports, corner updates, ledger entries, zero code/data
+changes; needed 5 rounds of manual `git merge origin/main` conflict resolution against a
+fast-advancing main, see PENDING-ARMS). The gate, cure, cross-family GLM Appendix A adjudication,
+and the 41013 post-refinement re-run (refinement #2 VALIDATED, 41013 kept as a contract artifact,
+refinement #3 FILED) had already landed on main via the prior lot-cycle PRs — #2885 formally closes
+the corner narrative and ledger for the lot, nothing left open.
+
+**Lot 8 (A-L8) — D6 gate SECOND SIGNED 2026-07-20 + cure MERGED** (gate PR #2892, squash
+`66ee3932e4`; cure PR #2896, both on main; report
+`research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md`):
 15/15 codes adjudicated (13 members + 2 controls) — 0 certified, 13 quarantined, both calibration
 floors breached (m1 0.615<0.75, m2 0.000 outside [0.2,0.85]) but root-caused as a genuine finding,
 not a pipeline defect: this activity family (91425 + the whole 931xx sport/klub cluster) has
@@ -40,7 +66,9 @@ unusually poor PP28 primary-source-locatability. Findings: 1 genuine `payload_cr
 2nd sighting), 1 both-tiers-absent (93124), and 4 held UN-cured because the underlying crosswalk+
 licensing is genuinely sound and only a synthetic derived field lacks formula coverage (93111/93112/ 93119) or the compiler lacks a tier-scoped detach primitive (93114) — detaching these would destroy
 good data, not fix a defect (see PENDING-ARMS for both open items). Cure spec
-(`scripts/kbli_filiera/cure_specs/batch_a_lot8.json`, 9 codes) dry-run clean.
+(`scripts/kbli_filiera/cure_specs/batch_a_lot8.json`, 9 codes) **APPLIED to canonical via #2896**.
+**Surfaces DONE** (KG detach + Qdrant clear + cache bust + prove-live, all independently
+re-verified this session for the 9 cured codes).
 **Red-team: Codex/agy both unavailable** (Codex re-authenticated but hard quota-limited until
 2026-08-19 on this ChatGPT account; `agy` hung on two independent re-probes) — **Kimi K3 used as
 cross-family substitute seat** instead of waiting a month, verdict **CONFIRMED-WITH-NOTES** (none
@@ -49,10 +77,10 @@ signing — canonical hash pin, disputed-key report/spec mismatch, a lampiran-le
 line citation, one typo). Full findings in the report's Adversarial review section. Also an
 evidence-loss incident this cycle (first launch hit an empty evidenceRoot, all ~15 seats correctly
 fail-closed rather than hallucinate — re-pulled and independently re-verified before relaunch,
-PULL COMPLETE 15/15). **Next: cure PR (apply the 9-code spec to canonical), cross-family GLM
-Appendix A screen, surfaces (KG detach/Qdrant clear/cache bust/prove-live).** Lot 9 D0 (10
-remaining sport-cluster members: 93127-93199 + 2 fresh controls 46201/96300) evidence already
-pulled and independently verified, pins at `/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md`.
+PULL COMPLETE 15/15). **Still PENDING: cross-family GLM Appendix A screen for Lot 8 — not yet
+run.** Lot 9 D0 (10 remaining sport-cluster members: 93127-93199 + 2 fresh controls 46201/96300;
+12 codes total) evidence already pulled and independently verified, pins at
+`/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md` — adjudication Workflow not yet launched.
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
