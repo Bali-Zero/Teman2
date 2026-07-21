@@ -383,7 +383,42 @@ class EntityExtractionService:
             return self.DOMAIN_KBLI
 
         # Check for company domain
-        company_keywords = ["pt pma", "company setup", "establish company", "business setup"]
+        company_keywords = [
+            "pt pma",
+            "company setup",
+            "establish company",
+            "business setup",
+            "liquidat",  # stem: liquidate/liquidation/liquidator/liquidating
+            "dissolution",
+            "dissolve",
+            "close company",
+            "close pt",
+            "close my pt",
+            "close my company",
+            "close my business",
+            "close the company",
+            "close the pt",
+            "closing pt",
+            "tutup pt",
+            "bubar",
+            "voluntary closure",
+            "winding down",
+            "wind up",
+            "winding up",
+            "severance",
+            "kemenkumham",
+            "cit return",
+            "lkpm",
+            "wlkp",
+            "rups",
+            "annual general meeting",
+            "beneficial ownership",
+            "bo filing",
+            "bo declaration",
+            "bpjs",
+            "nib",
+            "izin usaha",
+        ]
         if any(kw in query_lower for kw in company_keywords):
             return self.DOMAIN_COMPANY
 
