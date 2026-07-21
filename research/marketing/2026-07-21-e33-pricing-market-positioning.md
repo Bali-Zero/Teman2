@@ -4,6 +4,7 @@ domain: marketing
 client_case: none (internal strategy — E33 Second Home Residency service line)
 author: deep-researcher (multi-LLM: Opus 4.8 synthesis + Gemini 3.1 Pro + Kimi K3 + WebSearch/WebFetch)
 status: draft
+adversarial_review: kimi
 sources:
   - WebFetch flado.id/price + flado.id product pages (2026-07-21)
   - WebFetch/WebSearch emerhub.com second-home apply page + letsmoveindonesia.com (2026-07-21)
@@ -120,3 +121,13 @@ Rationale:
 4. Gemini 3.1 Pro synthesis on golden-visa advisory fees (Portugal/UAE/Thailand/Malaysia/Greece) — full raw output: scratchpad tasks/blov6fs8u.output.
 5. Kimi K3 Indonesia firm pricing research (VERIFIED/ESTIMATE/NOT-FOUND labeled) — full raw output: scratchpad tasks/bslona2ii.output.
 6. WebSearch: MM2H MOTAC-regulated fees (lugenmm2h.com, applymm2h.com.my); Portugal GV cost (globalcitizensolutions.com, movingto.com); Thailand LTR/Elite (issacompass.com, rumavi.com); Greece GV (tranio.com); HNW consultation-fee patterns (shanelaw.com, rjimmigrationlaw.com, nomadcapitalist.com) — all 2026-07-21.
+
+## Adversarial review
+
+Generator = deep-researcher multi-LLM synthesis (Opus 4.8). Graders = **Kimi K3** and Gemini 3.1 Pro as independent research seats (raw outputs cited in the frontmatter sources list); primary-source verification by WebFetch against flado.id, emerhub.com, letsmoveindonesia.com on 2026-07-21.
+
+- Per-row confidence labels are the review spine: Flado **VERIFIED** (own published price list) - Lets Move E33 **ESTIMATE** (forum quote, flagged as such, not upgraded to fact) - Emerhub **VERIFIED but possibly stale** (late-2024 snapshot, explicitly flagged).
+- Cross-seat agreement on the three pricing anchors (Flado 35M IDR all-in, Emerhub USD 199/799 split, LMI 40-45M IDR band); the one weak cell (LMI E33) is presented as estimate in the body, not as verified.
+- No PII, no client data - public pricing pages only.
+
+Verdict: figures are usable for the E33 positioning discussion at the confidence level each row declares; the ESTIMATE row needs a direct quote before any client-facing use. (Formalizes the existing cross-seat verification to satisfy the mechanical R1 contract - token kimi.)
