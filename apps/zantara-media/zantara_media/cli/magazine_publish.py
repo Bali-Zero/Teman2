@@ -32,6 +32,11 @@ from zantara_media.magazine.audit_anchor import (
 )
 from zantara_media.magazine.composer import ComposerConfig, compose_breaking, compose_edition
 from zantara_media.magazine.loaders import load_named_projection
+from zantara_media.magazine.media_resolver import (
+    AssetFingerprintLedger,
+    AssetResolutionResult,
+    resolve_asset_manifest,
+)
 from zantara_media.magazine.ranking import score_candidate
 from zantara_media.magazine.reconciler import DurableOutcomeJournal
 from zantara_media.magazine.transport import MagazineTransport, TransportConfig
@@ -306,6 +311,100 @@ async def _publish(
         await transport.aclose()
 
 
+def _environment_enabled(name: str, *, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
+async def _write_asset_manifest(path: Path, manifest: AssetIntentManifestV1) -> None:
+    body = (manifest.model_dump_json() + "\n").encode()
+
+    def write() -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_bytes(body)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    await asyncio.to_thread(write)
+
+
+async def _resolve_assets_if_needed(
+    packet: dict[str, Any],
+    *,
+    breaking: bool,
+    asset_manifest_path: Path,
+) -> AssetResolutionResult:
+    """Resolve an empty manifest before publish without replacing approved assets."""
+
+    empty_manifest = AssetIntentManifestV1(schema_version="asset-intents.v1", intents=())
+    manifest_exists = await asyncio.to_thread(asset_manifest_path.is_file)
+    manifest = (
+        AssetIntentManifestV1.model_validate_json(
+            await asyncio.to_thread(asset_manifest_path.read_bytes)
+        )
+        if manifest_exists
+        else empty_manifest
+    )
+    if manifest.intents:
+        try:
+            validate_asset_intent_targets(packet, manifest, breaking=breaking)
+        except ValueError:
+            automatic = all(
+                item.rights_basis == "generated"
+                and item.source == "Bali Zero editorial generator"
+                for item in manifest.intents
+            )
+            if not automatic:
+                raise
+            manifest = empty_manifest
+            manifest_exists = False
+        else:
+            return AssetResolutionResult(manifest=manifest, fallback_reason=None)
+    if not _environment_enabled("MAGAZINE_AUTO_ASSETS", default=True):
+        if not manifest_exists:
+            await _write_asset_manifest(asset_manifest_path, manifest)
+        return AssetResolutionResult(
+            manifest=manifest, fallback_reason="auto_assets_disabled"
+        )
+
+    state_root = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_STATE_DIR",
+            str(Path.home() / ".local/state/bali-zero-magazine/assets"),
+        )
+    )
+    output_dir = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_OUTPUT_DIR",
+            str(state_root / "generated"),
+        )
+    )
+    ledger_path = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_FINGERPRINT_LEDGER",
+            str(state_root / "fingerprints.jsonl"),
+        )
+    )
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=breaking,
+        output_dir=output_dir,
+        ledger=AssetFingerprintLedger(ledger_path),
+    )
+    await _write_asset_manifest(asset_manifest_path, result.manifest)
+    return result
+
+
 async def _morning(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, Any]:
     parsed = MorningInputV2.model_validate(manifest)
     loaded = [
@@ -372,6 +471,17 @@ async def async_main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("publish requires --asset-manifest")
         if args.offline_audit_events is not None:
             raise ValueError("offline audit fixtures cannot unlock production publish")
+        resolution = await _resolve_assets_if_needed(
+            packet,
+            breaking=args.command == "breaking",
+            asset_manifest_path=args.asset_manifest,
+        )
+        logger.info(
+            "asset resolution complete packet_id=%s assets=%d fallback=%s",
+            packet["packet_id"],
+            len(resolution.manifest.intents),
+            resolution.fallback_reason or "none",
+        )
         packet = await _publish(
             packet,
             breaking=args.command == "breaking",

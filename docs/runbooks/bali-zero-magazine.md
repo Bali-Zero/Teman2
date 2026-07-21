@@ -35,7 +35,7 @@ Default state root: `/Users/nuzantara/.local/state/bali-zero-magazine`.
 
 - `inputs/morning-YYYY-MM-DD.json`: generated automatically by `magazine-prepare morning`, with projection paths for `intel-lake`, `mata-garuda`, `regulatory-watcher`, and `notebooklm`.
 - `inputs/projections/YYYY-MM-DD/*.public.json`: closed, PII-rejected public projections generated from the current collector artifacts and the safe Intel Lake columns only.
-- `inputs/assets-YYYY-MM-DD.json`: generated automatically as the morning asset-intent manifest. It remains empty until a verified image asset is explicitly bound.
+- `inputs/assets-YYYY-MM-DD.json`: initialized automatically as the morning asset-intent manifest. On publish, an empty manifest triggers resolution of one original hero for the canonical lead story.
 - `inputs/breaking-ready.json`: `magazine-breaking-input.v2` for one qualified public candidate.
 - `inputs/breaking-assets.json`: asset intent manifest for the Breaking packet.
 
@@ -51,6 +51,20 @@ Required publish variables:
 - `MAGAZINE_AUDIT_PRIVATE_KEY_B64`
 
 Set `MAGAZINE_PUBLISH_ENABLED=false` for dry-run packet generation.
+
+## Automatic editorial assets
+
+Automatic asset resolution runs only on publish. A missing manifest is initialized safely, an empty manifest triggers resolution, and a generated Breaking manifest from an older story is replaced for the new canonical story. An explicit approved internal asset manifest always wins and is never replaced. Standard morning editions target the declared lead story, Breaking targets its canonical story, and quiet editions remain image-free.
+
+The Pro-local path builds a bounded prompt from sanitized editorial fields, invokes the existing FlowKit generator without a shell, and accepts the result only after raster decoding, size and animation checks, local vision description, DLP clearance, exact SHA-256 uniqueness, and perceptual deduplication. Approved bytes continue through the existing authenticated upload and canonical digest binding. Rejected or unavailable assets produce a typographic fallback; they never block an otherwise valid edition.
+
+Runtime controls:
+
+- `MAGAZINE_AUTO_ASSETS=false`: disable generation while preserving publication with the typographic fallback.
+- `MAGAZINE_ASSET_STATE_DIR`: override the Pro-local generated-asset and fingerprint-ledger root.
+- `MAGAZINE_ASSET_OUTPUT_DIR`: override the generated raster directory.
+- `MAGAZINE_ASSET_FINGERPRINT_LEDGER`: override the append-only deduplication ledger.
+- `MAGAZINE_FLOWKIT_CLI`: override the existing FlowKit CLI path for controlled testing or recovery.
 
 ## Phase 0 Sites capability proof
 

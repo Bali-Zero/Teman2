@@ -11,8 +11,15 @@ import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from zantara_media.cli.magazine_publish import _millisecond_timestamp, _publish, async_main
+from zantara_media.cli.magazine_publish import (
+    _millisecond_timestamp,
+    _publish,
+    _resolve_assets_if_needed,
+    async_main,
+)
+from zantara_media.magazine.assets import AssetIntentManifestV1, AssetIntentV1
 from zantara_media.magazine.audit_anchor import build_audit_event_hash
+from zantara_media.magazine.media_resolver import AssetResolutionResult
 
 
 PNG = bytes.fromhex(
@@ -168,6 +175,164 @@ def test_cli_requires_explicit_publish_flag_for_network() -> None:
     source = Path("manifest.json")
     # Importing/building the CLI performs no network I/O; publishing is opt-in.
     assert "--publish" not in ["morning", "--input", str(source), "--dry-run"]
+
+
+@pytest.mark.asyncio
+async def test_empty_manifest_is_resolved_automatically_before_publish(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = breaking_factory()
+    manifest_path = tmp_path / "assets.json"
+    source = tmp_path / "hero.png"
+    source.write_bytes(PNG)
+
+    async def resolve(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        intent = AssetIntentV1(
+            asset_id="hero-auto",
+            source_path=source,
+            story_ids=(str(packet["story"]["story_id"]),),
+            captured_at=str(packet["verified_at"]),
+            alt_text="Editorial hero",
+            source="Bali Zero editorial generator",
+            source_url=None,
+            rights_basis="generated",
+            rights_status="approved",
+            usage_status="approved",
+            dlp_status="passed",
+            sanitization_status="passed",
+            perceptual_dedup_status="unique",
+        )
+        return AssetResolutionResult(
+            manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
+            fallback_reason=None,
+        )
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", resolve)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert result.fallback_reason is None
+    stored = AssetIntentManifestV1.model_validate_json(manifest_path.read_bytes())
+    assert [item.asset_id for item in stored.intents] == ["hero-auto"]
+
+
+@pytest.mark.asyncio
+async def test_stale_automatic_breaking_asset_is_regenerated_for_new_story(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = breaking_factory(
+        story=story_factory(story_id="new-story", slug="new-story", asset_digests=[])
+    )
+    source = tmp_path / "old.png"
+    source.write_bytes(PNG)
+    stale = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            AssetIntentV1(
+                asset_id="old-auto",
+                source_path=source,
+                story_ids=("old-story",),
+                captured_at=str(packet["verified_at"]),
+                alt_text="Old automatic hero",
+                source="Bali Zero editorial generator",
+                source_url=None,
+                rights_basis="generated",
+                rights_status="approved",
+                usage_status="approved",
+                dlp_status="passed",
+                sanitization_status="passed",
+                perceptual_dedup_status="unique",
+            ),
+        ),
+    )
+    manifest_path = tmp_path / "breaking-assets.json"
+    manifest_path.write_text(stale.model_dump_json(), encoding="utf-8")
+
+    async def resolve(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        return AssetResolutionResult(
+            manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=()),
+            fallback_reason="generation_failed",
+        )
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", resolve)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert result.fallback_reason == "generation_failed"
+    assert AssetIntentManifestV1.model_validate_json(manifest_path.read_bytes()).intents == ()
+
+
+@pytest.mark.asyncio
+async def test_prebound_manifest_is_never_replaced(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = breaking_factory()
+    source = tmp_path / "hero.png"
+    source.write_bytes(PNG)
+    existing = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            AssetIntentV1(
+                asset_id="approved-internal",
+                source_path=source,
+                story_ids=(str(packet["story"]["story_id"]),),
+                captured_at=str(packet["verified_at"]),
+                alt_text="Approved editorial hero",
+                source="Bali Zero editorial desk",
+                source_url=None,
+                rights_basis="internal-owned",
+                rights_status="approved",
+                usage_status="approved",
+                dlp_status="passed",
+                sanitization_status="passed",
+                perceptual_dedup_status="unique",
+            ),
+        ),
+    )
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(existing.model_dump_json(), encoding="utf-8")
+
+    async def unexpected(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        raise AssertionError("automatic resolver must not replace explicit assets")
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", unexpected)
+    result = await _resolve_assets_if_needed(
+        packet, breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert result.manifest == existing
+    assert result.fallback_reason is None
+
+
+@pytest.mark.asyncio
+async def test_auto_assets_kill_switch_preserves_empty_manifest(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text('{"schema_version":"asset-intents.v1","intents":[]}', encoding="utf-8")
+    monkeypatch.setenv("MAGAZINE_AUTO_ASSETS", "false")
+
+    async def unexpected(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        raise AssertionError("disabled resolver must not run")
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.resolve_asset_manifest", unexpected)
+    result = await _resolve_assets_if_needed(
+        breaking_factory(), breaking=True, asset_manifest_path=manifest_path
+    )
+
+    assert result.manifest.intents == ()
+    assert result.fallback_reason == "auto_assets_disabled"
 
 
 @pytest.mark.parametrize(

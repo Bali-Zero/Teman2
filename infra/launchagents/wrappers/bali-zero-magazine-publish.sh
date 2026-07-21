@@ -39,6 +39,8 @@ LOG="$LOG_DIR/bali-zero-magazine-${MODE}.log"
 LOCKDIR="$STATE_DIR/${MODE}.lock"
 TIMEOUT_SECONDS="${MAGAZINE_TIMEOUT_SECONDS:-840}"
 PUBLISH_ENABLED="${MAGAZINE_PUBLISH_ENABLED:-true}"
+export MAGAZINE_AUTO_ASSETS="${MAGAZINE_AUTO_ASSETS:-true}"
+export MAGAZINE_ASSET_STATE_DIR="${MAGAZINE_ASSET_STATE_DIR:-$STATE_DIR/assets}"
 REQUIRED_SYSTEM_IDS=(${=MAGAZINE_REQUIRED_SYSTEM_IDS:-intel-lake mata-garuda regulatory-watcher notebooklm})
 
 mkdir -p "$STATE_DIR" "$INPUT_DIR" "$OUTPUT_DIR" "$LOG_DIR"
@@ -206,15 +208,11 @@ fi
 preflight_manifest "$INPUT" >> "$LOG" 2>&1
 
 if [ "$PUBLISH_ENABLED" = "true" ]; then
-    if [ ! -f "$ASSET_MANIFEST" ]; then
-        log "fatal: publish enabled but asset manifest is missing mode=$MODE"
-        exit 78
-    fi
     COMMAND+=( --publish --asset-manifest "$ASSET_MANIFEST" )
 else
     COMMAND+=( --dry-run )
 fi
 
-log "starting mode=$MODE publish=$PUBLISH_ENABLED output=$OUTPUT"
+log "starting mode=$MODE publish=$PUBLISH_ENABLED auto_assets=$MAGAZINE_AUTO_ASSETS output=$OUTPUT"
 cd "$MEDIA_DIR"
 PYTHONPATH="$MEDIA_DIR" run_with_timeout "${COMMAND[@]}"
