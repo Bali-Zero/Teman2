@@ -59,6 +59,22 @@ class TestVerificationResult:
         assert result.verdict_available is True
 
 
+class TestVerificationServiceModelConfig:
+    """VERIFIER_MODEL env override (increment-1, self-correction latency —
+    self-correction-speed-design.md). Default behavior MUST be unchanged
+    until an operator sets the env var."""
+
+    def test_honors_verifier_model_env(self, monkeypatch):
+        monkeypatch.setenv("VERIFIER_MODEL", "gemini-2.5-flash")
+        service = VerificationService()
+        assert service.model_name == "gemini-2.5-flash"
+
+    def test_falls_back_to_default_when_unset(self, monkeypatch):
+        monkeypatch.delenv("VERIFIER_MODEL", raising=False)
+        service = VerificationService()
+        assert service.model_name == "gemini-3.5-flash"
+
+
 class TestVerificationServiceFallbacks:
     """Tests for VerificationService without LLM available."""
 

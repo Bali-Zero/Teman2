@@ -9,6 +9,7 @@ UPDATED 2025-12-23:
 
 import json
 import logging
+import os
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -70,7 +71,11 @@ class VerificationService:
 
     def __init__(self) -> None:
         self._genai_client: GenAIClient | None = None
-        self.model_name = "gemini-3.5-flash"
+        # Default = the model this service has always used. Flipping via env
+        # is a deploy-time lever (increment-2, evidence-gated by
+        # scripts/verifier_model_ab.py) — default behavior is UNCHANGED.
+        self.model_name = os.getenv("VERIFIER_MODEL", "gemini-3.5-flash")
+        logger.info("🛡️ [VerificationService] verifier model: %s", self.model_name)
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""
@@ -158,11 +163,22 @@ Return a JSON object with this exact structure:
 
         try:
             # Use low temperature for deterministic evaluation
+            # Verdict JSON (status/score/reasoning/corrections/missing_citations)
+            # is small — 8192 was a leftover generation-sized cap for a
+            # judge-sized output. Trimmed to 2048 (increment-1, latency): a
+            # representative sample verdict on this exact prompt schema
+            # measured ~95 output tokens (see scripts/verifier_model_ab.py /
+            # self-correction-speed-design.md validation note), leaving
+            # ~20x headroom. Failure mode if ever exceeded is safe-by-design:
+            # a truncated response fails json.loads below and is caught by
+            # the except clause as verdict_available=False (no self-correction
+            # triggered on a corrupted verdict), never a corrupted verdict
+            # silently gating downstream behavior.
             result = await self._genai_client.generate_content(
                 contents=prompt,
                 model=self.model_name,
                 temperature=0.0,
-                max_output_tokens=8192,
+                max_output_tokens=2048,
             )
 
             # Gemini can return an EMPTY string for `text` (safety block or

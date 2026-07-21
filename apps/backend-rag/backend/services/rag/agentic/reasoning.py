@@ -912,7 +912,11 @@ Make it feel natural and helpful, not forced.
                     }
 
                     # Run through pipeline
+                    verify_start = time.perf_counter()
                     processed = await self.response_pipeline.process(pipeline_data)
+                    verify_duration = time.perf_counter() - verify_start
+                    correct_duration = 0.0
+                    reverify_duration = 0.0
                     set_span_attribute("verification_score", processed.get("verification_score", 0))
                     verdict_available = processed.get("verdict_available", True)
                     verification_score = processed.get("verification_score", 1.0)
@@ -958,6 +962,7 @@ Do not invent information. If the context is insufficient, admit it.
 """
 
                         # Retry with same model (disable function calling for final answer)
+                        correct_start = time.perf_counter()
                         corrected_answer, _, _, correction_usage = await llm_gateway.send_message(
                             chat,
                             rephrase_prompt,
@@ -965,12 +970,29 @@ Do not invent information. If the context is insufficient, admit it.
                             tier=model_tier,
                             enable_function_calling=False,
                         )
+                        correct_duration = time.perf_counter() - correct_start
                         accumulated_usage = accumulated_usage + correction_usage
                         logger.info("🛡️ [Pipeline] Self-correction applied.")
 
                         # Re-run pipeline on corrected answer
                         pipeline_data["response"] = corrected_answer
+                        reverify_start = time.perf_counter()
                         processed = await self.response_pipeline.process(pipeline_data)
+                        reverify_duration = time.perf_counter() - reverify_start
+
+                    # ⏱️ Per-substep self-correction timing (durations only — never
+                    # log answer/context text, UU PDP PII boundary). Emitted for
+                    # EVERY substantial-answer pipeline pass, not just rejections:
+                    # correct/reverify stay 0.00 on the no-rejection path so the
+                    # log line is directly comparable across queries and reveals
+                    # the real 23s split in prod (increment-1, #self-correct-speed).
+                    logger.info(
+                        "⏱️ [self-correct] verify=%.2fs correct=%.2fs reverify=%.2fs total=%.2fs",
+                        verify_duration,
+                        correct_duration,
+                        reverify_duration,
+                        verify_duration + correct_duration + reverify_duration,
+                    )
 
                     # Update state with processed results
                     state.final_answer = processed["response"]
