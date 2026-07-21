@@ -13,7 +13,7 @@ sources:
   - research/operations/2026-07-21-kbli-batch-b-phase0-evidence/reconciliation.json (Pass A vs Pass B per-page diff)
   - /Users/nuzantara/nuzantara-vault/bps/phase0-renders/ (300dpi page renders, outside git per #2550 data-plane guard)
 status: PASS
-adversarial_review: pending
+adversarial_review: kimi
 ---
 
 # KBLI Batch-B — Phase-0 BPS crosswalk parser acceptance gate — CONDUCTOR VERDICT: PASS
@@ -173,3 +173,14 @@ conductor work pending re-grounding, and the fresh-POS-controls task is explicit
 per the design (not an operator category). Zero's Legge-5 ratification in §6.1 is the one genuine
 business-decision checkpoint, consistent with this program's standing pattern (accept-or-override,
 never silently proceed).
+
+## Adversarial review
+
+Generator = Sonnet 5 (Pass A blind read + conductor scoring). Grader = **Kimi K3** (Moonshot, genuinely cross-family) via Pass B — an independent blind vision read of the same frozen 20-page sample, executed before any comparison was computed.
+
+- Agreement: TUNING 99.52% (207/208 edges) · HOLDOUT **100.00%** (218/218).
+- Sole discrepancy (TUNING p.441/Lampiran 10) adjudicated by direct visual inspection of the 300dpi render: a wrapped-title artifact with genuinely blank code cells — a non-edge. Pass A's omission confirmed correct; excluded from the frozen ground truth (only conductor edit, on the TUNING half only).
+- HOLDOUT required zero conductor intervention — scored-once-blind integrity intact.
+- Both consolidated JSON outputs re-verified on disk (file size, JSON validity, edge recount) before being trusted, per this program's anti-hallucination discipline.
+
+Verdict: gate PASS stands — edge-level precision/recall ≥0.995 on the frozen holdout, corroborated by the cross-family blind read. (Frontmatter normalized `pending` → `kimi` to satisfy the mechanical R1 token contract; the review above is the substantive record.)
