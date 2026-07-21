@@ -206,7 +206,7 @@
 
 - **import**: `@balizero/core/components/FactBadge`
 - **source**: `packages/core/components/FactBadge.tsx`
-- **use when**: status, label
+- **use when**: facts, citation, regulation code, kbli code
 - **props**:
   - `children`: `ReactNode`
   - `className`: `string | undefined`

@@ -7,9 +7,9 @@ test.describe("Theme Toggle", () => {
     // The root html should NOT have className="dark" anymore
     // (the canonical core ThemeProvider uses the data-theme attribute)
     const htmlClass = await page.locator("html").getAttribute("class");
-    // class may be empty or carry utilities; the old hardcoded "dark" is gone
-    // core ThemeProvider sets data-theme instead
-    void htmlClass;
+    // class may carry utilities, but the old hardcoded "dark" token is gone
+    // (core ThemeProvider sets data-theme instead)
+    expect((htmlClass ?? "").split(/\s+/)).not.toContain("dark");
     const dataTheme = await page.locator("html").getAttribute("data-theme");
     expect(dataTheme).toBeTruthy();
   });

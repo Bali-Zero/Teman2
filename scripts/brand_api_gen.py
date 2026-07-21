@@ -172,9 +172,19 @@ def _parse_props(block: str | None) -> dict[str, str]:
     return props
 
 
+# Per-component semantic overrides — checked BEFORE the stem heuristic, for
+# components whose literal name understates their contract (WS1: FactBadge is
+# not a generic status/label badge; it marks verifiable facts only).
+_USEWHEN_OVERRIDES: dict[str, list[str]] = {
+    "FactBadge": ["facts", "citation", "regulation code", "kbli code"],
+}
+
+
 def _use_when(name: str, props: dict[str, str]) -> list[str]:
     """Derive useWhen keywords from the component name stems. Honest: only
     emits for stems literally present; never fabricates."""
+    if name in _USEWHEN_OVERRIDES:
+        return list(_USEWHEN_OVERRIDES[name])
     low = name.lower()
     out: list[str] = []
     for stem, kws in _USEWHEN_STEMS.items():

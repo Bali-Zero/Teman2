@@ -1,8 +1,5 @@
 {
   "name": "@nuzantara/design-system",
   "version": "0.1.0",
-  "description": "[DEPRECATED] Canonical design tokens for Bali Zero / Nuzantara UI",
-  "files": [
-    "tokens/"
-  ]
+  "description": "[DEPRECATED] Canonical design tokens for Bali Zero / Nuzantara UI"
 }

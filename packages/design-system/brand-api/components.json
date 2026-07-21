@@ -287,8 +287,10 @@
         "title": "string | undefined"
       },
       "useWhen": [
-        "status",
-        "label"
+        "facts",
+        "citation",
+        "regulation code",
+        "kbli code"
       ],
       "example": "<FactBadge children={/* ReactNode */} />"
     },
