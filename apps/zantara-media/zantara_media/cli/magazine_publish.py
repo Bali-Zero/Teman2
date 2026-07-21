@@ -19,7 +19,6 @@ from pydantic import BaseModel, ConfigDict
 from zantara_media.magazine.assets import (
     AssetIntentManifestV1,
     bind_canonical_assets,
-    validate_asset_intent_targets,
 )
 from zantara_media.magazine.audit_anchor import (
     AuditAnchorService,
@@ -39,6 +38,7 @@ from zantara_media.magazine.media_resolver import (
     generated_manifest_matches_packet,
     resolve_asset_manifest,
     validate_generated_asset_bytes,
+    validate_manifest_publication_binding,
 )
 from zantara_media.magazine.ranking import score_candidate
 from zantara_media.magazine.reconciler import DurableOutcomeJournal
@@ -183,7 +183,7 @@ async def _publish(
     packet: dict[str, Any],
     *,
     breaking: bool,
-    asset_manifest_path: Path,
+    asset_manifest: AssetIntentManifestV1,
 ) -> dict[str, Any]:
     journal_path = Path(
         os.environ.get(
@@ -211,10 +211,11 @@ async def _publish(
         release_gate=interlock,
     )
     try:
-        asset_manifest = AssetIntentManifestV1.model_validate_json(
-            await asyncio.to_thread(asset_manifest_path.read_bytes)
+        validate_manifest_publication_binding(
+            asset_manifest,
+            packet,
+            breaking=breaking,
         )
-        validate_asset_intent_targets(packet, asset_manifest, breaking=breaking)
         canonical: dict[str, str] = {}
         for intent in asset_manifest.intents:
             source_bytes = await asyncio.to_thread(intent.source_path.read_bytes)
@@ -381,6 +382,8 @@ async def _resolve_assets_if_needed(
             str(state_root / "fingerprints.jsonl"),
         )
     )
+    ledger = AssetFingerprintLedger(ledger_path, asset_root=output_dir)
+    await ledger.reconcile()
     if manifest.intents:
         automatic = all(
             item.rights_basis == "generated"
@@ -388,7 +391,11 @@ async def _resolve_assets_if_needed(
             for item in manifest.intents
         )
         try:
-            validate_asset_intent_targets(packet, manifest, breaking=breaking)
+            validate_manifest_publication_binding(
+                manifest,
+                packet,
+                breaking=breaking,
+            )
         except ValueError:
             if not automatic:
                 raise
@@ -415,9 +422,21 @@ async def _resolve_assets_if_needed(
         packet,
         breaking=breaking,
         output_dir=output_dir,
-        ledger=AssetFingerprintLedger(ledger_path),
+        ledger=ledger,
+        manifest_path=asset_manifest_path,
     )
-    await _write_asset_manifest(asset_manifest_path, result.manifest)
+    try:
+        await _write_asset_manifest(asset_manifest_path, result.manifest)
+    except Exception:
+        if result.reservation_id is not None:
+            await ledger.release(result.reservation_id)
+            for intent in result.manifest.intents:
+                source_path = intent.source_path.resolve()
+                if source_path.parent == output_dir.resolve():
+                    await asyncio.to_thread(source_path.unlink, missing_ok=True)
+        raise
+    if result.reservation_id is not None:
+        await ledger.commit(result.reservation_id)
     return result
 
 
@@ -501,7 +520,7 @@ async def async_main(argv: Sequence[str] | None = None) -> int:
         packet = await _publish(
             packet,
             breaking=args.command == "breaking",
-            asset_manifest_path=args.asset_manifest,
+            asset_manifest=resolution.manifest,
         )
         logger.info("packet published packet_id=%s target=%s", packet["packet_id"], args.command)
     else:

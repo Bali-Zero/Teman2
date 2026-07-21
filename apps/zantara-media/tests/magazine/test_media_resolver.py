@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -548,5 +549,104 @@ async def test_perceptual_hashes_outside_threshold_are_both_reserved(
         RasterFingerprint(sha256="b" * 64, dhash="ffffffffffffffff"), "hero-second"
     )
 
-    assert first is True
-    assert second is True
+    assert first is not None
+    assert second is not None
+
+
+@pytest.mark.asyncio
+async def test_dead_pending_reservation_is_reconciled_and_can_retry(
+    tmp_path: Path,
+) -> None:
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    orphan = tmp_path / "generated" / "hero-orphan.png"
+    orphan.parent.mkdir()
+    orphan.write_bytes(_image_bytes(color="#123456"))
+    fingerprint = RasterFingerprint(sha256="a" * 64, dhash="0000000000000000")
+    ledger_path.write_text(
+        json.dumps(
+            {
+                "asset_id": "hero-orphan",
+                "dhash": fingerprint.dhash,
+                "event": "reserved",
+                "manifest_path": str(tmp_path / "missing-assets.json"),
+                "owner_pid": 99999999,
+                "reservation_id": "reservation-orphan",
+                "sha256": fingerprint.sha256,
+                "source_path": str(orphan),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ledger = AssetFingerprintLedger(ledger_path, asset_root=orphan.parent)
+
+    reservation = await ledger.reserve(
+        fingerprint,
+        "hero-retry",
+        manifest_path=tmp_path / "retry-assets.json",
+        source_path=tmp_path / "generated" / "hero-retry.png",
+    )
+
+    assert reservation is not None
+    assert not orphan.exists()
+
+
+@pytest.mark.asyncio
+async def test_dead_pending_reservation_with_published_manifest_stays_committed(
+    tmp_path: Path,
+) -> None:
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    generated = tmp_path / "generated" / "hero-published.png"
+    generated.parent.mkdir()
+    generated.write_bytes(_image_bytes(color="#654321"))
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "asset-intents.v1",
+                "intents": [
+                    {
+                        "asset_id": "hero-published",
+                        "source_path": str(generated),
+                        "story_ids": ["story-1"],
+                        "captured_at": "2026-07-22T00:00:00Z",
+                        "alt_text": "Generated editorial hero",
+                        "source": "Bali Zero editorial generator",
+                        "source_url": None,
+                        "rights_basis": "generated",
+                        "rights_status": "approved",
+                        "usage_status": "approved",
+                        "dlp_status": "passed",
+                        "sanitization_status": "passed",
+                        "perceptual_dedup_status": "unique",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    fingerprint = RasterFingerprint(sha256="c" * 64, dhash="1111111111111111")
+    ledger_path.write_text(
+        json.dumps(
+            {
+                "asset_id": "hero-published",
+                "dhash": fingerprint.dhash,
+                "event": "reserved",
+                "manifest_path": str(manifest_path),
+                "owner_pid": 99999999,
+                "reservation_id": "reservation-published",
+                "sha256": fingerprint.sha256,
+                "source_path": str(generated),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ledger = AssetFingerprintLedger(ledger_path, asset_root=generated.parent)
+
+    duplicate = await ledger.reserve(fingerprint, "hero-duplicate")
+
+    assert duplicate is None
+    assert generated.exists()
+    records = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    assert records[-1]["event"] == "committed"

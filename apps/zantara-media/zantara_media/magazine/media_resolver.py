@@ -22,7 +22,11 @@ from typing import Any, Literal
 from PIL import Image
 
 from zantara_media.indexer.handlers.image_handler import extract_image
-from zantara_media.magazine.assets import AssetIntentManifestV1, AssetIntentV1
+from zantara_media.magazine.assets import (
+    AssetIntentManifestV1,
+    AssetIntentV1,
+    validate_asset_intent_targets,
+)
 from zantara_media.security.dlp import DLPResult, INDONESIAN_PII_PATTERNS, dlp_check
 
 logger = logging.getLogger(__name__)
@@ -71,6 +75,7 @@ class AssetTarget:
 class AssetResolutionResult:
     manifest: AssetIntentManifestV1
     fallback_reason: str | None
+    reservation_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,49 +85,189 @@ class RasterFingerprint:
 
 
 class AssetFingerprintLedger:
-    """Append-only exact and perceptual fingerprint registry."""
+    """Crash-recoverable exact and perceptual fingerprint registry."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, asset_root: Path | None = None) -> None:
         self.path = path
+        self.asset_root = asset_root.resolve() if asset_root is not None else None
 
-    async def reserve(self, fingerprint: RasterFingerprint, asset_id: str) -> bool:
+    async def reconcile(self) -> None:
+        """Recover reservations whose owner exited before final commit."""
+
+        await asyncio.to_thread(self._reconcile_sync)
+
+    async def reserve(
+        self,
+        fingerprint: RasterFingerprint,
+        asset_id: str,
+        *,
+        manifest_path: Path | None = None,
+        source_path: Path | None = None,
+    ) -> str | None:
         """Atomically reserve a unique fingerprint across concurrent publishers."""
 
-        return await asyncio.to_thread(self._reserve_sync, fingerprint, asset_id)
+        return await asyncio.to_thread(
+            self._reserve_sync,
+            fingerprint,
+            asset_id,
+            manifest_path,
+            source_path,
+        )
 
-    def _reserve_sync(self, fingerprint: RasterFingerprint, asset_id: str) -> bool:
+    async def commit(self, reservation_id: str) -> None:
+        """Mark a reservation durable after its manifest has been replaced."""
+
+        await asyncio.to_thread(self._transition_sync, reservation_id, "committed")
+
+    async def release(self, reservation_id: str) -> None:
+        """Release a reservation after a handled manifest-write failure."""
+
+        await asyncio.to_thread(self._transition_sync, reservation_id, "released")
+
+    def _reserve_sync(
+        self,
+        fingerprint: RasterFingerprint,
+        asset_id: str,
+        manifest_path: Path | None,
+        source_path: Path | None,
+    ) -> str | None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a+", encoding="utf-8") as stream:
             fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
             try:
-                stream.seek(0)
-                for line in stream:
-                    if not line.strip():
-                        continue
-                    try:
-                        record = json.loads(line)
-                        known_sha = str(record["sha256"])
-                        known_dhash = str(record["dhash"])
-                    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-                        raise ValueError("fingerprint ledger is invalid") from exc
+                active = self._active_records(stream, reconcile=True)
+                for record in active:
+                    known_sha = str(record["sha256"])
+                    known_dhash = str(record["dhash"])
                     if (
                         known_sha == fingerprint.sha256
                         or _hamming_distance(known_dhash, fingerprint.dhash) <= _DUPLICATE_DISTANCE
                     ):
-                        return False
+                        return None
+                reservation_id = uuid.uuid4().hex
                 record = {
                     "asset_id": asset_id,
                     "dhash": fingerprint.dhash,
+                    "event": "reserved" if manifest_path is not None else "committed",
+                    "manifest_path": str(manifest_path.resolve()) if manifest_path else None,
+                    "owner_pid": os.getpid(),
                     "recorded_at": datetime.now(UTC).isoformat(),
+                    "reservation_id": reservation_id,
                     "sha256": fingerprint.sha256,
+                    "source_path": str(source_path.resolve()) if source_path else None,
                 }
-                stream.seek(0, os.SEEK_END)
-                stream.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
-                stream.flush()
-                os.fsync(stream.fileno())
-                return True
+                self._append(stream, record)
+                return reservation_id
             finally:
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+    def _reconcile_sync(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a+", encoding="utf-8") as stream:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            try:
+                self._active_records(stream, reconcile=True)
+            finally:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+    def _transition_sync(self, reservation_id: str, event: str) -> None:
+        if event not in {"committed", "released"}:
+            raise ValueError("invalid fingerprint ledger transition")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a+", encoding="utf-8") as stream:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            try:
+                records = self._records(stream)
+                record = records.get(reservation_id)
+                if record is None or record["event"] == "released":
+                    raise ValueError("fingerprint reservation is not active")
+                if record["event"] == event:
+                    return
+                transitioned = dict(record)
+                transitioned["event"] = event
+                transitioned["recorded_at"] = datetime.now(UTC).isoformat()
+                self._append(stream, transitioned)
+            finally:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+    def _active_records(
+        self,
+        stream: Any,
+        *,
+        reconcile: bool,
+    ) -> list[dict[str, Any]]:
+        records = self._records(stream)
+        for reservation_id, record in tuple(records.items()):
+            if record["event"] != "reserved" or not reconcile:
+                continue
+            owner_pid = int(record["owner_pid"])
+            if _process_is_alive(owner_pid):
+                continue
+            manifest_path = Path(str(record["manifest_path"]))
+            if _manifest_contains_asset(manifest_path, str(record["asset_id"])):
+                event = "committed"
+            else:
+                event = "released"
+                self._remove_orphan(record)
+            transitioned = dict(record)
+            transitioned["event"] = event
+            transitioned["recorded_at"] = datetime.now(UTC).isoformat()
+            self._append(stream, transitioned)
+            records[reservation_id] = transitioned
+        return [
+            record
+            for record in records.values()
+            if record["event"] in {"reserved", "committed"}
+        ]
+
+    def _records(self, stream: Any) -> dict[str, dict[str, Any]]:
+        stream.seek(0)
+        records: dict[str, dict[str, Any]] = {}
+        legacy_index = 0
+        for line in stream:
+            if not line.strip():
+                continue
+            try:
+                raw = json.loads(line)
+                if not isinstance(raw, dict):
+                    raise TypeError
+                record = dict(raw)
+                str(record["asset_id"])
+                str(record["sha256"])
+                str(record["dhash"])
+                event = str(record.get("event", "committed"))
+                if event not in {"reserved", "committed", "released"}:
+                    raise ValueError
+                if event == "reserved":
+                    int(record["owner_pid"])
+                    if not record.get("manifest_path"):
+                        raise ValueError
+                reservation_id = str(
+                    record.get("reservation_id", f"legacy-{legacy_index}")
+                )
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+                raise ValueError("fingerprint ledger is invalid") from exc
+            record["event"] = event
+            record["reservation_id"] = reservation_id
+            records[reservation_id] = record
+            legacy_index += 1
+        return records
+
+    @staticmethod
+    def _append(stream: Any, record: dict[str, Any]) -> None:
+        stream.seek(0, os.SEEK_END)
+        stream.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+    def _remove_orphan(self, record: dict[str, Any]) -> None:
+        raw_path = record.get("source_path")
+        if self.asset_root is None or not raw_path:
+            return
+        source_path = Path(str(raw_path)).resolve()
+        if source_path.parent != self.asset_root or not source_path.name.startswith("hero-"):
+            return
+        source_path.unlink(missing_ok=True)
 
 
 async def resolve_asset_manifest(
@@ -135,6 +280,7 @@ async def resolve_asset_manifest(
     describe: DescribeAsset | None = None,
     scan_dlp: ScanDlp | None = None,
     flowkit_cli: Path | None = None,
+    manifest_path: Path | None = None,
 ) -> AssetResolutionResult:
     """Create one fail-closed hero intent or preserve the typographic fallback."""
 
@@ -225,11 +371,16 @@ async def resolve_asset_manifest(
         await _discard(approved_path, output_dir)
         return _fallback("generation_failed")
     try:
-        unique = await ledger.reserve(fingerprint, asset_id)
+        reservation_id = await ledger.reserve(
+            fingerprint,
+            asset_id,
+            manifest_path=manifest_path,
+            source_path=approved_path,
+        )
     except (OSError, ValueError):
         await _discard(approved_path, output_dir)
         return _fallback("duplicate_check_failed")
-    if not unique:
+    if reservation_id is None:
         await _discard(approved_path, output_dir)
         return _fallback("duplicate_asset")
 
@@ -247,6 +398,7 @@ async def resolve_asset_manifest(
         dlp_status="passed",
         sanitization_status="passed",
         perceptual_dedup_status="unique",
+        approved_for_packet_id=packet_id,
         generated_for_packet_id=packet_id,
         generated_for_story_version=target.story_version,
         generated_for_target_role=target.target_role,
@@ -255,6 +407,7 @@ async def resolve_asset_manifest(
     return AssetResolutionResult(
         manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
         fallback_reason=None,
+        reservation_id=reservation_id,
     )
 
 
@@ -316,6 +469,29 @@ def generated_manifest_matches_packet(
         and intent.generated_for_target_role == target.target_role
         and intent.prompt_sha256 == hashlib.sha256(target.prompt.encode()).hexdigest()
     )
+
+
+def validate_manifest_publication_binding(
+    manifest: AssetIntentManifestV1,
+    packet: dict[str, Any],
+    *,
+    breaking: bool,
+) -> None:
+    """Require every approved intent to bind to the exact publication context."""
+
+    validate_asset_intent_targets(packet, manifest, breaking=breaking)
+    automatic = bool(manifest.intents) and all(
+        item.rights_basis == "generated"
+        and item.source == "Bali Zero editorial generator"
+        for item in manifest.intents
+    )
+    if automatic:
+        if not generated_manifest_matches_packet(manifest, packet, breaking=breaking):
+            raise ValueError("generated asset does not match the current generation context")
+        return
+    packet_id = str(packet.get("packet_id", ""))
+    if any(item.approved_for_packet_id != packet_id for item in manifest.intents):
+        raise ValueError("explicit asset is not approved for packet")
 
 
 def validate_generated_asset_bytes(
@@ -476,6 +652,28 @@ def _hamming_distance(left: str, right: str) -> int:
     if len(left) != 16 or len(right) != 16:
         raise ValueError("invalid perceptual hash")
     return (int(left, 16) ^ int(right, 16)).bit_count()
+
+
+def _process_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _manifest_contains_asset(path: Path, asset_id: str) -> bool:
+    if not path.is_file():
+        return False
+    try:
+        manifest = AssetIntentManifestV1.model_validate_json(path.read_bytes())
+    except (OSError, ValueError) as exc:
+        raise ValueError("fingerprint reservation manifest is invalid") from exc
+    return any(intent.asset_id == asset_id for intent in manifest.intents)
 
 
 async def _discard(path: Path, allowed_parent: Path) -> None:

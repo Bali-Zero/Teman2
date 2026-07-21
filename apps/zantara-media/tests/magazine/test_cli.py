@@ -59,6 +59,7 @@ def _automatic_intent(
         dlp_status="passed",
         sanitization_status="passed",
         perceptual_dedup_status="unique",
+        approved_for_packet_id=str(packet["packet_id"]),
         generated_for_packet_id=str(packet["packet_id"]),
         generated_for_story_version=target.story_version,
         generated_for_target_role=target.target_role,
@@ -331,6 +332,7 @@ async def test_prebound_manifest_is_never_replaced(
                 dlp_status="passed",
                 sanitization_status="passed",
                 perceptual_dedup_status="unique",
+                approved_for_packet_id=str(packet["packet_id"]),
             ),
         ),
     )
@@ -347,6 +349,48 @@ async def test_prebound_manifest_is_never_replaced(
 
     assert result.manifest == existing
     assert result.fallback_reason is None
+
+
+@pytest.mark.asyncio
+async def test_explicit_manifest_is_rejected_for_a_different_packet(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+) -> None:
+    original_packet = breaking_factory()
+    revised_packet = json.loads(json.dumps(original_packet))
+    revised_packet["packet_id"] = "packet-breaking-revised"
+    source = tmp_path / "hero.png"
+    source.write_bytes(PNG)
+    manifest = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(
+            AssetIntentV1(
+                asset_id="approved-internal",
+                source_path=source,
+                story_ids=(str(original_packet["story"]["story_id"]),),
+                captured_at=str(original_packet["verified_at"]),
+                alt_text="Approved editorial hero",
+                source="Bali Zero editorial desk",
+                source_url=None,
+                rights_basis="internal-owned",
+                rights_status="approved",
+                usage_status="approved",
+                dlp_status="passed",
+                sanitization_status="passed",
+                perceptual_dedup_status="unique",
+                approved_for_packet_id=str(original_packet["packet_id"]),
+            ),
+        ),
+    )
+    manifest_path = tmp_path / "assets.json"
+    manifest_path.write_text(manifest.model_dump_json(), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="approved for packet"):
+        await _resolve_assets_if_needed(
+            revised_packet,
+            breaking=True,
+            asset_manifest_path=manifest_path,
+        )
 
 
 @pytest.mark.asyncio
@@ -438,12 +482,8 @@ async def test_publish_rejects_changed_generated_bytes_before_upload(
     original = PNG
     source.write_bytes(original)
     intent = _automatic_intent(packet, source, source_bytes=original)
-    manifest_path = tmp_path / "assets.json"
-    manifest_path.write_text(
-        AssetIntentManifestV1(
-            schema_version="asset-intents.v1", intents=(intent,)
-        ).model_dump_json(),
-        encoding="utf-8",
+    manifest = AssetIntentManifestV1(
+        schema_version="asset-intents.v1", intents=(intent,)
     )
     source.write_bytes(original + b"changed-after-verification")
 
@@ -471,7 +511,55 @@ async def test_publish_rejects_changed_generated_bytes_before_upload(
     monkeypatch.setenv("MAGAZINE_OUTCOME_JOURNAL", str(tmp_path / "outcomes.jsonl"))
 
     with pytest.raises(ValueError, match="generated asset bytes"):
-        await _publish(packet, breaking=True, asset_manifest_path=manifest_path)
+        await _publish(packet, breaking=True, asset_manifest=manifest)
+
+
+@pytest.mark.asyncio
+async def test_publish_rejects_generated_manifest_for_stale_story_version(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_packet = breaking_factory()
+    original_packet["story"]["asset_digests"] = []
+    revised_packet = json.loads(json.dumps(original_packet))
+    revised_packet["story"]["version"] += 1
+    source = tmp_path / "hero.png"
+    source.write_bytes(PNG)
+    intent = _automatic_intent(original_packet, source)
+    manifest = AssetIntentManifestV1(
+        schema_version="asset-intents.v1", intents=(intent,)
+    )
+
+    class Transport:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            pass
+
+        async def upload_asset_bytes(self, *_args: Any, **_kwargs: Any) -> Any:
+            raise AssertionError("stale context must not reach transport")
+
+        async def aclose(self) -> None:
+            pass
+
+    monkeypatch.setattr("zantara_media.cli.magazine_publish.MagazineTransport", Transport)
+    key = Ed25519PrivateKey.generate()
+    monkeypatch.setenv(
+        "MAGAZINE_AUDIT_PRIVATE_KEY_B64",
+        base64.b64encode(key.private_bytes_raw()).decode(),
+    )
+    monkeypatch.setenv("MAGAZINE_BASE_URL", "https://magazine.example")
+    monkeypatch.setenv("MAGAZINE_SIWC_BEARER_TOKEN", "token")
+    monkeypatch.setenv("MAGAZINE_HMAC_KEY_ID", "hmac-1")
+    monkeypatch.setenv("MAGAZINE_HMAC_SECRET", "secret")
+    monkeypatch.setenv("MAGAZINE_HMAC_AUDIENCE", "magazine")
+    monkeypatch.setenv("MAGAZINE_OUTCOME_JOURNAL", str(tmp_path / "outcomes.jsonl"))
+
+    with pytest.raises(ValueError, match="generation context"):
+        await _publish(
+            revised_packet,
+            breaking=True,
+            asset_manifest=manifest,
+        )
 
 
 @pytest.mark.asyncio
@@ -611,6 +699,7 @@ async def test_unknown_asset_story_is_rejected_before_first_upload(
     for name, value in env.items():
         monkeypatch.setenv(name, value)
     with pytest.raises(ValueError, match="unknown story"):
+        asset_manifest = AssetIntentManifestV1.model_validate_json(manifest.read_bytes())
         await _publish(
             {
                 "packet_id": "edition-1",
@@ -618,7 +707,7 @@ async def test_unknown_asset_story_is_rejected_before_first_upload(
                 "stories": [{"story_id": "known-story"}],
             },
             breaking=False,
-            asset_manifest_path=manifest,
+            asset_manifest=asset_manifest,
         )
     assert calls == 0
 
@@ -651,6 +740,25 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
     )
     image = tmp_path / "hero.png"
     image.write_bytes(PNG)
+    preflight = tmp_path / "preflight.json"
+    assert (
+        await async_main(
+            [
+                "morning",
+                "--input",
+                str(source),
+                "--output",
+                str(preflight),
+                "--cutoff",
+                "2026-07-17T22:15:00Z",
+                "--required-system-id",
+                "regulatory-watcher",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
+    approved_packet_id = json.loads(preflight.read_text(encoding="utf-8"))["packet_id"]
     assets = tmp_path / "assets.json"
     assets.write_text(
         json.dumps(
@@ -671,6 +779,7 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
                         "dlp_status": "passed",
                         "sanitization_status": "passed",
                         "perceptual_dedup_status": "unique",
+                        "approved_for_packet_id": approved_packet_id,
                     }
                 ],
             }
