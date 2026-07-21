@@ -521,7 +521,7 @@ export function ArticleClient({
                     {article.tags.map((tag) => (
                       <Link
                         key={tag}
-                        href={`/insights?tag=${tag}`}
+                        href={`/insights?tag=${encodeURIComponent(tag)}`}
                         className="px-3 py-1 rounded-full bg-white/5 text-white/70 text-sm hover:bg-white/10 hover:text-white transition-colors"
                       >
                         {tag}
