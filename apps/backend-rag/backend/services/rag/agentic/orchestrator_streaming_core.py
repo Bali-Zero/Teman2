@@ -213,7 +213,16 @@ class OrchestratorStreamingCore:
             "find client",
         }
         query_lower = query.lower()
-        if any(kw in query_lower for kw in _crm_keywords):
+        # TOURNIQUET (2026-07-21): this prefetch calls crm_tool.execute()
+        # DIRECTLY — it never goes through tool_executor/ToolAuthorizer, so
+        # Part 1's SENSITIVE_TOOLS deny does not cover it. `agent_role` is
+        # the same authenticated-staff signal the authorizer uses (None for
+        # the public /stream endpoint — blog/IG/anon web-chat — non-None
+        # only for /workspace-stream, which 403s non-team-agent callers
+        # upstream; see orchestrator.stream_query docstring). Skip the CRM
+        # prefetch entirely for no-principal callers: the query still falls
+        # through to normal RAG, it just doesn't get CRM numbers injected.
+        if agent_role is not None and any(kw in query_lower for kw in _crm_keywords):
             # OrchestratorCore has no `tool_map`; the {name: tool} dict lives on
             # its reasoning_engine (ReasoningEngine.tool_map). Accessing
             # self.core.tool_map raised AttributeError on every CRM-keyword query
