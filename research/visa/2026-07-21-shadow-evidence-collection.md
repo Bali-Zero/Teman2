@@ -1,3 +1,7 @@
+---
+adversarial_review: kimi
+---
+
 # Visa Oracle v2 — SHADOW evidence collection receipt
 
 **Date:** 2026-07-21
@@ -107,3 +111,9 @@ The database URL must be supplied via a read-only environment variable. The CLI 
 **Decision:** keep ENFORCE OFF. Next safe sequence is independent review of this diff, then
 migration/runtime provisioning through the normal PR/deploy process, seven-day SHADOW
 collection, independent G-b evidence, and only then the G-d drill.
+
+## Adversarial review
+
+Kimi's follow-up identified direct G-c, collector, CLI, legacy fail-closed coverage, and
+duplicate-evaluation accounting gaps. This branch addresses them; L3/L4 remain deferred
+and ENFORCE remains OFF.
