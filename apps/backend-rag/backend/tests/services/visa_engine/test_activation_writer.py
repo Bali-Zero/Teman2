@@ -659,6 +659,233 @@ async def test_activated_by_principal_immutable_on_update(repo: VisaEngineReposi
 
 
 # --------------------------------------------------------------------------
+# 6bis. Migration 254: closing an open system_period with the explicit
+#     'infinity' sentinel must be rejected — it is non-NULL and would
+#     otherwise pass the old NULL-only guard while never really closing the
+#     period (mirrors test_write_substrate.py's
+#     test_source_record_close_infinity_upper_guilt for the sibling
+#     visa_source_records.recorded_period guard, migration 252). A
+#     legitimate finite close, and a fresh bootstrap open-insert, must both
+#     still succeed (innocence).
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_activation_close_must_be_finite_guilt(repo: VisaEngineRepository) -> None:
+    """Migration 254 guilt: an UPDATE that "closes" an open system_period by
+    setting its upper bound to the literal 'infinity'::timestamptz sentinel
+    must raise. Before migration 254, `upper(NEW.system_period) IS NULL` was
+    the only close-validation check — 'infinity' is NON-NULL, so this exact
+    UPDATE used to PASS while leaving the row functionally open-ended
+    forever (a supersession dead-end, since the "already closed" guard only
+    fires on a non-NULL upper bound). The literal SQL 'infinity'::timestamptz
+    below is constructed entirely server-side (never round-tripped through a
+    Python datetime), matching exactly how a raw/hand-written UPDATE could
+    attempt this.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-inf",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-inf",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="r1"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(
+            asyncpg.exceptions.RaiseError, match="finite system_period"
+        ):
+            await conn.execute(
+                """
+                UPDATE visa_ruleset_activations
+                SET system_period = tstzrange(lower(system_period), 'infinity'::timestamptz, '[)')
+                WHERE id = $1
+                """,
+                activation_id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_activation_insert_infinity_system_period_upper_guilt(
+    repo: VisaEngineRepository,
+) -> None:
+    """Migration 254 guilt (table CHECK, not the trigger): the mutation-guard
+    trigger above is BEFORE UPDATE OR DELETE only — INSERT is structurally
+    unrestricted (this being an append-only-with-close table), so a direct
+    INSERT setting system_period's upper bound to the literal
+    'infinity'::timestamptz sentinel must still be rejected by the
+    migration-254 table CHECK, since the trigger never runs on INSERT and so
+    cannot be what catches this path (mirrors
+    test_source_record_insert_infinity_recorded_period_upper_guilt in
+    test_write_substrate.py for the sibling visa_source_records table).
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-inf-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-inf-insert",
+        payload_sha256=_pack_hash(1),
+    )
+    t0 = datetime.now(timezone.utc)
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.CheckViolationError) as exc_info:
+            await conn.execute(
+                """
+                INSERT INTO visa_ruleset_activations
+                    (rule_pack_id, environment, legal_period, system_period,
+                     activated_by, activation_reason)
+                VALUES ($1, $2, $3, tstzrange($4, 'infinity'::timestamptz, '[)'), $5, $6)
+                """,
+                pack_id,
+                _ENV,
+                legal,
+                t0,
+                "ops.alice",
+                "raw-insert-infinity-attempt",
+            )
+    assert exc_info.value.constraint_name == "visa_ruleset_activations_system_period_not_infinite"
+
+
+@pytest.mark.asyncio
+async def test_activation_insert_lower_infinity_system_period_guilt(
+    repo: VisaEngineRepository,
+) -> None:
+    """Migration 254 guilt (table CHECK, lower-bound sentinel): mirrors
+    legal_period's own migration-250 lower '-infinity' guard on this exact
+    table. A raw INSERT setting system_period's LOWER bound to the literal
+    '-infinity'::timestamptz sentinel (upper still open/NULL) must be
+    rejected by the migration-254
+    visa_ruleset_activations_system_period_lower_finite CHECK -- system_period
+    is transaction-time and must always have a finite, real start.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-neg-inf-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-neg-inf-insert",
+        payload_sha256=_pack_hash(1),
+    )
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.CheckViolationError) as exc_info:
+            await conn.execute(
+                """
+                INSERT INTO visa_ruleset_activations
+                    (rule_pack_id, environment, legal_period, system_period,
+                     activated_by, activation_reason)
+                VALUES ($1, $2, $3, tstzrange('-infinity'::timestamptz, NULL, '[)'), $4, $5)
+                """,
+                pack_id,
+                _ENV,
+                legal,
+                "ops.alice",
+                "raw-insert-lower-infinity-attempt",
+            )
+    assert exc_info.value.constraint_name == "visa_ruleset_activations_system_period_lower_finite"
+
+
+@pytest.mark.asyncio
+async def test_activation_close_finite_innocence(repo: VisaEngineRepository) -> None:
+    """Migration 254 innocence (part 1): a LEGITIMATE finite close — the one
+    carve-out reject_visa_activation_mutation permits — still succeeds
+    unharmed by the new 'infinity' rejection.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-finite-close",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-finite-close",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="r1"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        # Read the server-set lower bound rather than assuming the client
+        # clock and the DB server clock agree within a few ms (they may not
+        # -- a close timestamp derived from datetime.now() on the client
+        # could land BEFORE the server-stamped lower bound under skew,
+        # producing an empty/invalid range). Deriving closed_at from the
+        # server's own lower bound + a full second margin is skew-proof
+        # regardless of which clock runs ahead.
+        server_lower = await conn.fetchval(
+            "SELECT lower(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+        closed_at = server_lower + timedelta(seconds=1)
+        await conn.execute(
+            """
+            UPDATE visa_ruleset_activations
+            SET system_period = tstzrange(lower(system_period), $2, '[)')
+            WHERE id = $1
+            """,
+            activation_id,
+            closed_at,
+        )
+        upper = await conn.fetchval(
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+    assert upper == closed_at
+
+
+@pytest.mark.asyncio
+async def test_activation_bootstrap_open_insert_innocence(repo: VisaEngineRepository) -> None:
+    """Migration 254 innocence (part 2): inserting a NORMALLY-OPEN activation
+    (system_period upper bound NULL, i.e. the writer function's own
+    bootstrap/supersession INSERT shape) still succeeds unharmed by the new
+    table CHECK — only the explicit 'infinity' sentinel is rejected, an
+    unbounded (NULL) upper bound remains legal.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-open-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-open-insert",
+        payload_sha256=_pack_hash(1),
+    )
+
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="bootstrap-open"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        upper = await conn.fetchval(
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+    assert upper is None
+
+
+# --------------------------------------------------------------------------
 # 7. Function guilt: unknown pack_id, sequence-rollback (trigger), hash-
 #    chain break (trigger) — all raise from WITHIN the function call, and
 #    each rejected attempt leaves prior state untouched (one transaction).
