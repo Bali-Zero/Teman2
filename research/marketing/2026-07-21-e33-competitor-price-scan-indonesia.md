@@ -2,6 +2,7 @@
 date: 2026-07-21
 domain: marketing / pricing-intelligence
 client_case: E33 Second Home Visa (bank-route residency) — Indonesian competitor price & offer scan, to position Bali Zero's E33 professional fee inside the real Indonesian market
+adversarial_review: codex
 sources: 16 pages fetched live on 2026-07-21 (each figure below labeled VERIFIED = fetched live this run, REPORTED = search-engine snippet of a named page, not fetched, NOT-FOUND = no public evidence). Official PNBP from imigrasi.go.id subdomain fetched live. No PII, non-client data only.
 ---
 
@@ -157,5 +158,9 @@ balivisa.co · Bali Visa Advisor (gmail) · Visa4Bali (no E33 SKU)
 14. singkawang.imigrasi.go.id/biaya-keimigrasian/ — official PNBP table (all Second Home lines)
 
 **Search-surfaced, not fetched (REPORTED basis):** balivisas.com 2024-01/02/05 + 2026-01 pricelist PDFs (E33 35M 2024; E28B/C 35M/45M; retirement 15.25–18.25M; KITAP 50.25M); balilegalhub.com E33F 15/17.5M; evisas.co.id E33F 15/18M; gayabalivisa.com E33F page; cekindo.com/incorp.asia E33 articles; permitindo.com KITAS guide; ilaglobalconsulting.com retirement guide (E33E USD 50k detail); cptcorporate.com PNBP 12M/18.5M; immigrantinvest.com state fee ≈ IDR 21M; imigrasi.go.id 2022 press release + dependent-rule news; expatindo.org forum (e-visa total ≈ Rp 13M user report); emerhub.com/indonesia/visas hub snippet.
+
+## Adversarial review
+
+Codex independently challenged the arithmetic, evidence labels, and market-range inference. No objection survived: the price and PNBP calculations reconcile, the three-price sample is explicitly bounded, and REPORTED/NOT-FOUND evidence is not promoted to VERIFIED pricing.
 
 *End of scan. All prices as published on 2026-07-21; no figure interpolated.*
