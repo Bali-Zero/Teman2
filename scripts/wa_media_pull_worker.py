@@ -11,6 +11,20 @@ never a byte of the client document. This worker, running ONLY on the Pro:
 3. For each: downloads the media FROM META ITSELF to the local sovereign blob
    root (``INTAKE_BLOB_ROOT``), then enqueues into the LOCAL nuzantara_dev
    intake_queue. PII therefore only ever exists on the Pro.
+3b. Identity capture at the door (intake-v2 PR-2, 2026-07-18): the outbox
+    payload already carries ``from_phone`` (published by
+    ``whatsapp_chat._ingest_meta_inbox_media``). Before this fix the enqueue
+    call never passed it through, so every official-line document landed
+    with ``sender_phone``/``client_id_hint`` both NULL — a 0-candidate doc
+    for the trivial reason nobody ever looked up the sender. Reuses the same
+    ``contact_autocreate.resolve_or_create_contact`` primitive the live
+    webhook adapter (``whatsapp_live_adapter.ingest_live_media``) and the
+    wa-mirror sweeper already rely on — one identity-resolution seam, not
+    three drifting copies. Matching an EXISTING client is always attempted
+    (read-only, no mis-creation risk); auto-creating a NEW contact for an
+    unknown phone stays behind the existing ``INTAKE_AUTOCREATE_CONTACT_ENABLED``
+    kill-switch (default OFF). A resolver fault never drops the document —
+    it just falls back to no hint, same as before this feature existed.
 4. ACKs the Fly row only AFTER a successful local enqueue (at-least-once;
    enqueue is idempotent on intake_key, so a re-pull is harmless).
 5. Staleness guard: Meta media_ids expire (~days). Any pending row older than
@@ -32,6 +46,11 @@ Environment variables:
 - WA_MEDIA_STALE_HOURS    (default 36 — alert if a pending row is older)
 - TELEGRAM_BOT_TOKEN      (optional; alerts disabled if unset)
 - TELEGRAM_OWNER_CHAT_ID  (optional; default 1125336968)
+- BZ_INTERNAL_PHONE_NUMBERS (roster consumed by contact_autocreate's
+  ``_is_internal_sender_phone`` — see ``_load_internal_phone_roster`` below;
+  this plist's own EnvironmentVariables dict does NOT set it (adversarial
+  review, 2026-07-18 — P0-4), so it is loaded from ``~/.wa-mirror.env`` if
+  present, same file the intake-worker plist already sources this key from)
 """
 from __future__ import annotations
 
@@ -56,6 +75,7 @@ from backend.channels.whatsapp.media_download import (
     MediaDownloadError,
     download_media,
 )
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("wa_media_pull")
@@ -65,6 +85,53 @@ LAST_ID_FILE = STATE_DIR / "wa_media_last_id.txt"
 LOCK_FILE = STATE_DIR / "wa_media_pull.lock"
 
 _SOURCE = "whatsapp"
+
+# Adversarial-review fix (P0-4, 2026-07-18): identity resolution never blocks
+# the serial poll loop forever on a stuck DB call.
+_IDENTITY_RESOLVE_TIMEOUT_SECONDS = 10.0
+
+WA_MIRROR_ENV_FILE = Path.home() / ".wa-mirror.env"
+_INTERNAL_ROSTER_ENV_NAME = "BZ_INTERNAL_PHONE_NUMBERS"
+
+
+def _strip_env_file_value(value: str) -> str:
+    value = value.split("#", 1)[0].strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def _load_internal_phone_roster(path: Path | None = None) -> bool:
+    """Load ``BZ_INTERNAL_PHONE_NUMBERS`` from ``~/.wa-mirror.env`` if unset.
+
+    contact_autocreate.resolve_or_create_contact -> auto_attach._is_internal_
+    sender_phone reads this env var to keep the team roster from ever being
+    matched/auto-created as a client. This plist's own EnvironmentVariables
+    dict does NOT declare it (verified: infra/launchagents/
+    com.nuzantara.wa-media-pull.plist has no such key) — without this loader
+    the roster is SILENTLY EMPTY on this seam, even though the SAME key is
+    already armed in ``~/.wa-mirror.env`` for the intake-worker process.
+    Scoped to ONE key (never dumps the file), skips if already set in the
+    process env, never logs the value. Returns True iff the key ended up set
+    (by this call OR already present) — logged as a boolean only.
+    """
+    if os.environ.get(_INTERNAL_ROSTER_ENV_NAME):
+        return True
+    env_path = path or WA_MIRROR_ENV_FILE
+    if not env_path.exists():
+        return False
+    for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        if name.strip() != _INTERNAL_ROSTER_ENV_NAME:
+            continue
+        value = _strip_env_file_value(value)
+        if value:
+            os.environ[_INTERNAL_ROSTER_ENV_NAME] = value
+            return True
+    return False
 
 
 def _acquire_lock_or_exit() -> int:
@@ -222,6 +289,8 @@ async def run_one_poll() -> int:
     api_version = os.getenv("WA_MEDIA_API_VERSION", "v18.0")
     stale_hours = float(os.getenv("WA_MEDIA_STALE_HOURS", "36"))
 
+    _load_internal_phone_roster()
+
     if not api_key:
         logger.error("[wa_media_pull] BRIDGE_API_KEY not in env or Keychain, aborting")
         return 1
@@ -286,6 +355,43 @@ async def run_one_poll() -> int:
                     )
                     continue
 
+                # 3b. Identity capture — see module docstring. Best-effort:
+                # a resolver fault must NOT drop the document. Timeout-bounded
+                # (P1, adversarial review) so a stuck DB call/lock can never
+                # hang the serial poll loop forever; exceptions are logged by
+                # TYPE ONLY (P1) — never the exception message/traceback,
+                # which could otherwise echo DB error detail containing the
+                # phone value.
+                from_phone = it.get("from_phone")
+                client_id_hint: int | None = None
+                try:
+                    async def _resolve_identity() -> Any:
+                        async with pool.acquire() as identity_conn, identity_conn.transaction():
+                            return await resolve_or_create_contact(
+                                identity_conn, sender_phone=from_phone
+                            )
+
+                    resolution = await asyncio.wait_for(
+                        _resolve_identity(), timeout=_IDENTITY_RESOLVE_TIMEOUT_SECONDS
+                    )
+                    client_id_hint = resolution.client_id
+                    logger.info(
+                        "contact_autocreate: media_id=%s kind=%s client_id=%s",
+                        media_id, resolution.kind, resolution.client_id,
+                    )
+                except TimeoutError:
+                    logger.error(
+                        "contact_autocreate resolver TIMED OUT after %.0fs media_id=%s "
+                        "(row %d) — falling back to no client_id_hint",
+                        _IDENTITY_RESOLVE_TIMEOUT_SECONDS, media_id, oid,
+                    )
+                except Exception as exc:  # noqa: BLE001 — never let a resolver fault drop the doc
+                    logger.error(
+                        "contact_autocreate resolver failed media_id=%s (row %d), "
+                        "error_type=%s — falling back to no client_id_hint",
+                        media_id, oid, type(exc).__name__,
+                    )
+
                 try:
                     result = await enqueue(
                         pool,
@@ -296,6 +402,8 @@ async def run_one_poll() -> int:
                         blob_hash=dl.sha256,
                         byte_size=dl.byte_size,
                         received_by=None,
+                        sender_phone=from_phone,
+                        client_id_hint=client_id_hint,
                     )
                 except Exception as exc:
                     logger.error(
