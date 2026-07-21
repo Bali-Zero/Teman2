@@ -19,7 +19,9 @@ dependencies = [
     "Pillow>=10.0",
     "ffmpeg-python>=0.2",
     "pyyaml>=6.0",
+    "cryptography>=42.0",
     "pydantic>=2.0",
+    "rfc8785>=0.1.4",
     "rich>=13.0",
 ]
 
@@ -36,6 +38,9 @@ garuda-indexer = "zantara_media.cli.garuda_indexer:main"
 garuda-pool-builder = "zantara_media.cli.garuda_pool_builder:main"
 garuda-gc = "zantara_media.cli.garuda_gc:main"
 garuda-bootstrap = "zantara_media.cli.garuda_bootstrap:main"
+magazine-publish = "zantara_media.cli.magazine_publish:main"
+magazine-research-worker = "zantara_media.cli.magazine_research_worker:main"
+magazine-operations-worker = "zantara_media.cli.magazine_operations_worker:main"
 
 [build-system]
 requires = ["setuptools>=68"]

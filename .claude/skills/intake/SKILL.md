@@ -343,7 +343,7 @@ adversarial review present`** (`scripts/check_adversarial_review.py` richiede fr
   chokepoint con env armato; (R4-2) manifest con tuple per-doc (pid,qid,status,blob,ffp)
   - `script_sha256`/`validator_sha256` dei byte esatti (un git-SHA di worktree sporco non
     vincola nulla); (R4-3) coppie trigram calcolate sull'INTERO set eligible PRE-esclusione
-    (non-transitività: A~esistente, A~B cross-sid, B!~esistente → B ora clusterizza).
+    (non-transitività: A~~esistente, A~~B cross-sid, B!~esistente → B ora clusterizza).
     Census v2.2: clustered 171→182, **A-effective INVARIATO 435** (i doc dei nomi
     neo-clusterizzati erano già in quarantena per gate precedenti) — ora certificabile.
     **Gate round-5: 1 solo blocker R5-1 (manifest self-reference)** — costruire l'apply
@@ -478,13 +478,13 @@ adversarial review present`** (`scripts/check_adversarial_review.py` richiede fr
     più un segnale indipendente, serve SOLO a risolvere un token eseguibile
     RELATIVO (raro) in path assoluto prima dello stesso check under-root; un
     eseguibile esterno assoluto ora fallisce SEMPRE `worker_not_running_from*
-    deploy_root`indipendentemente dalla cwd. R13-3/R13-4 confermati validi
-dal gate stesso in questo round. 58/58 verdi. Census v2.12: popolazione
-INVARIATA (275/317), digest`0c773f7af5547cf5c117aca06f985656e60994646b14fad7072723e179c2c4d9`.
-**Round-15: VERDICT CLEAN — WAVE-1 GO.** Arco gate 6→15 CHIUSO. Design doc
-§v3.4→v3.7 con il meta-pattern completo (proxy-vs-stato-reale, dieci
-round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
-`INTAKE_DRIVE_AUTOCREATE_ENABLED`nel process-env del batch +`--manifest 0c773f7a…`+ 1 lotto ≤200 + drain +`--verify-batch` a T+delay
+deploy_root`indipendentemente dalla cwd. R13-3/R13-4 confermati validi
+    dal gate stesso in questo round. 58/58 verdi. Census v2.12: popolazione
+    INVARIATA (275/317), digest`0c773f7af5547cf5c117aca06f985656e60994646b14fad7072723e179c2c4d9`.
+    **Round-15: VERDICT CLEAN — WAVE-1 GO.** Arco gate 6→15 CHIUSO. Design doc
+    §v3.4→v3.7 con il meta-pattern completo (proxy-vs-stato-reale, dieci
+    round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
+    `INTAKE_DRIVE_AUTOCREATE_ENABLED`nel process-env del batch +`--manifest 0c773f7a…`+ 1 lotto ≤200 + drain +`--verify-batch` a T+delay
     E T+1d) — sospesa per conferma esplicita Zero: è la PRIMA creazione reale
     di contatti CRM da questa pipeline, dati cliente reali, prima esecuzione
     mai fatta contro il book vivo.

@@ -153,8 +153,7 @@ export type Battery = {
 };
 
 export type ValidateBatteryResult =
-  | { ok: true; battery: Battery }
-  | { ok: false; error: string };
+  { ok: true; battery: Battery } | { ok: false; error: string };
 
 function coercePositiveNumber(value: unknown, fallback: number): number {
   if (typeof value === "number" && Number.isFinite(value) && value > 0)
