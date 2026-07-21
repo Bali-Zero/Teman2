@@ -44,12 +44,6 @@ class FakeConn:
         self.fetchrow_calls: list[tuple[str, tuple[Any, ...]]] = []
         self.execute_calls: list[tuple[str, tuple[Any, ...]]] = []
 
-    async def execute(self, query: str, *args: Any) -> str:
-        # Records the advisory-lock call (pg_advisory_xact_lock) — no-op here,
-        # concurrency itself is modeled explicitly by the race test below.
-        self.execute_calls.append((query, args))
-        return "SELECT"
-
     def transaction(self):
         class _Tx:
             async def __aenter__(self_tx):
@@ -61,7 +55,14 @@ class FakeConn:
         return _Tx()
 
     async def execute(self, query: str, *args: Any) -> str:
-        # Advisory-lock statements from lock_phone_cores (round-10 F12).
+        # Records advisory-lock calls (pg_advisory_xact_lock + lock_phone_cores'
+        # statements). SINGLE definition: a main-merge once left two divergent
+        # `execute` copies in this class and the second silently overrode the
+        # first, so lock calls landed in fetch_calls and execute_calls stayed
+        # empty. Records into BOTH lists — the no-probe assertions (lines with
+        # `assert not conn.fetch_calls`) only cover paths that never call
+        # execute, so the dual append is safe for them.
+        self.execute_calls.append((query, args))
         self.fetch_calls.append((query, args))
         return "SELECT 1"
 
@@ -302,7 +303,10 @@ async def test_advisory_lock_acquired_before_any_match_or_create(
     conn = FakeConn(existing_matches=[], insert_returns_id=321)
     await ca.resolve_or_create_contact(conn, sender_phone="081234567890")
 
-    assert len(conn.execute_calls) == 1
+    # The CREATE path may legitimately add a second cooperative lock
+    # (lock_phone_cores, round-10 F12) inside its transaction — what this test
+    # pins is that the FIRST DB call of all is the shared advisory lock.
+    assert len(conn.execute_calls) >= 1
     lock_query, lock_args = conn.execute_calls[0]
     assert "pg_advisory_xact_lock" in lock_query
     assert "hashtext" in lock_query
