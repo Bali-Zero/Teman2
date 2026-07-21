@@ -1458,7 +1458,11 @@ def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
     assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in engine_src
     assert "REROUTE_SUPERSEDE_SELECTED_SQL" in engine_src
     assert "REROUTE_ELIGIBLE_LOCK_SQL" in engine_src
-    for fn in (irb.run_reroute_npwp, irb.run_reroute_drive_folder):
+    for fn in (
+        irb.run_reroute_npwp,
+        irb.run_reroute_drive_folder,
+        irb.run_reroute_identity_backfill,
+    ):
         assert "_run_route_only_reroute" in inspect.getsource(fn)
 
 
@@ -1487,10 +1491,96 @@ def test_reroute_reset_only_actually_superseded_rows() -> None:
 
 def test_reroute_pipeline_version_defaults_per_mode() -> None:
     # --reroute-pipeline-version default is None; each mode picks its own tag
-    # so a folder rerun and an npwp rerun stay measurable independently.
+    # so each reroute family stays measurable independently.
     irb = _load()
     import inspect
 
     src = inspect.getsource(irb.main)
     assert 'or "v2.2-m227-folder"' in src
     assert 'or "v2.3-npwp"' in src
+    assert 'or "v2.4-identity-backfill"' in src
+
+
+def test_reroute_identity_backfill_sql_is_narrow_and_malformed_json_safe() -> None:
+    irb = _load()
+    sql = irb.REROUTE_IDENTITY_BACKFILL_SELECT_SQL
+
+    # Latest proposal first; only a currently reviewable row may be reset.
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "proposal_status = 'review_pending'" in sql
+    assert "p.status = 'review_pending'" not in sql
+
+    # A live, non-reverted passport/KITAS value plus matching provenance is
+    # required. A leftover top-level identity_backfill object is insufficient.
+    assert "NULLIF(btrim(passport_number), '') IS NOT NULL" in sql
+    assert "NULLIF(btrim(kitas_number), '') IS NOT NULL" in sql
+    assert "identity_backfill,passport_number,reverted" in sql
+    assert "identity_backfill,kitas_number,reverted" in sql
+    assert "deleted_at IS NULL" in sql
+
+    # Only documents carrying the same kind of extracted identity field are
+    # rerouted; unrelated pending documents for the same client stay put.
+    for key in (
+        "passport_no",
+        "passport_number",
+        "kitas_no",
+        "kitas_number",
+        "itap_no",
+        "itk_no",
+        "stay_permit_no",
+    ):
+        assert f"'{key}'" in sql
+    assert "jsonb_each(extracted_fields)" in sql
+
+    # Historical malformed candidates fail closed instead of aborting the
+    # whole SELECT. Already-strong candidates are not rerouted pointlessly.
+    assert "jsonb_typeof(entity_resolution->'candidates') = 'array'" in sql
+    assert "WHEN (cand->>'id') ~ '^[0-9]+$'" in sql
+    assert "cand->>'table' = 'clients'" in sql
+    assert "passport_number|kitas_number" in sql
+    assert "LIMIT $1" in sql
+
+    # No accidental inheritance from the Drive/NPWP reroute populations.
+    assert "q.source = 'drive'" not in sql
+    assert "npwp_number" not in sql
+
+
+def test_reroute_identity_backfill_dispatches_to_shared_engine() -> None:
+    irb = _load()
+    captured: dict[str, object] = {}
+
+    async def fake_engine(pool: object, **kwargs: object) -> dict[str, int]:
+        captured["pool"] = pool
+        captured.update(kwargs)
+        return {"proposals": 2, "queue_rows": 2}
+
+    pool = object()
+    irb._run_route_only_reroute = fake_engine
+    result = asyncio.run(
+        irb.run_reroute_identity_backfill(
+            pool, "v2.4-identity-backfill", 25, apply=False
+        )
+    )
+
+    assert result == {"proposals": 2, "queue_rows": 2}
+    assert captured == {
+        "pool": pool,
+        "mode": "reroute-identity-backfill",
+        "select_sql": irb.REROUTE_IDENTITY_BACKFILL_SELECT_SQL,
+        "pipeline_version": "v2.4-identity-backfill",
+        "limit": 25,
+        "apply": False,
+    }
+
+
+def test_reroute_identity_backfill_flag_is_wired() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--reroute-identity-backfill"])
+    assert args.reroute_identity_backfill is True
+
+    import inspect
+
+    main_src = inspect.getsource(irb.main)
+    assert "args.reroute_identity_backfill" in main_src
+    assert "run_reroute_identity_backfill" in main_src
+    assert "--reroute-identity-backfill" in main_src
