@@ -2,6 +2,7 @@
 date: 2026-07-21
 domain: visa
 client_case: none (platform/engine infrastructure — Visa Oracle decision engine)
+adversarial_review: kimi
 sources:
   - apps/backend-rag/backend/services/visa_engine/evaluator.py (IdentityProvider contract; _facts_fingerprint; _deterministic_ids; _placeholder_identity_provider)
   - apps/backend-rag/backend/services/visa_engine/bundle.py (StaticTrustStore.from_env — the env-key-loader pattern mirrored here)
@@ -44,7 +45,7 @@ test_crypto_identity.py: store loading (valid → store; unset/badJSON/non-array
 ## 8. Gate
 generator≠grader cross-family: Codex GPT-5.6-sol (crypto red-team) + Kimi K3 (refuter). Fable does the final on-disk gate. No self-merge before green + R1 record.
 
-## 9. Cross-family gate outcomes (2026-07-21, R1 record)
+## Adversarial review — cross-family gate outcomes (2026-07-21, R1 record)
 
 generator = Sonnet 5 implementer (per exact spec). Graders (generator≠grader, cross-family):
 
