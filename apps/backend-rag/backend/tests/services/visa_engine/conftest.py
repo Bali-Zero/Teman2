@@ -381,6 +381,37 @@ _DEFAULT_DB_URL = os.environ.get(
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_250_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "250_visa_engine_core.sql"
 _MIGRATION_251_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "251_visa_activation_writer.sql"
+_MIGRATION_253_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "253_visa_activation_writer_hardening.sql"
+)
+
+# STEP-6b gate round-2 fix (2026-07-20): migration 252 adds
+# ``visa_decisions.rule_pack_id`` / ``.ruleset_activation_id`` FKs onto the
+# two tables migration 250's rollback drops below. In CI (and any local run
+# pointed at a DB where migration 252 has already been applied end-to-end,
+# e.g. via ``python -m backend.db.migrate apply-all``), those FK
+# constraints are permanently present on the SHARED ``nuzantara_test``
+# database this fixture's ``rollback_250`` targets -- migration 250's own
+# rollback (correctly) predates 252 and knows nothing about them, so its
+# bare ``DROP TABLE IF EXISTS visa_ruleset_activations`` /
+# ``visa_rule_packs`` fails with
+# ``asyncpg.exceptions.DependentObjectsStillExistError`` the moment 252 is
+# present downstream. Dropping just the two FK CONSTRAINTs first (never the
+# ``visa_decisions`` table or its rows) is a no-op when 252 hasn't been
+# applied (``IF EXISTS`` throughout, table-and-constraint both) and
+# resolves the dependency the rest of the time. Never edit migration 250's
+# own rollback SQL for this -- 250/251 are already-merged and out of scope
+# here; this is test-fixture-local defensive cleanup only. Safe because no
+# other test in this suite reads ``visa_decisions`` off the shared
+# ``nuzantara_test``/``nuzantara_dev`` DB (test_write_substrate.py's own
+# migration-252 tests run against a private throwaway database instead —
+# see that file's module docstring).
+_DROP_MIGRATION_252_FK_DEPENDENCIES_SQL = """
+ALTER TABLE IF EXISTS public.visa_decisions
+    DROP CONSTRAINT IF EXISTS visa_decisions_ruleset_activation_id_fkey;
+ALTER TABLE IF EXISTS public.visa_decisions
+    DROP CONSTRAINT IF EXISTS visa_decisions_rule_pack_id_fkey;
+"""
 
 
 def _read_migration_250() -> tuple[str, str]:
@@ -408,6 +439,21 @@ def _read_migration_251() -> tuple[str, str]:
     return forward, rollback
 
 
+def _read_migration_253() -> tuple[str, str]:
+    """Return (forward_sql, rollback_sql) for migration 253 — the STEP-6a
+    FIX-ROUND hardening applied as a roll-forward correction against the
+    ALREADY-APPLIED migration 251 (251 merged+deployed to prod in flawed
+    form before the fix-round could land — see 253's own header). Schema-
+    qualifies the four trigger functions, adds the two TRUNCATE guards, the
+    two activated_by/activation_reason token-format CHECK constraints, and
+    the corrected self-healing/fail-closed grant block. Same
+    ``split_migration_sql`` helper as 250/251's own readers above."""
+    sql = _MIGRATION_253_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 253 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_pool() -> asyncpg.Pool:
     pool = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
@@ -420,34 +466,52 @@ async def visa_schema(db_pool: asyncpg.Pool) -> None:
     """Fresh ``visa_rule_packs``/``visa_ruleset_activations`` + the STEP-6a
     activation writer for one test.
 
-    Applies migration 250's forward SQL, then migration 251's forward SQL —
-    same order a real deploy applies them (251 lands in the same release as
-    250, per 251's own header note) — so every test starts from a schema
-    that includes the ``activated_by_principal`` column, the hardened
-    (schema-qualified, ``search_path``-pinned) trigger functions, and the
-    ``visa_activate_rule_pack`` writer function, with zero rows regardless
-    of what a previous test committed.
+    Applies migration 250's forward SQL, then 251's, then 253's — same
+    order a real deploy applies them (251 lands in the same release as 250
+    per 251's own header note; 253 is the FIX-ROUND roll-forward correction
+    against 251, which merged+deployed to prod in flawed form before the
+    fix-round could land — see 253's own header) — so every test starts
+    from a schema that includes the ``activated_by_principal`` column, the
+    schema-qualified/``search_path``-pinned trigger functions, the TRUNCATE
+    guards, the activated_by/activation_reason token-format CHECK
+    constraints, and the ``visa_activate_rule_pack`` writer function, with
+    zero rows regardless of what a previous test committed.
 
-    Setup AND teardown both roll back 251 THEN 250 (dependency-safe order —
-    251's rollback drops the writer function, reverts the four trigger
-    functions to their pre-251 bodies, and drops the
-    ``activated_by_principal`` column/constraint, all while the tables
-    still exist; only THEN does 250's rollback drop the tables themselves).
-    251's rollback uses ``ALTER TABLE IF EXISTS`` throughout specifically so
-    calling it at setup — defensively, before either migration's forward SQL
-    has ever run against a brand-new disposable DB — never errors on a
-    table that doesn't exist yet.
+    Setup AND teardown both roll back 253 THEN 251 THEN 250 (dependency-safe
+    reverse order — 253's rollback drops its own TRUNCATE guards/CHECK
+    constraints and reverts the four trigger functions to their pre-253
+    (251-applied) bodies; 251's rollback then drops the writer function,
+    reverts those same four trigger functions further to their pre-251
+    bodies, and drops the ``activated_by_principal`` column/constraint, all
+    while the tables still exist; only THEN does 250's rollback drop the
+    tables themselves). 251's and 253's rollbacks use ``ALTER TABLE IF
+    EXISTS``/``DROP TRIGGER IF EXISTS``/``DROP CONSTRAINT IF EXISTS``
+    throughout specifically so calling them at setup — defensively, before
+    any of the three migrations' forward SQL has ever run against a
+    brand-new disposable DB — never errors on a table/trigger/constraint
+    that doesn't exist yet.
+
+    Also drops migration 252's two FK constraints onto these tables first
+    (``_DROP_MIGRATION_252_FK_DEPENDENCIES_SQL``, no-op if 252 isn't
+    present, executed just before 250's rollback in both setup and
+    teardown) — see that constant's comment for why.
     """
     forward_250, rollback_250 = _read_migration_250()
     forward_251, rollback_251 = _read_migration_251()
+    forward_253, rollback_253 = _read_migration_253()
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_253)
         await conn.execute(rollback_251)
+        await conn.execute(_DROP_MIGRATION_252_FK_DEPENDENCIES_SQL)
         await conn.execute(rollback_250)
         await conn.execute(forward_250)
         await conn.execute(forward_251)
+        await conn.execute(forward_253)
     yield
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_253)
         await conn.execute(rollback_251)
+        await conn.execute(_DROP_MIGRATION_252_FK_DEPENDENCIES_SQL)
         await conn.execute(rollback_250)
 
 

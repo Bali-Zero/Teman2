@@ -1,0 +1,51 @@
+name: Content lint — reasoning-leak in published MDX
+
+# Fails the PR if a content MDX file under apps/mouth/src/content/articles/
+# contains raw LLM chain-of-thought / translation-meta ("Thinking...",
+# "Wait, looking at the input:", "TESTO DA TRADURRE", "Output: ONLY the
+# translation"). Born from the 2026-07-21 "/insights?tag= prompt leak": an old
+# translation pipeline wrote a reasoning model's monologue into 20 *.id.mdx
+# files — into tags:/description: frontmatter AND body — and the contaminated
+# tags rendered as /insights?tag=<garbage> URLs Google crawled.
+#
+# Single source of truth: scripts/lint_content_reasoning_leak.py (self-contained,
+# ships a --selftest guilt+innocence corpus so the patterns can't silently rot).
+
+on:
+  pull_request:
+    paths:
+      - "apps/mouth/src/content/articles/**/*.mdx"
+      - "scripts/lint_content_reasoning_leak.py"
+      - ".github/workflows/lint-content-reasoning-leak.yml"
+
+concurrency:
+  group: lint-content-reasoning-leak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Detect reasoning-leak in content MDX
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Self-test (guilt + innocence must both hold)
+        run: python scripts/lint_content_reasoning_leak.py --selftest
+
+      - name: Scan published content MDX
+        run: python scripts/lint_content_reasoning_leak.py
+
+      - name: Show fix guidance on failure
+        if: failure()
+        run: |
+          echo "::error::Raw LLM reasoning leaked into published content MDX."
+          echo "This is the 2026-07-21 /insights?tag= leak class. Do NOT hand-strip:"
+          echo "re-translate the affected article via the hardened pipeline"
+          echo "(scripts/translate-articles.py now refuses to write leaked output),"
+          echo "then re-run this lint locally: python scripts/lint_content_reasoning_leak.py"

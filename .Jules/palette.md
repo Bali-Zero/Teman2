@@ -77,3 +77,13 @@
 
 **Learning:** Hardcoded IDs in reusable components can lead to duplicate IDs in the DOM, breaking accessibility associations. Using the `useId` hook ensures unique, stable IDs for linking triggers to menus via `aria-controls` and `aria-labelledby`. Additionally, providing dynamic, descriptive `alt` text for avatars (e.g., "Avatar for [Name]") instead of generic placeholders like "User avatar" provides better context for screen reader users when multiple users are present in an interface.
 **Action:** Use `useId` for all ARIA-linked elements within components. Always pass user-specific context to avatar `alt` text to ensure unique and helpful descriptions.
+
+## 2026-07-19 - [A11y and Keyboard Focus for Toast Notifications]
+
+**Learning:** Toast notifications are critical status messages that can easily be missed by assistive technologies unless explicitly marked with `role="status"` and `aria-live="polite"`. Furthermore, close buttons within toast notifications are often skipped or unusable by keyboard navigation if they lack correct interactive attributes, such as `type="button"`, explicit focus indicators via `.focus-ring`, and informative hover/tooltip texts (`aria-label`, `title`).
+**Action:** Always wrap custom toast elements with standard ARIA live/status roles and ensure any interactive elements (such as close/dismiss actions) are fully semantic buttons styled with `.focus-ring` and labeled with both `aria-label` and `title`.
+
+## 2026-07-20 - [A11y and Focus Trapping for Collapsible Sidebars]
+
+**Learning:** Sidebars that are visually animated off-screen using CSS transitions (e.g., `transform: translateX`) remain in the active document flow unless hidden or made inert. This allows screen readers and keyboard users (via the Tab key) to focus hidden elements inside the sidebar, creating a confusing and unexpected keyboard experience. Applying the standard HTML `inert` attribute (natively supported in React 19) when the sidebar is closed ensures all interactive children are completely removed from the tab order.
+**Action:** Always apply `inert={!isOpen ? true : undefined}` (or similar) to sliding or off-screen panels/drawers to keep the keyboard navigation and tab flow clean and expected.

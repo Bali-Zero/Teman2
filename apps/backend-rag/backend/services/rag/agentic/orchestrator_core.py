@@ -41,6 +41,7 @@ from backend.services.rag.agentic.query_helpers import wrap_query_with_language_
 from backend.services.rag.agentic.query_planner import QueryPlanner  # GraphRAG v6.0
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.team_crm_tools import is_team_or_creator_profile
 from backend.services.rag.crag_router import CRAGRouter
 from backend.services.rag.grading import (
     AnswerGrader,
@@ -1011,6 +1012,8 @@ class OrchestratorCore:
         start_time: float,
         session_id: str | None = None,
         tool_execution_counter: dict[str, int] | None = None,
+        profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -1031,6 +1034,11 @@ class OrchestratorCore:
             start_time: Timestamp di inizio
             session_id: Optional session ID
             tool_execution_counter: Optional tool execution counter
+            profile: Optional caller-supplied profile override (WA
+                team-assistant V1). Merged on top of whatever
+                prepare_query_context()'s DB-keyed lookup found — the
+                caller's fields win on key conflicts. None (every caller
+                except the WA bot today) is a complete no-op.
 
         Returns:
             CoreResult completo
@@ -1052,6 +1060,16 @@ class OrchestratorCore:
             conversation_history=conversation_history,
             session_id=session_id,
         )
+
+        # 1a2. WA team-assistant V1: merge a caller-supplied profile override
+        # on top of the DB-keyed profile lookup above. For WA senders,
+        # user_id is "whatsapp_<phone>" — prepare_query_context's DB lookup
+        # never finds a row for that key, so this is normally a full
+        # replacement, not a partial merge; written as a merge so a future
+        # caller with a *real* user_id and a partial override still gets
+        # sane behavior (override fields win).
+        if profile:
+            user_context["profile"] = {**(user_context.get("profile") or {}), **profile}
 
         # 1b. [GraphRAG v6 → SOTA 2026] QueryPlanner
         # Active mode: produces QueryPlan consumed by CRAG Router.
@@ -1087,21 +1105,40 @@ class OrchestratorCore:
                 extracted_entities=extracted_entities,
             )
 
+        # WA team-assistant Phase 2 (2026-07-20 ruling): team/creator
+        # senders' answers must NEVER be read from or written to a shared
+        # cache (per-member, PII-bearing). This orchestrator has no live
+        # cache-WRITE call site today (FAQ cache is populated offline by
+        # scripts/curated_qa_harvest.py from curated JSONL, not from live
+        # requests — see spec §Cache discipline), so the enforceable half
+        # of "skip cache read AND write" is the READ below; both checks are
+        # skipped outright for a team/creator sender rather than merely
+        # excluded from a write that doesn't happen inline here.
+        _team_mode = is_team_or_creator_profile(user_context.get("profile"))
+
         # 3. Check FAQ cache (exact match, < 1ms)
-        faq_cached_result = await self.check_faq_cache(
-            query=query,
-            extracted_entities=extracted_entities,
-            start_time=start_time,
+        faq_cached_result = (
+            None
+            if _team_mode
+            else await self.check_faq_cache(
+                query=query,
+                extracted_entities=extracted_entities,
+                start_time=start_time,
+            )
         )
         if faq_cached_result:
             return faq_cached_result
 
         # 3b. Check semantic cache (vector similarity, ~50ms)
         # (Already have entities from parallel step 1)
-        cached_result = await self.check_semantic_cache(
-            query=query,
-            extracted_entities=extracted_entities,
-            start_time=start_time,
+        cached_result = (
+            None
+            if _team_mode
+            else await self.check_semantic_cache(
+                query=query,
+                extracted_entities=extracted_entities,
+                start_time=start_time,
+            )
         )
         if cached_result:
             return cached_result
@@ -1175,6 +1212,26 @@ class OrchestratorCore:
 
         # 4. Route query (intent classification + tier selection)
         model_tier, _deep_think_mode, state = await self.routing_manager.route_query(query)
+
+        # Latency knob: only ever LOWER the ReAct step cap, never raise it —
+        # an untrusted caller cannot use this to force deeper (costlier)
+        # reasoning than the route already assigned. Floor of 1: the
+        # Pydantic `ge=1` on AgenticQueryRequest.max_steps only guards the
+        # HTTP path — an in-process caller (e.g. whatsapp_chat.py) can call
+        # orchestrator.process_query() directly with an unvalidated int, and
+        # 0/negative would otherwise disable the ReAct loop entirely
+        # (`while state.current_step < state.max_steps` never fires) instead
+        # of just cutting latency (Kimi K3 adversarial review, 2026-07-20).
+        if max_steps is not None:
+            state.max_steps = max(1, min(max_steps, state.max_steps))
+
+        # WA team-assistant Phase 2 (2026-07-20): carry the resolved caller
+        # profile on the fresh AgentState the same way VASSAL carries
+        # agent_role — read by reasoning.py at each execute_tool call site
+        # and forwarded as `_caller_profile` so team_crm_tools.py's tools
+        # can self-scope. None for every caller except the WA bot's
+        # team/creator senders (complete no-op elsewhere).
+        state.caller_profile = user_context.get("profile")
 
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(

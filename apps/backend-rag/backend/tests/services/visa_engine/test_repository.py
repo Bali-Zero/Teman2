@@ -244,7 +244,7 @@ async def _insert_activation_raw(
                 INSERT INTO visa_ruleset_activations
                     (rule_pack_id, environment, jurisdiction, decision_domain,
                      legal_period, activated_by, activation_reason)
-                VALUES ($1, $2, $3, $4, $5, 'tester', 'raw activation for test')
+                VALUES ($1, $2, $3, $4, $5, 'tester', 'raw-activation-for-test')
                 """,
                 rule_pack_id,
                 environment,
@@ -258,7 +258,7 @@ async def _insert_activation_raw(
                 INSERT INTO visa_ruleset_activations
                     (rule_pack_id, environment, jurisdiction, decision_domain,
                      legal_period, system_period, activated_by, activation_reason)
-                VALUES ($1, $2, $3, $4, $5, $6, 'tester', 'raw activation for test')
+                VALUES ($1, $2, $3, $4, $5, $6, 'tester', 'raw-activation-for-test')
                 """,
                 rule_pack_id,
                 environment,
@@ -432,7 +432,7 @@ async def test_non_overlap_exclusion(repo: VisaEngineRepository) -> None:
                 _ENV,
                 legal,
                 "tester",
-                "overlapping activation — must raise",
+                "overlapping-activation-must-raise",
             )
 
 
@@ -629,7 +629,7 @@ async def test_activation_env_bound_to_pack(repo: VisaEngineRepository) -> None:
                 "PRODUCTION",
                 legal,
                 "tester",
-                "mismatched environment — must raise",
+                "mismatched-environment-must-raise",
             )
 
     # Innocence: activating with the MATCHING scope succeeds — this raw
@@ -678,7 +678,7 @@ async def test_ledger_rejects_wrong_jurisdiction(repo: VisaEngineRepository) -> 
                 "US",
                 legal,
                 "tester",
-                "wrong jurisdiction — must raise",
+                "wrong-jurisdiction-must-raise",
             )
 
 
@@ -1333,7 +1333,7 @@ async def test_infinity_legal_lower_rejected(repo: VisaEngineRepository) -> None
                     _ENV,
                     datetime(2027, 1, 1, tzinfo=timezone.utc),
                     "tester",
-                    "infinite legal lower — must raise",
+                    "infinite-legal-lower-must-raise",
                     "tester-principal-trigger-disabled",
                 )
         finally:

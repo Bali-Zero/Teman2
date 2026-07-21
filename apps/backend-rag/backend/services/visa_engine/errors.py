@@ -64,3 +64,40 @@ class ConditionStructureError(VisaEngineError):
     exception per-rule and folds it into a non-raising ``CompilationReport``
     entry rather than letting it propagate — see that module's docstring.
     """
+
+
+class PlaceholderIdentityNotAllowedError(VisaEngineError):
+    """Raised by ``evaluator._placeholder_identity_provider`` when asked to
+    fabricate a ``Decision``'s ``decision_id``/``public_id``/
+    ``facts_fingerprint`` for a rule pack whose ``environment`` is not
+    ``TEST`` (PR5 gate round 1, 2026-07-19 — fail-closed guard on the
+    non-secret placeholder identity provider). Not present in spec §1's
+    literal five-class ``errors.py`` snippet, added for the same reason
+    ``ConditionStructureError`` was: a standalone, directly-testable failure
+    mode that did not exist until ``evaluator.py`` needed a real identity
+    provider contract. A caller running against a STAGING/PRODUCTION pack
+    must inject a real crypto-backed ``evaluator.IdentityProvider`` instead
+    of relying on the default.
+    """
+
+
+class FactsFingerprintKeyError(VisaEngineError):
+    """Raised by ``crypto.FactsFingerprintKeyStore.from_env`` when the
+    configured facts-fingerprint HMAC key material is absent or malformed (env
+    var unset, invalid JSON, not an array, a malformed/duplicate entry, a
+    naive (non-tz-aware) datetime, or a secret below the 256-bit HMAC-SHA256
+    floor). STEP-6d, 2026-07-21 — the symmetric-secret analogue of
+    ``RulePackVerificationError`` for the Ed25519 trust store. Fail-closed: a
+    malformed key config never degrades to the non-secret placeholder for a
+    non-TEST pack.
+    """
+
+
+class FactsFingerprintKeyUnavailableError(VisaEngineError):
+    """Raised by the real crypto-backed ``evaluator.IdentityProvider``
+    (``crypto.build_identity_provider``) when the key store has no key that is
+    in-window and non-revoked at the decision's ``effective_at`` for the pack's
+    ``environment``. STEP-6d, 2026-07-21. The SHADOW consumer treats this
+    exactly like ``PlaceholderIdentityNotAllowedError`` — skip, no row — so a
+    not-yet-provisioned environment stays a clean no-op.
+    """

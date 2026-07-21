@@ -20,6 +20,7 @@
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
 | [`dropbox-intake.md`](dropbox-intake.md) | Dropbox → Google Drive Intake |
+| [`fly-logs-accumulator.md`](fly-logs-accumulator.md) | Runbook — Fly logs accumulator (O0-P1) |
 | [`grafana-sota-setup.md`](grafana-sota-setup.md) | SOTA Social dashboard — Grafana setup |
 | [`healer-organ.md`](healer-organ.md) | Healer organ — autonomous cure loop (Mini-Pro2) |
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
