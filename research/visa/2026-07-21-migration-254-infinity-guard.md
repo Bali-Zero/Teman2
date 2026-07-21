@@ -2,7 +2,7 @@
 date: 2026-07-21
 domain: visa
 client_case: none (engine correctness hardening — Visa Oracle decision engine)
-adversarial_review: kimi+gemini
+adversarial_review: kimi
 sources:
   - apps/backend-rag/backend/db/migrations_v2/252_visa_engine_write_substrate.sql (proven mirror pattern — reject_visa_source_records_mutation + recorded_period CHECK)
   - apps/backend-rag/backend/db/migrations_v2/250_visa_engine_core.sql (legal_period lower '-infinity' guard, live on prod)
