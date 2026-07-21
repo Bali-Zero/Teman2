@@ -135,6 +135,31 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-21 — WAVE-3 EXECUTED (Zero GO #3, "ggo") — 1 contatto creato, pulito senza residui.**
+  Terzo "go" di Zero ricevuto poco dopo la chiusura del wave-2 (PR #2925 mergiata). Worktree
+  ri-diramato da `origin/main` fresco + tutti e 7 i file attestati riverificati byte-identici
+  a `~/nuzantara-deploy` prima del census (lezione del wave-2). Census fresco:
+  **A_effective_contacts=1 (solo passport)** — la popolazione si è quasi esaurita dopo le
+  prime due wave; `perimeter_docs` è cresciuto 7.901→8.440 nel frattempo (il backlog è un
+  bersaglio mobile, nuovi documenti continuano ad arrivare via l'intake live in corso).
+  Stesso digest tra i due census consecutivi (`2bf8ec32…`), stato DB stabile. Riapplicata
+  la stessa procedura sicura (worker vivo+throttled, 3 flag auto-attach rimossi,
+  `dropbox-intake` in pausa). **Errore operativo di questa run** (nessuna scrittura DB
+  coinvolta, zero impatto): sintassi `launchctl bootstrap gui/$UID/<label>.plist`
+  (path concatenato invece dei due argomenti separati `<domain> <plist-path>`) fallisce
+  silenziosamente senza errore visibile, lasciando il worker appena fermato ancora giù —
+  colto subito con un `launchctl print` di verifica stato e corretto con la sintassi
+  corretta a due argomenti prima di qualunque azione sul DB. Lo stesso passo di ripristino
+  ha incontrato un secondo blip transitorio (`Bootstrap failed: 5: Input/output error`,
+  sintassi stavolta corretta — contesa launchd con il `bootout` immediatamente precedente),
+  risolto con un retry dopo 3s. **Batch `w1-20260721T042210Z-8e839662`: created=1,
+  skipped=[], lots=1, frozen=null** — pulito, nessun timeout di drain (un solo candidato,
+  poche code, ben dentro la finestra di 300s stavolta). `--verify-batch` immediato:
+  0 owner_violations, 0 name_violations, 0 reroute non verificati (`reroute_verified=true`,
+  client_id 35385) — a differenza del wave-2, questo batch non lascia alcun residuo da
+  self-heal-check. Daemon ripristinato (plist diff-verificato byte-identico al backup
+  pre-wave-1, entrambi i servizi `running` con PID freschi).
+
 - **2026-07-21 — WAVE-2 EXECUTED (Zero GO #2) — 94 contatti creati, reroute in self-heal.**
   Secondo "go" di Zero ricevuto subito dopo la chiusura del wave-1. Census fresco: 94
   candidati residui (passport 84/kitas 10), sotto l'hard-cap → un solo lotto. Riapplicata
