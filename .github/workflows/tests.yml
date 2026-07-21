@@ -114,7 +114,14 @@ jobs:
           # re-resolution drift this step was designed to kill: pip installs
           # exactly the locked versions, and the unpinned cuda family resolves
           # the same way the install step just resolved it.
-          grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit.txt
+          grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit-raw.txt
+          # Hash-mode auto-activation (found 2026-07-21): the lock's per-package
+          # --hash lines make pip enable hash mode ALL BY THEMSELVES (any hash ⇒
+          # hashes required for everything), so dropping --require-hashes was not
+          # enough — the unpinned cuda subtree still failed the closure. Strip
+          # the hash continuation lines and their trailing backslashes so the
+          # audit runs in plain ==-pinned mode.
+          sed -e '/^[[:space:]]*--hash=sha256:/d' -e 's/[[:space:]]\\$//' /tmp/requirements-audit-raw.txt > /tmp/requirements-audit.txt
           pip-audit --strict --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855 \
             --ignore-vuln PYSEC-2025-217 \
@@ -424,6 +431,12 @@ jobs:
           # CI currently has no OAuth token injected; any test that would
           # hit a real Claude endpoint must mock it.
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Backend Settings requires JWT_SECRET_KEY at import (pydantic). It was
+          # missing here for a long time: the uvicorn process died instantly and
+          # the old fail-open wait loop masked it — E2E "passed" against a dead
+          # backend on main (proven 2026-07-21: 30/30 waits + 41 passed). The
+          # fail-loud health gate below exposed the corpse; this is the cure.
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
           LANGCHAIN_TRACING_V2: "false"
           ENVIRONMENT: test
         run: |
