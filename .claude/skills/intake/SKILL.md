@@ -135,6 +135,23 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-21 — IDENTITY-BACKFILL REROUTE FOLLOW-UP REBUILT, READ-ONLY PROOF GREEN.**
+  Recovered Claude session `fff54ce0`: its five registered tasks were complete; the first
+  unfinished follow-up was the route-only `--reroute-identity-backfill` mode left as an
+  uncommitted two-file patch on the obsolete
+  `agent/nuzantara/backend-rag/identity-backfill-0718` worktree after PR #2883 merged. The
+  implementation was rebuilt on fresh `origin/main` in
+  `agent/nuzantara/backend-rag/identity-backfill-continuation` and tightened so selection
+  requires an active, non-reverted provenance entry, a current non-empty passport/KITAS value,
+  and the corresponding non-empty identifier in the document. Malformed historical candidates
+  JSON degrades to an empty candidate set; already-strong decisions are excluded; the shared
+  route-only engine remains the only mutation path and preserves `stage_output`. Verification:
+  92 script tests + 8 GATE-11 tests green, Ruff clean, and the real SELECT executed successfully
+  via `nuzantara_dev_readonly`. **Current local population is 0** (0 live clients with active
+  identity-backfill provenance; dry-run selects 0 proposals), so `--apply` was intentionally not
+  run and the historical 25-proposal proof is no longer reproducible from current local state.
+  Candidate remains review-only for Claude; no merge or deploy.
+
 - **2026-07-21 — WAVE-3 EXECUTED (Zero GO #3, "ggo") — 1 contatto creato, pulito senza residui.**
   Terzo "go" di Zero ricevuto poco dopo la chiusura del wave-2 (PR #2925 mergiata). Worktree
   ri-diramato da `origin/main` fresco + tutti e 7 i file attestati riverificati byte-identici

@@ -373,6 +373,136 @@ SELECT proposal_id, queue_id
  LIMIT $1
 """
 
+# Route-only resume for proposals that can benefit from a passport/KITAS
+# written by intake_identity_backfill.py. The scope deliberately requires:
+#   * the latest proposal is still review_pending;
+#   * its existing candidate already points at the backfilled client;
+#   * the document carries the same kind of identity field that was backfilled;
+#   * the current client value and non-reverted provenance still exist.
+# This avoids rerouting every pending document for a backfilled client while
+# preserving stage_output for retention-evicted blobs. Malformed historical
+# JSON is treated as ineligible instead of aborting the whole dry-run.
+REROUTE_IDENTITY_BACKFILL_SELECT_SQL = """
+WITH backfilled_clients AS (
+    SELECT *
+      FROM (
+        SELECT id,
+               (
+                 NULLIF(btrim(passport_number), '') IS NOT NULL
+                 AND jsonb_typeof(
+                       custom_fields#>'{identity_backfill,passport_number}'
+                     ) = 'object'
+                 AND custom_fields#>>'{identity_backfill,passport_number,reverted}'
+                       IS DISTINCT FROM 'true'
+               ) AS has_backfilled_passport,
+               (
+                 NULLIF(btrim(kitas_number), '') IS NOT NULL
+                 AND jsonb_typeof(
+                       custom_fields#>'{identity_backfill,kitas_number}'
+                     ) = 'object'
+                 AND custom_fields#>>'{identity_backfill,kitas_number,reverted}'
+                       IS DISTINCT FROM 'true'
+               ) AS has_backfilled_kitas
+          FROM clients
+         WHERE deleted_at IS NULL
+      ) flags
+     WHERE has_backfilled_passport OR has_backfilled_kitas
+),
+latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id,
+           q.id AS queue_id,
+           p.status AS proposal_status,
+           p.entity_resolution AS entity_resolution,
+           (
+             CASE
+               WHEN jsonb_typeof(q.stage_output->'extract'->'fields') = 'object'
+                 THEN q.stage_output->'extract'->'fields'
+               ELSE '{}'::jsonb
+             END
+             ||
+             CASE
+               WHEN jsonb_typeof(p.routing->'fields') = 'object'
+                 THEN p.routing->'fields'
+               ELSE '{}'::jsonb
+             END
+           ) AS extracted_fields
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND EXISTS (
+         SELECT 1
+           FROM jsonb_array_elements(
+                  CASE
+                    WHEN jsonb_typeof(entity_resolution->'candidates') = 'array'
+                      THEN entity_resolution->'candidates'
+                    ELSE '[]'::jsonb
+                  END
+                ) AS cand
+           JOIN backfilled_clients bc
+             ON bc.id = CASE
+                  WHEN (cand->>'id') ~ '^[0-9]+$'
+                    THEN (cand->>'id')::bigint
+                  ELSE NULL
+                END
+          WHERE cand->>'table' = 'clients'
+            AND COALESCE(cand->>'method', '')
+                  !~ '(^|[+])(passport_number|kitas_number)([+]|$)'
+            AND (
+              (
+                bc.has_backfilled_passport
+                AND EXISTS (
+                  SELECT 1
+                    FROM jsonb_each(extracted_fields) AS field(key, value)
+                   WHERE field.key IN ('passport_no', 'passport_number')
+                     AND NULLIF(
+                           btrim(
+                             CASE
+                               WHEN jsonb_typeof(field.value) = 'object'
+                                 THEN field.value->>'value'
+                               WHEN jsonb_typeof(field.value) IN ('string', 'number')
+                                 THEN field.value#>>'{}'
+                               ELSE NULL
+                             END
+                           ),
+                           ''
+                         ) IS NOT NULL
+                )
+              )
+              OR
+              (
+                bc.has_backfilled_kitas
+                AND EXISTS (
+                  SELECT 1
+                    FROM jsonb_each(extracted_fields) AS field(key, value)
+                   WHERE field.key IN (
+                           'kitas_no', 'kitas_number', 'itap_no', 'itk_no',
+                           'stay_permit_no'
+                         )
+                     AND NULLIF(
+                           btrim(
+                             CASE
+                               WHEN jsonb_typeof(field.value) = 'object'
+                                 THEN field.value->>'value'
+                               WHEN jsonb_typeof(field.value) IN ('string', 'number')
+                                 THEN field.value#>>'{}'
+                               ELSE NULL
+                             END
+                           ),
+                           ''
+                         ) IS NOT NULL
+                )
+              )
+            )
+       )
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
 # Same v2 reset contract, but for targeted retry lanes that must be observable
 # immediately in production tests. The worker orders pending WhatsApp jobs by
 # next_visible_at, so resetting historical rows to now() parks them behind newer
@@ -2195,6 +2325,27 @@ async def run_reroute_npwp(
     )
 
 
+async def run_reroute_identity_backfill(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route stale proposals that can use a backfilled passport/KITAS.
+
+    This reuses the route-only engine: saved extraction remains intact while
+    fase-4 entity resolution runs again. GATE-11 keeps an explicitly
+    unverified backfill at LINK_CANDIDATE; a backfill already promoted by a
+    real committed document follows the normal auto-attach gates. This mode
+    does not bypass either path.
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-identity-backfill",
+        select_sql=REROUTE_IDENTITY_BACKFILL_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
 UNDELIVERED_REPORT_SQL = """
 SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id
   FROM intake_commit_audit a
@@ -3515,17 +3666,30 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--reroute-identity-backfill",
+        action="store_true",
+        help=(
+            "route-only resume of review_pending rows whose existing client "
+            "candidate can gain a passport/KITAS strong-id match from "
+            "identity-backfill provenance (stage_output preserved)"
+        ),
+    )
+    p.add_argument(
         "--reroute-limit",
         type=int,
         default=30000,
-        help="max rows selected per --reroute-drive-folder / --reroute-npwp run",
+        help=(
+            "max rows selected per --reroute-drive-folder / --reroute-npwp / "
+            "--reroute-identity-backfill run"
+        ),
     )
     p.add_argument(
         "--reroute-pipeline-version",
         default=None,
         help=(
             "pipeline_version stamped on rerouted rows (fresh routing_key); "
-            "defaults per mode: v2.2-m227-folder (drive-folder), v2.3-npwp (npwp)"
+            "defaults per mode: v2.2-m227-folder (drive-folder), v2.3-npwp (npwp), "
+            "v2.4-identity-backfill (identity-backfill)"
         ),
     )
     p.add_argument(
@@ -3827,6 +3991,7 @@ async def main(argv: list[str] | None = None) -> int:
         args.reprocess
         or args.reroute_drive_folder
         or args.reroute_npwp
+        or args.reroute_identity_backfill
         or args.backfill
         or args.backfill_identity
         or args.scrub_group_phone
@@ -3848,7 +4013,7 @@ async def main(argv: list[str] | None = None) -> int:
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
             "nothing to do: pass --backfill, --backfill-identity, --reprocess, --reroute-drive-folder, "
-            "--reroute-npwp, --scrub-group-phone, "
+            "--reroute-npwp, --reroute-identity-backfill, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3909,6 +4074,13 @@ async def main(argv: list[str] | None = None) -> int:
             await run_reroute_npwp(
                 pool,
                 args.reroute_pipeline_version or "v2.3-npwp",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
+        if args.reroute_identity_backfill:
+            await run_reroute_identity_backfill(
+                pool,
+                args.reroute_pipeline_version or "v2.4-identity-backfill",
                 max(args.reroute_limit, 1),
                 args.apply,
             )
