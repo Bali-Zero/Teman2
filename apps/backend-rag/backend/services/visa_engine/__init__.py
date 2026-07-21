@@ -137,9 +137,19 @@ one place.
   still greenfield; ``Decision.trace_sha256``/``decision_integrity`` are
   left ``None`` by this PR).
 - **pricing.py**, **catalog.py**, **clock.py**, **repository.py**,
-  **crypto.py**, **retention.py**, **flags.py** — not started. **Deferred to
+  **retention.py**, **flags.py** — not started. **Deferred to
   PR4+** (persistence/pricing/clock/consent-adjacent infrastructure; exact PR
   boundary not yet numbered — these depend on the evaluator existing first).
+- **crypto.py** — **PARTIALLY done (STEP-6d, 2026-07-21)**: only the
+  facts-fingerprint HMAC key store (``FactsFingerprintKeyStore``), the real
+  crypto-backed ``IdentityProvider`` (``build_identity_provider``), and the
+  env-aware ``resolve_identity_provider()`` resolver used by ``shadow.py`` —
+  see ``research/visa/2026-07-21-step6d-crypto-identity-provider-design.md``.
+  The broader surface the engine spec sketches for this module —
+  ``AesGcmPayloadCipher``/``EncryptedPayload``/``Pseudonymizer`` (subject/
+  consent pseudonymization, encrypted ``visa_decision_payloads``) —
+  **remains not started**, deferred until the ``visa_decision_payloads``
+  table this surface would serve actually lands.
 - **consent.py** — not started. **Deferred to PR3-PR4** alongside
   ``ConsentEvent``/``EvaluationContext`` above.
 - **compat.py**, **service.py** — not started. **Deferred to PR6** (the
