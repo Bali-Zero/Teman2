@@ -23,6 +23,8 @@ from zantara_media.magazine.media_resolver import (
     AssetResolutionResult,
     _generated_asset_id,
     select_asset_target,
+    validate_generated_asset_bytes,
+    validate_manifest_publication_binding,
 )
 
 
@@ -257,6 +259,28 @@ async def test_empty_manifest_is_resolved_automatically_before_publish(
 
 
 @pytest.mark.asyncio
+async def test_disabled_auto_assets_ignore_corrupt_fingerprint_ledger(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest_path = tmp_path / "assets.json"
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    ledger_path.write_text('{"torn":', encoding="utf-8")
+    monkeypatch.setenv("MAGAZINE_AUTO_ASSETS", "false")
+    monkeypatch.setenv("MAGAZINE_ASSET_FINGERPRINT_LEDGER", str(ledger_path))
+
+    result = await _resolve_assets_if_needed(
+        breaking_factory(),
+        breaking=True,
+        asset_manifest_path=manifest_path,
+    )
+
+    assert result.manifest.intents == ()
+    assert result.fallback_reason == "auto_assets_disabled"
+
+
+@pytest.mark.asyncio
 async def test_stale_automatic_breaking_asset_is_regenerated_for_new_story(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],
@@ -333,6 +357,7 @@ async def test_prebound_manifest_is_never_replaced(
                 sanitization_status="passed",
                 perceptual_dedup_status="unique",
                 approved_for_packet_id=str(packet["packet_id"]),
+                source_sha256=hashlib.sha256(PNG).hexdigest(),
             ),
         ),
     )
@@ -379,6 +404,7 @@ async def test_explicit_manifest_is_rejected_for_a_different_packet(
                 sanitization_status="passed",
                 perceptual_dedup_status="unique",
                 approved_for_packet_id=str(original_packet["packet_id"]),
+                source_sha256=hashlib.sha256(PNG).hexdigest(),
             ),
         ),
     )
@@ -390,6 +416,109 @@ async def test_explicit_manifest_is_rejected_for_a_different_packet(
             revised_packet,
             breaking=True,
             asset_manifest_path=manifest_path,
+        )
+
+
+def test_mixed_manifest_cannot_bypass_generated_context_binding(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
+    generated_path = tmp_path / "generated.png"
+    explicit_path = tmp_path / "explicit.png"
+    generated_path.write_bytes(PNG)
+    explicit_path.write_bytes(PNG)
+    stale_generated = _automatic_intent(packet, generated_path).model_copy(
+        update={"generated_for_story_version": 999}
+    )
+    explicit = AssetIntentV1(
+        asset_id="approved-internal",
+        source_path=explicit_path,
+        story_ids=(str(packet["story"]["story_id"]),),
+        captured_at=str(packet["verified_at"]),
+        alt_text="Approved editorial hero",
+        source="Bali Zero editorial desk",
+        source_url=None,
+        rights_basis="internal-owned",
+        rights_status="approved",
+        usage_status="approved",
+        dlp_status="passed",
+        sanitization_status="passed",
+        perceptual_dedup_status="unique",
+        approved_for_packet_id=str(packet["packet_id"]),
+        source_sha256=hashlib.sha256(PNG).hexdigest(),
+    )
+    manifest = AssetIntentManifestV1(
+        schema_version="asset-intents.v1",
+        intents=(stale_generated, explicit),
+    )
+
+    with pytest.raises(ValueError, match="generation context"):
+        validate_manifest_publication_binding(manifest, packet, breaking=True)
+
+
+def test_explicit_asset_without_approved_digest_fails_closed(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory()
+    source = tmp_path / "explicit.png"
+    source.write_bytes(PNG)
+    intent = AssetIntentV1(
+        asset_id="approved-internal",
+        source_path=source,
+        story_ids=(str(packet["story"]["story_id"]),),
+        captured_at=str(packet["verified_at"]),
+        alt_text="Approved editorial hero",
+        source="Bali Zero editorial desk",
+        source_url=None,
+        rights_basis="internal-owned",
+        rights_status="approved",
+        usage_status="approved",
+        dlp_status="passed",
+        sanitization_status="passed",
+        perceptual_dedup_status="unique",
+        approved_for_packet_id=str(packet["packet_id"]),
+    )
+
+    with pytest.raises(ValueError, match="approved source digest"):
+        validate_generated_asset_bytes(
+            intent,
+            packet_id=str(packet["packet_id"]),
+            source_bytes=PNG,
+        )
+
+
+def test_explicit_asset_replacement_is_rejected_by_approved_digest(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory()
+    source = tmp_path / "explicit.png"
+    source.write_bytes(PNG)
+    intent = AssetIntentV1(
+        asset_id="approved-internal",
+        source_path=source,
+        story_ids=(str(packet["story"]["story_id"]),),
+        captured_at=str(packet["verified_at"]),
+        alt_text="Approved editorial hero",
+        source="Bali Zero editorial desk",
+        source_url=None,
+        rights_basis="internal-owned",
+        rights_status="approved",
+        usage_status="approved",
+        dlp_status="passed",
+        sanitization_status="passed",
+        perceptual_dedup_status="unique",
+        approved_for_packet_id=str(packet["packet_id"]),
+    ).model_copy(update={"source_sha256": hashlib.sha256(PNG).hexdigest()})
+
+    with pytest.raises(ValueError, match="approved source digest"):
+        validate_generated_asset_bytes(
+            intent,
+            packet_id=str(packet["packet_id"]),
+            source_bytes=PNG + b"replaced",
         )
 
 
@@ -780,6 +909,7 @@ async def test_cli_publish_anchors_exact_target_before_later_verified_head(
                         "sanitization_status": "passed",
                         "perceptual_dedup_status": "unique",
                         "approved_for_packet_id": approved_packet_id,
+                        "source_sha256": hashlib.sha256(PNG).hexdigest(),
                     }
                 ],
             }

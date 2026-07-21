@@ -36,7 +36,7 @@ OUTPUT_DIR="${MAGAZINE_OUTPUT_DIR:-$STATE_DIR/packets}"
 LOG_DIR="${MAGAZINE_LOG_DIR:-$HOME/logs}"
 DATE_WITA="$(TZ=Asia/Makassar date +%Y-%m-%d)"
 LOG="$LOG_DIR/bali-zero-magazine-${MODE}.log"
-LOCKDIR="$STATE_DIR/${MODE}.lock"
+LOCKFILE="$STATE_DIR/${MODE}.lock"
 TIMEOUT_SECONDS="${MAGAZINE_TIMEOUT_SECONDS:-840}"
 PUBLISH_ENABLED="${MAGAZINE_PUBLISH_ENABLED:-true}"
 export MAGAZINE_AUTO_ASSETS="${MAGAZINE_AUTO_ASSETS:-true}"
@@ -91,24 +91,19 @@ load_secret_from_keychain MAGAZINE_SIWC_BEARER_TOKEN siwc-bearer-token
 load_secret_from_keychain MAGAZINE_HMAC_SECRET hmac-secret
 load_secret_from_keychain MAGAZINE_AUDIT_PRIVATE_KEY_B64 audit-private-key-b64
 
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    other_pid="$(cat "$LOCKDIR/pid" 2>/dev/null || true)"
-    if [ -n "$other_pid" ] && kill -0 "$other_pid" 2>/dev/null; then
-        log "duplicate suppressed mode=$MODE live_pid=$other_pid"
-        exit 0
-    fi
-    log "stale lock recovered mode=$MODE old_pid=${other_pid:-none}"
-    rm -rf "$LOCKDIR"
-    if ! mkdir "$LOCKDIR" 2>/dev/null; then
-        log "lock race lost mode=$MODE"
-        exit 0
-    fi
+touch "$LOCKFILE"
+if ! zmodload zsh/system; then
+    log "fatal mode=$MODE advisory_lock_module_unavailable"
+    exit 70
 fi
-echo $$ > "$LOCKDIR/pid"
+if ! zsystem flock -t 0 -f MAGAZINE_LOCK_FD "$LOCKFILE"; then
+    log "duplicate suppressed mode=$MODE advisory_lock_busy"
+    exit 0
+fi
 
 finish() {
     local rc=$?
-    rm -rf "$LOCKDIR"
+    zsystem flock -u "$MAGAZINE_LOCK_FD" || true
     if [ "$rc" -eq 0 ]; then
         heartbeat "ok" "mode=$MODE rc=0"
     else

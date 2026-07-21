@@ -383,7 +383,6 @@ async def _resolve_assets_if_needed(
         )
     )
     ledger = AssetFingerprintLedger(ledger_path, asset_root=output_dir)
-    await ledger.reconcile()
     if manifest.intents:
         automatic = all(
             item.rights_basis == "generated"

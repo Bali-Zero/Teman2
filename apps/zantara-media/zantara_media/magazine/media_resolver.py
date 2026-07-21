@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import fcntl
 import hashlib
+import hmac
 import io
 import json
 import logging
@@ -224,11 +225,24 @@ class AssetFingerprintLedger:
         stream.seek(0)
         records: dict[str, dict[str, Any]] = {}
         legacy_index = 0
-        for line in stream:
+        while True:
+            record_start = stream.tell()
+            line = stream.readline()
+            if not line:
+                break
             if not line.strip():
                 continue
             try:
                 raw = json.loads(line)
+            except json.JSONDecodeError as exc:
+                if not line.endswith("\n"):
+                    stream.seek(record_start)
+                    stream.truncate()
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                    break
+                raise ValueError("fingerprint ledger is invalid") from exc
+            try:
                 if not isinstance(raw, dict):
                     raise TypeError
                 record = dict(raw)
@@ -245,7 +259,7 @@ class AssetFingerprintLedger:
                 reservation_id = str(
                     record.get("reservation_id", f"legacy-{legacy_index}")
                 )
-            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            except (KeyError, TypeError, ValueError) as exc:
                 raise ValueError("fingerprint ledger is invalid") from exc
             record["event"] = event
             record["reservation_id"] = reservation_id
@@ -365,12 +379,6 @@ async def resolve_asset_manifest(
         await _discard(source_path, output_dir)
         return _fallback("generation_failed")
     try:
-        await asyncio.to_thread(source_path.replace, approved_path)
-    except OSError:
-        await _discard(source_path, output_dir)
-        await _discard(approved_path, output_dir)
-        return _fallback("generation_failed")
-    try:
         reservation_id = await ledger.reserve(
             fingerprint,
             asset_id,
@@ -378,11 +386,21 @@ async def resolve_asset_manifest(
             source_path=approved_path,
         )
     except (OSError, ValueError):
-        await _discard(approved_path, output_dir)
+        await _discard(source_path, output_dir)
         return _fallback("duplicate_check_failed")
     if reservation_id is None:
-        await _discard(approved_path, output_dir)
+        await _discard(source_path, output_dir)
         return _fallback("duplicate_asset")
+    try:
+        await asyncio.to_thread(source_path.replace, approved_path)
+    except OSError:
+        try:
+            await ledger.release(reservation_id)
+        except (OSError, ValueError):
+            logger.exception("Magazine fingerprint reservation release failed")
+        await _discard(source_path, output_dir)
+        await _discard(approved_path, output_dir)
+        return _fallback("generation_failed")
 
     intent = AssetIntentV1(
         asset_id=asset_id,
@@ -399,6 +417,7 @@ async def resolve_asset_manifest(
         sanitization_status="passed",
         perceptual_dedup_status="unique",
         approved_for_packet_id=packet_id,
+        source_sha256=fingerprint.sha256,
         generated_for_packet_id=packet_id,
         generated_for_story_version=target.story_version,
         generated_for_target_role=target.target_role,
@@ -480,18 +499,24 @@ def validate_manifest_publication_binding(
     """Require every approved intent to bind to the exact publication context."""
 
     validate_asset_intent_targets(packet, manifest, breaking=breaking)
-    automatic = bool(manifest.intents) and all(
-        item.rights_basis == "generated"
-        and item.source == "Bali Zero editorial generator"
-        for item in manifest.intents
-    )
-    if automatic:
-        if not generated_manifest_matches_packet(manifest, packet, breaking=breaking):
-            raise ValueError("generated asset does not match the current generation context")
-        return
     packet_id = str(packet.get("packet_id", ""))
-    if any(item.approved_for_packet_id != packet_id for item in manifest.intents):
-        raise ValueError("explicit asset is not approved for packet")
+    for item in manifest.intents:
+        generated_rights = item.rights_basis == "generated"
+        generated_source = item.source == "Bali Zero editorial generator"
+        if generated_rights != generated_source:
+            raise ValueError("asset has inconsistent generated provenance")
+        if item.approved_for_packet_id != packet_id:
+            raise ValueError("asset is not approved for packet")
+        if generated_rights:
+            single = AssetIntentManifestV1(
+                schema_version="asset-intents.v1", intents=(item,)
+            )
+            if not generated_manifest_matches_packet(single, packet, breaking=breaking):
+                raise ValueError(
+                    "generated asset does not match the current generation context"
+                )
+        elif item.source_sha256 is None:
+            raise ValueError("explicit asset lacks an approved source digest")
 
 
 def validate_generated_asset_bytes(
@@ -500,12 +525,17 @@ def validate_generated_asset_bytes(
     packet_id: str,
     source_bytes: bytes,
 ) -> None:
-    """Reject generated bytes that no longer match their immutable asset id."""
+    """Reject source bytes that no longer match their immutable approval binding."""
 
     automatic = (
         intent.rights_basis == "generated" and intent.source == "Bali Zero editorial generator"
     )
     if not automatic:
+        if intent.source_sha256 is None:
+            raise ValueError("explicit asset lacks an approved source digest")
+        actual_sha256 = hashlib.sha256(source_bytes).hexdigest()
+        if not hmac.compare_digest(intent.source_sha256, actual_sha256):
+            raise ValueError("explicit asset bytes do not match the approved source digest")
         return
     if (
         not intent.generated_for_packet_id

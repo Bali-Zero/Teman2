@@ -554,6 +554,97 @@ async def test_perceptual_hashes_outside_threshold_are_both_reserved(
 
 
 @pytest.mark.asyncio
+async def test_fingerprint_is_reserved_before_generated_file_is_promoted(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory(story=story_factory(asset_digests=[]))
+    output_dir = tmp_path / "generated"
+    promoted_existed_during_reservation = True
+
+    async def generate(_prompt: str, destination: Path) -> Path:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(_image_bytes(color="#ABCDEF"))
+        return destination
+
+    async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
+        return "Abstract editorial composition.", {"model": "local"}
+
+    class ObservingLedger:
+        async def reserve(
+            self,
+            _fingerprint: RasterFingerprint,
+            _asset_id: str,
+            *,
+            manifest_path: Path | None = None,
+            source_path: Path | None = None,
+        ) -> None:
+            nonlocal promoted_existed_during_reservation
+            assert manifest_path is not None
+            assert source_path is not None
+            promoted_existed_during_reservation = source_path.exists()
+            return None
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=output_dir,
+        ledger=ObservingLedger(),  # type: ignore[arg-type]
+        generate=generate,
+        describe=describe,
+        manifest_path=tmp_path / "assets.json",
+    )
+
+    assert promoted_existed_during_reservation is False
+    assert result.fallback_reason == "duplicate_asset"
+    assert list(output_dir.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_torn_final_ledger_record_is_truncated_before_reservation(
+    tmp_path: Path,
+) -> None:
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    ledger_path.write_text(
+        json.dumps(
+            {
+                "asset_id": "hero-existing",
+                "dhash": "0000000000000000",
+                "sha256": "a" * 64,
+            }
+        )
+        + '\n{"asset_id":"torn',
+        encoding="utf-8",
+    )
+    ledger = AssetFingerprintLedger(ledger_path)
+
+    reservation = await ledger.reserve(
+        RasterFingerprint(sha256="b" * 64, dhash="ffffffffffffffff"),
+        "hero-new",
+    )
+
+    assert reservation is not None
+    records = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    assert [record["asset_id"] for record in records] == ["hero-existing", "hero-new"]
+
+
+@pytest.mark.asyncio
+async def test_semantically_invalid_final_ledger_record_is_not_discarded(
+    tmp_path: Path,
+) -> None:
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    ledger_path.write_text('{"event":"committed"}', encoding="utf-8")
+    ledger = AssetFingerprintLedger(ledger_path)
+
+    with pytest.raises(ValueError, match="fingerprint ledger is invalid"):
+        await ledger.reserve(
+            RasterFingerprint(sha256="b" * 64, dhash="ffffffffffffffff"),
+            "hero-new",
+        )
+
+
+@pytest.mark.asyncio
 async def test_dead_pending_reservation_is_reconciled_and_can_retry(
     tmp_path: Path,
 ) -> None:
