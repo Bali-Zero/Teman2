@@ -37,6 +37,11 @@
   --color-border-default: var(--border-default);
   --color-border-strong: var(--border-strong);
 
+  /* State + fact badge (WS1, 2026-07-21) */
+  --color-status-critical: var(--status-critical);
+  --color-fact-badge-bg: var(--fact-badge-bg);
+  --color-fact-badge-fg: var(--fact-badge-fg);
+
   /* Typography */
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -46,6 +51,7 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-full: var(--radius-full);
+  --radius-fact-badge: var(--fact-badge-radius);
 
   /* Motion */
   --ease-standard: var(--motion-ease-standard);
