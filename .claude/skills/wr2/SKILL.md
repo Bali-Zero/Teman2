@@ -31,7 +31,19 @@ in the review queue. No session ever publishes autonomously.
 
 ## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
-**Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
+**Shipped & proven (July 16-17 arc):** **typed Carousel IR + shadow-replay harness SHIPPED +
+GATE PASSED (#2942, 2026-07-21, editorial-intelligence Phase 1)** — pydantic 11-kind discriminated
+union projecting to explicit `layout_family` pins (composer.py:143-145), ADDITIVE (generator/composer
+zero diff). Replay over ALL 61 historical decks: first-try valid 100%, 0 retries, 0 fails,
+family-resolution 100% via the real `map_slide_to_family`, kind-mix non-degenerate (447 slides, prose
+only ~8.7%) — red-team BLOCKER-1 (strict-schema regen spike) empirically refuted; evidence in
+`_research/2026-07-21-ir-phase1-replay-metrics.json`. DISCOVERY (Phase-3 prerequisite):
+source-citation `{{title}}` and elegant-close `trust_marker`/`reach`/`invite` placeholders are NEVER
+substituted in `composer._fill_placeholders` — those 2 families render broken today; with the IR
+routing cta→elegant-close and citation→source-citation (87/447 replay slides), the composer fix is a
+Phase-3 PRE-REQUISITE, not incidental. Next: Phase 2 deterministic pre-gate (guilt+innocence corpus
+per guard-conformance), then Phase 3 planner/writer dual-run. ·
+complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
 (#2563) · external-post registration + IG metrics FIRST LIVE on native carousels (#2578, hotfix
 #2579, 49 entries backfilled with numeric Graph ids) · **facts-first + park backstop (#2598,
