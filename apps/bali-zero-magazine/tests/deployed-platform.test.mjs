@@ -30,11 +30,11 @@ test("Pro LaunchAgents schedule morning after collectors and Breaking within ten
   assert.ok(numberAfter(breaking, "StartInterval") <= 600);
   assert.match(
     morning,
-    /\/Users\/nuzantara\/Desktop\/nuzantara\/infra\/launchagents\/wrappers\/bali-zero-magazine-publish\.sh morning/,
+    /\/Users\/nuzantara\/nuzantara\/infra\/launchagents\/wrappers\/bali-zero-magazine-publish\.sh<\/string>\s*<string>morning/,
   );
   assert.match(
     breaking,
-    /\/Users\/nuzantara\/Desktop\/nuzantara\/infra\/launchagents\/wrappers\/bali-zero-magazine-publish\.sh breaking/,
+    /\/Users\/nuzantara\/nuzantara\/infra\/launchagents\/wrappers\/bali-zero-magazine-publish\.sh<\/string>\s*<string>breaking/,
   );
   assert.doesNotMatch(`${morning}\n${breaking}`, /\/Users\/balizero\//);
   assert.doesNotMatch(

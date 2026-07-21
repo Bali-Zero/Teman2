@@ -106,7 +106,7 @@ function validateMachineKey(key: MachineHmacKey, name: string): void {
     typeof key !== "object" ||
     typeof key.id !== "string" ||
     !/^[A-Za-z0-9._~-]{1,128}$/.test(key.id) ||
-    typeof key.secret !== "string" ||
+    typeof key.secret !== "string" || // pragma: allowlist secret -- field name only
     key.secret.length === 0 ||
     !Number.isSafeInteger(key.notBefore) ||
     !Number.isSafeInteger(key.notAfter) ||

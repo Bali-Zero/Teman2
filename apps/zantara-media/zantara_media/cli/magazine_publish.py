@@ -155,7 +155,7 @@ def _transport_config() -> TransportConfig:
         "base_url": "MAGAZINE_BASE_URL",
         "siwc_bearer_token": "MAGAZINE_SIWC_BEARER_TOKEN",
         "hmac_key_id": "MAGAZINE_HMAC_KEY_ID",
-        "hmac_secret": "MAGAZINE_HMAC_SECRET",
+        "hmac_secret": "MAGAZINE_HMAC_SECRET",  # pragma: allowlist secret -- env name only
         "audience": "MAGAZINE_HMAC_AUDIENCE",
     }
     values: dict[str, str] = {}

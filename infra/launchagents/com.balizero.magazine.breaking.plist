@@ -3,30 +3,35 @@
 <!-- Repo canon. Pro-only LaunchAgent: drains qualified Breaking candidates every 10 minutes or less. -->
 <plist version="1.0">
 <dict>
-    <key>Label</key>
-    <string>com.balizero.magazine.breaking</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/zsh</string>
-        <string>-lc</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/wrappers/bali-zero-magazine-publish.sh breaking</string>
-    </array>
-    <key>StartInterval</key>
-    <integer>600</integer>
-    <key>RunAtLoad</key>
-    <false/>
-    <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/bali-zero-magazine-breaking.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/bali-zero-magazine-breaking.error.log</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>HOME</key>
-        <string>/Users/nuzantara</string>
-        <key>PATH</key>
-        <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
-    <key>KeepAlive</key>
-    <false/>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>MAGAZINE_PUBLISH_ENABLED</key>
+		<string>true</string>
+		<key>MAGAZINE_PYTHON</key>
+		<string>/Users/nuzantara/nuzantara/apps/zantara-media/.venv_mag/bin/python</string>
+		<key>MAGAZINE_ROOT</key>
+		<string>/Users/nuzantara/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.balizero.magazine.breaking</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/nuzantara/infra/launchagents/wrappers/bali-zero-magazine-publish.sh</string>
+		<string>breaking</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/bali-zero-magazine-breaking.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/bali-zero-magazine-breaking.log</string>
+	<key>StartInterval</key>
+	<integer>600</integer>
 </dict>
 </plist>

@@ -27,7 +27,7 @@ if [ "$HOSTNAME_VALUE" != "Nuzantara" ] && [ "${MAGAZINE_ALLOW_NON_PRO:-false}" 
     exit 78
 fi
 
-ROOT="${MAGAZINE_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+ROOT="${MAGAZINE_ROOT:-/Users/nuzantara/nuzantara}"
 MEDIA_DIR="$ROOT/apps/zantara-media"
 PYTHON_BIN="${MAGAZINE_PYTHON:-$MEDIA_DIR/.venv/bin/python}"
 STATE_DIR="${MAGAZINE_STATE_DIR:-$HOME/.local/state/bali-zero-magazine}"
@@ -43,9 +43,26 @@ REQUIRED_SYSTEM_IDS=(${=MAGAZINE_REQUIRED_SYSTEM_IDS:-intel-lake mata-garuda reg
 
 mkdir -p "$STATE_DIR" "$INPUT_DIR" "$OUTPUT_DIR" "$LOG_DIR"
 
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-$ROOT/scripts/lib/heartbeat.sh}"
+HEARTBEAT_ID="pro.bali_zero_magazine_${MODE}"
+
 log() {
     echo "[$(date)] $1" >> "$LOG"
 }
+
+heartbeat() {
+    local hb_status="$1"
+    local note="${2:-}"
+    if [ -x "$HEARTBEAT_LIB" ]; then
+        bash "$HEARTBEAT_LIB" "$HEARTBEAT_ID" "$hb_status" "$note" || true
+    fi
+}
+
+if [ "${MAGAZINE_AUTOMATION_ENABLED:-true}" = "false" ]; then
+    log "disabled mode=$MODE kill_switch=MAGAZINE_AUTOMATION_ENABLED"
+    heartbeat "disabled" "kill switch"
+    exit 0
+fi
 
 load_secret_from_keychain() {
     local env_name="$1"
@@ -86,7 +103,21 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
     fi
 fi
 echo $$ > "$LOCKDIR/pid"
-trap 'rc=$?; rm -rf "$LOCKDIR"; log "finished mode='"$MODE"' rc=$rc"; exit $rc' EXIT
+
+finish() {
+    local rc=$?
+    rm -rf "$LOCKDIR"
+    if [ "$rc" -eq 0 ]; then
+        heartbeat "ok" "mode=$MODE rc=0"
+    else
+        heartbeat "error" "mode=$MODE rc=$rc"
+    fi
+    log "finished mode=$MODE rc=$rc"
+    trap - EXIT
+    exit "$rc"
+}
+
+trap finish EXIT
 
 run_with_timeout() {
     "$@" >> "$LOG" 2>&1 &

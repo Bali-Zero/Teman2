@@ -36,7 +36,7 @@ function parseMachineKey(
   }
   return {
     id: typeof record.id === "string" ? record.id : "",
-    secret: typeof record.secret === "string" ? record.secret : "",
+    secret: typeof record.secret === "string" ? record.secret : "", // pragma: allowlist secret -- field name only
     notBefore: typeof record.notBefore === "number" ? record.notBefore : -1,
     notAfter: typeof record.notAfter === "number" ? record.notAfter : -1,
   };

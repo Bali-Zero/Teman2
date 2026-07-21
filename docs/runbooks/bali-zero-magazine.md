@@ -14,7 +14,7 @@ Status: repo-canon runbook for the internal OpenAI Sites deployment. The magazin
 Install only on Pro (`nuzantara@Nuzantara`):
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara
+cd /Users/nuzantara/nuzantara
 plutil -lint infra/launchagents/com.balizero.magazine.morning.plist
 plutil -lint infra/launchagents/com.balizero.magazine.breaking.plist
 cp infra/launchagents/com.balizero.magazine.*.plist /Users/nuzantara/Library/LaunchAgents/
