@@ -65,6 +65,17 @@ from backend.services.agents.team_agent_config import AgentRole, is_tool_allowed
 
 logger = logging.getLogger(__name__)
 
+# Tools that touch client/staff PII and must NEVER pass through the
+# legacy agent_role=None path (TOURNIQUET, Zero GO 2026-07-21 — see
+# memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`).
+# The module docstring's "zero CRM tools" claim stopped being true once
+# `create_agentic_rag` (agentic/__init__.py) registered CRMTool (name
+# "crm_query") and TimeSheetTool (name "timesheet") into the shared tool
+# list — both then rode the blanket no-principal passthrough below. Exact
+# `.name` values verified against tools.py (CRMTool ~1009, TimeSheetTool
+# ~919); exact match only, never substring (cicatrix-superscar #3).
+SENSITIVE_TOOLS = frozenset({"crm_query", "timesheet"})
+
 
 def _truncate(value: Any, max_len: int = 40) -> str:
     """Render a tool argument value short enough for a confirmation modal."""
@@ -174,6 +185,22 @@ class ToolAuthorizer:
             `result.is_allowed` and use `result.args` (possibly mutated)
             instead of the original `args` dict.
         """
+        # ── Sensitive-tool deny (TOURNIQUET, 2026-07-21) ──────────────────
+        # PII-bearing tools are denied for no-principal callers BEFORE the
+        # legacy passthrough below, regardless of agent_role. This closes
+        # the public blog/ask + WA-unknown ReAct vector without touching
+        # the passthrough's behavior for every other tool.
+        if tool_name in SENSITIVE_TOOLS and agent_role is None:
+            reason = "This action needs an authenticated Bali Zero staff account."
+            self._audit(
+                "deny",
+                user_email,
+                agent_role,
+                tool_name,
+                "sensitive tool requires authenticated staff principal",
+            )
+            return AuthResult.deny(reason, args)
+
         # ── Backward compatibility ────────────────────────────────────────
         # Legacy /stream endpoint and any non-authenticated path passes
         # `agent_role=None`. We do NOT enforce in that case — the legacy

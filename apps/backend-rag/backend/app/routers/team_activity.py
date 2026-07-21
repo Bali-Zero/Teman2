@@ -134,19 +134,59 @@ async def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
+def _enforce_self_or_admin(current_user: dict, requested_email: str) -> None:
+    """
+    Clock-in/out identity gate (tourniquet, 2026-07-21).
+
+    Admins may act on behalf of any team member (unchanged precedent).
+    Everyone else may only clock themselves — the body's email must match
+    the authenticated principal's email exactly (case-insensitive). No
+    silent rewrite: a mismatch is a 403, not a fallback to the token's
+    identity, so a caller relying on impersonation fails loudly instead of
+    quietly clocking the wrong person in/out.
+    """
+    if verify_admin(current_user):
+        return
+
+    token_email = (current_user.get("email") or "").strip().lower()
+    if not token_email or requested_email.strip().lower() != token_email:
+        raise HTTPException(
+            status_code=403,
+            detail="You may only clock yourself in/out.",
+        )
+
+
 # ============================================================================
 # Team Member Endpoints (All team members can use)
 # ============================================================================
 
 
 @router.post("/clock-in", response_model=ClockResponse)
-async def clock_in(request: ClockInRequest) -> ClockResponse:
+async def clock_in(
+    request: ClockInRequest,
+    current_user: dict = Depends(get_current_user),
+) -> ClockResponse:
     """
     Clock in for work day
 
     Team members use this to start their work day.
     One clock-in per day allowed.
+
+    SECURITY (tourniquet, 2026-07-21 — see memory
+    `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`):
+    this endpoint previously had no `Depends`, trusting user_id/email from
+    the request body — anyone could clock any team member in/out with a
+    bare unauthenticated POST. Now requires a valid session (401 if
+    missing/invalid). Non-admin callers may only clock THEMSELVES in: the
+    body's email must match the authenticated principal's, or the request
+    is rejected outright (never silently rewritten — a caller relying on
+    impersonation should fail loudly). Admins keep the ability to act on
+    behalf of another team member (existing `is_crm_admin` precedent, see
+    `get_admin_user` above) — the only live caller (kita app) always sends
+    the logged-in user's own profile, so this does not change that path.
     """
+    _enforce_self_or_admin(current_user, request.email)
+
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
@@ -166,13 +206,21 @@ async def clock_in(request: ClockInRequest) -> ClockResponse:
 
 
 @router.post("/clock-out", response_model=ClockResponse)
-async def clock_out(request: ClockOutRequest) -> ClockResponse:
+async def clock_out(
+    request: ClockOutRequest,
+    current_user: dict = Depends(get_current_user),
+) -> ClockResponse:
     """
     Clock out for work day
 
     Team members use this to end their work day.
     Must be clocked in first.
+
+    SECURITY (tourniquet, 2026-07-21): same identity gate as `clock_in`
+    above — see that docstring for the full rationale.
     """
+    _enforce_self_or_admin(current_user, request.email)
+
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()

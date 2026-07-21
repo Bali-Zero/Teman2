@@ -27,6 +27,7 @@ from backend.services.agents.team_agent_config import (
     ROLE_VISA_SPECIALIST,
 )
 from backend.services.agents.tool_authorizer import (
+    SENSITIVE_TOOLS,
     AuthDecision,
     AuthResult,
     ToolAuthorizer,
@@ -303,6 +304,153 @@ class TestAuthorizeDecisions:
         )
         assert r.is_allowed
         assert r.args == original
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# TOURNIQUET (2026-07-21) — sensitive-tool deny for no-principal callers
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class TestSensitiveToolTourniquet:
+    """
+    Public CRM/PII exposure tourniquet: crm_query/timesheet must be denied
+    for agent_role=None (blog/ask, WA-unknown), even though every OTHER
+    tool keeps the legacy passthrough. See memory
+    `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
+    """
+
+    def test_sensitive_tools_frozenset_exact_values(self) -> None:
+        """Guard the exact-match contract — no substring surprises later."""
+        assert SENSITIVE_TOOLS == frozenset({"crm_query", "timesheet"})
+
+    # ── GUILT: no-principal caller must be denied ──────────────────────
+
+    @pytest.mark.asyncio
+    async def test_crm_query_denied_for_no_principal(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """The verified blog/ask + WA-unknown vector: crm_query must be denied."""
+        r = await authorizer.authorize(
+            user_email=None,
+            agent_role=None,
+            tool_name="crm_query",
+            args={"query_type": "client_stats"},
+        )
+        assert r.is_denied
+        assert "authenticated" in r.reason.lower()
+
+    @pytest.mark.asyncio
+    async def test_timesheet_denied_for_no_principal(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Same vector for the timesheet tool (clock in/out impersonation)."""
+        r = await authorizer.authorize(
+            user_email=None,
+            agent_role=None,
+            tool_name="timesheet",
+            args={"action": "clock_in", "email": "anyone@balizero.com"},
+        )
+        assert r.is_denied
+        assert "authenticated" in r.reason.lower()
+
+    @pytest.mark.asyncio
+    async def test_sensitive_deny_audited(self, authorizer: ToolAuthorizer, caplog) -> None:
+        """The new deny path must still leave a trace in the audit log."""
+        with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
+            await authorizer.authorize(
+                user_email=None,
+                agent_role=None,
+                tool_name="crm_query",
+                args={},
+            )
+        records = [r for r in caplog.records if "tool_authz" in r.getMessage()]
+        assert records, "tool_authz audit line missing for sensitive-tool deny"
+        msg = records[-1].getMessage()
+        assert "decision=deny" in msg
+        assert "tool=crm_query" in msg
+        assert "role=none" in msg
+
+    # ── INNOCENCE: every OTHER tool keeps the legacy passthrough ────────
+
+    @pytest.mark.asyncio
+    async def test_non_sensitive_tools_still_passthrough_for_no_principal(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Blog/marketing flows must not regress — only SENSITIVE_TOOLS are gated."""
+        for tool in ("vector_search", "pricing", "team_knowledge", "web_search"):
+            r = await authorizer.authorize(
+                user_email=None,
+                agent_role=None,
+                tool_name=tool,
+                args={},
+            )
+            assert r.is_allowed, f"non-sensitive tool {tool} must keep legacy passthrough"
+
+    # ── INNOCENCE: authenticated staff are unaffected ────────────────────
+
+    @pytest.mark.asyncio
+    async def test_crm_query_allowed_for_authenticated_staff(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """visa_specialist has crm_query in allowed_read_tools — must still work."""
+        r = await authorizer.authorize(
+            user_email="damar@balizero.com",
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="crm_query",
+            args={"query_type": "client_stats"},
+        )
+        assert r.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_timesheet_allowed_for_authenticated_staff(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """visa_specialist has timesheet in allowed_write_tools — must still work."""
+        r = await authorizer.authorize(
+            user_email="damar@balizero.com",
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="timesheet",
+            args={"action": "clock_in", "email": "damar@balizero.com"},
+        )
+        assert r.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_crm_query_allowed_for_admin(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Admin (empty allowlist precedence) must still reach crm_query."""
+        r = await authorizer.authorize(
+            user_email="zero@balizero.com",
+            agent_role=ROLE_ADMIN,
+            tool_name="crm_query",
+            args={"query_type": "client_stats"},
+        )
+        assert r.is_allowed
+
+    # ── Integration: execute_tool chokepoint ─────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_crm_query_denied_tool_never_executes_no_principal(self) -> None:
+        """Denied sensitive tool must never reach tool.execute() (defense in depth)."""
+        tool = _NoopTool("crm_query")
+        tool_map = {"crm_query": tool}
+
+        result, _ = await execute_tool(
+            tool_map=tool_map,
+            tool_name="crm_query",
+            arguments={"query_type": "client_stats"},
+            user_id="anon@x",
+            tool_execution_counter=None,
+            agent_role=None,
+        )
+        assert "denied" in result.lower()
+        assert tool.execute_called is False, "sensitive tool must not reach tool.execute()"
 
 
 # ─────────────────────────────────────────────────────────────────────────
