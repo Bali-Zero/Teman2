@@ -113,6 +113,26 @@ faq_cache_api_cost_saved_usd = safe_register_counter(
     "Estimated API cost savings from FAQ cache (USD)",
 )
 
+# Semantic Cache Metrics (Redis-backed exact + embedding-similarity lookup,
+# backend/services/search/semantic_cache.py — the SECOND cache tier checked
+# in the WA orchestrator hot path, after the FAQ cache misses; see
+# orchestrator_core.py::check_semantic_cache). Previously had NO Prometheus
+# counters at all — added 2026-07-21 so the real hit-rate is observable
+# instead of only inferable from log lines.
+semantic_cache_hits_total = safe_register_counter(
+    "zantara_semantic_cache_hits_total",
+    "Total semantic cache hits (exact Redis key match or cosine-similarity match)",
+    ["match_type"],  # exact, semantic
+)
+semantic_cache_misses_total = safe_register_counter(
+    "zantara_semantic_cache_misses_total",
+    "Total semantic cache misses (no exact or similar-enough entry found)",
+)
+semantic_cache_errors_total = safe_register_counter(
+    "zantara_semantic_cache_errors_total",
+    "Total semantic cache lookup errors (Redis/embedding failures)",
+)
+
 # Phase-0 curated-cache safety rails (FATAL 1/4, research/operations/
 # 2026-07-17-full-domain-cache-design.md §8)
 faq_cache_domain_mismatch_averted_total = safe_register_counter(

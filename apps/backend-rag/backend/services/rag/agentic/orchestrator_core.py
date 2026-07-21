@@ -393,6 +393,12 @@ class OrchestratorCore:
                     set_span_attribute("cache_hit", "true")
                     set_span_status("ok")
 
+                    from backend.app.metrics import semantic_cache_hits_total
+
+                    semantic_cache_hits_total.labels(
+                        match_type=cached.get("cache_hit", "unknown"),
+                    ).inc()
+
                     cached_result = cached.get("result", cached)
                     answer = cached_result.get("answer", "")
                     sources = cached_result.get("sources", [])
@@ -407,9 +413,17 @@ class OrchestratorCore:
                         document_count=len(sources),
                     )
                 set_span_attribute("cache_hit", "false")
+
+                from backend.app.metrics import semantic_cache_misses_total
+
+                semantic_cache_misses_total.inc()
             except (KeyError, ValueError, RuntimeError) as e:
                 logger.warning("Cache lookup failed: %s", e, exc_info=True)
                 set_span_status("error", str(e))
+
+                from backend.app.metrics import semantic_cache_errors_total
+
+                semantic_cache_errors_total.inc()
 
         return None
 
