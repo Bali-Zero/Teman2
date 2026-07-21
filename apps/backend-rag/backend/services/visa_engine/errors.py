@@ -79,3 +79,25 @@ class PlaceholderIdentityNotAllowedError(VisaEngineError):
     must inject a real crypto-backed ``evaluator.IdentityProvider`` instead
     of relying on the default.
     """
+
+
+class FactsFingerprintKeyError(VisaEngineError):
+    """Raised by ``crypto.FactsFingerprintKeyStore.from_env`` when the
+    configured facts-fingerprint HMAC key material is absent or malformed (env
+    var unset, invalid JSON, not an array, a malformed/duplicate entry, a
+    naive (non-tz-aware) datetime, or a secret below the 256-bit HMAC-SHA256
+    floor). STEP-6d, 2026-07-21 — the symmetric-secret analogue of
+    ``RulePackVerificationError`` for the Ed25519 trust store. Fail-closed: a
+    malformed key config never degrades to the non-secret placeholder for a
+    non-TEST pack.
+    """
+
+
+class FactsFingerprintKeyUnavailableError(VisaEngineError):
+    """Raised by the real crypto-backed ``evaluator.IdentityProvider``
+    (``crypto.build_identity_provider``) when the key store has no key that is
+    in-window and non-revoked at the decision's ``effective_at`` for the pack's
+    ``environment``. STEP-6d, 2026-07-21. The SHADOW consumer treats this
+    exactly like ``PlaceholderIdentityNotAllowedError`` — skip, no row — so a
+    not-yet-provisioned environment stays a clean no-op.
+    """
