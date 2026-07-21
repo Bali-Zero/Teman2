@@ -31,7 +31,19 @@ in the review queue. No session ever publishes autonomously.
 
 ## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
-**Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
+**Shipped & proven (July 16-17 arc):** **typed Carousel IR + shadow-replay harness SHIPPED +
+GATE PASSED (#2942, 2026-07-21, editorial-intelligence Phase 1)** — pydantic 11-kind discriminated
+union projecting to explicit `layout_family` pins (composer.py:143-145), ADDITIVE (generator/composer
+zero diff). Replay over ALL 61 historical decks: first-try valid 100%, 0 retries, 0 fails,
+family-resolution 100% via the real `map_slide_to_family`, kind-mix non-degenerate (447 slides, prose
+only ~8.7%) — red-team BLOCKER-1 (strict-schema regen spike) empirically refuted; evidence in
+`_research/2026-07-21-ir-phase1-replay-metrics.json`. DISCOVERY (Phase-3 prerequisite):
+source-citation `{{title}}` and elegant-close `trust_marker`/`reach`/`invite` placeholders are NEVER
+substituted in `composer._fill_placeholders` — those 2 families render broken today; with the IR
+routing cta→elegant-close and citation→source-citation (87/447 replay slides), the composer fix is a
+Phase-3 PRE-REQUISITE, not incidental. Next: Phase 2 deterministic pre-gate (guilt+innocence corpus
+per guard-conformance), then Phase 3 planner/writer dual-run. ·
+complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
 (#2563) · external-post registration + IG metrics FIRST LIVE on native carousels (#2578, hotfix
 #2579, 49 entries backfilled with numeric Graph ids) · **facts-first + park backstop (#2598,
@@ -229,16 +241,16 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
 `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` → `REPO_ROOT=${WR2_REPO_ROOT:-~/nuzantara-deploy}`
 — deploy = pull BOTH `~/Desktop/nuzantara` AND `~/nuzantara-deploy`, scar #1):**
 
-| Stage         | Script                                                                                            | launchd          | Notes                                                                                                                                                                                                                                                                              |
+| Stage | Script | launchd | Notes |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
-| Topic pick    | `scripts/wr2_topic_selector.py`                                                                   | topic-selector   | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
-| Compose       | `scripts/wr2_draft_generator.py`                                                                  | draft-generator  | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
-| Hero images   | `scripts/wr2_image_generator.py`                                                                  | image-generator  | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min                                                                                                                                                                                       |
-| Facts         | `scripts/wr2_fact_extractor.py`                                                                   | fact-extractor   | gates on `fact_check_json IS NULL`                                                                                                                                                                                                                                                 |
-| Check         | fact-checker lane                                                                                 | fact-checker     | writes `fact_check_status` (currently degraded pipeline-wide)                                                                                                                                                                                                                      |
-| Render        | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply       | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender`                                                                                                                                     |
-| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py`                                | supervisor       | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked`                                                                                                                                                                                                      |
-| Reconcile     | `scripts/wr2_daily_reconciler.py`                                                                 | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness`                                                                                                                                                                                              |
+| Topic pick | `scripts/wr2_topic_selector.py` | topic-selector | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
+| Compose | `scripts/wr2_draft_generator.py` | draft-generator | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
+| Hero images | `scripts/wr2_image_generator.py` | image-generator | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min |
+| Facts | `scripts/wr2_fact_extractor.py` | fact-extractor | gates on `fact_check_json IS NULL` |
+| Check | fact-checker lane | fact-checker | writes `fact_check_status` (currently degraded pipeline-wide) |
+| Render | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender` |
+| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py` | supervisor | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked` |
+| Reconcile | `scripts/wr2_daily_reconciler.py` | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness` |
 
 **DB**: `war_room_drafts` on nuzantara-postgres. Status machine (CHECK constraint, migration 245):
 briefed → drafts → drafts_imaged → drafts_imaged_facted → drafts_imaged_checked → rendering →

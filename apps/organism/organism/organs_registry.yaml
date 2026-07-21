@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: c779ca09b3ccd364372910e2d39a781ac0a283fec0a432584fae70c6240aa179
+checksum: 40aee294d407d7e8c7bcb9a0abe77eecae3b2bc6f7668beaf9e3205b25efee73
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1743,6 +1743,40 @@ organs:
     label: com.balizero.regulatory-watcher.daily
   severity_on_silence: warning
   cicatrix_refs: []
+- id: pro.bali_zero_magazine_morning
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.morning
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_morning.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.bali_zero_magazine_breaking
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.breaking
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_breaking.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.pg_organism_bridge
   runtime: pro_launchd
   type: daemon

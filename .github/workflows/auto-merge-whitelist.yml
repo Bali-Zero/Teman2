@@ -35,6 +35,7 @@ jobs:
     name: Evaluate auto-merge eligibility
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repo (read-only for diff inspection)
         uses: actions/checkout@v7

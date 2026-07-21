@@ -20,8 +20,10 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-20 ~02:45 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-21 ~17:30 WITA — keep current)
 
+- **🔓 P0 SECURITY — CRM/PII on PUBLIC unauthenticated endpoints (verified on main 2026-07-21, NOT yet fixed)**: `/api/blog/ask` (blog_ask.py:48, "No authentication required", public AskZantara widget, mounted `_RAG`) → `process_query(user_id="blog_visitor")` no agent_role → authorizer `tool_authorizer.py:183 None→allow` → orchestrator has CRMTool #9 + TimeSheetTool #10 (`__init__.py:178`) → `CRMTool.execute` (tools.py:1059, no self-gate on main) whole-book `ILIKE`, limit unclamped = client PII on public HTTP. Also `/api/team/clock-in`+`/clock-out` (team_activity.py:142/168) no `Depends`, identity from BODY = impersonation. C partial fix (4891c7a6c1) NOT on main + Codex-REJECTED. Correct fix = server-side principal + authorizer default-deny + prefetch-through-executor + clamp + timesheet email from principal + auth on clock-in/out. Memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
+- **🎚️ VERBATIM FAQ → JELAS-only (Zero 2026-07-21) — DONE+VERIFIED**: refined the 19/7 "all verbatim"; deleted 215 non-JELAS from Redis `notebooklm:qa:*` (AFTER = 139 = 103 JELAS + 36 E33, non-JELAS=0); Qdrant `curated_qa` 808 pts intact (grounding preserved). This PR retires the `--verbatim-all` override so a re-harvest can't undo it. Memory `ops_verbatim_rollback_jelas_only_2026_07_21`.
 - **WA OUTBOX P0 (2026-07-19) — FIXED #2812 + DEPLOYED 12:45 UTC + VERIFIED**: the per-thread
   advisory lock passed raw `int thread_id` into `hashtext('wa_outbox_thread_' || $1::text)` —
   asyncpg types `$1` TEXT from the cast and refuses int (`DataError: expected str, got int`),

@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1784392182776,
+      "tag": "0000_magazine_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784394605994,
+      "tag": "0001_thick_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784398557640,
+      "tag": "0002_known_the_hand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784400609460,
+      "tag": "0003_pale_nightcrawler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1784438565782,
+      "tag": "0004_sturdy_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1784453114916,
+      "tag": "0005_wakeful_obadiah_stane",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784476800000,
+      "tag": "0006_operations_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1784505600000,
+      "tag": "0007_ops_transition_guards",
+      "breakpoints": true
+    }
+  ]
+}

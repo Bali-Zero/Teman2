@@ -112,6 +112,22 @@ One-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     them with PII-safe transport context (direct/group + identity policy) without
     copying raw group JIDs, raw group subjects, or extra phone values.
 
+``--backfill-identity`` (intake-v2 PR-2, 2026-07-18)
+    Stamps ``client_id_hint`` on already-enqueued whatsapp docs that carry a
+    ``sender_phone`` but no hint, via the same ``contact_autocreate.
+    resolve_or_create_contact`` primitive the live entry points use. Scoped to
+    official-line rows unconditionally (the resolver's own roster gate
+    protects them) and to wa-mirror rows ONLY when ``source_context.
+    routing_identity_policy = 'sender_phone_enabled'`` (excludes group/
+    internal-forward/untagged rows — run ``--scrub-group-phone`` and
+    ``--backfill-source-context`` first; this mode runs after them in
+    ``main()`` for that reason). Dry-run is a GUARANTEED zero-write (the
+    resolver's CREATE branch is force-disabled, not just env-gated). Does
+    NOT retroactively re-route an already-built stale proposal — reports
+    ``stale_proposals_need_reprocess`` and expects a follow-up ``--reprocess``
+    pass for that subset. Batched via ``--identity-limit``, resumable via
+    ``--identity-after-id``.
+
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
 
@@ -143,6 +159,7 @@ import httpx
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.classify import (
     VISION_CLASSIFY_CONF,
     TEXT_LLM_CLASSIFY_CONF,
@@ -714,6 +731,49 @@ SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
          WHERE q.source_ref = 'wa-mirror:' || w.baileys_message_id
    )
  ORDER BY w.id ASC
+"""
+
+# intake-v2 PR-2 (2026-07-18): already-enqueued whatsapp docs that carry a
+# sender_phone but never got a client_id_hint stamped — the identity
+# backfill population. Batched (LIMIT $2) + resumable (id > $1, the caller
+# passes the last-processed id back in as --identity-after-id).
+#
+# Scope (P0-2 adversarial-review fix): source='whatsapp' + a real sender_phone
+# is NOT enough on its own — historical wa-mirror rows can carry a leaked
+# sender_phone from BEFORE the group/internal-sender suppression guards
+# existed (that is exactly what --scrub-group-phone exists to clean; its
+# SELECT below proves such rows exist). Restricting to
+# source_context->>'routing_identity_policy' = 'sender_phone_enabled' for
+# wa-mirror rows closes that gap: a group row's policy is
+# 'disabled_for_group'/'group_participant_phone_suppressed', an internal-
+# forward row's is 'disabled_internal_sender'/'internal_sender_suppressed',
+# and a row that predates source_context entirely has NO policy at all
+# (NULL != 'sender_phone_enabled') — none of those match. Official-line rows
+# (source_ref NOT LIKE 'wa-mirror:%', i.e. 'whatsapp-live:*') don't carry a
+# wa-mirror source_context at all; their ONLY identity risk is a staff/team
+# phone, which resolve_or_create_contact ALWAYS checks first (roster gate),
+# so they are safe to include unconditionally.
+BACKFILL_IDENTITY_SELECT_SQL = """
+SELECT id, sender_phone
+  FROM intake_queue
+ WHERE source = 'whatsapp'
+   AND sender_phone IS NOT NULL
+   AND client_id_hint IS NULL
+   AND id > $1
+   AND (
+        source_ref NOT LIKE 'wa-mirror:%'
+     OR source_context->>'routing_identity_policy' = 'sender_phone_enabled'
+   )
+ ORDER BY id ASC
+ LIMIT $2
+"""
+
+BACKFILL_IDENTITY_APPLY_SQL = """
+UPDATE intake_queue
+   SET client_id_hint = $2,
+       updated_at = now()
+ WHERE id = $1
+   AND client_id_hint IS NULL
 """
 
 SCRUB_GROUP_PHONE_SELECT_SQL = """
@@ -2421,6 +2481,157 @@ async def run_backfill(
     return counts
 
 
+async def _count_stale_proposals(pool: asyncpg.Pool, queue_ids: list[int]) -> int:
+    """Among these queue rows, how many ALREADY have a review_pending proposal
+    stuck at NO_MATCH/AMBIGUOUS (P0-3 adversarial-review finding).
+
+    ``route_stage`` never reads ``client_id_hint`` (verified: zero references
+    across routing.py/auto_attach.py/gate_evaluator.py/writer.py/worker.py) —
+    stamping the hint alone does NOT retroactively re-run a proposal that was
+    already built before the client existed. This is read-only visibility so
+    operators know which stamped rows need a FOLLOW-UP ``--reprocess`` pass
+    (the existing, tested mode that supersedes + resets exactly this bucket)
+    rather than silently believing the stamp alone fixed them.
+    """
+    if not queue_ids:
+        return 0
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            """
+            SELECT count(DISTINCT queue_id) FROM document_routing_proposal
+             WHERE queue_id = ANY($1::bigint[])
+               AND status = 'review_pending'
+               AND (entity_resolution->>'decision') IN ('NO_MATCH', 'AMBIGUOUS')
+            """,
+            queue_ids,
+        )
+
+
+async def run_backfill_identity(
+    pool: asyncpg.Pool,
+    after_id: int,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Stamp client_id_hint on already-enqueued whatsapp docs via sender_phone.
+
+    intake-v2 PR-2 (2026-07-18): identity capture at the door (contact_autocreate)
+    was wired into the live entry points AFTER a lot of whatsapp intake_queue rows
+    already existed with a sender_phone but no client_id_hint — a resolvable gap,
+    not a missing-blob one. This mode re-runs the SAME resolve_or_create_contact
+    primitive over that backlog, batched (LIMIT) + resumable (id > after_id).
+
+    Dry-run counts candidates by resolution kind only and is GUARANTEED
+    zero-write: ``force_no_create=True`` makes the resolver's CREATE branch
+    structurally unreachable regardless of INTAKE_AUTOCREATE_CONTACT_ENABLED
+    (P0-1 adversarial-review fix — previously a dry-run with the env flag
+    armed silently created real clients rows before the ``if not apply``
+    gate was ever checked). --apply stamps client_id_hint for every kind
+    that yields a client_id (existing match, or a newly auto-created contact
+    if the flag is armed) — the kill-switch inside resolve_or_create_contact
+    is the sole gate, never re-implemented here. Never overwrites a
+    client_id_hint that is already set (WHERE client_id_hint IS NULL in both
+    the SELECT and the UPDATE) — verified per-row (P1: only counts ``stamped``
+    when the UPDATE actually touched a row, since a concurrent writer could
+    race the same row to a non-NULL hint between our SELECT and UPDATE).
+
+    IMPORTANT LIMITATION (P0-3, adversarial review, documented not silently
+    fixed): stamping client_id_hint does NOT retroactively re-route a queue
+    row whose ``document_routing_proposal`` was already built before the
+    client existed — ``route_stage`` never reads client_id_hint (the hint is
+    forward-looking future insurance + a candidate signal for resolve_entity,
+    see ``routing.resolve_entity``'s client_id_hint parameter). This function
+    reports ``stale_proposals_need_reprocess`` — the count of stamped rows
+    whose existing proposal is stuck at NO_MATCH/AMBIGUOUS — as an explicit
+    follow-up signal; run ``--reprocess`` afterward to actually re-route them.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(BACKFILL_IDENTITY_SELECT_SQL, after_id, limit)
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "by_kind": {},
+        "stamped": 0,
+        "errors": 0,
+        "max_id_seen": after_id,
+        "stale_proposals_need_reprocess": 0,
+    }
+    stamped_queue_ids: list[int] = []
+
+    for r in rows:
+        queue_id = int(r["id"])
+        counts["max_id_seen"] = max(counts["max_id_seen"], queue_id)
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                resolution = await resolve_or_create_contact(
+                    conn, sender_phone=r["sender_phone"], force_no_create=not apply,
+                )
+        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            counts["errors"] += 1
+            logger.error(
+                "[backfill-identity] resolver failed for queue row %d, error_type=%s",
+                queue_id, type(exc).__name__,
+            )
+            continue
+
+        counts["by_kind"][resolution.kind] = counts["by_kind"].get(resolution.kind, 0) + 1
+        if resolution.client_id is None:
+            continue
+        if not apply:
+            continue
+        try:
+            async with pool.acquire() as conn:
+                status = await conn.execute(
+                    BACKFILL_IDENTITY_APPLY_SQL, queue_id, resolution.client_id
+                )
+        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            counts["errors"] += 1
+            logger.error(
+                "[backfill-identity] UPDATE failed for queue row %d, error_type=%s",
+                queue_id, type(exc).__name__,
+            )
+            continue
+        # asyncpg execute() returns a status tag e.g. "UPDATE 1"/"UPDATE 0" —
+        # only count a REAL write (P1: a concurrent writer could have raced
+        # this row to a non-NULL client_id_hint between our SELECT and this
+        # UPDATE; the WHERE client_id_hint IS NULL guard would then affect
+        # zero rows and reporting "stamped" would be a lie).
+        if status == "UPDATE 1":
+            counts["stamped"] += 1
+            stamped_queue_ids.append(queue_id)
+
+    if apply and stamped_queue_ids:
+        counts["stale_proposals_need_reprocess"] = await _count_stale_proposals(
+            pool, stamped_queue_ids
+        )
+
+    if not apply:
+        # force_no_create=True during dry-run (P0-1) means a phone that WOULD
+        # auto-create if --apply were passed is indistinguishable here from
+        # one where the killswitch is genuinely off — both report "disabled".
+        # would_stamp is therefore a FLOOR (existing-match only), not the full
+        # count --apply would produce; this is the honest price of a dry-run
+        # that is actually guaranteed never to write.
+        logger.info(
+            "[backfill-identity][DRY-RUN] candidates=%d (id > %d, limit=%d) by_kind=%s "
+            "would_stamp_at_least=%d errors=%d — resume with --identity-after-id %d "
+            "(pass --apply to execute; 'disabled' may include phones that would "
+            "auto-create under --apply if the flag is armed)",
+            counts["candidates"], after_id, limit, counts["by_kind"],
+            counts["by_kind"].get("existing", 0),
+            counts["errors"], counts["max_id_seen"],
+        )
+    else:
+        logger.info(
+            "[backfill-identity] candidates=%d by_kind=%s stamped=%d errors=%d "
+            "stale_proposals_need_reprocess=%d — resume with --identity-after-id %d",
+            counts["candidates"], counts["by_kind"], counts["stamped"],
+            counts["errors"], counts["stale_proposals_need_reprocess"],
+            counts["max_id_seen"],
+        )
+    return counts
+
+
 async def run_quality_sample(
     pool: asyncpg.Pool,
     source: str,
@@ -3323,6 +3534,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="enqueue historical wa-mirror media skipped by the watermark seed",
     )
     p.add_argument(
+        "--backfill-identity",
+        action="store_true",
+        help=(
+            "stamp client_id_hint on already-enqueued whatsapp docs that carry a "
+            "sender_phone but no client_id_hint (intake-v2 PR-2 identity backfill)"
+        ),
+    )
+    p.add_argument(
+        "--identity-after-id",
+        type=int,
+        default=0,
+        help="resume cursor for --backfill-identity: only rows with id > this (default 0)",
+    )
+    p.add_argument(
+        "--identity-limit",
+        type=int,
+        default=500,
+        help="batch size for --backfill-identity (default 500)",
+    )
+    p.add_argument(
         "--scrub-group-phone",
         action="store_true",
         help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows",
@@ -3597,6 +3828,7 @@ async def main(argv: list[str] | None = None) -> int:
         or args.reroute_drive_folder
         or args.reroute_npwp
         or args.backfill
+        or args.backfill_identity
         or args.scrub_group_phone
         or args.backfill_source_context
         or args.revive_stub
@@ -3615,7 +3847,7 @@ async def main(argv: list[str] | None = None) -> int:
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
-            "nothing to do: pass --backfill, --reprocess, --reroute-drive-folder, "
+            "nothing to do: pass --backfill, --backfill-identity, --reprocess, --reroute-drive-folder, "
             "--reroute-npwp, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
@@ -3636,8 +3868,15 @@ async def main(argv: list[str] | None = None) -> int:
     db_url = os.getenv("INTAKE_DATABASE_URL", os.getenv("DATABASE_URL", DEFAULT_DSN))
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=3)
     try:
-        # Backfill FIRST (puts historical rows in the queue), then reprocess
-        # (resets the weak proposals) — matches the rollout runbook order.
+        # Backfill FIRST (puts historical rows in the queue), then
+        # scrub/source-context (clean up unsafe/untagged wa-mirror rows),
+        # THEN identity backfill (P0-2 adversarial-review fix: --backfill-
+        # identity's SELECT scope depends on source_context.
+        # routing_identity_policy already being correct/populated — running
+        # it before scrub/backfill-source-context risked picking up a
+        # not-yet-cleaned or not-yet-tagged wa-mirror row in the same
+        # invocation), then reprocess (resets the weak proposals) — matches
+        # the rollout runbook order.
         if args.backfill:
             watermark = args.watermark if args.watermark is not None else read_watermark()
             if watermark is None:
@@ -3648,6 +3887,13 @@ async def main(argv: list[str] | None = None) -> int:
             await run_scrub_group_phone(pool, args.apply)
         if args.backfill_source_context:
             await run_backfill_source_context(pool, args.apply)
+        if args.backfill_identity:
+            await run_backfill_identity(
+                pool,
+                max(args.identity_after_id, 0),
+                max(args.identity_limit, 1),
+                args.apply,
+            )
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
         if args.reroute_drive_folder:

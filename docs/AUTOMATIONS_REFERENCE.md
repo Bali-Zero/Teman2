@@ -6,6 +6,19 @@
 
 ---
 
+## Repo-canon additions pending live snapshot
+
+These entries are committed as repo-canon LaunchAgents but are not counted in
+the generated live totals above until installed on Pro and included in the next
+automation snapshot.
+
+| Label                            | Host | Schedule   | Purpose                                                                                                        |
+| -------------------------------- | ---- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `com.balizero.magazine.morning`  | Pro  | 06:15 WITA | Compose/publish the internal Bali Zero Magazine morning issue after collectors; target readable by 06:30 WITA. |
+| `com.balizero.magazine.breaking` | Pro  | 600s       | Drain qualified Breaking magazine candidates within the 10-minute objective.                                   |
+
+---
+
 ## System Health Summary
 
 | Metric                | Value   |

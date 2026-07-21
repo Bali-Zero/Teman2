@@ -44,9 +44,15 @@ describe("ChatSidebar", () => {
     );
 
     expect(deleteButton1).toBeInTheDocument();
-    expect(deleteButton1).toHaveAttribute("title", "Delete conversation: Test Conversation");
+    expect(deleteButton1).toHaveAttribute(
+      "title",
+      "Delete conversation: Test Conversation",
+    );
     expect(deleteButton2).toBeInTheDocument();
-    expect(deleteButton2).toHaveAttribute("title", "Delete conversation: Untitled");
+    expect(deleteButton2).toHaveAttribute(
+      "title",
+      "Delete conversation: Untitled",
+    );
   });
 
   it("has a close button with a matching title attribute", () => {
@@ -57,14 +63,18 @@ describe("ChatSidebar", () => {
   });
 
   it("applies the inert attribute to the aside element when isOpen is false", () => {
-    const { container } = render(<ChatSidebar {...defaultProps} isOpen={false} />);
+    const { container } = render(
+      <ChatSidebar {...defaultProps} isOpen={false} />,
+    );
     const aside = container.querySelector("aside");
     expect(aside).toBeInTheDocument();
     expect(aside).toHaveAttribute("inert");
   });
 
   it("does not apply the inert attribute to the aside element when isOpen is true", () => {
-    const { container } = render(<ChatSidebar {...defaultProps} isOpen={true} />);
+    const { container } = render(
+      <ChatSidebar {...defaultProps} isOpen={true} />,
+    );
     const aside = container.querySelector("aside");
     expect(aside).toBeInTheDocument();
     expect(aside).not.toHaveAttribute("inert");

@@ -137,26 +137,34 @@ def is_armed(test_rel_path: str, wf_text: str) -> bool:
 # ------------------------------------------------------------------ checks
 
 
-def check_bridge(surface: dict[str, Any], wf_text: str) -> list[str]:
+def check_bridge(surface: dict[str, Any], wf_text: str, *, label: str = "bridge") -> list[str]:
+    """Generic {source, census:{method,prefix}, test_file, guards} surface
+    checker (C1 census parity, C2 guilt+innocence presence, C3 anti-phantom,
+    C4 armed-in-CI). `label` only tags violation messages (e.g. "bridge" for
+    the WhatsApp bridge `_guard_*` surface, "wr2-pregate" for the WR2
+    editorial pre-gate `check_*` surface) — the logic is shape-generic, not
+    bridge-specific, so this one function serves every surface with that
+    shape rather than growing a bridge-only copy per surface (scar #3: a
+    duplicated-not-shared checker is itself a guard the checker can't check)."""
     violations: list[str] = []
     source = REPO_ROOT / surface["source"]
     test_file = REPO_ROOT / surface["test_file"]
     prefix = surface["census"]["prefix"]
 
     if not source.exists():
-        return [f"C1[bridge] source missing on disk: {surface['source']}"]
+        return [f"C1[{label}] source missing on disk: {surface['source']}"]
 
     in_code = ast_guard_defs(source, prefix)
     in_registry = set(surface["guards"].keys())
 
     for missing in sorted(in_code - in_registry):
         violations.append(
-            f"C1[bridge] guard `{missing}` exists in code but is NOT registered "
+            f"C1[{label}] guard `{missing}` exists in code but is NOT registered "
             f"— write its guilt+innocence tests, then add it to registry.json"
         )
     for stale in sorted(in_registry - in_code):
         violations.append(
-            f"C1[bridge] registry entry `{stale}` no longer exists in code — remove or rename"
+            f"C1[{label}] registry entry `{stale}` no longer exists in code — remove or rename"
         )
 
     for guard, entry in sorted(surface["guards"].items()):
@@ -166,17 +174,17 @@ def check_bridge(surface: dict[str, Any], wf_text: str) -> list[str]:
             refs = entry.get(kind, [])
             if not refs:
                 violations.append(
-                    f"C2[bridge] `{guard}` has NO {kind} test — the #3 antidote requires both"
+                    f"C2[{label}] `{guard}` has NO {kind} test — the #3 antidote requires both"
                 )
             for ref in refs:
                 if not def_exists(test_file, ref):
                     violations.append(
-                        f"C3[bridge] `{guard}` {kind} ref `{ref}` not found as a def in "
+                        f"C3[{label}] `{guard}` {kind} ref `{ref}` not found as a def in "
                         f"{surface['test_file']} — phantom reference (W65)"
                     )
     if not is_armed(surface["test_file"], wf_text):
         violations.append(
-            f"C4[bridge] test file {surface['test_file']} is not reachable by any "
+            f"C4[{label}] test file {surface['test_file']} is not reachable by any "
             f".github/workflows/*.yml — a test that never runs is theater (W81)"
         )
     return violations
@@ -328,23 +336,28 @@ def main(argv: list[str] | None = None) -> int:
     violations: list[str] = []
     violations += check_bridge(registry["surfaces"]["bridge_reply_guards"], wf_text)
     violations += check_hooks(registry["surfaces"]["command_hooks"], wf_text)
+    violations += check_bridge(
+        registry["surfaces"]["wr2_editorial_pregate"], wf_text, label="wr2-pregate"
+    )
     violations += check_simple_surfaces(registry, wf_text)
 
     bridge_count = len(registry["surfaces"]["bridge_reply_guards"]["guards"])
     hook_count = len(registry["surfaces"]["command_hooks"]["entries"])
+    pregate_count = len(registry["surfaces"]["wr2_editorial_pregate"]["guards"])
 
     if as_json:
         print(json.dumps({
             "schema": 1,
             "bridge_guards": bridge_count,
             "hook_entries": hook_count,
+            "wr2_pregate_checks": pregate_count,
             "violations": violations,
             "conformant": not violations,
         }, indent=2))
     else:
         print(
             f"guard-conformance: {bridge_count} bridge guards, {hook_count} hook entries, "
-            f"{len(violations)} violation(s)"
+            f"{pregate_count} wr2-pregate checks, {len(violations)} violation(s)"
         )
         for v in violations:
             print(f"  ✗ {v}")
