@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+adversarial_review_date: 2026-07-21
+---
+
 # Task 5 report: protected ingestion and authenticated media
 
 ## Outcome
@@ -113,3 +118,11 @@ use only that digest in publication packets.
 
 The pre-existing `INDEX.md`, `README.md`, and `.husky/_` changes were neither
 modified nor included in the Task 5 staging set.
+
+## Adversarial review
+
+Codex challenged the boundary of the metadata-removal and replay claims. The
+evidence supports deterministic canonicalization for the explicitly supported,
+non-animated JPEG, PNG, and WebP compatibility corpus; it is not proof about
+every conceivable image encoding. No new blocker survived within that closed
+input contract.

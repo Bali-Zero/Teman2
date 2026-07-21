@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+adversarial_review_date: 2026-07-21
+---
+
 # Task 7 Report — Internal Research Room
 
 ## Outcome
@@ -234,3 +239,11 @@ The Research room is internal-only and deny-by-default. It accepts only closed
 selectors and sanitized collector projections, never raw NotebookLM source IDs,
 raw OSINT, credentials, or client PII. Activation still requires the normal
 protected review, merge, configuration, and deployment process.
+
+## Adversarial review
+
+Codex challenged whether the Research room could silently become a replacement
+collector or leak raw NotebookLM and OSINT identifiers. The closed selector,
+sanitized projection, lease, and DLP evidence answers the implementation
+objection. Runtime source availability remains unproven until the protected
+bindings are configured, so the room must continue to fail closed when absent.

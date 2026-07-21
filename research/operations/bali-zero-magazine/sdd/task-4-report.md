@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+adversarial_review_date: 2026-07-21
+---
+
 # Task 4 report: editorial front page and evidence reading
 
 ## Outcome
@@ -60,4 +65,12 @@
 - GREEN: `npm test` passed the production Vinext build and all 82 tests (82 passed, 0 failed).
 - `npm run lint -- --max-warnings=0`: passed.
 - `npm run db:generate`: reported `No schema changes, nothing to migrate`.
+
+## Adversarial review
+
+Codex challenged whether the declared lead, archived revision, event time, and
+correction timeline were inferred rather than persisted. The report's focused
+fixtures and closed-schema checks answer those objections. The 82-test total is
+point-in-time evidence for Task 4 and must not be read as the current package
+total.
 - `npx prettier --check` and `git diff --check`: passed for the scoped implementation.

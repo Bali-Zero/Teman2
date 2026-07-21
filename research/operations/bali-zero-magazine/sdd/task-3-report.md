@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+adversarial_review_date: 2026-07-21
+---
+
 # Task 3 report: atomic D1 publication model
 
 ## Outcome
@@ -111,6 +116,13 @@ hardening checks from the Task 3 re-review.
   a CAS error and that latest quarantine/status/rights overlays were ignored.
 - GREEN: focused overlay, replay, and late-fault tests pass.
 - `npm test`: pass; production build and 71/71 unit tests pass.
+
+## Adversarial review
+
+Codex challenged the report's atomicity, replay, and latest-overlay claims
+against the recorded CAS, late-fault, and generated-schema evidence. No new
+implementation blocker survived. The per-run test totals remain historical
+evidence, not a claim about the current repository-wide test count.
 - `npm run lint`: pass.
 - `npm run db:generate -- --name schema_drift_check`: pass, 26 tables, no
   schema changes.
