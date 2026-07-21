@@ -103,7 +103,7 @@ if ! zmodload zsh/system; then
     log "fatal mode=$MODE advisory_lock_module_unavailable"
     exit 70
 fi
-zsystem flock -t 0 -f MAGAZINE_LOCK_FD "$LOCKFILE"
+zsystem flock -t 0.001 -i 0.001 -f MAGAZINE_LOCK_FD "$LOCKFILE"
 lock_rc="$?"
 case "$lock_rc" in
     0) ;;
