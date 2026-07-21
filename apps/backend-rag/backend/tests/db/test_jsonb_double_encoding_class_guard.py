@@ -67,14 +67,17 @@ PROTECTED_JSONB_COLUMNS: dict[str, tuple[str, ...]] = {
     "failed_messages": ("metadata",),
     "naga_sessions": ("action_items", "sub_questions"),
     "crm_workspace_ai_snapshots": ("facts",),
+    # Corrected 2026-07-20 (ex #31): requirements/restrictions/
+    # allowed_activities/benefits/process_steps/tips are native Postgres
+    # text[] columns (verified live via information_schema), NOT jsonb — the
+    # 2026-07-16 sweep that seeded this registry inferred "protected" from
+    # the *code's* pre-existing (buggy) ::text::jsonb-cast pattern rather
+    # than the real column type, so it baked the bug's own premise in as
+    # ground truth. text[] is a different wire type than jsonb; the codec's
+    # jsonb encode/decode hook never touches it, so the double-encoding
+    # disease this guard exists to catch structurally cannot occur there.
     "visa_types": (
         "cost_details",
-        "requirements",
-        "restrictions",
-        "allowed_activities",
-        "benefits",
-        "process_steps",
-        "tips",
         "metadata",
     ),
     "conversations": ("messages", "metadata"),
@@ -370,6 +373,48 @@ def test_innocence_unrelated_table_does_not_fire():
         )
     """
     assert _scan_source(src, "synthetic.py") == []
+
+
+def test_innocence_visa_types_array_columns_do_not_require_cast():
+    """INNOCENCE: the actual shipped knowledge_visa.py POST shape (ex #31) —
+    cost_details/metadata cast ::text::jsonb, the 6 native text[] columns
+    bound as raw lists with no cast at all — must not fire, even though a
+    to_jsonb() serializer call is present elsewhere in the same statement
+    (for cost_details/metadata)."""
+    src = """
+        row = await conn.fetchrow(
+            \"\"\"
+            INSERT INTO visa_types (
+                code, name, category, cost_details,
+                requirements, restrictions, allowed_activities,
+                benefits, process_steps, tips, metadata
+            ) VALUES (
+                $1, $2, $3, $4::text::jsonb,
+                $5, $6, $7, $8, $9, $10, $11::text::jsonb
+            )
+            \"\"\",
+            code, name, category, to_jsonb(cost_details),
+            requirements, restrictions, allowed_activities,
+            benefits, process_steps, tips, to_jsonb(metadata),
+        )
+    """
+    assert _scan_source(src, "synthetic.py") == []
+
+
+def test_guilt_visa_types_real_jsonb_column_missing_cast_fires():
+    """GUILT: the registry correction must not blind the guard to a real
+    regression on visa_types' genuinely-protected columns (cost_details,
+    metadata) — only the 6 text[] columns were removed."""
+    src = """
+        row = await conn.fetchrow(
+            \"\"\"
+            INSERT INTO visa_types (code, cost_details, metadata)
+            VALUES ($1, $2, $3)
+            \"\"\",
+            code, to_jsonb(cost_details), to_jsonb(metadata),
+        )
+    """
+    assert _scan_source(src, "synthetic.py") != []
 
 
 def test_innocence_unprotected_column_on_protected_table_does_not_fire():

@@ -15,9 +15,16 @@ filter into a malformed query that Qdrant 400s (the reason injection was dead
 in prod even after #2684's "domain filter"); the per-hit recheck is the real,
 sufficient domain gate.
 
+Staleness gate (Phase-0 safety rail, MAJOR 7/8): a hit's `active` metadata
+field (written True at harvest time, per-class TTL in the FAQ sink, and
+flipped to False by curated_qa_regen_trigger.py on a regulatory-delta
+match) is rechecked per-hit — an inactive point is excluded from injection
+even if it clears score AND domain. Missing `active` (pre-Phase-0 points)
+defaults to included, never silently dropped.
+
 Three layers of coverage:
 1. `_inject_curated_qa_grounding()` in isolation — retrieval/formatting/
-   threshold/domain-gate/exception-handling logic.
+   threshold/domain-gate/staleness-gate/exception-handling logic.
 2. Domain-gate guilt + innocence — proves a matching domain injects (calling
    search WITHOUT a Qdrant filter) and a mismatched/general domain never does,
    even when a same-score foreign-domain hit is present.
@@ -271,6 +278,90 @@ async def test_threshold_env_override_is_respected(monkeypatch) -> None:
     result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert result == ""
+
+
+# ── Staleness gate (MAJOR 7/8): guilt + innocence ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_inactive_hit_is_skipped_even_above_score_and_domain_match() -> None:
+    """GUILT — a hit flagged active=False (TTL-expired at write time, or
+    quarantined by curated_qa_regen_trigger.py after a regulatory-delta
+    match) must never be injected, even though it clears the score
+    threshold AND the domain gate."""
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result(
+                [_hit(0.95, answer="Stale answer, must not appear.", active=False)],
+            ),
+        ),
+    )
+
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_active_hit_is_still_injected() -> None:
+    """INNOCENCE — an explicitly active=True hit is unaffected by the
+    staleness gate."""
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result(
+                [_hit(0.95, answer="Fresh answer.", active=True)],
+            ),
+        ),
+    )
+
+    with patch("backend.app.metrics.curated_qa_injections_total"):
+        result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert "Fresh answer." in result
+
+
+@pytest.mark.asyncio
+async def test_hit_missing_active_field_defaults_to_included() -> None:
+    """INNOCENCE — a pre-Phase-0 Qdrant point written before this rail
+    existed has no `active` key at all. Missing must default to "still
+    active", never be treated as silently inactive (that would mass-hide
+    every point written before this rail shipped)."""
+    core = make_core()
+    hit = _hit(0.95, answer="Legacy point, no active field.")
+    assert "active" not in hit["metadata"]
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(return_value=_search_result([hit])),
+    )
+
+    with patch("backend.app.metrics.curated_qa_injections_total"):
+        result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert "Legacy point, no active field." in result
+
+
+@pytest.mark.asyncio
+async def test_mixed_active_and_inactive_hits_only_active_one_injected() -> None:
+    """GUILT + INNOCENCE together — one inactive, one active hit in the
+    same result set: only the active one is injected."""
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result(
+                [
+                    _hit(0.95, answer="Stale, excluded.", source_ref="doc#Q1", active=False),
+                    _hit(0.93, answer="Fresh, included.", source_ref="doc#Q2", active=True),
+                ],
+            ),
+        ),
+    )
+
+    with patch("backend.app.metrics.curated_qa_injections_total"):
+        result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert "Fresh, included." in result
+    assert "Stale, excluded." not in result
 
 
 # ── Domain gate: guilt + innocence ──────────────────────────────────────────

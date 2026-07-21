@@ -351,19 +351,28 @@ class VisaEngineRepository(BaseRepository):
         caller-independent authority, but they are defense-in-depth, not a
         substitute for the service layer's own verification.
 
-        ``activated_by``/``activation_reason`` are free-text audit
-        NARRATIVE (the function itself rejects blank or oversized values —
-        see migration 251, F6(a)); they are NOT the identity guarantee —
-        the DB stamps the actual, unforgeable actor as
+        ``activated_by``/``activation_reason`` are OPAQUE TOKENS — reason
+        codes / ticket IDs / actor handles, matching ``^[A-Za-z0-9._:-]
+        {1,120}$`` (the function rejects anything else, e.g. free-sentence
+        text or blank values — see migration 253's "P2" hardening, a
+        roll-forward correction against migration 251's original looser
+        200/1000-char free-text bound; the table itself carries the same
+        regex as a CHECK constraint, also added in 253, so a raw INSERT
+        bypassing this method can never smuggle in a free-text/PII value
+        either). They are NOT the identity
+        guarantee — the DB stamps the actual, unforgeable actor as
         ``activated_by_principal`` (``session_user``, migration 251, F6(b))
         as a side effect, independent of anything this method passes in.
+        Any human-readable narrative belongs outside this immutable ledger
+        (a separate, redactable side-table), never in these two columns.
 
         Returns the new activation's ``id``. Raises whatever
         ``asyncpg.PostgresError`` the function/triggers raise (unknown
-        ``rule_pack_id``, blank/oversized actor/reason, partial legal-period
-        overlap, sequence rollback, hash-chain break) — this method does
-        not translate or swallow those, by design (Golden Rule #7: this
-        repository is data access, not business logic).
+        ``rule_pack_id``, malformed/oversized actor or reason token,
+        partial legal-period overlap, sequence rollback, hash-chain break)
+        — this method does not translate or swallow those, by design
+        (Golden Rule #7: this repository is data access, not business
+        logic).
         """
         row = await self.fetchrow_safe(
             "SELECT public.visa_activate_rule_pack($1, $2, $3) AS activation_id",

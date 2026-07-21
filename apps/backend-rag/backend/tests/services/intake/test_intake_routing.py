@@ -435,3 +435,35 @@ async def test_anti_deadlock_revives_superseded_orphan(pool, seeded):
     async with pool.acquire() as c:
         n = await c.fetchval("SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q)
     assert n == 1
+
+
+@pytest.mark.asyncio
+async def test_suppressed_pipeline_version_end_to_end(monkeypatch, pool, seeded):
+    """Round-4 R4-1 (W99): the suppression must hold through the REAL path —
+    route_stage → build_routing_proposal → _try_auto_attach_after_route — with
+    the worker env ARMED, because the builder puts pipeline_version at the TOP
+    LEVEL of the payload (the first draft read a nested shape that never
+    occurs in production and the gates still fired)."""
+    from backend.services.intake import auto_attach
+
+    async def _must_not_run(*a, **kw):  # pragma: no cover - failure path
+        raise AssertionError("attach gate evaluated despite suppression")
+
+    monkeypatch.setattr(auto_attach, "try_auto_attach", _must_not_run)
+    monkeypatch.setattr(auto_attach, "try_direct_phone_auto_attach", _must_not_run)
+    monkeypatch.setattr(auto_attach, "try_nameid_auto_attach", _must_not_run)
+    # Armed like the live worker — suppression must not depend on flags OFF.
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "true")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "true")
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "true")
+
+    q = await _seed_queue(
+        pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"}
+    )
+    r = await route_stage(
+        {"id": q, "pipeline_version": "v2.3-drive-autocreate"}, "route", pool
+    )
+
+    assert r["decision"] == "AUTO_ATTACH"  # matcher unchanged — only attach gated
+    assert r["auto_attach"]["skipped"] == "suppressed_pipeline_version"
+    assert (await _proposal(pool, q))["status"] == "review_pending"  # never auto_routed

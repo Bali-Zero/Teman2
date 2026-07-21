@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 45 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 47 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -19,6 +19,7 @@
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
 | [`dropbox-intake.md`](dropbox-intake.md) | Dropbox → Google Drive Intake |
+| [`fly-logs-accumulator.md`](fly-logs-accumulator.md) | Runbook — Fly logs accumulator (O0-P1) |
 | [`grafana-sota-setup.md`](grafana-sota-setup.md) | SOTA Social dashboard — Grafana setup |
 | [`healer-organ.md`](healer-organ.md) | Healer organ — autonomous cure loop (Mini-Pro2) |
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
@@ -46,6 +47,7 @@
 | [`sota-loop-90gg-operations.md`](sota-loop-90gg-operations.md) | SOTA Social Loop 90gg — Operations Runbook |
 | [`synthetic-probe-cleanup.md`](synthetic-probe-cleanup.md) | Runbook — Synthetic probe cleanup emergency |
 | [`telegram-notification-gateway.md`](telegram-notification-gateway.md) | Telegram notification gateway — tg_notify / tg_digest_flush / lint |
+| [`visa-engine-key-ceremony.md`](visa-engine-key-ceremony.md) | Visa Engine — Ed25519 Key Ceremony (2026-07-19) |
 | [`voice-concierge-local-audio.md`](voice-concierge-local-audio.md) | Runbook — Voice concierge local audio |
 | [`wa-media-pull-worker.md`](wa-media-pull-worker.md) | Runbook — WhatsApp media PULL worker (Anello 1, sovereign-local) |
 | [`wa-mirror-account-relink.md`](wa-mirror-account-relink.md) | Runbook — wa-mirror account re-link (QR) |

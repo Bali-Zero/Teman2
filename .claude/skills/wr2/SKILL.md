@@ -31,7 +31,19 @@ in the review queue. No session ever publishes autonomously.
 
 ## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
-**Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
+**Shipped & proven (July 16-17 arc):** **typed Carousel IR + shadow-replay harness SHIPPED +
+GATE PASSED (#2942, 2026-07-21, editorial-intelligence Phase 1)** — pydantic 11-kind discriminated
+union projecting to explicit `layout_family` pins (composer.py:143-145), ADDITIVE (generator/composer
+zero diff). Replay over ALL 61 historical decks: first-try valid 100%, 0 retries, 0 fails,
+family-resolution 100% via the real `map_slide_to_family`, kind-mix non-degenerate (447 slides, prose
+only ~8.7%) — red-team BLOCKER-1 (strict-schema regen spike) empirically refuted; evidence in
+`_research/2026-07-21-ir-phase1-replay-metrics.json`. DISCOVERY (Phase-3 prerequisite):
+source-citation `{{title}}` and elegant-close `trust_marker`/`reach`/`invite` placeholders are NEVER
+substituted in `composer._fill_placeholders` — those 2 families render broken today; with the IR
+routing cta→elegant-close and citation→source-citation (87/447 replay slides), the composer fix is a
+Phase-3 PRE-REQUISITE, not incidental. Next: Phase 2 deterministic pre-gate (guilt+innocence corpus
+per guard-conformance), then Phase 3 planner/writer dual-run. ·
+complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
 (#2563) · external-post registration + IG metrics FIRST LIVE on native carousels (#2578, hotfix
 #2579, 49 entries backfilled with numeric Graph ids) · **facts-first + park backstop (#2598,
@@ -85,6 +97,47 @@ findings below) + the sumber+kontak pattern.
 
 **Open wounds / next targets:**
 
+- **Adaptive-production program (2026-07-20).** Empirical DB diagnosis (30d corpus): kicker frozen
+  30/30 on "Our read:" through 2026-07-15, then 3/3 on "THE SIGNAL" post-#2544 — same
+  single-example-anchoring bug, one position over; narrative arc identical 33/33
+  (`cover → take → body×N → CTA`) regardless of domain/liveness; cover subheads formulaic (3-example
+  pool recycled); 4/9 layout families ever selected because the generator never emits the structured
+  fields the other 5 need. **The one axis that varies is the one axis with a DB lookback armed
+  (register/tone) — injected state beats stated intent, every time.** Kicker/subhead DB-lookback cure
+  (generalizing the register/tone mechanism to those 2 axes) is IN FLIGHT in worktree
+  `wr2-kicker-variety`, second red-team round as of this entry. Full 3-seat deep research (Kimi K3
+  world-class-mechanisms + Gemini 3.1 Pro OSS-harvest + Codex sol-ultra architecture-review, +
+  independent Fable visual review of the last 3 decks) archived at
+  `_research/2026-07-20-adaptive-production-3seat-research.md`, with an adoption roadmap ruled by
+  Fable as final gate: **Fase 1 (adopt now)** = typed Carousel IR (slide-shape contract:
+  prose/statement/fact_stack/qa_dialogue/status_list/stat_card/citation) + Creative Ledger
+  (per-draft decision-vector signatures, generalizing the kicker/subhead fix) + closer-contract unify;
+  **Fase 2** = arc grammar + Planner/Slot-Writer split, gated on Fase 1; **metrics-gated** (n≥200) =
+  feedback bandit + portfolio content matrix + art-direction cards; several items are **Zero-gated**
+  (Legge 5/brand — franchise slot "The Bali Zero read", all-caps body doctrine, palette rotation).
+  Codex fresh-eyes findings A-J on the live codebase: **finding A is the root cause of the CTA being
+  absent on every single rendered deck** — the generator requires the last slide to carry a CTA while
+  the `statement-bomb` layout contract explicitly forbids one and renders only a short statement;
+  constitutional split-brain, not a copy-quality bug. **SHIPPED + PROVEN-LIVE (2026-07-20).** Kicker/
+  subhead cure merged `84a1e347c0` (#2873); 3-seat research archive merged `6addafc333` (#2870).
+  Deployed: both Pro checkouts (`~/Desktop/nuzantara` + `~/nuzantara-deploy`) pulled ff-only — the
+  deploy checkout required removing a stale orphaned `.git/index.lock` (confirmed no live process
+  held it via `lsof` before removal). `com.balizero.wr2.draft-generator` kickstarted; no briefed
+  draft was queued at kickstart time (log: "No briefed drafts to process") so a full end-to-end
+  generation could not be observed this session. PROVE-LIVE done via a direct function-level probe
+  through the production wrapper (`wr2-script-wrapper.sh`, real secrets + `DATABASE_URL_LOCAL` via
+  pg-proxy) against the real DB: `fetch_recent_editorial_signatures` returned the real historical
+  signatures `KICKERS: ['THE SIGNAL', 'Our read']` (exactly the two pathological kickers the
+  diagnosis found) + 8 real cover subheads; `_build_variety_steer` produced a 605-char steer block
+  containing "MUST NOT"; `_render_system_instructions` showed zero token leaks
+  (`__KICKER_EXAMPLES__`/`__KICKER_EXAMPLE_TAKE__` both absent from the rendered prompt). No
+  synthetic draft was injected into `war_room_drafts` to avoid polluting prod editorial state (W96
+  discipline) — the collision-regen-guard's full generation-loop behavior remains covered by the 93
+  local tests (50 dedicated) rather than a live end-to-end run; this is the REMAINING natural-proof
+  item, same pattern as the 2026-07-18 liveness wound (receptor = next natural draft generation, not
+  forced). Both worktrees (`wr2-kicker-variety`, `wr2-research-archive`) reaped after confirming
+  content-on-main via blob-per-file compare (W88 discipline) — GitHub had already auto-deleted both
+  remote branches post-squash-merge.
 - **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR FIRED POSITIVE → WOUND CLOSED 2026-07-19 ~02:03 WITA.** The first post-patch natural nightly (`run_20260719_010004.json`, 25 articles / 15 classified) emitted **tiers {evergreen:12, developing:3}** with **distinct scores {0, 60}** — the DETERMINISTIC `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} (#2635), NOT the old additive 30/50, and NOT stuck all-evergreen. The 3 developing items score 60 ≥ 40 → they pass the `WR2_PREFER_LIVE_NEWS` filter and will fill the live pool at the next selector run (04:24/05:10; not forced — Legge-5-adjacent). #2631+#2635 chain proven end-to-end on a natural nightly (not just composition). Only remaining passive confirmation: the selector actually picking one. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
@@ -326,6 +379,8 @@ cover copy measured via the metrics loop.
 - DB access RO: `mcp__postgres-nuzantara__query` / `scripts/pg.sh`; writes ONLY via backend
   code from Pro env (never MCP).
 - IG token: Pro `.env.master` — grep into env vars, never print (scar #4).
+- Adaptive-production 3-seat research (2026-07-20): `_research/2026-07-20-adaptive-production-3seat-research.md`
+  (Kimi K3 + Gemini 3.1 Pro + Codex sol-ultra, full verbatim seat reports + Fable synthesis/adoption ruling).
 
 > Chi cambia lo stato AGGIORNA la §1. Un corner stantio è peggio di nessun corner (W90: anche il
 > ground-truth invecchia).

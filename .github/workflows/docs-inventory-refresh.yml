@@ -30,11 +30,18 @@ name: Docs Inventory Refresh
 #      docstring. A doc crossing `orphan_eligible_on` no longer makes an unrelated PR red.
 #   2. The actual TIME-CROSSING decision — "has this doc's orphan_eligible_on passed?" —
 #      moves HERE, to this scheduled organ, the only place allowed to consult wall-clock
-#      for that purpose (docs_audit.py in write mode, called by "Regenerate" below with no
-#      --as-of override = real "today"). When a doc crosses, this run stamps its
-#      `orphan_flipped_on` provenance marker and the "Regenerate" step's own stderr logs
-#      `docs_audit: advanced N flip(s), eligibility recomputed: <paths>` — surfaced below
-#      into both this run's log AND the opened PR's body (steps.stats.outputs.flips).
+#      for that purpose (docs_audit.py in write mode, called by "Regenerate" below via
+#      `scripts/docs_inventory_regen.sh --organ`, which passes --as-of "$(date -u
+#      +%Y-%m-%d)" = real "today" explicitly — footgun fix 2026-07-19, PR #2626 landing
+#      incident: the SCRIPT's bare/default invocation is now GATE-CONSISTENT
+#      (--gate-consistent, never invents a flip) precisely so a PR-side contributor
+#      running the plain command cannot accidentally commit a wall-clock-driven flip the
+#      gate would then reject as drift on the SAME PR — only this scheduled organ, via
+#      the explicit --organ flag, is supposed to advance flips from real time). When a doc
+#      crosses, this run stamps its `orphan_flipped_on` provenance marker and the
+#      "Regenerate" step's own stderr logs `docs_audit: advanced N flip(s), eligibility
+#      recomputed: <paths>` — surfaced below into both this run's log AND the opened PR's
+#      body (steps.stats.outputs.flips).
 #
 # PR-creation mechanism note (2026-07-17 design decision): this repo's established,
 # empirically-verified pattern for scheduled automation PRs (nb-curator #2567, the
@@ -78,7 +85,7 @@ jobs:
         with:
           fetch-depth: 0 # needed for docs_audit.py mtime derivation (git log -1 --format=%ct)
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -88,7 +95,12 @@ jobs:
           # flipped_paths) alongside the regen, so this run can surface the
           # count without a second, duplicate docs_audit.py invocation.
           DOCS_AUDIT_STATS_JSON: ${{ runner.temp }}/docs_audit_stats.json
-        run: bash scripts/docs_inventory_regen.sh
+        # --organ: this IS the scheduled refresh organ — the one caller
+        # explicitly opting INTO dated/wall-clock behavior (real "today")
+        # instead of the script's now-gate-consistent default. Footgun fix
+        # 2026-07-19, PR #2626 landing incident — see the module comment
+        # above and scripts/docs_inventory_regen.sh's own header.
+        run: bash scripts/docs_inventory_regen.sh --organ
 
       - name: Check drift
         id: drift

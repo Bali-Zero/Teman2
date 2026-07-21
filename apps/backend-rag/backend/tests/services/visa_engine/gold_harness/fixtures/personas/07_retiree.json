@@ -1,0 +1,166 @@
+{
+  "persona_id": "07_retiree",
+  "narrative": "British retiree, 61, settling in Bali long-term on a retirement permit.",
+  "notes": "",
+  "facts": {
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1965-02-10"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["GB"]
+    },
+    "person.marital_status": {
+      "status": "KNOWN",
+      "value": "WIDOWED"
+    },
+    "immigration.currently_in_indonesia": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "immigration.current_status_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.current_status_expiry": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.last_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "immigration.overstay_days": {
+      "status": "KNOWN",
+      "value": 0
+    },
+    "immigration.violation_history": {
+      "status": "KNOWN",
+      "value": []
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["RETIREMENT"]
+    },
+    "intent.stay_days": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.desired_entry_date": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.entry_pattern": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "intent.requested_product_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.employer_country_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.serves_indonesian_clients": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.indonesia_source_compensation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.indonesian_work_sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.pt_pma_committed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.investment_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.paid_up_capital_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.proposed_role": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.relation_to_sponsor": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_nationalities": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_status_code": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.marriage_registered": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.level": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.admission_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "study.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "OFFSHORE"
+    },
+    "process.wants_onshore_conversion": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.service_fee_budget_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "commercial.wants_quote": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    }
+  },
+  "expected": {
+    "global_state": "SUPPORTED_CANDIDATES",
+    "global_reason_codes": [],
+    "products": {
+      "E33R": {
+        "proof_state": "SUPPORTED",
+        "reason_codes": ["RETIREMENT_SUPPORTED"],
+        "covered_purposes": ["RETIREMENT"]
+      }
+    },
+    "default": {
+      "kind": "UNSUPPORTED_NO_PURPOSE_OVERLAP",
+      "requested_purposes": ["RETIREMENT"]
+    },
+    "extra_checks": {
+      "derived_age_years": 61,
+      "derived_is_minor": false
+    }
+  }
+}
