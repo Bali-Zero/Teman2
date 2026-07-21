@@ -39,6 +39,7 @@ garuda-pool-builder = "zantara_media.cli.garuda_pool_builder:main"
 garuda-gc = "zantara_media.cli.garuda_gc:main"
 garuda-bootstrap = "zantara_media.cli.garuda_bootstrap:main"
 magazine-publish = "zantara_media.cli.magazine_publish:main"
+magazine-prepare = "zantara_media.cli.magazine_prepare:main"
 magazine-research-worker = "zantara_media.cli.magazine_research_worker:main"
 magazine-operations-worker = "zantara_media.cli.magazine_operations_worker:main"
 

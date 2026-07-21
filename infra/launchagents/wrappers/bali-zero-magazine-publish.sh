@@ -193,6 +193,16 @@ case "$MODE" in
         ;;
 esac
 
+if [ "$MODE" = "morning" ] && [ "${MAGAZINE_PREPARE_INPUTS:-true}" = "true" ]; then
+    log "preparing collector projections mode=morning"
+    cd "$MEDIA_DIR"
+    PYTHONPATH="$MEDIA_DIR" run_with_timeout \
+        "$PYTHON_BIN" -m zantara_media.cli.magazine_prepare morning \
+        --repo-root "$ROOT" \
+        --state-dir "$STATE_DIR" \
+        --cutoff "$CUTOFF"
+fi
+
 preflight_manifest "$INPUT" >> "$LOG" 2>&1
 
 if [ "$PUBLISH_ENABLED" = "true" ]; then
