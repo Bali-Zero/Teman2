@@ -100,7 +100,7 @@ jobs:
           echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
           echo "::notice::immune-relevant=$RELEVANT ($(printf '%s\n' "$CHANGED" | grep -c . ) changed files)"
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
