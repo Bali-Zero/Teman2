@@ -26,6 +26,8 @@ on:
       - "scripts/wr2_ir_shadow_replay.py"
       - "scripts/wr2_editorial_pregate.py"
       - "scripts/wr2_pregate_shadow.py"
+      - "scripts/wr2_planner_writer.py"
+      - "scripts/wr2_pw_shadow.py"
       - "scripts/tests/test_wr2_queue_hygiene.py"
       - "scripts/tests/test_wr2_visibility_chain.py"
       - "scripts/tests/test_wr2_rerender_requeue.py"
@@ -34,6 +36,7 @@ on:
       - "scripts/tests/test_wr2_daily_reconciler.py"
       - "scripts/tests/test_wr2_carousel_ir.py"
       - "scripts/tests/test_wr2_editorial_pregate.py"
+      - "scripts/tests/test_wr2_planner_writer.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
       - ".github/workflows/wr2-queue-tests.yml"
@@ -69,4 +72,5 @@ jobs:
             scripts/tests/test_wr2_daily_reconciler.py \
             scripts/tests/test_wr2_carousel_ir.py \
             scripts/tests/test_wr2_editorial_pregate.py \
+            scripts/tests/test_wr2_planner_writer.py \
             -q
