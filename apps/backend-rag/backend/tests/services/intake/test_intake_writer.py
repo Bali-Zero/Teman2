@@ -676,7 +676,9 @@ def test_company_doc_category_maps_to_company_folder(doc_type, expected_category
 # Difetto 3 — client-card enrichment from extracted document fields
 # (passport_number/expiry/dob/nationality feed the client profile on approve).
 # --------------------------------------------------------------------------- #
-async def _set_passport_proposal(conn: asyncpg.Pool, proposal_id: int, client_id: int) -> None:
+async def _set_passport_proposal(
+    conn: asyncpg.Pool, proposal_id: int, client_id: int, passport_no: str = "YC0000001"
+) -> None:
     """Rewrite a seeded proposal to a passport doc with nested {value} fields,
     mirroring the real FASE-3 extract shape (extract.py:252)."""
     routing = {
@@ -685,7 +687,7 @@ async def _set_passport_proposal(conn: asyncpg.Pool, proposal_id: int, client_id
         "practice_id": None,
         "doc_type": "passport",
         "fields": {
-            "passport_no": {"value": "YC0000001", "confidence": 0.99, "source_page": 1},
+            "passport_no": {"value": passport_no, "confidence": 0.99, "source_page": 1},
             "expiry": {"value": "2034-06-19", "confidence": 0.98, "source_page": 1},
             "dob": {"value": "1987-07-01", "confidence": 0.97, "source_page": 1},
             "nationality": {"value": "ITALIANA", "confidence": 0.95, "source_page": 1},
@@ -2037,23 +2039,30 @@ async def test_leva3_nameid_holds_on_name_contradiction(pool, seed, monkeypatch)
 
 async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, monkeypatch):
     """npwp identity-backfill wire (m248): a COMPLETE 15/16-digit npwp is written
-    digits-canonical; a partial OCR fragment or an overlong garble must NEVER be
-    stored — it would pollute the key book the strong-id matcher corroborates
-    against (guilt AND innocence, cicatrix #3)."""
+    digits-canonical (innocence, on an EMPTY card); a partial OCR fragment or an
+    overlong garble must NEVER be stored — it would pollute the key book the
+    strong-id matcher corroborates against (guilt, cicatrix #3). npwp is also an
+    F1 fill-only column (client_enricher._IDENTITY_FILL_ONLY_COLUMNS): once a
+    client already carries a value, a SECOND differently-normalized value —
+    even a well-formed one — is a conflict to quarantine, never a silent
+    correction (GATE-11 identity-safety, research/operations/2026-07-18-intake-
+    identity-backfill-design.md §3 rule 11)."""
     from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
 
     async with pool.acquire() as conn:
-        # formatted legacy 15-digit → stored as bare digits (innocence: full read lands)
+        # formatted legacy 15-digit, fresh card → stored as bare digits
         written = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "01.234.567.8-901.234"}}
         )
         assert written.get("npwp") == "012345678901234"
-        # 16-digit NIK-format → stored
+        # a well-formed 16-digit NIK-format value on top of the now-filled card is
+        # a fill-only CONFLICT, not a silent overwrite — the card keeps the first value
         written16 = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
         )
-        assert written16.get("npwp") == "0123456789012345"
-        # 10-digit fragment → dropped (guilt), card keeps the previous full value
+        assert "npwp" not in written16
+        assert written16.get("_skipped_conflicts") == ["npwp"]
+        # 10-digit fragment → dropped (guilt) before fill-only is even consulted
         frag = await enrich_client_from_extracted_fields(
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "0123456789"}}
         )
@@ -2067,10 +2076,16 @@ async def test_enrichment_npwp_full_number_written_fragment_never(pool, seed, mo
             conn, seed["cid_a"], "npwp", {"npwp_number": {"value": "٠1234567890123٤5"}}
         )
         row = await conn.fetchrow("SELECT npwp FROM clients WHERE id=$1", seed["cid_a"])
+        # a fresh, still-empty card DOES accept the 16-digit NIK-format directly —
+        # confirms the rejection above is fill-only-conflict, not a format ban
+        written16_fresh = await enrich_client_from_extracted_fields(
+            conn, seed["cid_b"], "npwp", {"npwp_number": {"value": "0123456789012345"}}
+        )
     assert frag == {}
     assert garble == {}
     assert unicode_mix == {}
-    assert row["npwp"] == "0123456789012345"
+    assert row["npwp"] == "012345678901234", "fill-only must protect the first-written value"
+    assert written16_fresh.get("npwp") == "0123456789012345"
 
 
 async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeypatch):
@@ -2268,3 +2283,307 @@ async def test_delivery_resolves_whatsapp_only_client(pool, seed, monkeypatch):
         result=SimpleNamespace(doc_id=None, audit_id=None),
     )
     assert captured["sender_phone"] == "62" + core
+
+
+
+# --------------------------------------------------------------------------- #
+# F1/F2 — identity-backfill council red-team fixes (research/operations/
+# 2026-07-18-intake-identity-backfill-design.md §8, findings F1+F2):
+#   F1 — the enricher is FILL-ONLY on identifier columns (passport_number/
+#        kitas_number/npwp/nib): a conflicting extracted value is skipped, never
+#        silently overwritten, and surfaced via `_skipped_conflicts`.
+#   F2 — rollback covers the 'auto_routed' terminal state (system commits) and
+#        CAS-reverts the identifier columns the rolled-back document enriched.
+# --------------------------------------------------------------------------- #
+async def test_enrichment_skips_conflicting_passport_fill_only(pool, seed):
+    """F1: an existing passport_number that conflicts with the extracted value is
+    never overwritten — the enricher returns `_skipped_conflicts` and leaves the
+    column untouched (the pre-F1 behavior overwrote the card here)."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET passport_number=$1 WHERE id=$2", "AB123456", seed["cid_a"]
+        )
+        written = await enrich_client_from_extracted_fields(
+            conn,
+            seed["cid_a"],
+            "passport",
+            {"passport_no": {"value": "ZZ999999"}},
+        )
+        after = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert "passport_number" not in written
+    assert written["_skipped_conflicts"] == ["passport_number"]
+    assert after["passport_number"] == "AB123456", "conflicting id must not overwrite the card"
+
+
+async def test_enrichment_equal_normalization_still_fills(pool, seed):
+    """F1 innocence test: equal-normalization (formatting-only difference, e.g.
+    separators) is NOT a conflict — the existing GATE-11 write+promote behavior
+    is unchanged."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET passport_number=$1 WHERE id=$2", "AB123456", seed["cid_a"]
+        )
+        written = await enrich_client_from_extracted_fields(
+            conn,
+            seed["cid_a"],
+            "passport",
+            {"passport_no": {"value": "AB 123456"}},  # same id, cosmetic space
+        )
+    assert "_skipped_conflicts" not in written
+    assert written["passport_number"] == "AB 123456"
+
+
+class _FakeNpwpNibConn:
+    """Minimal Connection stand-in for a schema that HAS npwp/nib (local
+    nuzantara_dev currently lacks both columns — verified live this session via
+    information_schema — so the real DB pool can't exercise this branch; the
+    schema-drift guard in client_enricher.py already no-ops there)."""
+
+    def __init__(self, client_row: dict) -> None:
+        self.client_row = client_row
+        self.execute_calls: list[tuple[str, tuple]] = []
+
+    async def fetch(self, _query: str, *_args) -> list[dict[str, str]]:
+        return [
+            {"column_name": c}
+            for c in ("full_name", "passport_number", "kitas_number", "npwp", "nib", "custom_fields")
+        ]
+
+    async def fetchrow(self, _query: str, *_args) -> dict:
+        return dict(self.client_row)
+
+    async def execute(self, query: str, *args) -> str:
+        self.execute_calls.append((query, args))
+        return "UPDATE 1"
+
+
+async def test_enrichment_npwp_nib_fill_only_conflict_and_fill():
+    """F1 explicitly covers npwp/nib, not just passport/kitas (design doc §8: the
+    enricher's fill-only discipline applies to all four identifier columns)."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
+    conflict_conn = _FakeNpwpNibConn(
+        {"full_name": "Existing Client", "npwp": "123456789012345", "nib": None}
+    )
+    written = await enrich_client_from_extracted_fields(
+        conflict_conn, 999, "npwp", {"npwp_number": {"value": "999999999999999"}}
+    )
+    assert "npwp" not in written
+    assert written["_skipped_conflicts"] == ["npwp"]
+    assert conflict_conn.execute_calls == []
+
+    fill_conn = _FakeNpwpNibConn({"full_name": "Existing Client", "npwp": None, "nib": None})
+    written2 = await enrich_client_from_extracted_fields(
+        fill_conn, 999, "nib", {"nib_number": {"value": "1234567890123"}}
+    )
+    assert written2["nib"] == "1234567890123"
+
+
+async def test_execute_commit_logs_and_skips_conflicting_identifier(pool, seed, monkeypatch, caplog):
+    """Writer call site (F1): a conflict surfaced by the enricher is logged with the
+    proposal id + column name (never the values, Law 2), and the document commit
+    still succeeds — a skipped identifier field must never roll back the file."""
+    import logging
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET passport_number=$1 WHERE id=$2", "AB123456", seed["cid_a"]
+        )
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"], passport_no="ZZ999999")
+
+    caplog.set_level(logging.WARNING, logger="zantara.intake.writer")
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "committed", "a skipped identifier must not block the doc commit"
+
+    async with pool.acquire() as conn:
+        after = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert after["passport_number"] == "AB123456"
+
+    messages = [
+        rec.getMessage() for rec in caplog.records if rec.name == "zantara.intake.writer"
+    ]
+    assert any(
+        "enrichment_conflict_skipped" in m and str(seed["p_a"]) in m and "passport_number" in m
+        for m in messages
+    ), messages
+
+
+async def test_execute_commit_audit_row_carries_enriched_columns(pool, seed, monkeypatch):
+    """F2a: the committed audit row's `plan` JSON records `enriched_columns`
+    (column NAMES only, never values — Law 2)."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "committed"
+
+    async with pool.acquire() as conn:
+        audit = await conn.fetchrow(
+            "SELECT plan FROM intake_commit_audit "
+            "WHERE proposal_id=$1 AND outcome='committed' ORDER BY id DESC LIMIT 1",
+            seed["p_a"],
+        )
+    plan_json = json.loads(audit["plan"]) if isinstance(audit["plan"], str) else audit["plan"]
+    assert set(plan_json["enriched_columns"]) >= {
+        "passport_number",
+        "passport_expiry",
+        "date_of_birth",
+        "nationality",
+    }
+
+
+async def test_rollback_auto_routed_reopens_to_review_pending(pool, seed, monkeypatch):
+    """F2 (a): a system-committed 'auto_routed' proposal (never claimed by a human)
+    reopens to 'review_pending' on rollback, not 'review_claimed'."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET status='review_pending' WHERE id=$1",
+            seed["p_a"],
+        )
+        async with conn.transaction():
+            prop = await conn.fetchrow(
+                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+            )
+            plan = await intake_writer.plan_commit(
+                prop, conn, committed_by="system:refinery-deterministic"
+            )
+            assert plan.blocked is False
+            result = await intake_writer.execute_commit(
+                plan,
+                conn,
+                dry_run=False,
+                advance_from="review_pending",
+                advance_to="auto_routed",
+            )
+        assert result.outcome == "committed"
+    assert await _proposal_status(pool, seed["p_a"]) == "auto_routed"
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            rb = await intake_writer.rollback_commit(
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=plan.idempotency_key,
+                committed_by=ADMIN["email"],
+            )
+    assert rb.outcome == "rolled_back"
+    assert await _proposal_status(pool, seed["p_a"]) == "review_pending"
+
+
+async def test_rollback_reverts_passport_number_on_cas_hit(pool, seed, monkeypatch):
+    """F2b: the identifier column the rolled-back document enriched is reverted to
+    NULL when the client's current value still matches what that document wrote
+    (CAS hit — nothing changed the value since the commit)."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    idem_key = r.json()["would_commit"]["idempotency_key"]
+
+    async with pool.acquire() as conn:
+        before = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert before["passport_number"] == "YC0000001"
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            res = await intake_writer.rollback_commit(
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=idem_key,
+                committed_by=ADMIN["email"],
+            )
+    assert res.outcome == "rolled_back"
+
+    async with pool.acquire() as conn:
+        after = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert after["passport_number"] is None, "CAS hit — value unchanged since commit, must revert"
+
+
+async def test_rollback_leaves_passport_number_on_cas_miss(pool, seed, monkeypatch):
+    """F2b: a human correction landed on the client's card AFTER the commit but
+    BEFORE the rollback — the newer truth must survive; de-enrichment is a CAS
+    miss and skips with a warning rather than clobbering it."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    idem_key = r.json()["would_commit"]["idempotency_key"]
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET passport_number=$1 WHERE id=$2", "CORRECTED9", seed["cid_a"]
+        )
+        async with conn.transaction():
+            res = await intake_writer.rollback_commit(
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=idem_key,
+                committed_by=ADMIN["email"],
+            )
+    assert res.outcome == "rolled_back"
+
+    async with pool.acquire() as conn:
+        after = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert after["passport_number"] == "CORRECTED9", "CAS miss — newer human truth must survive rollback"
+
+
+async def test_rollback_skips_deenrichment_for_legacy_audit(pool, seed, monkeypatch, caplog):
+    """F2b innocence test: an audit row written before this feature (no
+    `enriched_columns` key) must not attempt de-enrichment — it logs a warning
+    and leaves the client card exactly as it is."""
+    import logging
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    idem_key = r.json()["would_commit"]["idempotency_key"]
+
+    # Simulate a pre-F2a audit row by stripping the key this feature added.
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE intake_commit_audit SET plan = plan - 'enriched_columns' "
+            "WHERE proposal_id=$1 AND outcome='committed'",
+            seed["p_a"],
+        )
+
+    caplog.set_level(logging.WARNING, logger="zantara.intake.writer")
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            res = await intake_writer.rollback_commit(
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=idem_key,
+                committed_by=ADMIN["email"],
+            )
+    assert res.outcome == "rolled_back"
+
+    async with pool.acquire() as conn:
+        after = await conn.fetchrow("SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"])
+    assert after["passport_number"] == "YC0000001", "legacy audit → no de-enrichment, value survives"
+
+    messages = [
+        rec.getMessage() for rec in caplog.records if rec.name == "zantara.intake.writer"
+    ]
+    assert any("deenrich_skip_legacy" in m for m in messages), messages
