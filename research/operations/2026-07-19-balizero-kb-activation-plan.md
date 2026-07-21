@@ -192,6 +192,24 @@ sources:
   decided unilaterally under the K7 cure's own "identity resolution FIRST"
   principle (identifying the right principal/role is the missing step, not
   mine to skip by picking one).
+- **Levers #1/#2 — safe-testing executed, inconclusive by design (2026-07-21,
+  on Zero's explicit "testatele in sicurezza" — not an activation)**: the
+  golden abstain-threshold suite (177 tests) ran byte-identical
+  (176 passed/1 skipped/0 failed) under baseline, `ENABLE_HYBRID_SEARCH=true`,
+  and `ENABLE_RERANKER=true` locally-overridden. **This is not evidence of
+  safety** — the suite never exercises the retrieval switch itself
+  (`agentic/tools.py:171`, `hybrid_search_with_reranking` vs
+  `search_with_reranking`, genuinely different algorithms), so a 0-delta
+  result there is structurally guaranteed regardless of whether the flags
+  are actually safe. A real answer needs either an operator-provisioned
+  RBAC JWT for `apps/evaluator/rag_eval/golden_set.json` against a live
+  server, or direct Qdrant instrumentation under both flag states — both
+  bigger asks, not decided here. Flags remain OFF. Also found:
+  `evaluate_search_quality.py`'s advertised "online" mode is a stub that
+  always falls back to synthetic scores (esiste≠armato, cicatrix #2);
+  installed `sentence-transformers==5.4.1` is below the `>=5.6.0` floor
+  pinned in requirements/lock. Full finding: memory
+  `discovery_hybrid_search_abstain_test_structurally_blind_2026_07_21`.
 - **Lever #8 DONE** (2026-07-21, PR #2927): CLAUDE.md §9's "KBLI flat payload"
   invariant conflated two unrelated stores. Live-verified via
   `information_schema.columns` + a `metadata` key-presence sweep on all 1,563
@@ -252,58 +270,95 @@ sources:
   Zero's attention on its own, unrelated to hygiene. **NOT executed**:
   `notebook_delete`/`notebook_rename` were never called — this is a proposal
   only, per standing rule (destructive action needs Zero's explicit confirm).
-- **Lever #13 grounded, not executed** (2026-07-21). The 517MB the
-  2026-07-19 audit "verified on disk" is real but lives ONLY on the main
-  checkout (`data/kb_sources/**/*.pdf` is gitignored — invisible from this
-  isolated worktree, a genuinely different failure mode than "the data
-  doesn't exist," worth remembering next time a worktree session finds an
-  audited local-data claim empty). Confirmed on the main checkout: 9 PDFs in
-  `tier1_gaps/` + 5 in `2026_updates/` (14 total, ~600MB), matching the
-  scripts' `TIER1_LAWS`/law-list declarations.
-  **F5 embedding-invariant gate — verified structurally satisfied by
-  existing code, no fix needed**: point IDs are `uuid.uuid5(NAMESPACE_LEGAL,
-  chunk_id)` where `chunk_id = f"{doc_id}_chunk_{i}"` and
-  `doc_id = f"{type_abbrev}_{number}_{year}"` — fully deterministic,
-  idempotent re-runs overwrite rather than duplicate
-  (`hierarchical_indexer.py:311-338`). `create_embeddings_generator()` pins
-  `text-embedding-3-small`/1536 dims (`embeddings.py:254-256`, matches the
-  already-passing `test_openai_embedding_model_is_frozen` tripwire). KG
-  extraction (Stage 7, would write to Postgres) is currently
-  `self.kg_enabled = False` — "TEMP DISABLED: KG extraction causes OOM on
-  2GB Fly machine" (`legal_ingestion_service.py:212`) — so a run today has
-  no Postgres-KG risk surface. Google Drive upload (Stage 1.5) is explicitly
-  non-blocking on failure (`legal_ingestion_service.py:395-407`) — relevant
-  given lever #5's finding that the SYSTEM Drive OAuth token is dead in
-  prod; a run would just skip the backup-to-Drive step, not fail outright.
-  **Freshness check — the actual decision-relevant finding, done via
-  read-only query against `parent_documents` (Postgres, the same table
-  `index_legal_document()` writes to, correlates 1:1 with Qdrant chunk
-  presence for a given `doc_id`)**: of the 13 documents named across both
-  scripts' law lists, **5 are already ingested** — `PP_31_2013` (10 BAB,
-  ingested 2025-12-18), `UU_6_1983` (11 BAB, 2026-03-08), `UU_1_2023` (35
-  BAB, 2026-03-07), `Permen_18_2021` = the PermenATR/BPN 18/2021 doc (14
-  BAB, 2026-05-10), `Permen_22_2023` = the base regulation Permenkumham
-  11/2024 amends (8 BAB, 2026-04-05) — all ingested via some OTHER, earlier
-  legal-corpus effort, not these two scripts (scattered dates rule out a
-  single past run of either script, which would show uniform timestamps).
-  **8 remain genuine gaps**: `PP_18_2021` (Hak Pakai/HGB — the script's own
-  comment calls this "il gap più critico"), `PP_103_2015` (property foreign
-  ownership), `Permenkumham_27_2021`, `Permenkumham_29_2021`,
-  `Permenkumham_11_2024` (the amendment itself, vs. its already-ingested
-  base), `PMK_1_2026` (Coretax), `PP_9_2026` (THR), and — lower confidence,
-  title/ID pattern search came up empty but Indonesian regional-regulation
-  numbering is less predictable — `Pergub_Bali_14_2023` and
-  `SE_Gubernur_Bali_09_2025`.
-  **Deliberately NOT run**: the actual ingestion of the 8 real gaps is a
-  live write to production Qdrant (`legal_unified`/`legal_unified_2026`,
-  81,636 + 15,410 points respectively) and Postgres, in a domain
-  (property/immigration/tax legal regulations) where a bad answer is real
-  client harm (cf. the KBLI-navigator lane's Darinka dispute lesson) — out
-  of proportion to execute unprompted on a "go" that was scoped to
-  investigation, not a live production write. Also can't be run from this
-  isolated worktree as-is (gitignored source data). Ready to execute on
-  explicit go: either from the main checkout, or by staging the 8 gap PDFs
-  into a fresh worktree.
+- **Lever #13 — 9/9 ingested + Qdrant-verified, only 3/9 demonstrably new
+  content, Postgres backfill pending Zero (2026-07-21, executed on Zero's
+  explicit "sì, carica gli 8 documenti mancanti")**. Corrects an arithmetic
+  error in the original grounding below: of the 13 documents named across
+  both scripts' law lists, **4** were already ingested, not 5 —
+  `Permen_22_2023` doesn't belong in that count; it's the base regulation
+  Permenkumham 11/2024 amends, a tangential discovery from the grounding
+  search, not one of the 13 named targets. The remaining **9**, not 8, were
+  genuine gaps — `PP_18_2021`, `PP_103_2015`, `Permenkumham_27_2021`,
+  `Permenkumham_29_2021`, `Permenkumham_11_2024`, `PMK_1_2026`, `PP_9_2026`,
+  `Pergub_Bali_14_2023`, `SE_Gubernur_Bali_09_2025` — all 9 processed today.
+
+  **Two new bugs found; one fixed, one deferred to Zero:**
+  - *Fixed*: `ingest_2026_laws.py` targeted `legal_unified_2026`, a
+    collection absent from `collection_registry.py`'s
+    `CANONICAL_COLLECTION_ALIASES` and never selected by any live retrieval
+    routing table (`multi_hop.py`/`query_planner.py`/`kg_orchestrator.py`/
+    `agentic/tools.py` all route legal queries to `legal_unified` only) —
+    content ingested there would sit unreachable by any user query, and is
+    why the script hard-crashed on the first attempt
+    (`LegalIngestIntegrityError`, preflight allowlist rejection). One-line
+    retarget to `legal_unified` (same target `ingest_tier1_gaps.py` already
+    used correctly), verified via a side-effect-free import check before
+    fixing. PR #2950 (commit `9c26b63`), OPEN/MERGEABLE, squash auto-merge
+    armed — merges itself once required CI is green.
+  - *Deferred*: `parent_documents` (Postgres) writes are completely broken
+    — stale password for role `backend_rag_v2` in `apps/backend-rag/.env`'s
+    `DATABASE_URL` (verified: the Fly Postgres proxy tunnel is up, the role
+    exists server-side with `rolcanlogin`, specifically the password
+    doesn't authenticate). Caught and logged as a non-blocking WARNING by
+    `hierarchical_indexer.py`'s existing best-effort design, so ingestion
+    still reports `success:true` while writing zero registry rows — **0 net
+    new Postgres rows across all 9 documents today** (312 distinct/1,865
+    total BAB rows, unchanged). Decision: proceed Qdrant-only — the
+    collection every live query actually hits — rather than block on a
+    credential round-trip; deterministic UUID5 point IDs make a later
+    Postgres-only backfill re-run safe and non-duplicating once Zero
+    refreshes the credential.
+
+  **Also found, not fixed (tracked, cosmetic-to-moderate severity)**:
+  `LegalMetadataExtractor` mis-extracts the regulation number from
+  Berita-Negara footer noise instead of the real "Nomor X Tahun Y" text —
+  hit 6 of today's 9 documents. Usually just a wrong number in the doc_id
+  (e.g. `PP_18_2021` → `PP_6630_2021`) — cosmetic, breaks nothing (Qdrant
+  content is genuinely correct on spot-check; search doesn't key on
+  doc_id). But 2 cases mis-extracted the regulation *type* too —
+  `PP_9_2026` → `UU_17_2026` and `Pergub_Bali_14_2023` → `UU_14_2023` —
+  misfiling a government regulation and a Bali governor circular as if
+  they were national laws (UU = Undang-Undang, a different legal rank
+  entirely). Doesn't affect retrieval today (nothing keys on doc_id for
+  ranking), but would produce a wrong-looking citation if doc_id is ever
+  surfaced directly. Confirmed pre-existing and recurring, not new today —
+  `PP_6618_2021` already sat in Postgres from 2026-04-05 with the same
+  signature. Root-cause fix is a `LegalMetadataExtractor` regex change —
+  real work, out of scope today.
+
+  **Qdrant reconciliation (independently verified via two separate tool
+  paths)**: `legal_unified_hybrid_hybrid` 81,636 → **82,710** (+1,074,
+  exactly `PP_9_2026`(+58) + `Pergub_Bali_14_2023`(+954) +
+  `SE_Gubernur_Bali_09_2025`(+62), zero rounding). `legal_unified_2026`
+  unchanged at 15,410 (confirms the collection-routing fix correctly
+  stopped writing there). **The other 6 documents added zero net new
+  points despite each upserting hundreds of chunks** — the deterministic
+  point-ID scheme means this is only possible if those exact chunk_ids
+  (under their Bug-A-mislabeled doc_ids) already existed before today.
+  Practical read: **only 3 of the 9 "gap" documents demonstrably added new
+  KB content** (`PP_9_2026`, `Pergub_Bali_14_2023`,
+  `SE_Gubernur_Bali_09_2025`); the other 6 were most likely already
+  searchable under mislabeled IDs, and today's runs mainly re-confirmed
+  rather than newly enabled them.
+
+  **Live hybrid-search verification** (per-document natural-language query
+  through the real `HybridSearchService`, not a mock): 7/9 rank #1-#3 on
+  the first try — genuinely and immediately retrievable.
+  `Permenkumham_27_2021` missed a generic top-10 but ranked #2 on a more
+  topic-specific query (not a real gap, just query specificity in a
+  crowded topic). `Permenkumham_29_2021` (KITAS, the largest add at 340
+  chunks/241 Pasal) buried at #9-10 even on distinctive-term queries,
+  competing against several large pre-existing immigration regulations —
+  content is genuinely present and on-topic, but its practical
+  retrieval-ranking value today is unproven, not a clean win. This is
+  exactly the class of problem the levers #1/#2 safe-testing finding above
+  found the golden abstain suite structurally can't evaluate — a live,
+  concrete example worth keeping in mind if that investigation is ever
+  picked back up.
+
+  F5 embedding-invariant gate (below) held empirically: idempotent
+  overwrites confirmed on all 6 already-present documents, zero
+  duplication, `text-embedding-3-small`/1536 unchanged throughout.
 
 ## Standing rules for this ledger
 
