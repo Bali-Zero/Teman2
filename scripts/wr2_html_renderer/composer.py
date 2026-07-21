@@ -42,7 +42,10 @@ from .renderer import RenderResult, _stage_assets, render_html_files
 
 logger = logging.getLogger("wr2.composer")
 
-_BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
+# Repo-first (same cure as tokens_to_css.py + _REPO_ROOT_FOR_CONSTITUTION,
+# 2026-07-21): CI runners have no ~/.claude skill install.
+_REPO_BRAND_DIR = Path(__file__).resolve().parents[2] / "skills" / "bali-zero-brand"
+_BRAND = _REPO_BRAND_DIR if _REPO_BRAND_DIR.is_dir() else Path.home() / ".claude" / "skills" / "bali-zero-brand"
 _LAYOUTS = _BRAND / "layouts"
 
 # The layout families that have real HTML/CSS skeletons (GROUND phase verified).

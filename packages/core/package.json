@@ -20,6 +20,7 @@
     "./components/ThemeProvider": "./components/ThemeProvider.tsx",
     "./components/ProgressRing": "./components/ProgressRing.tsx",
     "./components/DeadlineBadge": "./components/DeadlineBadge.tsx",
+    "./components/FactBadge": "./components/FactBadge.tsx",
     "./components/TrustBand": "./components/TrustBand.tsx",
     "./components/CTAHandoff": "./components/CTAHandoff.tsx",
     "./components/FunnelFrame": "./components/FunnelFrame.tsx",

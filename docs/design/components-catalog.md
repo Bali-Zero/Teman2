@@ -3,7 +3,7 @@
 
 > **GENERATED build-artifact.** Do not edit by hand — run `npm run bz:brand:api`. Derived from `packages/core/components/*.tsx`.
 
-**29 components** (schema v1).
+**30 components** (schema v1).
 
 ## `AppBranchSelector`
 
@@ -201,6 +201,17 @@
   - `date`: `Date`
   - `windowDays`: `number | undefined`
 - **example**: `<DeadlineBadge date={/* Date */} />`
+
+## `FactBadge`
+
+- **import**: `@nuzantara/core/components/FactBadge`
+- **source**: `packages/core/components/FactBadge.tsx`
+- **use when**: status, label
+- **props**:
+  - `children`: `ReactNode`
+  - `className`: `string | undefined`
+  - `title`: `string | undefined`
+- **example**: `<FactBadge children={/* ReactNode */} />`
 
 ## `FilterBar`
 

@@ -5,8 +5,8 @@ import type {
   EditionPlacementV1,
   StoryVersionV1,
 } from "../contracts/publication.ts";
-import type { RoleAllowlist, Viewer } from "./authorization.ts";
-import { authorize } from "./authorization.ts";
+import type { Viewer } from "./authorization.ts";
+import { authorize, parseRoleAllowlist } from "./authorization.ts";
 import { isAssetEligible } from "./asset-eligibility.ts";
 import { requireViewer } from "./identity.ts";
 import type {
@@ -169,20 +169,6 @@ type AssetRow = Readonly<{
   status: string;
   rights_status: string;
 }>;
-
-function parseRoleAllowlist(raw: string | undefined): RoleAllowlist {
-  if (raw === undefined) throw new TypeError("role allowlist is required");
-  const parsed: unknown = JSON.parse(raw);
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new TypeError("role allowlist is invalid");
-  }
-  const candidate = parsed as Partial<RoleAllowlist>;
-  return {
-    version: candidate.version ?? "",
-    analysts: candidate.analysts ?? [],
-    operators: candidate.operators ?? [],
-  };
-}
 
 export async function requireMagazineViewer(): Promise<Viewer | null> {
   try {

@@ -10,6 +10,7 @@ export {
   DeadlineBadge,
   type DeadlineBadgeProps,
 } from "./components/DeadlineBadge";
+export { FactBadge, type FactBadgeProps } from "./components/FactBadge";
 export {
   ThemeProvider,
   ThemeScope,

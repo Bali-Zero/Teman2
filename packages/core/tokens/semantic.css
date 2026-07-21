@@ -78,6 +78,20 @@
   --state-warning: var(--color-state-warning);
   --state-danger: var(--color-state-danger);
   --state-info: var(--color-state-info);
+  /* Critical tier above danger (WS1, 2026-07-21): deep red, legible on both
+     dark and light surfaces, so no per-theme variant — matching the rest of
+     this section, which also ships no [data-theme] overrides. */
+  --status-critical: #c8102e;
+
+  /* ─── Fact badge (WS1, 2026-07-21) ─────────────────────────────
+   * "Yellow = verifiable facts" marker from bali-zero-brand
+   * regulation_badge: yellow bg, black IBM Plex Mono text. Used by the
+   * FactBadge component for KBLI codes, citations, regulation codes.
+   * Funnel-agnostic: never re-mapped by data-funnel, never read
+   * --accent-funnel. Theme-invariant by spec — no [data-theme] variants. */
+  --fact-badge-bg: #f4c430;
+  --fact-badge-fg: #000000;
+  --fact-badge-radius: 4px;
 
   /* ─── Editorial accents (funnel-agnostic) ──────────────────────
      Copper/sand/gold/blue palette used across non-funnel UI

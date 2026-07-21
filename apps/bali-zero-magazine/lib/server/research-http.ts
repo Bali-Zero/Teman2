@@ -1,33 +1,12 @@
 import type { Permission, RoleAllowlist, Viewer } from "./authorization.ts";
-import { authorize, validateRoleAllowlist } from "./authorization.ts";
+import { authorize, parseRoleAllowlist } from "./authorization.ts";
 import { requireViewer } from "./identity.ts";
 import type { ResearchJobView } from "./research-repository.ts";
 import { getMagazineBindings } from "./runtime-bindings.ts";
 import { privateNoStoreHeaders } from "./security.ts";
 
 export function currentResearchRoleAllowlist(): RoleAllowlist {
-  const raw = getMagazineBindings().ROLE_ALLOWLIST_JSON;
-  if (raw === undefined) throw new TypeError("role allowlist is required");
-  const value: unknown = JSON.parse(raw);
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new TypeError("invalid role allowlist");
-  }
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).sort().join(",") !== "analysts,operators,version" ||
-    typeof record.version !== "string" ||
-    !Array.isArray(record.analysts) ||
-    !Array.isArray(record.operators)
-  ) {
-    throw new TypeError("invalid role allowlist");
-  }
-  const current = {
-    version: record.version,
-    analysts: record.analysts as readonly string[],
-    operators: record.operators as readonly string[],
-  };
-  validateRoleAllowlist(current);
-  return current;
+  return parseRoleAllowlist(getMagazineBindings().ROLE_ALLOWLIST_JSON);
 }
 
 export async function authorizeResearchRequest(

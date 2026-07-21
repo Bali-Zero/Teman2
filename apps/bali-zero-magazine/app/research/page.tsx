@@ -3,7 +3,7 @@ import {
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import { ResearchWorkbench } from "@/components/research-workbench";
-import { authorize } from "@/lib/server/authorization";
+import { authorize, parseRoleAllowlist } from "@/lib/server/authorization";
 import { requireMagazineViewer } from "@/lib/server/magazine-read-model";
 import { publicResearchJob } from "@/lib/server/research-http";
 import {
@@ -26,11 +26,7 @@ export default async function ResearchPage() {
   if (bindings.DB === undefined)
     throw new Error("Research database is unavailable");
   const catalog = parseResearchCatalog(bindings.RESEARCH_CATALOG_JSON);
-  const allowlist = JSON.parse(bindings.ROLE_ALLOWLIST_JSON ?? "{}") as {
-    version: string;
-    analysts: string[];
-    operators: string[];
-  };
+  const allowlist = parseRoleAllowlist(bindings.ROLE_ALLOWLIST_JSON);
   const repository = createResearchRepository(bindings.DB);
   const [jobs, evidence] = await Promise.all([
     repository.listJobs(),

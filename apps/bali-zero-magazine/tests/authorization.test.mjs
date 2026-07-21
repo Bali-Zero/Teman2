@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { authorize } from "../lib/server/authorization.ts";
+import { authorize, parseRoleAllowlist } from "../lib/server/authorization.ts";
 import { requireViewer } from "../lib/server/identity.ts";
 
 const actorKeySecret = "test-actor-key-secret-with-enough-entropy";
@@ -22,6 +22,38 @@ test("authorization defaults an authenticated workspace user to reader", async (
     "role",
     "roleConfigVersion",
   ]);
+});
+
+test("missing optional role bindings allow authenticated read-only access", async () => {
+  const allowlist = parseRoleAllowlist(undefined);
+  const viewer = await requireViewer(
+    new Headers({ "oai-authenticated-user-email": "reader@example.com" }),
+    { actorKeySecret: "", roleAllowlist: allowlist },
+  );
+  assert.equal(viewer.role, "reader");
+  assert.equal(authorize(viewer, "magazine:read", allowlist).allowed, true);
+  assert.equal(authorize(viewer, "research:create", allowlist).allowed, false);
+  assert.equal(authorize(viewer, "ops:create", allowlist).allowed, false);
+});
+
+test("privileged role bindings still require an actor-key secret", async () => {
+  await assert.rejects(
+    () =>
+      requireViewer(
+        new Headers({
+          "oai-authenticated-user-email": "operator@example.com",
+        }),
+        {
+          actorKeySecret: "",
+          roleAllowlist: {
+            version: "roles.v1",
+            analysts: [],
+            operators: ["0".repeat(64)],
+          },
+        },
+      ),
+    /actor key secret is required for privileged roles/,
+  );
 });
 
 test("authorization normalizes email before deriving the actor key", async () => {

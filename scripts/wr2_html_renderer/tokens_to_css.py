@@ -28,7 +28,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-DEFAULT_TOKENS_PATH = Path.home() / ".claude" / "skills" / "bali-zero-brand" / "tokens.json"
+# Repo-first resolution (CI runners have no ~/.claude skill install — the
+# HOME-only path failed the render battery with FileNotFoundError on the very
+# PR that armed it, 2026-07-21); HOME kept as fallback for bare-skill use.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_TOKENS = _REPO_ROOT / "skills" / "bali-zero-brand" / "tokens.json"
+DEFAULT_TOKENS_PATH = (
+    _REPO_TOKENS
+    if _REPO_TOKENS.is_file()
+    else Path.home() / ".claude" / "skills" / "bali-zero-brand" / "tokens.json"
+)
 
 # Token values present in _base.css but NOT (yet) in tokens.json.
 # Provenance: SOTA pattern adoptions 2026-05-12 (_external-bench-2026-05.md) +
