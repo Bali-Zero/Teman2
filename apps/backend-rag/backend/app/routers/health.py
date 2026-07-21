@@ -213,6 +213,27 @@ def _check_resource_thresholds(process_mode: str | None) -> tuple[str | None, st
     return None, None
 
 
+def _counter_snapshot(counter: Any) -> tuple[int, dict[str, int]]:
+    """Read a Prometheus Counter's CURRENT value via its public collect() API.
+
+    Returns (total, breakdown) — total summed across every label
+    combination, breakdown keyed by the joined label values (empty dict
+    for a counter with no labels). This is a snapshot of THIS process'
+    in-memory counter (prometheus_client keeps state per-process, not
+    per-fleet) — see the "scope" field on faq_semantic_cache below.
+    """
+    total = 0
+    breakdown: dict[str, int] = {}
+    for sample in counter.collect()[0].samples:
+        if not sample.name.endswith("_total"):
+            continue  # skip the paired "_created" timestamp samples
+        total += int(sample.value)
+        if sample.labels:
+            key = ",".join(f"{k}={v}" for k, v in sorted(sample.labels.items()))
+            breakdown[key] = int(sample.value)
+    return total, breakdown
+
+
 @router.get(
     "",
     response_model=HealthResponse,
@@ -503,18 +524,81 @@ async def detailed_health(request: Request) -> dict[str, Any]:
     except Exception as e:
         services["health_monitor"] = {"status": "error", "critical": False, "error": str(e)}
 
-    # Check Query Cache
+    # Check generic query cache (backend.core.cache.CacheService — powers
+    # KG/query-expansion/embedding caching, e.g. kg_cache.py, query_expansion.py,
+    # search_service.py). NOT the WA orchestrator's FAQ/semantic cache — see
+    # faq_semantic_cache below for that. Renamed 2026-07-21 (was "query_cache",
+    # which read as "the WA cache" but measured a different service entirely).
     try:
         from backend.core.cache import get_cache_service
 
         cache_stats = get_cache_service().get_stats()
-        services["query_cache"] = {
+        services["generic_query_cache"] = {
             "status": "healthy",
             "critical": False,
             "details": cache_stats,
         }
     except Exception as e:
-        services["query_cache"] = {"status": "unavailable", "critical": False, "error": str(e)}
+        services["generic_query_cache"] = {
+            "status": "unavailable",
+            "critical": False,
+            "error": str(e),
+        }
+
+    # Check FAQ + semantic cache — the two tiers the WA orchestrator actually
+    # checks before the expensive ReAct loop (orchestrator_core.py:
+    # check_faq_cache / check_semantic_cache). Reads the real Prometheus
+    # counters those methods increment, NOT the generic cache above.
+    try:
+        from backend.app.metrics import (
+            faq_cache_errors_total,
+            faq_cache_hits_total,
+            faq_cache_misses_total,
+            semantic_cache_errors_total,
+            semantic_cache_hits_total,
+            semantic_cache_misses_total,
+        )
+
+        faq_hits, faq_hits_by_domain = _counter_snapshot(faq_cache_hits_total)
+        faq_misses, _ = _counter_snapshot(faq_cache_misses_total)
+        faq_errors, _ = _counter_snapshot(faq_cache_errors_total)
+        faq_total = faq_hits + faq_misses
+
+        sem_hits, sem_hits_by_match_type = _counter_snapshot(semantic_cache_hits_total)
+        sem_misses, _ = _counter_snapshot(semantic_cache_misses_total)
+        sem_errors, _ = _counter_snapshot(semantic_cache_errors_total)
+        sem_total = sem_hits + sem_misses
+
+        services["faq_semantic_cache"] = {
+            "status": "healthy",
+            "critical": False,
+            "details": {
+                # Made explicit on purpose: prometheus_client counters are
+                # process-local. This process may be one of several Fly
+                # machines/workers — this is NOT a fleet-wide hit-rate.
+                "scope": "per-worker (this process only), since last restart — NOT a fleet-wide aggregate",
+                "faq_cache": {
+                    "hits": faq_hits,
+                    "misses": faq_misses,
+                    "errors": faq_errors,
+                    "hit_rate": round(faq_hits / faq_total, 3) if faq_total else None,
+                    "hits_by_domain": faq_hits_by_domain,
+                },
+                "semantic_cache": {
+                    "hits": sem_hits,
+                    "misses": sem_misses,
+                    "errors": sem_errors,
+                    "hit_rate": round(sem_hits / sem_total, 3) if sem_total else None,
+                    "hits_by_match_type": sem_hits_by_match_type,
+                },
+            },
+        }
+    except Exception as e:
+        services["faq_semantic_cache"] = {
+            "status": "unavailable",
+            "critical": False,
+            "error": str(e),
+        }
 
     # Check Rate Limiter
     try:
