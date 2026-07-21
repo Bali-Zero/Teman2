@@ -1,0 +1,30 @@
+{
+  "threshold": 0.995,
+  "tuning": {
+    "tp": 207,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "error_rate": 0.0,
+    "fp_list": [],
+    "fn_list": []
+  },
+  "holdout": {
+    "tp": 218,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "error_rate": 0.0,
+    "fp_list": [],
+    "fn_list": []
+  },
+  "verdict": "PASS",
+  "excluded_artifacts": [
+    {
+      "pdf_page": 441,
+      "reason": "orphan wrapped-title continuation row, both code cells genuinely blank; conductor eye-verified against render l10-p0441-441.png; not a genuine crosswalk edge"
+    }
+  ]
+}
