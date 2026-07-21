@@ -26,15 +26,16 @@ Do not install on Air-M5. The wrapper exits unless `hostname` is `Nuzantara` or 
 
 ## Cadence
 
-- Morning edition: `06:15` WITA, after collector jobs. Target human-visible publish by `06:30` WITA.
+- Morning edition: `08:15` WITA, after the 07:00 Regulatory Watcher window. Target human-visible publish by `08:30` WITA.
 - Breaking drain: every `600` seconds, meeting the 10-minute objective for qualified official-primary or two-independent-root-source signals.
 
-## Required runtime inputs
+## Runtime inputs
 
 Default state root: `/Users/nuzantara/.local/state/bali-zero-magazine`.
 
-- `inputs/morning-YYYY-MM-DD.json`: `magazine-morning-input.v2` with projection paths for `intel-lake`, `mata-garuda`, `regulatory-watcher`, and `notebooklm`.
-- `inputs/assets-YYYY-MM-DD.json`: asset intent manifest for morning publish.
+- `inputs/morning-YYYY-MM-DD.json`: generated automatically by `magazine-prepare morning`, with projection paths for `intel-lake`, `mata-garuda`, `regulatory-watcher`, and `notebooklm`.
+- `inputs/projections/YYYY-MM-DD/*.public.json`: closed, PII-rejected public projections generated from the current collector artifacts and the safe Intel Lake columns only.
+- `inputs/assets-YYYY-MM-DD.json`: generated automatically as the morning asset-intent manifest. It remains empty until a verified image asset is explicitly bound.
 - `inputs/breaking-ready.json`: `magazine-breaking-input.v2` for one qualified public candidate.
 - `inputs/breaking-assets.json`: asset intent manifest for the Breaking packet.
 

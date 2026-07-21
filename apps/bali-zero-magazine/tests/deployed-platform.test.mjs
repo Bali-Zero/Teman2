@@ -25,7 +25,7 @@ test("Pro LaunchAgents schedule morning after collectors and Breaking within ten
   );
   assert.match(morning, /com\.balizero\.magazine\.morning/);
   assert.match(breaking, /com\.balizero\.magazine\.breaking/);
-  assert.equal(numberAfter(morning, "Hour"), 6);
+  assert.equal(numberAfter(morning, "Hour"), 8);
   assert.equal(numberAfter(morning, "Minute"), 15);
   assert.ok(numberAfter(breaking, "StartInterval") <= 600);
   assert.match(
@@ -56,6 +56,7 @@ test("publisher wrapper is Pro-only, locked, timed, and payload-secret safe", as
   assert.match(wrapper, /run_with_timeout/);
   assert.match(wrapper, /security find-generic-password -s bali-zero-magazine/);
   assert.match(wrapper, /MAGAZINE_PUBLISH_ENABLED/);
+  assert.match(wrapper, /zantara_media\.cli\.magazine_prepare/);
   assert.match(wrapper, /zantara_media\.cli\.magazine_publish/);
   assert.match(wrapper, /--required-system-id/);
   assert.match(wrapper, /intel-lake mata-garuda regulatory-watcher notebooklm/);
@@ -101,7 +102,7 @@ test("automation reference includes repo-canon magazine jobs without rewriting l
   const reference = await text("docs/AUTOMATIONS_REFERENCE.md");
   assert.match(reference, /Repo-canon additions pending live snapshot/);
   assert.match(reference, /com\.balizero\.magazine\.morning/);
-  assert.match(reference, /06:15 WITA/);
+  assert.match(reference, /08:15 WITA/);
   assert.match(reference, /com\.balizero\.magazine\.breaking/);
   assert.match(reference, /600s/);
 });
