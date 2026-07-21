@@ -5,19 +5,23 @@ test.describe("Theme Toggle", () => {
   test("html element does not have hardcoded dark class", async ({ page }) => {
     await page.goto("/");
     // The root html should NOT have className="dark" anymore
-    // (it uses data-theme attribute from next-themes)
+    // (the canonical core ThemeProvider uses the data-theme attribute)
     const htmlClass = await page.locator("html").getAttribute("class");
-    // After next-themes, class may be empty or set by next-themes
-    // The important thing is we don't have the old hardcoded "dark"
-    // next-themes sets data-theme instead
+    // class may be empty or carry utilities; the old hardcoded "dark" is gone
+    // core ThemeProvider sets data-theme instead
+    void htmlClass;
     const dataTheme = await page.locator("html").getAttribute("data-theme");
     expect(dataTheme).toBeTruthy();
   });
 
-  test("data-theme defaults to dark", async ({ page }) => {
+  test("data-theme defaults to editorial on the public host", async ({
+    page,
+  }) => {
     await page.goto("/");
+    // Pre-paint script in app/layout.tsx: kita./prime. → operative-dark,
+    // my./zantara. → operative-light, everything else (public/dev) → editorial.
     const dataTheme = await page.locator("html").getAttribute("data-theme");
-    expect(dataTheme).toBe("dark");
+    expect(dataTheme).toBe("editorial");
   });
 
   test("ThemeProvider applies data-theme attribute", async ({ page }) => {
