@@ -711,7 +711,11 @@ const magazineWorkerPromise = import(
 
 async function render(
   pathname,
-  { authenticated = true, db = createFixtureDb() } = {},
+  {
+    authenticated = true,
+    db = createFixtureDb(),
+    runtimeBindings = appEnv(db),
+  } = {},
 ) {
   const { default: worker } = await magazineWorkerPromise;
   const headers = new Headers({ accept: "text/html" });
@@ -720,7 +724,7 @@ async function render(
   }
   return worker.fetch(
     new Request(`http://localhost${pathname}`, { headers }),
-    appEnv(db),
+    runtimeBindings,
     {
       waitUntil() {},
       passThroughOnException() {},
@@ -956,6 +960,23 @@ test("anonymous readers receive a protected shell without editorial data", async
     html,
     /Bali visa files move to a stricter evidence standard/,
   );
+});
+
+test("Sites-authenticated readers can read when optional role bindings are absent", async () => {
+  const db = createFixtureDb();
+  const response = await render("/", {
+    db,
+    runtimeBindings: {
+      DB: db,
+      ASSETS: {
+        fetch: async () => new Response("Not found", { status: 404 }),
+      },
+    },
+  });
+  assertProtectedHtml(response);
+  const html = await response.text();
+  assert.match(html, /The Morning File/);
+  assert.doesNotMatch(html, /Workspace access required/i);
 });
 
 test("worker security wrapper mutates protected HTML only", async () => {
