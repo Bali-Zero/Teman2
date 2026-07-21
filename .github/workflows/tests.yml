@@ -107,6 +107,13 @@ jobs:
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
           grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit.txt
+          # cuda-toolkit is an un-pinned transitive dep that uv resolves at
+          # install time (see the install step above) — pip still pulls it into
+          # the audit closure and --require-hashes then demands a hash for it
+          # (seen failing live 2026-07-21). Pin it explicitly with the observed
+          # archive hash so the audit stays hash-pinned without touching the
+          # uv-managed lockfile.
+          echo 'cuda-toolkit==13.0.3 --hash=sha256:d693caaa261214ddd7dbb60d68e71cbed884e68c2be7509778f3051da0b91c3f' >> /tmp/requirements-audit.txt
           pip-audit --strict --require-hashes --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855 \
             --ignore-vuln PYSEC-2025-217 \

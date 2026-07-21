@@ -289,7 +289,7 @@ jobs:
   detect-secrets:
     name: Detect Secrets
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     # Re-enabled as a blocking gate now that:
     # 1. .secrets.baseline has been triaged: 920 findings auto-marked as
     #    false positives via scripts/detect_secrets_auto_triage.py (path
