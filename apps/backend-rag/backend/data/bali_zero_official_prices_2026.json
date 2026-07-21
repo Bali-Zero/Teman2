@@ -318,6 +318,16 @@
         "description_en": "Onshore extension of an existing E33G Remote Worker KITAS.",
         "icon_id": "kitas-remote"
       },
+      "E33 Second Home (5 Years)": {
+        "name": "E33 Second Home (5 Years)",
+        "price": "39.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "5 years",
+        "notes": "All-inclusive price. Requires the client's own qualifying USD 130,000 deposit at a state-owned Indonesian bank (or USD 1,000,000 qualifying property); Bali Zero never holds client funds.",
+        "description_en": "Second Home Visa / KITAS (E33) for foreigners who hold a qualifying USD 130,000 deposit in their own name at a state-owned Indonesian bank (or a USD 1,000,000 qualifying property). Valid 5 years, renewable; non-working residency. Bali Zero manages document preparation, submission, and the 90-day post-grant commitment gate; the deposit always remains in the client's own account.",
+        "icon_id": "kitas-investor"
+      },
       "Spouse 1 Year (Altus/Onshore)": {
         "name": "Spouse 1 Year (Altus/Onshore)",
         "price": "13.500.000 IDR",
