@@ -74,7 +74,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         report = asyncio.run(_run(args))
-    except (RuntimeError, asyncpg.PostgresError) as exc:
+    except (RuntimeError, asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
         parser.error(str(exc))
     sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return 0
