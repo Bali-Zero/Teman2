@@ -18,7 +18,7 @@ qdrant-client>=1.18.0,<1.19.0  # Match Qdrant server 1.12.x; avoid client/server
 # Google Cloud Integration (Core for v5.3 Hybrid) - Use compatible versions
 google-genai>=2.12.1  # Unified SDK with MCP support
 google-api-python-client>=2.198.0
-google-auth>=2.55.2
+google-auth>=2.56.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 google-cloud-storage>=3.13.0
@@ -28,7 +28,7 @@ google-cloud-aiplatform>=1.161.0  # Now compatible with OTEL (protobuf 5.x)
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
 # bucket. No backend module imports it; pinned here so production venv
 # rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
-boto3>=1.43.51
+boto3>=1.43.52
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
 openai>=2.46.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
@@ -65,13 +65,13 @@ langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful wo
 langchain-core>=1.4.9  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.4.8  # Required for KG LangGraph orchestrator
 langchain-openai>=1.3.5  # Required for KG LangGraph orchestrator fallback
-langsmith>=0.10.7  # Observability: @traceable on RAG nodes + KG nodes
+langsmith>=0.10.9  # Observability: @traceable on RAG nodes + KG nodes
 # langchain-google-genai removed to resolve conflicts
 
 # HTTP/Network - UPGRADED TO RESOLVE CONFLICTS
 httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility (requires >=0.28.1)
 requests>=2.32.4  # Security: .netrc credential leak fix
-aiohttp>=3.14.1  # Security: zip bomb, directory traversal, DoS fixes
+aiohttp>=3.14.2  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0  # Required by selenium, types-requests
 sse-starlette>=3.4.6  # Updated 2026-03-14: SSE disconnect handling improvements
 
