@@ -1,0 +1,308 @@
+import { describe, expect, it } from "vitest";
+import type { Bonus } from "@/types/hr";
+import {
+  aggregateByMember,
+  bonusesToCsv,
+  groupBonusesByMonth,
+  witaMonthKey,
+} from "./bonus-aggregation";
+
+/** Minimal Bonus factory — only the fields the aggregation reads. */
+function bonus(over: Partial<Bonus> & { id: number }): Bonus {
+  return {
+    practice_id: 0,
+    employee_id: 1,
+    payroll_period_id: null,
+    bonus_rate_id: null,
+    practice_type_code: "visa_b211",
+    amount_idr: 100_000,
+    status: "approved",
+    awarded_at: "2026-07-10T02:00:00.000Z",
+    awarded_by: null,
+    approved_by: null,
+    approved_at: null,
+    employee_name: "Surya",
+    employee_email: "surya@balizero.com",
+    practice_status: "completed",
+    client_name: null,
+    notes: null,
+    ...over,
+  } as Bonus;
+}
+
+describe("witaMonthKey", () => {
+  it("buckets by Asia/Makassar (WITA), not by UTC", () => {
+    // 2026-02-28T16:00Z === 2026-03-01T00:00 WITA → March, not February.
+    expect(witaMonthKey("2026-02-28T16:00:00.000Z")).toBe("2026-03");
+  });
+
+  it("keeps a mid-day UTC timestamp in its own month", () => {
+    expect(witaMonthKey("2026-07-10T02:00:00.000Z")).toBe("2026-07");
+  });
+
+  it("handles the last instant of a WITA month", () => {
+    // 2026-06-30T15:59Z === 2026-06-30T23:59 WITA → still June.
+    expect(witaMonthKey("2026-06-30T15:59:00.000Z")).toBe("2026-06");
+  });
+
+  it("returns empty string for missing or unparseable input", () => {
+    expect(witaMonthKey("")).toBe("");
+    expect(witaMonthKey("not-a-date")).toBe("");
+    expect(witaMonthKey(null as unknown as string)).toBe("");
+  });
+});
+
+describe("groupBonusesByMonth", () => {
+  it("returns months newest-first", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, awarded_at: "2026-05-02T02:00:00.000Z" }),
+      bonus({ id: 2, awarded_at: "2026-07-02T02:00:00.000Z" }),
+      bonus({ id: 3, awarded_at: "2026-06-02T02:00:00.000Z" }),
+    ]);
+    expect(months.map((m) => m.key)).toEqual(["2026-07", "2026-06", "2026-05"]);
+  });
+
+  it("totals each month and splits pending out", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, amount_idr: 300_000, status: "approved" }),
+      bonus({ id: 2, amount_idr: 200_000, status: "pending" }),
+      bonus({ id: 3, amount_idr: 500_000, status: "approved" }),
+    ]);
+    expect(months).toHaveLength(1);
+    expect(months[0].total).toBe(1_000_000);
+    expect(months[0].pendingTotal).toBe(200_000);
+    expect(months[0].approvedTotal).toBe(800_000);
+    expect(months[0].count).toBe(3);
+  });
+
+  it("aggregates per member inside the month, highest total first", () => {
+    const months = groupBonusesByMonth([
+      bonus({
+        id: 1,
+        employee_id: 1,
+        employee_name: "Adit",
+        amount_idr: 100_000,
+      }),
+      bonus({
+        id: 2,
+        employee_id: 3,
+        employee_name: "Surya",
+        amount_idr: 900_000,
+      }),
+      bonus({
+        id: 3,
+        employee_id: 1,
+        employee_name: "Adit",
+        amount_idr: 250_000,
+      }),
+    ]);
+    const members = months[0].members;
+    expect(members.map((m) => m.employeeName)).toEqual(["Surya", "Adit"]);
+    expect(members[0].total).toBe(900_000);
+    expect(members[1].total).toBe(350_000);
+    expect(members[1].count).toBe(2);
+    expect(months[0].memberCount).toBe(2);
+  });
+
+  it("splits a member's month total by status", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, amount_idr: 400_000, status: "approved" }),
+      bonus({ id: 2, amount_idr: 150_000, status: "pending" }),
+      bonus({ id: 3, amount_idr: 50_000, status: "paid" }),
+    ]);
+    const m = months[0].members[0];
+    expect(m.total).toBe(600_000);
+    expect(m.byStatus.approved).toBe(400_000);
+    expect(m.byStatus.pending).toBe(150_000);
+    expect(m.byStatus.paid).toBe(50_000);
+  });
+
+  it("keeps the member's own bonus rows attached, newest first", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, awarded_at: "2026-07-02T02:00:00.000Z" }),
+      bonus({ id: 2, awarded_at: "2026-07-20T02:00:00.000Z" }),
+    ]);
+    expect(months[0].members[0].bonuses.map((b) => b.id)).toEqual([2, 1]);
+  });
+
+  it("never drops money: undated rows land in their own bucket, sorted last", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, amount_idr: 100_000 }),
+      bonus({ id: 2, amount_idr: 700_000, awarded_at: "" }),
+    ]);
+    expect(months).toHaveLength(2);
+    expect(months[1].key).toBe("");
+    expect(months[1].total).toBe(700_000);
+    const grand = months.reduce((s, m) => s + m.total, 0);
+    expect(grand).toBe(800_000);
+  });
+
+  it("separates members with the same name but different employee_id", () => {
+    const months = groupBonusesByMonth([
+      bonus({
+        id: 1,
+        employee_id: 1,
+        employee_name: "Ari",
+        amount_idr: 100_000,
+      }),
+      bonus({
+        id: 2,
+        employee_id: 9,
+        employee_name: "Ari",
+        amount_idr: 200_000,
+      }),
+    ]);
+    expect(months[0].members).toHaveLength(2);
+  });
+
+  it("coerces string amounts (BIGINT serialised as text) instead of concatenating", () => {
+    const months = groupBonusesByMonth([
+      bonus({ id: 1, amount_idr: "300000" as unknown as number }),
+      bonus({ id: 2, amount_idr: "200000" as unknown as number }),
+    ]);
+    expect(months[0].total).toBe(500_000);
+  });
+
+  it("returns an empty array for no bonuses", () => {
+    expect(groupBonusesByMonth([])).toEqual([]);
+  });
+});
+
+describe("aggregateByMember", () => {
+  it("totals each member across every month, highest first", () => {
+    const rows = aggregateByMember([
+      bonus({
+        id: 1,
+        employee_id: 1,
+        employee_name: "Adit",
+        amount_idr: 100_000,
+        awarded_at: "2026-05-02T02:00:00.000Z",
+      }),
+      bonus({
+        id: 2,
+        employee_id: 1,
+        employee_name: "Adit",
+        amount_idr: 200_000,
+        awarded_at: "2026-06-02T02:00:00.000Z",
+      }),
+      bonus({
+        id: 3,
+        employee_id: 3,
+        employee_name: "Surya",
+        amount_idr: 250_000,
+        awarded_at: "2026-06-02T02:00:00.000Z",
+      }),
+    ]);
+    expect(rows.map((r) => r.employeeName)).toEqual(["Adit", "Surya"]);
+    expect(rows[0].total).toBe(300_000);
+    expect(rows[0].monthCount).toBe(2);
+    expect(rows[0].count).toBe(2);
+    expect(rows[1].monthCount).toBe(1);
+  });
+
+  it("exposes each member's per-month totals keyed by month", () => {
+    const rows = aggregateByMember([
+      bonus({
+        id: 1,
+        amount_idr: 100_000,
+        awarded_at: "2026-05-02T02:00:00.000Z",
+      }),
+      bonus({
+        id: 2,
+        amount_idr: 400_000,
+        awarded_at: "2026-06-02T02:00:00.000Z",
+      }),
+    ]);
+    expect(rows[0].byMonth["2026-05"]).toBe(100_000);
+    expect(rows[0].byMonth["2026-06"]).toBe(400_000);
+  });
+
+  it("agrees with the month grouping on the grand total", () => {
+    const data = [
+      bonus({
+        id: 1,
+        employee_id: 1,
+        amount_idr: 100_000,
+        awarded_at: "2026-05-02T02:00:00.000Z",
+      }),
+      bonus({
+        id: 2,
+        employee_id: 2,
+        amount_idr: 250_000,
+        awarded_at: "2026-06-02T02:00:00.000Z",
+      }),
+      bonus({
+        id: 3,
+        employee_id: 2,
+        amount_idr: 300_000,
+        awarded_at: "2026-07-02T02:00:00.000Z",
+      }),
+      bonus({ id: 4, employee_id: 1, amount_idr: 700_000, awarded_at: "" }),
+    ];
+    const byMonth = groupBonusesByMonth(data).reduce((s, m) => s + m.total, 0);
+    const byMember = aggregateByMember(data).reduce((s, r) => s + r.total, 0);
+    expect(byMonth).toBe(byMember);
+    expect(byMonth).toBe(1_350_000);
+  });
+});
+
+describe("bonusesToCsv", () => {
+  it("emits one row per member per month plus a header", () => {
+    const csv = bonusesToCsv(
+      groupBonusesByMonth([
+        bonus({
+          id: 1,
+          employee_id: 1,
+          employee_name: "Adit",
+          amount_idr: 100_000,
+        }),
+        bonus({
+          id: 2,
+          employee_id: 3,
+          employee_name: "Surya",
+          amount_idr: 900_000,
+        }),
+      ]),
+    );
+    const lines = csv.trim().split("\n");
+    expect(lines[0]).toBe(
+      "month,employee_id,employee_name,employee_email,bonus_count,pending_idr,approved_idr,paid_idr,total_idr",
+    );
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain("2026-07");
+    expect(lines[1]).toContain("900000");
+  });
+
+  it("quotes and escapes fields containing commas or quotes", () => {
+    const csv = bonusesToCsv(
+      groupBonusesByMonth([
+        bonus({ id: 1, employee_name: 'Adit, "AD"', amount_idr: 100_000 }),
+      ]),
+    );
+    expect(csv).toContain('"Adit, ""AD"""');
+  });
+
+  it("neutralises formula injection in a name without touching the amounts", () => {
+    const csv = bonusesToCsv(
+      groupBonusesByMonth([
+        bonus({
+          id: 1,
+          employee_name: "=cmd|'/c calc'!A1",
+          amount_idr: 250_000,
+        }),
+      ]),
+    );
+    expect(csv).toContain("'=cmd");
+    expect(csv).not.toMatch(/,=cmd/);
+    // The amount is still a bare number, not text.
+    expect(csv).toContain(",250000");
+  });
+
+  it("writes amounts as bare integers so spreadsheets read them as numbers", () => {
+    const csv = bonusesToCsv(
+      groupBonusesByMonth([bonus({ id: 1, amount_idr: 1_250_000 })]),
+    );
+    expect(csv).toContain(",1250000");
+    expect(csv).not.toContain("Rp");
+  });
+});
