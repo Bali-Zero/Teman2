@@ -497,7 +497,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "description_en": "Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
         "icon_id": "kitap-permanent"
       },
       "Dependent KITAP + MERP": {
@@ -507,7 +507,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "description_en": "Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
         "icon_id": "kitap-permanent"
       },
       "Retirement KITAP + MERP": {
@@ -517,7 +517,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "description_en": "Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
         "icon_id": "kitap-permanent"
       }
     },
@@ -1005,17 +1005,17 @@
         "duration": "",
         "validity": "",
         "notes": "+ Rp 300.000 for urgent processing",
-        "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit.",
+        "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit (onshore — filed from within Indonesia).",
         "icon_id": "other-epo"
       },
       "ERP (Exit Re-entry Permit)": {
-        "name": "ERP (Exit Re-entry Permit)",
+        "name": "ERP (Exit Permit Only — Offshore)",
         "price": "800.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
         "notes": "+ Rp 500.000 for urgent processing",
-        "description_en": "Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry.",
+        "description_en": "Exit Permit Only (Offshore) for KITAS/KITAP holders who are already abroad and will not return to Indonesia, terminating their stay permit remotely (offshore). Distinct from EPO (onshore). Note: re-entry is now automatically included in the KITAS/KITAP per UU 63/2024 — no separate re-entry product.",
         "icon_id": "other-erp"
       },
       "Driving License": {
