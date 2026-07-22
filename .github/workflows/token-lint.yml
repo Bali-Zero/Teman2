@@ -73,13 +73,32 @@ jobs:
         # Scan-first means a compromised conftest can only affect the proofs,
         # never retroactively change an already-taken verdict. The conftest
         # chain is additionally CODEOWNERS-locked (defense in depth).
-        run: python scripts/token_lint.py --base "origin/${BASE_REF}"
+        #
+        # `-I` IS LOAD-BEARING TOO (PR #2987 round-7, codex RED P0): isolated
+        # mode drops sys.path[0] (the script's own directory), so a hostile PR
+        # adding scripts/subprocess.py (or any stdlib-named module next to the
+        # scanner) cannot shadow the standard library and forge empty diffs.
+        # The scanner is stdlib-only, so -I costs nothing.
+        run: python3 -I scripts/token_lint.py --base "origin/${BASE_REF}"
 
       - name: Install pytest
-        run: pip install --quiet pytest
+        # Pinned (PR #2987 round-7 P1): no floating supply chain for the proof
+        # runner — version verified locally via `pytest --version` (9.0.3).
+        run: pip install --quiet "pytest==9.0.3"
 
       - name: token-lint proof suite (guilt+innocence)
+        env:
+          # No third-party pytest plugin from the PR/CI environment may load
+          # (round-7 P1). conftest.py still loads — it is pytest's own
+          # discovery, not entry-point plugin autoload — and it is
+          # CODEOWNERS-locked.
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         # Runs SECOND by design (see the scan step's ORDERING note): the proofs
         # validate the scanner's logic; their compromise cannot retroactively
-        # change the verdict the scan step already produced.
-        run: python -m pytest scripts/tests/test_token_lint.py -q
+        # change the verdict the scan step already produced. `-I` blocks
+        # sys.path[0] stdlib shadowing; `-c /dev/null` blocks PR-controlled
+        # pytest.ini/pyproject config from forging or suppressing proofs;
+        # `-p no:cacheprovider` keeps the run hermetic (no cache writes —
+        # rootdir resolves to /dev with -c /dev/null). All defense-in-depth —
+        # scan-first already protects the verdict.
+        run: python3 -I -m pytest scripts/tests/test_token_lint.py -q -c /dev/null -p no:cacheprovider

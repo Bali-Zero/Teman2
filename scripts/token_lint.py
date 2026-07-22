@@ -260,6 +260,22 @@ def _normalize_path(path: str) -> str:
     return p
 
 
+def _git_lines(text: str) -> list[str]:
+    """Split git output into lines on "\\n" ONLY (PR #2987 round-7, codex
+    RED P0). `str.splitlines()` also splits on U+2028/U+2029 and other
+    Unicode separators that git does NOT treat as line breaks — a single
+    git record carrying a U+2028 before a payload would be mis-accounted as
+    two lines: the hunk counts would consume the safe prefix and the
+    payload suffix would land OUTSIDE the hunk (false clean). A trailing
+    "\\r" is stripped per line for CRLF tolerance; Unicode separators are
+    never split on. A trailing "\\n" is a terminator, not a line, so the
+    final empty element is dropped."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return [line[:-1] if line.endswith("\r") else line for line in lines]
+
+
 def _file_header_path(line: str) -> str | None:
     """Extract the path from a `+++ ` header line. Returns None for
     `/dev/null` (deleted file — its hunks carry no added lines)."""
@@ -307,7 +323,7 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
     remaining_new = 0
     new_lineno = 0
 
-    for raw in text.splitlines():
+    for raw in _git_lines(text):
         if not in_hunk:
             if raw.startswith("diff --git "):
                 # Per-file state boundary (PR #2987 round-3, codex RED):
@@ -404,7 +420,7 @@ def binary_marked_paths(text: str) -> set[str]:
     skipped. A `Binary files` line that does not parse cannot be attributed
     to any path -> DiffParseError (fail-closed: it MIGHT be scoped)."""
     paths: set[str] = set()
-    for raw in text.splitlines():
+    for raw in _git_lines(text):
         if not raw.startswith("Binary files "):
             continue
         match = BINARY_MARKER_RE.match(raw)
@@ -430,7 +446,7 @@ def parse_renames(text: str) -> list[Rename]:
     so pairs are recorded regardless of the similarity index."""
     renames: list[Rename] = []
     pending_old: str | None = None
-    for raw in text.splitlines():
+    for raw in _git_lines(text):
         if raw.startswith("diff --git "):
             pending_old = None
             continue
@@ -620,7 +636,7 @@ def scan(
                 f"{ren.new!r}: {exc}"
             ) from exc
         scanned_files.add(ren.new)
-        for lineno, text_line in enumerate(content.splitlines(), start=1):
+        for lineno, text_line in enumerate(_git_lines(content), start=1):
             effective = effective_code(text_line)
             if not effective.strip():
                 continue
@@ -692,7 +708,7 @@ def _git_diff(base: str) -> tuple[list[str], str]:
             )
         return proc.stdout
 
-    names = run(["diff", "--name-only", f"{base}...HEAD"]).splitlines()
+    names = _git_lines(run(["diff", "--name-only", f"{base}...HEAD"]))
     text = run(["diff", "--unified=0", "--no-color", "--text", f"{base}...HEAD"])
     return names, text
 

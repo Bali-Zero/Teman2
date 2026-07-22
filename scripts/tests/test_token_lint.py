@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -698,6 +699,26 @@ def test_parser_empty_diff_is_clean() -> None:
     assert result.scanned_file_count == 0
 
 
+def test_guilt_unicode_line_separator_not_a_line_break() -> None:
+    """GUILT (PR #2987 round-7, codex RED P0): U+2028/U+2029 are NOT line
+    breaks to git — a single git record carrying U+2028 before a hex must
+    be judged as ONE added line. With str.splitlines() the record split in
+    two: the hunk consumed the safe prefix and the hex suffix landed
+    OUTSIDE the hunk -> false clean. _git_lines splits on "\\n" only.
+    INNOCENCE counterpart: the entire rest of this suite — every make_diff
+    fixture is a normal multi-line diff and behaves exactly as before."""
+    payload = 'const safe = 1;\u2028const C = "#d4845a";'
+    diff = make_diff(WORKSPACE_PAGE, [payload], start=7)
+    added = tl.parse_unified_diff(diff)
+    assert len(added) == 1, "U+2028 must not split one git record into two"
+    result = tl.scan(diff, [WORKSPACE_PAGE])
+    assert [(v.line, v.hex) for v in result.violations] == [(7, "#d4845a")]
+    # And U+2029 gets the same treatment.
+    payload_29 = 'const safe = 1;\u2029const C = "#c9a96e";'
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [payload_29]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#c9a96e"]
+
+
 # ---------------------------------------------------------------------------
 # CLI CONTRACT — drive the real entrypoint via subprocess (never needs git).
 # ---------------------------------------------------------------------------
@@ -794,3 +815,59 @@ def test_cli_json_clean_mode() -> None:
     payload = json.loads(proc.stdout)
     assert payload["ok"] is True
     assert payload["violationCount"] == 0
+
+
+# ---------------------------------------------------------------------------
+# ROUND-7 — end-to-end --base mode against a REAL git repo (codex RED P1).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
+def test_e2e_base_mode_real_git_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The whole --base path with zero mocks: real `git init`, real commits,
+    real `git diff` output parsed by the real scanner. The module's only
+    location seam is `_repo_root()` (by design the scanner is immune to the
+    caller's cwd), so the test points that seam at the tmp repo — the exact
+    isolation the mandate's "cwd=tmp repo" asks for.
+
+    GUILT: a commit adding `#d4845a` to a scoped file -> exit 1, and the
+    violation line names the file at the right line number.
+    INNOCENCE: a follow-up hex-free commit over the same base -> exit 0.
+    """
+
+    def git(*args: str) -> None:
+        proc = subprocess.run(
+            ["git", *args], cwd=tmp_path, capture_output=True, text=True, check=False
+        )
+        assert proc.returncode == 0, f"git {' '.join(args)}: {proc.stderr}"
+
+    git("init", "-b", "master")
+    git("config", "user.email", "token-lint-e2e@test.invalid")
+    git("config", "user.name", "token-lint e2e")
+    page = tmp_path / "apps" / "mouth" / "src" / "app" / "(workspace)" / "x" / "page.tsx"
+    page.parent.mkdir(parents=True)
+    page.write_text("export const ok = 1;\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "clean scoped file")
+    monkeypatch.setattr(tl, "_repo_root", lambda: tmp_path)
+
+    # GUILT — second commit adds the hex line (line 2 of the file).
+    page.write_text(
+        'export const ok = 1;\nconst BRAND = "#d4845a";\n', encoding="utf-8"
+    )
+    git("commit", "-am", "add hardcoded brand hex")
+    assert tl.main(["--base", "master~1"]) == 1
+    out = capsys.readouterr().out
+    assert "apps/mouth/src/app/(workspace)/x/page.tsx:2: #d4845a" in out
+
+    # INNOCENCE — third commit adds only a hex-free line; diff vs its parent
+    # carries no violation.
+    page.write_text(
+        'export const ok = 1;\nconst BRAND = "#d4845a";\nexport const ok2 = 2;\n',
+        encoding="utf-8",
+    )
+    git("commit", "-am", "benign follow-up")
+    assert tl.main(["--base", "master~1"]) == 0
+    assert "clean" in capsys.readouterr().out
