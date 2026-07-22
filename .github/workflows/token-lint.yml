@@ -57,20 +57,29 @@ jobs:
         # under `bash -e`, so a fetch failure now fails the gate — fail-closed.
         run: git fetch origin "$BASE_REF"
 
-      - name: Install pytest
-        run: pip install --quiet pytest
-
-      - name: token-lint proof suite (guilt+innocence)
-        # The gate's own proof runs IN CI (mirrors broker-hygiene.yml: a lint's
-        # scripts/tests suite runs in the same workflow that wields it): if the
-        # scanner's guilt/innocence logic is broken, the gate cannot be trusted
-        # — fail fast before scanning.
-        run: python -m pytest scripts/tests/test_token_lint.py -q
-
       - name: token-lint — scan added lines for hardcoded hex colors
         env:
           BASE_REF: ${{ github.base_ref }}
         # Exit 0 clean / exit 1 violations (one `path:line: #hex — ...` line
         # each + summary, printed by the script) / exit 2 scanner error
         # (fail-closed). All three are non-zero-but-honest CI signals.
+        #
+        # ORDERING IS LOAD-BEARING (PR #2987 round-6, codex RED P0): the scan
+        # runs BEFORE the proof suite. The scan executes the pristine committed
+        # scanner with zero third-party code; the proof suite runs pytest,
+        # which auto-loads scripts/tests/conftest.py FROM THE PR HEAD — a
+        # hostile PR could use a pytest hook (e.g. pytest_sessionfinish) to
+        # rewrite scripts/token_lint.py after the proofs but before the scan.
+        # Scan-first means a compromised conftest can only affect the proofs,
+        # never retroactively change an already-taken verdict. The conftest
+        # chain is additionally CODEOWNERS-locked (defense in depth).
         run: python scripts/token_lint.py --base "origin/${BASE_REF}"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      - name: token-lint proof suite (guilt+innocence)
+        # Runs SECOND by design (see the scan step's ORDERING note): the proofs
+        # validate the scanner's logic; their compromise cannot retroactively
+        # change the verdict the scan step already produced.
+        run: python -m pytest scripts/tests/test_token_lint.py -q

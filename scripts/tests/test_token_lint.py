@@ -290,6 +290,52 @@ def test_innocence_chained_comments_pure_comment() -> None:
     assert result.violations == []
 
 
+def test_guilt_jsx_comment_then_code() -> None:
+    """GUILT (PR #2987 round-6, k3): the JSX block-comment shape gets the
+    same closed-on-same-line semantics as `/* */` — `{/* legacy */}` closed
+    on the same line exempts only the comment part, never the whole line."""
+    line = "{/* legacy */} color: #d4845a;"
+    assert tl.effective_code(line) == "color: #d4845a;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
+    chained = "{/* a */} {/* b */} color: #c9a96e;"
+    assert tl.effective_code(chained) == "color: #c9a96e;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [chained]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#c9a96e"]
+
+
+def test_innocence_jsx_full_line_comment() -> None:
+    """INNOCENCE (round-6, k3): a full-line JSX block comment IS a comment —
+    no false positive in .tsx, the gate's main target."""
+    for line in (
+        "{/* palette: #d4845a */}",
+        "{/* unclosed JSX comment swallows the line: #c9a96e",
+    ):
+        result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+        assert result.violations == [], f"flagged: {line!r}"
+
+
+def test_workflow_scan_step_runs_before_proof_suite() -> None:
+    """ORDERING LOCK (PR #2987 round-6, codex RED P0): the scan step MUST
+    run before the pytest proof suite in the gate workflow. pytest
+    auto-loads conftest.py from the PR head, so proof-first would let a
+    hostile conftest (pytest hooks) rewrite the scanner after the proofs
+    but before the scan executes it. String-index check on the raw file —
+    deliberately no yaml dependency (the CI proof step installs pytest
+    only; PyYAML is not guaranteed)."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "token-lint.yml").read_text(
+        encoding="utf-8"
+    )
+    fetch_idx = workflow.index("- name: Fetch base ref")
+    scan_idx = workflow.index("- name: token-lint — scan added lines")
+    proof_idx = workflow.index("- name: token-lint proof suite")
+    assert fetch_idx < scan_idx, "scan needs origin/<base> fetched first"
+    assert scan_idx < proof_idx, (
+        "scan must run before the proof suite (recursive-disarm guard) — "
+        "see the ORDERING IS LOAD-BEARING note in the workflow"
+    )
+
+
 def test_innocence_inline_comment_fully_closed() -> None:
     """INNOCENCE (finding 2 counterpart): when the closer ends the line (or
     never comes), nothing judgeable remains."""

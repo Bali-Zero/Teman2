@@ -61,6 +61,12 @@
 # guilt tests and the gate would still pass (same recursive-disarm class).
 /scripts/token_lint.py                              @Balizero1987
 /scripts/tests/test_token_lint.py                   @Balizero1987
+# Same recursive-disarm class via pytest: the proof step auto-loads conftest
+# from the PR head, so a hostile conftest (pytest hooks) could tamper with the
+# gate mid-job. Entries also forward-protect these files if added later.
+/scripts/tests/conftest.py                          @Balizero1987
+/scripts/conftest.py                                @Balizero1987
+/conftest.py                                        @Balizero1987
 
 # ---------------------------------------------------------------------------
 # Auth / security-critical — TIER 1

@@ -28,7 +28,9 @@ SCOPE (verified against the actual repo tree 2026-07-19 — golden rule #9,
 
 EXEMPTIONS (each one has a dedicated innocence test):
   1. Comment lines — a line whose left-trimmed content starts with `//`,
-     `/*`, or `<!--`, plus block-comment CONTINUATION lines matching `^\\*\\s`
+     `/*`, `<!--`, or the JSX block shape `{/*` (round-6, k3 — the gate's
+     main target is .tsx), plus block-comment CONTINUATION lines matching
+     `^\\*\\s`
      (`*` + whitespace) that do NOT contain any of `{`, `:`, `;`
      (Tri-LLM hardening, PR #2987 round-2: a bare-`*` prefix test let the
      CSS universal selector `* { color: #fff; }` masquerade as a comment —
@@ -173,7 +175,7 @@ HEX_RE = re.compile(
 # Marker requires a colon AND a non-empty reason: `token-lint-ok: <reason>`.
 OK_MARKER_RE = re.compile(r"token-lint-ok\s*:\s*\S+")
 
-COMMENT_PREFIXES: tuple[str, ...] = ("//", "/*", "<!--")
+COMMENT_PREFIXES: tuple[str, ...] = ("//", "/*", "<!--", "{/*")
 
 # Block-comment continuation = `*` + whitespace (so `*/` and `* {` are NOT
 # comments) AND no CSS-rule characters anywhere on the line (PR #2987
@@ -476,15 +478,22 @@ def is_comment_line(content: str) -> bool:
 
 # Inline comment opener/closer pairs for effective_code(): an opener that is
 # CLOSED on the same line exempts only the comment part, not the whole line.
-INLINE_COMMENT_PAIRS: tuple[tuple[str, str], ...] = (("/*", "*/"), ("<!--", "-->"))
+# `{/* ... */}` is the JSX block-comment shape (PR #2987 round-6, k3) — the
+# gate's main target is .tsx; its closer INCLUDES the closing brace.
+INLINE_COMMENT_PAIRS: tuple[tuple[str, str], ...] = (
+    ("{/*", "*/}"),
+    ("/*", "*/"),
+    ("<!--", "-->"),
+)
 
 
 def effective_code(content: str) -> str:
     """The portion of an added line that is JUDGED for hexes (PR #2987
     rounds 3-4, codex RED).
 
-    A line beginning with a comment opener (`/*` or `<!--`) used to be
-    exempt WHOLESALE — so `/* legacy */ color: #fff;` bypassed the gate:
+    A line beginning with a comment opener (`/*`, `<!--`, or the JSX `{/*`)
+    used to be exempt WHOLESALE — so `/* legacy */ color: #fff;` bypassed
+    the gate:
     the opener made the entire line "a comment". Round-4 refinement: the
     strip LOOPS over chained leading closed comments — `/* first */
     /* second */ color: #d4845a;` strips BOTH comments and judges
