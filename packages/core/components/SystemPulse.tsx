@@ -106,6 +106,8 @@ const BAR_FILL_BASE_STYLE: CSSProperties = {
  * concept "System Pulse" panel). Funnel-agnostic: reads only semantic state /
  * surface / text / border tokens, never --accent-funnel, so it is safe inside
  * and outside data-funnel scopes. All content is prop-driven.
+ * Status is always rendered as a VISIBLE mono word (`OK · 12ms`, `IDLE`) —
+ * never conveyed by color alone (round-3 a11y, codex RED PR #2988).
  */
 export const SystemPulse: FC<SystemPulseProps> = ({ services, className }) => {
   return (
@@ -160,16 +162,13 @@ export const SystemPulse: FC<SystemPulseProps> = ({ services, className }) => {
               )}
             </span>
             <span data-role="service-latency" style={LAT_STYLE}>
-              <span className="sr-only">
-                Status: {svc.status.toUpperCase()}
-              </span>
               <span
                 data-role="service-latency-value"
                 className="font-mono"
                 style={{ ...LAT_VALUE_STYLE, color }}
               >
                 {svc.latencyMs !== undefined
-                  ? `${svc.latencyMs}ms`
+                  ? `${svc.status.toUpperCase()} · ${svc.latencyMs}ms`
                   : svc.status.toUpperCase()}
               </span>
               {pct !== undefined && (

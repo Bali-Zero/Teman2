@@ -45,6 +45,25 @@ const SEVERITY_RANK: Record<ComplianceAlert["severity"], number> = {
   info: 3,
 };
 
+/** Visible per-row severity word — severity is never conveyed by the colored
+ *  dot alone (round-3 a11y, codex RED PR #2988). */
+const SEVERITY_LABEL: Record<ComplianceAlert["severity"], string> = {
+  critical: "CRITICAL",
+  urgent: "URGENT",
+  warning: "WARN",
+  info: "INFO",
+};
+
+/** Text color for the visible severity label. `critical` reads --state-danger
+ *  (NOT --status-critical: that token's contract forbids text on dark
+ *  surfaces, ~2.54:1); the rest reuse their dot token. */
+const SEVERITY_TEXT: Record<ComplianceAlert["severity"], string> = {
+  critical: "var(--state-danger)",
+  urgent: "var(--state-warning)",
+  warning: "var(--accent-gold-muted)",
+  info: "var(--state-info)",
+};
+
 const ROOT_STYLE: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -56,6 +75,16 @@ const DOT_BASE_STYLE: CSSProperties = {
   height: 8,
   borderRadius: "50%",
   flex: "none",
+};
+
+/** Fixed-width mono severity word; min-width keeps titles aligned across
+ *  rows ("CRITICAL" is the longest label). */
+const SEVERITY_LABEL_STYLE: CSSProperties = {
+  minWidth: 52,
+  flex: "none",
+  fontSize: 8.5,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
 };
 
 const TITLE_STYLE: CSSProperties = {
@@ -97,6 +126,9 @@ const TIME_CRITICAL_STYLE: CSSProperties = {
  * Row order is deterministic: alerts are sorted by severity rank
  * critical > urgent > warning > info via a STABLE sort, so caller order is
  * preserved within the same severity and the input array is never mutated.
+ * Severity is always rendered as a VISIBLE fixed-width mono label
+ * (CRITICAL/URGENT/WARN/INFO) beside the dot — never color-only
+ * (round-3 a11y, codex RED PR #2988).
  */
 export const ComplianceRadar: FC<ComplianceRadarProps> = ({
   alerts,
@@ -141,7 +173,16 @@ export const ComplianceRadar: FC<ComplianceRadarProps> = ({
                 boxShadow: critical ? "0 0 9px var(--status-critical)" : "none",
               }}
             />
-            <span className="sr-only">Severity: {alert.severity}</span>
+            <span
+              data-role="severity-label"
+              className="font-mono"
+              style={{
+                ...SEVERITY_LABEL_STYLE,
+                color: SEVERITY_TEXT[alert.severity],
+              }}
+            >
+              {SEVERITY_LABEL[alert.severity]}
+            </span>
             <span>
               <span data-role="alert-title" style={TITLE_STYLE}>
                 {alert.title}

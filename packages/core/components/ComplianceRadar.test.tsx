@@ -55,15 +55,26 @@ describe("ComplianceRadar", () => {
     expect(bg(3)).toBe("var(--state-info)");
   });
 
-  it("exposes the severity as visually-hidden text in every row", () => {
+  it("renders a visible severity label per row with severity token color", () => {
     const { container } = render(<ComplianceRadar alerts={ALERTS} />);
-    const rows = container.querySelectorAll("[data-role='alert-row']");
-    const srText = (row: Element) => row.querySelector(".sr-only")?.textContent;
-    expect(srText(rows[0])).toBe("Severity: critical");
-    expect(srText(rows[3])).toBe("Severity: info");
-    expect(
-      Array.from(rows).every((row) => row.querySelector(".sr-only") !== null),
-    ).toBe(true);
+    const labels = Array.from(
+      container.querySelectorAll("[data-role='severity-label']"),
+    ) as HTMLElement[];
+    // sorted order: critical > urgent > warning > info
+    expect(labels.map((el) => el.textContent)).toEqual([
+      "CRITICAL",
+      "URGENT",
+      "WARN",
+      "INFO",
+    ]);
+    // visible text colored by severity token (critical reads the
+    // dark-surface-safe --state-danger, never --status-critical as text)
+    expect(labels[0].style.color).toBe("var(--state-danger)");
+    expect(labels[1].style.color).toBe("var(--state-warning)");
+    expect(labels[2].style.color).toBe("var(--accent-gold-muted)");
+    expect(labels[3].style.color).toBe("var(--state-info)");
+    // visible label replaces the round-2 sr-only span
+    expect(container.querySelector(".sr-only")).toBeNull();
   });
 
   it("sorts rows by severity rank, stable within ties, input unmutated", () => {

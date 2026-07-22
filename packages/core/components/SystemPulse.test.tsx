@@ -33,7 +33,7 @@ describe("SystemPulse", () => {
     expect(getByText("PostgreSQL")).toBeTruthy();
     expect(getByText("Knowledge Graph")).toBeTruthy();
     expect(getByText("prod · ap-southeast")).toBeTruthy();
-    expect(getByText("12ms")).toBeTruthy();
+    expect(getByText("OK · 12ms")).toBeTruthy();
   });
 
   it("derives the 2-letter mono badge from the label", () => {
@@ -85,20 +85,20 @@ describe("SystemPulse", () => {
     ).toHaveLength(1);
   });
 
-  it("exposes the status as visually-hidden text in every row", () => {
+  it("renders the status word visibly with and without latency", () => {
     const latencyLess: SystemPulseService[] = [
       { id: "ol", label: "Ollama", status: "idle", barPct: 4 },
     ];
     const { container } = render(
       <SystemPulse services={[...SERVICES, ...latencyLess]} />,
     );
-    const rows = container.querySelectorAll("[data-role='service-row']");
-    const srText = (row: Element) => row.querySelector(".sr-only")?.textContent;
-    // latency-bearing rows: status is otherwise conveyed by color only
-    expect(srText(rows[0])).toBe("Status: OK");
-    expect(srText(rows[1])).toBe("Status: DOWN");
-    // latency-less row still carries the accessible status text
-    expect(srText(rows[2])).toBe("Status: IDLE");
+    const values = Array.from(
+      container.querySelectorAll("[data-role='service-latency-value']"),
+    ).map((el) => el.textContent);
+    // latency-bearing rows carry status word + latency; latency-less rows
+    // carry the bare status word — all visible text, never color-only
+    expect(values).toEqual(["OK · 12ms", "DOWN · 480ms", "IDLE"]);
+    expect(container.querySelector(".sr-only")).toBeNull();
   });
 
   it("renders a defined empty root when services is empty", () => {

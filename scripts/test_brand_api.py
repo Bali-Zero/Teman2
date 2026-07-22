@@ -32,11 +32,11 @@ REPO_ROOT = gen.REPO_ROOT
 def test_generator_finds_components():
     arts = gen.build_components()
     assert len(arts) >= 12, "expected at least the 12 top-level components"
-    # disk-state truth: the real tree has 32 (18 top-level incl. Money +
-    # ListPageHeader/SearchBox/FilterBar/StatChips/SubNav + FactBadge added by
-    # the WS1 SSOT reconciliation + SystemPulse/ComplianceRadar added by the
-    # WS2 kita-workspace slice + 11 under apps/ — bump this constant when a
-    # component is added/removed, the count is the gate's contract).
+    # disk-state truth: the real tree has 32 = 21 top-level (19 pre-WS2,
+    # incl. Money + the WS1 SSOT reconciliation's FactBadge, plus SystemPulse
+    # and ComplianceRadar from the WS2 kita-workspace slice) + 11 apps widgets
+    # under components/apps/ — bump this constant when a component is
+    # added/removed, the count is the gate's contract).
     assert len(arts) == 32, f"expected 32 components on disk, got {len(arts)}"
 
 
