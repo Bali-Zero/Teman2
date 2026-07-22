@@ -42,7 +42,10 @@ from .renderer import RenderResult, _stage_assets, render_html_files
 
 logger = logging.getLogger("wr2.composer")
 
-_BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
+# Repo-first (same cure as tokens_to_css.py + _REPO_ROOT_FOR_CONSTITUTION,
+# 2026-07-21): CI runners have no ~/.claude skill install.
+_REPO_BRAND_DIR = Path(__file__).resolve().parents[2] / "skills" / "bali-zero-brand"
+_BRAND = _REPO_BRAND_DIR if _REPO_BRAND_DIR.is_dir() else Path.home() / ".claude" / "skills" / "bali-zero-brand"
 _LAYOUTS = _BRAND / "layouts"
 
 # The layout families that have real HTML/CSS skeletons (GROUND phase verified).
@@ -1054,6 +1057,49 @@ def _expand_each_blocks(html: str, slide: dict[str, Any]) -> str:
     return each_re.sub(_render_block, html)
 
 
+_TOP_LEVEL_IF_RE = re.compile(r"\{\{#if\s+([a-z_]+)\}\}(.*?)\{\{/if\}\}", re.DOTALL)
+
+
+def _expand_top_level_if_blocks(html: str, slide: dict[str, Any]) -> str:
+    """Expand ``{{#if <var>}}…{{/if}}`` blocks that sit OUTSIDE any ``{{#each}}``
+    loop (per-row ifs inside a loop — e.g. source-citation's ``{{#if note}}`` —
+    are already resolved by ``_expand_each_blocks`` before this runs, so nothing
+    from inside a loop reaches this regex). Keeps the inner content only when
+    ``slide[<var>]`` is truthy, drops the block entirely otherwise — so an
+    optional top-level field a family declares (``regulation_code``,
+    ``primary_source_url``, …) degrades gracefully instead of shipping raw
+    mustache to the renderer.
+
+    W99 class-cure (2026-07-21): this generalizes what used to be a single
+    hardcoded ``regulation_code``-only regex — a FUTURE family that adds its
+    own top-level ``{{#if}}`` is covered automatically, not by name.
+    MUST run after ``_expand_each_blocks`` (see docstring above) — running it
+    first would let a falsy per-row key (e.g. no top-level ``note`` field)
+    wrongly strip a ``{{#each}}`` block's nested ``{{#if note}}`` before the
+    loop ever materializes its rows.
+    """
+    return _TOP_LEVEL_IF_RE.sub(lambda m: m.group(2) if slide.get(m.group(1)) else "", html)
+
+
+_DEFAULT_FILTER_RE = re.compile(r'\{\{\s*([a-z_]+)\s*\|\s*default:\s*"([^"]*)"\s*\}\}')
+
+
+def _expand_default_filters(html: str, slide: dict[str, Any]) -> str:
+    """Expand Handlebars-style ``{{var | default: "..."}}`` tokens — the one
+    skeleton syntax the plain ``{{token}}`` string-replace in ``replacements``
+    (below) can't match, because the token text isn't a bare ``{{var}}``.
+    Uses ``slide[var]`` when truthy, else the literal quoted default text.
+    Currently only elegant-close's ``{{qr_caption | default: "PRIMARY SOURCE"}}``
+    uses this pattern, but the regex is generic — any future ``{{x | default:
+    "y"}}`` is covered automatically (W99 class-cure).
+    """
+    def _sub(m: re.Match[str]) -> str:
+        var, default = m.group(1), m.group(2)
+        return _html_escape(str(slide.get(var) or default))
+
+    return _DEFAULT_FILTER_RE.sub(_sub, html)
+
+
 def _qa_dialogue_fields(slide: dict[str, Any]) -> dict[str, str]:
     """Adapt the storyboarder's ``qa_pairs`` array to qa-dialogue's flat fields.
 
@@ -1368,17 +1414,44 @@ def _check_take_label_variety(slide: dict[str, Any], *, index: int) -> None:
 _ART_6_1_BODY_WORD_MIN = 25
 _ART_6_1_BODY_WORD_MAX = 50
 
+_EACH_BLOCK_STRIP_RE = re.compile(r"\{\{#each\s+[a-z_]+\}\}.*?\{\{/each\}\}", re.DOTALL)
+
+
+def _top_level_skeleton_text(skeleton: str) -> str:
+    """Strip every ``{{#each …}}…{{/each}}`` span before a name-based scan of
+    the skeleton for a top-level placeholder.
+
+    W99-shape bug found + fixed alongside the placeholder-substitution class
+    cure (2026-07-21): source-citation's per-CITATION field is also named
+    ``{{body}}`` (the citation code, e.g. "KEP-71/PJ/2026" — see
+    layouts/source-citation.md's ``{{#each citations}}`` row), which is a
+    completely different thing from a family's top-level prose ``{{body}}``
+    placeholder. A raw ``"{{body}}" in skeleton`` substring check (below,
+    formerly the whole check) can't tell the two apart — the same
+    check-on-the-wrong-scope shape as every other superscar #3 member. That
+    false-positive was a live, verified hard-blocker: calling
+    ``_check_body_word_count`` on the real source-citation skeleton with a
+    genuinely well-formed source-citation slide (title + citations, no
+    top-level body — it has none) raised "Article 6.1 hard fail: body has 0
+    words" and would have stopped ANY source-citation slide from ever
+    reaching ``_fill_placeholders`` via ``compose_carousel`` /
+    ``materialize_slide_html``, independent of the placeholder fix itself.
+    """
+    return _EACH_BLOCK_STRIP_RE.sub("", skeleton)
+
 
 def _check_body_word_count(skeleton: str, slide: dict[str, Any], *, index: int, family: str) -> None:
     """Article 6.1 hard gate: prose body text must be 25-50 words.
 
     Scope, derived from the skeleton itself (not a hardcoded family
     allow-list): the gate applies only when this family's skeleton actually
-    renders a prose `{{body}}` placeholder (editorial-text,
-    photo-headline-yellow-sub, photo-fullbleed / -top / -split,
-    source-citation, stat-card-hero — verified via `grep -l "{{body}}"
-    layouts/*.md`). Families that render STRUCTURED copy instead have no
-    `{{body}}` token and are correctly untouched:
+    renders a TOP-LEVEL prose `{{body}}` placeholder OUTSIDE any
+    `{{#each}}` loop (editorial-text, photo-headline-yellow-sub,
+    photo-fullbleed / -top / -split, stat-card-hero — verified against the
+    real skeleton text, not a raw `grep -l "{{body}}"` which also matches a
+    same-named PER-ROW field, see `_top_level_skeleton_text`). Families that
+    render STRUCTURED copy instead have no top-level `{{body}}` token and
+    are correctly untouched:
       - cover-photo: constitution explicitly exempts it ("title only") —
         and structurally it has no {{body}} either, belt-and-suspenders.
       - statement-bomb: Article 6.6 mandates the closing be a SHORT
@@ -1388,10 +1461,17 @@ def _check_body_word_count(skeleton: str, slide: dict[str, Any], *, index: int, 
         numbered-forces-list / qa-dialogue / elegant-close: structured
         item/fact/QA arrays, not a prose body — Article 6.1 doesn't cleanly
         apply to a bullet list or a QA exchange.
+      - source-citation: its ONLY `{{body}}` occurrence is the per-citation
+        code field inside `{{#each citations}}` (e.g. "KEP-71/PJ/2026") —
+        NOT a top-level prose body. Previously mis-scoped INTO this gate by
+        the raw substring check (fixed 2026-07-21 alongside the
+        placeholder-substitution class cure — see
+        `_top_level_skeleton_text`'s docstring for the live-verified crash
+        this caused).
     A new layout family automatically gets this gate the moment its skeleton
-    adopts {{body}} — no code change required.
+    adopts a TOP-LEVEL {{body}} — no code change required.
     """
-    if "{{body}}" not in skeleton:
+    if "{{body}}" not in _top_level_skeleton_text(skeleton):
         return
     body = str(slide.get("body") or slide.get("body_text") or "").strip()
     # FACTS-STACK exemption: a body the composer itself parses as LABEL: value
@@ -1478,6 +1558,39 @@ def _heading_color_override_css(slide: dict[str, Any]) -> str:
     if not rules:
         return ""
     return '\n<style data-heading-color-override="1">\n' + "\n".join(rules) + "\n</style>\n"
+
+
+_SURVIVING_PLACEHOLDER_RE = re.compile(r"\{\{[^{}]*\}\}")
+
+
+def _assert_no_surviving_placeholders(html: str, family: str) -> None:
+    """Hard gate (W99 class-cure, 2026-07-21): after every fill/expand pass in
+    ``_fill_placeholders``, NOTHING that looks like a Handlebars token
+    (``{{...}}``, including an unresolved ``{{#if}}``/``{{#each}}``/``{{/if}}``/
+    ``{{/each}}``) may survive into the rendered HTML for ANY family.
+
+    This is the exact lesson W99 already taught the codebase once — the
+    renderer KNEW ``montserrat=false`` and downgraded it to a
+    ``logger.warning`` that a 12MB run log drowned, and 6/9 slides of one
+    carousel (4/9 of it ALREADY PUBLISHED) shipped with the wrong font before
+    anyone noticed. `source-citation`'s `{{title}}` and `elegant-close`'s
+    `{{trust_marker}}`/`{{reach}}`/`{{invite}}`/`{{index}}` were the SAME
+    shape: check≠action, silent, discovered only by grep months later. This
+    gate refuses to let that recur for ANY of the 15 renderable families —
+    including ones nobody has broken yet — by failing LOUD (a hard render
+    exception) instead of quiet (a raw-mustache slide nobody looks at).
+
+    Raises ValueError naming both the family and the exact surviving tokens
+    so the failure is immediately actionable, not a blank investigation.
+    """
+    survivors = sorted(set(_SURVIVING_PLACEHOLDER_RE.findall(html)))
+    if survivors:
+        raise ValueError(
+            f"placeholder-sweep gate: family={family!r} shipped with unfilled "
+            f"placeholder(s) {survivors!r} — _fill_placeholders must substitute "
+            "or strip every {{...}} token before a slide can render (W99 "
+            "class-cure: check≠action must never ship silently again)."
+        )
 
 
 def _fill_placeholders(
@@ -1604,12 +1717,6 @@ def _fill_placeholders(
             # the non-facts branch only. No-op if the body has no key number.
             body_html = _emphasize_key_numbers(body_html)
 
-    # {{#if regulation_code}} ... {{/if}}
-    if reg:
-        html = re.sub(r"\{\{#if regulation_code\}\}(.*?)\{\{/if\}\}", r"\1", html, flags=re.DOTALL)
-    else:
-        html = re.sub(r"\{\{#if regulation_code\}\}.*?\{\{/if\}\}", "", html, flags=re.DOTALL)
-
     # statement-bomb uses {{statement}}; map from headline/body
     statement = (slide.get("statement") or headline or body).strip()
 
@@ -1662,6 +1769,17 @@ def _fill_placeholders(
     # the scalar placeholder pass. Previously unhandled → raw mustache shipped.
     html = _expand_each_blocks(html, slide)
 
+    # Top-level {{#if <var>}}…{{/if}} blocks (regulation_code / primary_source_url),
+    # run AFTER _expand_each_blocks so a per-row nested if (e.g. source-citation's
+    # {{#if note}}) is already resolved and can't be mistaken for a top-level one.
+    # `reg` (computed above, with its regulation_code/primary_regulation_code alias
+    # already resolved) is injected under its canonical key so the alias keeps
+    # working through the now-generic expander.
+    html = _expand_top_level_if_blocks(html, {**slide, "regulation_code": reg})
+    # {{qr_caption | default: "..."}} — the one skeleton token that isn't a bare
+    # {{var}} (elegant-close only today; see _expand_default_filters docstring).
+    html = _expand_default_filters(html, slide)
+
     replacements = {
         "{{heading}}": headline,
         "{{subheading}}": subhead,
@@ -1680,6 +1798,24 @@ def _fill_placeholders(
         # numbered-forces-list giant numeral (extracted above from the
         # headline's leading integer). Empty for every other family.
         "{{numeral}}": numeral,
+        # source-citation's top-level title ("SUMBER"/"SOURCES"). DISCOVERED GAP
+        # (PR #2942, verified by grep — zero hits): never substituted anywhere
+        # before this fix. Default empty so an untitled slide degrades to a
+        # blank kicker instead of leaking raw mustache.
+        "{{title}}": _html_escape((slide.get("title") or "").strip()),
+        # elegant-close's content fields. DISCOVERED GAP (PR #2942, same grep):
+        # trust_marker/reach/invite were never substituted anywhere either —
+        # the whole family rendered broken end-to-end. Default empty (never
+        # invent brand copy) so a slide missing one of these degrades to a
+        # blank line rather than a literal {{trust_marker}}.
+        "{{trust_marker}}": _html_escape((slide.get("trust_marker") or "").strip()),
+        "{{reach}}": _html_escape((slide.get("reach") or "").strip()),
+        "{{invite}}": _html_escape((slide.get("invite") or "").strip()),
+        # elegant-close's data-slide-index attribute — found by this fix's own
+        # placeholder sweep (not in the PR #2942 discovery list), same unfilled
+        # shape. `slide_number` is the documented slides_json field (module
+        # docstring above) every real slide already carries.
+        "{{index}}": _html_escape(str(slide.get("slide_number") or "").strip()),
     }
     # qa-dialogue: map qa_pairs → the template's flat voice_a/voice_b fields.
     for fk, fv in _qa_dialogue_fields(slide).items():
@@ -1760,6 +1896,12 @@ def _fill_placeholders(
             html = html.replace("</body>", _BAR_ITEMS_BLOCK_CSS + "</body>", 1)
         else:
             html = html + _BAR_ITEMS_BLOCK_CSS
+
+    # Hard gate (W99 class-cure): every fill/expand pass above is done — refuse
+    # to hand back HTML that still carries an unresolved {{...}} token, for
+    # ANY family. See _assert_no_surviving_placeholders' docstring for why this
+    # must be a raised exception, not a logger.warning.
+    _assert_no_surviving_placeholders(html, family)
 
     return html
 

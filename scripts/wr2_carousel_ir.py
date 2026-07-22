@@ -5,12 +5,21 @@ ADDITIVE / SHADOW ONLY. Nothing in `wr2_draft_generator.py` or
 `scripts/wr2_html_renderer/composer.py` imports this module, and this PR does
 not modify either file — production behavior is byte-identical before/after.
 This module exists to be exercised by `wr2_ir_shadow_replay.py` against
-historical decks. Wiring it into the live autonomous pipeline is Phase 3,
-itself gated by the 4-LLM panel per CLAUDE.md §6 — not this PR.
+historical decks. Wiring it into the live autonomous pipeline is a later,
+separately-gated cutover per CLAUDE.md §6 — not this PR.
 
 Implements Mossa A of the ratified spec:
     .claude/skills/wr2/_research/2026-07-21-editorial-intelligence-design.md
     §2 "Carousel IR: la grammatica tipizzata delle slide" + §3 rollout step 1.
+
+§1.5 below (SlotPlan/DeckPlan) and §5's ARCS/CLOSER_FRANCHISE_LABEL/
+CAPS_POLICY constants are Phase 3 additions (editorial-intelligence Mossa B,
+spec §2) — the planner/writer split's own typed contracts, consumed by the
+sibling module `wr2_planner_writer.py` and its shadow harness
+`wr2_pw_shadow.py`. Backward compatible by construction (new optional
+fields / new classes only) — every pre-existing test in this file's own
+test suite (`scripts/tests/test_wr2_carousel_ir.py`, 58 tests) passes
+UNMODIFIED against this version.
 
 Design (spec §2, "VALIDAZIONE LENIENT-FIRST", red-team BLOCKER-1):
   - A pydantic v2 discriminated union `Slide` over 11 kinds: cover, prose,
@@ -55,7 +64,7 @@ from __future__ import annotations
 import json
 import logging
 import warnings
-from typing import Annotated, Any, Callable, Literal, Union
+from typing import Annotated, Any, Callable, Literal, Union, get_args
 
 from pydantic import (
     BaseModel,
@@ -556,16 +565,57 @@ SLIDE_KIND_TO_FAMILY: dict[str, str] = {
     "cta": "elegant-close",
 }
 
+# Shared Literal alias over the same 11 kind strings — used by SlotPlan.kind
+# (Phase 3, below) so a planner-emitted plan and a writer-emitted Slide are
+# checked against the SAME vocabulary as the discriminated union itself.
+# NOT used as the discriminator on the individual Slide classes above (those
+# keep their own narrow per-class `Literal["cover"]` etc. — unmodified,
+# backward-compatible) — this is only a second, derived view over the same
+# 11 strings for the planner/writer split's own typed contracts.
+SlideKind = Literal[
+    "cover", "prose", "statement", "fact_stack", "status_list",
+    "timeline", "triad", "qa", "stat", "citation", "cta",
+]
+assert set(SLIDE_KIND_TO_FAMILY) == set(get_args(SlideKind)), (
+    "SlideKind literal has drifted from SLIDE_KIND_TO_FAMILY's keys — keep them in sync"
+)
+
+# Shared Literal alias over the 7 ratified arcs (spec §8, RATIFIED by Zero
+# 2026-07-21 — re-verified on disk this session against the spec file's own
+# status line: "SPEC v1.1 — §8 brand decisions RATIFIED by Zero 2026-07-21;
+# ... all 4 as recommended". This CORRECTS the "UNRATIFIED" provenance
+# caveat on the ARCS dict further below in this file, written during Phase 1
+# before §8 was ratified — the caveat was accurate when written, not
+# accurate as of this session; see the assertion pinned right after ARCS'
+# own definition, which keeps this literal from silently drifting out of
+# sync with that dict's keys.) Used by DeckPlan.arc (Phase 3, below).
+ArcId = Literal[
+    "news_alert", "deadline", "myth_buster", "worked_example",
+    "comparison", "explainer", "status_roundup",
+]
+
 
 class SlideDeck(BaseModel):
     """Top-level wrapper — mirrors the production JSON shape
     `{"register": ..., "slides": [...]}` (wr2_draft_generator._normalise_slides
-    reads `parsed.get("register")` / `parsed.get("slides")`)."""
+    reads `parsed.get("register")` / `parsed.get("slides")`).
+
+    `spine`/`arc` (Phase 3, both Optional, default None): the planner/writer
+    split's own deck-level fields (Mossa C spine-as-first-class-field, Mossa
+    B arc). BACKWARD COMPATIBLE by construction — `extra="ignore"` already
+    meant a production JSON blob carrying neither key validated cleanly
+    before this change (the keys were silently dropped); now they are
+    silently CAPTURED as None instead when absent, and populated when
+    `wr2_planner_writer.produce_deck` assembles a deck from a validated
+    DeckPlan. No existing caller constructs a SlideDeck with these keys, so
+    no existing behavior changes."""
 
     model_config = ConfigDict(extra="ignore")
 
     register: str
     slides: list[Slide]
+    spine: str | None = None
+    arc: str | None = None
 
     @field_validator("register", mode="before")
     @classmethod
@@ -580,6 +630,94 @@ class SlideDeck(BaseModel):
         if s not in _VALID_TONES:
             raise ValueError(f"invalid register={s!r} (allowed: {sorted(_VALID_TONES)})")
         return s
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# 1.5. Planner/Writer split (editorial-intelligence Phase 3) — the plan-
+#    stage's own typed contracts. Both models are ZERO-PROSE by construction:
+#    SlotPlan/DeckPlan never carry slide COPY, only the SHAPE the writer
+#    stage (wr2_planner_writer.write_slot) fills afterward — spec §2 Mossa B.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class SlotPlan(BaseModel):
+    """One row of a DeckPlan.slides — the planner's per-slide contract for
+    the writer stage. `kind` LOCKS the slide's shape (kind-preservation hard
+    rule, spec §2 Kimi objection #3 — mirrored here from the IR's own
+    kind-preservation discipline in IRValidationExhausted's docstring above):
+    wr2_planner_writer.write_slot treats a writer-returned kind that
+    disagrees with this field as a retry-worthy failure, never a silent
+    coercion. `heading_intent` is a one-line EDITORIAL DIRECTION for the
+    slide's heading (e.g. "3 conditions that must all hold") — never the
+    heading text itself; that is the writer's job. `body` is ALWAYS null in
+    a plan (see the field's own validator below) — this is the concrete,
+    enforced form of the spec's "zero prosa" requirement at the per-slot
+    level, not just a convention in the prompt."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    slot_id: int
+    role: str
+    kind: SlideKind
+    heading_intent: str
+    bullet_promise_n: int | None = None
+    hero: bool = False
+    body: str | None = None
+
+    @field_validator("heading_intent", mode="before")
+    @classmethod
+    def _v_heading_intent(cls, v: Any) -> str:
+        return _require_nonempty(_lenient_str(v), "heading_intent")
+
+    @field_validator("body", mode="before")
+    @classmethod
+    def _v_body(cls, v: Any) -> None:
+        # STRICT (unlike almost every other scalar in this module): a plan
+        # is not allowed to smuggle actual slide copy into `body` — the
+        # planner is zero-prose BY DESIGN (spec §2 Mossa B), and this is the
+        # one place that design commitment is machine-enforced rather than
+        # just requested in the prompt. None / absent / "" are all the
+        # legitimate "no content yet" spellings a planner-LLM might emit
+        # (the spec's own worked example uses JSON `null`); anything else is
+        # a content violation worth a retry, exactly like every other
+        # structurally-required-empty field in this module.
+        if v not in (None, ""):
+            raise ValueError(
+                "SlotPlan.body must be null — the planner is zero-prose; "
+                "slide content is filled by the writer stage, never the plan"
+            )
+        return None
+
+
+class DeckPlan(BaseModel):
+    """The planner's ("l'editor") zero-prose output — spec §2 Mossa B, the
+    JSON shape `{"spine": ..., "arc": ..., "arc_reason": ..., "slides": [...]}`.
+
+    `arc` is a hard Literal over the 7 ratified arcs (spec §8) — but WHICH
+    of the 7 is CHOSEN is never code's decision (CHI PROPONE != CHI DISPONE,
+    spec §2 red-team correction #1): `wr2_planner_writer.build_arc_priors`
+    only proposes soft weights, the planner-LLM disposes from the content.
+    `arc_reason` is mandatory (spec: "loggato come tale" — a justified
+    repeat is logged, not silently allowed or silently blocked) — required
+    AND non-empty after coercion, exactly like every other structurally-
+    required content field in this module (`_require_nonempty`)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    spine: str
+    arc: ArcId
+    arc_reason: str
+    slides: list[SlotPlan]
+
+    @field_validator("spine", mode="before")
+    @classmethod
+    def _v_spine(cls, v: Any) -> str:
+        return _require_nonempty(_lenient_str(v), "spine")
+
+    @field_validator("arc_reason", mode="before")
+    @classmethod
+    def _v_arc_reason(cls, v: Any) -> str:
+        return _require_nonempty(_lenient_str(v), "arc_reason")
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -915,38 +1053,37 @@ def to_composer_dict(slide: Slide, *, index: int, total: int) -> dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# 5. Inert brand constants (Phase 1 — NOT consumed by production; a future
-#    Phase 3, itself gated by the 4-LLM panel, is the only place these would
-#    ever get wired into a live render).
-#
-#    ⚠️ PROVENANCE CAVEAT (verified 2026-07-21, this session): the ratified
-#    spec (.claude/skills/wr2/_research/2026-07-21-editorial-intelligence-
-#    design.md §8) lists the arc slate, the caps-only-on-headings rule, "The
-#    Bali Zero read" closer slot, and the palette-per-domain map as
-#    "Decisioni Zero-gated (Legge 5) ... la sessione NON le prende" — i.e.
-#    NOT YET ratified on disk as of this session (re-read verbatim this
-#    turn; §8 is a REQUEST for ratification, not a ratification record; no
-#    later commit/PR closes it — `gh pr list --search "editorial-
-#    intelligence"` returns only the spec PR #2936 itself). The build
-#    mandate that produced this module described these as "ratified" — that
-#    claim does not hold up against the spec file's own text on disk, so
-#    everything below is a DRAFT/PROPOSED shape only, pending Zero's actual
-#    §8 ratification, NOT a record of a decision that happened. Shipping
-#    this draft carries zero live-behavior risk (Phase 1 is shadow-only,
-#    nothing here is read by production) — but do not let its mere presence
-#    in a merged PR be mistaken for ratification-by-commit.
+# 5. Brand constants — RATIFIED (spec §8 status line, re-verified on disk
+#    this session: "SPEC v1.1 — §8 brand decisions RATIFIED by Zero
+#    2026-07-21 ... all 4 as recommended"). CORRECTS this section's own
+#    Phase-1 comment block, written BEFORE that ratification landed, which
+#    called all four items below "PROPOSED"/"UNRATIFIED" and cited
+#    `gh pr list --search "editorial-intelligence"` returning only the spec
+#    PR as proof — that was accurate when written, not accurate as of this
+#    session (anti-hallucination discipline: verify against the doc on disk
+#    in THIS turn, don't carry forward a prior turn's stale claim). Still
+#    SHADOW-ONLY in terms of live behavior: `wr2_planner_writer.py` (Phase
+#    3, this module's sibling) is the first consumer of ARCS/CLOSER_
+#    FRANCHISE_LABEL, and it is a shadow harness — nothing in
+#    `wr2_draft_generator.py` or `composer.py` imports either module, so a
+#    ratified CONSTANT is not the same thing as a LIVE render path; that
+#    cutover is a later, separately-gated step (spec §3 rollout step 3).
+#    PALETTE_BY_DOMAIN's property placeholder hex remains unconsumed by
+#    anything in this PR — flagged below, unchanged from Phase 1.
 # ─────────────────────────────────────────────────────────────────────────
 
-CAPS_POLICY = "headings_only"  # PROPOSED, spec §8 item 2 (Zero-gated, UNRATIFIED)
+CAPS_POLICY = "headings_only"  # RATIFIED, spec §8 item 2
 
-# PROPOSED 7-arc slate with role sequences (spec §8 item 1, UNRATIFIED — the
-# spec itself only names the count/examples "quali 6-8, e le loro sequenze
-# di ruoli — è voce editoriale/brand", it does not specify the sequences).
-# Role vocabulary follows the spec's own Mossa-B planner JSON example (§2:
-# roles "hook"/"discovery") extended with the obvious siblings a slide-role
-# grammar needs. Sequence length follows §Mossa-E ("breaking -> arco stretto
-# 5-6; evergreen -> arco ricco 9") — this is a STARTING shape for Zero to
-# react to/amend, not a claim of institutional voice.
+# RATIFIED 7-arc slate with role sequences (spec §8 item 1: "Arc library =
+# the 7-slate: news_alert, deadline, myth_buster, worked_example,
+# comparison, explainer, status_roundup. Breaking topics -> tight 5-6 slide
+# decks via arcs 1/2; evergreen topics -> rich 8-9 slide decks via arcs
+# 4/6" — the 7 ids are verbatim from the spec; the spec ratifies the SLATE,
+# not the per-arc role sequences below, which remain this module's own
+# reasonable starting shape (§Mossa-E: "ogni arco = sequenza di ruoli").
+# `wr2_planner_writer.ArcId` (this file, §1.5 above) is checked against
+# these same keys — the assertion right below keeps the two from drifting
+# apart silently.
 ARCS: dict[str, list[str]] = {
     "news_alert": ["hook", "context", "fact_stack", "impact", "close"],
     "deadline": ["hook", "deadline_fact", "consequence", "action", "close"],
@@ -956,14 +1093,23 @@ ARCS: dict[str, list[str]] = {
     "explainer": ["hook", "context", "mechanism", "implication", "close"],
     "status_roundup": ["hook", "item", "item", "item", "close"],
 }
+assert set(ARCS) == set(get_args(ArcId)), (
+    "ARCS keys have drifted from the ArcId literal defined earlier in this "
+    "file (§1.5) — keep the ratified 7-arc slate in sync in both places"
+)
 
-# PROPOSED palette-per-domain (spec §8 item 4, UNRATIFIED). immigration/tax/
-# company use REAL brand tokens (skills/bali-zero-brand/tokens.json +
-# constitution.md "Palette" table): antracite #373D42, accent yellow
-# #F4C430, status red #C8102E, bg.black #000000. property's "paper/cream"
-# has NO existing token (tokens.json has no cream/paper entry) — its hex
-# here is an INVENTED placeholder, flagged accordingly; a real value needs a
-# tokens.json addition + Zero sign-off, not this module.
+# RATIFIED palette-per-domain (spec §8 item 4: "Palette rotation per DOMAIN:
+# immigration = carbon #373D42 + yellow #F4C430 · tax = carbon + red
+# #C8102E · company/KBLI = black + yellow · property = paper/cream + carbon
+# · breaking = red-forward"). immigration/tax/company use REAL brand tokens
+# (skills/bali-zero-brand/tokens.json + constitution.md "Palette" table):
+# antracite #373D42, accent yellow #F4C430, status red #C8102E, bg.black
+# #000000. property's "paper/cream" STILL has NO existing token
+# (tokens.json has no cream/paper entry as of this session) — its hex below
+# remains an INVENTED placeholder pending a tokens.json addition + Zero
+# sign-off on the exact value; the RATIFICATION covers the rotation
+# RULE ("property = paper/cream + carbon"), not this module's specific hex
+# guess at what "cream" means in tokens.json terms.
 PALETTE_BY_DOMAIN: dict[str, dict[str, str]] = {
     "immigration": {"primary": "#373D42", "accent": "#F4C430"},
     "tax": {"primary": "#373D42", "accent": "#C8102E"},
@@ -973,8 +1119,8 @@ PALETTE_BY_DOMAIN: dict[str, dict[str, str]] = {
     "breaking": {"primary": "#C8102E", "accent": "#000000"},
 }
 
-# PROPOSED recurring role slot (spec §8 item 3, UNRATIFIED): "The Bali Zero
-# read" as the standing name for the closer's take/point-of-view role. A
-# future Phase 3 would use it as e.g. the default take_label on a
-# fact_stack's closing take.
+# RATIFIED recurring role slot (spec §8 item 3: "'The Bali Zero read' =
+# recurring CLOSER slot-franchise"). `wr2_planner_writer._build_planner_prompt`
+# is the first consumer — it instructs the planner-LLM to invoke this label
+# on the deck's final (closer) slot's heading_intent.
 CLOSER_FRANCHISE_LABEL = "The Bali Zero read"

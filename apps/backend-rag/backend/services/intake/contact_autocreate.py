@@ -5,10 +5,17 @@ ENQUEUE time to a client_id_hint, so a document never lands 0-candidate for
 the trivial reason that "nobody ever created a contact for this number":
 
   a. **team roster / internal number** -> the doc is a FORWARD, never a new
-     contact (reuses ``auto_attach._is_internal_sender_phone`` — the same
-     roster/env-configured internal-number gate LEVA-2's direct-phone path
-     already relies on, so there is exactly ONE roster definition in the
-     codebase, not two that can drift).
+     contact (reuses ``auto_attach._is_internal_sender_phone``, gated by env
+     ``BZ_INTERNAL_PHONE_NUMBERS`` — the same gate LEVA-2's direct-phone path
+     relies on). **KNOWN DIVERGENCE (found in adversarial review, 2026-07-18,
+     not yet unified):** ``scripts/wa_mirror_intake_sweeper.py`` maintains a
+     SEPARATE internal-phone roster (``_INTERNAL_PHONES_BUILTIN`` +
+     ``WA_MIRROR_INTERNAL_PHONES`` env) for the wa-mirror personal-line path —
+     this docstring previously claimed "exactly one roster... not two that can
+     drift", which is false; there are two, and they can diverge. This module
+     (used by the official-line pull-worker + the identity backfill) and the
+     sweeper (personal lines) do NOT share a roster today. Unifying them is
+     out of scope for this PR — tracked as a follow-up, not silently fixed.
   b. **existing client** (``clients.phone_normalized`` match) -> return its id.
      Read-only, always attempted regardless of the create killswitch (there is
      no PII-creation risk in *finding* an existing row).
@@ -123,12 +130,23 @@ async def resolve_or_create_contact(
     *,
     sender_phone: str | None,
     full_name_hint: str | None = None,
+    force_no_create: bool = False,
 ) -> ContactResolution:
     """Resolve a WA sender phone to a client_id at intake-entry time.
 
     Call inside the caller's own transaction (or a fresh one) — the CREATE
     branch performs a real INSERT. Never raises on a benign no-op; only a
     genuine DB fault propagates.
+
+    ``force_no_create`` (adversarial-review fix, 2026-07-18 — P0-1): when
+    True, the CREATE branch is structurally unreachable REGARDLESS of
+    ``INTAKE_AUTOCREATE_CONTACT_ENABLED``. Before this parameter existed, a
+    caller marketing a "dry-run" mode (``intake_reprocess_backlog.py
+    --backfill-identity`` without ``--apply``) still called this function
+    unconditionally — if the env flag happened to be armed, the dry-run
+    silently created real ``clients`` rows and committed them. This is the
+    ONLY way to guarantee zero writes independent of env state; the existing
+    match lookup below is unaffected (it never writes).
     """
     normalized = normalize_sender_phone(sender_phone)
     if not normalized:
@@ -150,6 +168,18 @@ async def resolve_or_create_contact(
             ),
         )
 
+    # Advisory lock (adversarial-review fix — P1 race): the wa-mirror sweeper
+    # (scripts/wa_mirror_intake_sweeper.py::_upsert_client_by_phone) resolves/
+    # creates CRM leads by the SAME normalized phone through a SEPARATE code
+    # path (different origin, no shared row-level lock). Without a shared
+    # mutex, two concurrent callers (this resolver via the pull-worker/
+    # backfill, and the sweeper via wa-mirror) can both observe zero matches
+    # and each create a client for the same phone. Taking the identical
+    # advisory-lock key (``hashtext(normalized_phone)``) the sweeper already
+    # uses makes the two code paths mutually exclusive on this phone for the
+    # duration of the transaction — released automatically on commit/rollback.
+    await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", normalized)
+
     matches = await _match_existing_by_phone(conn, normalized)
     if len(matches) == 1:
         return ContactResolution(
@@ -166,12 +196,15 @@ async def resolve_or_create_contact(
             reason=f"sender phone shared by {len(matches)} clients — needs human",
         )
 
-    if not autocreate_contact_enabled():
+    if force_no_create or not autocreate_contact_enabled():
         return ContactResolution(
             kind=KIND_DISABLED,
             client_id=None,
             phone_normalized=normalized,
-            reason="autocreate killswitch off — no existing match either",
+            reason=(
+                "caller forced no-create (dry-run)" if force_no_create
+                else "autocreate killswitch off — no existing match either"
+            ),
         )
 
     # clients.full_name is NOT NULL. Reuse the codebase's existing placeholder

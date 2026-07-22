@@ -217,3 +217,143 @@ PYTHONPATH=. python scripts/curated_qa_harvest.py --qdrant
 answer-independent — so no stale-point purge is needed. `--faq` not required: none of the 3
 corrected rows change FAQ-sink eligibility in a way that needs the exact-match cache rebuilt
 for this fix.)
+
+## Round 4 — company/KBLI "signed lots" review (2026-07-20 review, applied 2026-07-21, this PR)
+
+The team returned `11-company-kbli-signed-lots-REVIEW.docx` — 20 Q&A on specific KBLI 2025
+codes (the "signed lots" dossier: 50113, 68126, 68129, 70100, 78109, 66123, 39001, 49296,
+80190, 75002, 85321). Reviewer left **"ok"/agreement on 18 of 20** (Q10, Q13, Q17 actively
+CONFIRM the draft). Two concrete signals; both validated before applying.
+
+### The concrete signal — reviewer Q9 (75002), a methodological point that generalises
+
+Reviewer: *"75002 is a new KBLI 2025 classification, and the foreign-investment list was
+historically structured around KBLI 2020 classifications. Therefore '75002 is not listed as
+restricted' does not automatically prove it is unrestricted for PMA."* **Validated correct** —
+the Positive Investment List (Perpres 10/2021 as amended by 49/2021) is keyed to KBLI 2020;
+a genuinely new/remapped 2025 code's ownership status is not provable from list-absence alone.
+Confirmed three ways: (a) the dossier's OWN law_refs already flagged it internally —
+75002 `"cross-vintage audit pending, internal-only caveat"`, 80190 `"true 2020 ancestor is
+80200… inheritance not yet adjudicated"`; (b) our own dataset `status_mapping` provenance
+field; (c) a cross-family regulatory check (Codex GPT-5.6, web-grounded) — Q1 confirmed the
+principle; and it surfaced that **80190 (private security) is the sharpest case**: KBLI 2020
+80200 carried a **49% foreign cap under Perpres 44/2016 Annex III** (repealed by Perpres
+10/2021), sector is POLRI/BUJP-licensed (Perpol 6/2021), and **no current cap could be
+established** → verdict *"REVIEW / current cap not established, NOT 100% proven."* BPS also
+marks 75002 `"Kode/Cakupan Baru"`.
+
+The gap was **check ≠ surface**: the authors recorded the caveat in internal metadata but the
+client-facing answer stated ownership as a settled fact. The fix surfaces the existing caveat —
+it does not invent new law.
+
+### The 4 corrections applied
+
+1. **Q11 (80190 security) — strongest.** Ownership downgraded from confident "TERBUKA 100%" to
+   "recorded as 100% but current foreign-ownership ceiling not confirmed; sector historically
+   restricted + POLRI-licensed; don't structure around full foreign ownership until confirmed."
+   (A confident 100% here could be substantially wrong for a client — the E33-work class of error.)
+2. **Q9 (75002 vet) — reviewer's target.** Ownership reframed as "recorded, cross-vintage
+   confirmation pending" (BPS "Kode/Cakupan Baru"); lead softened "Ownership is open" → "On
+   ownership"; added that owning the clinic ≠ the right to practise veterinary medicine (separate
+   professional licensing).
+3. **Q6 (70100 head office) — reviewer's additive note (correct).** Added: KBLI 70100 and 78109
+   (labour placement) are separate activities; a multi-activity PT PMA needs both codes and is
+   licensed per activity.
+4. **Q16 (register now?) — consistency.** Narrowed "ownership settled even for flagged codes" to
+   the general case, with the honest exception for genuinely new/remapped 2025 codes (points to
+   Q9/Q11), so the dossier no longer self-contradicts.
+
+### Investigated, NOT changed
+
+- **39001 (carbon capture)** — the cross-family check found **no** current foreign-ownership cap;
+  the draft already flags it "brand-new 2025 classification." Left confident (softening it would be
+  hedge-mush against the evidence). The specific repealed regulation numbers live in the law_refs as
+  leads for team confirmation, not as client-facing verbatim (W65 — a cross-family seat's citation
+  is a lead, not gospel).
+- **18/20 reviewer notes** were "ok"/agreement or the generic "system doesn't show scope/risk"
+  observation (which the dossier already declares as a deliberate withheld-until-verified gap).
+
+### How to apply Round 4 (1 file, operator-gated harvest)
+
+```bash
+cd /Users/balizero/nuzantara/apps/backend-rag
+# 1) copy the CORRECTED file (absolute worktree path — verified, carries the caveats)
+cp /Users/balizero/nuzantara/.worktrees/intel-curated-qa-r4-company-kbli/research/curated-qa-corrections-2026-07-21/company-kbli-signed-lots.jsonl \
+   data/curated_qa/
+# 2) GATE — must print the NEW text; if it prints the OLD confident line, STOP
+if grep -q "do not structure a security business around full foreign ownership" data/curated_qa/company-kbli-signed-lots.jsonl; then
+  echo "✅ fix applied — manifest + qdrant"
+  source .venv/bin/activate
+  PYTHONPATH=. python scripts/curated_qa_harvest.py --write-manifest data/curated_qa/company-kbli-signed-lots.jsonl
+  PYTHONPATH=. python scripts/curated_qa_harvest.py --qdrant
+else
+  echo "❌ STOP: cp did not land the corrected file. Do NOT harvest."
+fi
+```
+
+(In-place upsert — `_stable_point_id(question, domain)` domain-scoped, answer-independent — the
+4 corrected rows overwrite their points at the same ids; no purge. Batch is company-domain, one
+new batch_id after the edit.)
+
+## Round 5 — ground-truth sweep of the same dossier (2026-07-21, this PR)
+
+Round 4 processed the *team's* notes. This round re-checked all 11 dossier codes' ownership
+claims against the canonical internal ground truth (`data/source_documents/
+KBLI_2025_FINAL_CLEAN.json`, `l4_bali` field) and found **3 rows still contradicting it** —
+the same error class as the villa round-2 finding (a blocked route presented as usable).
+Full capture: `research/company/2026-07-21-kbli-signed-lots-round5-verification.md`.
+
+1. **Q5 (70100 head office) — structural PMA block, HIGH confidence.** The dataset's l4_bali
+   record is `CHIUSO_PMA_NO_BESAR, blocked: true`: OSS carries **no Usaha Besar scale row** for
+   70100 (Mikro/Kecil/Menengah only) → the code is reserved for UMKM and a PT PMA (Usaha Besar
+   by law) **cannot register under it at all**. The round-4 answer still said "open to full
+   foreign ownership (TERBUKA, 100%)" and advised registering under 70100. Rewritten: paper
+   TERBUKA vs practical unregistrability, scoping guidance corrected to **KBLI 64210** (the
+   KBLI-2025 holding code — adversarial review caught the draft repeating the 2020-vintage
+   "64200", which does not exist in KBLI 2025), and the finding re-attributed to the canonical
+   dataset with its provenance caveats (HIGH mark inherited pre-detachment — logged in the
+   capture).
+2. **Q6 (70100 next steps) — sequencing fix.** "Nothing stops you from proceeding with company
+   incorporation" was wrong for this code. Now: classification first (70100 substitute or
+   64210), incorporation after; round-4's 78109 staffing note kept.
+3. **Q13 (66123 crypto brokerage) — Bali moratorium caveat, LOW confidence (hedged).** l4_bali
+   is `CHIUSO_MORATORIA_BALI, blocked: true` but `confidence: LOW, needs_review: true` (the
+   risk-tier reading behind it was detached to `per_skala_disputed_pp28_collision`, pending
+   GARUDA-FILIERA re-derivation). Added an explicitly-hedged Bali caveat: "would place it in
+   the blocked group… treat Bali registrability as unresolved until confirmed." Not asserted
+   as settled — mirrors the dataset's own confidence state.
+
+**Investigated, NOT changed:** Q4 (68129) — `CHIUSO_BALI_PROPOSTO` is a *proposed*, not
+effective, Bali closure (`blocked: false`). Q9/Q11/Q16 — round-4 amendments already correct.
+The Q3 reviewer's "check dinas perhubungan" pointer for warehousing is **not supported**
+(warehouse registration is TDG under PP 29/2021, trade/Kemendag lineage, via OSS) — logged as
+a lead.
+
+**Adversarial review (R1 gate):** FIX-THEN-SHIP from an independent seat (fresh Kimi
+subagent with refuter brief — Codex MCP timed out ×2 and `codex exec` hung, so the
+cross-model seat was unavailable; flagged for transparency). It caught one real error —
+the "KBLI 64200" holding reference (2020 vintage; correct code 64210, verified in the
+canonical dataset) — plus two calibration issues (70100 HIGH-mark provenance, 68129
+justification resting on a detached payload). All fixed in place; full detail in the
+capture's §Adversarial review.
+
+### How to apply Round 5 (1 file, operator-gated harvest)
+
+```bash
+cd /Users/balizero/nuzantara/apps/backend-rag
+# 1) copy the CORRECTED file (from the merged main checkout's research/ dir)
+cp ../../research/curated-qa-corrections-2026-07-21/company-kbli-signed-lots.jsonl \
+   data/curated_qa/
+# 2) GATE — must print the NEW text; if not, STOP
+if grep -q "cannot actually be registered under 70100" data/curated_qa/company-kbli-signed-lots.jsonl; then
+  echo "✅ fix applied — manifest + qdrant"
+  source .venv/bin/activate
+  PYTHONPATH=. python scripts/curated_qa_harvest.py --write-manifest data/curated_qa/company-kbli-signed-lots.jsonl
+  PYTHONPATH=. python scripts/curated_qa_harvest.py --qdrant
+else
+  echo "❌ STOP: cp did not land the corrected file. Do NOT harvest."
+fi
+```
+
+(Same in-place upsert semantics as round 4 — 3 corrected rows overwrite their points at the
+same stable ids; none is `verbatim_eligible`, so `--faq` is not required.)

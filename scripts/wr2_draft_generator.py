@@ -34,7 +34,7 @@ import unicodedata
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
@@ -44,8 +44,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_carousel_ir as ir  # noqa: E402  (Phase 1 — typed Carousel IR, pure/zero-I/O)
+import wr2_editorial_pregate as pregate  # noqa: E402  (Phase 2 — deterministic pre-gate, pure/zero-I/O)
 import wr2_grounding as wg  # noqa: E402  (pure, side-effect-free: is_citations_only_the_facts SSOT)
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
+import wr2_planner_writer as pw  # noqa: E402  (Phase 3 — planner/writer split, pure/zero-I/O)
 import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
@@ -56,6 +59,33 @@ from backend.llm.claude_oauth_client import (  # noqa: E402
 logger = logging.getLogger("wr2.draft_generator")
 
 MAX_DRAFTS_PER_RUN = 2
+
+# ── Engine kill-switch (production cutover, 2026-07-21) ────────────────────
+# `planner_writer` = the new plan->write->pregate(+repair) engine (Phases
+# 1-3, spec `.claude/skills/wr2/_research/2026-07-21-editorial-intelligence-
+# design.md` §3 rollout step 3: "poi cutover"). `monolith` = the ORIGINAL
+# single-`claude_compose_slides`-call path — every line below this comment
+# through `_process_one_monolith`'s body is BYTE-IDENTICAL to what
+# `_process_one` was before this cutover (a pure rename + the shared
+# brief-parsing/park-check hoisted into the new thin `_process_one`
+# dispatcher) — instant rollback via `WR2_COMPOSE_ENGINE=monolith`, no code
+# change, no redeploy of a different commit. Any value other than the two
+# recognized ones falls back to `planner_writer` (the new default) with a
+# WARN log, never to a silent no-op.
+WR2_COMPOSE_ENGINE_MONOLITH = "monolith"
+WR2_COMPOSE_ENGINE_PLANNER_WRITER = "planner_writer"
+_VALID_COMPOSE_ENGINES = {WR2_COMPOSE_ENGINE_MONOLITH, WR2_COMPOSE_ENGINE_PLANNER_WRITER}
+
+
+def _resolve_compose_engine() -> str:
+    raw = os.environ.get("WR2_COMPOSE_ENGINE", WR2_COMPOSE_ENGINE_PLANNER_WRITER).strip().lower()
+    if raw not in _VALID_COMPOSE_ENGINES:
+        logger.warning(
+            "WR2_COMPOSE_ENGINE=%r not recognized (valid: %s) — falling back to %r",
+            raw, sorted(_VALID_COMPOSE_ENGINES), WR2_COMPOSE_ENGINE_PLANNER_WRITER,
+        )
+        return WR2_COMPOSE_ENGINE_PLANNER_WRITER
+    return raw
 VALID_TONES = {
     "rituale",
     "analitico",
@@ -1613,6 +1643,25 @@ async def fetch_recent_editorial_signatures(
                         if key not in kickers_seen:
                             kickers_seen.add(key)
                             kickers.append(kicker)
+                # planner_writer engine (production cutover, 2026-07-21):
+                # a fact_stack slide's take_label (wr2_carousel_ir.to_
+                # composer_dict projects it verbatim, evidence-carved
+                # family) is the shape-equivalent of the monolith's
+                # slide_type=="take" kicker — a short editorial tag, same
+                # collision/variety semantics, different field name because
+                # the two engines never share a slide_type vocabulary.
+                # Extracted unconditionally (not gated on layout_family, so
+                # a manual/interactive-path evidence-carved slide with a
+                # take_label is picked up too) via the SAME whole-string
+                # `_normalize_kicker` dedup key as the monolith branch above
+                # — the two sources share one seen-set so a kicker used by
+                # EITHER engine is never suggested again by either.
+                take_label = str(slide.get("take_label") or "").strip()
+                if take_label:
+                    key = _normalize_kicker(take_label)
+                    if key not in kickers_seen:
+                        kickers_seen.add(key)
+                        kickers.append(take_label)
                 if slide.get("is_cover"):
                     subhead = str(slide.get("subhead") or "").strip()
                     if subhead:
@@ -1625,6 +1674,59 @@ async def fetch_recent_editorial_signatures(
             continue
 
     return {"kickers": kickers, "subheads": subheads}
+
+
+async def fetch_recent_arcs(conn: asyncpg.Connection, limit: int = 8) -> list[str]:
+    """Last-N rendered/published drafts' chosen `arc` (planner_writer engine
+    only — a monolith-composed draft's `council_debate_json` has no `arc`
+    key at all, so it is silently absent here, never a malformed row: cold
+    start is the expected, honest state until enough planner_writer decks
+    have rendered), newest-first — mirrors `fetch_recent_editorial_
+    signatures`'s own query shape/error discipline exactly (same table,
+    same best-effort-empty-on-connection-error contract, same per-row
+    isolation so one malformed `council_debate_json` blob never zeroes the
+    whole lookback).
+
+    Read from `council_debate_json` (NOT `slides_json`, NOT a new column —
+    production cutover GROUND: 'brief_json or a sensible existing JSON
+    column — least-invasive; NO schema migration'). `council_debate_json`
+    already exists and is written unconditionally by `_persist_ready` for
+    EVERY draft, monolith or planner_writer — `_process_one_planner_writer`
+    below adds `arc`/`arc_reason`/`spine` keys to that same dict; a
+    monolith row's dict simply never had them, so `.get("arc")` is None and
+    the row contributes nothing, exactly like cold-start.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT council_debate_json
+              FROM war_room_drafts
+             WHERE status IN ('rendered', 'published')
+               AND council_debate_json IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT $1
+            """,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — connection-level, never block generation
+        logger.warning("fetch_recent_arcs failed: %s", exc)
+        return []
+
+    arcs: list[str] = []
+    for row in rows:
+        try:
+            blob = row["council_debate_json"]
+            if isinstance(blob, str):
+                blob = json.loads(blob)
+            if not isinstance(blob, dict):
+                continue
+            arc = blob.get("arc")
+            if isinstance(arc, str) and arc.strip():
+                arcs.append(arc.strip())
+        except Exception as exc:  # noqa: BLE001 — isolate one bad row, keep the rest
+            logger.debug("fetch_recent_arcs: skipping malformed row: %s", exc)
+            continue
+    return arcs
 
 
 _VARIETY_STEER_KICKER_CAP = 12
@@ -1746,7 +1848,483 @@ async def _mark_parked(
 _ProcessOutcome = Literal["success", "parked", "failed"]
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# planner_writer engine wiring (production cutover, 2026-07-21)
+#
+# The engine pieces themselves (wr2_carousel_ir / wr2_editorial_pregate /
+# wr2_planner_writer, imported as `ir`/`pregate`/`pw` above) stay pure and
+# zero-I/O by design (their own module docstrings). Everything below is the
+# I/O-bearing, async-bridging, DB-touching WIRING that makes them live —
+# kept entirely in THIS file so none of the three sibling modules had to
+# change its own zero-I/O invariant to get wired into production.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class PregateRepairExhausted(RuntimeError):
+    """Raised by `_generate_planner_writer_deck` when the deterministic
+    pre-gate (`wr2_editorial_pregate.pregate_typed`) still returns FAIL
+    after every repair round is spent. The caller (`_process_one_planner_
+    writer`) catches this and PARKS the draft — same B2 facts-first park
+    backstop philosophy the monolith path already uses: never ship a
+    failing deck, never silently degrade a slide's locked kind to force a
+    pass."""
+
+    def __init__(self, message: str, *, report: "pregate.PregateReport", plan: "ir.DeckPlan"):
+        super().__init__(message)
+        self.report = report
+        self.plan = plan
+
+
+# The closer (last slot) MUST be a kind the pregate's own check_cta_presence
+# already accepts as a valid ending (cta-kind slide, or a closer whose kind
+# is "statement") — every other kind maps to a family with no CTA/closing
+# semantics (Art 9.5 hard rule: the last slide is the carousel's close).
+# Enforced here as a cheap PLAN-level fail-fast (before spending N writer
+# calls on a deck that can never pass check_cta_presence): a plan whose
+# closer kind sits outside this set gets ONE re-plan attempt, never a
+# forced kind (chi propone != chi dispone still holds — this only asks the
+# planner to try again, it never picks the kind FOR it).
+_CLOSER_SAFE_KINDS = frozenset({"cta", "statement"})
+
+_SLIDE_REF_RE = re.compile(r"\bslide (\d+)\b")
+
+
+def _pregate_fail_reasons_by_slot(report: "pregate.PregateReport") -> dict[int, list[str]]:
+    """Map every FAILing check's reason strings back to the slot_id(s) they
+    name ("slide N" — every check_* function in wr2_editorial_pregate.py
+    names the offending slide index in its reason text this way; verified
+    against that module's own source for check_duplicate_slides/
+    check_bullet_promise/check_caps_policy/check_cta_presence/
+    check_kicker_unique/check_spine_echo). A check whose reason names TWO
+    slides (check_duplicate_slides: "slide i vs slide j") maps to BOTH —
+    repairing either one alone cannot resolve a near-duplicate pair."""
+    out: dict[int, list[str]] = {}
+    for check in report.checks:
+        if check.verdict != "FAIL":
+            continue
+        for reason in check.reasons:
+            for m in _SLIDE_REF_RE.finditer(reason):
+                sid = int(m.group(1))
+                out.setdefault(sid, []).append(f"{check.check}: {reason}")
+    return out
+
+
+def _pregate_failing_slot_ids(report: "pregate.PregateReport") -> set[int]:
+    return set(_pregate_fail_reasons_by_slot(report))
+
+
+# ── Constitutional constraints loader (GROUND-4) ────────────────────────────
+# Mirrors scripts/wr2_html_renderer/composer.py's `_load_forbidden_phrases`
+# (same repo-first path resolution, same Article 7 section-heading parse) —
+# DUPLICATED, not imported: composer.py pulls in `.renderer` (Playwright),
+# and this cron entry deliberately avoids that whole import chain (same
+# rationale as the BRAND_SUFFIX/inline-4-layer-prompt-builder comment
+# above). UNLIKE composer.py's own fail-CLOSED policy (composer.py is the
+# actual render-time enforcement point — it must refuse to render without
+# the list), this loader is fail-OPEN: it only feeds the writer PROMPT with
+# advisory guidance to cut retry churn. The real hard gate still lives in
+# composer.py regardless of whether this loader succeeds, so a missing/
+# unparseable constitution.md here degrades prompt quality, never safety.
+_REPO_ROOT_FOR_CONSTITUTION = Path(__file__).resolve().parent.parent
+_CONSTITUTION_PATH_FOR_WRITER = _REPO_ROOT_FOR_CONSTITUTION / "skills" / "bali-zero-brand" / "constitution.md"
+_ARTICLE_7_RE = re.compile(r"## Article 7 — Forbidden phrases \(closed list\)(.*?)(?=\n## )", re.DOTALL)
+
+
+def _load_forbidden_phrases_for_writer(path: Path | None = None) -> list[str]:
+    p = path or _CONSTITUTION_PATH_FOR_WRITER
+    try:
+        text = p.read_text(encoding="utf-8")
+        m = _ARTICLE_7_RE.search(text)
+        if not m:
+            logger.warning("Article 7 section not found in %s — writer prompts get no phrase list", p)
+            return []
+        phrases = re.findall(r"`([^`]+)`", m.group(1))
+        if not phrases:
+            logger.warning("Article 7 section in %s parsed but yielded zero phrases", p)
+        return phrases
+    except OSError as exc:
+        logger.warning(
+            "constitution.md unreadable at %s (%s) — writer prompts proceed with no phrase list; "
+            "the render-time Article 7 gate in composer.py is unaffected and still enforces",
+            p, exc,
+        )
+        return []
+
+
+# ── brief_ctx builder (GROUND: "build brief_ctx exactly as today") ─────────
+def _build_brief_ctx(
+    topic: str,
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> str:
+    """The planner_writer engine's brief context — reuses the EXACT same
+    facts-first composition `_build_draft_prompt` already does for the
+    monolith (B1, 2026-07-17: article summary LEADS, enriched brief
+    SUPPORTS — never the reverse) plus the A1 liveness framing line, minus
+    the SYSTEM_INSTRUCTIONS/schema/kicker-example scaffolding that belongs
+    to the monolith's single-call prompt shape specifically (the planner
+    and writer stages build their OWN prompts around this brief_ctx, in
+    `wr2_planner_writer._build_planner_prompt`/`_build_writer_prompt`).
+    A DELIBERATE small duplication of `_build_draft_prompt`'s body-assembly
+    logic (not a call into it) so the monolith's prompt function stays
+    completely untouched — touching it would risk the kill-switch's
+    'monolith path preserved verbatim' guarantee."""
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
+    enriched_body = ""
+    if use_full_enriched and enrichment:
+        enriched_body = _build_enriched_brief(enrichment, live_reasons)
+
+    facts_first = bool(summary and summary.strip()) and bool(enriched_body)
+    if facts_first:
+        body = (
+            "### Source article (the real event — ground who/what/when in this)\n"
+            f"{summary[:3500]}\n\n"
+            "### Supporting brief (citations, editorial take, practice notes — "
+            "background only, never a substitute for the article above)\n"
+            f"{enriched_body}"
+        )
+    elif enriched_body:
+        body = enriched_body
+    else:
+        body = summary[:3500]
+
+    framing = _LIVENESS_FRAMING.get(liveness_tier, "")
+    header = f"Title: {topic}\n\nSource: {source_url or 'n/a'}\n"
+    if framing:
+        header = f"{framing}\n\n{header}"
+    return f"{header}\nContent:\n{body}"
+
+
+# ── register selection (Mossa B keeps DeckPlan register-free by design) ────
+def _pick_register_for_planner_writer(liveness_tier: str, recent_registers: list[str]) -> str:
+    """DeckPlan is deliberately register-free (spec §2 Mossa B: 'zero-prose,
+    no voice-register field' — register comes from 'the same upstream
+    source production already resolves it from today'). For a historical
+    replay that source is a persisted value; for a FRESH draft there is
+    none to read, so this reuses the existing A3 tier-preference heuristic
+    (`_TONE_PREFERENCE`) as a firm deterministic pick instead of a soft LLM
+    nudge — favouring whichever of the tier's preferred tones was NOT most
+    recently used in this domain (anti-sameness), falling back to the full
+    VALID_TONES set for an unknown/manual tier. This is a DELIBERATE
+    simplification versus the monolith (which lets Claude pick register
+    from full content judgment in the same call) — flagged, not hidden;
+    see the cutover PR description for the follow-up option (a dedicated
+    tiny register field on a future DeckPlan revision, Zero-gated since it
+    touches the ratified spec's 'zero-prose' Mossa-B contract)."""
+    prefs = _TONE_PREFERENCE.get(liveness_tier) or tuple(sorted(VALID_TONES))
+    for candidate in prefs:
+        if candidate not in recent_registers:
+            return candidate
+    return prefs[0]
+
+
+# ── guard adapters (accessor keys differ: to_composer_dict projections have
+#    no slide_type/tonal_palette/image_mode; kicker lives in take_label, not
+#    a colon-prefixed headline) ──────────────────────────────────────────────
+def _closer_word_count_typed(projected_slides: list[dict[str, Any]]) -> int:
+    """Adapter for `_closer_too_long`'s CLOSER_MAX_WORDS guard on a
+    `to_composer_dict`-projected deck. The monolith's `_closer_word_count`
+    reads only `.get("body")` (its closer is always a statement-bomb-shaped
+    flat dict with body text); the new engine's closer can be kind="cta"
+    (elegant-close, its punch line is `invite`) or kind="statement"
+    (statement-bomb, `statement`) — mirrors composer._slide_body_word_count's
+    OWN statement/headline/body precedence, extended with `invite` for the
+    one kind that field precedence does not cover."""
+    if not projected_slides:
+        return 0
+    last = projected_slides[-1]
+    text = last.get("statement") or last.get("invite") or last.get("headline") or last.get("body") or ""
+    return len(str(text).split())
+
+
+def _closer_too_long_typed(projected_slides: list[dict[str, Any]]) -> bool:
+    return _closer_word_count_typed(projected_slides) > CLOSER_MAX_WORDS
+
+
+def _kicker_collision_typed(
+    projected_slides: list[dict[str, Any]], recent_kickers: list[str]
+) -> str | None:
+    """Adapter for `_kicker_collision`: the monolith sources a kicker from a
+    `slide_type == "take"` slide's colon-prefixed headline; the new
+    engine's equivalent shape is a fact_stack slide's `take_label`
+    (evidence-carved family — see `fetch_recent_editorial_signatures`'s own
+    extension for the same field). Whole-string comparison only via the
+    SAME `_normalize_kicker`, never substring (scar family #3)."""
+    if not recent_kickers:
+        return None
+    recent_normalized = {_normalize_kicker(k) for k in recent_kickers if k}
+    if not recent_normalized:
+        return None
+    for slide in projected_slides:
+        take_label = str(slide.get("take_label") or "").strip()
+        if take_label and _normalize_kicker(take_label) in recent_normalized:
+            return take_label
+    return None
+
+
+# ── sync engine core (plan -> write -> pregate -> repair) ──────────────────
+def _generate_planner_writer_deck(
+    brief_ctx: str,
+    register: str,
+    liveness_tier: str,
+    recent_arcs: list[str],
+    planner_fn: "Callable[[str], str]",
+    writer_fn: "Callable[[str], str]",
+    forbidden_phrases: list[str],
+    *,
+    max_repair_rounds: int = 2,
+    max_plan_attempts: int = 2,
+) -> tuple["ir.SlideDeck", dict[str, Any]]:
+    """Pure(ish) sync core — no DB/network of its own beyond what
+    `planner_fn`/`writer_fn` do internally, exactly mirroring
+    `wr2_planner_writer`'s own call_fn-injection discipline so this
+    function is unit-testable with plain fakes (see
+    scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py).
+
+    1. plan_deck, with ONE cheap re-plan attempt if the closer's kind isn't
+       in `_CLOSER_SAFE_KINDS` (fail-fast — the plan-level defect no amount
+       of slot repair could fix, since repair never changes a locked kind).
+    2. write_slot for every slot (sequential, per-kind constitutional
+       constraints threaded in).
+    3. pregate_typed the assembled deck; on FAIL, re-write ONLY the failing
+       slots (mapped from the FAIL reasons via `_pregate_fail_reasons_by_
+       slot`) up to `max_repair_rounds` times, re-pregating after each
+       round. Never degrades a slot's kind to force a pass.
+    4. Returns (deck, meta) on PASS/WARN. Raises `PregateRepairExhausted`
+       when still FAIL after every repair round — the caller parks.
+    """
+    plan: "ir.DeckPlan | None" = None
+    for plan_attempt in range(1, max_plan_attempts + 1):
+        candidate = pw.plan_deck(brief_ctx, liveness_tier, recent_arcs, planner_fn, max_retries=3)
+        plan = candidate
+        closer = max(candidate.slides, key=lambda s: s.slot_id)
+        if closer.kind in _CLOSER_SAFE_KINDS:
+            break
+        logger.warning(
+            "planner_writer: plan attempt %d/%d closer kind=%r not in %s — replanning",
+            plan_attempt, max_plan_attempts, closer.kind, sorted(_CLOSER_SAFE_KINDS),
+        )
+    assert plan is not None  # loop always assigns on the first iteration
+
+    logger.info(
+        "planner_writer: arc=%s arc_reason=%r spine=%r slides=%d",
+        plan.arc, plan.arc_reason[:120], plan.spine[:80], len(plan.slides),
+    )
+
+    ordered_slots = sorted(plan.slides, key=lambda s: s.slot_id)
+    slot_by_id = {s.slot_id: s for s in ordered_slots}
+    slides_by_id: dict[int, "ir.Slide"] = {}
+    for slot in ordered_slots:
+        sibling_intents = [s.heading_intent for s in ordered_slots if s.slot_id != slot.slot_id]
+        slides_by_id[slot.slot_id] = pw.write_slot(
+            brief_ctx, plan, slot, sibling_intents, writer_fn, max_retries=3,
+            forbidden_phrases=forbidden_phrases,
+        )
+
+    repair_rounds_used = 0
+    report: "pregate.PregateReport | None" = None
+    for round_idx in range(max_repair_rounds + 1):
+        deck = ir.SlideDeck(
+            register=register,
+            slides=[slides_by_id[sid] for sid in sorted(slides_by_id)],
+            spine=plan.spine,
+            arc=plan.arc,
+        )
+        report = pregate.pregate_typed(deck, spine=plan.spine)
+        logger.info(
+            "planner_writer: pregate round=%d verdict=%s checks=%s",
+            round_idx, report.verdict,
+            {c.check: c.verdict for c in report.checks},
+        )
+        if report.verdict != "FAIL":
+            return deck, {
+                "arc": plan.arc,
+                "arc_reason": plan.arc_reason,
+                "pregate_verdict": report.verdict,
+                "repair_rounds": repair_rounds_used,
+                "pregate_checks": [c.to_dict() for c in report.checks],
+            }
+        if round_idx == max_repair_rounds:
+            break
+        failing_ids = set(_pregate_fail_reasons_by_slot(report)) & set(slot_by_id)
+        if not failing_ids:
+            # A FAIL verdict whose reasons name no slide this deck actually
+            # has (should not happen given every FAIL check's reasons name
+            # an index) — nothing addressable to repair; stop retrying
+            # rather than loop uselessly, let the exhaustion path below
+            # park honestly.
+            break
+        repair_rounds_used += 1
+        reasons_by_slot = _pregate_fail_reasons_by_slot(report)
+        for sid in sorted(failing_ids):
+            slot = slot_by_id[sid]
+            note = "; ".join(reasons_by_slot.get(sid, []))
+            annotated_ctx = f"{brief_ctx}\n\nPREGATE FEEDBACK — fix this in your rewrite: {note}"
+            sibling_intents = [s.heading_intent for s in ordered_slots if s.slot_id != sid]
+            slides_by_id[sid] = pw.write_slot(
+                annotated_ctx, plan, slot, sibling_intents, writer_fn, max_retries=3,
+                forbidden_phrases=forbidden_phrases,
+            )
+            logger.info("planner_writer: repaired slot %d (round %d)", sid, repair_rounds_used)
+
+    assert report is not None
+    raise PregateRepairExhausted(
+        f"pregate still FAIL after {repair_rounds_used} repair round(s): "
+        f"{[c.to_dict() for c in report.checks if c.verdict == 'FAIL']}",
+        report=report,
+        plan=plan,
+    )
+
+
+# ── async->sync OAuth-CLI bridge (production wiring only, not unit-tested
+#    beyond a smoke import — asyncio.to_thread runs this in a worker thread
+#    that has NO running event loop of its own, so `asyncio.run()` inside it
+#    is legal; calling this directly from the `run()` event loop would raise
+#    "asyncio.run() cannot be called from a running event loop") ───────────
+def _make_sync_call_fn(model: str, *, timeout_s: int = 300, endpoint: str = "wr2_draft_generator") -> "Callable[[str], str]":
+    def _call(prompt: str) -> str:
+        async def _do() -> str:
+            resp = await complete_async(prompt, model=model, timeout_s=timeout_s, endpoint=endpoint)
+            return resp.text
+        return asyncio.run(_do())
+    return _call
+
+
+async def _process_one_planner_writer(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    topic: str,
+    brief: dict[str, Any],
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> _ProcessOutcome:
+    """The new plan->write->pregate(+repair) engine — default path
+    (`WR2_COMPOSE_ENGINE=planner_writer` or unset)."""
+    prospective_domain = tt.derive_domain(topic)
+    recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
+    recent_registers = [r.get("register") for r in recent if r.get("register")]
+    editorial_signatures = await fetch_recent_editorial_signatures(conn, limit=10)
+    recent_arcs = await fetch_recent_arcs(conn, limit=8)
+
+    brief_ctx = _build_brief_ctx(topic, summary, source_url, enrichment, live_reasons, liveness_tier)
+    register = _pick_register_for_planner_writer(liveness_tier, recent_registers)
+    forbidden_phrases = _load_forbidden_phrases_for_writer()
+
+    planner_fn = _make_sync_call_fn(pw.DEFAULT_PLANNER_MODEL)
+    writer_fn = _make_sync_call_fn(pw.DEFAULT_WRITER_MODEL)
+
+    logger.info(
+        "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s forbidden_phrases=%d",
+        draft_id, register, liveness_tier or "(none)", recent_arcs, len(forbidden_phrases),
+    )
+
+    try:
+        deck, meta = await asyncio.to_thread(
+            _generate_planner_writer_deck,
+            brief_ctx, register, liveness_tier, recent_arcs,
+            planner_fn, writer_fn, forbidden_phrases,
+        )
+    except (pw.PlanValidationExhausted, pw.SlotWriteExhausted) as e:
+        logger.error("Draft %s planner_writer generation exhausted: %s", draft_id, e)
+        await _mark_rejected(conn, draft_id, f"planner_writer_exhausted: {e}")
+        return "failed"
+    except PregateRepairExhausted as e:
+        reason = f"planner_writer pregate FAIL after repair: {str(e)[:800]}"
+        logger.warning("Draft %s parked: %s", draft_id, reason)
+        await _mark_parked(conn, draft_id, reason)
+        return "parked"
+    except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+        logger.error("Draft %s planner_writer Claude OAuth failed: %s", draft_id, e)
+        await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
+        _send_telegram(f"WR2 draft_generator (planner_writer) Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
+        return "failed"
+
+    projected = [
+        ir.to_composer_dict(slide, index=i, total=len(deck.slides))
+        for i, slide in enumerate(deck.slides, start=1)
+    ]
+
+    # Existing guards, adapted (accessor keys differ — see the _typed
+    # adapter docstrings above). WARN-only, exactly like the monolith path:
+    # Legge 5 (human review at the queue gate) is the backstop, never a
+    # hard reject here.
+    if _closer_too_long_typed(projected):
+        logger.warning(
+            "Draft %s (planner_writer) closer too long (%d words > %d) — WARN only, "
+            "Legge 5 backstop at the review gate.",
+            draft_id, _closer_word_count_typed(projected), CLOSER_MAX_WORDS,
+        )
+    collision_kicker = _kicker_collision_typed(projected, editorial_signatures.get("kickers") or [])
+    if collision_kicker:
+        logger.warning(
+            "Draft %s (planner_writer) take_label kicker collision (%r already used) — "
+            "WARN only, Legge 5 backstop at the review gate.",
+            draft_id, collision_kicker,
+        )
+
+    cover_scene = projected[0].get("image_prompt") or topic
+    cover_url, cover_err = await generate_cover_image(scene_core=cover_scene, draft_id=str(draft_id))
+    if cover_url:
+        projected[0]["image_url"] = cover_url
+    else:
+        logger.warning("Cover failed: %s", cover_err)
+        projected[0]["image_url"] = None
+        projected[0]["image_prompt_fallback"] = True
+
+    council_meta = {
+        "engine": WR2_COMPOSE_ENGINE_PLANNER_WRITER,
+        "register_reason": (
+            f"deterministic A3 tier-preference pick (planner_writer engine, liveness_tier="
+            f"{liveness_tier or 'unknown'!r}, recent_registers_avoided={recent_registers})"
+        ),
+        "spine": deck.spine,
+        "arc": deck.arc,
+        "arc_reason": meta.get("arc_reason"),
+        "pregate_verdict": meta.get("pregate_verdict"),
+        "pregate_repair_rounds": meta.get("repair_rounds"),
+        "cover_url": cover_url,
+        "cover_error": cover_err,
+        "composed_at": datetime.now(timezone.utc).isoformat(),
+        "liveness_tier": liveness_tier or None,
+        "slide_count": len(projected),
+    }
+    await _persist_ready(conn, draft_id, register, projected, council_meta)
+    logger.info(
+        "Draft %s → status=drafts (engine=planner_writer, arc=%s, pregate=%s, repair_rounds=%s)",
+        draft_id, deck.arc, meta.get("pregate_verdict"), meta.get("repair_rounds"),
+    )
+
+    cover_status = "OK" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
+    body_count = len(projected) - 1
+    _send_telegram(
+        "WR2 draft pronto per Canva (planner_writer)\n"
+        f"Topic: {topic[:120]}\n"
+        f"Register: {register} · Arc: {deck.arc}\n"
+        f"Cover: {cover_status}\n"
+        f"Slide body ({body_count}): prompt inline, da generare a mano\n"
+        f"Draft: {draft_id}\n"
+        "Canva Renderer ogni 5 min",
+    )
+    return "success"
+
+
 async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _ProcessOutcome:
+    """Thin dispatcher (production cutover, 2026-07-21): parses the row +
+    runs the SHARED B2 park backstop ONCE (both engines must never invent a
+    story for a news-shaped topic with no usable source — that check does
+    not belong to either engine specifically), then routes to
+    `_process_one_monolith` (the ORIGINAL single-call path, byte-identical
+    body to what lived directly in this function before the cutover) or
+    `_process_one_planner_writer` (the new plan->write->pregate engine) per
+    `WR2_COMPOSE_ENGINE` (`_resolve_compose_engine`, default
+    `planner_writer`; `monolith` = instant rollback, no redeploy of a
+    different commit)."""
     draft_id: uuid.UUID = row["id"]
     topic: str = row["topic"]
     brief_raw = row["brief_json"]
@@ -1764,18 +2342,20 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
     # A1 keystone: the selector already put this in brief_json — read it (was dropped).
     liveness_tier = _normalise_liveness_tier(brief.get("liveness_tier"))
 
+    engine = _resolve_compose_engine()
     logger.info(
-        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s",
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s engine=%s",
         draft_id, topic[:80],
         bool(enrichment), brief.get("live_news_score"),
-        liveness_tier or "(none)",
+        liveness_tier or "(none)", engine,
     )
 
     # ── B2 refuse-to-guess backstop (park, never draft) ────────────────────
-    # Checked BEFORE any Claude call: a news-shaped draft with no usable source
-    # anywhere (empty article_summary AND enrichment that's citations-only) has
-    # nothing for B1's facts-first fix to lead with — composing would mean
-    # inventing the story (the 2026-07-16 failure, draft 1229c367). Park it.
+    # Checked BEFORE any Claude call, SHARED by both engines: a news-shaped
+    # draft with no usable source anywhere (empty article_summary AND
+    # enrichment that's citations-only) has nothing for B1's facts-first fix
+    # to lead with — composing would mean inventing the story (the
+    # 2026-07-16 failure, draft 1229c367). Park it.
     if _is_news_shaped(brief, liveness_tier, topic) and not _has_usable_source(summary, enrichment):
         reason = (
             "news-shaped draft has no usable source content: empty article_summary "
@@ -1785,6 +2365,35 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
         await _mark_parked(conn, draft_id, reason)
         return "parked"
 
+    if engine == WR2_COMPOSE_ENGINE_MONOLITH:
+        return await _process_one_monolith(
+            conn, draft_id, topic, brief, summary, source_url,
+            enrichment, live_reasons, liveness_tier,
+        )
+    return await _process_one_planner_writer(
+        conn, draft_id, topic, brief, summary, source_url,
+        enrichment, live_reasons, liveness_tier,
+    )
+
+
+async def _process_one_monolith(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    topic: str,
+    brief: dict[str, Any],
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> _ProcessOutcome:
+    """The ORIGINAL single-`claude_compose_slides`-call engine — kill-switch
+    rollback target (`WR2_COMPOSE_ENGINE=monolith`). Body below this
+    docstring is UNCHANGED from what `_process_one` did before the
+    production cutover (2026-07-21): only the function name + the shared
+    setup/park-check hoisted into the new `_process_one` dispatcher above
+    moved; every line of actual generation logic — the regen loop, the 3
+    guards, persistence, Telegram — is byte-identical."""
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
     # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
     # look up the last-2 rendered same-domain carousels, and tell the model to

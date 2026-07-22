@@ -36,6 +36,9 @@ For now, manual sync after merge.
 ## Current version
 
 `wr2-script-wrapper.sh` includes:
+- Export `PATH` with `/opt/homebrew/bin` prepended (launchd's default PATH
+  omits it — breaks any `#!/usr/bin/env node` shebang, incl. the Codex CLI
+  invoked by `wr2_image_generator.py`) — bug discovered 2026-07-22
 - Source `~/.nuzantara-secrets.env` + `~/.nuzantara-backend-secrets.env`
 - Force-override `DATABASE_URL` to `DATABASE_URL_LOCAL` (pg-proxy
   127.0.0.1:15432) — bug discovered 2026-05-06
@@ -50,3 +53,4 @@ For now, manual sync after merge.
 |---|---|---|
 | 2026-05-06 | DATABASE_URL_LOCAL override | flycast hostname unreachable from Pro |
 | 2026-05-19 | Venv-preflight auto-heal | 84h silent crashloop 2026-05-16→2026-05-19 |
+| 2026-07-22 | `export PATH` incl. `/opt/homebrew/bin` | Codex `env: node: No such file or directory` under launchd's minimal PATH — same signature already cured in `scripts/auth_sentinel_cron.sh` (2026-07-12), never propagated here |

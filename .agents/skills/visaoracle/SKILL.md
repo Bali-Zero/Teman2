@@ -51,10 +51,15 @@ gate — a green gate certifies the engine as it was measured, not future edits.
   recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
   engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
 
-**GATE STATUS: 🔴 RED (all four unmeasured — SHADOW wiring not yet live).** The session updates this line as
-criteria go green, with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill
-capture) for each. Evidence is collected from the SHADOW audit substrate; nothing here is self-attested —
-each green needs a re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
+**GATE STATUS: 🔴 RED (2026-07-21 — STEP-6c code is merged, but production collection is still dark).**
+Fly has the trust-store secret but neither `VISA_ENGINE_MATCH_MODE` nor
+`VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`; the Match path therefore defaults OFF and fails closed before
+writing evidence. G-a/G-c are red/unmeasured, G-b has a green local canonical-suite preflight but no accepted
+independent replay artifact, and G-d is unmeasured. Current collection design/receipt:
+`research/visa/2026-07-21-shadow-evidence-collection.md`. The session updates this line as criteria go green,
+with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill capture) for each.
+Evidence is collected from the SHADOW audit substrate; nothing here is self-attested — each green needs a
+re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
 
 **Flip procedure (when GATE STATUS goes 🟢 all-green):** the session executes the flip itself, captures the
 before/after (flag state, a live ENFORCE verdict on a real request, the audit record), and reports the
@@ -248,6 +253,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   memory `discovery_kimi_parallel_worktree_pr2876_2026_07_20`. SHADOW-wiring prerequisite for the
   ENFORCE-GATE (STEP-6c) still not live — S3/Pro's PR #2824 (migration 252 SHADOW substrate)
   remains the actual blocker for evaluating any gate criterion, G-b included.
+- 2026-07-21 (Pro, SHADOW evidence lane): prior blocker superseded — **#2916 MERGED**
+  (`8b28ac418481`, STEP-6c Match wiring), **#2930 MERGED** (`09f7cd2273c9`, real HMAC
+  facts-fingerprint provider), and **#2952 MERGED** (`60c6f348c9a4`, finite activation-system-period
+  guard). Production release 3888 is deployed, but collection remains dark: Fly has only the Visa trust
+  store, while Match mode and the facts-fingerprint key are absent. Read-only DB proof is separately
+  blocked because the `nuzantara_readonly` Keychain password is absent; no write-capable fallback used.
+  Worktree `backend-rag-visa-oracle-shadow-evidence` now prepares migration 255 plus a PII-free,
+  fail-closed G-a/G-c collector and CLI; 1,070 Visa-engine tests collected with all runnable tests green
+  (one pre-existing executor-role skip). **No PR, merge, deploy, secret change, SHADOW activation, or
+  ENFORCE activation performed.** Receipt:
+  `research/visa/2026-07-21-shadow-evidence-collection.md`.
+- 2026-07-22 (Pro, SHADOW evidence lane): Kimi review follow-up adds direct G-c,
+  collector, CLI, and legacy fail-closed coverage; `duplicate_evaluations` now counts only
+  repeated valid 32-byte fingerprints. The focused local-test-DB suite is green (57 tests;
+  SHADOW evidence module 85.30% branch coverage). **L3/L4 remain deferred; ENFORCE remains OFF.**
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

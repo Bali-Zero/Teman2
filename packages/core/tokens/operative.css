@@ -1,10 +1,15 @@
 /* =============================================================
-   Bali Zero Design Tokens — Single Source of Truth
-   @nuzantara/design-system v0.1.0
+   Merged from packages/design-system bz-tokens.css (WS1, 2026-07-21) — single SSOT
+
+   Operative/dashboard token family. All variables are --bz-* prefixed and
+   collide with neither primitives (--color-*) nor semantic (--surface-*,
+   --text-*, --border-*, --accent-*) tokens. Values are byte-identical to
+   the source file; do not recolor, only consume.
 
    Primitives: constant values, never change with theme
    Semantics:  theme-aware aliases, default=dark
-   Light:      overrides under [data-theme="light"]
+   Light:      overrides under [data-theme="light"],
+               [data-theme="operative-light"]
    ============================================================= */
 
 :root {
@@ -135,7 +140,8 @@
 
 /* ── Light theme overrides ──────────────────────────────────── */
 
-[data-theme="light"] {
+[data-theme="light"],
+[data-theme="operative-light"] {
   /* Backgrounds */
   --bz-bg: #f5f6f8;
   --bz-bg-elevated: #ffffff;

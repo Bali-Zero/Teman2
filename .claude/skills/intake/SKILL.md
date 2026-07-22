@@ -135,6 +135,23 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-21 — IDENTITY-BACKFILL REROUTE FOLLOW-UP REBUILT, READ-ONLY PROOF GREEN.**
+  Recovered Claude session `fff54ce0`: its five registered tasks were complete; the first
+  unfinished follow-up was the route-only `--reroute-identity-backfill` mode left as an
+  uncommitted two-file patch on the obsolete
+  `agent/nuzantara/backend-rag/identity-backfill-0718` worktree after PR #2883 merged. The
+  implementation was rebuilt on fresh `origin/main` in
+  `agent/nuzantara/backend-rag/identity-backfill-continuation` and tightened so selection
+  requires an active, non-reverted provenance entry, a current non-empty passport/KITAS value,
+  and the corresponding non-empty identifier in the document. Malformed historical candidates
+  JSON degrades to an empty candidate set; already-strong decisions are excluded; the shared
+  route-only engine remains the only mutation path and preserves `stage_output`. Verification:
+  92 script tests + 8 GATE-11 tests green, Ruff clean, and the real SELECT executed successfully
+  via `nuzantara_dev_readonly`. **Current local population is 0** (0 live clients with active
+  identity-backfill provenance; dry-run selects 0 proposals), so `--apply` was intentionally not
+  run and the historical 25-proposal proof is no longer reproducible from current local state.
+  Candidate remains review-only for Claude; no merge or deploy.
+
 - **2026-07-21 — WAVE-3 EXECUTED (Zero GO #3, "ggo") — 1 contatto creato, pulito senza residui.**
   Terzo "go" di Zero ricevuto poco dopo la chiusura del wave-2 (PR #2925 mergiata). Worktree
   ri-diramato da `origin/main` fresco + tutti e 7 i file attestati riverificati byte-identici
@@ -343,7 +360,7 @@ adversarial review present`** (`scripts/check_adversarial_review.py` richiede fr
   chokepoint con env armato; (R4-2) manifest con tuple per-doc (pid,qid,status,blob,ffp)
   - `script_sha256`/`validator_sha256` dei byte esatti (un git-SHA di worktree sporco non
     vincola nulla); (R4-3) coppie trigram calcolate sull'INTERO set eligible PRE-esclusione
-    (non-transitività: A~esistente, A~B cross-sid, B!~esistente → B ora clusterizza).
+    (non-transitività: A~~esistente, A~~B cross-sid, B!~esistente → B ora clusterizza).
     Census v2.2: clustered 171→182, **A-effective INVARIATO 435** (i doc dei nomi
     neo-clusterizzati erano già in quarantena per gate precedenti) — ora certificabile.
     **Gate round-5: 1 solo blocker R5-1 (manifest self-reference)** — costruire l'apply
@@ -478,13 +495,13 @@ adversarial review present`** (`scripts/check_adversarial_review.py` richiede fr
     più un segnale indipendente, serve SOLO a risolvere un token eseguibile
     RELATIVO (raro) in path assoluto prima dello stesso check under-root; un
     eseguibile esterno assoluto ora fallisce SEMPRE `worker_not_running_from*
-    deploy_root`indipendentemente dalla cwd. R13-3/R13-4 confermati validi
-dal gate stesso in questo round. 58/58 verdi. Census v2.12: popolazione
-INVARIATA (275/317), digest`0c773f7af5547cf5c117aca06f985656e60994646b14fad7072723e179c2c4d9`.
-**Round-15: VERDICT CLEAN — WAVE-1 GO.** Arco gate 6→15 CHIUSO. Design doc
-§v3.4→v3.7 con il meta-pattern completo (proxy-vs-stato-reale, dieci
-round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
-`INTAKE_DRIVE_AUTOCREATE_ENABLED`nel process-env del batch +`--manifest 0c773f7a…`+ 1 lotto ≤200 + drain +`--verify-batch` a T+delay
+deploy_root`indipendentemente dalla cwd. R13-3/R13-4 confermati validi
+    dal gate stesso in questo round. 58/58 verdi. Census v2.12: popolazione
+    INVARIATA (275/317), digest`0c773f7af5547cf5c117aca06f985656e60994646b14fad7072723e179c2c4d9`.
+    **Round-15: VERDICT CLEAN — WAVE-1 GO.** Arco gate 6→15 CHIUSO. Design doc
+    §v3.4→v3.7 con il meta-pattern completo (proxy-vs-stato-reale, dieci
+    round, una sola malattia). **Prossimo passo: esecuzione wave-1** (killswitch
+    `INTAKE_DRIVE_AUTOCREATE_ENABLED`nel process-env del batch +`--manifest 0c773f7a…`+ 1 lotto ≤200 + drain +`--verify-batch` a T+delay
     E T+1d) — sospesa per conferma esplicita Zero: è la PRIMA creazione reale
     di contatti CRM da questa pipeline, dati cliente reali, prima esecuzione
     mai fatta contro il book vivo.

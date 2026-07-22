@@ -78,6 +78,21 @@
   --state-warning: var(--color-state-warning);
   --state-danger: var(--color-state-danger);
   --state-info: var(--color-state-info);
+  /* Critical tier above danger (WS1, 2026-07-21): bali-zero-brand status red.
+     Usage constraint (contrast): as a FILL with white text, or as TEXT only on
+     white/light surfaces — #c8102e on operative anthracite is ~2.54:1, so
+     never use it for text on dark surfaces (use --state-danger there). */
+  --status-critical: #c8102e;
+
+  /* ─── Fact badge (WS1, 2026-07-21) ─────────────────────────────
+   * "Yellow = verifiable facts" marker from bali-zero-brand
+   * regulation_badge: yellow bg, black IBM Plex Mono text. Used by the
+   * FactBadge component for KBLI codes, citations, regulation codes.
+   * Funnel-agnostic: never re-mapped by data-funnel, never read
+   * --accent-funnel. Theme-invariant by spec — no [data-theme] variants. */
+  --fact-badge-bg: #f4c430;
+  --fact-badge-fg: #000000;
+  --fact-badge-radius: 4px;
 
   /* ─── Editorial accents (funnel-agnostic) ──────────────────────
      Copper/sand/gold/blue palette used across non-funnel UI
