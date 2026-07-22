@@ -56,6 +56,12 @@
 /scripts/tests/test_verify_the_verifiers.py          @Balizero1987
 /.github/verify-the-verifiers.sha256                 @Balizero1987
 
+# token-lint gate (WS2 train) — the workflow executes these files FROM the PR
+# head, so without owner protection any PR could weaken the scanner or its
+# guilt tests and the gate would still pass (same recursive-disarm class).
+/scripts/token_lint.py                              @Balizero1987
+/scripts/tests/test_token_lint.py                   @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Auth / security-critical — TIER 1
 # ---------------------------------------------------------------------------

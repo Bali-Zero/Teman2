@@ -88,14 +88,23 @@ CONTRACT
 Input (two modes, mutually exclusive):
   --base REF      Compute the changed-file list via
                   `git diff --name-only REF...HEAD` and the added lines via
-                  `git diff --unified=0 --no-color REF...HEAD`, run with
-                  cwd = the repo root derived from this file's location (the
-                  script is immune to the caller's cwd). Default git rename
-                  detection is DELIBERATE: a pure rename produces no hunks,
-                  so a renamed file's untouched legacy hexes are not
-                  re-flagged as "new".
+                  `git diff --unified=0 --no-color --text REF...HEAD`, run
+                  with cwd = the repo root derived from this file's location
+                  (the script is immune to the caller's cwd). Git rename
+                  detection stays ON (DELIBERATE): a pure rename produces no
+                  hunks, so an IN-SCOPE -> IN-SCOPE rename's untouched
+                  legacy hexes are not re-flagged as "new". Round-5
+                  refinement (codex RED P0): a rename whose DESTINATION is
+                  in scope and whose SOURCE is not (cross-scope ingress) is
+                  NOT invisible — the destination file's full HEAD content
+                  is judged (`git show HEAD:<path>`), because that content
+                  is new to the gate's scope even though no lines are
+                  "added".
   --stdin         Read a unified diff from stdin (git format), so tests and
-                  manual checks never need git. REQUIRES --files.
+                  manual checks never need git. REQUIRES --files. A rename
+                  INTO a scoped prefix cannot be content-verified in this
+                  mode (no filesystem) — it is reported as a
+                  `(rename-unverified)` violation (exit 1, fail-hostile).
   --files A,B,C   Comma-separated changed-file list (the `git diff
                   --name-only` contract). Only files in this list are
                   judged; added lines attributed by the diff to any other
@@ -128,7 +137,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 # ---------------------------------------------------------------------------
 # Constants — see module docstring for the verification notes behind each.
@@ -182,6 +191,15 @@ EXIT_CLEAN = 0
 EXIT_VIOLATIONS = 1
 EXIT_ERROR = 2
 
+# Round-5 (codex RED P0): cross-scope rename ingress. In --stdin mode the
+# destination content cannot be read (no filesystem), so a rename INTO a
+# scoped prefix is reported with this marker as a violation (fail-hostile).
+UNVERIFIED_RENAME_HEX = "(rename-unverified)"
+UNVERIFIED_RENAME_NOTE = (
+    "rename into scoped surface; full content not verifiable in --stdin "
+    "mode — treated as violation (fail-hostile)"
+)
+
 
 class DiffParseError(Exception):
     """The unified-diff input is structurally malformed -> fail-closed exit 2."""
@@ -199,10 +217,19 @@ class AddedLine:
 
 
 @dataclass(frozen=True)
+class Rename:
+    """A `rename from`/`rename to` pair from the diff (paths normalized)."""
+
+    old: str
+    new: str
+
+
+@dataclass(frozen=True)
 class Violation:
     path: str
     line: int
     hex: str
+    note: str | None = None  # audit context appended to the standard message
 
 
 @dataclass(frozen=True)
@@ -390,6 +417,32 @@ def binary_marked_paths(text: str) -> set[str]:
     return paths
 
 
+def parse_renames(text: str) -> list[Rename]:
+    """Extract `rename from`/`rename to` pairs from a git diff.
+
+    Only COMPLETE pairs register (a `rename from` left dangling at the next
+    `diff --git` boundary is dropped, liberally — an incomplete pair cannot
+    hide content on its own: its destination still appears as a new file
+    with full added-line hunks, which the normal scan judges). Similarity
+    is irrelevant: ANY rename into scope brings unscanned content (round-5),
+    so pairs are recorded regardless of the similarity index."""
+    renames: list[Rename] = []
+    pending_old: str | None = None
+    for raw in text.splitlines():
+        if raw.startswith("diff --git "):
+            pending_old = None
+            continue
+        if raw.startswith("rename from "):
+            pending_old = _normalize_path(raw[len("rename from ") :])
+            continue
+        if raw.startswith("rename to ") and pending_old is not None:
+            renames.append(
+                Rename(pending_old, _normalize_path(raw[len("rename to ") :]))
+            )
+            pending_old = None
+    return renames
+
+
 def is_scoped(path: str) -> bool:
     """True iff `path` lives inside one of the redesigned route groups."""
     return any(path.startswith(prefix) for prefix in SCOPED_PREFIXES)
@@ -477,7 +530,12 @@ def find_hexes(content: str) -> list[str]:
     return seen
 
 
-def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
+def scan(
+    diff_text: str,
+    files: Iterable[str] | None,
+    *,
+    read_head_file: Callable[[str], str] | None = None,
+) -> ScanResult:
     """The gate itself — pure.
 
     Judges every added line in `diff_text` that is attributed to a path in
@@ -485,6 +543,15 @@ def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
     route groups, outside token sources, and not exempted at line level.
     Line-level judgment runs on `effective_code(content)` — the text after
     any same-line-closed leading comment (PR #2987 round-3).
+
+    `read_head_file(path) -> str` reads a file's content at HEAD (--base
+    mode wires it to `git show HEAD:<path>`). It exists ONLY for cross-scope
+    rename ingress (round-5): a rename whose destination is in scope and
+    whose source is not brings content that is new to the gate's regime yet
+    produces no added-line hunks. With a reader, the destination's full
+    content is judged line-by-line with the same exemptions. Without one
+    (--stdin mode, no filesystem), the rename is reported as an
+    UNVERIFIED_RENAME violation (fail-hostile).
     """
     allowed = None if files is None else {_normalize_path(f) for f in files if f.strip()}
     # Fail-closed (PR #2987 round-4, codex RED): a binary marker for a
@@ -519,7 +586,61 @@ def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
             continue
         for hex_value in find_hexes(effective):
             violations.append(Violation(path, added.line, hex_value))
-    return ScanResult(violations, len(scanned_files))
+
+    # Cross-scope rename ingress (PR #2987 round-5, codex RED P0): a pure
+    # rename produces no added-line hunks, so a hex-filled file renamed
+    # from OUTSIDE the scoped prefixes INTO them would be invisible to the
+    # added-line scan above. IN-SCOPE -> IN-SCOPE pure renames stay
+    # invisible BY DESIGN: their content was already inside the gate's
+    # regime (legacy stays legacy) — only cross-scope ingress is judged.
+    for ren in parse_renames(diff_text):
+        if not is_scoped(ren.new) or is_scoped(ren.old):
+            continue
+        if allowed is not None and ren.new not in allowed:
+            continue
+        if read_head_file is None:
+            violations.append(
+                Violation(ren.new, 0, UNVERIFIED_RENAME_HEX, UNVERIFIED_RENAME_NOTE)
+            )
+            continue
+        try:
+            content = read_head_file(ren.new)
+        except Exception as exc:  # noqa: BLE001 - any read failure fails closed
+            raise DiffParseError(
+                f"could not read HEAD content of renamed-into-scope file "
+                f"{ren.new!r}: {exc}"
+            ) from exc
+        scanned_files.add(ren.new)
+        for lineno, text_line in enumerate(content.splitlines(), start=1):
+            effective = effective_code(text_line)
+            if not effective.strip():
+                continue
+            if is_comment_line(effective):
+                continue
+            if has_ok_marker(effective):
+                continue
+            for hex_value in find_hexes(effective):
+                violations.append(
+                    Violation(
+                        ren.new,
+                        lineno,
+                        hex_value,
+                        f"rename into scope from {ren.old}",
+                    )
+                )
+
+    # Dedupe exact (path, line, hex) triples — a sub-100% similarity rename
+    # into scope can surface the same hex once via its added-line hunks and
+    # once via the full-content ingress scan.
+    seen: set[tuple[str, int, str]] = set()
+    unique_violations: list[Violation] = []
+    for violation in violations:
+        key = (violation.path, violation.line, violation.hex)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_violations.append(violation)
+    return ScanResult(unique_violations, len(scanned_files))
 
 
 # ---------------------------------------------------------------------------
@@ -567,6 +688,25 @@ def _git_diff(base: str) -> tuple[list[str], str]:
     return names, text
 
 
+def _read_head_file(path: str) -> str:
+    """Read a file's content at HEAD via `git show HEAD:<path>` (--base mode
+    only — backs the round-5 cross-scope rename ingress scan). Any failure
+    raises GitError -> main() fails closed with exit 2."""
+    proc = subprocess.run(
+        ["git", "show", f"HEAD:{path}"],
+        cwd=_repo_root(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise GitError(
+            f"git show HEAD:{path} failed (exit {proc.returncode}): "
+            f"{proc.stderr.strip() or '<no stderr>'}"
+        )
+    return proc.stdout
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="token_lint.py",
@@ -601,12 +741,18 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _format_violation(violation: Violation) -> str:
+    """The standard `path:line: #hex — ...` contract line, with the optional
+    audit note appended in brackets (round-5 rename-ingress context)."""
+    line = f"{violation.path}:{violation.line}: {violation.hex} — {VIOLATION_MESSAGE}"
+    if violation.note:
+        line += f" [{violation.note}]"
+    return line
+
+
 def _emit_human(result: ScanResult) -> None:
     for violation in result.violations:
-        print(
-            f"{violation.path}:{violation.line}: {violation.hex} — "
-            f"{VIOLATION_MESSAGE}"
-        )
+        print(_format_violation(violation))
     if result.violations:
         file_count = len({v.path for v in result.violations})
         print(
@@ -633,7 +779,8 @@ def _emit_json(result: ScanResult) -> None:
                 "path": v.path,
                 "line": v.line,
                 "hex": v.hex,
-                "message": f"{v.path}:{v.line}: {v.hex} — {VIOLATION_MESSAGE}",
+                "message": _format_violation(v),
+                **({"note": v.note} if v.note else {}),
             }
             for v in result.violations
         ],
@@ -654,7 +801,11 @@ def main(argv: list[str] | None = None) -> int:
                 parser.error("--stdin requires --files A,B,C")
             files = [f.strip() for f in args.files.split(",") if f.strip()]
             diff_text = sys.stdin.read()
-        result = scan(diff_text, files)
+        result = scan(
+            diff_text,
+            files,
+            read_head_file=_read_head_file if args.base is not None else None,
+        )
     except DiffParseError as exc:
         print(
             f"token-lint: ERROR: could not parse diff input ({exc}) — "

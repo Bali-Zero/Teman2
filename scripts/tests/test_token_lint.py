@@ -61,6 +61,17 @@ def make_diff(path: str, added: list[str], *, start: int = 1, new_file: bool = T
     return "\n".join(header + [f"+{line}" for line in added]) + "\n"
 
 
+def make_rename_diff(old: str, new: str, *, similarity: int = 100) -> str:
+    """Build a minimal pure-rename diff (no content hunks — the round-5
+    invisibility shape: the parser sees zero additions for this file)."""
+    return (
+        f"diff --git a/{old} b/{new}\n"
+        f"similarity index {similarity}%\n"
+        f"rename from {old}\n"
+        f"rename to {new}\n"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Sanity on the SSOT constants themselves.
 # ---------------------------------------------------------------------------
@@ -506,6 +517,101 @@ def test_cli_binary_marker_scoped_exit_2() -> None:
     proc = _run_cli(["--stdin", "--files", WORKSPACE_PAGE], diff)
     assert proc.returncode == 2
     assert "fail-closed" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# ROUND-5 — cross-scope rename ingress (codex RED P0).
+# ---------------------------------------------------------------------------
+
+RENAME_OLD = "apps/mouth/src/app/(marketing)/old.tsx"
+RENAME_NEW = "apps/mouth/src/app/portal/new.tsx"
+
+
+def test_parse_renames_pairs() -> None:
+    renames = tl.parse_renames(make_rename_diff(RENAME_OLD, RENAME_NEW))
+    assert renames == [tl.Rename(RENAME_OLD, RENAME_NEW)]
+
+
+def test_guilt_cross_scope_rename_content_scanned_base_mode() -> None:
+    """GUILT (PR #2987 round-5, codex RED P0): a 100% rename INTO a scoped
+    prefix produces no added-line hunks, but the destination content is new
+    to the gate's regime — in --base mode (reader wired to git show) its
+    full content is judged."""
+    diff = make_rename_diff(RENAME_OLD, RENAME_NEW)
+    reads: list[str] = []
+
+    def reader(path: str) -> str:
+        reads.append(path)
+        return 'const BRAND = "#d4845a";\nexport const ok = 1;\n'
+
+    result = tl.scan(diff, [RENAME_NEW], read_head_file=reader)
+    assert reads == [RENAME_NEW]
+    assert [(v.path, v.line, v.hex) for v in result.violations] == [
+        (RENAME_NEW, 1, "#d4845a")
+    ]
+    assert result.violations[0].note is not None
+    assert "rename into scope" in result.violations[0].note
+
+
+def test_guilt_cross_scope_rename_unverified_stdin_mode() -> None:
+    """GUILT (round-5, stdin path): no filesystem in --stdin mode -> the
+    rename into scope is reported as an unverified violation (fail-hostile,
+    exit 1 at the CLI)."""
+    result = tl.scan(make_rename_diff(RENAME_OLD, RENAME_NEW), [RENAME_NEW])
+    assert len(result.violations) == 1
+    violation = result.violations[0]
+    assert violation.path == RENAME_NEW
+    assert violation.line == 0
+    assert violation.hex == tl.UNVERIFIED_RENAME_HEX
+    assert violation.note is not None and "not verifiable" in violation.note
+
+
+def test_cli_cross_scope_rename_stdin_exit_1() -> None:
+    proc = _run_cli(["--stdin", "--files", RENAME_NEW], make_rename_diff(RENAME_OLD, RENAME_NEW))
+    assert proc.returncode == 1
+    assert "(rename-unverified)" in proc.stdout
+    assert RENAME_NEW in proc.stdout
+
+
+def test_innocence_cross_scope_rename_no_hex() -> None:
+    """INNOCENCE (round-5): same cross-scope rename, but the destination
+    content carries zero hexes -> clean."""
+    result = tl.scan(
+        make_rename_diff(RENAME_OLD, RENAME_NEW),
+        [RENAME_NEW],
+        read_head_file=lambda path: "const ok = 1;\n// no colors here\n",
+    )
+    assert result.violations == []
+
+
+def test_innocence_out_of_scope_rename_with_hex() -> None:
+    """INNOCENCE (round-5): a rename between two OUT-OF-SCOPE paths keeps
+    the gate out of it entirely — the content reader must not even be
+    called (unchanged behavior)."""
+
+    def reader(path: str) -> str:
+        raise AssertionError(f"reader called for out-of-scope rename: {path}")
+
+    old = "apps/mouth/src/app/(marketing)/a.tsx"
+    new = "apps/mouth/src/app/(marketing)/b.tsx"
+    result = tl.scan(make_rename_diff(old, new), [new], read_head_file=reader)
+    assert result.violations == []
+
+
+def test_innocence_in_scope_pure_rename_keeps_legacy() -> None:
+    """INNOCENCE (round-5, documented design): an IN-SCOPE -> IN-SCOPE pure
+    rename stays invisible — its content was already inside the gate's
+    regime (legacy stays legacy, the ~600-hex cleanup is not this gate's
+    job). Round-5 judges only CROSS-SCOPE ingress, so the reader is never
+    consulted here either."""
+    old = "apps/mouth/src/app/portal/old.tsx"
+    new = "apps/mouth/src/app/portal/new.tsx"
+
+    def reader(path: str) -> str:
+        raise AssertionError(f"reader called for in-scope rename: {path}")
+
+    result = tl.scan(make_rename_diff(old, new), [new], read_head_file=reader)
+    assert result.violations == []
 
 
 # ---------------------------------------------------------------------------
