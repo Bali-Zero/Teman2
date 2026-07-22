@@ -250,12 +250,33 @@ def test_guilt_inline_closed_comment_then_code() -> None:
     the same line exempts only the comment part — the code AFTER the closer
     is judged, at the line's real number."""
     line = "/* legacy */ color: #d4845a;"
-    assert tl.effective_code(line) == " color: #d4845a;"
+    assert tl.effective_code(line) == "color: #d4845a;"  # remainder is lstripped
     result = tl.scan(make_diff(WORKSPACE_PAGE, [line], start=42), [WORKSPACE_PAGE])
     assert [(v.line, v.hex) for v in result.violations] == [(42, "#d4845a")]
     html_line = "<!-- x --> background: #c9a96e;"
     result = tl.scan(make_diff(WORKSPACE_PAGE, [html_line]), [WORKSPACE_PAGE])
     assert [v.hex for v in result.violations] == ["#c9a96e"]
+
+
+def test_guilt_chained_leading_comments_then_code() -> None:
+    """GUILT (PR #2987 round-4, codex RED P0): the round-3 strip removed
+    only the FIRST leading closed comment — `/* first */ /* second */
+    color: #d4845a;` left a remainder starting with `/*` again, which the
+    comment exemption then exempted wholesale. The strip now LOOPS."""
+    line = "/* first */ /* second */ color: #d4845a;"
+    assert tl.effective_code(line) == "color: #d4845a;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
+
+
+def test_innocence_chained_comments_pure_comment() -> None:
+    """INNOCENCE (round-4 P0 counterpart): after stripping chained leading
+    comments, plain comment text with no hex still passes — the loop
+    changes WHAT is judged, not whether plain prose is a violation."""
+    line = "/* a */ /* b */ pure comment"
+    assert tl.effective_code(line) == "pure comment"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert result.violations == []
 
 
 def test_innocence_inline_comment_fully_closed() -> None:
@@ -413,6 +434,78 @@ def test_innocence_two_file_diff_attributes_per_file() -> None:
     assert [(v.path, v.line, v.hex) for v in result.violations] == [
         (PORTAL_PAGE, 1, "#d4845a")
     ]
+
+
+def test_error_binary_marker_scoped_file() -> None:
+    """GUILT (PR #2987 round-4, codex RED P0): a binary marker for a SCOPED
+    file means the diff carries no readable content for a surface the gate
+    must see (e.g. a `.gitattributes -diff` smuggle) — fail-closed, never
+    a silent clean."""
+    diff = (
+        f"diff --git a/{WORKSPACE_PAGE} b/{WORKSPACE_PAGE}\n"
+        "index 1111111..2222222 100644\n"
+        f"Binary files a/{WORKSPACE_PAGE} and b/{WORKSPACE_PAGE} differ\n"
+    )
+    with pytest.raises(tl.DiffParseError):
+        tl.scan(diff, [WORKSPACE_PAGE])
+
+
+def test_innocence_binary_marker_out_of_scope() -> None:
+    """INNOCENCE (round-4 P0 counterpart): a legitimately binary change
+    OUTSIDE the scoped route groups (an image asset) must not block the
+    gate — only scoped blind spots fail closed."""
+    asset = "apps/mouth/public/logo.png"
+    diff = (
+        f"diff --git a/{asset} b/{asset}\n"
+        "index 1111111..2222222 100644\n"
+        f"Binary files a/{asset} and b/{asset} differ\n"
+    )
+    result = tl.scan(diff, [asset])
+    assert result.violations == []
+
+
+def test_error_binary_marker_unparseable() -> None:
+    """A `Binary files` line that cannot be attributed to any path MIGHT be
+    scoped -> fail-closed rather than guess."""
+    with pytest.raises(tl.DiffParseError):
+        tl.binary_marked_paths("Binary files <garbled>\n")
+
+
+def test_git_diff_invocation_uses_text_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GUILT guard (PR #2987 round-4, codex RED P0): --base mode MUST pass
+    `--text` to git diff, so a `.gitattributes -diff` rule on scoped files
+    cannot reduce the patch to `Binary files ... differ`. Asserted on the
+    actual argv the module builds (subprocess fully mocked — no git needed)."""
+    calls: list[list[str]] = []
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(args: list[str], **kwargs: object) -> _Proc:
+        calls.append(list(args))
+        return _Proc()
+
+    monkeypatch.setattr(tl.subprocess, "run", fake_run)
+    names, text = tl._git_diff("origin/main")
+    assert names == [] and text == ""
+    assert calls[0][:3] == ["git", "diff", "--name-only"]
+    unified_call = calls[1]
+    assert "--unified=0" in unified_call
+    assert "--text" in unified_call, "git diff lost --text — binary-mark bypass is back"
+
+
+def test_cli_binary_marker_scoped_exit_2() -> None:
+    """End-to-end (round-4 P0): a binary-marker diff for a scoped file via
+    stdin exits 2 fail-closed — never a silent clean."""
+    diff = (
+        f"diff --git a/{WORKSPACE_PAGE} b/{WORKSPACE_PAGE}\n"
+        f"Binary files a/{WORKSPACE_PAGE} and b/{WORKSPACE_PAGE} differ\n"
+    )
+    proc = _run_cli(["--stdin", "--files", WORKSPACE_PAGE], diff)
+    assert proc.returncode == 2
+    assert "fail-closed" in proc.stderr
 
 
 # ---------------------------------------------------------------------------

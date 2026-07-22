@@ -52,7 +52,10 @@ jobs:
         # severed history, so if base advanced between checkout and this step the
         # merge-base with HEAD is unreachable -> "fatal: no merge base" (seen live
         # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
-        run: git fetch origin "$BASE_REF" || true
+        # NO `|| true` (PR #2987 round-4, codex RED): a swallowed fetch failure
+        # would let the gate evaluate a STALE origin/<base>. Run steps execute
+        # under `bash -e`, so a fetch failure now fails the gate — fail-closed.
+        run: git fetch origin "$BASE_REF"
 
       - name: Install pytest
         run: pip install --quiet pytest

@@ -363,6 +363,33 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
     return added
 
 
+# `Binary files <a-side> and <b-side> differ` — emitted when git considers a
+# file binary (e.g. a `.gitattributes -diff` rule). In --base mode `--text`
+# prevents these; a marker reaching the parser means crafted/manual input.
+BINARY_MARKER_RE = re.compile(r"^Binary files (.+) and (.+) differ$")
+
+
+def binary_marked_paths(text: str) -> set[str]:
+    """Paths (b-side, normalized) of files git reported as binary in this
+    diff. Deleted binaries (b-side `/dev/null`) carry no content and are
+    skipped. A `Binary files` line that does not parse cannot be attributed
+    to any path -> DiffParseError (fail-closed: it MIGHT be scoped)."""
+    paths: set[str] = set()
+    for raw in text.splitlines():
+        if not raw.startswith("Binary files "):
+            continue
+        match = BINARY_MARKER_RE.match(raw)
+        if match is None:
+            raise DiffParseError(f"unparseable binary marker line: {raw!r}")
+        b_side = _normalize_path(match.group(2))
+        if b_side == "/dev/null":
+            continue
+        if b_side.startswith("b/"):
+            b_side = b_side[len("b/") :]
+        paths.add(b_side)
+    return paths
+
+
 def is_scoped(path: str) -> bool:
     """True iff `path` lives inside one of the redesigned route groups."""
     return any(path.startswith(prefix) for prefix in SCOPED_PREFIXES)
@@ -401,26 +428,37 @@ INLINE_COMMENT_PAIRS: tuple[tuple[str, str], ...] = (("/*", "*/"), ("<!--", "-->
 
 def effective_code(content: str) -> str:
     """The portion of an added line that is JUDGED for hexes (PR #2987
-    round-3, codex RED).
+    rounds 3-4, codex RED).
 
     A line beginning with a comment opener (`/*` or `<!--`) used to be
     exempt WHOLESALE — so `/* legacy */ color: #fff;` bypassed the gate:
-    the opener made the entire line "a comment". Now: when the matching
-    closer (`*/` resp. `-->`) appears later on the SAME line, only the text
-    AFTER the closer is judged. When no closer appears on the same line,
+    the opener made the entire line "a comment". Round-4 refinement: the
+    strip LOOPS over chained leading closed comments — `/* first */
+    /* second */ color: #d4845a;` strips BOTH comments and judges
+    `color: #d4845a;` (the round-3 single-strip let the remainder start
+    with `/*` again and re-exempt the whole line). Rules: when the
+    matching closer (`*/` resp. `-->`) appears later on the SAME line,
+    strip through it and repeat; when no closer appears on the same line,
     the whole line is a comment (unchanged — an unclosed opener swallows
     the rest of the line, and this gate only ever sees one line). Lines
-    not starting with an opener are judged whole. Only the LEADING comment
-    is stripped: `/* a */ code /* b */ tail` judges ` code /* b */ tail`.
+    not starting with an opener are judged whole. Only LEADING comments
+    are stripped: `/* a */ code /* b */ tail` judges `code /* b */ tail`.
     """
-    stripped = content.lstrip()
-    for opener, closer in INLINE_COMMENT_PAIRS:
-        if stripped.startswith(opener):
-            idx = stripped.find(closer, len(opener))
-            if idx == -1:
-                return ""
-            return stripped[idx + len(closer) :]
-    return content
+    remainder = content.lstrip()
+    saw_comment = False
+    while True:
+        pair = next(
+            (p for p in INLINE_COMMENT_PAIRS if remainder.startswith(p[0])),
+            None,
+        )
+        if pair is None:
+            return remainder if saw_comment else content
+        opener, closer = pair
+        idx = remainder.find(closer, len(opener))
+        if idx == -1:
+            return ""
+        remainder = remainder[idx + len(closer) :].lstrip()
+        saw_comment = True
 
 
 def has_ok_marker(content: str) -> bool:
@@ -449,6 +487,18 @@ def scan(diff_text: str, files: Iterable[str] | None) -> ScanResult:
     any same-line-closed leading comment (PR #2987 round-3).
     """
     allowed = None if files is None else {_normalize_path(f) for f in files if f.strip()}
+    # Fail-closed (PR #2987 round-4, codex RED): a binary marker for a
+    # SCOPED file means the diff carries no readable content for a surface
+    # this gate must see (in --base mode `--text` prevents these; reaching
+    # here means crafted/manual input). Never exit clean on a blind spot.
+    for binary_path in sorted(binary_marked_paths(diff_text)):
+        if allowed is not None and binary_path not in allowed:
+            continue
+        if is_scoped(binary_path):
+            raise DiffParseError(
+                f"binary-marked scoped file {binary_path!r}: the diff carries "
+                "no readable content for it — fail-closed"
+            )
     violations: list[Violation] = []
     scanned_files: set[str] = set()
     for added in parse_unified_diff(diff_text):
@@ -487,6 +537,14 @@ def _git_diff(base: str) -> tuple[list[str], str]:
     Runs with cwd = repo root derived from this file's location, so the
     result does not depend on the caller's cwd. Any git failure raises
     GitError -> main() fails closed with exit 2.
+
+    `--text` on the patch call is LOAD-BEARING (PR #2987 round-4, codex
+    RED): without it, a `.gitattributes` rule marking scoped files as
+    `-diff`/binary makes git emit only `Binary files ... differ` — no
+    hunks, no additions, and hardcoded hex changes would pass clean. With
+    `--text` git treats every file as text and emits real hunks. The
+    parser-level binary-marker check in scan() is the belt-and-suspenders
+    second layer for crafted/manual stdin that never went through --text.
     """
 
     def run(args: list[str]) -> str:
@@ -505,7 +563,7 @@ def _git_diff(base: str) -> tuple[list[str], str]:
         return proc.stdout
 
     names = run(["diff", "--name-only", f"{base}...HEAD"]).splitlines()
-    text = run(["diff", "--unified=0", "--no-color", f"{base}...HEAD"])
+    text = run(["diff", "--unified=0", "--no-color", "--text", f"{base}...HEAD"])
     return names, text
 
 
