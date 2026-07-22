@@ -3,7 +3,7 @@
 
 > **GENERATED build-artifact.** Do not edit by hand — run `npm run bz:brand:api`. Derived from `packages/core/components/*.tsx`.
 
-**30 components** (schema v1).
+**32 components** (schema v1).
 
 ## `AppBranchSelector`
 
@@ -181,6 +181,16 @@
   - `onClose`: `() => void`
 - **example**: `<CommandPalette open={/* boolean */} actions={/* CommandAction[] */} onClose={/* () => void */} />`
 
+## `ComplianceRadar`
+
+- **import**: `@balizero/core/components/ComplianceRadar`
+- **source**: `packages/core/components/ComplianceRadar.tsx`
+- **use when**: compliance, alerts, deadlines
+- **props**:
+  - `alerts`: `ComplianceAlert[]`
+  - `className`: `string | undefined`
+- **example**: `<ComplianceRadar alerts={/* ComplianceAlert[] */} />`
+
 ## `ContextPanel`
 
 - **import**: `@balizero/core/components/ContextPanel`
@@ -343,6 +353,16 @@
   - `rootHref`: `string | undefined`
   - `linkAs`: `ElementType | undefined`
 - **example**: `<SubNav items={/* SubNavItem[] */} pathname={/* string | null */} variant={/* SubNavVariant */} />`
+
+## `SystemPulse`
+
+- **import**: `@balizero/core/components/SystemPulse`
+- **source**: `packages/core/components/SystemPulse.tsx`
+- **use when**: system health, services, latency
+- **props**:
+  - `services`: `SystemPulseService[]`
+  - `className`: `string | undefined`
+- **example**: `<SystemPulse services={/* SystemPulseService[] */} />`
 
 ## `ThemeProvider`
 
