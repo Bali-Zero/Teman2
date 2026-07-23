@@ -74,10 +74,43 @@ fi
 run_with_timeout() {
     local secs="$1"
     shift
-    if [ -n "$TIMEOUT_CMD" ]; then
+    if [ -n "$TIMEOUT_CMD" ] && [ "${AI_DISPATCH_FORCE_BASH_TIMEOUT:-0}" != "1" ]; then
         $TIMEOUT_CMD "$secs" "$@"
     else
-        "$@"
+        (
+            set +e
+            set -m
+            "$@" &
+            local child_pid=$!
+            local child_pgid="$child_pid"
+            local grace="${AI_DISPATCH_TIMEOUT_GRACE_SECS:-2}"
+            local deadline=$(( $(date +%s) + secs ))
+
+            cleanup_timeout_group() {
+                trap - EXIT INT TERM
+                if kill -TERM -- -"$child_pgid" 2>/dev/null; then
+                    sleep "$grace"
+                    # The leader may already be gone while a descendant ignored
+                    # TERM, so escalation always targets the process group.
+                    kill -KILL -- -"$child_pgid" 2>/dev/null || true
+                fi
+                wait "$child_pid" 2>/dev/null || true
+            }
+            trap cleanup_timeout_group EXIT
+            trap 'cleanup_timeout_group; exit 130' INT TERM
+
+            while kill -0 "$child_pid" 2>/dev/null; do
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                    cleanup_timeout_group
+                    exit 124
+                fi
+                sleep 1
+            done
+            wait "$child_pid"
+            local child_rc=$?
+            cleanup_timeout_group
+            exit "$child_rc"
+        )
     fi
 }
 
@@ -422,10 +455,80 @@ run_codex() {
     fi
 }
 
+claude_stderr_retryable() {
+    local stderr_file="$1"
+    grep -qiE \
+        'rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)' \
+        "$stderr_file"
+}
+
+claude_stdout_retryable() {
+    local stdout_file="$1"
+    python3 - "$stdout_file" <<'PY'
+import json
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+broad = re.compile(
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|hit your limit|authentication "
+    r"(?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.I,
+)
+whole = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|authentication (?:failed|required|expired)|auth required|"
+    r"login required|please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.I | re.S,
+)
+try:
+    payload = json.loads(text)
+except (json.JSONDecodeError, TypeError):
+    payload = None
+is_error = False
+if isinstance(payload, dict):
+    result = payload.get("result")
+    result_kind = ""
+    if isinstance(result, dict):
+        result_kind = str(
+            result.get("type") or result.get("status") or result.get("subtype") or ""
+        ).lower()
+    envelope_kind = str(payload.get("type") or payload.get("status") or "").lower()
+    is_error = (
+        payload.get("is_error") is True
+        or envelope_kind in {"error", "failed", "failure"}
+        or (
+            envelope_kind == "result"
+            and payload.get("subtype") not in (None, "success")
+        )
+        or result_kind in {"error", "failed", "failure"}
+    )
+retryable = (
+    bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
+    or bool(whole.fullmatch(text))
+)
+raise SystemExit(0 if retryable else 1)
+PY
+}
+
+claude_retryable_files() {
+    claude_stderr_retryable "$2" || claude_stdout_retryable "$1"
+}
+
 run_claude() {
     local mode="$1"
     local prompt="$2"
-    local timeout="${3:-120}"
+    local timeout="${AI_DISPATCH_CLAUDE_TIMEOUT:-${3:-120}}"
     local allowed_tools="${4:-Read,Grep,Glob}"
     require_claude
     check_safety "$prompt"
@@ -436,90 +539,96 @@ run_claude() {
     local claude_bin
     claude_bin="$(command -v claude)"
     local deadline=$(( $(date +%s) + timeout ))
-    local retryable_re='rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)'
-    local oauth_env=(
-        env
-        -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
-        -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY
-        -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUD_ML_REGION
-        -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN
-        -u AWS_PROFILE -u AWS_REGION -u AWS_DEFAULT_REGION -u AWS_BEARER_TOKEN_BEDROCK
-        -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
-        -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
-    )
+    local oauth_env=(env)
     local provider_var
     while IFS= read -r provider_var; do
         case "$provider_var" in
-            AWS_*|VERTEX_AI_*|ANTHROPIC_VERTEX_*|ANTHROPIC_BEDROCK_*|ANTHROPIC_FOUNDRY_*)
+            CLAUDE_CODE_OAUTH_TOKEN*|CLAUDE_CODE_USE_*|ANTHROPIC_*|AWS_*|VERTEX_AI_*|\
+            OPENAI_*|OPENROUTER_*|GEMINI_*|GOOGLE_API_KEY|\
+            GOOGLE_APPLICATION_CREDENTIALS|CLOUD_ML_REGION|DEEPSEEK_*|\
+            TOGETHER_*|FIREWORKS_*|MISTRAL_*|COHERE_*|GROQ_*|XAI_*|PERPLEXITY_*)
                 oauth_env+=(-u "$provider_var")
                 ;;
         esac
     done < <(compgen -e)
-    local active_vars=()
+    local active_labels=()
+    local active_tokens=()
     local candidate
     for candidate in "${token_vars[@]}"; do
-        [ -n "${!candidate:-}" ] && active_vars+=("$candidate")
+        local candidate_token="${!candidate:-}"
+        [ -z "$candidate_token" ] && continue
+        local duplicate=0
+        local existing_token
+        for existing_token in "${active_tokens[@]:-}"; do
+            [ "$existing_token" = "$candidate_token" ] && duplicate=1
+        done
+        if [ "$duplicate" -eq 0 ]; then
+            active_labels+=("$candidate")
+            active_tokens+=("$candidate_token")
+        fi
     done
-    active_vars+=("keychain")
+    active_labels+=("keychain")
+    active_tokens+=("")
 
     local position=0
-    for tv in "${active_vars[@]}"; do
-        local token_val=""
-        local label="$tv"
-        if [ "$tv" != "keychain" ]; then
-            # Indirect expansion must tolerate `set -u`: if the env var is not
-            # exported, `${!tv}` would abort the script with "unbound variable".
-            # `${!tv:-}` falls back to empty and we `continue` silently.
-            token_val="${!tv:-}"
-            [ -z "$token_val" ] && continue
-        fi
+    for position in "${!active_labels[@]}"; do
+        local token_val="${active_tokens[$position]}"
+        local label="${active_labels[$position]}"
         tried=$((tried + 1))
         local remaining=$(( deadline - $(date +%s) ))
         [ "$remaining" -le 0 ] && break
-        local attempts_left=$(( ${#active_vars[@]} - position ))
+        local attempts_left=$(( ${#active_labels[@]} - position ))
         local attempt_timeout=$(( remaining / attempts_left ))
         [ "$attempt_timeout" -lt 1 ] && attempt_timeout=1
-        position=$((position + 1))
 
         log "Claude Code (Opus 4.6) → $mode [token=$label, tools=$allowed_tools]"
 
-        local start_time exit_code output
+        local start_time exit_code output attempt_out attempt_err
         start_time=$(date +%s)
+        attempt_out="$(mktemp "${TMPDIR:-/tmp}/ai-dispatch-claude-out.XXXXXX")"
+        attempt_err="$(mktemp "${TMPDIR:-/tmp}/ai-dispatch-claude-err.XXXXXX")"
         if [ -n "$token_val" ]; then
-            output=$(run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
+            run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
                 CLAUDE_CODE_OAUTH_TOKEN="$token_val" "$claude_bin" -p "$prompt" \
-                --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+                --allowedTools "$allowed_tools" \
+                >"$attempt_out" 2>"$attempt_err" && exit_code=0 || exit_code=$?
         else
-            output=$(run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
-                -u CLAUDE_CODE_OAUTH_TOKEN "$claude_bin" -p "$prompt" \
-                --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+            run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
+                "$claude_bin" -p "$prompt" --allowedTools "$allowed_tools" \
+                >"$attempt_out" 2>"$attempt_err" && exit_code=0 || exit_code=$?
         fi
+        output="$(cat "$attempt_out")"
         local duration=$(( $(date +%s) - start_time ))
 
         # Account-local quota/auth diagnostics can exit 0. Classify before
         # accepting output and never persist raw diagnostic stderr.
-        if echo "$output" | grep -qiE "$retryable_re"; then
+        if claude_retryable_files "$attempt_out" "$attempt_err"; then
             warn "$label unavailable — trying next token"
+            rm -f "$attempt_out" "$attempt_err"
             continue
         fi
 
         if [ "$exit_code" -eq 0 ] && [ -n "${output//[[:space:]]/}" ]; then
             save_output "claude-$mode" "$output" "$duration"
+            rm -f "$attempt_out" "$attempt_err"
             echo "$output"
             return 0
         fi
 
         if [ "$exit_code" -eq 0 ]; then
             warn "$label returned empty output — trying next token"
+            rm -f "$attempt_out" "$attempt_err"
             continue
         fi
 
         if [ "$exit_code" -eq 124 ]; then
             warn "$label timed out — trying next token"
+            rm -f "$attempt_out" "$attempt_err"
             continue
         fi
 
         # Non-rate-limit error — stop trying
+        rm -f "$attempt_out" "$attempt_err"
         err "Claude failed ($label, exit $exit_code) after ${duration}s"
         return 1
     done

@@ -40,7 +40,7 @@ ERR="$LOGDIR/wr2-ig-metrics-analyst.err.log"
 TIMEOUT_SECS="${WR2_IG_METRICS_TIMEOUT_SECS:-7200}"
 HEARTBEAT_SECS=300
 POLL_SECS="${WR2_IG_METRICS_POLL_SECS:-5}"
-KILL_GRACE_SECS=10
+KILL_GRACE_SECS="${WR2_IG_METRICS_KILL_GRACE_SECS:-10}"
 if [ "$POLL_SECS" -lt 1 ]; then
   POLL_SECS=1
 fi
@@ -146,8 +146,11 @@ fi
 cd "${HOME}/nuzantara"
 CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
-CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-/Users/nuzantara/.local/bin/claude}"
-RETRYABLE_RE='rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)'
+CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-$(command -v claude || true)}"
+if [ -z "$CLAUDE_BIN" ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] claude binary not found" >> "$ERR"
+  exit 127
+fi
 MAX_CLAUDE_ATTEMPTS=7
 DEFAULT_ACCOUNT_TIMEOUT_SECS=$((TIMEOUT_SECS / MAX_CLAUDE_ATTEMPTS))
 if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
@@ -159,6 +162,99 @@ if [ "$ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
 fi
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] cascade budget: total=${TIMEOUT_SECS}s max_attempts=${MAX_CLAUDE_ATTEMPTS} account_timeout=${ACCOUNT_TIMEOUT_SECS}s" >> "$LOG"
 CASCADE_DEADLINE=$(( $(date +%s) + TIMEOUT_SECS ))
+ACTIVE_CLAUDE_PID=""
+ACTIVE_CLAUDE_PGID=""
+
+terminate_claude_group() {
+  local pgid="$1"
+  if kill -TERM -- -"$pgid" 2>/dev/null; then
+    sleep "$KILL_GRACE_SECS"
+    # The group leader may already be gone while a descendant ignored TERM.
+    kill -KILL -- -"$pgid" 2>/dev/null || true
+  fi
+}
+
+cleanup_active_claude() {
+  trap - EXIT INT TERM
+  if [ -n "$ACTIVE_CLAUDE_PGID" ]; then
+    terminate_claude_group "$ACTIVE_CLAUDE_PGID"
+  fi
+  if [ -n "$ACTIVE_CLAUDE_PID" ]; then
+    wait "$ACTIVE_CLAUDE_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup_active_claude EXIT
+trap 'cleanup_active_claude; exit 130' INT TERM
+
+claude_stderr_retryable() {
+  local stderr_file="$1"
+  grep -qiE \
+    'rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)' \
+    "$stderr_file"
+}
+
+claude_stdout_retryable() {
+  local stdout_file="$1"
+  python3 - "$stdout_file" <<'PY'
+import json
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+broad = re.compile(
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|hit your limit|authentication "
+    r"(?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.I,
+)
+whole = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|authentication (?:failed|required|expired)|auth required|"
+    r"login required|please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.I | re.S,
+)
+try:
+    payload = json.loads(text)
+except (json.JSONDecodeError, TypeError):
+    payload = None
+is_error = False
+if isinstance(payload, dict):
+    result = payload.get("result")
+    result_kind = ""
+    if isinstance(result, dict):
+        result_kind = str(
+            result.get("type") or result.get("status") or result.get("subtype") or ""
+        ).lower()
+    envelope_kind = str(payload.get("type") or payload.get("status") or "").lower()
+    is_error = (
+        payload.get("is_error") is True
+        or envelope_kind in {"error", "failed", "failure"}
+        or (
+            envelope_kind == "result"
+            and payload.get("subtype") not in (None, "success")
+        )
+        or result_kind in {"error", "failed", "failure"}
+    )
+retryable = (
+    bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
+    or bool(whole.fullmatch(text))
+)
+raise SystemExit(0 if retryable else 1)
+PY
+}
+
+claude_retryable_files() {
+  claude_stderr_retryable "$2" || claude_stdout_retryable "$1"
+}
 
 run_claude_account() {
   local label="$1"
@@ -176,24 +272,19 @@ run_claude_account() {
   attempt_err="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-claude-err.XXXXXX")"
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] trying ${label}" >> "$LOG"
-  local oauth_env=(
-    env
-    -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
-    -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY
-    -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUD_ML_REGION
-    -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN
-    -u AWS_PROFILE -u AWS_REGION -u AWS_DEFAULT_REGION -u AWS_BEARER_TOKEN_BEDROCK
-    -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
-    -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
-  )
+  local oauth_env=(env)
   local provider_var
   while IFS= read -r provider_var; do
     case "$provider_var" in
-      AWS_*|VERTEX_AI_*|ANTHROPIC_VERTEX_*|ANTHROPIC_BEDROCK_*|ANTHROPIC_FOUNDRY_*)
+      CLAUDE_CODE_OAUTH_TOKEN*|CLAUDE_CODE_USE_*|ANTHROPIC_*|AWS_*|VERTEX_AI_*|\
+      OPENAI_*|OPENROUTER_*|GEMINI_*|GOOGLE_API_KEY|\
+      GOOGLE_APPLICATION_CREDENTIALS|CLOUD_ML_REGION|DEEPSEEK_*|\
+      TOGETHER_*|FIREWORKS_*|MISTRAL_*|COHERE_*|GROQ_*|XAI_*|PERPLEXITY_*)
         oauth_env+=(-u "$provider_var")
         ;;
     esac
   done < <(compgen -e)
+  set -m
   if [ -n "$token" ]; then
     "${oauth_env[@]}" CLAUDE_CODE_OAUTH_TOKEN="$token" \
       "$CLAUDE_BIN" -p \
@@ -210,18 +301,17 @@ run_claude_account() {
       "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
   fi
   claude_pid=$!
+  ACTIVE_CLAUDE_PID="$claude_pid"
+  ACTIVE_CLAUDE_PGID="$claude_pid"
+  set +m
 
   elapsed=0
   last_heartbeat=0
   timed_out=0
   while kill -0 "$claude_pid" 2>/dev/null; do
     if [ "$elapsed" -ge "$attempt_budget" ]; then
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} TIMEOUT after ${attempt_budget}s — sending SIGTERM to pid $claude_pid" >> "$LOG"
-      kill -TERM "$claude_pid" 2>/dev/null || true
-      sleep "$KILL_GRACE_SECS"
-      if kill -0 "$claude_pid" 2>/dev/null; then
-        kill -KILL "$claude_pid" 2>/dev/null || true
-      fi
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} TIMEOUT after ${attempt_budget}s — sending SIGTERM to process group $claude_pid" >> "$LOG"
+      terminate_claude_group "$claude_pid"
       timed_out=1
       break
     fi
@@ -240,13 +330,17 @@ run_claude_account() {
 
   CLAUDE_EXIT=0
   wait "$claude_pid" 2>/dev/null && CLAUDE_EXIT=0 || CLAUDE_EXIT=$?
+  # Reap any background descendant the CLI left in its dedicated group.
+  terminate_claude_group "$claude_pid"
+  ACTIVE_CLAUDE_PID=""
+  ACTIVE_CLAUDE_PGID=""
   if [ "$timed_out" -eq 1 ]; then
     CLAUDE_EXIT=124
   fi
 
   if [ "$CLAUDE_EXIT" -eq 124 ] || \
      { [ "$CLAUDE_EXIT" -eq 0 ] && ! grep -q '[^[:space:]]' "$attempt_out"; } || \
-     grep -qiE "$RETRYABLE_RE" "$attempt_out" "$attempt_err"; then
+     claude_retryable_files "$attempt_out" "$attempt_err"; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} unavailable (exit=${CLAUDE_EXIT}) — trying next account" >> "$ERR"
     rm -f "$attempt_out" "$attempt_err"
     return 98
@@ -264,10 +358,23 @@ run_claude_account() {
 }
 
 CLAUDE_EXIT=98
-for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5; do
+CLAUDE_LABELS=()
+CLAUDE_TOKENS=()
+for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 CLAUDE_CODE_OAUTH_TOKEN; do
   token_value="${!token_var:-}"
   [ -z "$token_value" ] && continue
-  if run_claude_account "$token_var" "$token_value"; then
+  duplicate=0
+  for seen_token in "${CLAUDE_TOKENS[@]:-}"; do
+    [ "$seen_token" = "$token_value" ] && duplicate=1
+  done
+  if [ "$duplicate" -eq 0 ]; then
+    CLAUDE_LABELS+=("$token_var")
+    CLAUDE_TOKENS+=("$token_value")
+  fi
+done
+
+for token_index in "${!CLAUDE_LABELS[@]}"; do
+  if run_claude_account "${CLAUDE_LABELS[$token_index]}" "${CLAUDE_TOKENS[$token_index]}"; then
     CLAUDE_EXIT=0
     break
   else
@@ -278,14 +385,6 @@ for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE
     fi
   fi
 done
-
-if [ "$CLAUDE_EXIT" -ne 0 ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  if run_claude_account "CLAUDE_CODE_OAUTH_TOKEN" "$CLAUDE_CODE_OAUTH_TOKEN"; then
-    CLAUDE_EXIT=0
-  else
-    CLAUDE_EXIT=$?
-  fi
-fi
 
 if [ "$CLAUDE_EXIT" -ne 0 ] && [ "$CLAUDE_EXIT" -eq 98 ]; then
   if run_claude_account "keychain" ""; then

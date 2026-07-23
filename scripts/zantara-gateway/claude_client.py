@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import signal
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -42,21 +43,45 @@ _AUTH_FAILURE_RE = re.compile(
     re.IGNORECASE,
 )
 _OAUTH_SCRUB_KEYS = frozenset({
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
 })
 _OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
     "AWS_",
     "VERTEX_AI_",
-    "ANTHROPIC_VERTEX_",
-    "ANTHROPIC_BEDROCK_",
-    "ANTHROPIC_FOUNDRY_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+_STDOUT_RATE_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|capacity (?:exceeded|unavailable)|overloaded|exhausted)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_STDOUT_AUTH_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
 )
 
 
@@ -80,15 +105,49 @@ _sdk_import_warned = False
 def _token_chain() -> list[tuple[str, str]]:
     """Build ordered list of (label, token_or_empty) for fallback."""
     chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
+
+
+async def _terminate_process_group(
+    proc: asyncio.subprocess.Process,
+    *,
+    grace_seconds: float = 0.25,
+) -> None:
+    """Terminate the spawned CLI session and reap it, including descendants."""
+    signaled = False
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        signaled = True
+    except (ProcessLookupError, PermissionError):
+        pass
+    if signaled:
+        await asyncio.sleep(grace_seconds)
+        # The session leader may have exited on TERM while a descendant ignored
+        # it. Always escalate against the group, not the leader's return code.
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(proc.pid, signal.SIGKILL)
+    # `wait()` alone reaps the PID but can leave asyncio's pipe transports
+    # pending until garbage collection. Drain both pipes before an owning event
+    # loop is closed so their transports release deterministically.
+    with contextlib.suppress(
+        BrokenPipeError,
+        ConnectionResetError,
+        ProcessLookupError,
+        RuntimeError,
+    ):
+        await proc.communicate()
+    with contextlib.suppress(ProcessLookupError, RuntimeError):
+        await proc.wait()
 
 
 def _build_subprocess_cmd(
@@ -512,6 +571,7 @@ async def _stream_via_subprocess(
             0.1,
             remaining / (len(chain) - position),
         )
+        attempt_deadline = min(deadline, loop.time() + attempt_timeout)
 
         logger.info("Spawning Claude CLI: model=%s, token=%s", model, label)
 
@@ -530,6 +590,7 @@ async def _stream_via_subprocess(
             env=_oauth_cli_env(token),
             cwd=cwd or None,
             limit=1024 * 1024,
+            start_new_session=True,
         )
 
         # A normal stream starts with a system/init line. Do not commit to an
@@ -539,33 +600,35 @@ async def _stream_via_subprocess(
         retry_reason = ""
         while True:
             try:
-                remaining = deadline - loop.time()
-                if remaining <= 0:
-                    retry_reason = "global deadline exceeded"
+                attempt_remaining = attempt_deadline - loop.time()
+                if attempt_remaining <= 0:
+                    retry_reason = "attempt deadline exceeded"
                     break
                 raw = await asyncio.wait_for(
                     proc.stdout.readline(),
-                    timeout=min(15, attempt_timeout),
+                    timeout=min(15, max(0.1, attempt_remaining)),
                 )
             except asyncio.TimeoutError:
-                retry_reason = "no content in 15s"
+                retry_reason = "attempt read deadline exceeded"
                 break
 
             if not raw:
                 try:
                     await asyncio.wait_for(
                         proc.wait(),
-                        timeout=min(5, max(0.1, deadline - loop.time())),
+                        timeout=min(5, max(0.1, attempt_deadline - loop.time())),
                     )
                 except asyncio.TimeoutError:
-                    with contextlib.suppress(ProcessLookupError):
-                        proc.kill()
+                    await _terminate_process_group(proc)
                 stderr_data = b""
                 if proc.stderr:
                     with contextlib.suppress(asyncio.TimeoutError):
                         stderr_data = await asyncio.wait_for(
                             proc.stderr.read(500),
-                            timeout=min(1, max(0.1, deadline - loop.time())),
+                            timeout=min(
+                                1,
+                                max(0.1, attempt_deadline - loop.time()),
+                            ),
                         )
                 terminal_text = stderr_data.decode("utf-8", errors="replace")
                 if _RATE_LIMIT_RE.search(terminal_text):
@@ -581,10 +644,10 @@ async def _stream_via_subprocess(
             try:
                 obj = json.loads(decoded)
             except json.JSONDecodeError:
-                if _RATE_LIMIT_RE.search(decoded):
+                if _STDOUT_RATE_DIAGNOSTIC.fullmatch(decoded):
                     retry_reason = "rate-limited"
                     break
-                if _AUTH_FAILURE_RE.search(decoded):
+                if _STDOUT_AUTH_DIAGNOSTIC.fullmatch(decoded):
                     retry_reason = "authentication failed"
                     break
                 continue
@@ -635,16 +698,7 @@ async def _stream_via_subprocess(
             label,
             retry_reason or "unavailable",
         )
-        if proc.returncode is None:
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
-        try:
-            await asyncio.wait_for(
-                proc.wait(),
-                timeout=min(5, max(0.1, deadline - loop.time())),
-            )
-        except asyncio.TimeoutError:
-            pass
+        await _terminate_process_group(proc)
         continue
     else:
         logger.error("All Claude tokens exhausted")
@@ -712,13 +766,4 @@ async def _stream_via_subprocess(
     except asyncio.CancelledError:
         raise
     finally:
-        if proc.returncode is None:
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
-            try:
-                await asyncio.wait_for(
-                    proc.wait(),
-                    timeout=min(5, max(0.1, deadline - loop.time())),
-                )
-            except asyncio.TimeoutError:
-                pass
+        await _terminate_process_group(proc)
