@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Bonus } from "@/types/hr";
+import type { Bonus, BonusHistoricalRecord } from "@/types/hr";
 import {
   aggregateByMember,
   bonusesToCsv,
   groupBonusesByMonth,
+  reconcileMonthHistorical,
   witaMonthKey,
 } from "./bonus-aggregation";
 
@@ -304,5 +305,136 @@ describe("bonusesToCsv", () => {
     );
     expect(csv).toContain(",1250000");
     expect(csv).not.toContain("Rp");
+  });
+});
+
+describe("reconcileMonthHistorical", () => {
+  function hist(
+    over: Partial<BonusHistoricalRecord> & { id: number },
+  ): BonusHistoricalRecord {
+    return {
+      employee_name: "SURYA",
+      employee_id: 3,
+      bonus_month: 2,
+      bonus_year: 2026,
+      total_amount_idr: 3_000_000,
+      task_count: 13,
+      source_pdf: "LIST BONUS FEBRUARY 2026.pdf",
+      accounting_total_data: null,
+      accounting_not_paid: null,
+      accounting_paid: null,
+      imported_at: "2026-03-01T00:00:00.000Z",
+      notes: null,
+      ...over,
+    } as BonusHistoricalRecord;
+  }
+
+  const monthOf = (bonuses: Bonus[]) => groupBonusesByMonth(bonuses)[0];
+
+  it("returns null when the month has no PDF recap", () => {
+    const month = monthOf([bonus({ id: 1 })]);
+    expect(reconcileMonthHistorical(month, [])).toBeNull();
+  });
+
+  it("FEBRUARY case: ledger missing paid members → PDF authoritative", () => {
+    // Ledger Feb: only SURYA (id 3) has rows. PDF paid ADIT + ARI too.
+    const month = monthOf([
+      bonus({
+        id: 1,
+        employee_id: 3,
+        employee_name: "Surya",
+        amount_idr: 2_760_000,
+        awarded_at: "2026-02-10T02:00:00.000Z",
+      }),
+    ]);
+    const rec = reconcileMonthHistorical(month, [
+      hist({ id: 1, employee_id: 3, total_amount_idr: 3_000_000 }),
+      hist({
+        id: 2,
+        employee_id: 1,
+        employee_name: "ADIT",
+        total_amount_idr: 7_650_000,
+      }),
+      hist({
+        id: 3,
+        employee_id: 2,
+        employee_name: "ARI",
+        total_amount_idr: 4_300_000,
+      }),
+    ])!;
+    expect(rec.ledgerAuthoritative).toBe(false);
+    expect(rec.missingPaidMembers).toBe(2); // ADIT + ARI
+    expect(rec.pdfTotal).toBe(14_950_000);
+    expect(rec.ledgerTotal).toBe(2_760_000);
+  });
+
+  it("MARCH case: every paid PDF member is in the ledger → ledger authoritative", () => {
+    const month = monthOf([
+      bonus({
+        id: 1,
+        employee_id: 2,
+        employee_name: "Ari",
+        amount_idr: 6_100_000,
+        awarded_at: "2026-03-10T02:00:00.000Z",
+      }),
+    ]);
+    const rec = reconcileMonthHistorical(month, [
+      hist({
+        id: 1,
+        employee_id: 2,
+        bonus_month: 3,
+        total_amount_idr: 2_000_000,
+      }),
+      // ADIT recorded at 0 IDR on paper — NOT a missing payment.
+      hist({
+        id: 2,
+        employee_id: 1,
+        employee_name: "ADIT",
+        bonus_month: 3,
+        total_amount_idr: 0,
+      }),
+    ])!;
+    expect(rec.ledgerAuthoritative).toBe(true);
+    expect(rec.missingPaidMembers).toBe(0);
+  });
+
+  it("a 0-IDR PDF line for an absent member is not counted as missing", () => {
+    const month = monthOf([
+      bonus({ id: 1, employee_id: 3, amount_idr: 500_000 }),
+    ]);
+    const rec = reconcileMonthHistorical(month, [
+      hist({
+        id: 1,
+        employee_id: 9,
+        employee_name: "GHOST",
+        total_amount_idr: 0,
+      }),
+    ])!;
+    expect(rec.missingPaidMembers).toBe(0);
+    expect(rec.ledgerAuthoritative).toBe(true);
+  });
+
+  it("dedupes source filenames and sums tasks", () => {
+    const month = monthOf([bonus({ id: 1, employee_id: 3 })]);
+    const rec = reconcileMonthHistorical(month, [
+      hist({ id: 1, employee_id: 3, task_count: 13, source_pdf: "recap.pdf" }),
+      hist({ id: 2, employee_id: 3, task_count: 5, source_pdf: "recap.pdf" }),
+    ])!;
+    expect(rec.sources).toEqual(["recap.pdf"]);
+    expect(rec.pdfTasks).toBe(18);
+  });
+
+  it("coerces string amounts (BIGINT-as-text) before comparing", () => {
+    const month = monthOf([bonus({ id: 1, employee_id: 3 })]);
+    const rec = reconcileMonthHistorical(month, [
+      hist({
+        id: 1,
+        employee_id: 7,
+        total_amount_idr: "550000" as unknown as number,
+      }),
+    ])!;
+    expect(rec.pdfTotal).toBe(550_000);
+    expect(rec.missingPaidMembers).toBe(1); // id 7 paid, absent from ledger
+    expect(rec.ledgerAuthoritative).toBe(false);
   });
 });

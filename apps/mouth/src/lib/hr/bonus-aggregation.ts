@@ -13,7 +13,7 @@
  * about the same payroll. Live prod data already contains such rows.
  */
 
-import type { Bonus, BonusStatus } from "@/types/hr";
+import type { Bonus, BonusHistoricalRecord, BonusStatus } from "@/types/hr";
 
 /** Business timezone for month cut-off. Bali Zero operates on WITA. */
 const BUSINESS_TZ = "Asia/Makassar";
@@ -291,4 +291,81 @@ export function bonusesToCsv(months: MonthAggregate[]): string {
   );
 
   return [header, ...lines].join("\n") + "\n";
+}
+
+/**
+ * Reconciliation verdict for a month that ALSO has a pre-system PDF recap
+ * (`hr_bonus_historical`). The ledger and the PDF overlap on the transition
+ * months (2026-02, 2026-03) with different totals and are NOT a clean
+ * subset of one another, so the two are never summed. Instead we decide, per
+ * month, which source is authoritative — the ruling Zero delegated on
+ * 2026-07-23:
+ *
+ *   The bonus ledger is the source of truth, EXCEPT for a month where the
+ *   ledger is demonstrably incomplete — i.e. the PDF paid a member (>0) who
+ *   has zero ledger rows that month. That is the real signal of "the ledger
+ *   wasn't in use yet", and it triggers only for the adoption month
+ *   (2026-02: ADIT/ARI/SAHIRA paid on paper, absent from the ledger). It is
+ *   NOT hard-coded to a date: it reads the data, and it turns itself off the
+ *   moment someone backfills the ledger for that month.
+ *
+ * March does NOT trigger it — the PDF's only ledger-absent member (ADIT) was
+ * recorded at 0 IDR, so nothing was paid on paper that the ledger is missing;
+ * the ledger's richer 84 rows win.
+ *
+ * Never mutates the ledger. The page uses this only to word the strip and to
+ * pick which figure to headline; the ledger stays the stored truth.
+ */
+export interface HistoricalReconciliation {
+  pdfTotal: number;
+  pdfTasks: number;
+  sources: string[];
+  ledgerTotal: number;
+  /** true → ledger wins, PDF is a historical snapshot; false → ledger is incomplete, PDF is authoritative. */
+  ledgerAuthoritative: boolean;
+  /** Members the PDF paid (>0) that have zero ledger rows this month. */
+  missingPaidMembers: number;
+}
+
+export function reconcileMonthHistorical(
+  month: MonthAggregate,
+  historicalForMonth: BonusHistoricalRecord[],
+): HistoricalReconciliation | null {
+  if (historicalForMonth.length === 0) return null;
+
+  const ledgerMemberIds = new Set<number>();
+  for (const m of month.members) {
+    if (m.employeeId != null) ledgerMemberIds.add(m.employeeId);
+  }
+
+  let pdfTotal = 0;
+  let pdfTasks = 0;
+  let missingPaidMembers = 0;
+  const sources = new Set<string>();
+
+  for (const r of historicalForMonth) {
+    const amt = Number(r.total_amount_idr) || 0;
+    pdfTotal += amt;
+    pdfTasks += Number(r.task_count) || 0;
+    if (r.source_pdf) sources.add(r.source_pdf);
+    // A member the PDF actually paid (>0) but the ledger has no row for =
+    // the ledger was not yet capturing that month. A 0-IDR PDF line (e.g.
+    // an early draft) is NOT evidence of a missing payment.
+    if (
+      amt > 0 &&
+      r.employee_id != null &&
+      !ledgerMemberIds.has(r.employee_id)
+    ) {
+      missingPaidMembers += 1;
+    }
+  }
+
+  return {
+    pdfTotal,
+    pdfTasks,
+    sources: [...sources],
+    ledgerTotal: month.total,
+    ledgerAuthoritative: missingPaidMembers === 0,
+    missingPaidMembers,
+  };
 }

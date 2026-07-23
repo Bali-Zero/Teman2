@@ -148,7 +148,7 @@ describe("BonusesPage", () => {
     expect(screen.getAllByText("Rp 1.750.000").length).toBeGreaterThan(0);
   });
 
-  it("shows the legacy PDF recap as excluded, with the delta", async () => {
+  it("when every paid member is in the ledger, the ledger wins and the PDF is a reference snapshot", async () => {
     hrApiMock.listBonusHistorical.mockResolvedValue({
       records: [
         {
@@ -170,16 +170,70 @@ describe("BonusesPage", () => {
       count: 1,
     });
     render(<BonusesPage />);
-    const strip = await screen.findByText(/Legacy PDF recap/);
+    // Surya (id 3) is in the July ledger → ledger authoritative, PDF snapshot.
+    const strip = await screen.findByText(/pre-system PDF recap/);
     expect(strip).toHaveTextContent("Rp 3.000.000");
-    expect(strip).toHaveTextContent("not included");
+    expect(strip).toHaveTextContent("ledger is authoritative");
+    expect(strip).toHaveTextContent("not summed");
     // July ledger = 3.250.000, PDF = 3.000.000 → delta 250.000
     expect(strip).toHaveTextContent("Rp 250.000");
     // And the headline total still counts the ledger only.
     expect(screen.getAllByText("Rp 4.250.000").length).toBeGreaterThan(0);
   });
 
-  it("scopes the legacy recap to the member filter, so the delta stays honest", async () => {
+  it("when the PDF paid a member the ledger never captured, the PDF is authoritative and the ledger is flagged incomplete", async () => {
+    // Vino (id 99) was paid 1.500.000 in the PDF but has zero July ledger rows —
+    // the ledger was not yet capturing him. The strip must flip to PDF-wins.
+    hrApiMock.listBonusHistorical.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          employee_name: "SURYA",
+          employee_id: 3,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: 2_000_000,
+          task_count: 8,
+          source_pdf: "LIST BONUS JULY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+        {
+          id: 2,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: 1_500_000,
+          task_count: 5,
+          source_pdf: "LIST BONUS JULY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+      ],
+      count: 2,
+    });
+    render(<BonusesPage />);
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("Ledger incomplete");
+    expect(strip).toHaveTextContent("1 member the PDF");
+    expect(strip).toHaveTextContent("authoritative record");
+    expect(strip).toHaveTextContent("use the PDF total");
+    // pdfTotal = 2.000.000 + 1.500.000 = 3.500.000
+    expect(strip).toHaveTextContent("Rp 3.500.000");
+    // ledger figure for July is still shown as the partial backfill.
+    expect(strip).toHaveTextContent("Rp 3.250.000");
+    // The headline still sums the ledger only — the strip does not mutate it.
+    expect(screen.getAllByText("Rp 4.250.000").length).toBeGreaterThan(0);
+  });
+
+  it("scopes the reconciliation to the member filter, so the reading stays honest", async () => {
     // Ledger July: Surya 2.500.000 + Adit 750.000. PDF July: Surya 2.000.000 +
     // Adit 750.000. Filtered to Adit, the delta must be 0 — NOT 750.000 minus
     // the all-members PDF total of 2.750.000.
@@ -220,15 +274,16 @@ describe("BonusesPage", () => {
     });
     const user = userEvent.setup();
     render(<BonusesPage />);
-    await screen.findByText(/Legacy PDF recap/);
+    await screen.findByText(/pre-system PDF recap/);
     await user.selectOptions(screen.getByLabelText("Filter by member"), "id:1");
-    const strip = await screen.findByText(/Legacy PDF recap/);
+    // Both PDF members (Surya, Adit) are in the ledger → ledger authoritative.
+    const strip = await screen.findByText(/pre-system PDF recap/);
     expect(strip).toHaveTextContent("Rp 750.000");
     expect(strip).toHaveTextContent("Rp 0");
     expect(strip).not.toHaveTextContent("Rp 2.750.000");
   });
 
-  it("suppresses the legacy recap under a status filter — the sides stop being comparable", async () => {
+  it("suppresses the reconciliation strip under a status filter — the sides stop being comparable", async () => {
     hrApiMock.listBonusHistorical.mockResolvedValue({
       records: [
         {
@@ -251,13 +306,13 @@ describe("BonusesPage", () => {
     });
     const user = userEvent.setup();
     render(<BonusesPage />);
-    await screen.findByText(/Legacy PDF recap/);
+    await screen.findByText(/pre-system PDF/);
     await user.selectOptions(
       screen.getByLabelText("Filter by status"),
       "pending",
     );
     await waitFor(() =>
-      expect(screen.queryByText(/Legacy PDF recap/)).not.toBeInTheDocument(),
+      expect(screen.queryByText(/pre-system PDF/)).not.toBeInTheDocument(),
     );
   });
 
@@ -265,7 +320,7 @@ describe("BonusesPage", () => {
     hrApiMock.listBonusHistorical.mockRejectedValue(new Error("403"));
     render(<BonusesPage />);
     await screen.findByText("July 2026");
-    expect(screen.queryByText(/Legacy PDF recap/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pre-system PDF/)).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no bonuses", async () => {

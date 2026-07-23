@@ -17,6 +17,7 @@ import {
   bonusesToCsv,
   formatBonusDate,
   groupBonusesByMonth,
+  reconcileMonthHistorical,
   UNDATED_KEY,
   witaMonthKey,
 } from "@/lib/hr/bonus-aggregation";
@@ -139,19 +140,15 @@ export default function BonusesPage() {
   );
 
   /**
-   * Legacy PDF recap per month key, for the reconciliation strip.
-   *
-   * Scoped to the SAME selection as the ledger it is compared against —
-   * otherwise the delta subtracts an all-members PDF total from a
-   * single-member ledger total and reads as a huge phantom shortfall. A status
-   * filter has no counterpart in the PDF recaps (they carry no status), so it
-   * makes the two sides non-comparable and suppresses the strip entirely.
+   * Pre-system PDF recap records grouped by month key, scoped to the SAME
+   * selection as the ledger they are compared against — otherwise the delta
+   * would subtract an all-members PDF total from a single-member ledger total
+   * and read as a phantom shortfall. A status filter has no counterpart in the
+   * PDF recaps (they carry no status), so it makes the two sides
+   * non-comparable and suppresses the strip entirely.
    */
-  const historicalByMonth = useMemo(() => {
-    const map = new Map<
-      string,
-      { total: number; tasks: number; sources: Set<string> }
-    >();
+  const historicalRecordsByMonth = useMemo(() => {
+    const map = new Map<string, BonusHistoricalRecord[]>();
     if (status !== ALL) return map;
     const scoped =
       member === ALL
@@ -161,15 +158,9 @@ export default function BonusesPage() {
           );
     for (const r of scoped) {
       const key = `${r.bonus_year}-${String(r.bonus_month).padStart(2, "0")}`;
-      const entry = map.get(key) ?? {
-        total: 0,
-        tasks: 0,
-        sources: new Set<string>(),
-      };
-      entry.total += Number(r.total_amount_idr) || 0;
-      entry.tasks += Number(r.task_count) || 0;
-      if (r.source_pdf) entry.sources.add(r.source_pdf);
-      map.set(key, entry);
+      const arr = map.get(key) ?? [];
+      arr.push(r);
+      map.set(key, arr);
     }
     return map;
   }, [historical, member, status]);
@@ -374,7 +365,10 @@ export default function BonusesPage() {
             {months.map((month) => {
               const isOpen =
                 openMonths[month.key] ?? month.key === newestMonthKey;
-              const legacy = historicalByMonth.get(month.key);
+              const recon = reconcileMonthHistorical(
+                month,
+                historicalRecordsByMonth.get(month.key) ?? [],
+              );
               return (
                 <section
                   key={month.key || "undated"}
@@ -423,29 +417,58 @@ export default function BonusesPage() {
 
                   {isOpen && (
                     <div className="border-t border-zinc-800">
-                      {legacy && (
-                        <div className="flex items-start gap-2 px-4 py-2.5 bg-amber-500/5 border-b border-amber-500/20 text-xs text-amber-200/80">
-                          <AlertTriangle
-                            size={14}
-                            className="mt-0.5 shrink-0"
-                          />
-                          <span>
-                            Legacy PDF recap for this month:{" "}
-                            <strong className="tabular-nums">
-                              {formatIDR(legacy.total)}
-                            </strong>{" "}
-                            ({legacy.tasks} tasks —{" "}
-                            {[...legacy.sources].join(", ")}). Separate
-                            pre-system source, <strong>not included</strong> in
-                            the totals above. Delta vs ledger:{" "}
-                            <strong className="tabular-nums">
-                              {formatIDR(month.total - legacy.total)}
-                            </strong>
-                            . Confirm which source is authoritative before
-                            paying.
-                          </span>
-                        </div>
-                      )}
+                      {recon &&
+                        (recon.ledgerAuthoritative ? (
+                          <div className="flex items-start gap-2 px-4 py-2.5 bg-zinc-500/5 border-b border-zinc-700/40 text-xs text-zinc-400">
+                            <AlertTriangle
+                              size={14}
+                              className="mt-0.5 shrink-0"
+                            />
+                            <span>
+                              A pre-system PDF recap exists for this month (
+                              <strong className="tabular-nums">
+                                {formatIDR(recon.pdfTotal)}
+                              </strong>
+                              , {recon.pdfTasks} tasks —{" "}
+                              {recon.sources.join(", ")}). The{" "}
+                              <strong>ledger is authoritative</strong> here; the
+                              recap is a historical snapshot shown for
+                              reference, <strong>not summed</strong> into the
+                              totals above (delta{" "}
+                              <span className="tabular-nums">
+                                {formatIDR(month.total - recon.pdfTotal)}
+                              </span>
+                              ).
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-200/90">
+                            <AlertTriangle
+                              size={14}
+                              className="mt-0.5 shrink-0"
+                            />
+                            <span>
+                              <strong>Ledger incomplete for this month.</strong>{" "}
+                              {recon.missingPaidMembers} member
+                              {recon.missingPaidMembers === 1 ? "" : "s"} the
+                              PDF paid have no ledger rows — the pre-system PDF
+                              list (
+                              <strong className="tabular-nums">
+                                {formatIDR(recon.pdfTotal)}
+                              </strong>
+                              , {recon.pdfTasks} tasks —{" "}
+                              {recon.sources.join(", ")}) is the{" "}
+                              <strong>authoritative record</strong>. The ledger
+                              figures above (
+                              <span className="tabular-nums">
+                                {formatIDR(recon.ledgerTotal)}
+                              </span>
+                              ) are a partial backfill —{" "}
+                              <strong>use the PDF total for this month</strong>{" "}
+                              until the ledger is backfilled. Not summed.
+                            </span>
+                          </div>
+                        ))}
 
                       {month.members.map((m) => {
                         const mKey = `${month.key}|${m.memberKey}`;
