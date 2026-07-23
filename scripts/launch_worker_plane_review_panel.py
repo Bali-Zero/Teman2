@@ -2514,6 +2514,16 @@ def _kimi_review_prompt(input_path: Path, transport_bytes: bytes) -> str:
 
 
 def _gemini_review_prompt(input_path: Path, review_input_bytes: bytes) -> str:
+    header_end = review_input_bytes.find(b"\n\n")
+    if header_end < 0:
+        raise LauncherError("Gemini review input lacks its canonical header")
+    manifest_matches = re.findall(
+        rb"(?m)^input_manifest_sha256: ([0-9a-f]{64})$",
+        review_input_bytes[:header_end],
+    )
+    if len(manifest_matches) != 1:
+        raise LauncherError("Gemini review input lacks one canonical manifest hash")
+    input_manifest_sha256 = manifest_matches[0].decode("ascii")
     return (
         "Read every byte of the sole immutable review input file at this exact "
         f"path: {input_path}\n"
@@ -2527,6 +2537,14 @@ def _gemini_review_prompt(input_path: Path, review_input_bytes: bytes) -> str:
         "supporting Evidence, Impact, Amendment, or Test bullet by at least two "
         "spaces beneath that finding ID; never emit an unindented support "
         "bullet without its own finding ID. "
+        "The first three nonblank response lines must have exactly this shape "
+        "(substitute only your evidence-based verdict and integer confidence "
+        "on the middle line):\n"
+        "# Verdict\n"
+        "GO-WITH-CHANGES — confidence 84\n"
+        f"input_manifest_sha256: {input_manifest_sha256}\n"
+        "Do not insert a label, explanation, emphasis, or blank-content line "
+        "between the verdict and exact manifest line. "
         "Do not modify any file. Return only the required Markdown review, "
         "starting with # Verdict and with no preamble."
     )

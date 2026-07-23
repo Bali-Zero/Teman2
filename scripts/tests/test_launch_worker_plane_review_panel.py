@@ -756,14 +756,21 @@ def test_phase1_review_gate_accepts_a_well_formed_no_go() -> None:
 def test_gemini_prompt_makes_finding_bullet_contract_explicit(
     tmp_path: Path,
 ) -> None:
+    input_manifest_sha256 = "a" * 64
+    review_input_bytes = launcher._review_input_bytes(
+        packet_bytes=b"immutable packet",
+        input_manifest_sha256=input_manifest_sha256,
+    )
     prompt = launcher._gemini_review_prompt(
         tmp_path / "00-review-input.bin",
-        b"immutable review input",
+        review_input_bytes,
     )
 
     assert "start every unindented paragraph or list item with [GEMINI-PLAN-NNN]" in prompt
     assert "Indent any supporting Evidence, Impact, Amendment, or Test bullet" in prompt
     assert "never emit an unindented support bullet" in prompt
+    assert f"input_manifest_sha256: {input_manifest_sha256}" in prompt
+    assert "Do not insert a label, explanation, emphasis" in prompt
 
 
 @pytest.mark.parametrize(
