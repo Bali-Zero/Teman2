@@ -172,6 +172,7 @@ async def _insert_unavailable_audit_row(
     fingerprint_seed: str,
     traffic_source: str | None = None,
     request_category: str = "other",
+    engine_surface: str = "MATCH",
 ) -> None:
     await conn.execute(
         """
@@ -192,7 +193,7 @@ async def _insert_unavailable_audit_row(
             grounding_summary,
             traffic_source
         ) VALUES (
-            $1, $2, 'MATCH', 'SHADOW', 'TEMPORARILY_UNAVAILABLE',
+            $1, $2, $7, 'SHADOW', 'TEMPORARILY_UNAVAILABLE',
             '[]'::jsonb, 'visa-engine/test', $3, $3, $3, $4, $6,
             '[]'::jsonb, '[]'::jsonb, $5
         )
@@ -203,6 +204,7 @@ async def _insert_unavailable_audit_row(
         hashlib.sha256(fingerprint_seed.encode("utf-8")).digest(),
         traffic_source,
         request_category,
+        engine_surface,
     )
 
 
@@ -974,3 +976,107 @@ async def test_collect_reports_business_diaspora_as_valid_not_required(
     assert "business" not in gate["missing_required_categories"]
     assert "diaspora" not in gate["missing_required_categories"]
     assert gate["reported_only_categories"] == ["business", "diaspora"]
+
+
+# ---------------------------------------------------------------------------
+# W1 (2026-07-23) — evidence-surface widening: the collector reads SHADOW
+# rows for MATCH (STEP-6c) AND RECOMMEND (the W1 evaluate read-path).
+# Other surfaces are skipped fail-closed. Guilt AND innocence both ways.
+# ---------------------------------------------------------------------------
+
+
+def test_recommend_surface_rows_count_like_match_rows() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for index, row in enumerate(rows):
+        row["engine_surface"] = "RECOMMEND" if index % 2 == 0 else "MATCH"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    gate = report["gates"]["G-a-vol"]
+    assert gate["total_audit_rows"] == 1_000
+    assert gate["green"] is True
+    assert report["surfaces"] == {"MATCH": 500, "RECOMMEND": 500}
+    assert report["skipped_non_evidence_surfaces"] == 0
+
+
+def test_non_evidence_surface_rows_are_skipped_fail_closed() -> None:
+    """Guilt: a future writer on a non-evidence surface (e.g. CLOCK) must not
+    inflate any gate, even if its rows are fully valid and real-labeled."""
+    rows, pack, db_pack_id = _green_fixture()
+    for row in rows:
+        row["engine_surface"] = "CLOCK"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 0
+    assert report["gates"]["G-a-breadth"]["total_audit_rows"] == 0
+    assert report["traffic_source"] == {
+        "real": 0,
+        "synthetic_gold": 0,
+        "synthetic_driver": 0,
+        "legacy": 0,
+        "total_audit_rows": 1_000,
+    }
+    assert report["surfaces"] == {}
+    assert report["skipped_non_evidence_surfaces"] == 1_000
+    # Reconciliation: admitted traffic classes + skipped == raw input rows.
+    traffic = report["traffic_source"]
+    assert (
+        traffic["real"]
+        + traffic["synthetic_gold"]
+        + traffic["synthetic_driver"]
+        + traffic["legacy"]
+        + report["skipped_non_evidence_surfaces"]
+        == traffic["total_audit_rows"]
+    )
+
+
+def test_rows_without_surface_key_stay_admitted_backward_compatible() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for row in rows:
+        row.pop("engine_surface", None)
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 1_000
+    assert report["skipped_non_evidence_surfaces"] == 0
+    assert report["surfaces"] == {}
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_collect_reads_match_and_recommend_surfaces_only(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """End-to-end through Postgres: the SQL filter admits MATCH + RECOMMEND
+    SHADOW rows and excludes any other surface."""
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    async with db_pool.acquire() as conn:
+        for seed, surface in (
+            ("match-row", "MATCH"),
+            ("recommend-row", "RECOMMEND"),
+            ("clock-row", "CLOCK"),
+            ("catalog-row", "CATALOG"),
+        ):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                traffic_source=REAL_TRAFFIC_SOURCE,
+                engine_surface=surface,
+            )
+
+    report = await collect_shadow_evidence(
+        db_pool,
+        window_start=start,
+        window_end=end,
+        environment="TEST",
+    )
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 2
+    assert report["traffic_source"]["total_audit_rows"] == 2
+    assert report["surfaces"] == {"MATCH": 1, "RECOMMEND": 1}
+    assert report["skipped_non_evidence_surfaces"] == 0

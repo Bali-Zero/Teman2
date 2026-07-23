@@ -278,6 +278,18 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "Match submission — anonymous visa-recommendation insert "
         "(nationality/purpose/duration/budget only, no PII).",
     ),
+    # ── Visa Oracle v2 evaluate read-path (W1, routers/visa_oracle_evaluate.py):
+    #    anonymous by design (the v2 interview runs pre-account). Engine
+    #    evaluation + SHADOW audit row; abuse controls verified in-router. ──
+    IntentionalPublicMutation(
+        "POST", "/api/visa-oracle/evaluate",
+        "Visa Oracle v2 evaluate read-path (W1) — anonymous canonical-facts "
+        "evaluation, mode=CURATED envelope (SHADOW era). Controls: dedicated "
+        "30/min rate-limit bucket, 32KB body cap, application/json-only, "
+        "contract-schema 422s (no input echo), HMAC-fingerprint-only logs, "
+        "synthetic traffic_source classes rejected unless the server-side "
+        "allowlist env arms them.",
+    ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
         "POST", "/api/blog/ask",
