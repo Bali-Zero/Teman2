@@ -153,3 +153,92 @@ def test_build_proactive_prompt_includes_event_context_memory_and_silence_rule()
     assert "User: Marco" in prompt
     assert "Waiting for E33G renewal" in prompt
     assert "[SILENCE]" in prompt
+
+
+# ── WA team-assistant V1: explicit profile.role widening ──────────────────
+# whatsapp_identity.py resolves a sender's role (owner/team/client/unknown)
+# and wa_inbox_bot.py forwards owner→profile.role="creator",
+# team→profile.role="team" (fake numbers/names — no real staff PII). These
+# tests are GUILT (explicit role activates the persona even with a non-
+# @balizero.com email / a fake number's user_id) + INNOCENCE (an unrelated
+# profile.role value, e.g. "Founder", must NOT trip the new branch and must
+# leave the pre-existing email-heuristic behavior intact).
+
+
+def test_explicit_profile_role_creator_activates_creator_persona() -> None:
+    builder = SystemPromptBuilder()
+
+    prompt = builder.build_system_prompt(
+        user_id="whatsapp_62811000111",
+        context={"profile": {"role": "creator"}, "facts": [], "collective_facts": []},
+        query="Come va il refactor del router?",
+    )
+
+    assert "ARCHITECT MODE" in prompt
+
+
+def test_explicit_profile_role_team_activates_team_persona() -> None:
+    builder = SystemPromptBuilder()
+
+    prompt = builder.build_system_prompt(
+        user_id="whatsapp_62811000222",
+        context={
+            "profile": {
+                "role": "team",
+                "name": "Test Member Alpha",
+                "email": "alpha.tester@balizero.com",
+            },
+            "facts": [],
+            "collective_facts": [],
+        },
+        query="Qual è il prezzo del KITAS per un cliente?",
+    )
+
+    assert "INTERNAL TEAM MODE" in prompt
+
+
+def test_explicit_profile_role_case_insensitive() -> None:
+    builder = SystemPromptBuilder()
+
+    prompt = builder.build_system_prompt(
+        user_id="whatsapp_62811000333",
+        context={"profile": {"role": "Team"}, "facts": [], "collective_facts": []},
+        query="hello",
+    )
+
+    assert "INTERNAL TEAM MODE" in prompt
+
+
+def test_unrelated_profile_role_does_not_trip_explicit_branch_innocence() -> None:
+    """profile.role="Founder" (an existing, unrelated value) must NOT
+    activate creator/team via the new explicit branch — behavior must stay
+    exactly what the pre-existing email heuristic already produced."""
+    builder = SystemPromptBuilder()
+
+    prompt = builder.build_system_prompt(
+        user_id="marco@example.com",
+        context={
+            "profile": {"role": "Founder", "name": "Marco", "email": "marco@example.com"},
+            "facts": [],
+            "collective_facts": [],
+        },
+        query="How to open a PT PMA?",
+    )
+
+    assert "ARCHITECT MODE" not in prompt
+    assert "INTERNAL TEAM MODE" not in prompt
+
+
+def test_missing_profile_role_falls_back_to_email_heuristic_unchanged() -> None:
+    """No profile.role at all (the shape every non-WhatsApp caller sends
+    today) must still activate TEAM_PERSONA via the pre-existing
+    @balizero.com email heuristic — proves the new branch is additive."""
+    builder = SystemPromptBuilder()
+
+    prompt = builder.build_system_prompt(
+        user_id="someone@balizero.com",
+        context={"profile": {"name": "Someone"}, "facts": [], "collective_facts": []},
+        query="hello",
+    )
+
+    assert "INTERNAL TEAM MODE" in prompt

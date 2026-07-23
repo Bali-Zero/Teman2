@@ -52,6 +52,76 @@ their documented expected states, not to encode real Bali Zero legal advice.
   independent single-fact gates instead. ``immigration.overstay_days``
   alone is independently covered by ``review.active-overstay`` regardless
   of this rule.
+
+# Gate round 1 (2026-07-19) — per-persona distinguishing-fact influence audit
+
+The gate flagged 6 personas whose stated "distinguishing fact" did not
+actually drive their outcome (a metamorphic flip of that fact left the
+result unchanged). Disposition per persona, fixed where fixing was the
+correct/safe move and documented as intentional otherwise:
+
+- **#6 ``family.sponsor_status_code``** and **#7
+  ``family.sponsor_nationalities``**: FIXED — ``el.e31.family`` now requires
+  the CHILD branch's sponsor to hold a status in a small fixture allow-list
+  (``in(family.sponsor_status_code, ["E23","E28A"])``) and the SPOUSE
+  branch's sponsor to include Indonesian nationality
+  (``intersects(family.sponsor_nationalities, ["ID"])``). Both personas'
+  own fact values already satisfy the new constraint (no persona-6/7
+  regression); flipping either fact now genuinely changes the outcome (see
+  ``test_evaluator_gold.py``'s metamorphic differential tests).
+- **#8 "does not really replicate #7"**: FIXED, twice. Round 1 fixed the
+  first cause (persona 8's overrides omitted ``family.sponsor_nationalities``,
+  silently falling back to the shared baseline's UNKNOWN and inflating
+  ``expected_missing``) but introduced a SECOND one: it added an explicit
+  ``family.sponsor_status_code`` override to neutralize a dead-branch
+  unknown-fact leak (round-1's own P0-A-adjacent CHILD-branch wiring meant
+  persona 8's SPOUSE-path result unioned in the CHILD branch's own unknown
+  leaf) — which made persona 8 differ from #7 by TWO facts, not the one it
+  claims to test. Gate round 2 parziale item 2 fixes the ROOT CAUSE instead
+  of masking it on persona 8's side: the shared baseline's
+  ``family.sponsor_status_code`` is now a concrete ``KNOWN("NONE")``
+  sentinel (guaranteed outside the CHILD branch's allow-list) rather than
+  UNKNOWN, so the dead-branch leak cannot happen for ANY persona that
+  doesn't explicitly ask for it (persona 6 still does, to test the CHILD
+  path itself). Persona 8's overrides no longer need the extra fact at
+  all — it is now a genuine, pure single-fact differential from #7
+  (``family.marriage_registered`` only).
+- **#11 ``work.employer_country_code``**: NOT wired into any rule —
+  documented, not fixed. ``el.e33g.remote-work`` already gates on
+  ``work.employer_is_indonesian_entity`` (a boolean derived from the same
+  underlying fact in any real pack); adding a second, redundant condition on
+  the raw country code here would either duplicate that check pointlessly or
+  invent an untested, uncalibrated legal constraint (e.g. "which specific
+  countries count") this synthetic engine-test fixture has no basis for
+  asserting. The fact stays in persona 11's overrides as case-narrative
+  context (the persona's prose names a country), not as a rule input.
+- **#17 ``commercial.service_fee_budget_idr``**: FIXED via ``rank.budget-
+  covers-fee`` below — this fact is *supposed* to influence RANKING only,
+  never eligibility (spec §4.4, this persona's own label: "low budget never
+  filters") — wiring it into a dedicated ranking rule makes it genuinely
+  influential on ``Candidate.score`` while leaving the legal SUPPORTED/
+  UNSUPPORTED state untouched, which is a MORE precise demonstration of the
+  claim than an inert fact would be (see the differential ranking tests).
+- **#20 impossible sentinels**: NOT changed (fixture/rule), documentation
+  CORRECTED (gate round 2, 2026-07-20 — Codex sol xhigh's EXECUTED probe
+  found the round-1 claim below false). Round 1 claimed "flipping EITHER
+  ``immigration.current_status_code`` or ``immigration.overstay_days`` to
+  KNOWN changes the outcome away from NEEDS_INPUT" — that is true for
+  ``overstay_days`` alone (``eq(overstay_days, <impossible sentinel>)``
+  becomes a definite FALSE, so the whole ``_all`` inside ``hf.onshore-gate``
+  resolves FALSE regardless of ``current_status_code`` still being
+  UNKNOWN, and nothing else in this pack makes ``current_status_code``'s
+  unknown-ness surface on its own — the state resolves all the way to
+  ``SUPPORTED_CANDIDATES`` on C1) but FALSE for ``current_status_code``
+  alone (knowing only that value still leaves ``overstay_days`` itself
+  unknown and required, so the state stays ``NEEDS_INPUT`` — only its
+  ``missing_facts`` set shrinks from both facts down to
+  ``overstay_days`` alone). Both facts ARE genuinely influential on the
+  MISSING-FACTS set either way; only ``overstay_days`` (alone, or paired
+  with ``current_status_code``) is influential on the STATE itself. See
+  ``test_evaluator_gold.py``'s persona-20 asymmetric-influence regression
+  test for the exact 4-way empirical matrix (both unknown / status-only
+  known / overstay-only known / both known).
 """
 
 from __future__ import annotations
@@ -355,6 +425,13 @@ def _build_rules() -> list[dict[str, Any]]:
             effect=_support("INVESTMENT_ELIGIBLE", ["INVESTMENT", "TOURISM"]),
         ),
         # --- E31 (family) ------------------------------------------------------------
+        # Gate round 1 (2026-07-19): CHILD branch now requires the sponsor to
+        # hold a status in this fixture allow-list (persona 6's
+        # ``family.sponsor_status_code`` distinguishing fact — previously
+        # unwired, see module docstring); SPOUSE branch now requires an
+        # Indonesian-national sponsor (persona 7's
+        # ``family.sponsor_nationalities`` distinguishing fact — same
+        # reason).
         _rule(
             rule_id="el.e31.family",
             stage="ELIGIBILITY",
@@ -364,11 +441,13 @@ def _build_rules() -> list[dict[str, Any]]:
                 _all(
                     _intersects("intent.purposes", ["FAMILY"]),
                     _eq("family.relation_to_sponsor", "CHILD"),
+                    _in("family.sponsor_status_code", ["E23", "E28A"]),
                     _eq("family.sponsor_confirmed", True),
                 ),
                 _all(
                     _intersects("intent.purposes", ["FAMILY"]),
                     _eq("family.relation_to_sponsor", "SPOUSE"),
+                    _intersects("family.sponsor_nationalities", ["ID"]),
                     _eq("family.marriage_registered", True),
                     _eq("family.sponsor_confirmed", True),
                 ),
@@ -426,12 +505,27 @@ def _build_rules() -> list[dict[str, Any]]:
             effect=_support("TOURISM_ELIGIBLE", ["TOURISM"]),
         ),
         # --- GLOBAL ranking (commercial budget never filters, spec §4.4) --------------
+        # Gate round 1 fix (2026-07-19): the boost must bind to the VALUE
+        # (wants a quote), not mere presence of an answer — the previous
+        # `{"op": "known", ...}` fired the boost even when the applicant had
+        # explicitly answered False, which is not "wants a quote" at all.
         _rule(
             rule_id="rank.wants-quote",
             stage="RANKING",
             scope="GLOBAL",
-            when={"op": "known", "fact": "commercial.wants_quote"},
+            when=_eq("commercial.wants_quote", True),
             effect=_add_score("WANTS_QUOTE_BOOST", 5),
+            on_unknown="NO_EFFECT",
+        ),
+        # Gate round 1 addition (2026-07-19, persona 17 fix): wires
+        # `commercial.service_fee_budget_idr` into ranking-only influence —
+        # never eligibility (see module docstring's per-persona audit).
+        _rule(
+            rule_id="rank.budget-covers-fee",
+            stage="RANKING",
+            scope="GLOBAL",
+            when=_gte("commercial.service_fee_budget_idr", 1_000_000),
+            effect=_add_score("BUDGET_COVERS_FEE", 3),
             on_unknown="NO_EFFECT",
         ),
     ]
@@ -538,7 +632,20 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "investment.proposed_role": {"status": "KNOWN", "value": "NO_OPERATIONAL_ROLE"},
     "family.relation_to_sponsor": _UNKNOWN_NOT_ASKED,
     "family.sponsor_nationalities": _UNKNOWN_NOT_ASKED,
-    "family.sponsor_status_code": _UNKNOWN_NOT_ASKED,
+    # Gate round 2 (2026-07-20) parziale item 2: KNOWN("NONE"), not UNKNOWN
+    # — a concrete sentinel guaranteed to fall outside `el.e31.family`'s
+    # CHILD-branch allow-list (["E23","E28A"]), so this fact is a definite
+    # FALSE (not UNKNOWN) for every persona that doesn't explicitly
+    # override it. Was `_UNKNOWN_NOT_ASKED` until persona 8's
+    # single-fact-differential bug (see ``test_evaluator_gold.py``'s
+    # persona-8 docstring): `ast.py`'s condition evaluator unions
+    # `unknown_facts` over a WHOLE `_all`/`_any` subtree even for a
+    # dead (FALSE-dominated) branch, so this fact's baseline UNKNOWN leaked
+    # into any persona whose SPOUSE branch ended up genuinely UNKNOWN for
+    # an unrelated reason. A concrete non-matching value removes the leak
+    # at its root — the fact is never UNKNOWN unless a persona explicitly
+    # asks it to be (persona 6 still overrides it to test the CHILD path).
+    "family.sponsor_status_code": {"status": "KNOWN", "value": "NONE"},
     "family.marriage_registered": {"status": "KNOWN", "value": False},
     "family.sponsor_confirmed": {"status": "KNOWN", "value": False},
     "study.level": _UNKNOWN_NOT_ASKED,

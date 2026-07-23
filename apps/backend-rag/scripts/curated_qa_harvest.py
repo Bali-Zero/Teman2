@@ -22,15 +22,15 @@ vetted answer yet) are silently SKIPPED for BOTH sinks: an FAQ/curated_qa
 entry with no answer is meaningless and would violate the provenance
 contract. They are still counted in the stats for coverage analysis.
 
-FAQ-sink eligibility (Phase-0 safety rail FATAL 3): under the DEFAULT
-policy, only rows that independently RE-DERIVE (never a stored
-`verbatim_eligible` value) as `confidence_class == "JELAS"` AND non-price
-AND non-`client_specific` are written to the FAQ sink. Qdrant gets ALL
-answerable rows regardless of eligibility (grounding-only for the rest).
-`--verbatim-all` (task #27, an explicit operator business order — see
-`_derive_verbatim_eligible` and the CLI help) bypasses the
-confidence_class/client_specific half of this gate; the pricing check is
-NEVER bypassed by either policy. See `_derive_verbatim_eligible`.
+FAQ-sink eligibility (Phase-0 safety rail FATAL 3): only rows that
+independently RE-DERIVE (never a stored `verbatim_eligible` value) as
+`confidence_class == "JELAS"` AND non-price AND non-`client_specific` are
+written to the FAQ sink. Qdrant gets ALL answerable rows regardless of
+eligibility (grounding-only for the rest). `--verbatim-all` (task #27,
+the 2026-07-19 operator override) is RETIRED as of Zero's 2026-07-21
+refinement: the flag is accepted for CLI backward-compat but is now a
+no-op for eligibility — verbatim serving is JELAS-only, unconditionally.
+See `_derive_verbatim_eligible`.
 
 Batch manifest gate (Phase-0 safety rail FATAL 2, MAJOR 9/10): loading a
 file into either sink requires an APPROVED manifest to already exist at
@@ -65,7 +65,7 @@ Usage:
     PYTHONPATH=. python scripts/curated_qa_harvest.py --faq --dry-run
     PYTHONPATH=. python scripts/curated_qa_harvest.py --purge-domain visa --faq --qdrant
     PYTHONPATH=. python scripts/curated_qa_harvest.py --purge-batch visa-abc123def456 --faq --qdrant
-    PYTHONPATH=. python scripts/curated_qa_harvest.py --faq --qdrant --verbatim-all  # operator order only, see --help
+    PYTHONPATH=. python scripts/curated_qa_harvest.py --faq --qdrant --verbatim-all  # retired no-op, see --help
 
 Do NOT run against prod without Zero's review of the batch being loaded —
 this writes into the same FAQ cache / curated_qa collection the live
@@ -106,28 +106,24 @@ REQUIRED_ROW_KEYS: tuple[str, ...] = (
 )
 
 # Phase-0 safety rail (FATAL 3): the confidence class that alone permits
-# verbatim FAQ serving UNDER THE DEFAULT POLICY. BERSYARAT/
-# BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA/DINAMIS rows are grounding-only by
-# default — a "depends on your case" answer served verbatim with zero
-# per-request reasoning is a wrong answer waiting for the wrong client.
-# `--verbatim-all` (task #27) is the one sanctioned exception: an explicit
-# operator business order can promote these classes too — see
-# `_derive_verbatim_eligible`.
+# verbatim FAQ serving. BERSYARAT/BELUM_DIATUR_PUBLIK/KEBIJAKAN_PENYEDIA/
+# DINAMIS rows are grounding-only, unconditionally — a "depends on your
+# case" answer served verbatim with zero per-request reasoning is a wrong
+# answer waiting for the wrong client. `--verbatim-all` (task #27) was a
+# 2026-07-19 exception to this gate; Zero RETIRED it 2026-07-21 after it
+# wrongly promoted 215 non-JELAS entries — see `_derive_verbatim_eligible`.
 _JELAS_CONFIDENCE_CLASS = "JELAS"
 
 # Phase-0 safety rail (staleness, MAJOR 7): class-based TTL applied AT WRITE
 # TIME to the FAQ (Redis) sink, on top of Redis's own expiry. JELAS is
-# "settled" law/fact — 30 days. Everything else that can reach the FAQ sink
-# under `--verbatim-all` (DINAMIS/BERSYARAT/KEBIJAKAN_PENYEDIA/
-# BELUM_DIATUR_PUBLIK — task #27) is, by the module docstring's own
-# definition above, "depends on your case" / not fully settled — none of
-# them get the 30-day "settled fact" shelf life; all four share the
-# shorter 7-day self-expiry so an override-promoted conditional answer
-# goes stale FAST rather than silently inheriting JELAS's generosity.
-# Under the DEFAULT policy (no --verbatim-all) only JELAS ever reaches
-# this sink (FATAL 3 refuses the rest outright), so this map matters only
-# once the override is in play — it is still defined explicitly (not left
-# to _DEFAULT_TTL_SECONDS) so that fact is visible in code, not implicit.
+# "settled" law/fact — 30 days. DINAMIS/BERSYARAT/KEBIJAKAN_PENYEDIA/
+# BELUM_DIATUR_PUBLIK never reach the FAQ sink at all now that
+# `--verbatim-all` (task #27) is retired (Zero 2026-07-21) — FATAL 3
+# refuses them outright regardless of CLI flags. Their entries here are
+# historical/defensive: kept explicit (not left to _DEFAULT_TTL_SECONDS)
+# in case a future sanctioned override ever needs a non-JELAS class to
+# reach this sink again, so the 7-day-not-30-day intent stays visible in
+# code rather than silently inherited.
 _CLASS_TTL_SECONDS: dict[str, int] = {
     "JELAS": 30 * 24 * 3600,
     "DINAMIS": 7 * 24 * 3600,
@@ -248,18 +244,23 @@ def validate_row(row: dict) -> str | None:
     return None
 
 
-# Provenance value stamped on any row whose eligibility only cleared because
-# of --verbatim-all (Zero's Legge-5 order, 2026-07-19: "far diventare
-# verbatim tutte le risposte" — task #27, the 21 gated CHATKB dossiers). A
-# CONSTANT, not an operator-supplied string: this override has exactly one
-# sanctioned origin, so there is nothing to parametrize and no way to stamp
-# an unaccountable provenance value by typo.
+# RETIRED provenance value (Zero 2026-07-21): previously stamped on any row
+# whose eligibility only cleared because of --verbatim-all (Zero's Legge-5
+# order, 2026-07-19: "far diventare verbatim tutte le risposte" — task #27,
+# the 21 gated CHATKB dossiers). That order wrongly promoted 215 non-JELAS
+# entries to verbatim FAQ serving and was refined/retired 2026-07-21:
+# verbatim serving is JELAS-only, unconditionally — see
+# `_derive_verbatim_eligible`. Kept as a constant (not deleted) purely for
+# historical audit — it still labels the ~2026-07-19 window in any
+# surviving Qdrant payload, but no code path stamps it on new writes.
 VERBATIM_OVERRIDE_PROVENANCE = "zero-legge5-2026-07-19"
 
 
 def _default_verbatim_eligible(row: dict) -> bool:
-    """The FATAL-3 default eligibility rule, unconditional of any override:
-    confidence_class == JELAS AND NOT client_specific AND pricing-clean."""
+    """The FATAL-3 eligibility rule — since --verbatim-all's retirement
+    (Zero 2026-07-21) this is the ONLY eligibility rule, no override
+    branch left: confidence_class == JELAS AND NOT client_specific AND
+    pricing-clean."""
     from backend.services.misc.curated_qa_pricing_detector import has_price_content
 
     if row.get("confidence_class") != _JELAS_CONFIDENCE_CLASS:
@@ -273,28 +274,26 @@ def _derive_verbatim_eligible(row: dict, *, verbatim_all: bool = False) -> bool:
     """Independently RE-DERIVE FAQ-sink eligibility — Phase-0 safety rail
     (FATAL 3). NEVER trusts `row.get("verbatim_eligible")`; a stored value
     (converter best-effort guess, or a hand-edited JSONL) is informational
-    only and is ignored here by construction. Default eligibility =
+    only and is ignored here by construction. Eligibility is ALWAYS
     confidence_class == JELAS AND NOT client_specific AND the answer text
-    is pricing-clean (FATAL 13 detector).
+    is pricing-clean (FATAL 13 detector) — see `_default_verbatim_eligible`.
 
-    `verbatim_all` (Zero's Legge-5 operator order, task #27): when True,
-    bypasses the confidence_class/client_specific gate entirely — EVERY
-    answerable row is promoted to verbatim-eligible regardless of its
-    CONFIDENCE class. The FATAL 13 pricing rail is the ONE check that is
-    NEVER bypassed by this override, even under verbatim_all — a price
-    figure must always come from PricingTool, never a cached verbatim
-    answer, no matter which business order is in effect. Pricing is
-    checked FIRST and unconditionally so this invariant reads as an
-    early, unmissable return rather than something buried under a flag
-    branch.
+    `verbatim_all` (Zero's Legge-5 operator order, task #27, 2026-07-19)
+    used to bypass the confidence_class/client_specific gate entirely.
+    Zero RETIRED that override 2026-07-21 after it wrongly promoted 215
+    non-JELAS entries to verbatim FAQ serving. The parameter is kept for
+    CLI backward-compat but is now a NO-OP for eligibility: passing
+    `verbatim_all=True` logs a warning and falls through to the exact
+    same JELAS-only gate as the default policy. There is no bypass branch
+    left to guard the pricing rail against — FATAL 13 was already
+    unconditional and remains so.
     """
-    from backend.services.misc.curated_qa_pricing_detector import has_price_content
-
-    if has_price_content(row.get("answer")):
-        return False
-
     if verbatim_all:
-        return True
+        logger.warning(
+            "verbatim_all=True is a no-op (retired by Zero 2026-07-21 — "
+            "verbatim FAQ/Qdrant serving is JELAS-only, unconditionally). "
+            "Falling through to the default confidence_class==JELAS gate.",
+        )
 
     return _default_verbatim_eligible(row)
 
@@ -320,13 +319,10 @@ def _row_provenance_metadata(
     }
     if batch_id is not None:
         metadata["batch_id"] = batch_id
-    # Provenance for the Legge-5 override (task #27): stamped whenever this
-    # row is eligible under a verbatim_all run, so every FAQ/Qdrant entry
-    # written under the order carries an auditable trail back to it — a
-    # price-blocked row never gets eligible=True in the first place, so it
-    # never gets this stamp either (the pricing rail's refusal stays clean).
-    if verbatim_all and eligible:
-        metadata["verbatim_override"] = VERBATIM_OVERRIDE_PROVENANCE
+    # No verbatim_override stamp: --verbatim-all is retired (2026-07-21)
+    # and no longer changes eligibility, so stamping a provenance tag here
+    # would falsely imply the override was responsible for this row's
+    # eligibility. See VERBATIM_OVERRIDE_PROVENANCE for the retired order.
     return metadata
 
 
@@ -466,17 +462,15 @@ async def harvest_to_faq(
 
     FATAL 3 (verbatim_eligible): only rows that RE-DERIVE (never the row's
     own stored value) as eligible — confidence_class == JELAS, not
-    client_specific, and pricing-clean — are written here, UNLESS
-    `verbatim_all` is set (Zero's Legge-5 override, task #27), in which
-    case every answerable, non-price-bearing row is eligible regardless of
-    confidence_class/client_specific. A row that would otherwise be
-    eligible except for a detected price in its answer is a hard error
-    (the E33 "FINAL (client-facing)" text is meant to route prices through
+    client_specific, and pricing-clean — are written here. This is now
+    unconditional: `verbatim_all` (Zero's Legge-5 override, task #27) is
+    retired as of 2026-07-21 and no longer promotes non-JELAS rows — see
+    `_derive_verbatim_eligible`. A row that would otherwise be eligible
+    except for a detected price in its answer is a hard error (the E33
+    "FINAL (client-facing)" text is meant to route prices through
     PricingTool, never state one) — logged at ERROR with the offending
     question, counted separately from routine ineligibility (BERSYARAT/
-    DINAMIS/etc rows under the default policy, which are Qdrant-only by
-    design, not an error). The pricing rail is NEVER bypassed by
-    verbatim_all — see `_derive_verbatim_eligible`.
+    DINAMIS/etc rows, which are Qdrant-only by design, not an error).
     """
     from backend.services.caching.notebooklm_cache_service import domain_scope_id
     from backend.services.misc.curated_qa_pricing_detector import has_price_content
@@ -501,10 +495,10 @@ async def harvest_to_faq(
 
         if not derived_eligible:
             # A direct pricing-content check (not a confidence_class proxy):
-            # under verbatim_all EVERY row is a would-be-eligible candidate,
-            # so "why did this one fail" is always answerable by asking the
-            # pricing detector directly rather than inferring it from a
-            # class check that only applied under the default policy.
+            # distinguishes a hard pricing-rail refusal from routine
+            # non-JELAS ineligibility, so "why did this one fail" is always
+            # answerable by asking the pricing detector directly rather
+            # than inferring it from the confidence_class check above.
             is_price_bearing = has_price_content(row.get("answer"))
             if is_price_bearing:
                 stats.faq_price_rejected += 1
@@ -655,12 +649,13 @@ async def harvest_to_qdrant(
     remain visible for coverage analysis via the FAQ-sink stats / the JSONL
     source files themselves.)
 
-    `verbatim_all` (task #27, Zero's Legge-5 override) travels into the
-    payload's `verbatim_eligible`/`verbatim_override` fields exactly like it
-    does for the FAQ sink — Qdrant was never eligibility-GATED (it always
-    got every answerable row), but the flag it carries must still reflect
-    which policy computed it, so a grounding-injection audit and the FAQ
-    sink agree on the same row's eligibility under the same run.
+    `verbatim_all` (task #27, Zero's Legge-5 override, retired 2026-07-21)
+    is passed through to `_derive_verbatim_eligible` for CLI backward-compat
+    only — it no longer changes the computed value. Qdrant was never
+    eligibility-GATED (it always got every answerable row); the
+    `verbatim_eligible` payload field simply mirrors the same JELAS-only
+    gate the FAQ sink uses, so a grounding-injection audit and the FAQ sink
+    agree on the same row's eligibility under the same run.
     """
     stats = stats or HarvestStats()
 
@@ -707,16 +702,9 @@ async def harvest_to_qdrant(
                 "active": True,
                 "invalidated_at": None,
                 **({"batch_id": batch_id} if batch_id is not None else {}),
-                # Same Legge-5 provenance stamp as the FAQ sink (task #27) —
-                # only present when this row's eligibility was actually
-                # computed under the override AND came out eligible; a
-                # price-blocked row never carries it (the pricing rail's
-                # refusal is unconditional, see _derive_verbatim_eligible).
-                **(
-                    {"verbatim_override": VERBATIM_OVERRIDE_PROVENANCE}
-                    if verbatim_all and _derive_verbatim_eligible(r, verbatim_all=True)
-                    else {}
-                ),
+                # No verbatim_override stamp: the Legge-5 override (task
+                # #27) is retired (2026-07-21) and no longer changes
+                # eligibility — see VERBATIM_OVERRIDE_PROVENANCE.
             }
             for r in batch
         ]
@@ -1000,19 +988,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--verbatim-all",
         action="store_true",
         help=(
-            "OPERATOR-ORDERED OVERRIDE (task #27, Zero's Legge-5 ruling "
-            "2026-07-19: 'far diventare verbatim tutte le risposte'). "
-            "Bypasses the confidence_class==JELAS / non-client_specific "
-            "FATAL-3 gate for the FAQ (Redis) sink and the Qdrant "
-            "verbatim_eligible payload field — every answerable, "
-            "non-price-bearing row is promoted regardless of its "
-            "CONFIDENCE class. Does NOT touch the source allowlist (FATAL "
-            "5) or the pricing detector (FATAL 13) — both stay in full "
-            "force; a price-bearing row is refused either way. Every row "
-            "whose eligibility this override actually decided is stamped "
-            "metadata.verbatim_override='zero-legge5-2026-07-19' for "
-            "audit. Use ONLY under an explicit operator business order — "
-            "never as a default."
+            "RETIRED (2026-07-21 by Zero, refining the 2026-07-19 "
+            "Legge-5 ruling task #27 after it wrongly promoted 215 "
+            "non-JELAS entries to verbatim FAQ serving). This flag no "
+            "longer bypasses the confidence_class==JELAS / "
+            "non-client_specific FATAL-3 gate — verbatim FAQ/Qdrant "
+            "serving is now JELAS-only, unconditionally, regardless of "
+            "this flag. Kept for CLI backward-compat only; passing it "
+            "logs a warning and has no effect on eligibility. See "
+            "_derive_verbatim_eligible."
         ),
     )
     return parser.parse_args(argv)
@@ -1104,12 +1088,11 @@ async def main_async(args: argparse.Namespace) -> HarvestStats:
 
     if args.verbatim_all:
         logger.warning(
-            "⚠️  --verbatim-all ACTIVE (task #27, Zero's Legge-5 override "
-            "2026-07-19): the confidence_class==JELAS FATAL-3 gate is "
-            "BYPASSED for this run — every answerable, non-price-bearing "
-            "row is being promoted to verbatim-eligible. Pricing detector "
-            "(FATAL 13) and source allowlist (FATAL 5) remain in full "
-            "force.",
+            "⚠️  --verbatim-all was passed but is RETIRED (Zero 2026-07-21, "
+            "refining task #27's 2026-07-19 override) — it no longer "
+            "bypasses the confidence_class==JELAS FATAL-3 gate. This run "
+            "behaves identically to the default policy: verbatim FAQ/"
+            "Qdrant serving is JELAS-only, unconditionally.",
         )
 
     for batch_id, manifest_path, manifest, rows in batches:

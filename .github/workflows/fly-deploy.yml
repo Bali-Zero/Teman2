@@ -16,6 +16,7 @@ jobs:
   pre-deploy-gate:
     name: Pre-deploy validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/backend-rag
@@ -43,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -135,6 +136,7 @@ jobs:
     name: Run DB migrations on Fly.io
     needs: pre-deploy-gate # only after gate passes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Job-level env so both setup-flyctl and the flyctl ssh call see the token.
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -155,6 +157,7 @@ jobs:
     name: Fly.io rolling deploy
     needs: run-migrations # BLOCCATO se migration fallisce
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -213,6 +216,7 @@ jobs:
     name: Re-run SQL v2 migrations on fresh image
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -337,6 +341,7 @@ jobs:
     name: Run Python-idiom migrations (post-deploy, idempotent)
     needs: [deploy, run-sql-v2-migrations-post-deploy]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -446,6 +451,7 @@ jobs:
     name: Post-deploy health check + rollback
     needs: [deploy, run-python-migrations]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -548,6 +554,7 @@ jobs:
       always() &&
       (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Determine failing stage
         id: stage

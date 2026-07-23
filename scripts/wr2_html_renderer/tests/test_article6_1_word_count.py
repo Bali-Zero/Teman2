@@ -119,6 +119,29 @@ def test_innocence_cover_family_has_no_body_placeholder():
     C._check_body_word_count(skeleton, slide, index=1, family="cover-photo")  # no raise
 
 
+def test_innocence_source_citation_per_row_body_field_is_not_top_level():
+    """Regression, 2026-07-21: source-citation's {{#each citations}} row has
+    its OWN {{body}} field (the citation CODE, e.g. "KEP-71/PJ/2026") — a raw
+    `"{{body}}" in skeleton` substring check can't tell that apart from a
+    top-level prose {{body}} placeholder, and previously hard-failed EVERY
+    source-citation slide (even a perfectly well-formed one with no
+    top-level body at all — it has none) with "Article 6.1 hard fail: body
+    has 0 words". Live-verified before this fix; now a structural no-op for
+    this family, matching its real skeleton contract."""
+    skeleton = C._extract_skeleton("source-citation")
+    assert "{{body}}" in skeleton  # the per-row field IS there (raw substring)
+    assert "{{body}}" not in C._top_level_skeleton_text(skeleton)  # but not top-level
+    slide = {
+        "title": "SUMBER",
+        "citations": [
+            {"body": "KEP-71/PJ/2026", "issuer": "DJP", "date": "30 April 2026",
+             "url": "https://pajak.go.id/x"},
+        ],
+    }
+    result = C._check_body_word_count(skeleton, slide, index=8, family="source-citation")
+    assert result is None  # did not raise
+
+
 def test_sweep_real_layout_library_body_placeholder_families_match_expectation():
     """Ground-truth sweep (guard-conformance doctrine): the families this
     module's docstring claims render {{body}} must match what's actually in

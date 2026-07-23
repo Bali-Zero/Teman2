@@ -1052,6 +1052,323 @@ def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:
     assert "SELECT 'automation_bucket'" in sql
 
 
+# ---------------------------------------------------------------------------
+# --backfill-identity (intake-v2 PR-2 identity backfill)
+# ---------------------------------------------------------------------------
+
+
+def test_parser_backfill_identity_is_dry_run_and_batched() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--backfill-identity"])
+    assert args.apply is False
+    assert args.backfill_identity is True
+    assert args.identity_after_id == 0
+    assert args.identity_limit == 500
+
+
+def test_parser_backfill_identity_overrides() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--backfill-identity",
+            "--identity-after-id",
+            "194741",
+            "--identity-limit",
+            "50",
+            "--apply",
+        ]
+    )
+    assert args.identity_after_id == 194741
+    assert args.identity_limit == 50
+    assert args.apply is True
+
+
+def test_backfill_identity_select_sql_scopes_whatsapp_unstamped_only() -> None:
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_SELECT_SQL
+    assert "source = 'whatsapp'" in sql
+    assert "sender_phone IS NOT NULL" in sql
+    assert "client_id_hint IS NULL" in sql
+    assert "id > $1" in sql
+    assert "LIMIT $2" in sql
+
+
+def test_backfill_identity_apply_sql_never_overwrites_existing_hint() -> None:
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_APPLY_SQL
+    assert "client_id_hint IS NULL" in sql
+
+
+def test_backfill_identity_select_sql_excludes_unpolicy_tagged_wa_mirror_rows() -> None:
+    """P0-2 (adversarial review, 2026-07-18): the backlog SELECT previously
+    matched ANY whatsapp row with a sender_phone + no hint — including
+    wa-mirror GROUP rows and staff-forward rows that --scrub-group-phone
+    exists to clean. Now scoped to non-mirror rows OR mirror rows already
+    tagged sender_phone_enabled by --backfill-source-context."""
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_SELECT_SQL
+    assert "source_ref NOT LIKE 'wa-mirror:%'" in sql
+    assert "source_context->>'routing_identity_policy' = 'sender_phone_enabled'" in sql
+
+
+def test_main_runs_scrub_and_source_context_before_identity_backfill() -> None:
+    """P0-2 ordering fix: identity-backfill's SELECT scope depends on
+    source_context.routing_identity_policy already being correct — running
+    it before scrub/backfill-source-context in the SAME invocation risked
+    picking up a not-yet-cleaned or not-yet-tagged wa-mirror row."""
+    irb = _load()
+    import inspect
+
+    src = inspect.getsource(irb.main)
+    scrub_pos = src.index("run_scrub_group_phone(")
+    ctx_pos = src.index("run_backfill_source_context(")
+    identity_pos = src.index("run_backfill_identity(")
+    assert scrub_pos < identity_pos
+    assert ctx_pos < identity_pos
+
+
+class _FakeIdentityConn:
+    """Minimal asyncpg-shaped fake: fetch() for the candidate SELECT, execute()
+    recorded for the apply UPDATE, transaction() a no-op async context."""
+
+    def __init__(
+        self,
+        rows: list[dict],
+        executed: list[tuple],
+        update_status_by_id: dict[int, str] | None = None,
+    ) -> None:
+        self._rows = rows
+        self._executed = executed
+        self._update_status_by_id = update_status_by_id or {}
+
+    async def fetch(self, _sql: str, *_args):
+        return self._rows
+
+    async def execute(self, sql: str, *args):
+        self._executed.append((sql, args))
+        queue_id = args[0] if args else None
+        return self._update_status_by_id.get(queue_id, "UPDATE 1")
+
+    async def fetchval(self, _sql: str, *_args):
+        return 0
+
+    def transaction(self):
+        return _NoopAsyncCtx()
+
+
+class _NoopAsyncCtx:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakePool:
+    def __init__(
+        self,
+        rows: list[dict],
+        executed: list[tuple],
+        update_status_by_id: dict[int, str] | None = None,
+    ) -> None:
+        self._conn = _FakeIdentityConn(rows, executed, update_status_by_id)
+
+    def acquire(self):
+        return _AcquireCtx(self._conn)
+
+
+class _AcquireCtx:
+    def __init__(self, conn: _FakeIdentityConn) -> None:
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+def _fake_resolution(kind: str, client_id: int | None):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(kind=kind, client_id=client_id, phone_normalized=None, reason="test")
+
+
+def test_run_backfill_identity_dry_run_never_writes() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    resolver_calls: list[bool] = []
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        resolver_calls.append(force_no_create)
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("ambiguous", None)
+
+    irb.resolve_or_create_contact = fake_resolver  # module-level name used by run_backfill_identity
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=False))
+
+    assert counts["candidates"] == 2
+    assert counts["by_kind"] == {"existing": 1, "ambiguous": 1}
+    assert counts["stamped"] == 0
+    assert counts["errors"] == 0
+    assert counts["max_id_seen"] == 101
+    assert executed == []  # dry-run must never call the UPDATE
+    # P0-1 fix: dry-run must force the resolver's CREATE branch unreachable,
+    # independent of INTAKE_AUTOCREATE_CONTACT_ENABLED.
+    assert resolver_calls == [True, True]
+
+
+def test_run_backfill_identity_apply_stamps_only_resolved_rows() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    resolver_calls: list[bool] = []
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        resolver_calls.append(force_no_create)
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("ambiguous", None)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["stamped"] == 1
+    assert len(executed) == 1
+    sql, args = executed[0]
+    assert sql is irb.BACKFILL_IDENTITY_APPLY_SQL
+    assert args == (100, 555)
+    # --apply must NOT force no-create — the resolver's own kill-switch stays
+    # the sole gate for CREATE, never re-implemented in this caller.
+    assert resolver_calls == [False, False]
+
+
+def test_run_backfill_identity_resolver_error_is_isolated_per_row() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    async def flaky_resolver(_conn, *, sender_phone, force_no_create=False):
+        if sender_phone == "628110000001":
+            raise RuntimeError("boom")
+        return _fake_resolution("existing", 777)
+
+    irb.resolve_or_create_contact = flaky_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["errors"] == 1
+    assert counts["stamped"] == 1
+    assert counts["by_kind"] == {"existing": 1}
+
+
+def test_run_backfill_identity_does_not_count_stamped_on_update_zero() -> None:
+    """P1 (adversarial review): a concurrent writer could race this row to a
+    non-NULL client_id_hint between our SELECT and this UPDATE — the
+    WHERE client_id_hint IS NULL guard then affects zero rows, and
+    "stamped" must not lie about it."""
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    # Row 100's UPDATE loses the race (already stamped by someone else).
+    pool = _FakePool(rows, executed, update_status_by_id={100: "UPDATE 0"})
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("existing", 556)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert len(executed) == 2  # both UPDATEs were attempted
+    assert counts["stamped"] == 1  # only row 101's UPDATE actually touched a row
+    assert counts["by_kind"] == {"existing": 2}
+
+
+def test_run_backfill_identity_reports_stale_proposals_for_stamped_rows() -> None:
+    """P0-3(b): stamping client_id_hint alone does not re-route an
+    already-built proposal — surface the count so operators know to run
+    --reprocess, instead of silently claiming the stamp fixed everything."""
+    irb = _load()
+
+    rows = [{"id": 100, "sender_phone": "628110000001"}]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    fetchval_calls: list[list[int]] = []
+
+    async def spying_fetchval(sql: str, queue_ids):
+        fetchval_calls.append(list(queue_ids))
+        return 1
+
+    pool._conn.fetchval = spying_fetchval
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        return _fake_resolution("existing", 555)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["stamped"] == 1
+    assert counts["stale_proposals_need_reprocess"] == 1
+    assert fetchval_calls == [[100]]
+
+
+def test_run_backfill_identity_dry_run_skips_stale_proposals_count() -> None:
+    """Dry-run never stamps, so there is nothing to check staleness on —
+    fetchval must not even be called."""
+    irb = _load()
+
+    rows = [{"id": 100, "sender_phone": "628110000001"}]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    fetchval_calls: list[list[int]] = []
+
+    async def spying_fetchval(sql: str, queue_ids):
+        fetchval_calls.append(list(queue_ids))
+        return 1
+
+    pool._conn.fetchval = spying_fetchval
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        return _fake_resolution("existing", 555)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=False))
+
+    assert counts["stamped"] == 0
+    assert counts["stale_proposals_need_reprocess"] == 0
+    assert fetchval_calls == []
 def test_reroute_drive_folder_sql_targets_drive_zero_candidate_bucket() -> None:
     irb = _load()
     sql = irb.REROUTE_DRIVE_FOLDER_SELECT_SQL
@@ -1141,7 +1458,11 @@ def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
     assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in engine_src
     assert "REROUTE_SUPERSEDE_SELECTED_SQL" in engine_src
     assert "REROUTE_ELIGIBLE_LOCK_SQL" in engine_src
-    for fn in (irb.run_reroute_npwp, irb.run_reroute_drive_folder):
+    for fn in (
+        irb.run_reroute_npwp,
+        irb.run_reroute_drive_folder,
+        irb.run_reroute_identity_backfill,
+    ):
         assert "_run_route_only_reroute" in inspect.getsource(fn)
 
 
@@ -1170,10 +1491,96 @@ def test_reroute_reset_only_actually_superseded_rows() -> None:
 
 def test_reroute_pipeline_version_defaults_per_mode() -> None:
     # --reroute-pipeline-version default is None; each mode picks its own tag
-    # so a folder rerun and an npwp rerun stay measurable independently.
+    # so each reroute family stays measurable independently.
     irb = _load()
     import inspect
 
     src = inspect.getsource(irb.main)
     assert 'or "v2.2-m227-folder"' in src
     assert 'or "v2.3-npwp"' in src
+    assert 'or "v2.4-identity-backfill"' in src
+
+
+def test_reroute_identity_backfill_sql_is_narrow_and_malformed_json_safe() -> None:
+    irb = _load()
+    sql = irb.REROUTE_IDENTITY_BACKFILL_SELECT_SQL
+
+    # Latest proposal first; only a currently reviewable row may be reset.
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "proposal_status = 'review_pending'" in sql
+    assert "p.status = 'review_pending'" not in sql
+
+    # A live, non-reverted passport/KITAS value plus matching provenance is
+    # required. A leftover top-level identity_backfill object is insufficient.
+    assert "NULLIF(btrim(passport_number), '') IS NOT NULL" in sql
+    assert "NULLIF(btrim(kitas_number), '') IS NOT NULL" in sql
+    assert "identity_backfill,passport_number,reverted" in sql
+    assert "identity_backfill,kitas_number,reverted" in sql
+    assert "deleted_at IS NULL" in sql
+
+    # Only documents carrying the same kind of extracted identity field are
+    # rerouted; unrelated pending documents for the same client stay put.
+    for key in (
+        "passport_no",
+        "passport_number",
+        "kitas_no",
+        "kitas_number",
+        "itap_no",
+        "itk_no",
+        "stay_permit_no",
+    ):
+        assert f"'{key}'" in sql
+    assert "jsonb_each(extracted_fields)" in sql
+
+    # Historical malformed candidates fail closed instead of aborting the
+    # whole SELECT. Already-strong candidates are not rerouted pointlessly.
+    assert "jsonb_typeof(entity_resolution->'candidates') = 'array'" in sql
+    assert "WHEN (cand->>'id') ~ '^[0-9]+$'" in sql
+    assert "cand->>'table' = 'clients'" in sql
+    assert "passport_number|kitas_number" in sql
+    assert "LIMIT $1" in sql
+
+    # No accidental inheritance from the Drive/NPWP reroute populations.
+    assert "q.source = 'drive'" not in sql
+    assert "npwp_number" not in sql
+
+
+def test_reroute_identity_backfill_dispatches_to_shared_engine() -> None:
+    irb = _load()
+    captured: dict[str, object] = {}
+
+    async def fake_engine(pool: object, **kwargs: object) -> dict[str, int]:
+        captured["pool"] = pool
+        captured.update(kwargs)
+        return {"proposals": 2, "queue_rows": 2}
+
+    pool = object()
+    irb._run_route_only_reroute = fake_engine
+    result = asyncio.run(
+        irb.run_reroute_identity_backfill(
+            pool, "v2.4-identity-backfill", 25, apply=False
+        )
+    )
+
+    assert result == {"proposals": 2, "queue_rows": 2}
+    assert captured == {
+        "pool": pool,
+        "mode": "reroute-identity-backfill",
+        "select_sql": irb.REROUTE_IDENTITY_BACKFILL_SELECT_SQL,
+        "pipeline_version": "v2.4-identity-backfill",
+        "limit": 25,
+        "apply": False,
+    }
+
+
+def test_reroute_identity_backfill_flag_is_wired() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--reroute-identity-backfill"])
+    assert args.reroute_identity_backfill is True
+
+    import inspect
+
+    main_src = inspect.getsource(irb.main)
+    assert "args.reroute_identity_backfill" in main_src
+    assert "run_reroute_identity_backfill" in main_src
+    assert "--reroute-identity-backfill" in main_src

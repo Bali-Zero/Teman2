@@ -1,0 +1,20 @@
+{
+  "schema_version": "asset-upload.v2",
+  "packet_id": "asset-packet-python-fixture",
+  "asset_id": "asset-python-fixture-second-source",
+  "source_sha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+  "source_byte_count": 347001,
+  "source_mime_type": "image/jpeg",
+  "source_width": 1920,
+  "source_height": 1080,
+  "captured_at": "2026-07-19T00:01:00Z",
+  "alt_text": "Bali Zero editorial briefing image from a second source",
+  "source": "Bali Zero licensed editorial desk",
+  "source_url": "https://balizero.com/editorial/licensed-source",
+  "rights_basis": "licensed",
+  "rights_status": "approved",
+  "usage_status": "approved",
+  "dlp_status": "passed",
+  "sanitization_status": "passed",
+  "perceptual_dedup_status": "intentional-reuse"
+}

@@ -5,10 +5,23 @@
 
 // ─── Enums ────────────────────────────────────────────────────────────
 
-export type BonusStatus = 'pending' | 'approved' | 'rejected' | 'paid' | 'reversed';
-export type PayrollStatus = 'draft' | 'calculated' | 'approved' | 'paid';
-export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-export type PTKPStatus = 'TK/0' | 'TK/1' | 'TK/2' | 'TK/3' | 'K/0' | 'K/1' | 'K/2' | 'K/3';
+export type BonusStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "paid"
+  | "reversed";
+export type PayrollStatus = "draft" | "calculated" | "approved" | "paid";
+export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type PTKPStatus =
+  | "TK/0"
+  | "TK/1"
+  | "TK/2"
+  | "TK/3"
+  | "K/0"
+  | "K/1"
+  | "K/2"
+  | "K/3";
 
 // ─── Employees ────────────────────────────────────────────────────────
 
@@ -90,6 +103,29 @@ export interface Bonus {
   employee_email: string;
   practice_status: string;
   client_name: string | null;
+  notes: string | null;
+}
+
+/**
+ * Pre-system bonus recap imported from PDF (migration 099).
+ *
+ * A SEPARATE source from `Bonus`/`hr_bonus_ledger`: the two overlap on some
+ * months with different totals. Show side by side for reconciliation —
+ * never add the two together.
+ */
+export interface BonusHistoricalRecord {
+  id: number;
+  employee_name: string;
+  employee_id: number | null;
+  bonus_month: number;
+  bonus_year: number;
+  total_amount_idr: number;
+  task_count: number;
+  source_pdf: string;
+  accounting_total_data: number | null;
+  accounting_not_paid: number | null;
+  accounting_paid: number | null;
+  imported_at: string;
   notes: string | null;
 }
 

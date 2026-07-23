@@ -493,20 +493,46 @@ async def test_harvest_to_qdrant_bersyarat_row_still_written() -> None:
     assert point["payload"]["verbatim_eligible"] is False
 
 
-# ── --verbatim-all override (task #27, Zero's Legge-5 order 2026-07-19) ────
+# ── --verbatim-all RETIRED (Zero, 2026-07-21 refinement of task #27) ───────
+#
+# The 2026-07-19 override wrongly promoted 215 non-JELAS entries to
+# verbatim FAQ/Qdrant serving. Zero retired it 2026-07-21: verbatim
+# serving is JELAS-only, unconditionally — the `verbatim_all` parameter is
+# kept for CLI backward-compat but must NEVER change eligibility again.
+# These tests prove the retirement (GUILT: promotion no longer happens)
+# and that the surrounding gates are undisturbed (INNOCENCE: JELAS still
+# flows, pricing/client_specific still block).
 
 
-def test_derive_verbatim_eligible_verbatim_all_promotes_bersyarat_row() -> None:
-    """GUILT — under verbatim_all, a BERSYARAT row (which would be False
-    under the default policy) becomes eligible."""
+def test_derive_verbatim_eligible_verbatim_all_no_longer_promotes_bersyarat_row() -> None:
+    """GUILT — a BERSYARAT row (ineligible under the default policy) stays
+    ineligible even with verbatim_all=True — the retired override no
+    longer bypasses the confidence_class gate."""
     row = _row(confidence_class="BERSYARAT", answer="No figures here.")
     assert harvest._derive_verbatim_eligible(row) is False
+    assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is False
+
+
+def test_derive_verbatim_eligible_verbatim_all_no_longer_promotes_dinamis_row() -> None:
+    """GUILT — same retirement proof for the DINAMIS class."""
+    row = _row(confidence_class="DINAMIS", answer="No figures here.")
+    assert harvest._derive_verbatim_eligible(row) is False
+    assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is False
+
+
+def test_derive_verbatim_eligible_verbatim_all_jelas_clean_row_still_eligible() -> None:
+    """INNOCENCE — the retirement does not regress the JELAS-only path: a
+    genuinely eligible JELAS/non-price/non-client-specific row stays
+    eligible whether or not the retired flag is passed."""
+    row = _row(confidence_class="JELAS", client_specific=False, answer="No figures here.")
+    assert harvest._derive_verbatim_eligible(row) is True
     assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is True
 
 
 def test_derive_verbatim_eligible_verbatim_all_still_blocks_price_bearing_row() -> None:
-    """INNOCENCE — the FATAL 13 pricing rail is never bypassed by
-    verbatim_all, regardless of confidence_class."""
+    """INNOCENCE — the FATAL 13 pricing rail was never bypassed by
+    verbatim_all and still isn't, regardless of confidence_class. A JELAS
+    row that is otherwise eligible but pricing-dirty stays refused too."""
     row = _row(confidence_class="BERSYARAT", answer="The processing fee is Rp 5.000.000.")
     assert harvest._derive_verbatim_eligible(row, verbatim_all=True) is False
 
@@ -515,9 +541,8 @@ def test_derive_verbatim_eligible_verbatim_all_still_blocks_price_bearing_row() 
 
 
 def test_derive_verbatim_eligible_verbatim_all_still_blocks_client_specific_price_row() -> None:
-    """INNOCENCE — client_specific + price-bearing under verbatim_all is
-    still refused on the pricing rail alone (client_specific itself is
-    bypassed by the override, but pricing is not)."""
+    """INNOCENCE — client_specific + price-bearing stays refused with the
+    retired flag set — neither gate reopens."""
     row = _row(
         confidence_class="JELAS",
         client_specific=True,
@@ -539,23 +564,55 @@ def test_derive_verbatim_eligible_verbatim_all_false_is_unchanged_default() -> N
 
 
 @pytest.mark.asyncio
-async def test_harvest_to_faq_verbatim_all_promotes_bersyarat_row_with_provenance(
+async def test_harvest_to_faq_verbatim_all_no_longer_promotes_bersyarat_row(
     faq_cache: NotebookLMCacheService,
 ) -> None:
-    """GUILT — flag ON: a BERSYARAT row reaches the FAQ sink and its
-    metadata carries the override provenance stamp."""
+    """GUILT — flag ON: a BERSYARAT row is STILL refused from the FAQ sink
+    (retired override) and its metadata carries no override provenance."""
     from backend.services.caching.notebooklm_cache_service import domain_scope_id
 
     rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
 
     stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False, verbatim_all=True)
 
+    assert stats.faq_written == 0
+    assert stats.faq_ineligible_skipped == 1
+    assert await faq_cache.get("Conditional Q", notebook_id=domain_scope_id("visa")) is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_verbatim_all_no_longer_promotes_dinamis_row(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """GUILT — same retirement proof, DINAMIS class."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Dynamic Q", confidence_class="DINAMIS")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False, verbatim_all=True)
+
+    assert stats.faq_written == 0
+    assert stats.faq_ineligible_skipped == 1
+    assert await faq_cache.get("Dynamic Q", notebook_id=domain_scope_id("visa")) is None
+
+
+@pytest.mark.asyncio
+async def test_harvest_to_faq_verbatim_all_jelas_clean_row_still_flows_to_sink(
+    faq_cache: NotebookLMCacheService,
+) -> None:
+    """INNOCENCE — the retired flag doesn't regress the JELAS-only path,
+    and no metadata carries a stale override stamp."""
+    from backend.services.caching.notebooklm_cache_service import domain_scope_id
+
+    rows = [_row(question="Clean Q", confidence_class="JELAS")]
+
+    stats = await harvest.harvest_to_faq(rows, faq_cache, dry_run=False, verbatim_all=True)
+
     assert stats.faq_written == 1
-    assert stats.faq_ineligible_skipped == 0
-    got = await faq_cache.get("Conditional Q", notebook_id=domain_scope_id("visa"))
+    got = await faq_cache.get("Clean Q", notebook_id=domain_scope_id("visa"))
     assert got is not None
     assert got["metadata"]["verbatim_eligible"] is True
-    assert got["metadata"]["verbatim_override"] == harvest.VERBATIM_OVERRIDE_PROVENANCE
+    assert "verbatim_override" not in got["metadata"]
 
 
 @pytest.mark.asyncio
@@ -563,8 +620,8 @@ async def test_harvest_to_faq_verbatim_all_off_matches_default_behavior(
     faq_cache: NotebookLMCacheService,
 ) -> None:
     """INNOCENCE — flag OFF (the default): a BERSYARAT row is refused
-    exactly like before the override existed, and no metadata carries the
-    override key."""
+    identically to flag ON (both are now the same retired no-op), and no
+    metadata carries the override key."""
     from backend.services.caching.notebooklm_cache_service import domain_scope_id
 
     rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
@@ -575,8 +632,8 @@ async def test_harvest_to_faq_verbatim_all_off_matches_default_behavior(
     assert stats.faq_ineligible_skipped == 1
     assert await faq_cache.get("Conditional Q", notebook_id=domain_scope_id("visa")) is None
 
-    # A clean JELAS row (unaffected either way) never carries the override
-    # key when the flag is off.
+    # A clean JELAS row (unaffected either way) never carries the retired
+    # override key.
     clean_rows = [_row(question="Clean Q", confidence_class="JELAS")]
     await harvest.harvest_to_faq(clean_rows, faq_cache, dry_run=False)
     got = await faq_cache.get("Clean Q", notebook_id=domain_scope_id("visa"))
@@ -587,7 +644,7 @@ async def test_harvest_to_faq_verbatim_all_off_matches_default_behavior(
 async def test_harvest_to_faq_verbatim_all_price_bearing_row_still_hard_refused(
     faq_cache: NotebookLMCacheService,
 ) -> None:
-    """INNOCENCE — the negative-guard proof: with verbatim_all ON, a
+    """INNOCENCE — the negative-guard proof: with the retired flag ON, a
     price-bearing row (any confidence class) is STILL refused by the FAQ
     sink and counted as a price rejection, never written."""
     rows = [
@@ -606,9 +663,11 @@ async def test_harvest_to_faq_verbatim_all_price_bearing_row_still_hard_refused(
 
 
 @pytest.mark.asyncio
-async def test_harvest_to_qdrant_verbatim_all_promotes_and_stamps_provenance() -> None:
-    """GUILT (Qdrant side) — under verbatim_all, a BERSYARAT row's payload
-    carries verbatim_eligible=True and the override provenance stamp."""
+async def test_harvest_to_qdrant_verbatim_all_no_longer_promotes_bersyarat_row() -> None:
+    """GUILT (Qdrant side) — with the retired flag ON, a BERSYARAT row's
+    payload stays verbatim_eligible=False and carries no override
+    provenance (Qdrant still stores it for grounding regardless — it was
+    never eligibility-gated for STORAGE)."""
     client = FakeQdrantClient(exists=True)
     embedder = FakeEmbedder()
     rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]
@@ -617,17 +676,17 @@ async def test_harvest_to_qdrant_verbatim_all_promotes_and_stamps_provenance() -
 
     assert stats.qdrant_written == 1
     (point,) = client.points.values()
-    assert point["payload"]["verbatim_eligible"] is True
-    assert point["payload"]["verbatim_override"] == harvest.VERBATIM_OVERRIDE_PROVENANCE
+    assert point["payload"]["verbatim_eligible"] is False
+    assert "verbatim_override" not in point["payload"]
 
 
 @pytest.mark.asyncio
 async def test_harvest_to_qdrant_verbatim_all_price_bearing_row_stays_ineligible() -> None:
-    """INNOCENCE (Qdrant side) — the negative-guard proof mirrored from the
-    FAQ sink: under verbatim_all, a price-bearing row's Qdrant payload is
-    still written (Qdrant is never eligibility-gated for STORAGE) but
-    verbatim_eligible stays False and no override provenance is stamped —
-    the pricing rail applies identically on both sinks."""
+    """INNOCENCE (Qdrant side) — mirrored from the FAQ sink: with the
+    retired flag ON, a price-bearing row's Qdrant payload is still written
+    (Qdrant is never eligibility-gated for STORAGE) but verbatim_eligible
+    stays False and no override provenance is stamped — the pricing rail
+    applies identically on both sinks."""
     client = FakeQdrantClient(exists=True)
     embedder = FakeEmbedder()
     rows = [
@@ -647,19 +706,21 @@ async def test_harvest_to_qdrant_verbatim_all_price_bearing_row_stays_ineligible
 
 
 def test_ttl_seconds_for_class_conditional_classes_get_7_day_ttl_under_override() -> None:
-    """GUILT — BERSYARAT/KEBIJAKAN_PENYEDIA/BELUM_DIATUR_PUBLIK (the classes
-    --verbatim-all can newly promote to the FAQ sink) get the SHORT 7-day
-    TTL, not JELAS's 30-day "settled fact" shelf life — a review finding
-    (task #27 adversarial pass): a promoted conditional answer must go
-    stale fast, never silently inherit JELAS's generosity."""
+    """The TTL lookup itself still defines a short 7-day entry for
+    BERSYARAT/KEBIJAKAN_PENYEDIA/BELUM_DIATUR_PUBLIK even though the
+    retired --verbatim-all override (task #27) can no longer route them to
+    the FAQ sink — the map stays explicit (not left to
+    _DEFAULT_TTL_SECONDS) as a defensive/historical artifact, see
+    _CLASS_TTL_SECONDS."""
     for cls in ("BERSYARAT", "KEBIJAKAN_PENYEDIA", "BELUM_DIATUR_PUBLIK"):
         assert harvest._ttl_seconds_for_class(cls) == 7 * 24 * 3600
 
 
 @pytest.mark.asyncio
 async def test_harvest_to_qdrant_verbatim_all_off_never_carries_override_key() -> None:
-    """INNOCENCE (Qdrant side) — flag OFF: default behavior unchanged, and
-    no payload ever carries the override key."""
+    """INNOCENCE (Qdrant side) — flag OFF: default behavior unchanged
+    (identical to flag ON post-retirement), and no payload ever carries
+    the override key."""
     client = FakeQdrantClient(exists=True)
     embedder = FakeEmbedder()
     rows = [_row(question="Conditional Q", confidence_class="BERSYARAT")]

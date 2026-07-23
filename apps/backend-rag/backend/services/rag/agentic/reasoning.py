@@ -355,6 +355,13 @@ class ReasoningEngine:
                                     # _prepare_react_loop from the workspace
                                     # endpoint chain. None for legacy /stream.
                                     agent_role=getattr(state, "agent_role", None),
+                                    # WA team-assistant Phase 2 (2026-07-20):
+                                    # forward the resolved caller profile so
+                                    # team_crm_tools.py can self-scope.
+                                    # state.caller_profile is set by
+                                    # OrchestratorCore.process_query_core.
+                                    # None everywhere else (complete no-op).
+                                    caller_profile=getattr(state, "caller_profile", None),
                                 )
                                 return tc, result, duration
                             except Exception as e:
@@ -905,7 +912,11 @@ Make it feel natural and helpful, not forced.
                     }
 
                     # Run through pipeline
+                    verify_start = time.perf_counter()
                     processed = await self.response_pipeline.process(pipeline_data)
+                    verify_duration = time.perf_counter() - verify_start
+                    correct_duration = 0.0
+                    reverify_duration = 0.0
                     set_span_attribute("verification_score", processed.get("verification_score", 0))
                     verdict_available = processed.get("verdict_available", True)
                     verification_score = processed.get("verification_score", 1.0)
@@ -951,6 +962,7 @@ Do not invent information. If the context is insufficient, admit it.
 """
 
                         # Retry with same model (disable function calling for final answer)
+                        correct_start = time.perf_counter()
                         corrected_answer, _, _, correction_usage = await llm_gateway.send_message(
                             chat,
                             rephrase_prompt,
@@ -958,17 +970,65 @@ Do not invent information. If the context is insufficient, admit it.
                             tier=model_tier,
                             enable_function_calling=False,
                         )
+                        correct_duration = time.perf_counter() - correct_start
                         accumulated_usage = accumulated_usage + correction_usage
                         logger.info("🛡️ [Pipeline] Self-correction applied.")
 
                         # Re-run pipeline on corrected answer
                         pipeline_data["response"] = corrected_answer
+                        reverify_start = time.perf_counter()
                         processed = await self.response_pipeline.process(pipeline_data)
+                        reverify_duration = time.perf_counter() - reverify_start
+
+                    # ⏱️ Per-substep self-correction timing (durations only — never
+                    # log answer/context text, UU PDP PII boundary). Emitted for
+                    # EVERY substantial-answer pipeline pass, not just rejections:
+                    # correct/reverify stay 0.00 on the no-rejection path so the
+                    # log line is directly comparable across queries and reveals
+                    # the real 23s split in prod (increment-1, #self-correct-speed).
+                    logger.info(
+                        "⏱️ [self-correct] verify=%.2fs correct=%.2fs reverify=%.2fs total=%.2fs",
+                        verify_duration,
+                        correct_duration,
+                        reverify_duration,
+                        verify_duration + correct_duration + reverify_duration,
+                    )
 
                     # Update state with processed results
                     state.final_answer = processed["response"]
                     if "citations" in processed:
                         state.sources = processed["citations"]
+
+                    # Dead-wiring fix (2026-07-20): this is the AUTHORITATIVE
+                    # `processed` result for the answer actually being
+                    # returned above — if self-correction ran, `processed`
+                    # was reassigned to the retry pipeline's fresh verdict on
+                    # the CORRECTED answer; re-reading here (rather than
+                    # persisting the pre-correction verification_score local
+                    # from before the retry) is what keeps the score
+                    # attached to the text it actually describes. Before
+                    # this fix, verification_score/verdict_available were
+                    # computed but never survived past this function —
+                    # orchestrator_response.py's CoreResult reads
+                    # getattr(state, "verification_score", 0.0), and nothing
+                    # ever set that attribute, so every response reported
+                    # 0.0 regardless of the real score. Only persist when
+                    # verdict_available: an unparseable/placeholder score is
+                    # not a real judgment, and reporting it as the
+                    # client-facing verification_status would swap one lie
+                    # ("always 0.0") for another ("fake pass/fail"). Leaving
+                    # state at its default keeps CoreResult's derived
+                    # verification_status="unchecked" — the honest label for
+                    # "we never got a real verdict".
+                    final_verdict_available = processed.get(
+                        "verdict_available",
+                        verdict_available,
+                    )
+                    if final_verdict_available:
+                        state.verification_score = processed.get(
+                            "verification_score",
+                            verification_score,
+                        )
 
                     logger.info(
                         f"✅ [Pipeline] Response processed: "

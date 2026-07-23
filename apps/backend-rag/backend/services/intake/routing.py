@@ -35,6 +35,12 @@ Decision matrix (C4)
 --------------------
 * ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
   (passport / npwp / nib / akta number) → high confidence, no human needed.
+  EXCEPTION (GATE-11): a person-strong match whose ``passport_number`` /
+  ``kitas_number`` was written by the unverified identity-backfill batch
+  (``clients.custom_fields.identity_backfill.<column>.verified == false``)
+  degrades to ``LINK_CANDIDATE`` — an unconfirmed backfilled id must never
+  trigger a confident auto-attach on its own (error-contagion / MDM anti-
+  cascade, 2026-07-18).
 * ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
   (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
   via fuzzy name only (no strong identifier) → human confirmation recommended.
@@ -69,6 +75,28 @@ logger = logging.getLogger("zantara.intake.routing")
 # bumped the version on the queue row but left a reader on the old constant
 # produced orphaned/duplicate proposals. Keep this an ALIAS, never a literal.
 PIPELINE_VERSION_DEFAULT = PIPELINE_VERSION
+
+# Pipeline tags whose reroutes must NEVER auto-attach (drive contact
+# auto-create batches — the cards are minted FROM these docs, so gate
+# "corroboration" against them would be circular; design gate 2026-07-19
+# R3-6). Checked at the single gate chokepoint in
+# ``_try_auto_attach_after_route``.
+AUTO_ATTACH_SUPPRESSED_PIPELINE_VERSIONS = frozenset({"v2.3-drive-autocreate"})
+
+
+def _pipeline_version_suppressed(pv: str) -> bool:
+    """True for a suppressed tag, exact OR batch-qualified (``tag:batch``).
+
+    The autocreate program stamps ``v2.3-drive-autocreate:<batch_id>`` so a
+    reroute generation is attributable to ONE batch (gate R10-2: a global
+    tag made two invocations indistinguishable to the rollback CAS). The
+    ``:`` separator is required — ``v2.3-drive-autocreate-other`` is NOT
+    suppressed (guard family #3: exact-or-separator, never bare prefix).
+    """
+    return any(
+        pv == p or pv.startswith(p + ":")
+        for p in AUTO_ATTACH_SUPPRESSED_PIPELINE_VERSIONS
+    )
 
 # --- Decision-matrix C4 outcomes ---
 DECISION_AUTO_ATTACH = "AUTO_ATTACH"
@@ -354,7 +382,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,passport_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -365,7 +397,7 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "passport_number", "score": CONF_STRONG_EXACT,
-                    "matched_value": norm,
+                    "matched_value": norm, "id_verified": r["id_verified"],
                 })
 
     kitas = (
@@ -380,7 +412,11 @@ async def _match_person_strong(
         if norm:
             rows = await conn.fetch(
                 """
-                SELECT id, full_name
+                SELECT id, full_name,
+                       coalesce(
+                           (custom_fields#>>'{identity_backfill,kitas_number,verified}')::boolean,
+                           true
+                       ) AS id_verified
                 FROM clients
                 WHERE deleted_at IS NULL
                   AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
@@ -391,7 +427,7 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "kitas_number", "score": CONF_STRONG_EXACT,
-                    "matched_value": norm,
+                    "matched_value": norm, "id_verified": r["id_verified"],
                 })
 
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
@@ -768,9 +804,27 @@ def _classify_decision(
     #    document identifier describes the SUBJECT, the phone only the SENDER.
     if uniq_strong:
         if len(uniq_strong) == 1:
+            only = uniq_strong[0]
+            # GATE-11 (error contagion / MDM anti-cascade, 2026-07-18): an id
+            # written by the unverified identity-backfill batch must NOT be
+            # able to trigger a confident one-click attach on its own — a
+            # wrong fill would otherwise cascade into a wrong attach. `.get`
+            # with a True default keeps company-strong candidates and any
+            # pre-GATE-11 caller (no "id_verified" key at all) on today's
+            # AUTO_ATTACH behavior; only an EXPLICIT False (backfilled,
+            # unconfirmed) downgrades to human confirm.
+            if only.get("id_verified", True) is False:
+                return DECISION_LINK_CANDIDATE, uniq_strong, {
+                    "reason": (
+                        "single strong-identifier match on a backfilled-unverified "
+                        "id — human confirm required (GATE-11)"
+                    ),
+                    "method": only["method"],
+                    "backfilled_unverified": True,
+                }
             return DECISION_AUTO_ATTACH, uniq_strong, {
                 "reason": "single strong-identifier match",
-                "method": uniq_strong[0]["method"],
+                "method": only["method"],
             }
         # >1 distinct row sharing the same strong identifier = data collision.
         return DECISION_AMBIGUOUS, uniq_strong, {
@@ -876,6 +930,7 @@ async def resolve_entity(
     *,
     sender_phone: str | None = None,
     source_path: str | None = None,
+    client_id_hint: int | None = None,
 ) -> dict[str, Any]:
     """Resolve the document subject against existing CRM rows (READ-ONLY).
 
@@ -885,6 +940,19 @@ async def resolve_entity(
     ``source_path`` (m227) is the Drive-intake folder path relative to the
     watched root (``<Client Name>/file.pdf``); its first segment is consulted
     only when neither a strong identifier nor the phone resolved (~0.85 hint).
+    ``client_id_hint`` (P0-3 adversarial-review fix, 2026-07-18) is the
+    client_id ``contact_autocreate.resolve_or_create_contact`` already
+    resolved from THIS SAME sender_phone at enqueue time — consulted ONLY
+    when a fresh ``_match_sender_phone`` lookup above found nothing. That
+    happens when the client was created/matched at enqueue time but this
+    document's own route pass runs in a way that can't see it via a plain
+    phone re-lookup (e.g. a just-auto-created contact whose commit races the
+    route pass), or when the hint's origin (contact_autocreate — which ALSO
+    checks the team roster before ever setting a hint) diverges from a fresh
+    phone lookup. Never a substitute for the internal-forward/group
+    suppression sender_phone already goes through: a hint is NEVER stamped
+    for those rows in the first place (contact_autocreate's own roster
+    check), so consulting it here reintroduces no forwarder risk.
 
     Returns a dict::
 
@@ -956,6 +1024,28 @@ async def resolve_entity(
             phone = await _match_sender_phone(conn, sender_phone)
             if phone and subject_kind == "unknown":
                 subject_kind = "person"
+
+        # client_id_hint fallback (P0-3, 2026-07-18) — see docstring above.
+        # Only consulted when the fresh sender_phone lookup found NOTHING;
+        # a hint is never stamped for internal/group senders, so this cannot
+        # reintroduce the forwarder ≠ subject risk.
+        if not strong and not phone and client_id_hint is not None:
+            hint_row = await conn.fetchrow(
+                "SELECT id, full_name FROM clients"
+                " WHERE id = $1 AND deleted_at IS NULL",
+                client_id_hint,
+            )
+            if hint_row is not None:
+                phone = [
+                    {
+                        "table": "clients", "id": hint_row["id"],
+                        "name": hint_row["full_name"], "method": "client_id_hint",
+                        "score": CONF_PHONE_MATCH, "matched_value": str(client_id_hint),
+                        "basis": "phone",
+                    }
+                ]
+                if subject_kind == "unknown":
+                    subject_kind = "person"
 
         # Folder-name signal (m227) — Drive intake knows WHICH FOLDER the blob
         # arrived in (Dropbox-Intake/<Client Name>/...). Consulted only when
@@ -1119,6 +1209,7 @@ async def build_routing_proposal(
     pipeline_version: str = PIPELINE_VERSION_DEFAULT,
     sender_phone: str | None = None,
     source_path: str | None = None,
+    client_id_hint: int | None = None,
 ) -> dict[str, Any]:
     """Build (but do NOT persist) the routing proposal payload.
 
@@ -1129,6 +1220,7 @@ async def build_routing_proposal(
         entity = await resolve_entity(
             extracted, doc_type, conn,
             sender_phone=sender_phone, source_path=source_path,
+            client_id_hint=client_id_hint,
         )
         target = await _resolve_routing_target(conn, entity)
 
@@ -1245,6 +1337,29 @@ async def _try_auto_attach_after_route(
     if proposal_id is None or effective_status != "review_pending":
         return None
 
+    # Per-batch suppression (drive contact auto-create, design gate R3-6): a
+    # reroute tagged with a suppressed pipeline_version must NEVER evaluate the
+    # attach gates, even with every killswitch armed — the batch mints cards
+    # FROM these very docs, so a LEVA-3 "corroboration" against them would be
+    # circular self-confirmation, not evidence. ``build_routing_proposal`` puts
+    # pipeline_version at the TOP LEVEL of the proposal payload (NOT inside
+    # the ``routing`` sub-dict — round-4 gate caught the first draft reading a
+    # nested shape that does not exist in production); the nested read stays
+    # only as tolerance for hand-built payloads.
+    _pv = str(
+        proposal.get("pipeline_version")
+        or (proposal.get("routing") or {}).get("pipeline_version")
+        or ""
+    )
+    if _pipeline_version_suppressed(_pv):
+        logger.info(
+            "route(FASE4): auto-attach SUPPRESSED for proposal_id=%s "
+            "(pipeline_version=%s)",
+            proposal_id,
+            _pv,
+        )
+        return {"skipped": "suppressed_pipeline_version", "pipeline_version": _pv}
+
     decision = proposal["entity_resolution"]["decision"]
     from backend.services.intake.auto_attach import (
         try_auto_attach,
@@ -1314,7 +1429,8 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # reach _make_routing_key, else the old routing_key collides and
         # ON CONFLICT silently drops the fresh proposal.
         qrow = await conn.fetchrow(
-            "SELECT sender_phone, source_path, pipeline_version, source_context"
+            "SELECT sender_phone, source_path, pipeline_version, source_context,"
+            " client_id_hint"
             " FROM intake_queue WHERE id = $1",
             queue_id,
         )
@@ -1329,12 +1445,22 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             or (qrow["pipeline_version"] if qrow else None)
             or PIPELINE_VERSION_DEFAULT
         )
+        # P0-3 (adversarial review, 2026-07-18): client_id_hint is stamped at
+        # ENQUEUE time by contact_autocreate.resolve_or_create_contact (intake-v2
+        # PR-1/PR-2) but was NEVER read anywhere downstream — dead weight on
+        # every whatsapp doc. Consult it here as a candidate source, same
+        # confidence tier as sender_phone (it IS a sender_phone match, cached at
+        # entry time — see resolve_entity's docstring for exactly when this adds
+        # signal beyond a fresh sender_phone lookup: mainly a just-auto-created
+        # contact whose commit landed in a separate transaction).
+        client_id_hint = job.get("client_id_hint") or (qrow["client_id_hint"] if qrow else None)
 
         proposal = await build_routing_proposal(
             queue_id, fields, doc_type, conn,
             pipeline_version=pipeline_version,
             sender_phone=sender_phone,
             source_path=source_path,
+            client_id_hint=client_id_hint,
         )
 
         # LEVA 1 — noise pre-filter. When the doc is unreadable noise (unknown

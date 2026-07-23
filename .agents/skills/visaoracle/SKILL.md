@@ -51,10 +51,15 @@ gate — a green gate certifies the engine as it was measured, not future edits.
   recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
   engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
 
-**GATE STATUS: 🔴 RED (all four unmeasured — SHADOW wiring not yet live).** The session updates this line as
-criteria go green, with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill
-capture) for each. Evidence is collected from the SHADOW audit substrate; nothing here is self-attested —
-each green needs a re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
+**GATE STATUS: 🔴 RED (2026-07-21 — STEP-6c code is merged, but production collection is still dark).**
+Fly has the trust-store secret but neither `VISA_ENGINE_MATCH_MODE` nor
+`VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`; the Match path therefore defaults OFF and fails closed before
+writing evidence. G-a/G-c are red/unmeasured, G-b has a green local canonical-suite preflight but no accepted
+independent replay artifact, and G-d is unmeasured. Current collection design/receipt:
+`research/visa/2026-07-21-shadow-evidence-collection.md`. The session updates this line as criteria go green,
+with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill capture) for each.
+Evidence is collected from the SHADOW audit substrate; nothing here is self-attested — each green needs a
+re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
 
 **Flip procedure (when GATE STATUS goes 🟢 all-green):** the session executes the flip itself, captures the
 before/after (flag state, a live ENFORCE verdict on a real request, the audit record), and reports the
@@ -213,6 +218,56 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
   is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
   is done.
+- 2026-07-19: GOLD HARNESS (G-b) shipped by M5 (`backend/tests/services/visa_engine/gold_harness/`)
+  — 20 self-authored personas + hand-designed rule pack + a Decision-agnostic thin adapter (built
+  because PR5 was OPEN, not merged, at task launch) + 3 real metamorphic property tests
+  (monotonicity, fact-order invariance, rule-order invariance, fixed seeded shuffles) + a
+  replay-report JSON evidence-artifact CLI.
+- 2026-07-20 (CORRECTION, discovered on merge — read this before citing G-b evidence): **PR5
+  merged overnight** (`c26211da2e`, #2841, "Decision evaluator — pure tri-state orchestrator") and
+  it ships its OWN canonical 20-gold-persona acceptance suite (spec §7's literal persona table,
+  `backend/tests/services/visa_engine/test_evaluator_gold.py` + `_gold_fixtures.py`) run directly
+  against the REAL `evaluator.evaluate()` — that suite, not M5's harness, is the stronger/primary
+  G-b evidence (real engine, not a stand-in adapter). M5's harness predates the merge and uses its
+  own non-canonical persona set + rule pack against its own adapter, so it should be read as
+  COMPLEMENTARY evidence, not the G-b primary satisfier: it adds two things PR5's suite does not
+  have — per-product proof-state assertions (PR5 asserts global `DecisionState` only) and genuine
+  input-order metamorphic invariance (PR5's `test_evaluator_determinism.py` proves repeat-call
+  purity, not fact-dict-order/rule-declaration-order invariance). Follow-up owed: port the
+  fact-order/rule-order metamorphic properties onto the real `evaluator.evaluate()` directly (the
+  highest-value reconciliation) and settle G-b's canonical evidence pointer — likely PR5's suite
+  plus a ported property-test file, with M5's `gold_harness/` package retired or kept only as
+  design reference. Do not cite M5's harness alone as "G-b satisfied."
+- 2026-07-20 (M5, overnight coordinator sweep): ceremony runbook **#2861 MERGED** (`1f16223335`),
+  gold-harness package **#2876 MERGED** (`1606f7af25`); RulePack authoring pipeline
+  (`compile_pack.py` + offline `sign_pack.py` + first signed TEST fixture) **PR #2869 in flight**
+  (mergeable, CI running, 2 Codex adversarial rounds cured, round-3 confirm died on network —
+  shipped under authorized fallback with a transparent PR-body note). Both PRs fought the same
+  DOCSYNC conflict (`docs/DOCS_INVENTORY.md`) four times overnight as main advanced ~15 commits —
+  cured each time by regenerating via `scripts/docs_inventory_regen.sh`, never side-picking. A
+  **Kimi session** was independently reconciling the same two PR branches in parallel from
+  `/tmp/wt-2876-gold` — its commits carry the SAME git author identity as this machine's session
+  (Kimi inherits the global `git config user.name/email`, has no committer identity of its own),
+  which caused two pushes to be rejected as "behind" before the pattern was recognized; resolved
+  by fetch+legal-merge each time, never force-push, no work lost on either side. Detail:
+  memory `discovery_kimi_parallel_worktree_pr2876_2026_07_20`. SHADOW-wiring prerequisite for the
+  ENFORCE-GATE (STEP-6c) still not live — S3/Pro's PR #2824 (migration 252 SHADOW substrate)
+  remains the actual blocker for evaluating any gate criterion, G-b included.
+- 2026-07-21 (Pro, SHADOW evidence lane): prior blocker superseded — **#2916 MERGED**
+  (`8b28ac418481`, STEP-6c Match wiring), **#2930 MERGED** (`09f7cd2273c9`, real HMAC
+  facts-fingerprint provider), and **#2952 MERGED** (`60c6f348c9a4`, finite activation-system-period
+  guard). Production release 3888 is deployed, but collection remains dark: Fly has only the Visa trust
+  store, while Match mode and the facts-fingerprint key are absent. Read-only DB proof is separately
+  blocked because the `nuzantara_readonly` Keychain password is absent; no write-capable fallback used.
+  Worktree `backend-rag-visa-oracle-shadow-evidence` now prepares migration 255 plus a PII-free,
+  fail-closed G-a/G-c collector and CLI; 1,070 Visa-engine tests collected with all runnable tests green
+  (one pre-existing executor-role skip). **No PR, merge, deploy, secret change, SHADOW activation, or
+  ENFORCE activation performed.** Receipt:
+  `research/visa/2026-07-21-shadow-evidence-collection.md`.
+- 2026-07-22 (Pro, SHADOW evidence lane): Kimi review follow-up adds direct G-c,
+  collector, CLI, and legacy fail-closed coverage; `duplicate_evaluations` now counts only
+  repeated valid 32-byte fingerprints. The focused local-test-DB suite is green (57 tests;
+  SHADOW evidence module 85.30% branch coverage). **L3/L4 remain deferred; ENFORCE remains OFF.**
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

@@ -1,0 +1,104 @@
+name: token-lint
+
+# WS1 token-SSOT gate: blocks NEW hardcoded brand hex colors from entering the
+# redesigned route groups — apps/mouth/src/app/(workspace)/** and
+# apps/mouth/src/app/portal/** (exactly the groups verified to exist on disk;
+# see SCOPED_PREFIXES in scripts/token_lint.py). Only ADDED lines in the PR diff
+# are judged (`git diff --unified=0 base...HEAD`): the ~600 legacy hexes
+# repo-wide are NOT flagged — this gate stops new ones. Deterministic,
+# stdlib-only scanner — see scripts/token_lint.py for the full contract and
+# scripts/tests/test_token_lint.py for its guilt+innocence proof
+# (cicatrix-superscar.md #3). Fail-closed: a scanner error exits 2 and blocks.
+#
+# env-var indirection (BASE_REF in `env:`, never inline into `run:`) per
+# workflow-injection hygiene — the PR base-ref name never gets shell-expanded
+# directly into a command string (mirrors adversarial-review-gate.yml).
+#
+# NO `paths:` filter, deliberately: this check is meant to be REQUIRED on main
+# branch protection. A path-filtered required check never reports on PRs
+# outside its paths, which leaves them stuck at "Expected — waiting for status"
+# forever (same reasoning as adversarial-review-gate.yml / actionlint.yml). The
+# scanner already handles the no-scoped-changes case (exit 0, clean) in ~5s,
+# so running on every PR blocks nothing innocent.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: token-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: token-lint — no new hardcoded brand hex in redesigned surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the PR base ref is resolvable for the diff
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Fetch base ref
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # NO --depth=1 here: a shallow fetch re-points origin/<base> to a tip with
+        # severed history, so if base advanced between checkout and this step the
+        # merge-base with HEAD is unreachable -> "fatal: no merge base" (seen live
+        # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
+        # NO `|| true` (PR #2987 round-4, codex RED): a swallowed fetch failure
+        # would let the gate evaluate a STALE origin/<base>. Run steps execute
+        # under `bash -e`, so a fetch failure now fails the gate — fail-closed.
+        run: git fetch origin "$BASE_REF"
+
+      - name: token-lint — scan added lines for hardcoded hex colors
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # Exit 0 clean / exit 1 violations (one `path:line: #hex — ...` line
+        # each + summary, printed by the script) / exit 2 scanner error
+        # (fail-closed). All three are non-zero-but-honest CI signals.
+        #
+        # ORDERING IS LOAD-BEARING (PR #2987 round-6, codex RED P0): the scan
+        # runs BEFORE the proof suite. The scan executes the pristine committed
+        # scanner with zero third-party code; the proof suite runs pytest,
+        # which auto-loads scripts/tests/conftest.py FROM THE PR HEAD — a
+        # hostile PR could use a pytest hook (e.g. pytest_sessionfinish) to
+        # rewrite scripts/token_lint.py after the proofs but before the scan.
+        # Scan-first means a compromised conftest can only affect the proofs,
+        # never retroactively change an already-taken verdict. The conftest
+        # chain is additionally CODEOWNERS-locked (defense in depth).
+        #
+        # `-I` IS LOAD-BEARING TOO (PR #2987 round-7, codex RED P0): isolated
+        # mode drops sys.path[0] (the script's own directory), so a hostile PR
+        # adding scripts/subprocess.py (or any stdlib-named module next to the
+        # scanner) cannot shadow the standard library and forge empty diffs.
+        # The scanner is stdlib-only, so -I costs nothing.
+        run: python3 -I scripts/token_lint.py --base "origin/${BASE_REF}"
+
+      - name: Install pytest
+        # Pinned (PR #2987 round-7 P1): no floating supply chain for the proof
+        # runner — version verified locally via `pytest --version` (9.0.3).
+        run: pip install --quiet "pytest==9.0.3"
+
+      - name: token-lint proof suite (guilt+innocence)
+        env:
+          # No third-party pytest plugin from the PR/CI environment may load
+          # (round-7 P1). conftest.py still loads — it is pytest's own
+          # discovery, not entry-point plugin autoload — and it is
+          # CODEOWNERS-locked.
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        # Runs SECOND by design (see the scan step's ORDERING note): the proofs
+        # validate the scanner's logic; their compromise cannot retroactively
+        # change the verdict the scan step already produced. `-I` blocks
+        # sys.path[0] stdlib shadowing; `-c /dev/null` blocks PR-controlled
+        # pytest.ini/pyproject config from forging or suppressing proofs;
+        # `-p no:cacheprovider` keeps the run hermetic (no cache writes —
+        # rootdir resolves to /dev with -c /dev/null). All defense-in-depth —
+        # scan-first already protects the verdict.
+        run: python3 -I -m pytest scripts/tests/test_token_lint.py -q -c /dev/null -p no:cacheprovider

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: cf2a710add0066991f19e42041d7a2186f60a4e0c4288db9ff4979312b3ae763
+checksum: 40aee294d407d7e8c7bcb9a0abe77eecae3b2bc6f7668beaf9e3205b25efee73
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1743,6 +1743,40 @@ organs:
     label: com.balizero.regulatory-watcher.daily
   severity_on_silence: warning
   cicatrix_refs: []
+- id: pro.bali_zero_magazine_morning
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.morning
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_morning.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.bali_zero_magazine_breaking
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.magazine.breaking
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.bali_zero_magazine_breaking.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.pg_organism_bridge
   runtime: pro_launchd
   type: daemon
@@ -2085,5 +2119,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.log_rotate.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.fly_logs_accumulator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/fly_logs_accumulator.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.fly-logs-accumulator
+  severity_on_silence: warning
+  notes: Fly logs follower for nuzantara-rag — daily rotated files under ~/logs/fly,
+    14d retention, local disk only (Law 2). Kill switch FLY_LOGS_ACCUMULATOR_ENABLED=false.
+    (O0-P1, approved by Zero 2026-07-19)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fly_logs_accumulator.json
     timestamp_field: ts
     status_field: status

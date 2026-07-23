@@ -43,16 +43,26 @@ every hit, so a conditional ("depends on your case") answer served verbatim
 with zero reasoning is a wrong answer waiting for the wrong client.
 `BERSYARAT` / `BELUM_DIATUR_PUBLIK` / `KEBIJAKAN_PENYEDIA` / `DINAMIS` rows
 are grounding-only (Qdrant `curated_qa` collection) forever — see
+`curated_qa_harvest.py::_derive_verbatim_eligible`. This is unconditional:
+there is no operator override left that can promote a non-`JELAS` row.
+
+**Retired operator override (`--verbatim-all`, task #27):** a 2026-07-19
+business-order escape hatch that bypassed the `confidence_class`/
+`client_specific` half of this gate — every answerable, non-price-bearing
+row was promoted regardless of CONFIDENCE class. It wrongly promoted 215
+non-`JELAS` entries into the live FAQ cache. **Zero retired it 2026-07-21**:
+verbatim serving is JELAS-only, no exceptions. The 215 promoted entries
+were deleted from Redis; the flag is still accepted on the CLI for
+backward-compat but is now a no-op for eligibility (logs a warning). See
 `curated_qa_harvest.py::_derive_verbatim_eligible`.
 
-**Operator override (`--verbatim-all`, task #27):** an explicit, logged
-business-order escape hatch that bypasses the `confidence_class`/
-`client_specific` half of this gate — every answerable, non-price-bearing
-row is promoted regardless of CONFIDENCE class. It does NOT touch the
-FATAL 13 pricing rail (a price-bearing row is refused either way) or the
-FATAL 5 source allowlist. Any row this override actually decided carries
-`metadata.verbatim_override = "zero-legge5-2026-07-19"` in both sinks for
-audit. Not a default — pass only under an explicit operator order.
+**Current corpus state (2026-07-21, post-rollback):** of the 318 dossier
+Q&A rows, 103 (`JELAS`) are served verbatim in the FAQ cache; 215
+(`BERSYARAT` 172, `BELUM_DIATUR_PUBLIK` 20, `DINAMIS` 17,
+`KEBIJAKAN_PENYEDIA` 6) are grounding-only (Qdrant `curated_qa` + abstain
+gates), never verbatim. The E33 corpus is a separate track: 36 rows served
+verbatim. Qdrant's 808 curated_qa points are untouched by the rollback —
+grounding was never gated on eligibility.
 
 ## Question-only seeds (`answer: null`)
 
@@ -89,11 +99,11 @@ source's shelf life:
 - **FAQ (Redis) sink**: a **class-based TTL** is set at write time —
   `JELAS` = 30 days, every other class (`DINAMIS`/`BERSYARAT`/
   `KEBIJAKAN_PENYEDIA`/`BELUM_DIATUR_PUBLIK`) = 7 days (see
-  `curated_qa_harvest.py::_ttl_seconds_for_class`; under the DEFAULT policy
-  only `JELAS` ever reaches this sink per FATAL 3, so the other classes'
-  entries matter only under the `--verbatim-all` operator override,
-  task #27). This overrides `NotebookLMCacheService`'s own
-  one-size-fits-all default.
+  `curated_qa_harvest.py::_ttl_seconds_for_class`; only `JELAS` ever
+  reaches this sink per FATAL 3 — unconditionally, now that
+  `--verbatim-all` is retired — so the other classes' entries are kept
+  purely as a defensive/historical artifact). This overrides
+  `NotebookLMCacheService`'s own one-size-fits-all default.
 - **Qdrant sink**: every point is written with `active: true,
   invalidated_at: null`. `scripts/curated_qa_regen_trigger.py` flips these
   to `active: false, invalidated_at: <timestamp>` (alongside

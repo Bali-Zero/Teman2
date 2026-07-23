@@ -264,6 +264,75 @@
           "innocence": ["test_tg_lint_innocence_grandfathered_and_gateway_pass"]
         }
       }
+    },
+    "wr2_editorial_pregate": {
+      "_doc": "WR2 editorial-intelligence Phase 2 — deterministic zero-LLM pre-gate (7 check_* functions). Built in the org's most recidivist scar territory (#3, 8+ prior instances) by design, per the ratified spec's own hard requirement (2026-07-21-editorial-intelligence-design.md §2 'Il Critico — SDOPPIATO': 'NESSUN gate ship senza corpus guilt+innocence registrato'). Enforced here with the SAME shape as bridge_reply_guards (check_bridge, labeled 'wr2-pregate' in violation messages) rather than a bespoke checker.",
+      "source": "scripts/wr2_editorial_pregate.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "check_"
+      },
+      "test_file": "scripts/tests/test_wr2_editorial_pregate.py",
+      "guards": {
+        "check_duplicate_slides": {
+          "scar": ["#3-generalization"],
+          "guilt": ["test_guilt_real_duplicate_pair_fails"],
+          "innocence": [
+            "test_innocence_regulatory_slides_share_only_boilerplate",
+            "test_skip_short_slides_below_token_floor"
+          ]
+        },
+        "check_bullet_promise": {
+          "scar": ["#3-generalization"],
+          "guilt": [
+            "test_guilt_tiga_syarat_with_two_bullets_fails",
+            "test_flat_guilt_inline_numbered_body_mismatch"
+          ],
+          "innocence": [
+            "test_innocence_3_syarat_with_exactly_three_passes",
+            "test_flat_innocence_prose_body_never_penalized"
+          ]
+        },
+        "check_caps_policy": {
+          "scar": ["#3-generalization"],
+          "guilt": ["test_guilt_caps_wall_body_fails"],
+          "innocence": [
+            "test_innocence_acronyms_in_prose_not_flagged",
+            "test_innocence_statement_slide_in_caps_exempt_by_role"
+          ]
+        },
+        "check_cta_presence": {
+          "scar": ["#3-generalization"],
+          "guilt": [
+            "test_typed_guilt_no_cta_no_statement_closer_fails",
+            "test_flat_guilt_empty_closing_slide_fails"
+          ],
+          "innocence": [
+            "test_typed_innocence_last_slide_statement_passes",
+            "test_flat_innocence_closing_slide_with_content_passes"
+          ]
+        },
+        "check_kicker_unique": {
+          "scar": ["#3-generalization"],
+          "guilt": ["test_guilt_duplicate_kickers_fail"],
+          "innocence": [
+            "test_innocence_similar_but_distinct_kickers_never_substring_collide"
+          ]
+        },
+        "check_kind_coverage": {
+          "scar": ["#3-generalization"],
+          "guilt": ["test_flat_guilt_missing_slide_type_fails"],
+          "innocence": [
+            "test_typed_trivially_true_after_validation",
+            "test_flat_innocence_below_degeneracy_threshold"
+          ]
+        },
+        "check_spine_echo": {
+          "scar": ["#3-generalization"],
+          "guilt": ["test_guilt_closer_shares_zero_spine_tokens_fails"],
+          "innocence": ["test_innocence_spine_echoed_via_regulation_code_alone"]
+        }
+      }
     }
   }
 }

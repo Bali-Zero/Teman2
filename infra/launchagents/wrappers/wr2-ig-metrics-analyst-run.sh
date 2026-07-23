@@ -47,10 +47,10 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG
 set -a
 source "${HOME}/.nuzantara-secrets.env" 2>/dev/null || true
 set +a
-# MAX-3 → expose the un-suffixed CLAUDE_CODE_OAUTH_TOKEN that the `claude` CLI reads
-# (the _1/_2/_3 suffix is a python-client convention; the bare CLI ignores it).
+# MAX-4 → expose the un-suffixed CLAUDE_CODE_OAUTH_TOKEN that the `claude` CLI reads
+# (the _1/_2/_3/_4 suffix is a client convention; the bare CLI ignores it).
 if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN_2:-${CLAUDE_CODE_OAUTH_TOKEN_3:-}}}"
+  export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN_2:-${CLAUDE_CODE_OAUTH_TOKEN_3:-${CLAUDE_CODE_OAUTH_TOKEN_4:-}}}}"
 fi
 
 

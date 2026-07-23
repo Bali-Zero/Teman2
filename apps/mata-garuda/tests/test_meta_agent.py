@@ -355,13 +355,17 @@ class TestMultiAccountFallback:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "tok2")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "tok3")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4")
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
         chain = _get_token_chain()
         labels = [label for label, _ in chain]
-        assert "CLAUDE_CODE_OAUTH_TOKEN_1" in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_2" in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_3" in labels
+        assert labels[:4] == [
+            "CLAUDE_CODE_OAUTH_TOKEN_1",
+            "CLAUDE_CODE_OAUTH_TOKEN_2",
+            "CLAUDE_CODE_OAUTH_TOKEN_3",
+            "CLAUDE_CODE_OAUTH_TOKEN_4",
+        ]
         assert chain[-1] == ("keychain", "")  # always last, empty = keychain
 
     def test_token_chain_skips_unset(self, monkeypatch):
@@ -369,14 +373,16 @@ class TestMultiAccountFallback:
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
-        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "tok3_only")
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4_only")
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
         chain = _get_token_chain()
         labels = [label for label, _ in chain]
         assert "CLAUDE_CODE_OAUTH_TOKEN_1" not in labels
         assert "CLAUDE_CODE_OAUTH_TOKEN_2" not in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_3" in labels
+        assert "CLAUDE_CODE_OAUTH_TOKEN_3" not in labels
+        assert "CLAUDE_CODE_OAUTH_TOKEN_4" in labels
         assert chain[-1] == ("keychain", "")
 
     def test_token_chain_includes_legacy(self, monkeypatch):
@@ -385,6 +391,7 @@ class TestMultiAccountFallback:
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "legacy_tok")
 
         chain = _get_token_chain()
@@ -398,6 +405,7 @@ class TestMultiAccountFallback:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "same_tok")
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
         # Legacy is same as token_1 — should NOT be added twice
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "same_tok")
 

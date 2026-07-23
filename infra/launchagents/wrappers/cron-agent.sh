@@ -7,7 +7,7 @@
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - 3-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3)
+#   - 4-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3 → TOKEN_4)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,7 +15,7 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3} — 3 Claude Max accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4} — 4 Claude subscription accounts for agent tier
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -208,10 +208,10 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         return 0
     fi
 
-    # 3-token OAuth fallback chain
+    # 4-token OAuth fallback chain
     local tokens=()
     local labels=()
-    for i in 1 2 3; do
+    for i in 1 2 3 4; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         if [[ -n "$tok" ]]; then
@@ -236,11 +236,13 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
 
     local RATE_LIMIT_PATTERN="rate.limit\|too many requests\|429\|exhausted\|quota\|hit your limit\|capacity\|overloaded"
     local output="" exit_code=1
+    local tried=()
 
     for idx in "${!tokens[@]}"; do
         local token="${tokens[$idx]}"
         local label="${labels[$idx]}"
         log "Trying $label..."
+        tried+=("$label")
 
         local env_args=()
         if [[ -n "$token" ]]; then
@@ -288,9 +290,14 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         log "[cron-agent] used: tier2-claude-${labels[$idx]} (exit=0)"
         save_state "ok" 0 "$duration"
     elif [[ $exit_code -eq 124 ]]; then
-        log "TIMEOUT all tokens exhausted after ${TIMEOUT}s"
-        save_state "timeout" 124 "$duration" "all tokens exhausted, timeout"
-        send_telegram "⏰ <b>$JOB_NAME</b> agent timeout (all 3 tokens tried)"
+        # M4 (2026-07-20): report the slots ACTUALLY tried — the loop can break
+        # before exhausting all fallbacks, and "all 3 tokens tried" was false
+        # (observed: timeout on token_1 only, message claimed 3).
+        local tried_csv
+        tried_csv=$(IFS=,; echo "${tried[*]}")
+        log "TIMEOUT after ${TIMEOUT}s on: $tried_csv"
+        save_state "timeout" 124 "$duration" "timeout after: $tried_csv"
+        send_telegram "⏰ <b>$JOB_NAME</b> agent timeout dopo ${TIMEOUT}s (provati: $tried_csv)"
     else
         local err_tail
         err_tail=$(echo "$output" | tail -3 | tr '\n' ' ' | head -c 200)

@@ -9,6 +9,7 @@ Multi-account fallback for Claude CLI:
   CLAUDE_CODE_OAUTH_TOKEN_1 → account 1 (try first)
   CLAUDE_CODE_OAUTH_TOKEN_2 → account 2 (if 1 exhausted)
   CLAUDE_CODE_OAUTH_TOKEN_3 → account 3 (if 2 exhausted)
+  CLAUDE_CODE_OAUTH_TOKEN_4 → account 4 (if 3 exhausted)
   keychain fallback          → whatever logged in via claude auth
   agy -p                     → final fallback if all Claude exhausted
 
@@ -40,6 +41,7 @@ CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_3",  # sianoantonello@gmail.com
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # fourth automation account
 ]
 
 # Rate limit detection patterns in stderr/stdout
@@ -108,7 +110,7 @@ def _get_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
     Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py:
-      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3 (explicit chain)
+      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4 (explicit chain)
       2. CLAUDE_CODE_OAUTH_TOKEN (legacy single token, if different from above)
       3. "" (keychain — CLI uses whatever account is logged in)
 

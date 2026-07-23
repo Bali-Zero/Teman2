@@ -178,6 +178,21 @@ def create_agentic_rag(
         CRMTool(db_pool),  # NINTH: CRM database queries (client stats, search, practices)
         TimeSheetTool(),  # TENTH: Timesheet Management
     ]
+
+    # WA team-assistant Phase 2 (Zero GO 2026-07-20, flag-gated, default OFF):
+    # 4 read-only CRM-scoped tools per team member (my-clients/my-practices/
+    # my-deadlines/practice-detail). Read ONCE here, at orchestrator-
+    # construction time — when the flag is off these tools are absent from
+    # `tools` (and therefore from the Gemini function-declaration schema)
+    # for EVERY caller, not just WA senders. See team_crm_tools.py module
+    # docstring for the full design + the per-request self-gate inside
+    # each tool's execute().
+    from .team_crm_tools import create_team_crm_tools, is_team_crm_tools_enabled
+
+    if is_team_crm_tools_enabled():
+        tools.extend(create_team_crm_tools(db_pool))
+        logger.debug("create_agentic_rag: WA team-assistant Phase 2 CRM tools armed")
+
     logger.debug("create_agentic_rag: Tools list created")
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")

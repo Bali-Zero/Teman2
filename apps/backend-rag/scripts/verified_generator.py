@@ -165,15 +165,15 @@ def step_nlm_research(domain: str, topic: str, skip: bool) -> str:
     if skip:
         logger.info("  [SKIP] NLM Deep Research")
         return ""
-    print("\nStep 2: NLM Deep Research (Gemini) — searching web sources...")  # noqa: T201
+    print("\nStep 2: NLM Deep Research (Gemini) — searching web sources...")
     query = f"Indonesian law {domain}: {topic} — current regulations, requirements, procedures 2024-2025"
     output = run_dispatch("research", query, "fast", timeout=120)
     if output:
         # research start is async — extract any immediate context from the response
-        print(f"  Research initiated: {output[:200]}...")  # noqa: T201
+        print(f"  Research initiated: {output[:200]}...")
         # Return the initiation confirmation as context (actual results in NB-9)
         return f"[NLM Deep Research initiated for: {query}]\n{output[:500]}"
-    print("  Research unavailable — proceeding without web research")  # noqa: T201
+    print("  Research unavailable — proceeding without web research")
     return ""
 
 
@@ -182,7 +182,7 @@ def step_gemini_search(domain: str, topic: str, skip: bool) -> str:
     if skip:
         logger.info("  [SKIP] Gemini search")
         return ""
-    print("\nStep 3: Gemini CLI search — verifying current law status...")  # noqa: T201
+    print("\nStep 3: Gemini CLI search — verifying current law status...")
     query = (
         f"Indonesian {domain} law: {topic}. "
         f"What are the current legal requirements, procedures, timeframes, and fees? "
@@ -190,9 +190,9 @@ def step_gemini_search(domain: str, topic: str, skip: bool) -> str:
     )
     output = run_dispatch("search", query, timeout=120)
     if output:
-        print(f"  Gemini search: {len(output)} chars of grounded context")  # noqa: T201
+        print(f"  Gemini search: {len(output)} chars of grounded context")
         return output
-    print("  Gemini search unavailable — proceeding without")  # noqa: T201
+    print("  Gemini search unavailable — proceeding without")
     return ""
 
 
@@ -202,16 +202,16 @@ def step_nlm_oracolo(domain: str, topic: str, skip: bool) -> str:
         logger.info("  [SKIP] NLM Oracolo")
         return ""
     nb_tag = DOMAIN_NB_TAGS.get(domain, domain)
-    print(f"\nStep 4: NLM Oracolo (NB: {nb_tag}) — querying legal PDF citations...")  # noqa: T201
+    print(f"\nStep 4: NLM Oracolo (NB: {nb_tag}) — querying legal PDF citations...")
     question = (
         f"What are the specific legal requirements, procedures, timeframes, and fees for: {topic}? "
         f"Provide exact citations with Pasal numbers."
     )
     output = run_dispatch("oracolo-nb", nb_tag, question, timeout=120)
     if output:
-        print(f"  Oracolo: {len(output)} chars of cited legal context")  # noqa: T201
+        print(f"  Oracolo: {len(output)} chars of cited legal context")
         return output
-    print("  Oracolo unavailable — proceeding without PDF citations")  # noqa: T201
+    print("  Oracolo unavailable — proceeding without PDF citations")
     return ""
 
 
@@ -227,7 +227,7 @@ def step_deepseek_reasoning(
     if skip:
         logger.info("  [SKIP] DeepSeek R1 reasoning")
         return ""
-    print("\nStep 5: DeepSeek R1 671b — legal reasoning & contradiction detection...")  # noqa: T201
+    print("\nStep 5: DeepSeek R1 671b — legal reasoning & contradiction detection...")
 
     # Build a focused reasoning prompt
     claims_sample = "\n".join(
@@ -248,9 +248,9 @@ def step_deepseek_reasoning(
     )
     output = run_dispatch("reasoning", reasoning_prompt, timeout=180)
     if output:
-        print(f"  DeepSeek R1: {len(output)} chars of legal reasoning")  # noqa: T201
+        print(f"  DeepSeek R1: {len(output)} chars of legal reasoning")
         return output
-    print("  DeepSeek R1 unavailable — proceeding without reasoning layer")  # noqa: T201
+    print("  DeepSeek R1 unavailable — proceeding without reasoning layer")
     return ""
 
 
@@ -264,7 +264,7 @@ _GEN_EXHAUSTED: dict[str, str] = {}
 
 def _gen_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3):
+    for i in (1, 2, 3, 4):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -399,14 +399,14 @@ def main() -> None:
     parser.add_argument("--skip-telegram", action="store_true", help="Skip Telegram human review")
     args = parser.parse_args()
 
-    print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")  # noqa: T201
-    print("=" * 70)  # noqa: T201
-    print("Models: NLM Deep Research → Gemini Search → NLM Oracolo → DeepSeek R1 → Claude → CRAG")  # noqa: T201
+    print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")
+    print("=" * 70)
+    print("Models: NLM Deep Research → Gemini Search → NLM Oracolo → DeepSeek R1 → Claude → CRAG")
 
     # Step 1: Load claims_db
-    print("\nStep 1: Loading claims_db...")  # noqa: T201
+    print("\nStep 1: Loading claims_db...")
     claims_db = load_claims_db(args.domain)
-    print(f"  {len(claims_db)} claims loaded")  # noqa: T201
+    print(f"  {len(claims_db)} claims loaded")
 
     # Step 2: NLM Deep Research (Gemini autonomous web search)
     research_context = step_nlm_research(args.domain, args.topic, args.skip_research)
@@ -428,9 +428,9 @@ def main() -> None:
     existing_text: str | None = None
     if args.existing:
         existing_text = Path(args.existing).read_text(encoding="utf-8")
-        print("\nStep 6: Revising existing document via Claude CLI (Max)...")  # noqa: T201
+        print("\nStep 6: Revising existing document via Claude CLI (Max)...")
     else:
-        print("\nStep 6: Generating document via Claude CLI (Max)...")  # noqa: T201
+        print("\nStep 6: Generating document via Claude CLI (Max)...")
 
     document_text = generate_document(
         args.domain, args.topic, claims_db,
@@ -441,24 +441,24 @@ def main() -> None:
     )
     output_path = Path(args.output)
     output_path.write_text(document_text, encoding="utf-8")
-    print(f"  Generated {len(document_text)} chars → {output_path}")  # noqa: T201
+    print(f"  Generated {len(document_text)} chars → {output_path}")
 
     # Step 6b: Validate [CLAIM-ID] markers
-    print("\nStep 6b: Validating [CLAIM-ID] markers...")  # noqa: T201
+    print("\nStep 6b: Validating [CLAIM-ID] markers...")
     valid_ids, missing_ids = validate_markers(document_text, claims_db)
-    print(f"  Valid: {len(valid_ids)}, Missing from DB: {len(missing_ids)}")  # noqa: T201
+    print(f"  Valid: {len(valid_ids)}, Missing from DB: {len(missing_ids)}")
     if missing_ids:
-        print(f"  WARNING: Unknown claim IDs will be flagged UNFAITHFUL: {missing_ids}")  # noqa: T201
+        print(f"  WARNING: Unknown claim IDs will be flagged UNFAITHFUL: {missing_ids}")
 
     # Step 7: CRAG-light auto-verification
-    print("\nStep 7: Running auto-verifier (CRAG-light)...")  # noqa: T201
+    print("\nStep 7: Running auto-verifier (CRAG-light)...")
     claims_db_path = str(CLAIMS_DB_DIR / f"{args.domain}_claims_db.json")
     exit_code, report_path = run_auto_verifier(str(output_path), claims_db_path)
 
     if exit_code == 0:
-        print("  PASSED — all claims verified ≥95%")  # noqa: T201
-        print(f"\nPipeline COMPLETE — document ready: {output_path}")  # noqa: T201
-        print("  Next: upload to NLM using: nlm source_add --notebook-id <NB_ID> --source-type text")  # noqa: T201
+        print("  PASSED — all claims verified ≥95%")
+        print(f"\nPipeline COMPLETE — document ready: {output_path}")
+        print("  Next: upload to NLM using: nlm source_add --notebook-id <NB_ID> --source-type text")
         sys.exit(0)
 
     # Verification failed — load report
@@ -466,27 +466,27 @@ def main() -> None:
         with open(report_path) as f:
             report = json.load(f)
         ratio = report.get("verified_ratio", 0)
-        print(f"  BLOCKED — {ratio:.0%} verified (need ≥95%)")  # noqa: T201
-        print(f"  Blocked claims: {report.get('blocked_claims', [])}")  # noqa: T201
+        print(f"  BLOCKED — {ratio:.0%} verified (need ≥95%)")
+        print(f"  Blocked claims: {report.get('blocked_claims', [])}")
     except (OSError, json.JSONDecodeError):
-        print("  BLOCKED — could not load verification report")  # noqa: T201
+        print("  BLOCKED — could not load verification report")
 
     # Optional: Telegram human review
     if not args.skip_telegram:
-        print("\nStep 7b: Requesting human review via Telegram...")  # noqa: T201
+        print("\nStep 7b: Requesting human review via Telegram...")
         decision = run_telegram_review(str(output_path), report_path, f"{args.domain} — {args.topic}")
         if decision == "approved":
-            print(f"\nApproved — document ready: {output_path}")  # noqa: T201
+            print(f"\nApproved — document ready: {output_path}")
             sys.exit(0)
         elif decision == "skipped":
-            print(f"\nVerification failed — review report: {report_path}")  # noqa: T201
+            print(f"\nVerification failed — review report: {report_path}")
             sys.exit(1)
         else:
-            print("\nRejected — document NOT uploaded. Fix required.")  # noqa: T201
-            print(f"  Review report: {report_path}")  # noqa: T201
+            print("\nRejected — document NOT uploaded. Fix required.")
+            print(f"  Review report: {report_path}")
             sys.exit(1)
     else:
-        print(f"\nVerification failed — review report: {report_path}")  # noqa: T201
+        print(f"\nVerification failed — review report: {report_path}")
         sys.exit(1)
 
 

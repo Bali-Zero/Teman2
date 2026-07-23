@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
@@ -760,3 +760,315 @@ class TestAgenticQueryResponse:
 
             with pytest.raises(HTTPException):
                 get_optional_database_pool(mock_request)
+
+
+class TestProfileFieldPrivilegeGuard:
+    """Adversarial-review fix (2026-07-20, hardened same day after an
+    independent cross-check — see spec `## Adversarial review`): `request.
+    profile` must only be honored for the WA bot's own server-to-server hop
+    — `role="internal"` AND `channel="whatsapp"` — never for an arbitrary/
+    anonymous caller, and never for any OTHER holder of the shared
+    `X-Internal-Key` (it is not exclusive to the WA bot — see
+    `_is_trusted_wa_profile_caller` docstring). An untrusted attempt to set
+    `profile` is now a hard 403, not a silent drop. See agentic_rag.py::
+    query_agentic_rag + `_is_trusted_wa_profile_caller`."""
+
+    @staticmethod
+    def _base_kwargs(mock_orchestrator, current_user, profile, channel="whatsapp"):
+        request_data = AgenticQueryRequest(query="Any question", channel=channel, profile=profile)
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+        return request_data, mock_ab_manager
+
+    @pytest.mark.asyncio
+    async def test_internal_role_on_whatsapp_channel_profile_is_forwarded(
+        self, mock_orchestrator
+    ):
+        """Guilt: the WA bot's internal-key pseudo-user (role='internal')
+        on channel='whatsapp' legitimately sets profile — it resolved
+        sender identity itself, out-of-band, against Postgres. Must reach
+        the orchestrator as a plain dict."""
+        internal_user = {
+            "role": "internal",
+            "email": "wa-mirror-internal@balizero.com",
+            "user_id": "wa-mirror-internal",
+        }
+        profile = {"role": "team", "name": "Ari", "email": "ari@balizero.com"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, internal_user, profile, channel="whatsapp"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert call_kwargs.get("profile") == profile
+
+    @pytest.mark.asyncio
+    async def test_admin_role_profile_is_rejected(self, mock_orchestrator):
+        """Guilt (hardened 2026-07-20): an admin caller (X-Debug-Key) is
+        NOT trusted for profile override — no shipped caller needs it, and
+        least-privilege beats convenience for a persona-escalation vector.
+        Must 403, never reach the orchestrator."""
+        admin_user = {"role": "admin", "email": "admin@internal", "user_id": "admin"}
+        profile = {"role": "creator"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, admin_user, profile, channel="whatsapp"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=admin_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            with pytest.raises(HTTPException) as exc_info:
+                await query_agentic_rag(
+                    request=request_data,
+                    current_user=admin_user,
+                    orchestrator=mock_orchestrator,
+                    db_pool=None,
+                )
+
+        assert exc_info.value.status_code == 403
+        mock_orchestrator.process_query.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_internal_role_off_whatsapp_channel_is_rejected(self, mock_orchestrator):
+        """Guilt (the exact gap the independent cross-check found): the
+        shared `X-Internal-Key` also authenticates OTHER Pro-side scripts
+        (e.g. wa-mirror-auto-promote-leads) that get the identical
+        role='internal' pseudo-identity but are not the WA bot resolving a
+        real sender. Without the channel pin, any of those could set
+        profile freely. Same internal_user as the trusted test, but
+        channel != 'whatsapp' -> must 403."""
+        internal_user = {
+            "role": "internal",
+            "email": "wa-mirror-internal@balizero.com",
+            "user_id": "wa-mirror-internal",
+        }
+        profile = {"role": "team", "email": "victim@balizero.com"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, internal_user, profile, channel="website"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            with pytest.raises(HTTPException) as exc_info:
+                await query_agentic_rag(
+                    request=request_data,
+                    current_user=internal_user,
+                    orchestrator=mock_orchestrator,
+                    db_pool=None,
+                )
+
+        assert exc_info.value.status_code == 403
+        mock_orchestrator.process_query.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_regular_authenticated_user_profile_is_rejected(self, mock_orchestrator):
+        """Innocence (the actual vulnerability this fix closes): a normal
+        logged-in client cannot self-declare role='creator'/'team' by
+        putting it in the request body — must 403, never reach the
+        orchestrator/persona layer."""
+        regular_user = {"email": "client@example.com", "user_id": "client-1"}
+        profile = {"role": "creator"}  # attempted escalation
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, regular_user, profile, channel="whatsapp"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=regular_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            with pytest.raises(HTTPException) as exc_info:
+                await query_agentic_rag(
+                    request=request_data,
+                    current_user=regular_user,
+                    orchestrator=mock_orchestrator,
+                    db_pool=None,
+                )
+
+        assert exc_info.value.status_code == 403
+        mock_orchestrator.process_query.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_anonymous_caller_profile_is_rejected(self, mock_orchestrator):
+        """Innocence: an unauthenticated caller (current_user=None) — the
+        worst case for the escalation vector — must also 403."""
+        profile = {"role": "team"}  # attempted escalation
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, None, profile, channel="whatsapp"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            with pytest.raises(HTTPException) as exc_info:
+                await query_agentic_rag(
+                    request=request_data,
+                    current_user=None,
+                    orchestrator=mock_orchestrator,
+                    db_pool=None,
+                )
+
+        assert exc_info.value.status_code == 403
+        mock_orchestrator.process_query.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_no_profile_in_request_is_still_a_no_op(self, mock_orchestrator):
+        """Innocence: the pre-existing, non-WA callers (profile absent
+        entirely) must remain completely unaffected by this guard —
+        including on channels/roles that would otherwise fail the
+        trust check, since the check is only reached when profile is set."""
+        internal_user = {"role": "internal", "email": "wa-mirror-internal@balizero.com"}
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, internal_user, None, channel="website"
+        )
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "profile" not in call_kwargs
+
+    def test_profile_schema_rejects_unknown_fields(self):
+        """Guilt: `InternalSenderProfile` is a closed schema (`extra=
+        "forbid"`) — the transport cannot be used to smuggle an unreviewed
+        field (e.g. a future `permissions`/`is_admin` key) past validation,
+        even before the route-level trust check runs."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            AgenticQueryRequest(
+                query="test",
+                channel="whatsapp",
+                profile={"role": "team", "permissions": ["all"]},
+            )
+
+    def test_profile_schema_rejects_unknown_role(self):
+        """Guilt: `role` is a closed Literal — cannot be e.g. 'admin'."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            AgenticQueryRequest(
+                query="test",
+                channel="whatsapp",
+                profile={"role": "admin"},
+            )

@@ -56,21 +56,56 @@ not N workflows), single-file fixes, anything already owned by a live sibling la
 `agent()` lanes are Claude-family. External seats are reached FROM a lane via Bash — the
 lane prompt says "run this command, treat stdout as the seat's verdict". Probe-then-trust:
 a seat that fails its 1-token probe is a dead tier, DECLARED, never silently skipped
-(cascade: GLM → Kimi → DeepSeek → Codex for the refuter chair).
+(cascade: GLM → Kimi → Codex for the refuter chair — DeepSeek RETIRED 2026-07-19, Zero's order + repeat HTTP-402; never route to it).
 
-| Seat (family)              | Command from inside a lane                                                                                                   | Chair                                    |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Sonnet 5 (Claude)          | native `agent(prompt, {model:"sonnet"})`                                                                                     | implementer / reader fan-out             |
-| Codex GPT-5.6 sol (OpenAI) | `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only --skip-git-repo-check "<prompt>" < /dev/null` | red-team / empirical sandbox             |
-| Gemini via agy (Google)    | `agy -p "<prompt>"` (long input: `cat file \| agy -p --print-timeout 5m`)                                                    | costruttivo / corpus width / normativa   |
-| **Kimi K3 (Moonshot)**     | `kimi -p "<prompt>" -m kimi-code/k3` (coding lane: `-m kimi-code/kimi-for-coding`; grunt: `-highspeed`)                      | refuter #2 / cross-family second opinion |
-| GLM 5.2 (Zhipu)            | `claude-glm` wrapper (Keychain-bound — probe first; dead under locked keychain)                                              | refuter #1                               |
-| Ollama (local)             | `ollama run qwen3.5:9b "<prompt>"` (vision: `qwen2.5vl:7b`)                                                                  | PII-bearing transforms, offline          |
-| NotebookLM                 | MCP `mcp__notebooklm-mcp__notebook_query` from the ORCHESTRATOR (not lanes; ToolSearch loads schemas in-lane if unavoidable) | ground-truth verifier (facts, normativa) |
+| Seat (family)              | Command from inside a lane                                                                                                                                                                                                                                                                                                                                                                                                             | Chair                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Sonnet 5 (Claude)          | native `agent(prompt, {model:"sonnet"})`                                                                                                                                                                                                                                                                                                                                                                                               | implementer / reader fan-out             |
+| Codex GPT-5.6 sol (OpenAI) | `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only --skip-git-repo-check "<prompt>" < /dev/null` — NOTE 2026-07-19 (timeboxed): sol@high exceeded the 590s Bash cap twice on multi-file R1 reviews; `terra` medium is the reliable R1 default until a latency log says otherwise; on timeout DECLARE and escalate along the cascade                                                                        | red-team / empirical sandbox             |
+| Gemini via agy (Google)    | `agy -p "<prompt>"` (long input: `cat file \| agy -p --print-timeout 5m`)                                                                                                                                                                                                                                                                                                                                                              | costruttivo / corpus width / normativa   |
+| **Kimi K3 (Moonshot)**     | `kimi -p "<prompt>" -m kimi-code/k3` (coding lane: `-m kimi-code/kimi-for-coding`; grunt: `-highspeed`; scriptable seat: `scripts/kimi_client.py`) — ARMED M5+Pro+Mini 2026-07-19 (probed). NON-PII prompts only (Chinese cloud, Law 2); K3 hyper-proactive on ambiguous tasks — scope tight. Desktop = separate operator-driven surface, see `research/operations/2026-07-19-kimi-arsenal-integration-deepseek-retirement.md`         | refuter #2 / cross-family second opinion |
+| GLM 5.2 (Zhipu)            | `claude-glm` wrapper (Keychain-bound — probe first; dead under locked keychain) — PROMOTED 2026-07-19 (Zero: "glm deve essere un po' più utilizzato"): FIRST-CALL refuter and default R1 seat for compact reviews (<5k chars prompt — z.ai 529s above); it runs the claude CLI shim so it READS FILES AGENTICALLY — hand it paths, don't paste diffs; escalate along the cascade (Kimi → Codex) only on multi-file scope or probe-fail | refuter #1 — USE FIRST, not last-resort  |
+| Ollama (local)             | `ollama run qwen3.5:9b "<prompt>"` (vision: `qwen2.5vl:7b`)                                                                                                                                                                                                                                                                                                                                                                            | PII-bearing transforms, offline          |
+| NotebookLM                 | MCP `mcp__notebooklm-mcp__notebook_query` from the ORCHESTRATOR (not lanes; ToolSearch loads schemas in-lane if unavoidable)                                                                                                                                                                                                                                                                                                           | ground-truth verifier (facts, normativa) |
+
+### 2bis. Capability-map upgrades (2026-07-19 — capture: research/operations/2026-07-19-arsenal-capability-map-magic-combos.md)
+
+New seat capabilities every workflow should know:
+
+- **Codex search chair**: `codex exec --search "<prompt>"` — native live web search
+  (flat-sub, non-Anthropic/non-Google index) → 4th independent witness in research sweeps.
+- **Codex vision chair**: `codex exec -i <img.png> "<prompt>"` — OpenAI-family eyes on the
+  SAME rendered artifact for image-grounded verify (W100 D5 pattern; sits next to GLM-vision).
+- **Seat health probes**: `codex doctor --json` (auth-aware, replaces --version greps) ·
+  `claude agents --json` (fan-out liveness) — probe-then-trust on real signals, not proxies.
+- **Red-team as native tool**: from the ORCHESTRATOR, prefer `mcp__codex-redteam__codex`
+  (typed MCP call) over Bash shell-out — lanes still use the Bash command.
+- **Claude-via-agy overflow** (ruled by Zero 2026-07-19): `agy --model "Claude Opus 4.6 (Thinking)" -p`
+  (PONG-proven) — extra Claude-family pool on Ultra flat quota when MAX windows saturate.
+  Overflow lanes ONLY; NEVER the final gate (modus invariant untouched).
+- **GLM Web Search/Reader MCP** (bundled free in the Coding Plan) — differently-biased second
+  search lane for regulatory delta-hunting.
+- **Kimi at corpus scale**: K3 Swarm (≤300 subagents, Desktop/operator-driven) +
+  `kimi-agent-sdk` for headless swarms; `scripts/kimi_client.py` is the scriptable seat
+  wrapper for lanes. NON-PII prompts only, always.
+- **Structured CLI seats**: `claude -p --json-schema '<schema>'` (schema-validated output from
+  CLI-called Claude seats) · `claude -p --fallback-model sonnet,haiku` (native same-provider
+  fallback — replaces stdout-grep tier logic in wrapper scripts).
+
+New patterns (compose with §3):
+
+- **ultrareview-first**: `claude ultrareview <PR#|branch>` (cloud multi-agent, MAX-quota) as
+  the automated first pass of any review workflow — external chairs then grade what it missed.
+- **Server-side best-of-N**: `codex cloud exec --attempts 2-4` — tournament outsourced to
+  OpenAI infra for the hardest single-shot problems (one-time Codex Cloud env setup).
+- **Agent-Teams adversarial pair**: flag already armed fleet-wide — two peer sessions with
+  SendMessage for iterative propose/critique rounds; cheaper than council when the shape is a
+  dialogue, not a panel.
+- **Triage-first research**: the bundled native `/deep-research` workflow answers easy
+  questions free; reserve the multi-LLM sweep for regulatory/client-facing/hard ones.
 
 Framing rule for external seats: "independent correctness review", never adversarial
-rhetoric in the prompt text (provider refusal filters). All seats are flat-quota except
-DeepSeek (paid per token, pre-authorized ≤$0.01/q) — cost is not a reason to skip a chair.
+rhetoric in the prompt text (provider refusal filters). All seats are flat-quota (DeepSeek, the one per-token seat, is RETIRED — pre-auth revoked) — cost is not a reason to skip a chair.
 
 ## 3. Pattern library (pick, don't reinvent)
 

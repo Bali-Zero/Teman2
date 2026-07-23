@@ -10,7 +10,54 @@
 # Dependency footprint probed empirically 2026-07-13: pytest pytest-asyncio
 # asyncpg numpy pydantic httpx is the minimal set that runs the full battery
 # (asyncpg/pydantic/httpx via wr2_html_render_apply → backend _pg/llm chain,
-# numpy via the renderer's critic_signals).
+# numpy via the renderer's critic_signals). Pillow added 2026-07-21 (Pillow:
+# test_ocr_override_classifier.py does `from PIL import Image`, and that
+# file is the ONLY consumer — every other renderer module import checked
+# empirically has zero Pillow/Playwright at module level).
+#
+# scripts/wr2_html_renderer/tests/ ADDED 2026-07-21 (cicatrix-superscar #2,
+# "esiste≠armato"): this workflow triggers on scripts/wr2_html_renderer/**
+# changes (paths below) but never actually ran the 154-test render battery
+# living there (incl. the 32 placeholder-sweep-gate tests from PR #2958,
+# the W99 class-cure) — it was enforced only by a developer running pytest
+# by hand before push, never by CI. Directory arg (not enumerated files) so
+# future test files in this dir are auto-collected without another workflow
+# edit — verified empirically 2026-07-21: `python -m pytest
+# scripts/wr2_html_renderer/tests/ -q` with ONLY `PYTHONPATH=apps/backend-rag`
+# (no `scripts` on the path) collects and passes all 154 tests. Known
+# residual fragility (not fixed here, scope stayed surgical): 4 of the 13
+# test files (test_fonts_injection.py, test_ocr_override_classifier.py,
+# test_placeholder_sweep_gate.py, test_swipe_indicator.py) import
+# `wr2_html_renderer.*` directly with no sys.path setup of their own — they
+# only resolve because pytest's alphabetical collection order imports an
+# earlier file (e.g. test_article2_3_palette_signal.py) first, which DOES
+# `sys.path.insert(0, .../scripts)` at module level, and that mutation
+# leaks for the rest of the pytest process. Works today, is order-dependent;
+# a future test file sorting before all four AND lacking its own
+# sys.path.insert would break silently. scripts/wr2_html_renderer/tests/
+# has no conftest.py to anchor this properly — flagged, not fixed, here.
+#
+# scripts/wr2_html_renderer/tests/test_each_block_render.py is a standalone
+# script (def main() + `if __name__ == "__main__"`, zero test_*() functions)
+# — pytest collects the module but finds 0 test items in it; it contributes
+# 0 to the 154 and is not run by this workflow either. Pre-existing, not
+# introduced or fixed by this change.
+#
+# scripts/wr2_draft_generator.py + its 9 test_wr2_draft_generator_*.py files
+# ADDED 2026-07-21 (production cutover to the planner/writer engine, W-family
+# #2 "esiste≠armato" closed the same way the render battery was closed above):
+# `wr2_draft_generator.py` now imports and drives `wr2_carousel_ir`/
+# `wr2_editorial_pregate`/`wr2_planner_writer` behind the WR2_COMPOSE_ENGINE
+# kill-switch — this was the FIRST production modification of that arc, and
+# its generator-level test suite (including the pre-existing 8 files, which
+# had NO CI enforcement anywhere before this change — dev-run-by-hand only)
+# had never been wired into any workflow. Two of the pre-existing files
+# (test_wr2_draft_generator_enriched_prompt.py, _kicker_variety.py) call
+# `_process_one` directly mocking the monolith's own `claude_compose_slides`;
+# each now pins `WR2_COMPOSE_ENGINE=monolith` (discovered live during this
+# cutover's own pre-push run: the new planner_writer default silently routed
+# those un-pinned tests into a REAL Claude OAuth CLI subprocess call instead
+# of the mocked one — caught before merge, not after).
 name: wr2-queue-tests
 
 on:
@@ -21,13 +68,32 @@ on:
       - "scripts/wr2_queue_hygiene.py"
       - "scripts/wr2_queue_writer.py"
       - "scripts/wr2_rerender_local.py"
+      - "scripts/wr2_draft_generator.py"
       - "scripts/wr2_html_renderer/**"
+      - "scripts/wr2_carousel_ir.py"
+      - "scripts/wr2_ir_shadow_replay.py"
+      - "scripts/wr2_editorial_pregate.py"
+      - "scripts/wr2_pregate_shadow.py"
+      - "scripts/wr2_planner_writer.py"
+      - "scripts/wr2_pw_shadow.py"
       - "scripts/tests/test_wr2_queue_hygiene.py"
       - "scripts/tests/test_wr2_visibility_chain.py"
       - "scripts/tests/test_wr2_rerender_requeue.py"
       - "scripts/tests/test_wr2_queue_locking.py"
       - "scripts/tests/test_wr2_pipeline_consolidation.py"
       - "scripts/tests/test_wr2_daily_reconciler.py"
+      - "scripts/tests/test_wr2_carousel_ir.py"
+      - "scripts/tests/test_wr2_editorial_pregate.py"
+      - "scripts/tests/test_wr2_planner_writer.py"
+      - "scripts/tests/test_wr2_draft_generator_liveness_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_cover_codex_detection.py"
+      - "scripts/tests/test_wr2_draft_generator_length_per_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_kicker_variety.py"
+      - "scripts/tests/test_wr2_draft_generator_closer_guard.py"
+      - "scripts/tests/test_wr2_draft_generator_enriched_prompt.py"
+      - "scripts/tests/test_wr2_draft_generator_tone_per_tier.py"
+      - "scripts/tests/test_wr2_draft_generator_json_example.py"
+      - "scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
       - ".github/workflows/wr2-queue-tests.yml"
@@ -43,12 +109,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Install battery dependencies
-        run: python -m pip install --quiet pytest pytest-asyncio asyncpg numpy pydantic httpx
+        run: python -m pip install --quiet pytest pytest-asyncio asyncpg numpy pydantic httpx Pillow
 
       - name: Run WR2 queue test battery
         env:
@@ -61,4 +127,17 @@ jobs:
             scripts/tests/test_wr2_queue_locking.py \
             scripts/tests/test_wr2_pipeline_consolidation.py \
             scripts/tests/test_wr2_daily_reconciler.py \
+            scripts/tests/test_wr2_carousel_ir.py \
+            scripts/tests/test_wr2_editorial_pregate.py \
+            scripts/tests/test_wr2_planner_writer.py \
+            scripts/tests/test_wr2_draft_generator_liveness_tier.py \
+            scripts/tests/test_wr2_draft_generator_cover_codex_detection.py \
+            scripts/tests/test_wr2_draft_generator_length_per_tier.py \
+            scripts/tests/test_wr2_draft_generator_kicker_variety.py \
+            scripts/tests/test_wr2_draft_generator_closer_guard.py \
+            scripts/tests/test_wr2_draft_generator_enriched_prompt.py \
+            scripts/tests/test_wr2_draft_generator_tone_per_tier.py \
+            scripts/tests/test_wr2_draft_generator_json_example.py \
+            scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py \
+            scripts/wr2_html_renderer/tests \
             -q

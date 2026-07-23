@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 32 · **Packages:** 6
+**Apps:** 33 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -108,6 +108,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
+| `bali-zero-magazine` | Private editorial observatory for Bali Zero, built on |
 | `cell` |  |
 | `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
 | `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
@@ -170,7 +171,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`125 plist tracked in infra/launchagents/ · 95 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (76% coverage)`
+`128 plist tracked in infra/launchagents/ · 97 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (76% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

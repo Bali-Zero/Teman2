@@ -201,6 +201,38 @@ class TestBonuses:
             await hr_service.approve_bonus(999, "admin@test.com")
 
     @pytest.mark.asyncio
+    async def test_list_bonus_historical_no_filter(self, hr_service, mock_db_pool):
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "employee_name": "ALICE",
+                    "employee_id": 1,
+                    "bonus_month": 2,
+                    "bonus_year": 2026,
+                    "total_amount_idr": 3000000,
+                    "task_count": 16,
+                    "source_pdf": "LIST BONUS FEBRUARY 2026.pdf",
+                },
+            ]
+        )
+        result = await hr_service.list_bonus_historical()
+        assert len(result) == 1
+        assert result[0]["total_amount_idr"] == 3000000
+        # No year filter → no parameter bound.
+        _, args, _ = mock_db_pool._mock_conn.fetch.mock_calls[0]
+        assert len(args) == 1
+
+    @pytest.mark.asyncio
+    async def test_list_bonus_historical_filters_by_year(self, hr_service, mock_db_pool):
+        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[])
+        result = await hr_service.list_bonus_historical(year=2026)
+        assert result == []
+        _, args, _ = mock_db_pool._mock_conn.fetch.mock_calls[0]
+        assert args[1] == 2026
+        assert "bonus_year = $1" in args[0]
+
+    @pytest.mark.asyncio
     async def test_get_bonus_summary(self, hr_service, mock_db_pool):
         mock_db_pool._mock_conn.fetchrow = AsyncMock(
             return_value={

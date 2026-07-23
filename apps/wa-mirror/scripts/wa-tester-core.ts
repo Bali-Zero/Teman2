@@ -11,6 +11,7 @@
 // parameters) so it can be unit-tested without a live WhatsApp connection.
 // The live-socket glue lives in scripts/wa-tester.ts and imports from here.
 
+import { parseJid } from "../bridge/filters.js";
 import { normalizePhone, phoneDigits } from "../bridge/phone.js";
 
 // ---------------------------------------------------------------------------
@@ -67,6 +68,49 @@ export function matchesBotRecipient(value: string): boolean {
   return rawDigits.length > 0 && rawDigits === BOT_PHONE_DIGITS;
 }
 
+// ---------------------------------------------------------------------------
+// Receive-side matcher — scar #3 UNDER-match (WhatsApp LID rollout).
+//
+// `matchesBotRecipient` above is the SEND-side guard: it only ever sees a
+// battery author's plain value (phone/JID string), never a live Baileys
+// remoteJid. Receive-side used to do `m.key.remoteJid !== BOT_JID` — strict
+// string equality against the bot's `@s.whatsapp.net` phone-JID. Under
+// WhatsApp's `@lid` (Linked Identity Device) rollout, the SAME bot
+// conversation can arrive tagged with an opaque `@lid` identifier instead
+// of the phone-JID (Baileys reassigns this per-session, not something the
+// tester controls) — the strict `!==` silently drops every reply that
+// arrives that way, producing `reply_count: 0` even though the bot answered
+// (verified against Postgres ground truth). This is the classic guard
+// UNDER-match: the check watches one literal form and goes quiet when the
+// same fact shows up in another form.
+// ---------------------------------------------------------------------------
+
+/**
+ * True if `remoteJid` is the bot's own conversation — either directly (the
+ * phone-JID form) or via a `@lid` JID that `resolvedLidPhoneE164` (an
+ * out-of-band Baileys `signalRepository.lidMapping.getPNForLID` lookup,
+ * performed by the live-socket caller) resolved to the bot's number.
+ *
+ * Fails CLOSED like `matchesBotRecipient`: an unresolved or non-matching LID
+ * (`resolvedLidPhoneE164` null/other) is NOT the bot — a reply from some
+ * other contact must never be misattributed to the bot just because both
+ * arrived as LIDs.
+ */
+export function isBotReplyJid(
+  remoteJid: string | null | undefined,
+  resolvedLidPhoneE164: string | null,
+): boolean {
+  const parsed = parseJid(remoteJid);
+  if (parsed.kind === "phone") {
+    return phoneDigits(parsed.phone) === BOT_PHONE_DIGITS;
+  }
+  if (parsed.kind === "lid") {
+    if (!resolvedLidPhoneE164) return false;
+    return phoneDigits(resolvedLidPhoneE164) === BOT_PHONE_DIGITS;
+  }
+  return false;
+}
+
 export type AllowlistViolation = { ok: false; error: string };
 export type AllowlistOk = { ok: true };
 
@@ -109,8 +153,7 @@ export type Battery = {
 };
 
 export type ValidateBatteryResult =
-  | { ok: true; battery: Battery }
-  | { ok: false; error: string };
+  { ok: true; battery: Battery } | { ok: false; error: string };
 
 function coercePositiveNumber(value: unknown, fallback: number): number {
   if (typeof value === "number" && Number.isFinite(value) && value > 0)

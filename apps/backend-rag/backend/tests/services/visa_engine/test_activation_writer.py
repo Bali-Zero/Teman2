@@ -11,8 +11,11 @@ test — ``test_repository.py`` already covers the raw-insert path against
 the retained structural triggers).
 
 Every test uses the ``repo``/``visa_schema``/``db_pool`` fixtures from this
-directory's ``conftest.py`` — ``visa_schema`` now applies migration 250
-THEN migration 251 forward (see that fixture's updated docstring), so every
+directory's ``conftest.py`` — ``visa_schema`` now applies migration 250,
+THEN 251, THEN 253 forward (see that fixture's updated docstring — 253 is
+the STEP-6a FIX-ROUND roll-forward correction against 251, which merged and
+applied to prod in flawed form before the fix-round landed; see 253's own
+header), so every
 test starts from a schema that includes ``activated_by_principal``, the
 hardened (schema-qualified, ``search_path``-pinned) trigger functions, and
 the writer function itself.
@@ -65,7 +68,7 @@ async def test_activate_bootstrap_succeeds(repo: VisaEngineRepository) -> None:
     )
 
     activation_id = await repo.activate_rule_pack(
-        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="bootstrap activation"
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="bootstrap-activation"
     )
     assert isinstance(activation_id, uuid.UUID)
 
@@ -128,7 +131,7 @@ async def test_supersession_closes_prior(repo: VisaEngineRepository) -> None:
         rule_pack_id=pack_1, activated_by="ops.alice", activation_reason="bootstrap"
     )
     activation_2 = await repo.activate_rule_pack(
-        rule_pack_id=pack_2, activated_by="ops.bob", activation_reason="supersede with pack-2"
+        rule_pack_id=pack_2, activated_by="ops.bob", activation_reason="supersede-with-pack-2"
     )
     assert activation_1 != activation_2
 
@@ -295,7 +298,7 @@ async def test_partial_legal_overlap_rejected(repo: VisaEngineRepository) -> Non
 
     with pytest.raises(asyncpg.exceptions.RaiseError, match="partial legal-period overlap"):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_2, activated_by="ops", activation_reason="partial overlap attempt"
+            rule_pack_id=pack_2, activated_by="ops", activation_reason="partial-overlap-attempt"
         )
 
     # innocence-of-side-effect: the rejected call must not have touched
@@ -309,8 +312,10 @@ async def test_partial_legal_overlap_rejected(repo: VisaEngineRepository) -> Non
 
 
 # --------------------------------------------------------------------------
-# 5. F6(a) guilt+innocence: blank/oversized activated_by/activation_reason
-#    are rejected up front by the function itself.
+# 5. F6(a) + P2 (verify round-1) guilt+innocence: activated_by/
+#    activation_reason must be an OPAQUE TOKEN (^[A-Za-z0-9._:-]{1,120}$) —
+#    blank, free-sentence (spaces), and oversized (>120 chars) values are all
+#    rejected up front by the function itself.
 # --------------------------------------------------------------------------
 
 
@@ -328,8 +333,30 @@ async def test_activate_rejects_blank_activated_by(repo: VisaEngineRepository) -
         note="pack-1",
         payload_sha256=_pack_hash(1),
     )
-    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be non-blank"):
-        await repo.activate_rule_pack(rule_pack_id=pack_id, activated_by="   ", activation_reason="ok reason")
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
+        await repo.activate_rule_pack(rule_pack_id=pack_id, activated_by="   ", activation_reason="ok-reason")
+
+
+@pytest.mark.asyncio
+async def test_activate_rejects_free_sentence_activated_by(repo: VisaEngineRepository) -> None:
+    """P2 (verify round-1): a human-readable free sentence (spaces) is no
+    longer accepted — only an opaque reason-code/ticket-id/handle token."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-1",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-1",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by="ops alice smith", activation_reason="ok-reason"
+        )
 
 
 @pytest.mark.asyncio
@@ -346,9 +373,9 @@ async def test_activate_rejects_oversized_activated_by(repo: VisaEngineRepositor
         note="pack-1",
         payload_sha256=_pack_hash(1),
     )
-    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be non-blank"):
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_id, activated_by="x" * 201, activation_reason="ok reason"
+            rule_pack_id=pack_id, activated_by="x" * 121, activation_reason="ok-reason"
         )
 
 
@@ -366,8 +393,37 @@ async def test_activate_rejects_blank_activation_reason(repo: VisaEngineReposito
         note="pack-1",
         payload_sha256=_pack_hash(1),
     )
-    with pytest.raises(asyncpg.exceptions.RaiseError, match="activation_reason must be non-blank"):
+    with pytest.raises(
+        asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
+    ):
         await repo.activate_rule_pack(rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="")
+
+
+@pytest.mark.asyncio
+async def test_activate_rejects_free_sentence_activation_reason(repo: VisaEngineRepository) -> None:
+    """P2 (verify round-1): the exact PII-forgery scenario this fix closes —
+    a caller can no longer write a client's name/passport into this
+    immutable, append-only, DELETE-rejecting audit column."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-1",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-1",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(
+        asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
+    ):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id,
+            activated_by="ops.alice",
+            activation_reason="activated per client X passport 123456 request",
+        )
 
 
 @pytest.mark.asyncio
@@ -384,16 +440,18 @@ async def test_activate_rejects_oversized_activation_reason(repo: VisaEngineRepo
         note="pack-1",
         payload_sha256=_pack_hash(1),
     )
-    with pytest.raises(asyncpg.exceptions.RaiseError, match="activation_reason must be non-blank"):
+    with pytest.raises(
+        asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
+    ):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="y" * 1001
+            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="y" * 121
         )
 
 
 @pytest.mark.asyncio
 async def test_activate_accepts_boundary_length_actor_and_reason(repo: VisaEngineRepository) -> None:
-    """Innocence: exactly 200/1000 chars (the boundary itself, not one-over)
-    must NOT raise."""
+    """Innocence: exactly 120 chars (the token-format boundary itself, not
+    one-over) must NOT raise, for either column."""
     legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
     pack_id = uuid.uuid4()
     await _insert_pack(
@@ -407,9 +465,84 @@ async def test_activate_accepts_boundary_length_actor_and_reason(repo: VisaEngin
         payload_sha256=_pack_hash(1),
     )
     activation_id = await repo.activate_rule_pack(
-        rule_pack_id=pack_id, activated_by="a" * 200, activation_reason="b" * 1000
+        rule_pack_id=pack_id, activated_by="a" * 120, activation_reason="b" * 120
     )
     assert isinstance(activation_id, uuid.UUID)
+
+
+@pytest.mark.asyncio
+async def test_activate_accepts_token_with_allowed_punctuation(repo: VisaEngineRepository) -> None:
+    """Innocence: `.`/`_`/`:`/`-` are all allowed inside the opaque token
+    shape (ticket-ID / reason-code conventions commonly use all four)."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-1",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-1",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id,
+        activated_by="ops.alice_bot:2026-07-19",
+        activation_reason="TICKET-2026.07.19_reg:update",
+    )
+    assert isinstance(activation_id, uuid.UUID)
+
+
+@pytest.mark.asyncio
+async def test_activate_rejects_null_activated_by(repo: VisaEngineRepository) -> None:
+    """F3 (cross-family fix-round): before this fix, ``NULL ~ regex`` is SQL
+    NULL, ``NOT NULL`` is still NULL, and ``IF NULL THEN ...`` never enters
+    the branch — a NULL ``activated_by`` silently skipped the function's own
+    validation entirely and fell through to the INSERT, where it surfaced as
+    a raw, low-level ``NOT NULL`` table-constraint violation instead of this
+    function's typed, friendly error. The explicit ``IS NULL OR`` guard
+    closes that gap."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-null-activated-by",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-null-activated-by",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(asyncpg.exceptions.RaiseError, match="activated_by must be an opaque token"):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by=None, activation_reason="ok-reason"  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.asyncio
+async def test_activate_rejects_null_activation_reason(repo: VisaEngineRepository) -> None:
+    """F3 (cross-family fix-round): same NULL-slips-past-regex gap as above,
+    for ``activation_reason`` (also ``TEXT NOT NULL`` at the table level)."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-null-activation-reason",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-null-activation-reason",
+        payload_sha256=_pack_hash(1),
+    )
+    with pytest.raises(
+        asyncpg.exceptions.RaiseError, match="activation_reason must be an opaque reason-code"
+    ):
+        await repo.activate_rule_pack(
+            rule_pack_id=pack_id, activated_by="ops.alice", activation_reason=None  # type: ignore[arg-type]
+        )
 
 
 # --------------------------------------------------------------------------
@@ -457,7 +590,7 @@ async def test_activated_by_principal_stamped_and_unspoofable(repo: VisaEngineRe
     # activated_by_principal is the REAL session_user, never the caller's
     # claimed identity.
     activation_a = await repo.activate_rule_pack(
-        rule_pack_id=pack_a, activated_by="claimed-human-name", activation_reason="via function"
+        rule_pack_id=pack_a, activated_by="claimed-human-name", activation_reason="via-function"
     )
     async with repo.db_pool.acquire() as conn:
         row_a = await conn.fetchrow(
@@ -482,7 +615,7 @@ async def test_activated_by_principal_stamped_and_unspoofable(repo: VisaEngineRe
             _ENV,
             legal_b,
             "tester",
-            "raw spoof attempt",
+            "raw-spoof-attempt",
             "someone-else-entirely",
         )
         row_b = await conn.fetchrow(
@@ -526,6 +659,233 @@ async def test_activated_by_principal_immutable_on_update(repo: VisaEngineReposi
 
 
 # --------------------------------------------------------------------------
+# 6bis. Migration 254: closing an open system_period with the explicit
+#     'infinity' sentinel must be rejected — it is non-NULL and would
+#     otherwise pass the old NULL-only guard while never really closing the
+#     period (mirrors test_write_substrate.py's
+#     test_source_record_close_infinity_upper_guilt for the sibling
+#     visa_source_records.recorded_period guard, migration 252). A
+#     legitimate finite close, and a fresh bootstrap open-insert, must both
+#     still succeed (innocence).
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_activation_close_must_be_finite_guilt(repo: VisaEngineRepository) -> None:
+    """Migration 254 guilt: an UPDATE that "closes" an open system_period by
+    setting its upper bound to the literal 'infinity'::timestamptz sentinel
+    must raise. Before migration 254, `upper(NEW.system_period) IS NULL` was
+    the only close-validation check — 'infinity' is NON-NULL, so this exact
+    UPDATE used to PASS while leaving the row functionally open-ended
+    forever (a supersession dead-end, since the "already closed" guard only
+    fires on a non-NULL upper bound). The literal SQL 'infinity'::timestamptz
+    below is constructed entirely server-side (never round-tripped through a
+    Python datetime), matching exactly how a raw/hand-written UPDATE could
+    attempt this.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-inf",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-inf",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="r1"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(
+            asyncpg.exceptions.RaiseError, match="finite system_period"
+        ):
+            await conn.execute(
+                """
+                UPDATE visa_ruleset_activations
+                SET system_period = tstzrange(lower(system_period), 'infinity'::timestamptz, '[)')
+                WHERE id = $1
+                """,
+                activation_id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_activation_insert_infinity_system_period_upper_guilt(
+    repo: VisaEngineRepository,
+) -> None:
+    """Migration 254 guilt (table CHECK, not the trigger): the mutation-guard
+    trigger above is BEFORE UPDATE OR DELETE only — INSERT is structurally
+    unrestricted (this being an append-only-with-close table), so a direct
+    INSERT setting system_period's upper bound to the literal
+    'infinity'::timestamptz sentinel must still be rejected by the
+    migration-254 table CHECK, since the trigger never runs on INSERT and so
+    cannot be what catches this path (mirrors
+    test_source_record_insert_infinity_recorded_period_upper_guilt in
+    test_write_substrate.py for the sibling visa_source_records table).
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-inf-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-inf-insert",
+        payload_sha256=_pack_hash(1),
+    )
+    t0 = datetime.now(timezone.utc)
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.CheckViolationError) as exc_info:
+            await conn.execute(
+                """
+                INSERT INTO visa_ruleset_activations
+                    (rule_pack_id, environment, legal_period, system_period,
+                     activated_by, activation_reason)
+                VALUES ($1, $2, $3, tstzrange($4, 'infinity'::timestamptz, '[)'), $5, $6)
+                """,
+                pack_id,
+                _ENV,
+                legal,
+                t0,
+                "ops.alice",
+                "raw-insert-infinity-attempt",
+            )
+    assert exc_info.value.constraint_name == "visa_ruleset_activations_system_period_not_infinite"
+
+
+@pytest.mark.asyncio
+async def test_activation_insert_lower_infinity_system_period_guilt(
+    repo: VisaEngineRepository,
+) -> None:
+    """Migration 254 guilt (table CHECK, lower-bound sentinel): mirrors
+    legal_period's own migration-250 lower '-infinity' guard on this exact
+    table. A raw INSERT setting system_period's LOWER bound to the literal
+    '-infinity'::timestamptz sentinel (upper still open/NULL) must be
+    rejected by the migration-254
+    visa_ruleset_activations_system_period_lower_finite CHECK -- system_period
+    is transaction-time and must always have a finite, real start.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-neg-inf-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-neg-inf-insert",
+        payload_sha256=_pack_hash(1),
+    )
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.CheckViolationError) as exc_info:
+            await conn.execute(
+                """
+                INSERT INTO visa_ruleset_activations
+                    (rule_pack_id, environment, legal_period, system_period,
+                     activated_by, activation_reason)
+                VALUES ($1, $2, $3, tstzrange('-infinity'::timestamptz, NULL, '[)'), $4, $5)
+                """,
+                pack_id,
+                _ENV,
+                legal,
+                "ops.alice",
+                "raw-insert-lower-infinity-attempt",
+            )
+    assert exc_info.value.constraint_name == "visa_ruleset_activations_system_period_lower_finite"
+
+
+@pytest.mark.asyncio
+async def test_activation_close_finite_innocence(repo: VisaEngineRepository) -> None:
+    """Migration 254 innocence (part 1): a LEGITIMATE finite close — the one
+    carve-out reject_visa_activation_mutation permits — still succeeds
+    unharmed by the new 'infinity' rejection.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-finite-close",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-finite-close",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="r1"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        # Read the server-set lower bound rather than assuming the client
+        # clock and the DB server clock agree within a few ms (they may not
+        # -- a close timestamp derived from datetime.now() on the client
+        # could land BEFORE the server-stamped lower bound under skew,
+        # producing an empty/invalid range). Deriving closed_at from the
+        # server's own lower bound + a full second margin is skew-proof
+        # regardless of which clock runs ahead.
+        server_lower = await conn.fetchval(
+            "SELECT lower(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+        closed_at = server_lower + timedelta(seconds=1)
+        await conn.execute(
+            """
+            UPDATE visa_ruleset_activations
+            SET system_period = tstzrange(lower(system_period), $2, '[)')
+            WHERE id = $1
+            """,
+            activation_id,
+            closed_at,
+        )
+        upper = await conn.fetchval(
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+    assert upper == closed_at
+
+
+@pytest.mark.asyncio
+async def test_activation_bootstrap_open_insert_innocence(repo: VisaEngineRepository) -> None:
+    """Migration 254 innocence (part 2): inserting a NORMALLY-OPEN activation
+    (system_period upper bound NULL, i.e. the writer function's own
+    bootstrap/supersession INSERT shape) still succeeds unharmed by the new
+    table CHECK — only the explicit 'infinity' sentinel is rejected, an
+    unbounded (NULL) upper bound remains legal.
+    """
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-open-insert",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-open-insert",
+        payload_sha256=_pack_hash(1),
+    )
+
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="bootstrap-open"
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        upper = await conn.fetchval(
+            "SELECT upper(system_period) FROM visa_ruleset_activations WHERE id = $1",
+            activation_id,
+        )
+    assert upper is None
+
+
+# --------------------------------------------------------------------------
 # 7. Function guilt: unknown pack_id, sequence-rollback (trigger), hash-
 #    chain break (trigger) — all raise from WITHIN the function call, and
 #    each rejected attempt leaves prior state untouched (one transaction).
@@ -536,7 +896,7 @@ async def test_activated_by_principal_immutable_on_update(repo: VisaEngineReposi
 async def test_activate_unknown_pack_id_raises(repo: VisaEngineRepository) -> None:
     with pytest.raises(asyncpg.exceptions.RaiseError, match="unknown rule_pack_id"):
         await repo.activate_rule_pack(
-            rule_pack_id=uuid.uuid4(), activated_by="ops.alice", activation_reason="ghost pack"
+            rule_pack_id=uuid.uuid4(), activated_by="ops.alice", activation_reason="ghost-pack"
         )
 
 
@@ -577,7 +937,7 @@ async def test_activate_sequence_rollback_via_function_raises(repo: VisaEngineRe
     # rejects it) — the whole call rolls back atomically.
     with pytest.raises(asyncpg.exceptions.RaiseError, match="rollback rejected"):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_1, activated_by="ops", activation_reason="illegal re-activation"
+            rule_pack_id=pack_1, activated_by="ops", activation_reason="illegal-re-activation"
         )
 
     # pack_2's activation must be untouched (still open) — the close-step's
@@ -623,7 +983,7 @@ async def test_activate_hash_chain_break_via_function_raises(repo: VisaEngineRep
     )
     with pytest.raises(asyncpg.exceptions.RaiseError, match="hash chain broken"):
         await repo.activate_rule_pack(
-            rule_pack_id=pack_2_wrong, activated_by="ops", activation_reason="broken chain"
+            rule_pack_id=pack_2_wrong, activated_by="ops", activation_reason="broken-chain"
         )
 
     async with repo.db_pool.acquire() as conn:
@@ -638,7 +998,10 @@ async def test_activate_hash_chain_break_via_function_raises(repo: VisaEngineRep
 #    visa_activation_executor role) — proves the scaffold WOULD arm
 #    correctly once the operator provisioning creates that role, without
 #    asserting anything about backend_rag_v2 (deliberately untouched by
-#    this migration; see its header).
+#    this migration; see its header). VERIFY ROUND-1 (P0-1): the executor
+#    gets EXECUTE-only — this test now also proves the INNOCENCE half of
+#    that fix (no SELECT/INSERT leak onto the signed-pack table), not just
+#    the guilt half (EXECUTE present).
 # --------------------------------------------------------------------------
 
 
@@ -664,9 +1027,14 @@ async def test_grant_scaffold_role_aware(repo: VisaEngineRepository) -> None:
             "SELECT has_function_privilege("
             "'visa_activation_executor', 'public.visa_activate_rule_pack(uuid,text,text)', 'EXECUTE')"
         )
-    assert has_select
-    assert has_insert
     assert has_execute
+    # P0-1 innocence: NEVER direct table access on the signed-pack table —
+    # an executor with SELECT+INSERT there could insert a structurally-
+    # valid but Ed25519-forged pack and activate it via EXECUTE, defeating
+    # the "only signed packs become active" invariant (see this migration's
+    # header, F1+F2(b)).
+    assert not has_select
+    assert not has_insert
 
 
 @pytest.mark.asyncio
@@ -691,3 +1059,339 @@ async def test_function_not_executable_by_unprivileged_role(repo: VisaEngineRepo
             assert has_exec is False
         finally:
             await conn.execute(f"DROP ROLE {probe_role}")
+
+
+# --------------------------------------------------------------------------
+# 9. P1-3 (verify round-1): every migration-250 trigger's `tgfoid` resolves
+#    to the expected `public.*` HARDENED function, and that function's
+#    `proconfig` has `search_path` pinned — the regression the unqualified
+#    `CREATE OR REPLACE FUNCTION reject_visa_*` targets (fixed by this
+#    round) would otherwise let a hijacked migration-session search_path
+#    silently create/replace a DECOY function elsewhere, leaving the real
+#    triggers bound to migration 250's un-hardened bodies with zero error.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("trigger_name", "table_name", "expected_function"),
+    [
+        ("visa_rule_packs_immutable", "visa_rule_packs", "reject_visa_immutable_mutation"),
+        (
+            "visa_rule_packs_payload_binding",
+            "visa_rule_packs",
+            "reject_visa_pack_payload_mismatch",
+        ),
+        (
+            "visa_activation_insert_guard",
+            "visa_ruleset_activations",
+            "reject_visa_activation_insert",
+        ),
+        (
+            "visa_ruleset_activations_append_only",
+            "visa_ruleset_activations",
+            "reject_visa_activation_mutation",
+        ),
+    ],
+)
+async def test_trigger_resolves_to_hardened_public_function(
+    repo: VisaEngineRepository, trigger_name: str, table_name: str, expected_function: str
+) -> None:
+    async with repo.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT n.nspname, p.proname, p.proconfig
+            FROM pg_trigger t
+            JOIN pg_proc p ON p.oid = t.tgfoid
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE t.tgrelid = $1::regclass AND t.tgname = $2 AND NOT t.tgisinternal
+            """,
+            f"public.{table_name}",
+            trigger_name,
+        )
+    assert row is not None, f"trigger {trigger_name} not found on {table_name}"
+    # tgfoid resolves to public.<expected_function> — not some other schema's
+    # same-named (or differently-named) decoy.
+    assert row["nspname"] == "public"
+    assert row["proname"] == expected_function
+    # search_path is pinned on the resolved function (F3 hardening) — never
+    # inherits the caller/migration-session's search_path.
+    proconfig = row["proconfig"] or []
+    assert "search_path=pg_catalog, pg_temp" in proconfig, (
+        f"{expected_function} proconfig={proconfig!r} does not pin search_path"
+    )
+
+
+# --------------------------------------------------------------------------
+# 10. F9 (verify round-1 addendum) guilt+innocence: row-level triggers never
+#     fire on a statement-level table-wipe — the new statement-level guards
+#     must reject it on BOTH tables, while normal INSERT still works.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_truncate_rejected_on_visa_rule_packs(repo: VisaEngineRepository) -> None:
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    await _insert_pack(
+        repo,
+        pack_id=uuid.uuid4(),
+        sequence=1,
+        legal_period=legal,
+        kid="key-truncate-guard",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-truncate-guard",
+        payload_sha256=_pack_hash(1),
+    )
+    async with repo.db_pool.acquire() as conn:
+        # CASCADE is required here purely because `visa_ruleset_activations`
+        # FK-references this table (Postgres refuses a bare TRUNCATE on a
+        # referenced table) — the statement-level guard trigger still fires
+        # BEFORE either table is actually emptied, so CASCADE never gets a
+        # chance to take effect.
+        with pytest.raises(asyncpg.exceptions.RaiseError, match="is append-only"):
+            await conn.execute("TRUNCATE TABLE public.visa_rule_packs CASCADE")
+        # innocence: the table (and the row just inserted) is untouched —
+        # the rejected TRUNCATE must not have wiped anything.
+        count = await conn.fetchval("SELECT count(*) FROM public.visa_rule_packs")
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_truncate_rejected_on_visa_ruleset_activations(repo: VisaEngineRepository) -> None:
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-truncate-guard-2",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-truncate-guard-2",
+        payload_sha256=_pack_hash(1),
+    )
+    await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="truncate-guard-setup"
+    )
+    async with repo.db_pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.RaiseError, match="is append-only"):
+            await conn.execute("TRUNCATE TABLE public.visa_ruleset_activations")
+        count = await conn.fetchval("SELECT count(*) FROM public.visa_ruleset_activations")
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_insert_still_works_after_truncate_guard_installed(repo: VisaEngineRepository) -> None:
+    """Innocence at the writer level: adding the two statement-level guards
+    must not perturb the normal INSERT path the writer function relies on."""
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-truncate-guard-3",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-truncate-guard-3",
+        payload_sha256=_pack_hash(1),
+    )
+    activation_id = await repo.activate_rule_pack(
+        rule_pack_id=pack_id, activated_by="ops.alice", activation_reason="truncate-guard-innocence"
+    )
+    assert isinstance(activation_id, uuid.UUID)
+
+
+# --------------------------------------------------------------------------
+# 11. P1-5 + P1-6 (verify round-1): the REAL boundary, not a proxy. Creates
+#     REAL, randomly-suffixed roles (Postgres roles are CLUSTER-wide — a
+#     fixed name would collide with a sibling suite's concurrent run) that
+#     mirror the operator provisioning script byte-for-byte: transfer BOTH
+#     tables' AND all 5 functions' ownership to a stand-in ledger-owner
+#     role, REVOKE direct DML from a stand-in serving role (which starts
+#     out AS the table owner, mirroring `backend_rag_v2`'s documented
+#     "prod today" state), GRANT EXECUTE-only to a stand-in executor role.
+#     Then proves, by MACHINE ASSERTION: (i) the serving role has zero
+#     direct INSERT after the transfer; (ii) the writer succeeds connected
+#     AS the executor; (iii) it fails permission-denied for the (now
+#     unprivileged) serving role; (iv) migration 251's OWN rollback SQL
+#     executes cleanly when run AS the ledger-owner role post-transfer
+#     (P1-6 — the documented answer to "who runs rollbacks post-hardening").
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ownership_and_grant_boundary_real_roles(repo: VisaEngineRepository) -> None:
+    from .conftest import _read_migration_251
+
+    suffix = uuid.uuid4().hex[:10]
+    owner_role = f"visa_test_owner_{suffix}"
+    serving_role = f"visa_test_serving_{suffix}"
+    executor_role = f"visa_test_executor_{suffix}"
+
+    trigger_functions = [
+        "reject_visa_immutable_mutation",
+        "reject_visa_pack_payload_mismatch",
+        "reject_visa_activation_insert",
+        "reject_visa_activation_mutation",
+    ]
+
+    legal = _open_range(datetime(2026, 1, 1, tzinfo=timezone.utc))
+    pack_id = uuid.uuid4()
+    await _insert_pack(
+        repo,
+        pack_id=pack_id,
+        sequence=1,
+        legal_period=legal,
+        kid="key-real-boundary",
+        signed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        note="pack-real-boundary",
+        payload_sha256=_pack_hash(1),
+    )
+
+    async with repo.db_pool.acquire() as conn:
+        try:
+            # The whole provisioning phase below (CREATE ROLE through the
+            # final schema GRANT) requires the SAME elevated privilege the
+            # test's own finally-block comment assumes ("the connecting
+            # (superuser) role"): CREATE ROLE alone isn't sufficient — a
+            # non-superuser with CREATEROLE can create a role without
+            # thereby gaining membership in it, so the very next step
+            # (ALTER TABLE ... OWNER TO <role just created>) fails with the
+            # identical InsufficientPrivilegeError on a test-runner role
+            # that merely has CREATEROLE but not superuser (observed on a
+            # local dev Postgres, 2026-07-20). One try/except for the whole
+            # phase, not just the CREATE ROLE calls — a role created but
+            # never successfully owned/granted anything is equally unable
+            # to "mirror the real boundary" this test exists to assert.
+            try:
+                await conn.execute(f"CREATE ROLE {owner_role} NOLOGIN")
+                await conn.execute(f"CREATE ROLE {serving_role} NOLOGIN")
+                await conn.execute(f"CREATE ROLE {executor_role} NOLOGIN")
+
+                # 1. Simulate TODAY's prod state: the serving role owns both
+                #    tables (mirrors `backend_rag_v2` being both table owner
+                #    AND serving role — F1+F2's own documented starting point).
+                await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {serving_role}")
+                await conn.execute(
+                    f"ALTER TABLE public.visa_ruleset_activations OWNER TO {serving_role}"
+                )
+
+                # 2. The operator provisioning script's REQUIRED steps
+                #    (migration header, F1+F2 / P0-2): move BOTH tables' AND
+                #    all 5 functions' ownership to the ledger-owner role,
+                #    THEN revoke direct DML from the now-non-owning serving
+                #    role, THEN grant EXECUTE-only to the executor role.
+                await conn.execute(f"ALTER TABLE public.visa_rule_packs OWNER TO {owner_role}")
+                await conn.execute(
+                    f"ALTER TABLE public.visa_ruleset_activations OWNER TO {owner_role}"
+                )
+                await conn.execute(
+                    f"ALTER FUNCTION public.visa_activate_rule_pack(uuid, text, text) OWNER TO {owner_role}"
+                )
+                for fn in trigger_functions:
+                    await conn.execute(f"ALTER FUNCTION public.{fn}() OWNER TO {owner_role}")
+                await conn.execute(
+                    f"REVOKE INSERT, UPDATE, DELETE ON public.visa_rule_packs, "
+                    f"public.visa_ruleset_activations FROM {serving_role}"
+                )
+                await conn.execute(
+                    f"GRANT EXECUTE ON FUNCTION public.visa_activate_rule_pack(uuid, text, text) "
+                    f"TO {executor_role}"
+                )
+                # DISCOVERED WHILE WRITING THIS TEST (P1-6): `CREATE OR
+                # REPLACE FUNCTION` checks schema-level CREATE privilege
+                # independent of function ownership (Postgres does not
+                # exempt "replace" from the schema ACL check even though it
+                # exempts it from needing to already own the target).
+                # Migration 251's rollback runs `CREATE OR REPLACE FUNCTION
+                # public.reject_visa_*` — so `visa_ledger_owner` needs
+                # `CREATE ON SCHEMA public` too, not just object ownership,
+                # or a post-hardening rollback fails with "permission
+                # denied for schema public". Folded into the migration
+                # header's provisioning steps + PENDING-ARMS.md.
+                await conn.execute(f"GRANT CREATE ON SCHEMA public TO {owner_role}")
+            except asyncpg.exceptions.InsufficientPrivilegeError:
+                pytest.skip(
+                    "test DB role lacks privilege to create/own throwaway "
+                    "roles — cannot mirror the real boundary"
+                )
+
+            # --- P0-2 machine assertion: every one of the 5 functions is
+            #     now owned by the ledger-owner role, never the serving
+            #     role — the exact `pg_proc.proowner` check this migration's
+            #     header documents as the required proof-of-armed.
+            owners = await conn.fetch(
+                """
+                SELECT p.proname, p.proowner::regrole::text AS owner
+                FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = 'public' AND p.proname = ANY($1::text[])
+                """,
+                ["visa_activate_rule_pack", *trigger_functions],
+            )
+            assert len(owners) == 5
+            for row in owners:
+                assert row["owner"] == owner_role, (
+                    f"{row['proname']} owned by {row['owner']!r}, expected {owner_role!r}"
+                )
+
+            # --- P1-5 (i): the serving role — post-transfer, post-revoke —
+            #     has NO direct INSERT on the ledger table.
+            has_insert = await conn.fetchval(
+                "SELECT has_table_privilege($1, 'public.visa_ruleset_activations', 'INSERT')",
+                serving_role,
+            )
+            assert has_insert is False
+
+            # --- P1-5 (ii): the writer succeeds when called AS the
+            #     executor (SET LOCAL ROLE scopes the identity change to
+            #     this one transaction on the pooled connection).
+            async with conn.transaction():
+                await conn.execute(f"SET LOCAL ROLE {executor_role}")
+                activation_id = await conn.fetchval(
+                    "SELECT public.visa_activate_rule_pack($1, $2, $3)",
+                    pack_id,
+                    "ops.alice",
+                    "boundary-test",
+                )
+            assert isinstance(activation_id, uuid.UUID)
+
+            # --- P1-5 (iii): the writer FAILS permission-denied for the
+            #     (now-unprivileged) serving role — proves the boundary
+            #     against the REAL serving-role identity, not a throwaway
+            #     unrelated probe role.
+            with pytest.raises(asyncpg.exceptions.InsufficientPrivilegeError):
+                async with conn.transaction():
+                    await conn.execute(f"SET LOCAL ROLE {serving_role}")
+                    await conn.fetchval(
+                        "SELECT public.visa_activate_rule_pack($1, $2, $3)",
+                        pack_id,
+                        "ops.alice",
+                        "boundary-test-2",
+                    )
+
+            # --- P1-6: migration 251's OWN rollback SQL executes cleanly
+            #     when run AS the ledger-owner role, post-transfer — the
+            #     documented answer to "who runs rollbacks post-hardening".
+            _, rollback_251 = _read_migration_251()
+            async with conn.transaction():
+                await conn.execute(f"SET LOCAL ROLE {owner_role}")
+                await conn.execute(rollback_251)
+        finally:
+            # Defensive teardown regardless of assertion outcome above:
+            # reassign anything the throwaway roles still own back to the
+            # connecting (superuser) role, drop residual grants, then drop
+            # the roles themselves — never leave CLUSTER-wide role debris
+            # for a sibling suite to collide with.
+            await conn.execute("RESET ROLE")
+            for role in (executor_role, serving_role, owner_role):
+                for stmt in (
+                    f"REASSIGN OWNED BY {role} TO CURRENT_USER",
+                    f"DROP OWNED BY {role}",
+                    f"DROP ROLE IF EXISTS {role}",
+                ):
+                    try:
+                        await conn.execute(stmt)
+                    except asyncpg.exceptions.PostgresError:
+                        pass
