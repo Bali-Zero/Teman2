@@ -3,12 +3,13 @@ date: 2026-07-23
 domain: visa
 client_case: none
 author: Kimi (Air-M5) — architect session, synthesis of the 4-seat adversarial panel
-status: DEFINITIVE PLAN — pending owner decisions D1/D2/D3
+status: DEFINITIVE PLAN — pending owner decisions D1/D2/D3 (Fable 5 final gate applied, 7 deltas adopted)
 panel:
   - gemini (agy, Gemini 3.1 Pro High) — regulatory width — verdict FIX-FIRST
   - codex (codex CLI, gpt-5.5 high, read-only sandbox) — architecture red-team — verdict FIX-FIRST
   - glm → SEAT DEGRADED (Keychain token absent via SSH on Pro) → house Sonnet design seat — verdict FIX-FIRST
   - web-grounded (house Sonnet + WebSearch/live curl) — verification — verdict FIX-FIRST
+  - fable5 (claude-zero-team, zero@balizero.com) — FINAL GATE — verdict FIX-FIRST, 7 deltas adopted
 sources:
   - research/visa/2026-07-23-architect-state-analysis.md
   - research/visa/2026-07-23-architect-review-gemini.md
@@ -16,6 +17,7 @@ sources:
   - research/visa/2026-07-23-architect-review-web-grounded.md
   - research/visa/2026-07-23-architect-review-design-house.md
   - research/visa/2026-07-23-architect-review-glm-FAILED-seat-degraded.md
+  - research/visa/2026-07-23-architect-review-fable5.md
 ---
 
 # Visa Oracle v2 — definitive correction + completion plan (panel synthesis)
@@ -212,6 +214,46 @@ adopt.
   (Permenkumham 36/2021) in outputs. Fold into P1-1.
 - **CORS**: `OPTIONS /api/visa/match` → 404 (web seat) — fine same-origin, blocks future
   cross-origin consumers (partner embeds). Note for the read-path API (P0-3).
+
+## ADDENDUM — FABLE 5 FINAL GATE (2026-07-23, seat zero@balizero.com)
+
+Final verdict: **FIX-FIRST** — "adopt the plan, apply the seven deltas, then it ships." Every
+load-bearing claim was re-verified independently on disk (full report:
+`research/visa/2026-07-23-architect-review-fable5.md`). The 7 deltas are ADOPTED into this
+plan as amendments:
+
+1. **Migration 256: add `is_synthetic` (or `traffic_source`) to `visa_decisions`**
+   (precedent: migration-187 probe-sandbox flag). Without it D1(c)'s "labeled synthetic" is
+   not implementable and the 1,000-count is unauditable.
+2. **Split G-a into `G-a-vol`** (real traffic, reported, owner-set threshold) **and
+   `G-a-breadth`** (30 codes / 7 categories, corpus-driven, honestly labeled as
+   synthetic-corpus coverage, not real-usage coverage).
+3. **P0-3 spec must emit `request_category`** + define the 10-tile→8-enum mapping + an
+   explicit `business`/`diaspora` ruling (map→`other` = excluded from breadth, or extend
+   enum + collector). Today undefined → silent breadth miscount.
+4. **DAG gains one line naming the window's traffic source**: live v2 interview (4a,
+   shadow-POST while rendering curated) = real-fact source; gold-persona/synthetic driver =
+   breadth source. (This answers Gemini's legitimate traffic anxiety without its wrong
+   deadlock conclusion — Fable confirms Codex/design/orchestrator on the conflict.)
+5. **D2 coupled**: ENFORCE = 110 codes signed **AND** Track B FASE 2 behavioral trees for
+   every launched category (`BEHAVIORAL_CATEGORIES` is only 3 of 10 today — pack alone is a
+   half-gate).
+6. **P1-2 promoted into the P0-1 batch**: the NEEDS_INPUT disclaimer omission
+   (`OutcomeSheet.tsx:455` guard) is Law-2-adjacent (a terminal legal-advice state with no
+   disclaimer) — ship the guard fix with the registry fix, don't wait for the wiring PR.
+7. **DB/Fly facts marked "architect-reported, receipt-owed"** for the D1 decision: re-run
+   the read-only queries from the DB seat before Zero sets the threshold. (Orchestrator's
+   original queries are in the state-analysis receipts and are re-runnable.)
+
+**Fable's blind-spot finding (the headline):** under D1(c) as written, **G-a and G-b collapse
+into the same test** — with facts collectible for only 3 of 10 categories and no synthetic
+marker, the breadth half of G-a could only ever be satisfied by the same corpus G-b replays.
+"The gate looks like it measures reality and structurally measures the test corpus." Deltas
+1–3 break the collapse. Fable also refined C6: the collector's
+`REQUIRED_INTERVIEW_CATEGORIES = Purpose − OTHER` (7) IS a real in-code vocabulary (the
+design seat overstated); the true defect is the 10-lane interview with only 3 fact-collecting
+lanes. Fable's D-recommendations: D1(c) split as above; D2 adopt with the FASE-2 coupling;
+D3 adopt with tiers (E-a/E-e/E-g blocking; E-b latency and E-f Lighthouse-95 fast-follow).
 
 ## Evidence receipts
 

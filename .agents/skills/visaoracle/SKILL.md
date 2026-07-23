@@ -287,6 +287,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-23: correction+completion plan lands as PR (research/docs-only, no automerge);
   next executable items: P0-1 registry fix `/api/visa/*` + telemetry, P0-3 read-path API,
   P0-4 RulePack first slice (E28/E33/BVK/Bridging mandated), P1-1 G-b independent replay.
+- 2026-07-23 (late): **FABLE 5 FINAL GATE on the plan** (seat `zero@balizero.com`, requested
+  by Zero) — verdict **FIX-FIRST**: plan adopted with **7 deltas** (full report
+  `research/visa/2026-07-23-architect-review-fable5.md`, addendum in the synthesis). Headline
+  blind spot: under D1(c) as written **G-a and G-b collapse into the same test** (facts
+  collectible for only 3/10 interview categories + no synthetic marker → breadth could only
+  come from the same corpus G-b replays). Deltas adopted: migration 256 `is_synthetic`/
+  `traffic_source` column; G-a split into `G-a-vol` (real, owner-set) + `G-a-breadth`
+  (corpus, labeled); P0-3 must emit `request_category` + 10-tile→8-enum mapping + explicit
+  business/diaspora ruling; DAG names the window's traffic source; D2 coupled with Track B
+  FASE 2 (110 codes AND behavioral trees per launched category); NEEDS_INPUT disclaimer fix
+  (`OutcomeSheet.tsx:455`, Law-2-adjacent) promoted into the P0-1 batch; DB/Fly facts marked
+  receipt-owed for the D1 threshold decision. Fable D-recs: D1(c) split as above / D2 adopt
+  with FASE-2 coupling / D3 adopt with tiers (E-a/E-e/E-g blocking; E-b/E-f fast-follow).
+  Conflict adjudicated: Gemini's deadlock claim WRONG (evaluate endpoint ≠ UI launch),
+  Codex/design/orchestrator RIGHT. GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
