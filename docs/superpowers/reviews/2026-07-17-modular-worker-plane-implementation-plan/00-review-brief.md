@@ -11,13 +11,18 @@ client_data: none
 
 Review the design specification and all eight implementation documents from the
 single immutable content-addressed packet supplied over stdin by the launcher.
-The packet contains one canonical non-circular input manifest, this brief as its
-only `role=instructions` entry, and the nine documents below as `role=covered`
-entries. Start the verdict by repeating the SHA-256 of the canonical manifest
-bytes as `input_manifest_sha256`. Do **not** repeat or guess `packet_sha256`:
-that transport hash exists only in the launcher's external receipt. If any
-embedded length, role, path, Git blob OID, size, or content hash is missing or
-inconsistent, return `NO-GO` without substituting other bytes.
+Stdin begins with the deterministic `NUZANTARA-REVIEW-INPUT-V1` attestation
+header: schema `nuzantara.worker-plane-review-input/v1`, the freezer-attested
+`input_manifest_sha256`, and the exact decimal `packet_bytes`, followed by one
+blank line and then the byte-exact packet. The packet contains one canonical
+non-circular input manifest, this brief as its only `role=instructions` entry,
+and the nine documents below as `role=covered` entries. Verify the declared
+packet length against the supplied content, then start the verdict by repeating
+the header's `input_manifest_sha256`; you are not expected to calculate
+SHA-256. Do **not** repeat or guess `packet_sha256`: that transport hash exists
+only in the launcher's external receipt. If the header, embedded length, role,
+path, Git blob OID, size, or content hash is missing or inconsistent, return
+`NO-GO` without substituting other bytes.
 
 You have no filesystem, shell, MCP, Read, Glob, or Grep tools and no checkout
 access. Treat only the supplied packet bytes as evidence. Optional repository

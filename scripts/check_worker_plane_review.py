@@ -70,7 +70,9 @@ EXPECTED_HEADINGS = (
 )
 EXPECTED_ROUTES = frozenset({"claude-fable-5", "Gemini 3.1 Pro (High)", "glm-5.2"})
 FREEZE_RECEIPT_SCHEMA = "nuzantara.worker-plane-review-freeze-receipt/v1"
-INVOCATION_SCHEMA = "nuzantara.worker-plane-review-launcher-receipt/v1"
+INVOCATION_SCHEMA = "nuzantara.worker-plane-review-launcher-receipt/v2"
+REVIEW_INPUT_SCHEMA = "nuzantara.worker-plane-review-input/v1"
+REVIEW_INPUT_MAGIC = b"NUZANTARA-REVIEW-INPUT-V1\n"
 LAUNCHER_REPO_PATH = DEFAULT_LAUNCHER_PATH
 VALIDATOR_REPO_PATH = DEFAULT_VALIDATOR_PATH
 CLAUDE_EXECUTABLE = "/Users/nuzantara/.local/share/claude/versions/2.1.214"
@@ -97,10 +99,46 @@ VERDICT = re.compile(
 )
 VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
 MINIMUM_GEMINI_VERSION = (1, 1, 2)
+IDENTITY_POLICY_REVISION = "pro-clients-2026-07-23-v3"
 ROUTE_SEATS = {
     "claude-fable-5": "fable",
     "Gemini 3.1 Pro (High)": "gemini",
     "glm-5.2": "glm",
+}
+EXPECTED_EXECUTABLE_IDENTITIES = {
+    "claude-fable-5": {
+        "sha256": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+        "cdhash": "57f37e5659c14725f4e11dc77a96b6e7ba3a80ca",
+        "team_identifier": "Q6L2SF6YDW",
+        "designated_requirement": (
+            'identifier "com.anthropic.claude-code" and anchor apple generic and '
+            "certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and "
+            "certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
+            "certificate leaf[subject.OU] = Q6L2SF6YDW"
+        ),
+    },
+    "Gemini 3.1 Pro (High)": {
+        "sha256": "6509d6ca54a66e3eaf61dfe35308ba1dfa1e6b552ef5c4f5f861562c6811ecaf",
+        "cdhash": "d1ab6b43250ebdf79a8836804197495d39b9a5c1",
+        "team_identifier": "EQHXZ8M8AV",
+        "designated_requirement": (
+            "identifier cli and anchor apple generic and certificate "
+            "1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate "
+            "leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
+            "certificate leaf[subject.OU] = EQHXZ8M8AV"
+        ),
+    },
+    "glm-5.2": {
+        "sha256": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+        "cdhash": "57f37e5659c14725f4e11dc77a96b6e7ba3a80ca",
+        "team_identifier": "Q6L2SF6YDW",
+        "designated_requirement": (
+            'identifier "com.anthropic.claude-code" and anchor apple generic and '
+            "certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and "
+            "certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
+            "certificate leaf[subject.OU] = Q6L2SF6YDW"
+        ),
+    },
 }
 INVOCATION_KEYS = frozenset(
     {
@@ -114,21 +152,33 @@ INVOCATION_KEYS = frozenset(
         "cwd_path",
         "cwd_proof_sha256",
         "cwd_removed_after_run",
+        "descendants_absent_after_run",
         "ended_at_utc",
+        "executable_cdhash",
+        "executable_designated_requirement",
+        "executable_identity_policy_revision",
         "executable_path",
         "executable_sha256",
+        "executable_team_identifier",
         "exit_status",
+        "home_path",
         "input_manifest_sha256",
         "launcher_invocation_uuid",
         "launcher_path",
         "launcher_sha256",
+        "max_output_bytes",
+        "output_spooled",
         "packet_sha256",
+        "process_group_isolated",
         "provider_session_id",
         "raw_output_path",
         "reported_model",
         "requested_route",
         "route_config_path",
         "route_config_sha256",
+        "review_input_bytes",
+        "review_input_schema",
+        "review_input_sha256",
         "schema",
         "seat",
         "shell",
@@ -139,6 +189,11 @@ INVOCATION_KEYS = frozenset(
         "stdout_bytes",
         "stdout_sha256",
         "tools_denied",
+        "wall_timeout_seconds",
+        "xdg_cache_home",
+        "xdg_config_home",
+        "xdg_data_home",
+        "xdg_state_home",
     }
 )
 FRONTMATTER_KEYS = frozenset(
@@ -740,6 +795,7 @@ def _expected_argv(route: str) -> list[str]:
         ]
     model = "claude-fable-5" if route == "claude-fable-5" else "glm-5.2"
     effort = "xhigh" if route == "claude-fable-5" else "high"
+    permission_mode = "plan" if route == "claude-fable-5" else "dontAsk"
     return [
         executable,
         "--print",
@@ -752,7 +808,7 @@ def _expected_argv(route: str) -> list[str]:
         "--no-session-persistence",
         "--safe-mode",
         "--permission-mode",
-        "plan",
+        permission_mode,
         "--tools",
         "",
         "--disable-slash-commands",
@@ -782,6 +838,7 @@ def _validate_invocation(
     raw_path: Path,
     raw_bytes: bytes,
     manifest_sha256: str,
+    packet_bytes: bytes,
     packet_sha256: str,
     freeze_receipt: Mapping[str, Any],
     emitted_provider_session_id: str | None,
@@ -856,6 +913,25 @@ def _validate_invocation(
         raise ReviewValidationError(
             f"invocation packet_sha256 mismatch: {invocation_path}"
         )
+    expected_review_input = b"".join(
+        (
+            REVIEW_INPUT_MAGIC,
+            f"schema: {REVIEW_INPUT_SCHEMA}\n".encode("ascii"),
+            f"input_manifest_sha256: {manifest_sha256}\n".encode("ascii"),
+            f"packet_bytes: {len(packet_bytes)}\n".encode("ascii"),
+            b"\n",
+            packet_bytes,
+        )
+    )
+    if (
+        invocation.get("review_input_schema") != REVIEW_INPUT_SCHEMA
+        or invocation.get("review_input_bytes") != len(expected_review_input)
+        or invocation.get("review_input_sha256")
+        != sha256_bytes(expected_review_input)
+    ):
+        raise ReviewValidationError(
+            f"invocation review-input attestation mismatch: {invocation_path}"
+        )
     if frontmatter.get("input_manifest_sha256") != manifest_sha256:
         raise ReviewValidationError(
             f"normalized input_manifest_sha256 mismatch: {review_path}"
@@ -896,7 +972,21 @@ def _validate_invocation(
         raise ReviewValidationError(
             f"invocation executable_path is not canonical: {invocation_path}"
         )
-    _require_sha256(invocation.get("executable_sha256"), "invocation executable_sha256")
+    expected_identity = EXPECTED_EXECUTABLE_IDENTITIES[route]
+    identity_fields = {
+        "executable_sha256": expected_identity["sha256"],
+        "executable_cdhash": expected_identity["cdhash"],
+        "executable_team_identifier": expected_identity["team_identifier"],
+        "executable_designated_requirement": expected_identity[
+            "designated_requirement"
+        ],
+        "executable_identity_policy_revision": IDENTITY_POLICY_REVISION,
+    }
+    for field, expected_value in identity_fields.items():
+        if invocation.get(field) != expected_value:
+            raise ReviewValidationError(
+                f"invocation {field} mismatch: {invocation_path}"
+            )
     version = invocation.get("client_version")
     if not isinstance(version, str) or _is_placeholder(version):
         raise ReviewValidationError(
@@ -988,6 +1078,44 @@ def _validate_invocation(
         raise ReviewValidationError(
             f"invocation lacks cwd cleanup proof: {invocation_path}"
         )
+    for field in (
+        "descendants_absent_after_run",
+        "output_spooled",
+        "process_group_isolated",
+    ):
+        if invocation.get(field) is not True:
+            raise ReviewValidationError(
+                f"invocation {field} must be true: {invocation_path}"
+            )
+    for field in (
+        "home_path",
+        "xdg_cache_home",
+        "xdg_config_home",
+        "xdg_data_home",
+        "xdg_state_home",
+    ):
+        if invocation.get(field) != cwd_path:
+            raise ReviewValidationError(
+                f"invocation {field} must equal cwd_path: {invocation_path}"
+            )
+    max_output_bytes = invocation.get("max_output_bytes")
+    if (
+        not isinstance(max_output_bytes, int)
+        or isinstance(max_output_bytes, bool)
+        or max_output_bytes <= 0
+    ):
+        raise ReviewValidationError(
+            f"invocation max_output_bytes is invalid: {invocation_path}"
+        )
+    wall_timeout_seconds = invocation.get("wall_timeout_seconds")
+    if (
+        not isinstance(wall_timeout_seconds, (int, float))
+        or isinstance(wall_timeout_seconds, bool)
+        or wall_timeout_seconds <= 0
+    ):
+        raise ReviewValidationError(
+            f"invocation wall_timeout_seconds is invalid: {invocation_path}"
+        )
     if invocation.get("tools_denied") is not True:
         raise ReviewValidationError(
             f"invocation must prove tools denied: {invocation_path}"
@@ -1071,6 +1199,7 @@ def _validate_review(
     *,
     repo_root: Path,
     manifest_sha256: str,
+    packet_bytes: bytes,
     packet_sha256: str,
     freeze_receipt: Mapping[str, Any],
 ) -> ReviewProof:
@@ -1121,6 +1250,7 @@ def _validate_review(
         raw_path=raw_path,
         raw_bytes=raw_bytes,
         manifest_sha256=manifest_sha256,
+        packet_bytes=packet_bytes,
         packet_sha256=packet_sha256,
         freeze_receipt=freeze_receipt,
         emitted_provider_session_id=emitted_provider_session_id,
@@ -1364,11 +1494,13 @@ def validate_review_panel(
             ),
         )
     )
+    packet_bytes = _read_bytes(packet_path, "review packet")
     proofs = tuple(
         _validate_review(
             path,
             repo_root=resolved_repo,
             manifest_sha256=manifest_sha256,
+            packet_bytes=packet_bytes,
             packet_sha256=packet_sha256,
             freeze_receipt=freeze_receipt,
         )

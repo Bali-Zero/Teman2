@@ -414,9 +414,17 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
         )
         == 3
     )
+    expected_review_input = launcher._review_input_bytes(
+        packet_bytes=packet_bytes,
+        input_manifest_sha256=_sha256(manifest_bytes),
+    )
     assert {bytes.fromhex(value["input_hex"]) for value in observed.values()} == {
-        packet_bytes
+        expected_review_input
     }
+    for receipt in receipt_by_seat.values():
+        assert receipt["review_input_schema"] == launcher.REVIEW_INPUT_SCHEMA
+        assert receipt["review_input_bytes"] == len(expected_review_input)
+        assert receipt["review_input_sha256"] == _sha256(expected_review_input)
     assert {value["cwd"] for value in observed.values()} == {
         receipt_by_seat["fable"]["cwd_path"]
     }

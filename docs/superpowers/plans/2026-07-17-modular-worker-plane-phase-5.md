@@ -167,7 +167,7 @@
   PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
-- [ ] Dispatch all three seats through the checked canonical single-buffer launcher. It reads the content-addressed packet once, feeds identical stdin bytes, uses an empty sandbox cwd, gives Fable/GLM safe-mode plan with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini stdin-headless plan+sandbox with no `-p` or prompt argument, resolves only absolute hashed binaries/config, and atomically preserves normalized Markdown, raw stdout, stderr, and receipts before cross-seat visibility:
+- [ ] Dispatch all three seats through the checked canonical single-buffer launcher. It reads the content-addressed packet once, constructs one deterministic manifest-hash/packet-length attestation header plus the exact packet, feeds that identical stdin buffer, and uses an empty sandbox cwd. Fable uses safe-mode plan and GLM safe-mode `dontAsk`, both with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`; Gemini uses stdin-headless plan+sandbox with no `-p` or prompt argument. Resolve only absolute hashed binaries/config and atomically preserve normalized Markdown, raw stdout, stderr, and receipts before cross-seat visibility:
 
   ```bash
   ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"

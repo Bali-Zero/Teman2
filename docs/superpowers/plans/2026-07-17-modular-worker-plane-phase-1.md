@@ -835,7 +835,7 @@ The review directory follows the master plan convention and uses its canonical G
 
   Include base/head, patch hash, verifier hash, route mutation proof, exact four-table migration schema, disposable expected-instance/build-floor evidence, proof that all guards finish false and no live action occurred, G2/live-G16 output, audited disarm/rollback procedure, and a no-client-data declaration.
 
-- [ ] Dispatch all three seats through the checked canonical launcher; it reads the frozen packet once, feeds identical stdin bytes from an empty sandbox cwd, gives Fable/GLM the exact safe-mode/plan route with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini the exact stdin-headless plan+sandbox route with no `-p` or prompt argument, uses only absolute hashed binaries/config, and atomically writes normalized reviews, raw stdout, stderr, and receipts before any seat can see another:
+- [ ] Dispatch all three seats through the checked canonical launcher; it reads the frozen packet once, constructs one deterministic manifest-hash/packet-length attestation header plus the exact packet, and feeds that identical stdin buffer from an empty sandbox cwd. Fable uses safe-mode/plan, GLM uses safe-mode/`dontAsk`, both with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`; Gemini uses the exact stdin-headless plan+sandbox route with no `-p` or prompt argument. Use only absolute hashed binaries/config and atomically write normalized reviews, raw stdout, stderr, and receipts before any seat can see another:
 
   ```bash
   ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"

@@ -14,6 +14,8 @@ import pytest
 
 from scripts.check_worker_plane_review import (
     LAUNCHER_REPO_PATH,
+    REVIEW_INPUT_MAGIC,
+    REVIEW_INPUT_SCHEMA,
     VALIDATOR_REPO_PATH,
     ReviewValidationError,
     main,
@@ -42,6 +44,22 @@ REVIEW_NAMES = (
     "01-fable-5-architecture.md",
     "02-gemini-3.1-pro-high.md",
     "03-glm-5.2-adversarial.md",
+)
+CLAUDE_SHA256 = "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec"
+CLAUDE_CDHASH = "57f37e5659c14725f4e11dc77a96b6e7ba3a80ca"
+CLAUDE_REQUIREMENT = (
+    'identifier "com.anthropic.claude-code" and anchor apple generic and '
+    "certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and "
+    "certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
+    "certificate leaf[subject.OU] = Q6L2SF6YDW"
+)
+GEMINI_SHA256 = "6509d6ca54a66e3eaf61dfe35308ba1dfa1e6b552ef5c4f5f861562c6811ecaf"
+GEMINI_CDHASH = "d1ab6b43250ebdf79a8836804197495d39b9a5c1"
+GEMINI_REQUIREMENT = (
+    "identifier cli and anchor apple generic and certificate "
+    "1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate "
+    "leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
+    "certificate leaf[subject.OU] = EQHXZ8M8AV"
 )
 
 
@@ -148,6 +166,7 @@ def _argv(route: str) -> list[str]:
         ]
     model = "claude-fable-5" if route == "claude-fable-5" else "glm-5.2"
     effort = "xhigh" if route == "claude-fable-5" else "high"
+    permission_mode = "plan" if route == "claude-fable-5" else "dontAsk"
     return [
         "--print",
         "--model",
@@ -159,7 +178,7 @@ def _argv(route: str) -> list[str]:
         "--no-session-persistence",
         "--safe-mode",
         "--permission-mode",
-        "plan",
+        permission_mode,
         "--tools",
         "",
         "--disable-slash-commands",
@@ -241,6 +260,16 @@ def make_bundle(tmp_path: Path) -> Bundle:
     manifest_bytes = built.manifest_bytes
     packet_sha256 = built.packet_sha256
     manifest_sha256 = built.manifest_sha256
+    review_input_bytes = b"".join(
+        (
+            REVIEW_INPUT_MAGIC,
+            f"schema: {REVIEW_INPUT_SCHEMA}\n".encode("ascii"),
+            f"input_manifest_sha256: {manifest_sha256}\n".encode("ascii"),
+            f"packet_bytes: {len(packet_bytes)}\n".encode("ascii"),
+            b"\n",
+            packet_bytes,
+        )
+    )
 
     artifact_root = repo / "review-artifacts"
     artifact_root.mkdir()
@@ -308,6 +337,12 @@ def make_bundle(tmp_path: Path) -> Bundle:
         stderr_path.write_bytes(b"")
         launcher_uuid = str(uuid.uuid4())
         executable = GEMINI_EXECUTABLE if index == 1 else CLAUDE_EXECUTABLE
+        executable_sha256 = GEMINI_SHA256 if index == 1 else CLAUDE_SHA256
+        executable_cdhash = GEMINI_CDHASH if index == 1 else CLAUDE_CDHASH
+        executable_team_identifier = "EQHXZ8M8AV" if index == 1 else "Q6L2SF6YDW"
+        executable_requirement = (
+            GEMINI_REQUIREMENT if index == 1 else CLAUDE_REQUIREMENT
+        )
         argv = [executable, *_argv(route)]
         cwd_path = f"/private/tmp/worker-plane-review-{index}"
         cwd_proof = {
@@ -328,22 +363,34 @@ def make_bundle(tmp_path: Path) -> Bundle:
             "cwd_path": cwd_path,
             "cwd_proof_sha256": sha256_bytes(canonical_json_bytes(cwd_proof)),
             "cwd_removed_after_run": True,
+            "descendants_absent_after_run": True,
             "ended_at_utc": "2026-07-18T01:01:00+00:00",
+            "executable_cdhash": executable_cdhash,
+            "executable_designated_requirement": executable_requirement,
+            "executable_identity_policy_revision": "pro-clients-2026-07-23-v3",
             "executable_path": executable,
-            "executable_sha256": str(index + 1) * 64,
+            "executable_sha256": executable_sha256,
+            "executable_team_identifier": executable_team_identifier,
             "exit_status": 0,
+            "home_path": cwd_path,
             "input_manifest_sha256": manifest_sha256,
             "launcher_invocation_uuid": launcher_uuid,
             "launcher_path": str((repo / LAUNCHER_REPO_PATH).resolve()),
             "launcher_sha256": launcher_sha,
+            "max_output_bytes": 16 * 1024 * 1024,
+            "output_spooled": True,
             "packet_sha256": packet_sha256,
+            "process_group_isolated": True,
             "provider_session_id": provider_session_id,
             "raw_output_path": raw_path.name,
             "reported_model": reported_model,
             "requested_route": route,
             "route_config_path": "glm-5.2-v1.json" if index == 2 else None,
             "route_config_sha256": route_sha if index == 2 else None,
-            "schema": "nuzantara.worker-plane-review-launcher-receipt/v1",
+            "review_input_bytes": len(review_input_bytes),
+            "review_input_schema": REVIEW_INPUT_SCHEMA,
+            "review_input_sha256": sha256_bytes(review_input_bytes),
+            "schema": "nuzantara.worker-plane-review-launcher-receipt/v2",
             "seat": ("fable", "gemini", "glm")[index],
             "shell": False,
             "started_at_utc": "2026-07-18T01:00:00+00:00",
@@ -353,6 +400,11 @@ def make_bundle(tmp_path: Path) -> Bundle:
             "stdout_bytes": len(raw_bytes),
             "stdout_sha256": sha256_bytes(raw_bytes),
             "tools_denied": True,
+            "wall_timeout_seconds": 900.0,
+            "xdg_cache_home": cwd_path,
+            "xdg_config_home": cwd_path,
+            "xdg_data_home": cwd_path,
+            "xdg_state_home": cwd_path,
         }
         _canonical_file(invocation_path, invocation)
         frontmatter = {
@@ -866,6 +918,10 @@ def test_rejects_non_distinct_requested_routes(tmp_path: Path) -> None:
         value["requested_route"] = ROUTES[0]
         value["seat"] = "fable"
         value["executable_path"] = CLAUDE_EXECUTABLE
+        value["executable_sha256"] = CLAUDE_SHA256
+        value["executable_cdhash"] = CLAUDE_CDHASH
+        value["executable_team_identifier"] = "Q6L2SF6YDW"
+        value["executable_designated_requirement"] = CLAUDE_REQUIREMENT
         value["argv"] = argv
         value["argv_sha256"] = sha256_bytes(canonical_json_bytes(argv))
 
@@ -919,7 +975,17 @@ def test_rejects_duplicate_launcher_uuid(tmp_path: Path) -> None:
         ("argv_sha256", "0" * 64, "argv_sha256"),
         ("cwd_initial_entries", ["checkout"], "empty cwd"),
         ("cwd_mode", "0755", "0700"),
+        ("descendants_absent_after_run", False, "descendants_absent_after_run"),
+        ("home_path", "/tmp/wrong-home", "home_path"),
+        ("max_output_bytes", 0, "max_output_bytes"),
+        ("output_spooled", False, "output_spooled"),
+        ("process_group_isolated", False, "process_group_isolated"),
+        ("review_input_bytes", 0, "review-input attestation"),
+        ("review_input_schema", "wrong", "review-input attestation"),
+        ("review_input_sha256", "0" * 64, "review-input attestation"),
         ("tools_denied", False, "tools denied"),
+        ("wall_timeout_seconds", 0, "wall_timeout_seconds"),
+        ("xdg_config_home", "/tmp/wrong-xdg", "xdg_config_home"),
         ("shell", True, "shell=false"),
         ("exit_status", 1, "exit status"),
     ],

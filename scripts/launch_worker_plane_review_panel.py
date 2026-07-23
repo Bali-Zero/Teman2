@@ -40,6 +40,8 @@ except ModuleNotFoundError:  # pragma: no cover - import path used by repository
 
 
 LAUNCHER_SCHEMA = "nuzantara.worker-plane-review-launcher-receipt/v2"
+REVIEW_INPUT_SCHEMA = "nuzantara.worker-plane-review-input/v1"
+REVIEW_INPUT_MAGIC = b"NUZANTARA-REVIEW-INPUT-V1\n"
 PUBLICATION_MARKER_SCHEMA = "nuzantara.worker-plane-review-publication/v1"
 PUBLICATION_MARKER_NAME = "panel-complete.json"
 IDENTITY_POLICY_REVISION = "pro-clients-2026-07-23-v3"
@@ -86,7 +88,7 @@ GLM_ARGV_SUFFIX = (
     "--no-session-persistence",
     "--safe-mode",
     "--permission-mode",
-    "plan",
+    "dontAsk",
     "--tools",
     "",
     "--disable-slash-commands",
@@ -235,6 +237,7 @@ class FileProof:
 @dataclass(frozen=True)
 class FrozenReview:
     packet_bytes: bytes
+    review_input_bytes: bytes
     manifest_bytes: bytes
     receipt_bytes: bytes
     route_config_bytes: bytes
@@ -324,6 +327,25 @@ class PanelResult:
 
 def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _review_input_bytes(
+    *,
+    packet_bytes: bytes,
+    input_manifest_sha256: str,
+) -> bytes:
+    if re.fullmatch(r"[0-9a-f]{64}", input_manifest_sha256) is None:
+        raise LauncherError("review input manifest SHA-256 is invalid")
+    return b"".join(
+        (
+            REVIEW_INPUT_MAGIC,
+            f"schema: {REVIEW_INPUT_SCHEMA}\n".encode("ascii"),
+            f"input_manifest_sha256: {input_manifest_sha256}\n".encode("ascii"),
+            f"packet_bytes: {len(packet_bytes)}\n".encode("ascii"),
+            b"\n",
+            packet_bytes,
+        )
+    )
 
 
 def _utc_now() -> str:
@@ -591,8 +613,13 @@ def _load_frozen_review(review_dir: Path) -> FrozenReview:
         or receipt.get("git_object_validation") != "pass"
     ):
         raise LauncherError("freeze receipt does not prove the frozen review")
+    review_input_bytes = _review_input_bytes(
+        packet_bytes=packet_bytes,
+        input_manifest_sha256=parsed.manifest_sha256,
+    )
     return FrozenReview(
         packet_bytes=packet_bytes,
+        review_input_bytes=review_input_bytes,
         manifest_bytes=manifest_bytes,
         receipt_bytes=receipt_bytes,
         route_config_bytes=route_config_bytes,
@@ -2031,7 +2058,7 @@ def _run_seat(
     seat: Seat,
     executable: PreparedExecutable,
     client_version: str,
-    packet_bytes: bytes,
+    review_input_bytes: bytes,
     cwd: Path,
     environment: Mapping[str, str],
     invocation_uuid: str,
@@ -2045,7 +2072,7 @@ def _run_seat(
     result = command_runner(
         executable=executable,
         argv=argv,
-        input_bytes=packet_bytes,
+        input_bytes=review_input_bytes,
         cwd=cwd,
         environment=environment,
         label=seat.name,
@@ -2219,6 +2246,9 @@ def _receipt(
         "max_output_bytes": run.max_output_bytes,
         "output_spooled": True,
         "packet_sha256": frozen.packet_sha256,
+        "review_input_bytes": len(frozen.review_input_bytes),
+        "review_input_schema": REVIEW_INPUT_SCHEMA,
+        "review_input_sha256": _sha256(frozen.review_input_bytes),
         "process_group_isolated": True,
         "provider_session_id": provider_session_id,
         "raw_output_path": run.seat.raw_name,
@@ -2436,7 +2466,7 @@ def launch_panel(
                         seat=seat,
                         executable=executable_by_client[seat.client],
                         client_version=version_by_client[seat.client],
-                        packet_bytes=frozen.packet_bytes,
+                        review_input_bytes=frozen.review_input_bytes,
                         cwd=temporary_sandboxes[seat.name],
                         environment=environments[seat.name],
                         invocation_uuid=invocation_uuids[seat.name],

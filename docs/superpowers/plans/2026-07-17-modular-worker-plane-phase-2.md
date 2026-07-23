@@ -422,7 +422,7 @@ The production job may be dispatched only by rollout Task 3 with the unchanged g
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  pytest scripts/tests/test_deploy_worker_staging.py scripts/tests/test_deploy_worker_production.py ../../../scripts/tests/test_check_live_mutation_routes.py -q
+  pytest scripts/tests/test_deploy_worker_staging.py scripts/tests/test_deploy_worker_production.py ../../scripts/tests/test_check_live_mutation_routes.py -q
   ```
 
   Expected: coordinated staging/production orchestrator tests fail because the scripts and CI jobs do not exist.
@@ -437,7 +437,7 @@ The production job may be dispatched only by rollout Task 3 with the unchanged g
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  pytest scripts/tests/test_deploy_worker_staging.py scripts/tests/test_deploy_worker_production.py scripts/tests/test_worker_database_role.py ../../../scripts/tests/test_check_live_mutation_routes.py -q
+  pytest scripts/tests/test_deploy_worker_staging.py scripts/tests/test_deploy_worker_production.py scripts/tests/test_worker_database_role.py ../../scripts/tests/test_check_live_mutation_routes.py -q
   PYTHONPATH=. python scripts/check_worker_fly_config.py --primary-staging-config fly.staging.toml --worker-config fly.worker.toml
   PYTHONPATH=../.. .venv/bin/python ../../scripts/worker_plane/check_live_mutation_routes.py --repo-root ../..
   ```
@@ -529,7 +529,7 @@ The staging runbook is an execution contract for production-rollout Task 2, not 
   PYTHONPATH=. pytest backend/tests/workers backend/tests/worker_plane backend/tests/integration/worker_plane/test_phase2_staging_contract.py backend/tests/integration/worker_plane/test_phase2_failure_injection.py -q
   pytest scripts/tests/test_check_runtime_inventory.py scripts/tests/test_worker_database_role.py scripts/tests/test_check_worker_fly_config.py scripts/tests/test_deploy_worker_staging.py scripts/tests/test_profile_worker_shadow.py scripts/tests/test_verify_worker_plane_phase2.py -q
   PYTHONPATH=. python scripts/check_runtime_inventory.py --inventory ../../docs/architecture/runtime-inventory.md
-  PYTHONPATH=. python scripts/check_worker_fly_config.py --config fly.worker.toml
+  PYTHONPATH=. python scripts/check_worker_fly_config.py --primary-staging-config fly.staging.toml --worker-config fly.worker.toml
   PYTHONPATH=../.. .venv/bin/python ../../scripts/worker_plane/check_live_mutation_routes.py --repo-root ../..
   test -n "${TEST_DATABASE_URL:-}"
   PYTHONPATH=. python scripts/check_table_ownership.py --migration-dir backend/db/migrations_v2 --schema-file backend/tests/fixtures/schema_tables.txt --database-url "$TEST_DATABASE_URL" --catalog backend/architecture/catalogs/data/table_ownership.json
@@ -621,7 +621,7 @@ The raw text uses the exact six headings and repeats only `input_manifest_sha256
   PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
-- [ ] Dispatch all three independent seats through the checked canonical single-buffer launcher. It uses the exact absolute binaries/hashed route config from the master plan, Fable/GLM safe-mode plan with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, Gemini stdin-headless plan+sandbox with no `-p` or prompt argument, an empty cwd, and stdin only. Mutable user/project configuration is never accepted as route proof or as the GLM route source; supported safe client behavior that contradicts the pinned route/receipt contract fails closed. The launcher atomically writes normalized reviews, raw stdout, stderr, and receipts into a new attempt directory:
+- [ ] Dispatch all three independent seats through the checked canonical single-buffer launcher. It uses the exact absolute binaries/hashed route config from the master plan, Fable safe-mode plan and GLM safe-mode `dontAsk` with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, Gemini stdin-headless plan+sandbox with no `-p` or prompt argument, an empty cwd, and the deterministic attestation-header-plus-packet stdin only. Mutable user/project configuration is never accepted as route proof or as the GLM route source; supported safe client behavior that contradicts the pinned route/receipt contract fails closed. The launcher atomically writes normalized reviews, raw stdout, stderr, and receipts into a new attempt directory:
 
   ```bash
   ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
