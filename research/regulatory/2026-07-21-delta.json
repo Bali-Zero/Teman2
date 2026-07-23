@@ -1,0 +1,33 @@
+{
+  "run_at": "2026-07-21T07:40:07+08:00",
+  "today": "2026-07-21",
+  "yesterday_seen_count": 0,
+  "new_today_count": 1,
+  "partial": true,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://ortax.org/news (dead path — 'Artikel tidak ditemukan')",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (JS-rendered, no results extractable from raw HTML)",
+    "https://jdih.kemenkeu.go.id/peraturan (timeout)",
+    "https://www.imigrasi.go.id (homepage generic, no news feed extractable)"
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "SE-9/PJ/2026",
+      "title_id": "SE-9/PJ/2026 tentang Tata Cara Permintaan Informasi dan/atau Bukti atau Keterangan dalam Rangka Pelaksanaan Akses Informasi Keuangan untuk Kepentingan Perpajakan",
+      "title_en": "Directorate General of Taxes Circular Letter SE-9/PJ/2026 on the Procedure for Requesting Information and/or Evidence or Statements for the Implementation of Financial Information Access for Tax Purposes",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "impact_note": "SE-9/PJ/2026 standardizes internal DJP procedures for requesting and using financial information under pre-existing authority in UU 9/2017 and PMK 108/2025, including requests to financial institutions and CARF-reporting crypto providers; it creates no new client deadline or authority.",
+      "summary": "SE-9/PJ/2026, berlaku sejak 16 Juli 2026, menstandarkan prosedur internal DJP untuk meminta Informasi dan/atau Bukti atau Keterangan (IBK) dalam pelaksanaan akses informasi keuangan untuk kepentingan perpajakan berdasarkan kewenangan yang sudah ada dalam UU 9/2017 dan PMK 108/2025. Permintaan IBK dapat digunakan untuk EOI, pengawasan kepatuhan, intelijen perpajakan, penilaian, pemeriksaan, penagihan, pemeriksaan bukti permulaan, penyidikan, serta upaya administratif dan hukum, termasuk keberatan, banding, peninjauan kembali, APA, dan MAP.",
+      "source": "DDTC News + CNBC Indonesia (cross-validated) | https://news.ddtc.co.id/berita/nasional/1820967/djp-perbarui-tata-cara-permintaan-informasi-keuangan-wajib-pajak | https://cnbcindonesia.com/news/20260720102215-4-752113/bukan-cuma-rekening-bank-djp-kini-bisa-intip-data-aset-kripto",
+      "verbatim_excerpt": "Surat edaran ini dimaksudkan untuk menjadi pedoman bagi unit kerja di lingkungan DJP dalam pelaksanaan permintaan informasi dan/atau bukti atau keterangan dalam rangka akses informasi keuangan untuk kepentingan perpajakan.",
+      "confidence": "high",
+      "first_seen_at": "2026-07-21T07:40:07+08:00"
+    }
+  ],
+  "seen_citations": ["SE-9/PJ/2026"]
+}
