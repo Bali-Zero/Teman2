@@ -388,6 +388,8 @@ def _fake_clients(
                         'tool_calls': [first_tool_call],
                     }}
                 )
+                events.extend(read_events[1:])
+                events.append({{'role': 'assistant', 'content': body}})
             elif stream_mode == 'no_read':
                 events.append({{'role': 'assistant', 'content': body}})
             else:
@@ -969,6 +971,38 @@ def test_kimi_stream_accepts_attested_read_trace_before_review(
     )
 
 
+def test_kimi_stream_ignores_tool_preamble_and_keeps_only_terminal_review(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    review_body = "Terminal Kimi review body"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        review_body=review_body,
+        kimi_stream_mode="mixed",
+    )
+
+    _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    kimi = next(seat for seat in launcher.SEATS if seat.name == "kimi")
+    events = [
+        json.loads(line)
+        for line in (output_dir / kimi.raw_name).read_text().splitlines()
+    ]
+    assert events[0]["content"] == review_body
+    assert events[0]["tool_calls"][0]["function"]["name"] == "Read"
+    assert events[-2] == {"role": "assistant", "content": review_body}
+    assert (output_dir / kimi.review_name).read_bytes().endswith(
+        review_body.encode("utf-8")
+    )
+
+
 def test_kimi_transport_wraps_long_lines_losslessly_below_read_limit() -> None:
     source = (
         "short\n"
@@ -1109,7 +1143,6 @@ def test_kimi_read_registration_rejects_noncanonical_page_and_batching() -> None
         ("partial", "lacks its exact requested range"),
         ("preview", "lacks its exact requested range"),
         ("outside", "outside its review input"),
-        ("mixed", "mixed review text with tool calls"),
         ("multiple", "multiple review responses"),
         ("post_meta", "resume hint is not the final event"),
     ),

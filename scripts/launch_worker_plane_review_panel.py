@@ -2845,11 +2845,23 @@ def _extract_review_body(run: SeatRun) -> bytes:
         for event_index, value in enumerate(events):
             if value.get("role") == "assistant":
                 content = value.get("content")
-                if isinstance(content, str) and content:
-                    if "tool_calls" in value:
+                if "tool_calls" in value:
+                    if assistant_message is not None or (
+                        content is not None and not isinstance(content, str)
+                    ):
                         raise LauncherError(
-                            "Kimi mixed review text with tool calls"
+                            "Kimi emitted an invalid assistant tool event"
                         )
+                    _register_kimi_read_calls(
+                        value,
+                        expected_input_path=expected_input_path,
+                        planned_read_pages=planned_read_pages,
+                        pending_tool_reads=pending_tool_reads,
+                        seen_read_pages=seen_read_pages,
+                        seen_tool_ids=seen_tool_ids,
+                    )
+                    continue
+                if isinstance(content, str) and content:
                     if assistant_message is not None:
                         raise LauncherError("Kimi emitted multiple review responses")
                     if pending_tool_reads:
@@ -2864,15 +2876,7 @@ def _extract_review_body(run: SeatRun) -> bytes:
                     continue
                 if content is not None or assistant_message is not None:
                     raise LauncherError("Kimi emitted an invalid assistant event")
-                _register_kimi_read_calls(
-                    value,
-                    expected_input_path=expected_input_path,
-                    planned_read_pages=planned_read_pages,
-                    pending_tool_reads=pending_tool_reads,
-                    seen_read_pages=seen_read_pages,
-                    seen_tool_ids=seen_tool_ids,
-                )
-                continue
+                raise LauncherError("Kimi assistant event lacks content or tool calls")
             if value.get("role") == "tool":
                 if assistant_message is not None:
                     raise LauncherError("Kimi emitted a tool result after its review")
