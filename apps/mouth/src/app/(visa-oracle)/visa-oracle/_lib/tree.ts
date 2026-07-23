@@ -373,9 +373,9 @@ export const MOCK_CATALOG: MockVisaCard[] = [
     ],
   },
   {
-    code: "E33F",
-    nameI18nKey: "visa.E33F.name",
-    taglineI18nKey: "visa.E33F.tagline",
+    code: "E33G",
+    nameI18nKey: "visa.E33G.name",
+    taglineI18nKey: "visa.E33G.tagline",
     allInclusivePriceIDR: 18_000_000,
     timelineDays: [14, 21],
     eligibility: "eligible",
