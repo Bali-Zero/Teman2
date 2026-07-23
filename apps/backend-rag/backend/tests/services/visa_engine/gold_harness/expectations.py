@@ -26,11 +26,12 @@ Two authoring tiers per persona (see each persona JSON's ``expected`` key):
      designed pack fires identically for every product, so every product
      collapses to the same EXCLUDED/REVIEW/BLOCKED_UNKNOWN outcome. (The one
      PRODUCTS-scoped HUMAN_REVIEW rule in the pack --
-     ``hr-e33e-age-band-55-59`` on E33E, the Permenkumham 11/2024 55-vs-60
-     BERSYARAT band -- is inert for every persona that uses this default:
-     all of them are either blocked earlier by a GLOBAL rule or are aged
-     outside the 55-59 band, so it never fires TRUE and never becomes the
-     UNKNOWN that gates the decision.)
+     ``hr-e33e-e33f-age-band-55-59`` on E33E+E33F, the Permenkumham 11/2024
+     55-vs-60 BERSYARAT band -- is purpose-guarded to RETIREMENT and inert
+     for every persona that uses this default: all of them are either
+     blocked earlier by a GLOBAL rule or declare no RETIREMENT purpose, so
+     it never fires TRUE and never becomes the UNKNOWN that gates the
+     decision.)
 """
 
 from __future__ import annotations

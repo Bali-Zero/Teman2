@@ -1,7 +1,14 @@
 """Loaders for the gold-harness fixtures: the designed RulePack (source JSON,
-compiled via the REAL compiler) and the 20 gold personas (source JSON,
+compiled via the REAL compiler) and the 23 gold personas (source JSON,
 validated against the closed FactPath vocabulary and parsed into real
 ``models.ApplicantFacts`` Pydantic objects -- never a hand-rolled shape).
+
+E33 product modeling note (JSON has no comment syntax and ``RulePack`` is
+``extra="forbid"``, so this lives here): base E33's ``extension_policy``
+(allowed, 1 x 1825d) models the Permenkumham 22/2023 Pasal 113 renewal path
+(>=5y first grant -> 10y cumulative cap), while E33E's (not allowed, 0)
+deliberately models the golden 5-year senior grant as a single block --
+conservative: no renewal is claimed until the regulation text confirms one.
 """
 
 from __future__ import annotations

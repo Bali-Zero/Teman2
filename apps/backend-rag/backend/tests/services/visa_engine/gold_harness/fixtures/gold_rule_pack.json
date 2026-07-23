@@ -1152,7 +1152,7 @@
         "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5"]
       },
       {
-        "rule_id": "hr-e33e-age-band-55-59",
+        "rule_id": "hr-e33e-e33f-age-band-55-59",
         "stage": "HUMAN_REVIEW",
         "scope": "PRODUCTS",
         "priority": 70,
@@ -1161,21 +1161,34 @@
           "to": null
         },
         "when": {
-          "op": "between",
-          "fact": "derived.age_years",
-          "lower": 55,
-          "upper": 59
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["RETIREMENT"]
+            },
+            {
+              "op": "between",
+              "fact": "derived.age_years",
+              "lower": 55,
+              "upper": 59
+            }
+          ]
         },
         "effect": {
           "type": "REQUIRE_REVIEW",
           "reason_code": "SECOND_HOME_SENIOR_AGE_AMBIGUITY_REVIEW"
         },
         "on_unknown": "HUMAN_REVIEW",
-        "required_facts": ["derived.age_years"],
+        "required_facts": ["intent.purposes", "derived.age_years"],
         "source_refs": ["7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"],
-        "explanation_key": "explain.hr_e33e_age_band_55_59",
+        "explanation_key": "explain.hr_e33e_e33f_age_band_55_59",
         "safety_critical": false,
-        "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5"]
+        "product_version_ids": [
+          "2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5",
+          "2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33f6"
+        ]
       },
       {
         "rule_id": "el-e33f-retirement",

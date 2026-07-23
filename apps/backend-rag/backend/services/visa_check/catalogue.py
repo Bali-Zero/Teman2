@@ -315,7 +315,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
                 1,
                 365 * 5,
             ),  # Permenkumham 22/2023 Pasal 113: >=5y first grant -> 10y cumulative cap
-            min_budget_idr=500_000_000,  # USD 130k deposit route — high-budget tier
+            min_budget_idr=500_000_000,  # commercial tier flag, not the legal USD 130k deposit threshold
             notes="Base Second Home (bank route): USD 130,000 own-name deposit at a "
             "state-owned (BUMN) bank, or USD 1,000,000 qualifying completed "
             "strata-title property. 5-year first grant, no sponsor, non-working residency.",
