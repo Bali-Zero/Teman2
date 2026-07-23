@@ -2,7 +2,7 @@
 date: 2026-07-23
 domain: visa
 vertical: E33 Second Home
-adversarial_review: pending
+adversarial_review: gemini
 ---
 
 # E33 letter-response tracker
@@ -78,3 +78,11 @@ the sharia-equivalence question — verify against the sent PDF.
 4. Pricing/marketing changes are owner-gated — surface them, don't apply them.
 5. Adversarial-review the interpretation of any reply that contradicts a
    currently-confirmed fact (R1 gate, generator≠grader).
+
+## Adversarial review
+
+Reviewed 2026-07-24 by seats != author (author: kimi) on the full branch diff:
+**gemini** (MERGE-WITH-NOTES) and **glm-5.2** (no FIX-FIRST). No factual or
+regulatory error was found in this tracker; the reply-intake procedure stands
+as written. Review artifacts: PR #3042 comments +
+`/tmp/secondhome_review/pr_review_gemini.md`, `pr_review_glm.md`.

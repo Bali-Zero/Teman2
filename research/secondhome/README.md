@@ -1,3 +1,7 @@
+---
+adversarial_review: gemini
+---
+
 # E33 Second Home Visa — corner
 
 The **E33 vertical** is Bali Zero's Second Home Visa line: base E33 (USD 130k
@@ -78,3 +82,12 @@ Pasal 33(10)(d) still reads **60** — operate on 55, disclose the ambiguity
 - **Engine scope (2.2)** → **bank-route only**: FactPath + engine products
   for E33 / E33E / E33F (+ dependents). E33A/B/C deferred (no sales intent),
   E33D stays hidden (official stub).
+
+## Adversarial review
+
+Reviewed 2026-07-24 by seats != author (author: kimi) on the full branch diff:
+**gemini** (verdict MERGE-WITH-NOTES — no factual/regulatory error introduced;
+note on pricing-bridge key alignment at merge) and **glm-5.2** (no FIX-FIRST;
+two of its findings refuted with evidence by the orchestrator, two valid merge
+notes recorded on the PR). Review artifacts: PR #3042 comments +
+`/tmp/secondhome_review/pr_review_gemini.md`, `pr_review_glm.md`.
