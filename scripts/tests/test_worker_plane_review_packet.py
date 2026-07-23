@@ -183,6 +183,7 @@ def test_council_v3_route_is_canonical_and_makes_kimi_a_permanent_seat() -> None
         ("codex", "red-team", "account-default"),
         ("kimi", "refuter", "kimi-code/k3"),
     ]
+    assert route["parallel_reviewers"][0]["input_transport"] == "file"
     assert route["parallel_reviewers"][2]["input_transport"] == "file"
     assert route["retired_routes"] == ["deepseek", "glm"]
     assert route["final_gate"]["phase"] == "sequential-after-disposition"

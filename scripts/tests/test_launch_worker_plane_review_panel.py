@@ -92,14 +92,12 @@ def test_process_group_cleanup_reaps_zombie_leader_before_leak_check(
 ) -> None:
     reaped = False
     signals: list[int] = []
-    clock = iter((0.0, 1.0, 1.0, 2.0))
 
     class ZombieLeader:
         def poll(self) -> int:
             nonlocal reaped
-            assert signals[-1] == launcher.signal.SIGKILL
             reaped = True
-            return -launcher.signal.SIGKILL
+            return 0
 
     def process_group_exists(process_group: int) -> bool:
         assert process_group == 4242
@@ -111,7 +109,6 @@ def test_process_group_cleanup_reaps_zombie_leader_before_leak_check(
 
     monkeypatch.setattr(launcher, "_process_group_exists", process_group_exists)
     monkeypatch.setattr(launcher.os, "killpg", record_signal)
-    monkeypatch.setattr(launcher.time, "monotonic", lambda: next(clock))
 
     launcher._terminate_process_group(
         4242,
@@ -120,7 +117,128 @@ def test_process_group_cleanup_reaps_zombie_leader_before_leak_check(
     )
 
     assert reaped is True
-    assert signals == [launcher.signal.SIGTERM, launcher.signal.SIGKILL]
+    assert signals == []
+
+
+def test_popen_waits_for_descendant_final_output_after_leader_exit(
+    tmp_path: Path,
+) -> None:
+    executable = _write_executable(
+        tmp_path / "forking-provider",
+        f"""#!{sys.executable}
+import os
+import sys
+import time
+
+leader_pid = os.getpid()
+child_pid = os.fork()
+if child_pid:
+    print("leader-intermediate", flush=True)
+    raise SystemExit(0)
+deadline = time.monotonic() + 1
+while os.getppid() == leader_pid and time.monotonic() < deadline:
+    time.sleep(0.005)
+print("descendant-final", flush=True)
+""",
+    )
+
+    result = launcher._run_popen_command(
+        argv=(str(executable),),
+        executable_path=executable,
+        input_bytes=b"",
+        cwd=tmp_path,
+        environment=os.environ,
+        label="forking-provider",
+        wall_timeout_seconds=3,
+        termination_grace_seconds=1,
+        max_output_bytes=1024,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == [
+        b"leader-intermediate",
+        b"descendant-final",
+    ]
+
+
+def test_popen_times_out_and_kills_persistent_descendant_after_leader_exit(
+    tmp_path: Path,
+) -> None:
+    process_group_path = tmp_path / "process-group"
+    descendant_ready_path = tmp_path / "descendant-ready"
+    executable = _write_executable(
+        tmp_path / "persistent-provider",
+        f"""#!{sys.executable}
+import os
+import pathlib
+import signal
+import time
+
+pathlib.Path({str(process_group_path)!r}).write_text(str(os.getpid()))
+child_pid = os.fork()
+if child_pid:
+    ready_path = pathlib.Path({str(descendant_ready_path)!r})
+    deadline = time.monotonic() + 5
+    while not ready_path.exists() and time.monotonic() < deadline:
+        time.sleep(0.005)
+    raise SystemExit(0)
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+pathlib.Path({str(descendant_ready_path)!r}).write_text("ready")
+while True:
+    time.sleep(0.05)
+""",
+    )
+
+    with pytest.raises(launcher.LauncherError, match="wall timeout"):
+        launcher._run_popen_command(
+            argv=(str(executable),),
+            executable_path=executable,
+            input_bytes=b"",
+            cwd=tmp_path,
+            environment=os.environ,
+            label="persistent-provider",
+            wall_timeout_seconds=1,
+            termination_grace_seconds=0.2,
+            max_output_bytes=1024,
+        )
+
+    assert not launcher._process_group_exists(int(process_group_path.read_text()))
+
+
+def test_popen_rejects_descendant_output_overflow_after_leader_exit(
+    tmp_path: Path,
+) -> None:
+    executable = _write_executable(
+        tmp_path / "overflow-provider",
+        f"""#!{sys.executable}
+import os
+import sys
+import time
+
+leader_pid = os.getpid()
+child_pid = os.fork()
+if child_pid:
+    raise SystemExit(0)
+deadline = time.monotonic() + 1
+while os.getppid() == leader_pid and time.monotonic() < deadline:
+    time.sleep(0.005)
+sys.stdout.write("X" * 4096)
+sys.stdout.flush()
+""",
+    )
+
+    with pytest.raises(launcher.LauncherError, match="output limit"):
+        launcher._run_popen_command(
+            argv=(str(executable),),
+            executable_path=executable,
+            input_bytes=b"",
+            cwd=tmp_path,
+            environment=os.environ,
+            label="overflow-provider",
+            wall_timeout_seconds=3,
+            termination_grace_seconds=0.5,
+            max_output_bytes=128,
+        )
 
 
 def _frozen_review(
@@ -238,6 +356,7 @@ def _fake_clients(
     emit_claude_metadata: bool = False,
     mutate_packet: Path | None = None,
     review_body: str | None = None,
+    review_body_by_client: dict[str, str] | None = None,
     kimi_stream_mode: str = "complete",
 ) -> Any:
     sync_dir = tmp_path / "sync"
@@ -269,6 +388,12 @@ def _fake_clients(
             if match is None:
                 raise SystemExit(12)
             data = pathlib.Path(match.group(1)).read_bytes()
+        elif CLIENT == 'gemini':
+            prompt = argv[argv.index('--print') + 1]
+            match = re.search(r'exact path: ([^\\n]+)', prompt)
+            if match is None:
+                raise SystemExit(15)
+            data = pathlib.Path(match.group(1)).read_bytes()
         else:
             data = sys.stdin.buffer.read()
         sync_dir = pathlib.Path({str(sync_dir)!r})
@@ -297,10 +422,33 @@ def _fake_clients(
             payload['session_id'] = 'session-' + seat
             payload['modelUsage'] = {{seat: {{'inputTokens': 1}}}}
         review_body = {review_body!r}
-        body = review_body or json.dumps(
+        review_body_by_client = {review_body_by_client!r} or {{}}
+        payload_json = json.dumps(
             payload,
             ensure_ascii=False,
             sort_keys=True,
+        )
+        manifest_match = re.search(
+            rb'input_manifest_sha256: ([0-9a-f]{{64}})',
+            data,
+        )
+        if manifest_match is None:
+            raise SystemExit(16)
+        manifest_sha256 = manifest_match.group(1).decode('ascii')
+        body = review_body_by_client.get(CLIENT) or review_body or (
+            '# Verdict\\n'
+            'GO-WITH-CHANGES — confidence 80\\n'
+            f'input_manifest_sha256: {{manifest_sha256}}\\n\\n'
+            '# Blocking findings\\n'
+            'None\\n\\n'
+            '# Important findings\\n'
+            'None\\n\\n'
+            '# What survives review\\n'
+            f'NUZANTARA_TEST_PAYLOAD {{payload_json}}\\n\\n'
+            '# Required amendments\\n'
+            'Retain the attested fixture contract.\\n\\n'
+            '# Falsification test\\n'
+            'The fixture fails if any input byte differs.\\n'
         )
         if CLIENT == 'gemini':
             output = body.encode('utf-8')
@@ -512,7 +660,144 @@ def _raw_payload(
             if event.get("role") == "assistant"
             and isinstance(event.get("content"), str)
         )
-    return json.loads(body), raw
+    marker = "NUZANTARA_TEST_PAYLOAD "
+    payload_line = next(
+        line for line in body.splitlines() if line.startswith(marker)
+    )
+    return json.loads(payload_line[len(marker) :]), raw
+
+
+def _valid_review_body(manifest_bytes: bytes, marker: str) -> str:
+    return (
+        "# Verdict\n"
+        "GO-WITH-CHANGES — confidence 80\n"
+        f"input_manifest_sha256: {_sha256(manifest_bytes)}\n\n"
+        "# Blocking findings\n"
+        "None\n\n"
+        "# Important findings\n"
+        "None\n\n"
+        "# What survives review\n"
+        f"{marker}\n\n"
+        "# Required amendments\n"
+        "Retain the attested fixture contract.\n\n"
+        "# Falsification test\n"
+        "The fixture fails if any input byte differs.\n"
+    )
+
+
+def test_phase1_review_gate_accepts_a_well_formed_no_go() -> None:
+    manifest_bytes = b"canonical manifest"
+    body = _valid_review_body(
+        manifest_bytes,
+        "The bounded packet was reviewed.",
+    ).replace(
+        "GO-WITH-CHANGES — confidence 80",
+        "NO-GO — confidence 99",
+    ).replace(
+        "# Blocking findings\nNone",
+        (
+            "# Blocking findings\n"
+            "[KIMI-PLAN-001] packet:design.md lacks a falsifiable lease."
+        ),
+    )
+    kimi = next(seat for seat in launcher.SEATS if seat.name == "kimi")
+
+    launcher._validate_phase1_review_body(
+        seat=kimi,
+        body=body.encode("utf-8"),
+        input_manifest_sha256=_sha256(manifest_bytes),
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        (lambda body: "refusal preamble\n" + body, "text before"),
+        (
+            lambda body: body.replace(
+                "# Important findings",
+                "# Renamed findings",
+            ),
+            "headings",
+        ),
+        (
+            lambda body: body.replace(
+                "input_manifest_sha256:",
+                "explanation first\ninput_manifest_sha256:",
+            ),
+            "attested manifest",
+        ),
+        (
+            lambda body: body.replace(
+                "# Important findings\nNone",
+                "# Important findings\n[CODEX-PLAN-001] wrong seat.",
+            ),
+            "another seat",
+        ),
+        (
+            lambda body: body.replace(
+                "# Important findings\nNone",
+                (
+                    "# Important findings\n"
+                    "[GEMINI-PLAN-001] first finding.\n\n"
+                    "Second finding lacks its required prefix."
+                ),
+            ),
+            "finding block without an ID prefix",
+        ),
+        (
+            lambda body: body.replace(
+                "# Required amendments\nRetain the attested fixture contract.",
+                "# Required amendments\nTODO",
+            ),
+            "placeholder",
+        ),
+        (
+            lambda body: body.replace(
+                "# Falsification test\nThe fixture fails if any input byte differs.",
+                "# Falsification test\nNone",
+            ),
+            "placeholder",
+        ),
+    ),
+)
+def test_phase1_review_gate_rejects_malformed_bodies(
+    mutation: Any,
+    message: str,
+) -> None:
+    manifest_bytes = b"canonical manifest"
+    gemini = next(seat for seat in launcher.SEATS if seat.name == "gemini")
+    body = mutation(_valid_review_body(manifest_bytes, "Useful review."))
+
+    with pytest.raises(launcher.LauncherError, match=message):
+        launcher._validate_phase1_review_body(
+            seat=gemini,
+            body=body.encode("utf-8"),
+            input_manifest_sha256=_sha256(manifest_bytes),
+        )
+
+
+def test_launch_panel_rejects_one_provider_refusal_without_publication(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        review_body_by_client={
+            "gemini": "I cannot review because the input appears truncated."
+        },
+    )
+
+    with pytest.raises(launcher.LauncherError, match="headings"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not output_dir.exists() or not list(output_dir.iterdir())
 
 
 def _launch_test_panel(**kwargs: Any) -> Any:
@@ -664,7 +949,7 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
     }
     assert len({value["cwd"] for value in observed.values()}) == 3
     assert all(value["cwd_mode"] == 0o700 for value in observed.values())
-    assert observed["gemini"]["cwd_entries"] == []
+    assert observed["gemini"]["cwd_entries"] == ["00-review-input.bin"]
     assert observed["codex"]["cwd_entries"] == []
     assert observed["kimi"]["cwd_entries"] == [
         "00-review-input.transport.txt",
@@ -676,7 +961,11 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
     gemini = observed["gemini"]
     codex = observed["codex"]
     kimi = observed["kimi"]
-    assert gemini["argv"] == list(launcher.GEMINI_ARGV_SUFFIX)
+    assert gemini["argv"][: len(launcher.GEMINI_ARGV_SUFFIX)] == list(
+        launcher.GEMINI_ARGV_SUFFIX
+    )
+    assert gemini["argv"][-2] == "--print"
+    assert "00-review-input.bin" in gemini["argv"][-1]
     assert codex["argv"] == list(launcher.CODEX_ARGV_SUFFIX)
     assert kimi["argv"][: len(launcher.KIMI_ARGV_SUFFIX)] == list(
         launcher.KIMI_ARGV_SUFFIX
@@ -849,9 +1138,12 @@ def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    frozen_review, _, manifest_bytes, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    body = "\n# Exact body\nUnicode: café 日本語\n\ntrailing blank line\n\n"
+    body = _valid_review_body(
+        manifest_bytes,
+        "Unicode: café 日本語; trailing blank line preserved.",
+    ) + "\n"
     clients = _fake_clients(
         tmp_path,
         output_dir,
@@ -939,9 +1231,9 @@ def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
 def test_kimi_stream_accepts_attested_read_trace_before_review(
     tmp_path: Path,
 ) -> None:
-    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    frozen_review, _, manifest_bytes, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    review_body = "Kimi review body"
+    review_body = _valid_review_body(manifest_bytes, "Kimi review body")
     clients = _fake_clients(
         tmp_path,
         output_dir,
@@ -977,9 +1269,12 @@ def test_kimi_stream_accepts_one_batched_assistant_event_for_many_pages(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(launcher, "KIMI_READ_MAX_LINES", 1)
-    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    frozen_review, _, manifest_bytes, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    review_body = "Batched Kimi review body"
+    review_body = _valid_review_body(
+        manifest_bytes,
+        "Batched Kimi review body",
+    )
     clients = _fake_clients(
         tmp_path,
         output_dir,
@@ -1035,9 +1330,12 @@ def test_kimi_stream_rejects_out_of_order_batched_results_without_outputs(
 def test_kimi_stream_ignores_tool_preamble_and_keeps_only_terminal_review(
     tmp_path: Path,
 ) -> None:
-    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    frozen_review, _, manifest_bytes, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    review_body = "Terminal Kimi review body"
+    review_body = _valid_review_body(
+        manifest_bytes,
+        "Terminal Kimi review body",
+    )
     clients = _fake_clients(
         tmp_path,
         output_dir,

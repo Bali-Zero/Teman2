@@ -42,7 +42,7 @@ EXPECTED_COUNCIL_ROUTE_CONFIG = (
     b'{"final_gate":{"client":"claude","input_transport":"stdin",'
     b'"model":"claude-fable-5","phase":"sequential-after-disposition",'
     b'"role":"final-gate","seat":"fable"},'
-    b'"parallel_reviewers":[{"client":"agy","input_transport":"stdin",'
+    b'"parallel_reviewers":[{"client":"agy","input_transport":"file",'
     b'"model":"Gemini 3.1 Pro (High)","role":"constructive","seat":"gemini"},'
     b'{"client":"codex","input_transport":"stdin","model":"account-default",'
     b'"role":"red-team","seat":"codex"},{"client":"kimi",'

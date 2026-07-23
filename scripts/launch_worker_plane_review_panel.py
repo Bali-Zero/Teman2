@@ -30,7 +30,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
 try:
     from freeze_worker_plane_review import (
@@ -67,6 +67,7 @@ KIMI_READ_MAX_PAGES = 256
 KIMI_READ_PAGE_MAX_UTF16_UNITS = 40_000
 KIMI_READ_PAGE_MAX_UTF8_BYTES = 80 * 1024
 OUTPUT_SPOOL_MEMORY_BYTES = 1024 * 1024
+PHASE1_REVIEW_MAX_WORDS = 1_800
 MINIMUM_GEMINI_VERSION = (1, 1, 2)
 REQUIRED_KIMI_VERSION = (0, 29, 0)
 REQUIRED_CODEX_VERSION = (0, 145, 0)
@@ -76,6 +77,36 @@ VALIDATOR_INPUT_NAMES = (
     "00-review-packet.bin",
     "input-manifest.json",
     "freeze-receipt.json",
+)
+PHASE1_REVIEW_HEADINGS = (
+    "# Verdict",
+    "# Blocking findings",
+    "# Important findings",
+    "# What survives review",
+    "# Required amendments",
+    "# Falsification test",
+)
+PHASE1_VERDICT = re.compile(
+    r"^(GO|GO-WITH-CHANGES|NO-GO) — confidence (100|[0-9]{1,2})$"
+)
+PHASE1_FINDING_ID = re.compile(r"\[([A-Z0-9][A-Z0-9._-]{2,63})\]")
+PHASE1_FINDING_PREFIX = {
+    "gemini": "GEMINI-PLAN-",
+    "codex": "CODEX-PLAN-",
+    "kimi": "KIMI-PLAN-",
+}
+PHASE1_PLACEHOLDERS = frozenset(
+    {
+        "",
+        "...",
+        "none",
+        "tbd",
+        "todo",
+        "n/a",
+        "na",
+        "placeholder",
+        "coming soon",
+    }
 )
 
 FABLE_GATE_ARGV_SUFFIX = (
@@ -280,7 +311,7 @@ SEATS = (
         receipt_name="01-gemini-3.1-pro-high.invocation.json",
         review_name="01-gemini-3.1-pro-high.md",
         role="constructive",
-        input_transport="stdin",
+        input_transport="file",
     ),
     Seat(
         name="codex",
@@ -1404,8 +1435,17 @@ def _terminate_process_group(
     *,
     grace_seconds: float,
     leader_process: subprocess.Popen[bytes] | None = None,
+    leader_poll: Callable[[], int | None] | None = None,
 ) -> None:
     """Terminate the whole isolated group and prove that no member remains."""
+    if leader_process is not None and leader_poll is not None:
+        raise LauncherError("process-group cleanup received two leader pollers")
+    if leader_poll is None and leader_process is not None:
+        leader_poll = leader_process.poll
+    if leader_poll is not None:
+        # Reap a leader that is already a zombie before the first group probe.
+        # Otherwise killpg(..., 0) can report a group that has no live member.
+        leader_poll()
     if not _process_group_exists(process_group):
         return
     try:
@@ -1418,11 +1458,8 @@ def _terminate_process_group(
         pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
-        if leader_process is not None:
-            # Reap an exited direct child before probing its process group.
-            # Otherwise the zombie leader keeps killpg(..., 0) successful and
-            # can make a clean timeout teardown look like leaked descendants.
-            leader_process.poll()
+        if leader_poll is not None:
+            leader_poll()
         if not _process_group_exists(process_group):
             return
         time.sleep(0.02)
@@ -1434,18 +1471,108 @@ def _terminate_process_group(
         pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
-        if leader_process is not None:
-            leader_process.poll()
+        if leader_poll is not None:
+            leader_poll()
         if not _process_group_exists(process_group):
             return
         time.sleep(0.02)
-    if leader_process is not None:
-        leader_process.poll()
+    if leader_poll is not None:
+        leader_poll()
     if not _process_group_exists(process_group):
         return
     raise LauncherError(
         f"process group {process_group} still exists after TERM/KILL"
     )
+
+
+def _wait_for_process_group_completion(
+    process_group: int,
+    *,
+    leader_poll: Callable[[], int | None],
+    overflow: threading.Event,
+    deadline: float,
+    label: str,
+    wall_timeout_seconds: float,
+    max_output_bytes: int,
+) -> int:
+    """Wait for both the direct child and its original process group.
+
+    Some provider launchers exit before a worker descendant emits the final
+    response.  The direct child's exit is therefore not a successful terminal
+    state: all members of the isolated group must finish within the same wall
+    deadline while stdout/stderr capture remains active.
+    """
+    while True:
+        leader_status = leader_poll()
+        group_exists = _process_group_exists(process_group)
+        if overflow.is_set():
+            raise LauncherError(
+                f"{label} exceeded the {max_output_bytes}-byte output limit"
+            )
+        if leader_status is not None and not group_exists:
+            return leader_status
+        if leader_status is None and not group_exists:
+            raise LauncherError(
+                f"{label} process group disappeared before its leader was reaped"
+            )
+        if time.monotonic() >= deadline:
+            raise LauncherError(
+                f"{label} exceeded the {wall_timeout_seconds:g}s wall timeout"
+            )
+        time.sleep(0.02)
+
+
+def _join_provider_threads(
+    threads: Sequence[threading.Thread],
+    *,
+    grace_seconds: float,
+    label: str,
+) -> None:
+    deadline = time.monotonic() + grace_seconds
+    for thread in threads:
+        thread.join(timeout=max(0.0, deadline - time.monotonic()))
+    if any(thread.is_alive() for thread in threads):
+        raise LauncherError(f"{label} stream cleanup did not finish")
+
+
+def _cleanup_failed_provider_run(
+    *,
+    process_group: int,
+    leader_poll: Callable[[], int | None],
+    threads: Sequence[threading.Thread],
+    grace_seconds: float,
+    label: str,
+    failure: LauncherError,
+) -> None:
+    """Contain a failed provider and retain the primary failure in the error."""
+    cleanup_errors: list[str] = []
+    try:
+        _terminate_process_group(
+            process_group,
+            grace_seconds=grace_seconds,
+            leader_poll=leader_poll,
+        )
+    except LauncherError as exc:
+        cleanup_errors.append(str(exc))
+    try:
+        leader_poll()
+    except (ChildProcessError, OSError) as exc:
+        cleanup_errors.append(f"leader reap failed: {exc}")
+    try:
+        _join_provider_threads(
+            threads,
+            grace_seconds=grace_seconds,
+            label=label,
+        )
+    except LauncherError as exc:
+        cleanup_errors.append(str(exc))
+    if _process_group_exists(process_group):
+        cleanup_errors.append(f"process group {process_group} still exists")
+    if cleanup_errors:
+        raise LauncherError(
+            f"{failure}; cleanup incomplete: {'; '.join(cleanup_errors)}"
+        ) from failure
+    raise failure
 
 
 def _capture_stream(
@@ -1551,52 +1678,32 @@ def _run_popen_command(
             thread.start()
 
         deadline = time.monotonic() + wall_timeout_seconds
-        failure: str | None = None
-        while process.poll() is None:
-            if overflow.is_set():
-                failure = f"{label} exceeded the {max_output_bytes}-byte output limit"
-                break
-            if time.monotonic() >= deadline:
-                failure = f"{label} exceeded the {wall_timeout_seconds:g}s wall timeout"
-                break
-            time.sleep(0.02)
+        try:
+            returncode = _wait_for_process_group_completion(
+                process.pid,
+                leader_poll=process.poll,
+                overflow=overflow,
+                deadline=deadline,
+                label=label,
+                wall_timeout_seconds=wall_timeout_seconds,
+                max_output_bytes=max_output_bytes,
+            )
+        except LauncherError as exc:
+            _cleanup_failed_provider_run(
+                process_group=process.pid,
+                leader_poll=process.poll,
+                threads=threads,
+                grace_seconds=termination_grace_seconds,
+                label=label,
+                failure=exc,
+            )
+            raise AssertionError("unreachable")
 
-        if failure is not None:
-            try:
-                _terminate_process_group(
-                    process.pid,
-                    grace_seconds=termination_grace_seconds,
-                    leader_process=process,
-                )
-            finally:
-                try:
-                    process.wait(timeout=termination_grace_seconds)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-            for thread in threads:
-                thread.join(timeout=termination_grace_seconds)
-            raise LauncherError(failure)
-
-        returncode = process.wait()
-        descendants_remained = _process_group_exists(process.pid)
-        descendant_cleanup_error: LauncherError | None = None
-        if descendants_remained:
-            try:
-                _terminate_process_group(
-                    process.pid,
-                    grace_seconds=termination_grace_seconds,
-                )
-            except LauncherError as exc:
-                descendant_cleanup_error = exc
-        for thread in threads:
-            thread.join(timeout=termination_grace_seconds)
-            if thread.is_alive():
-                raise LauncherError(f"{label} stream cleanup did not finish")
-        if descendant_cleanup_error is not None:
-            raise descendant_cleanup_error
-        if descendants_remained:
-            print(f"Warning: {label} left descendant processes", file=sys.stderr)
+        _join_provider_threads(
+            threads,
+            grace_seconds=termination_grace_seconds,
+            label=label,
+        )
         if overflow.is_set():
             raise LauncherError(
                 f"{label} exceeded the {max_output_bytes}-byte output limit"
@@ -1828,73 +1935,47 @@ def _darwin_spawn_suspended(
             os.kill(child_pid, signal.SIGCONT)
             deadline = time.monotonic() + wall_timeout_seconds
             status: int | None = None
-            failure: str | None = None
-            while status is None:
-                waited_pid, waited_status = os.waitpid(child_pid, os.WNOHANG)
-                if waited_pid == child_pid:
-                    status = waited_status
-                    break
-                if overflow.is_set():
-                    failure = (
-                        f"{label} exceeded the {max_output_bytes}-byte output limit"
-                    )
-                    break
-                if time.monotonic() >= deadline:
-                    failure = (
-                        f"{label} exceeded the {wall_timeout_seconds:g}s wall timeout"
-                    )
-                    break
-                time.sleep(0.02)
-
-            if failure is not None:
-                try:
-                    os.killpg(child_pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                term_deadline = time.monotonic() + termination_grace_seconds
-                while status is None and time.monotonic() < term_deadline:
-                    waited_pid, waited_status = os.waitpid(child_pid, os.WNOHANG)
-                    if waited_pid == child_pid:
-                        status = waited_status
-                        break
-                    time.sleep(0.02)
-                if status is None:
-                    try:
-                        os.killpg(child_pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    _, status = os.waitpid(child_pid, 0)
-                process_group = child_pid
-                child_pid = None
-                _terminate_process_group(
-                    process_group,
-                    grace_seconds=termination_grace_seconds,
-                )
-                for thread in threads:
-                    thread.join(timeout=termination_grace_seconds)
-                raise LauncherError(failure)
-
-            assert status is not None
             process_group = child_pid
-            child_pid = None
-            descendants_remained = _process_group_exists(process_group)
-            descendant_cleanup_error: LauncherError | None = None
-            if descendants_remained:
+
+            def poll_leader() -> int | None:
+                nonlocal status
+                if status is not None:
+                    return status
+                waited_pid, waited_status = os.waitpid(process_group, os.WNOHANG)
+                if waited_pid == process_group:
+                    status = waited_status
+                return status
+
+            try:
+                status = _wait_for_process_group_completion(
+                    process_group,
+                    leader_poll=poll_leader,
+                    overflow=overflow,
+                    deadline=deadline,
+                    label=label,
+                    wall_timeout_seconds=wall_timeout_seconds,
+                    max_output_bytes=max_output_bytes,
+                )
+            except LauncherError as exc:
                 try:
-                    _terminate_process_group(
-                        process_group,
+                    _cleanup_failed_provider_run(
+                        process_group=process_group,
+                        leader_poll=poll_leader,
+                        threads=threads,
                         grace_seconds=termination_grace_seconds,
+                        label=label,
+                        failure=exc,
                     )
-                except LauncherError as exc:
-                    descendant_cleanup_error = exc
-            for thread in threads:
-                thread.join(timeout=termination_grace_seconds)
-                if thread.is_alive():
-                    raise LauncherError(f"{label} stream cleanup did not finish")
-            if descendant_cleanup_error is not None:
-                raise descendant_cleanup_error
-            if descendants_remained:
-                print(f"Warning: {label} left descendant processes", file=sys.stderr)
+                finally:
+                    child_pid = None
+                raise AssertionError("unreachable")
+
+            child_pid = None
+            _join_provider_threads(
+                threads,
+                grace_seconds=termination_grace_seconds,
+                label=label,
+            )
             if overflow.is_set():
                 raise LauncherError(
                     f"{label} exceeded the {max_output_bytes}-byte output limit"
@@ -2405,6 +2486,30 @@ def _kimi_review_prompt(input_path: Path, transport_bytes: bytes) -> str:
     )
 
 
+def _gemini_review_prompt(input_path: Path, review_input_bytes: bytes) -> str:
+    return (
+        "Read every byte of the sole immutable review input file at this exact "
+        f"path: {input_path}\n"
+        f"NUZANTARA_GEMINI_REVIEW_INPUT_BYTES {len(review_input_bytes)}\n"
+        f"NUZANTARA_GEMINI_REVIEW_INPUT_SHA256 {_sha256(review_input_bytes)}\n"
+        "Use read-only terminal/file tools and bounded sequential chunks until "
+        "you have consumed the complete file. Do not inspect any other path. "
+        "Follow the sole role=instructions document inside that input exactly. "
+        "Do not modify any file. Return only the required Markdown review, "
+        "starting with # Verdict and with no preamble."
+    )
+
+
+def _prepare_gemini_read_only_input(
+    *,
+    cwd: Path,
+    review_input_bytes: bytes,
+) -> Path:
+    input_path = cwd / "00-review-input.bin"
+    _write_private_data(input_path, review_input_bytes, 0o400)
+    return input_path
+
+
 def _sandbox_profile_bytes(writable_home: Path) -> bytes:
     rendered_home = json.dumps(str(writable_home.resolve()))
     profile = (
@@ -2519,8 +2624,16 @@ def _run_seat(
             input_path,
             f"{seat.name} review input",
         )[0]
-        prompt = _kimi_review_prompt(input_path, attested_input_bytes)
-        provider_args = (*seat.argv_suffix, "--prompt", prompt)
+        if seat.client == "kimi":
+            prompt = _kimi_review_prompt(input_path, attested_input_bytes)
+            provider_args = (*seat.argv_suffix, "--prompt", prompt)
+        elif seat.client == "gemini":
+            prompt = _gemini_review_prompt(input_path, attested_input_bytes)
+            provider_args = (*seat.argv_suffix, "--print", prompt)
+        else:
+            raise LauncherError(
+                f"{seat.name} has no canonical file-input invocation"
+            )
         stdin_bytes = b""
         pre_run_input_sha256 = _sha256(attested_input_bytes)
     else:
@@ -2958,13 +3071,142 @@ def _extract_review_body(run: SeatRun) -> bytes:
         raise LauncherError(f"{run.seat.name} result is not canonical UTF-8") from exc
 
 
-def _assert_successful_reviewer_run(run: SeatRun) -> None:
+def _validate_phase1_review_body(
+    *,
+    seat: Seat,
+    body: bytes,
+    input_manifest_sha256: str,
+) -> None:
+    """Enforce the complete Phase-1 Markdown contract before publication."""
+    if seat.name not in PHASE1_FINDING_PREFIX:
+        raise LauncherError(f"{seat.name} is not a Phase-1 review seat")
+    if re.fullmatch(r"[0-9a-f]{64}", input_manifest_sha256) is None:
+        raise LauncherError("Phase-1 review manifest SHA-256 is invalid")
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise LauncherError(f"{seat.name} review body is not UTF-8") from exc
+    if len(re.findall(r"\S+", text)) > PHASE1_REVIEW_MAX_WORDS:
+        raise LauncherError(
+            f"{seat.name} review exceeds the {PHASE1_REVIEW_MAX_WORDS}-word limit"
+        )
+
+    matches = list(re.finditer(r"^# [^\n]+$", text, flags=re.MULTILINE))
+    headings = tuple(match.group(0) for match in matches)
+    if headings != PHASE1_REVIEW_HEADINGS:
+        raise LauncherError(
+            f"{seat.name} review headings are missing, extra, or out of order"
+        )
+    if not matches or text[: matches[0].start()].strip():
+        raise LauncherError(f"{seat.name} review contains text before # Verdict")
+
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections[match.group(0)] = text[start:end].strip()
+    for heading, section in sections.items():
+        if (
+            heading in ("# Blocking findings", "# Important findings")
+            and section == "None"
+        ):
+            continue
+        normalized = section.lower().rstrip(".")
+        if normalized in PHASE1_PLACEHOLDERS or "<placeholder" in normalized:
+            raise LauncherError(
+                f"{seat.name} review has placeholder content under {heading}"
+            )
+
+    verdict_lines = [
+        line.strip()
+        for line in sections["# Verdict"].splitlines()
+        if line.strip()
+    ]
+    if len(verdict_lines) < 2 or PHASE1_VERDICT.fullmatch(verdict_lines[0]) is None:
+        raise LauncherError(f"{seat.name} review verdict line is invalid")
+    expected_manifest_line = (
+        f"input_manifest_sha256: {input_manifest_sha256}"
+    )
+    if verdict_lines[1] != expected_manifest_line:
+        raise LauncherError(
+            f"{seat.name} review verdict does not bind the attested manifest"
+        )
+    if (
+        sum(line == expected_manifest_line for line in verdict_lines) != 1
+        or "packet_sha256" in sections["# Verdict"]
+    ):
+        raise LauncherError(
+            f"{seat.name} review verdict contains forbidden or duplicate hashes"
+        )
+
+    finding_ids: list[str] = []
+    expected_prefix = PHASE1_FINDING_PREFIX[seat.name]
+    for heading in ("# Blocking findings", "# Important findings"):
+        section = sections[heading]
+        if section == "None":
+            continue
+        identifiers = PHASE1_FINDING_ID.findall(section)
+        if not identifiers:
+            raise LauncherError(
+                f"{seat.name} review has a non-None finding without an ID"
+            )
+        blocks = tuple(
+            block.strip()
+            for block in re.split(r"\n[ \t]*\n", section)
+            if block.strip()
+        )
+        for block in blocks:
+            first_line = block.splitlines()[0].strip()
+            first_identifier = re.match(
+                r"^(?:[-*+]\s+|\d+[.)]\s+)?"
+                r"\[([A-Z0-9][A-Z0-9._-]{2,63})\]",
+                first_line,
+            )
+            if first_identifier is None:
+                raise LauncherError(
+                    f"{seat.name} review has a finding block without an ID prefix"
+                )
+            for continuation_line in block.splitlines()[1:]:
+                if re.match(
+                    r"^(?:[-*+]\s+|\d+[.)]\s+)",
+                    continuation_line,
+                ) and (
+                    PHASE1_FINDING_ID.match(
+                        re.sub(
+                            r"^(?:[-*+]\s+|\d+[.)]\s+)",
+                            "",
+                            continuation_line,
+                        )
+                    )
+                    is None
+                ):
+                    raise LauncherError(
+                        f"{seat.name} review has a finding bullet without an ID prefix"
+                    )
+        if any(not identifier.startswith(expected_prefix) for identifier in identifiers):
+            raise LauncherError(
+                f"{seat.name} review uses a finding ID from another seat"
+            )
+        finding_ids.extend(identifiers)
+    if len(finding_ids) != len(set(finding_ids)):
+        raise LauncherError(f"{seat.name} review repeats a finding ID")
+
+
+def _assert_successful_reviewer_run(
+    run: SeatRun,
+    *,
+    input_manifest_sha256: str,
+) -> None:
     """Accept one reviewer only when its route completed and output parses."""
     if run.returncode == 124 and run.seat.name == "kimi":
         raise LauncherError("Kimi seat unavailable (timeout exit 124)")
     if run.returncode != 0:
         raise LauncherError(f"{run.seat.name} exited with status {run.returncode}")
-    _extract_review_body(run)
+    _validate_phase1_review_body(
+        seat=run.seat,
+        body=_extract_review_body(run),
+        input_manifest_sha256=input_manifest_sha256,
+    )
 
 
 def _normalized_review_bytes(
@@ -2974,6 +3216,11 @@ def _normalized_review_bytes(
     receipt_bytes: bytes,
 ) -> bytes:
     body = _extract_review_body(run)
+    _validate_phase1_review_body(
+        seat=run.seat,
+        body=body,
+        input_manifest_sha256=str(receipt["input_manifest_sha256"]),
+    )
     ordered_values = (
         ("requested_route", receipt["requested_route"]),
         ("launcher_invocation_uuid", receipt["launcher_invocation_uuid"]),
@@ -3307,6 +3554,10 @@ def launch_panel(
         environments["codex"]["CODEX_HOME"] = str(
             seat_homes["codex"] / ".codex"
         )
+        input_paths["gemini"] = _prepare_gemini_read_only_input(
+            cwd=seat_cwds["gemini"],
+            review_input_bytes=frozen.review_input_bytes,
+        )
         (
             kimi_input_path,
             kimi_profile_path,
@@ -3418,7 +3669,10 @@ def launch_panel(
         if _sha256(current_canary) != expected_canary_sha256:
             raise LauncherError("Kimi canary changed during reviewer execution")
         for run in runs:
-            _assert_successful_reviewer_run(run)
+            _assert_successful_reviewer_run(
+                run,
+                input_manifest_sha256=frozen.input_manifest_sha256,
+            )
 
         cleanup_errors: list[LauncherError] = []
         for name, path in tuple(temporary_sandboxes.items()):

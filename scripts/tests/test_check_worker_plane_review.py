@@ -749,6 +749,54 @@ def test_rejects_malformed_review_contract(
         _validate(bundle)
 
 
+def test_rejects_non_empty_text_before_verdict_heading(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_body_and_raw(
+        bundle,
+        0,
+        lambda text: f"Provider preamble must not survive normalization.\n\n{text}",
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(
+        ReviewValidationError, match="non-empty text before # Verdict"
+    ):
+        _validate(bundle)
+
+
+def test_allows_whitespace_before_verdict_heading(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_body_and_raw(bundle, 0, lambda text: f" \n\t\n{text}")
+    _commit_artifact_mutation(bundle)
+
+    _validate(bundle)
+
+
+def test_rejects_manifest_hash_after_second_non_empty_verdict_line(
+    tmp_path: Path,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_body_and_raw(
+        bundle,
+        0,
+        lambda text: text.replace(
+            "GO-WITH-CHANGES — confidence 91\n\n"
+            "input_manifest_sha256:",
+            "GO-WITH-CHANGES — confidence 91\n\n"
+            "Provider preamble inside the verdict section.\n\n"
+            "input_manifest_sha256:",
+            1,
+        ),
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(
+        ReviewValidationError,
+        match="input_manifest_sha256 as the second non-empty verdict line",
+    ):
+        _validate(bundle)
+
+
 def test_rejects_finding_without_stable_id(tmp_path: Path) -> None:
     bundle = make_bundle(tmp_path)
     _write_review(bundle, 0, lambda text: text.replace("[FABLE-B1] ", "", 1))

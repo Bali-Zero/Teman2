@@ -633,6 +633,10 @@ def _parse_frontmatter(text: str, path: Path) -> tuple[dict[str, object], str]:
 
 def _section_map(body: str, path: Path) -> dict[str, str]:
     matches = list(re.finditer(r"^# [^\n]+$", body, flags=re.MULTILINE))
+    if matches and body[: matches[0].start()].strip():
+        raise ReviewValidationError(
+            f"review must not contain non-empty text before # Verdict: {path}"
+        )
     headings = tuple(match.group(0) for match in matches)
     if len(headings) != len(EXPECTED_HEADINGS):
         raise ReviewValidationError(
@@ -670,10 +674,15 @@ def _validate_verdict(
     if match is None:
         raise ReviewValidationError(f"invalid verdict enum or confidence: {path}")
     verdict = match.group(1).upper()
+    expected_line = f"input_manifest_sha256: {manifest_sha256}"
+    if len(lines) < 2 or lines[1] != expected_line:
+        raise ReviewValidationError(
+            "reviewer must repeat only input_manifest_sha256 as the second "
+            f"non-empty verdict line: {path}"
+        )
     manifest_lines = [
         line for line in lines if line.startswith("input_manifest_sha256:")
     ]
-    expected_line = f"input_manifest_sha256: {manifest_sha256}"
     if manifest_lines != [expected_line]:
         raise ReviewValidationError(
             f"reviewer must repeat only input_manifest_sha256, never packet SHA: {path}"
