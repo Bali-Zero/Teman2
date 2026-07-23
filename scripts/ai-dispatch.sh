@@ -433,6 +433,8 @@ run_claude() {
     # Multi-account fallback: try each CLAUDE_CODE_OAUTH_TOKEN_N, then keychain
     local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4")
     local tried=0
+    local claude_bin
+    claude_bin="$(command -v claude)"
 
     for tv in "${token_vars[@]}" "keychain"; do
         local token_val=""
@@ -451,22 +453,31 @@ run_claude() {
         local start_time exit_code output
         start_time=$(date +%s)
         if [ -n "$token_val" ]; then
-            output=$(CLAUDE_CODE_OAUTH_TOKEN="$token_val" run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+            output=$(run_with_timeout "$timeout" env -u ANTHROPIC_API_KEY \
+                CLAUDE_CODE_OAUTH_TOKEN="$token_val" "$claude_bin" -p "$prompt" \
+                --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
         else
-            output=$(unset CLAUDE_CODE_OAUTH_TOKEN; run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+            output=$(run_with_timeout "$timeout" env -u ANTHROPIC_API_KEY \
+                -u CLAUDE_CODE_OAUTH_TOKEN "$claude_bin" -p "$prompt" \
+                --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
         fi
         local duration=$(( $(date +%s) - start_time ))
 
         save_output "claude-$mode" "$output" "$duration"
 
-        if [ "$exit_code" -eq 0 ]; then
+        if [ "$exit_code" -eq 0 ] && [ -n "${output//[[:space:]]/}" ]; then
             echo "$output"
             return 0
         fi
 
-        # Check for rate limit — try next token
-        if echo "$output" | grep -qiE "rate.?limit|too many requests|429|exhausted|quota|hit your limit"; then
-            warn "$label rate-limited — trying next token"
+        if [ "$exit_code" -eq 0 ]; then
+            warn "$label returned empty output — trying next token"
+            continue
+        fi
+
+        # Account-local quota/auth failures rotate to the next subscription.
+        if echo "$output" | grep -qiE "rate.?limit|too many requests|429|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9])401([^0-9]|$)"; then
+            warn "$label unavailable — trying next token"
             continue
         fi
 

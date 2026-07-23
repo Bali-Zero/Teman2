@@ -323,6 +323,43 @@ def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
     assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
 
 
+def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    for slot in range(1, 5):
+        monkeypatch.setenv(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
+        )
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    outcomes = (
+        _fake_proc(returncode=1, stderr="401 unauthorized"),
+        _fake_proc(returncode=1, stderr="weekly usage limit"),
+        _fake_proc(returncode=0, stdout=" \n"),
+        _fake_proc(
+            returncode=0,
+            stdout=_json.dumps({"structured_output": {"passes": True}}),
+        ),
+    )
+    seen: list[str] = []
+
+    def _capture(*args, **kwargs):
+        env = kwargs["env"]
+        assert "ANTHROPIC_API_KEY" not in env
+        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        return outcomes[len(seen) - 1]
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    result = claude_vision._run_claude_json("p", {"type": "object"})
+
+    assert result == {"passes": True}
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
     """A subprocess timeout is endpoint latency, not a defect — must raise the
     transient VisionTimeout (no burned attempt), NOT return None (which would

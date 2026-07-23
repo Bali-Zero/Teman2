@@ -281,7 +281,15 @@ def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> No
 
 _RATE_LIMIT_RE = re.compile(
     r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
+    re.IGNORECASE,
+)
+_AUTH_FAILURE_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
 _EXHAUSTED_TOKENS: dict[str, str] = {}  # label → reason (per-process latch)
@@ -307,7 +315,7 @@ def claude_reason(entry: dict) -> dict | None:
     """
     Ask Claude CLI to reason about a DLQ entry.
     Returns {fix_type, fix_instruction, confidence, needs_code_change} or None.
-    Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→legacy→keychain.
     Latches exhausted tokens per-process to avoid repeated timeouts.
     """
     job = entry["job"]
@@ -344,7 +352,11 @@ Rules:
             continue
 
         env = {
-            **os.environ,
+            **{
+                key: value
+                for key, value in os.environ.items()
+                if key != "ANTHROPIC_API_KEY"
+            },
             "PATH": (
                 f"{os.path.expanduser('~/.local/bin')}:"
                 f"{os.path.expanduser('~/.claude/local')}:"
@@ -373,17 +385,25 @@ Rules:
             return None
 
         combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _RATE_LIMIT_RE.search(combined):
-            logger.warning(f"{job}: {label} rate-limited — trying next token")
-            _EXHAUSTED_TOKENS[label] = "rate_limit"
-            continue
-
         if result.returncode != 0:
+            if _RATE_LIMIT_RE.search(combined):
+                logger.warning(f"{job}: {label} rate-limited — trying next token")
+                _EXHAUSTED_TOKENS[label] = "rate_limit"
+                continue
+            if _AUTH_FAILURE_RE.search(combined):
+                logger.warning(f"{job}: {label} auth failed — trying next token")
+                _EXHAUSTED_TOKENS[label] = "auth"
+                continue
+
             logger.warning(f"{job}: {label} exit {result.returncode}")
             return None
 
         # Parse JSON from output
         clean = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+        if not clean.strip():
+            logger.warning(f"{job}: empty claude output ({label}) — trying next token")
+            _EXHAUSTED_TOKENS[label] = "empty_output"
+            continue
         start = clean.find("{")
         if start == -1:
             logger.warning(f"{job}: no JSON in claude output ({label})")

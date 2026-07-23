@@ -48,8 +48,15 @@ CLAUDE_TOKEN_VARS = [
 # Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py
 RATE_LIMIT_PATTERNS = re.compile(
     r"rate.?limit|too many requests|429|exhausted|quota|"
-    r"capacity|overloaded|try again later|hit your limit|"
+    r"usage limit|weekly limit|capacity|overloaded|try again later|hit your limit|"
     r"timeout after 90s|possibly rate limit",
+    re.IGNORECASE,
+)
+AUTH_FAILURE_PATTERNS = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
 
@@ -106,6 +113,12 @@ def _is_rate_limited(stdout: str, stderr: str) -> bool:
     return bool(RATE_LIMIT_PATTERNS.search(combined))
 
 
+def _is_auth_failed(stdout: str, stderr: str) -> bool:
+    """Detect account-specific OAuth/login failures from CLI output."""
+    combined = (stdout or "") + (stderr or "")
+    return bool(AUTH_FAILURE_PATTERNS.search(combined))
+
+
 def _get_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
@@ -147,7 +160,7 @@ class CLIResult:
 
     @property
     def success(self) -> bool:
-        return self.returncode == 0
+        return self.returncode == 0 and bool(self.output)
 
     @property
     def output(self) -> str:
@@ -338,7 +351,11 @@ class CLIRuntime:
         """Invoke CLI with a specific token. Returns CLIResult."""
         # Build env with token override
         # Empty string = use keychain (pop the var so CLI falls back to keychain)
-        env = os.environ.copy()
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key != "ANTHROPIC_API_KEY"
+        }
         if token_value:
             env["CLAUDE_CODE_OAUTH_TOKEN"] = token_value
         else:
@@ -433,11 +450,32 @@ class CLIRuntime:
                 )
                 return result
 
-            # Check if rate-limited
+            # Account-specific exhaustion/auth failures and empty success all
+            # rotate to the next subscription seat. A zero exit with no output
+            # is not a successful LLM response.
             if _is_rate_limited(result.stdout, result.stderr):
                 _exhausted_tokens.add(label)
                 logger.warning(
                     f"[CLIRuntime] {label} EXHAUSTED (rate limited). "
+                    f"Latched for this run."
+                )
+                continue
+            if _is_auth_failed(result.stdout, result.stderr):
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} AUTH FAILED. Latched for this run."
+                )
+                continue
+            if result.returncode == -1:
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} TIMED OUT. Latched for this run."
+                )
+                continue
+            if result.returncode == 0 and not result.output:
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} returned empty output. "
                     f"Latched for this run."
                 )
                 continue

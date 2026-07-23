@@ -376,6 +376,46 @@ class TestHaikuClassifyHonesty:
             score = await filt._haiku_classify("some article text")
         assert score == 0.0
 
+    @pytest.mark.asyncio
+    async def test_retries_auth_quota_and_empty_before_slot_four(
+        self, monkeypatch
+    ):
+        filt = T4RelevanceFilter()
+        for slot in range(1, 5):
+            monkeypatch.setenv(
+                f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
+            )
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+        outcomes = (
+            (1, b"", b"401 unauthorized"),
+            (1, b"", b"weekly limit reached"),
+            (0, b"  \n", b""),
+            (0, b"0.91\n", b""),
+        )
+        seen_tokens: list[str] = []
+
+        async def _spawn(*args, **kwargs):
+            returncode, stdout, stderr = outcomes[len(seen_tokens)]
+            seen_tokens.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
+            assert "ANTHROPIC_API_KEY" not in kwargs["env"]
+            proc = AsyncMock()
+            proc.returncode = returncode
+            proc.communicate = AsyncMock(return_value=(stdout, stderr))
+            return proc
+
+        with patch("asyncio.create_subprocess_exec", new=_spawn):
+            score = await filt._haiku_classify("some article text")
+
+        assert score == 0.91
+        assert seen_tokens == [
+            "sentinel-1",
+            "sentinel-2",
+            "sentinel-3",
+            "sentinel-4",
+        ]
+
 
 class TestClassifyFailOpen:
     """Guilt+innocence for classify()'s fail-open-on-unavailable contract."""

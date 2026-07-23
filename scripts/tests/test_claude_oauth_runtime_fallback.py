@@ -1,0 +1,317 @@
+"""Behavior tests for four-seat Claude OAuth rotation outside backend runtime."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Any
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_module(relative_path: str, name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, REPO_ROOT / relative_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _install_four_slots(monkeypatch: Any) -> None:
+    for slot in range(1, 5):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+
+def _four_outcome_runner(
+    monkeypatch: Any,
+    module: ModuleType,
+    success_stdout: str,
+) -> list[str]:
+    outcomes = (
+        SimpleNamespace(returncode=1, stdout="", stderr="401 unauthorized"),
+        SimpleNamespace(returncode=1, stdout="", stderr="weekly limit reached"),
+        SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
+        SimpleNamespace(returncode=0, stdout=success_stdout, stderr=""),
+    )
+    seen_tokens: list[str] = []
+
+    def _run(*args: Any, **kwargs: Any) -> SimpleNamespace:
+        env = kwargs["env"]
+        seen_tokens.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        assert "ANTHROPIC_API_KEY" not in env
+        return outcomes[len(seen_tokens) - 1]
+
+    monkeypatch.setattr(module.subprocess, "run", _run)
+    return seen_tokens
+
+
+def test_auto_verifier_reaches_slot_four_after_auth_quota_and_empty(
+    monkeypatch: Any,
+) -> None:
+    module = _load_module(
+        "apps/backend-rag/scripts/auto_verifier.py", "oauth_auto_verifier"
+    )
+    _install_four_slots(monkeypatch)
+    module._VERIFIER_EXHAUSTED.clear()
+    seen = _four_outcome_runner(
+        monkeypatch,
+        module,
+        "VERDICT: FAITHFUL\nREASON: Grounded in the cited excerpt.",
+    )
+
+    result = module.call_claude_verifier("IM-001", "claim", "source")
+
+    assert result.verdict == "FAITHFUL"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+def test_verified_generator_reaches_slot_four_after_auth_quota_and_empty(
+    monkeypatch: Any,
+) -> None:
+    module = _load_module(
+        "apps/backend-rag/scripts/verified_generator.py", "oauth_verified_generator"
+    )
+    _install_four_slots(monkeypatch)
+    module._GEN_EXHAUSTED.clear()
+    seen = _four_outcome_runner(
+        monkeypatch,
+        module,
+        "Complete grounded guide [IM-001]",
+    )
+
+    output = module.generate_document(
+        "immigration",
+        "topic",
+        {"IM-001": {"claim": "claim", "pasal_ref": "Article 1"}},
+        "",
+        "",
+        "",
+    )
+
+    assert output == "Complete grounded guide [IM-001]"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+def test_image_style_reaches_slot_four_after_auth_quota_and_empty(
+    monkeypatch: Any,
+) -> None:
+    module = _load_module(
+        "apps/bali-intel-scraper/scripts/bz_image_style.py", "oauth_bz_image_style"
+    )
+    _install_four_slots(monkeypatch)
+    module._IMG_EXHAUSTED_TOKENS.clear()
+    expected = "A cinematic grounded visual concept with enough detail for rendering."
+    seen = _four_outcome_runner(monkeypatch, module, expected)
+
+    output = module._prompt_via_claude("Title", "visa", "Summary", "crisis")
+
+    assert output == expected
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+def test_dlq_reasoner_reaches_slot_four_after_auth_quota_and_empty(
+    monkeypatch: Any,
+) -> None:
+    module = _load_module("scripts/dlq_autopilot.py", "oauth_dlq_autopilot")
+    _install_four_slots(monkeypatch)
+    module._EXHAUSTED_TOKENS.clear()
+    success = json.dumps(
+        {
+            "fix_type": "config",
+            "fix_instruction": "Restore the missing runtime setting.",
+            "confidence": 0.9,
+            "needs_code_change": False,
+        }
+    )
+    seen = _four_outcome_runner(monkeypatch, module, success)
+
+    result = module.claude_reason(
+        {
+            "job": "test-job",
+            "error_summary": "A sufficiently detailed test failure",
+            "log_tail": "",
+            "files_implicated": [],
+        }
+    )
+
+    assert result is not None
+    assert result["_token_used"] == "token_4"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+def test_mata_runtime_reaches_slot_four_after_auth_quota_and_empty(
+    monkeypatch: Any,
+) -> None:
+    module = _load_module(
+        "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
+        "oauth_mata_cli_runtime",
+    )
+    _install_four_slots(monkeypatch)
+    module.reset_exhausted_tokens()
+    outcomes = (
+        SimpleNamespace(returncode=1, stdout="", stderr="401 unauthorized"),
+        SimpleNamespace(returncode=1, stdout="", stderr="weekly limit reached"),
+        SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
+        SimpleNamespace(returncode=0, stdout="slot-four-success", stderr=""),
+    )
+    seen: list[str] = []
+
+    def _run_subprocess(
+        cmd: list[str],
+        env: dict[str, str] | None = None,
+    ) -> SimpleNamespace:
+        assert env is not None
+        assert "ANTHROPIC_API_KEY" not in env
+        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        return outcomes[len(seen) - 1]
+
+    runtime = module.CLIRuntime(model="claude")
+    monkeypatch.setattr(runtime, "_run_subprocess", _run_subprocess)
+
+    result = runtime.invoke("safe test prompt")
+
+    assert result.success
+    assert result.output == "slot-four-success"
+    assert result.token_used == "CLAUDE_CODE_OAUTH_TOKEN_4"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+def _write_fake_claude(path: Path) -> None:
+    path.write_text(
+        """#!/bin/bash
+set -u
+case "${CLAUDE_CODE_OAUTH_TOKEN:-keychain}" in
+  sentinel-1) echo "401 unauthorized" >&2; exit 1 ;;
+  sentinel-2) echo "weekly limit reached" >&2; exit 1 ;;
+  sentinel-3) exit 0 ;;
+  sentinel-4)
+    [ -z "${ANTHROPIC_API_KEY:-}" ] || exit 9
+    echo "slot-four-success"
+    exit 0
+    ;;
+  *) echo "unexpected account" >&2; exit 7 ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o700)
+
+
+def test_ai_dispatch_shell_reaches_slot_four(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_claude = fake_bin / "claude"
+    _write_fake_claude(fake_claude)
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env['PATH']}",
+            "CLAUDE_CODE_OAUTH_TOKEN_1": "sentinel-1",
+            "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
+            "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
+            "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "ANTHROPIC_API_KEY": "must-not-leak",
+        }
+    )
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(REPO_ROOT / "scripts/ai-dispatch.sh"),
+            "claude-explain",
+            "Explain this harmless test.",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "slot-four-success" in result.stdout
+
+
+def test_wr2_metrics_wrapper_declares_real_account_rotation() -> None:
+    source = (
+        REPO_ROOT
+        / "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "run_claude_account" in source
+    assert (
+        "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 "
+        "CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4"
+    ) in source
+    assert "returned empty output" not in source or "grep -q '[^[:space:]]'" in source
+    assert "ANTHROPIC_API_KEY" in source
+
+
+def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
+    fake_claude = tmp_path / "claude"
+    _write_fake_claude(fake_claude)
+    fake_home = tmp_path / "home"
+    queue_dir = (
+        fake_home
+        / "nuzantara/apps/war-room/output/queue"
+    )
+    queue_dir.mkdir(parents=True)
+    items = [
+        {
+            "state": "published",
+            "engagement_metrics": {"likes": index},
+        }
+        for index in range(10)
+    ]
+    (queue_dir / "human-review-queue.json").write_text(
+        json.dumps({"items": items}), encoding="utf-8"
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(fake_home),
+            "WR2_IG_CLAUDE_BIN": str(fake_claude),
+            "WR2_IG_METRICS_TIMEOUT_SECS": "300",
+            "WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS": "60",
+            "WR2_IG_METRICS_POLL_SECS": "1",
+            "CLAUDE_CODE_OAUTH_TOKEN_1": "sentinel-1",
+            "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
+            "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
+            "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "ANTHROPIC_API_KEY": "must-not-leak",
+        }
+    )
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(
+                REPO_ROOT
+                / "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh"
+            ),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    log = (fake_home / "logs/wr2-ig-metrics-analyst.log").read_text(
+        encoding="utf-8"
+    )
+    assert result.returncode == 0, result.stderr
+    assert "used: CLAUDE_CODE_OAUTH_TOKEN_4" in log

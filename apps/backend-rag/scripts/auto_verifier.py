@@ -84,7 +84,15 @@ REASON: <one sentence>"""
 
 _VERIFIER_RATE_LIMIT_RE = re.compile(
     r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
+    re.IGNORECASE,
+)
+_VERIFIER_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
 _VERIFIER_EXHAUSTED: dict[str, str] = {}
@@ -107,14 +115,18 @@ def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
     """Verify a single claim via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→legacy→keychain."""
     prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
 
     for label, token in _verifier_token_chain():
         if label in _VERIFIER_EXHAUSTED:
             continue
 
-        env = os.environ.copy()
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key != "ANTHROPIC_API_KEY"
+        }
         if token:
             env["CLAUDE_CODE_OAUTH_TOKEN"] = token
         else:
@@ -131,11 +143,23 @@ def call_claude_verifier(
             continue
 
         combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _VERIFIER_RATE_LIMIT_RE.search(combined):
-            _VERIFIER_EXHAUSTED[label] = "rate_limit"
-            continue
+        if result.returncode != 0:
+            if _VERIFIER_RATE_LIMIT_RE.search(combined):
+                _VERIFIER_EXHAUSTED[label] = "rate_limit"
+                continue
+            if _VERIFIER_AUTH_RE.search(combined):
+                _VERIFIER_EXHAUSTED[label] = "auth"
+                continue
+            return ClaimVerificationResult(
+                claim_id=claim_id,
+                verdict="UNCERTAIN",
+                reason=f"Claude CLI failed via {label}",
+            )
 
-        text = result.stdout.strip() if result.returncode == 0 else ""
+        text = result.stdout.strip()
+        if not text:
+            _VERIFIER_EXHAUSTED[label] = "empty_output"
+            continue
         verdict, reason = "UNCERTAIN", text
         for line in text.split("\n"):
             if line.startswith("VERDICT:"):

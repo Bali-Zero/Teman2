@@ -468,6 +468,49 @@ def _run_subprocess_with_emitter(monkeypatch, emitter_code: str):
     )
 
 
+def test_subprocess_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
+    for slot in range(1, 5):
+        monkeypatch.setenv(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
+        )
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    emitter = (
+        "import json, os, sys\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'sentinel-1':\n"
+        "    print('401 unauthorized')\n"
+        "elif token == 'sentinel-2':\n"
+        "    print('weekly limit reached')\n"
+        "elif token == 'sentinel-3':\n"
+        "    pass\n"
+        "elif token == 'sentinel-4':\n"
+        "    assert 'ANTHROPIC_API_KEY' not in os.environ\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-four-success'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-four-success'}))\n"
+        "else:\n"
+        "    print('unexpected account', file=sys.stderr)\n"
+        "    raise SystemExit(7)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any("slot-four-success" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
 def test_subprocess_streams_line_over_64kb_default_limit(monkeypatch):
     """GUILT: a single assistant NDJSON line larger than asyncio's 64KB default
     StreamReader limit must be read without LimitOverrunError. A small first

@@ -15,16 +15,19 @@ SLOT4_CONSUMERS = (
     ("infra/launchagents/wrappers/cron-agent.sh", "for i in 1 2 3 4; do"),
     (
         "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
-        "${CLAUDE_CODE_OAUTH_TOKEN_4:-}",
+        "CLAUDE_CODE_OAUTH_TOKEN_4",
     ),
     ("scripts/ai-dispatch.sh", '"CLAUDE_CODE_OAUTH_TOKEN_4"'),
     ("scripts/dlq_autopilot.py", "for i in (1, 2, 3, 4):"),
-    ("scripts/wr2_html_renderer/claude_vision.py", '"CLAUDE_CODE_OAUTH_TOKEN_4"'),
+    ("scripts/wr2_html_renderer/claude_vision.py", "for index in (1, 2, 3, 4):"),
     ("scripts/zantara-gateway/claude_client.py", "for i in (1, 2, 3, 4):"),
     ("apps/backend-rag/scripts/auto_verifier.py", "for i in (1, 2, 3, 4):"),
     ("apps/backend-rag/scripts/verified_generator.py", "for i in (1, 2, 3, 4):"),
     ("apps/bali-intel-scraper/scripts/bz_image_style.py", "for i in (1, 2, 3, 4):"),
-    ("apps/evaluator/nlm_deep_research/t4_monitor.py", '"CLAUDE_CODE_OAUTH_TOKEN_4"'),
+    (
+        "apps/evaluator/nlm_deep_research/t4_monitor.py",
+        "for index in (1, 2, 3, 4):",
+    ),
     (
         "apps/mata-garuda/mata_garuda/agents/daily_briefing_agent.py",
         '"CLAUDE_CODE_OAUTH_TOKEN_4"',

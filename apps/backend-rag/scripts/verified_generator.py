@@ -256,7 +256,15 @@ def step_deepseek_reasoning(
 
 _GEN_RATE_LIMIT_RE = re.compile(
     r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
+    re.IGNORECASE,
+)
+_GEN_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
 _GEN_EXHAUSTED: dict[str, str] = {}
@@ -285,7 +293,7 @@ def generate_document(
     existing_text: str | None = None,
 ) -> str:
     """Step 6: Generate T2 document via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→legacy→keychain."""
     claims_summary = build_claims_summary(claims_db)
 
     research_ctx = (research_context[:2000] if research_context else "Not available — proceed from claims_db only")
@@ -315,7 +323,11 @@ def generate_document(
         if label in _GEN_EXHAUSTED:
             continue
 
-        env = os.environ.copy()
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key != "ANTHROPIC_API_KEY"
+        }
         if token:
             env["CLAUDE_CODE_OAUTH_TOKEN"] = token
         else:
@@ -333,16 +345,25 @@ def generate_document(
             continue
 
         combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _GEN_RATE_LIMIT_RE.search(combined):
-            logger.warning("generate_document: %s rate-limited", label)
-            _GEN_EXHAUSTED[label] = "rate_limit"
-            continue
-
         if result.returncode != 0:
+            if _GEN_RATE_LIMIT_RE.search(combined):
+                logger.warning("generate_document: %s rate-limited", label)
+                _GEN_EXHAUSTED[label] = "rate_limit"
+                continue
+            if _GEN_AUTH_RE.search(combined):
+                logger.warning("generate_document: %s auth failed", label)
+                _GEN_EXHAUSTED[label] = "auth"
+                continue
+
             logger.error("claude CLI error (%s): %s", label, result.stderr[:500])
             sys.exit(1)
 
-        return result.stdout.strip()
+        output = result.stdout.strip()
+        if not output:
+            logger.warning("generate_document: %s returned empty output", label)
+            _GEN_EXHAUSTED[label] = "empty_output"
+            continue
+        return output
 
     logger.error("generate_document: all Claude tokens exhausted")
     sys.exit(1)

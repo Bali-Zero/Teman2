@@ -11,8 +11,8 @@
 # `claude` directly with no explicit "used: <tier>" log line, unlike
 # regulatory-watcher-run.sh (via claude-cascade.sh) — structurally unprovable
 # which model actually answered a given run. Fix: log an explicit provenance
-# line keyed off the claude exit code, without changing the invocation itself
-# (single-tier by design — this agent's Read/Bash tool needs stay Claude-only).
+# line keyed off the claude exit code. The agent stays Claude-only because it
+# needs Read/Bash tools, but rotates across all configured OAuth seats.
 #
 # B7 wall-clock timeout + loud logging (2026-07-14, WR2 deep audit §4/§10.7):
 # a run hung 28h+ until externally SIGTERM'd, and BOTH log files were
@@ -39,20 +39,21 @@ ERR="$LOGDIR/wr2-ig-metrics-analyst.err.log"
 
 TIMEOUT_SECS="${WR2_IG_METRICS_TIMEOUT_SECS:-7200}"
 HEARTBEAT_SECS=300
+POLL_SECS="${WR2_IG_METRICS_POLL_SECS:-5}"
 KILL_GRACE_SECS=10
+if [ "$POLL_SECS" -lt 1 ]; then
+  POLL_SECS=1
+fi
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
 # Source secrets for Gemini OAuth + any future env
-set -a
-source "${HOME}/.nuzantara-secrets.env" 2>/dev/null || true
-set +a
-# MAX-4 → expose the un-suffixed CLAUDE_CODE_OAUTH_TOKEN that the `claude` CLI reads
-# (the _1/_2/_3/_4 suffix is a client convention; the bare CLI ignores it).
-if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN_2:-${CLAUDE_CODE_OAUTH_TOKEN_3:-${CLAUDE_CODE_OAUTH_TOKEN_4:-}}}}"
+if [ -f "${HOME}/.nuzantara-secrets.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "${HOME}/.nuzantara-secrets.env"
+  set +a
 fi
-
 
 # Pre-flight: do we have ≥10 published carousels with metrics?
 PUBLISHED_COUNT=$(python3 -c "
@@ -139,70 +140,132 @@ else
   GEMINI_HINT=" IMPORTANT: agy binary not found — use the LOCAL statistical fallback at Step 2, mark partial:true."
 fi
 
-# Spawn Claude agent (Sonnet 5) per spec frontmatter — backgrounded under a
-# wall-clock watchdog (see B7 note at top of file).
+# Spawn Claude agent (Sonnet 5) per spec frontmatter. Each OAuth seat gets a
+# bounded attempt; auth/quota/empty failures rotate to the next seat while the
+# aggregate worst-case stays within the original two-hour budget.
 cd "${HOME}/nuzantara"
 CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
-# Best-effort line-buffering for the child's stdout/stderr (macOS ships a
-# native `stdbuf`, syntax `-o L`/`-e L` — not the GNU `-oL` short form).
-# Defense-in-depth only: the primary "log is never silent" guarantee below
-# is the wrapper's own heartbeat, which does not depend on child buffering
-# behavior at all.
-if command -v stdbuf &>/dev/null; then
-  stdbuf -o L -e L /Users/nuzantara/.local/bin/claude -p \
-    --model claude-sonnet-5 \
-    --permission-mode bypassPermissions \
-    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
-    "$CLAUDE_PROMPT" \
-    >> "$LOG" 2>> "$ERR" &
-else
-  /Users/nuzantara/.local/bin/claude -p \
-    --model claude-sonnet-5 \
-    --permission-mode bypassPermissions \
-    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
-    "$CLAUDE_PROMPT" \
-    >> "$LOG" 2>> "$ERR" &
+CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-/Users/nuzantara/.local/bin/claude}"
+RETRYABLE_RE='rate.?limit|too many requests|429|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9])401([^0-9]|$)'
+ACCOUNT_TIMEOUT_SECS="${WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS:-$((TIMEOUT_SECS / 5))}"
+if [ "$ACCOUNT_TIMEOUT_SECS" -lt 60 ]; then
+  ACCOUNT_TIMEOUT_SECS=60
 fi
-CLAUDE_PID=$!
 
-ELAPSED=0
-TIMED_OUT=0
-while kill -0 "$CLAUDE_PID" 2>/dev/null; do
-  if [ "$ELAPSED" -ge "$TIMEOUT_SECS" ]; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] TIMEOUT after ${TIMEOUT_SECS}s — sending SIGTERM to pid $CLAUDE_PID" >> "$LOG"
-    kill -TERM "$CLAUDE_PID" 2>/dev/null || true
-    sleep "$KILL_GRACE_SECS"
-    if kill -0 "$CLAUDE_PID" 2>/dev/null; then
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] pid $CLAUDE_PID survived SIGTERM — sending SIGKILL" >> "$LOG"
-      kill -KILL "$CLAUDE_PID" 2>/dev/null || true
-    fi
-    TIMED_OUT=1
-    break
+run_claude_account() {
+  local label="$1"
+  local token="$2"
+  local attempt_out attempt_err elapsed last_heartbeat sleep_step timed_out claude_pid
+  attempt_out="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-claude-out.XXXXXX")"
+  attempt_err="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-claude-err.XXXXXX")"
+
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] trying ${label}" >> "$LOG"
+  if [ -n "$token" ]; then
+    env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$token" \
+      "$CLAUDE_BIN" -p \
+      --model claude-sonnet-5 \
+      --permission-mode bypassPermissions \
+      --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
+      "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
+  else
+    env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_OAUTH_TOKEN \
+      "$CLAUDE_BIN" -p \
+      --model claude-sonnet-5 \
+      --permission-mode bypassPermissions \
+      --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
+      "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
   fi
-  sleep "$HEARTBEAT_SECS"
-  ELAPSED=$((ELAPSED + HEARTBEAT_SECS))
-  if kill -0 "$CLAUDE_PID" 2>/dev/null; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] still running (${ELAPSED}s elapsed, timeout ${TIMEOUT_SECS}s, pid $CLAUDE_PID)" >> "$LOG"
+  claude_pid=$!
+
+  elapsed=0
+  last_heartbeat=0
+  timed_out=0
+  while kill -0 "$claude_pid" 2>/dev/null; do
+    if [ "$elapsed" -ge "$ACCOUNT_TIMEOUT_SECS" ]; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} TIMEOUT after ${ACCOUNT_TIMEOUT_SECS}s — sending SIGTERM to pid $claude_pid" >> "$LOG"
+      kill -TERM "$claude_pid" 2>/dev/null || true
+      sleep "$KILL_GRACE_SECS"
+      if kill -0 "$claude_pid" 2>/dev/null; then
+        kill -KILL "$claude_pid" 2>/dev/null || true
+      fi
+      timed_out=1
+      break
+    fi
+    sleep_step="$POLL_SECS"
+    if [ $((elapsed + sleep_step)) -gt "$ACCOUNT_TIMEOUT_SECS" ]; then
+      sleep_step=$((ACCOUNT_TIMEOUT_SECS - elapsed))
+    fi
+    sleep "$sleep_step"
+    elapsed=$((elapsed + sleep_step))
+    if kill -0 "$claude_pid" 2>/dev/null && \
+       [ $((elapsed - last_heartbeat)) -ge "$HEARTBEAT_SECS" ]; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} still running (${elapsed}s elapsed, pid $claude_pid)" >> "$LOG"
+      last_heartbeat="$elapsed"
+    fi
+  done
+
+  CLAUDE_EXIT=0
+  wait "$claude_pid" 2>/dev/null && CLAUDE_EXIT=0 || CLAUDE_EXIT=$?
+  if [ "$timed_out" -eq 1 ]; then
+    CLAUDE_EXIT=124
+  fi
+
+  cat "$attempt_out" >> "$LOG"
+  cat "$attempt_err" >> "$ERR"
+  if [ "$CLAUDE_EXIT" -eq 0 ] && grep -q '[^[:space:]]' "$attempt_out"; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: ${label} claude-sonnet-5 (exit=0)" >> "$LOG"
+    rm -f "$attempt_out" "$attempt_err"
+    return 0
+  fi
+  if [ "$CLAUDE_EXIT" -eq 124 ] || \
+     { [ "$CLAUDE_EXIT" -eq 0 ] && ! grep -q '[^[:space:]]' "$attempt_out"; } || \
+     grep -qiE "$RETRYABLE_RE" "$attempt_out" "$attempt_err"; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} unavailable (exit=${CLAUDE_EXIT}) — trying next account" >> "$ERR"
+    rm -f "$attempt_out" "$attempt_err"
+    return 98
+  fi
+
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} failed (exit=${CLAUDE_EXIT})" >> "$ERR"
+  rm -f "$attempt_out" "$attempt_err"
+  return "$CLAUDE_EXIT"
+}
+
+CLAUDE_EXIT=98
+for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4; do
+  token_value="${!token_var:-}"
+  [ -z "$token_value" ] && continue
+  if run_claude_account "$token_var" "$token_value"; then
+    CLAUDE_EXIT=0
+    break
+  else
+    attempt_rc=$?
+    if [ "$attempt_rc" -ne 98 ]; then
+      CLAUDE_EXIT="$attempt_rc"
+      break
+    fi
   fi
 done
 
-CLAUDE_EXIT=0
-wait "$CLAUDE_PID" 2>/dev/null && CLAUDE_EXIT=0 || CLAUDE_EXIT=$?
-if [ "$TIMED_OUT" -eq 1 ]; then
-  CLAUDE_EXIT=124
+if [ "$CLAUDE_EXIT" -ne 0 ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+  if run_claude_account "CLAUDE_CODE_OAUTH_TOKEN" "$CLAUDE_CODE_OAUTH_TOKEN"; then
+    CLAUDE_EXIT=0
+  else
+    CLAUDE_EXIT=$?
+  fi
 fi
 
-# Explicit tier-provenance line (PENDING-ARMS sonnet-5 runtime proof, 2026-07-06 fix):
-# single-tier by design (no claude-cascade.sh fallback — this agent needs Claude's
-# Read/Bash tools, which agy/codex/ollama tiers cannot serve), so "tier" here means
-# "did the one tier we have actually answer", not "which of several answered".
-if [ "$CLAUDE_EXIT" -eq 0 ]; then
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: tier1-claude-sonnet-5 (exit=0)" >> "$LOG"
-elif [ "$CLAUDE_EXIT" -eq 124 ]; then
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: tier1-claude-sonnet-5 ABORTED (timeout after ${TIMEOUT_SECS}s, pid $CLAUDE_PID)" >> "$ERR"
-else
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] agent run failed (exit $CLAUDE_EXIT) model=claude-sonnet-5" >> "$ERR"
+if [ "$CLAUDE_EXIT" -ne 0 ] && [ "$CLAUDE_EXIT" -eq 98 ]; then
+  if run_claude_account "keychain" ""; then
+    CLAUDE_EXIT=0
+  else
+    CLAUDE_EXIT=$?
+  fi
+fi
+
+if [ "$CLAUDE_EXIT" -eq 98 ]; then
+  CLAUDE_EXIT=1
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] all Claude OAuth accounts unavailable" >> "$ERR"
 fi
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done" >> "$LOG"

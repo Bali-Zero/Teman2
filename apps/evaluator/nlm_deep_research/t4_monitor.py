@@ -18,6 +18,7 @@ import httpx
 import logging
 import math
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -305,49 +306,102 @@ class T4RelevanceFilter:
             f"Article: {text[:1500]}"
         )
 
-        # Build env: strip ANTHROPIC_API_KEY (kill-switch), pass first OAuth
-        # token from the 3-token chain. If none set, let the CLI fall back to
-        # the macOS-keychain-stored token.
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        for key in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2",
-                    "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4", "CLAUDE_CODE_OAUTH_TOKEN"):
-            tok = os.environ.get(key, "").strip()
-            if tok:
-                env["CLAUDE_CODE_OAUTH_TOKEN"] = tok
-                break
+        # Build a real account chain. Promoting only the first numbered token
+        # made TOKEN_2..4 unreachable whenever TOKEN_1 was expired or capped.
+        token_chain: list[tuple[str, str]] = []
+        for index in (1, 2, 3, 4):
+            token = os.environ.get(
+                f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
+            ).strip()
+            if token:
+                token_chain.append((f"token_{index}", token))
+        legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+        if legacy and not any(token == legacy for _, token in token_chain):
+            token_chain.append(("token_legacy", legacy))
+        token_chain.append(("keychain", ""))
 
-        proc = await asyncio.create_subprocess_exec(
-            "claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
+        retryable = re.compile(
+            r"rate.?limit|too many requests|429|exhausted|quota|usage limit|"
+            r"weekly limit|capacity|overloaded|authentication (?:failed|required|expired)|"
+            r"auth required|login required|please (?:log in|login)|not logged in|"
+            r"not authenticated|invalid[_ ](?:grant|token)|token[_ ]revoked|"
+            r"refresh_token|unauthori[sz]ed|(?:error\D*)?401",
+            re.IGNORECASE,
         )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
-        except asyncio.TimeoutError:
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
-            logger.warning("Haiku via OAuth CLI timed out — classifier unavailable")
-            return None
 
-        if proc.returncode != 0:
-            logger.warning(
-                "claude CLI exit=%s stderr=%r — classifier unavailable",
-                proc.returncode, stderr.decode("utf-8", errors="replace")[:200],
+        for label, token in token_chain:
+            env = {
+                key: value
+                for key, value in os.environ.items()
+                if key != "ANTHROPIC_API_KEY"
+            }
+            if token:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+            else:
+                env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+            proc = await asyncio.create_subprocess_exec(
+                "claude",
+                "-p",
+                prompt,
+                "--model",
+                "claude-haiku-4-5-20251001",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
             )
-            return None
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=30
+                )
+            except asyncio.TimeoutError:
+                with contextlib.suppress(ProcessLookupError):
+                    proc.kill()
+                logger.warning(
+                    "Haiku via OAuth CLI %s timed out — classifier unavailable",
+                    label,
+                )
+                return None
 
-        raw = stdout.decode("utf-8", errors="replace").strip()
-        try:
-            return float(raw)
-        except ValueError:
-            # CLI sometimes returns "0.85\n\nExplanation..." — extract first token
-            import re as _re
-            m = _re.search(r"^\d+(?:\.\d+)?", raw)
-            if m:
-                return float(m.group())
-            logger.warning("CLI returned non-float: %r — classifier unavailable", raw)
-            return None
+            raw = stdout.decode("utf-8", errors="replace").strip()
+            error = stderr.decode("utf-8", errors="replace").strip()
+            combined = f"{raw}\n{error}"
+            if proc.returncode != 0:
+                if retryable.search(combined):
+                    logger.warning(
+                        "claude CLI %s unavailable (exit=%s) — trying next account",
+                        label,
+                        proc.returncode,
+                    )
+                    continue
+                logger.warning(
+                    "claude CLI exit=%s stderr=%r — classifier unavailable",
+                    proc.returncode,
+                    error[:200],
+                )
+                return None
+
+            if not raw:
+                logger.warning(
+                    "claude CLI %s returned empty output — trying next account",
+                    label,
+                )
+                continue
+
+            try:
+                return float(raw)
+            except ValueError:
+                # CLI sometimes returns "0.85\n\nExplanation..." — extract first token
+                match = re.search(r"^\d+(?:\.\d+)?", raw)
+                if match:
+                    return float(match.group())
+                logger.warning(
+                    "CLI returned non-float: %r — classifier unavailable", raw
+                )
+                return None
+
+        logger.warning("All Claude OAuth accounts unavailable — classifier unavailable")
+        return None
 
     async def layer3_haiku(self, text: str) -> Optional[float]:
         """Return Haiku relevance score for text, or None if unavailable."""

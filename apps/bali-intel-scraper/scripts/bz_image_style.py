@@ -404,7 +404,15 @@ def _build_llm_user_prompt(title: str, category: str, summary: str, mood: str) -
 
 _IMG_RATE_LIMIT_RE = re.compile(
     r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
+    re.IGNORECASE,
+)
+_IMG_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
 _IMG_EXHAUSTED_TOKENS: dict[str, str] = {}
@@ -426,7 +434,7 @@ def _load_img_token_chain() -> list[tuple[str, str]]:
 
 def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> str | None:
     """Call Claude Haiku via CLI subprocess to generate visual concept.
-    Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→legacy→keychain.
     Returns the raw prompt string, or None if CLI unavailable/failed."""
     user_msg = _build_llm_user_prompt(title, category, summary, mood)
     combined = f"{_VISUAL_DIRECTOR_SYSTEM}\n\n{user_msg}"
@@ -460,15 +468,33 @@ def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> st
             return None
 
         output_combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _IMG_RATE_LIMIT_RE.search(output_combined):
-            print(f"  claude CLI: {label} rate-limited — trying next", file=sys.stderr)
-            _IMG_EXHAUSTED_TOKENS[label] = "rate_limit"
-            continue
+        if result.returncode != 0:
+            if _IMG_RATE_LIMIT_RE.search(output_combined):
+                print(
+                    f"  claude CLI: {label} rate-limited — trying next",
+                    file=sys.stderr,
+                )
+                _IMG_EXHAUSTED_TOKENS[label] = "rate_limit"
+                continue
+            if _IMG_AUTH_RE.search(output_combined):
+                print(
+                    f"  claude CLI: {label} auth failed — trying next",
+                    file=sys.stderr,
+                )
+                _IMG_EXHAUSTED_TOKENS[label] = "auth"
+                continue
 
         if result.returncode == 0:
             output = result.stdout.strip()
             if output and len(output) > 30:
                 return output
+            if not output:
+                print(
+                    f"  claude CLI: {label} returned empty output — trying next",
+                    file=sys.stderr,
+                )
+                _IMG_EXHAUSTED_TOKENS[label] = "empty_output"
+                continue
 
         print(f"  claude CLI: {label} rc={result.returncode}", file=sys.stderr)
         return None  # Non-rate-limit error — stop trying

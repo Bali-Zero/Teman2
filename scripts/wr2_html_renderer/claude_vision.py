@@ -60,6 +60,13 @@ class VisionTimeout(VisionTransient):
 # + a session-limit message, or (older CLI paths) as rc!=0 with the limit text
 # on stdout/stderr. Match the human text conservatively.
 _RATE_LIMIT_RE = re.compile(r"session limit|rate.?limit|usage limit", re.IGNORECASE)
+_AUTH_FAILURE_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
+    re.IGNORECASE,
+)
 
 
 def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, returncode: int) -> bool:
@@ -184,6 +191,25 @@ Set brand_ok=true only if ALL hold. List any violations."""
 _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 
 
+def _vision_token_chain(env: dict[str, str]) -> list[tuple[str, str]]:
+    """Return OAuth seats in a stable order without duplicating credentials.
+
+    An explicitly supplied bare token remains the first override for backward
+    compatibility; otherwise the four numbered fleet slots are tried in order,
+    followed by the CLI keychain login.
+    """
+    chain: list[tuple[str, str]] = []
+    bare = env.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if bare:
+        chain.append(("token_legacy", bare))
+    for index in (1, 2, 3, 4):
+        token = env.get(f"CLAUDE_CODE_OAUTH_TOKEN_{index}", "").strip()
+        if token and not any(existing == token for _, existing in chain):
+            chain.append((f"token_{index}", token))
+    chain.append(("keychain", ""))
+    return chain
+
+
 def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | None = None) -> dict[str, Any] | None:
     """Call the claude CLI with a JSON schema, return the parsed object or None.
 
@@ -195,27 +221,11 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     """
     if timeout_s is None:
         timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    # MAX-plan OAuth: the `claude` CLI authenticates from the BARE
-    # CLAUDE_CODE_OAUTH_TOKEN env var (or an interactive config login). The
-    # fleet ships the token in numbered slots CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3/_4
-    # (~/.nuzantara-secrets.env, multi-account fallback) and ai-dispatch.sh maps
-    # one onto the bare var per call — but this client shelled out with the
-    # numbered slots only, so when the CLI's config login lapses the call fails
-    # `Not logged in / workspace not trusted` and (under WR2_VISION_REQUIRED=1)
-    # fails the whole carousel closed. Observed 2026-06-30 after a supervisor
-    # restart: vision dead, every draft render_failed. Cure (same logic as
-    # ai-dispatch.sh:426): if the bare token is unset, promote the first
-    # available numbered slot so the CLI authenticates via env, independent of
-    # any interactive config login. (scar #1 HOME-fork-adjacent: the slot→bare
-    # mapping lived only in a shell wrapper, not in the code that needs it.)
-    if not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        for _slot in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2", "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4"):
-            _val = env.get(_slot)
-            if _val:
-                env["CLAUDE_CODE_OAUTH_TOKEN"] = _val
-                break
+    base_env = {
+        key: value
+        for key, value in os.environ.items()
+        if key != "ANTHROPIC_API_KEY"
+    }
     # Pin the vision model (default sonnet: vision-capable + solid editorial
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
     # window nor trips the 120s timeout). Configurable without a code change.
@@ -227,55 +237,103 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         "--json-schema", json.dumps(schema),
         prompt,
     ]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_s)
-    except subprocess.TimeoutExpired:
-        # A timeout is endpoint latency/overload, not a slide defect — transient,
-        # must NOT burn a render attempt (2026-06-12 SCAR: intermittent 120s
-        # timeouts fail-closed-crashed healthy drafts during a congestion window).
-        logger.warning("claude vision call timed out after %ss — transient", timeout_s)
-        raise VisionTimeout(f"vision call timed out after {timeout_s}s")
-    # Parse the stdout envelope up front so a 429 can be told apart from a real
-    # failure even when the CLI exits rc!=0 (it emits the error as JSON on stdout
-    # and a non-zero code with empty stderr).
-    out = proc.stdout.strip()
-    envelope: dict[str, Any] | None = None
-    if out:
+    saw_rate_limit = False
+    last_rate_detail = ""
+
+    for label, token in _vision_token_chain(base_env):
+        env = dict(base_env)
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
         try:
-            parsed = json.loads(out)
-            if isinstance(parsed, dict):
-                envelope = parsed
-        except json.JSONDecodeError:
-            envelope = None
-    if _detect_rate_limit(envelope, (proc.stdout or "") + (proc.stderr or ""), proc.returncode):
-        raise VisionRateLimited(
-            f"claude vision rate-limited (429/session limit): {str(envelope.get('result', ''))[:160] if envelope else proc.stderr[:160]}"
-        )
-    if proc.returncode != 0:
-        logger.warning("claude vision call failed rc=%s err=%s", proc.returncode, proc.stderr[:300])
-        return None
-    if not out:
-        return None
-    if envelope is None:
-        logger.warning("claude vision: stdout not JSON: %s", out[:200])
-        return None
-    # CLI json envelope (verified 2026-06-07): when --json-schema is used the
-    # schema-conformant object lives in `structured_output` (a dict); `result`
-    # is the human-prose narration. Prefer structured_output.
-    so = envelope.get("structured_output")
-    if isinstance(so, dict):
-        return so
-    # Fallback: some versions/paths may put JSON (as a string) in `result`.
-    result = envelope.get("result")
-    if isinstance(result, dict):
-        return result
-    if isinstance(result, str):
-        try:
-            return json.loads(result)
-        except json.JSONDecodeError:
-            logger.warning("claude vision: no structured_output and result not JSON: %s", result[:200])
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "claude vision %s timed out after %ss — transient",
+                label,
+                timeout_s,
+            )
+            raise VisionTimeout(
+                f"vision call timed out after {timeout_s}s"
+            ) from None
+
+        # Parse the stdout envelope up front so a 429 can be told apart from a
+        # real failure even when the CLI exits rc!=0.
+        out = proc.stdout.strip()
+        envelope: dict[str, Any] | None = None
+        if out:
+            try:
+                parsed = json.loads(out)
+                if isinstance(parsed, dict):
+                    envelope = parsed
+            except json.JSONDecodeError:
+                envelope = None
+        combined = (proc.stdout or "") + (proc.stderr or "")
+        if _detect_rate_limit(envelope, combined, proc.returncode):
+            saw_rate_limit = True
+            last_rate_detail = (
+                str(envelope.get("result", ""))[:160]
+                if envelope
+                else proc.stderr[:160]
+            )
+            logger.warning(
+                "claude vision %s rate-limited — trying next account", label
+            )
+            continue
+        if proc.returncode != 0 and _AUTH_FAILURE_RE.search(combined):
+            logger.warning(
+                "claude vision %s authentication failed — trying next account",
+                label,
+            )
+            continue
+        if proc.returncode != 0:
+            logger.warning(
+                "claude vision call failed rc=%s err=%s",
+                proc.returncode,
+                proc.stderr[:300],
+            )
             return None
-    logger.warning("claude vision: no structured_output / result in envelope")
+        if not out:
+            logger.warning(
+                "claude vision %s returned empty output — trying next account",
+                label,
+            )
+            continue
+        if envelope is None:
+            logger.warning("claude vision: stdout not JSON: %s", out[:200])
+            return None
+
+        # CLI json envelope: schema output lives in `structured_output`.
+        structured = envelope.get("structured_output")
+        if isinstance(structured, dict):
+            return structured
+        result = envelope.get("result")
+        if isinstance(result, dict):
+            return result
+        if isinstance(result, str):
+            try:
+                return json.loads(result)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "claude vision: no structured_output and result not JSON: %s",
+                    result[:200],
+                )
+                return None
+        logger.warning("claude vision: no structured_output / result in envelope")
+        return None
+
+    if saw_rate_limit:
+        raise VisionRateLimited(
+            f"claude vision rate-limited across all OAuth accounts: {last_rate_detail}"
+        )
     return None
 
 
