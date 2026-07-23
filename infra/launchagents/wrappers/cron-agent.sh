@@ -7,7 +7,7 @@
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - 3-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3)
+#   - 4-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3 → TOKEN_4)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,7 +15,7 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3} — 3 Claude Max accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4} — 4 Claude subscription accounts for agent tier
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -208,10 +208,10 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         return 0
     fi
 
-    # 3-token OAuth fallback chain
+    # 4-token OAuth fallback chain
     local tokens=()
     local labels=()
-    for i in 1 2 3; do
+    for i in 1 2 3 4; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         if [[ -n "$tok" ]]; then
