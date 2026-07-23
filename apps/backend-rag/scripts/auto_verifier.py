@@ -92,7 +92,7 @@ _VERIFIER_EXHAUSTED: dict[str, str] = {}
 
 def _verifier_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3):
+    for i in (1, 2, 3, 4):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -207,9 +207,9 @@ def main() -> None:
         json.dump(asdict(report), f, ensure_ascii=False, indent=2)
 
     status = "PASSED" if report.passed else "BLOCKED"
-    print(f"\n{'OK' if report.passed else 'FAIL'} {status} — Verified {report.verified_count}/{report.total_claims} ({report.verified_ratio:.1%})")  # noqa: T201
+    print(f"\n{'OK' if report.passed else 'FAIL'} {status} — Verified {report.verified_count}/{report.total_claims} ({report.verified_ratio:.1%})")
     if not report.passed:
-        print(f"Blocked: {report.blocked_claims}")  # noqa: T201
+        print(f"Blocked: {report.blocked_claims}")
     sys.exit(0 if report.passed else 1)
 
 

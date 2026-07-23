@@ -310,7 +310,7 @@ class T4RelevanceFilter:
         # the macOS-keychain-stored token.
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
         for key in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2",
-                    "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN"):
+                    "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4", "CLAUDE_CODE_OAUTH_TOKEN"):
             tok = os.environ.get(key, "").strip()
             if tok:
                 env["CLAUDE_CODE_OAUTH_TOKEN"] = tok

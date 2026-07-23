@@ -489,3 +489,26 @@ gates:
       Pure-stdlib checker, no network, no LLM. continue-on-error must stay false —
       this is the enforcing gate, not a monitor-by-design step (contrast
       hot_zone_redis_lease/p3_sandbox_runtime above, which intentionally stay true).
+
+  # ---------------------------------------------------------------------------
+  # token-lint (2026-07-19, GARUDA OS car 2 / WS1 token-SSOT) — blocks NEW
+  # hardcoded brand hex colors in the redesigned route groups
+  # (apps/mouth/src/app/(workspace)/**, apps/mouth/src/app/portal/**), added
+  # lines only. Script: scripts/token_lint.py. Tests:
+  # scripts/tests/test_token_lint.py (run as a proof step inside the workflow
+  # itself, mirroring broker-hygiene.yml). Paths verified on disk this turn.
+  # ---------------------------------------------------------------------------
+  - id: token_lint
+    kind: ci_workflow
+    target: .github/workflows/token-lint.yml
+    step_anchor: "token-lint — scan added lines"
+    expected_continue_on_error: false
+    note: >
+      Deterministic safety gate (WS1 token SSOT): judges only ADDED lines in
+      the PR diff for hardcoded `#hex` colors in the (workspace)+portal route
+      groups (the ~600 legacy repo-wide hexes are deliberately out of scope —
+      only new ones are blocked). Pure-stdlib scanner, no network.
+      continue-on-error must stay false — this is the enforcing gate. Relation:
+      brand_token_lint.py (p8-brand-api.yml) guards GENERATED brand-api
+      artifacts whole-file; this gate guards the human-edited redesign
+      surfaces diff-only — the two color gates must not drift into each other.

@@ -199,7 +199,7 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     env.pop("ANTHROPIC_API_KEY", None)
     # MAX-plan OAuth: the `claude` CLI authenticates from the BARE
     # CLAUDE_CODE_OAUTH_TOKEN env var (or an interactive config login). The
-    # fleet ships the token in numbered slots CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3
+    # fleet ships the token in numbered slots CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3/_4
     # (~/.nuzantara-secrets.env, multi-account fallback) and ai-dispatch.sh maps
     # one onto the bare var per call — but this client shelled out with the
     # numbered slots only, so when the CLI's config login lapses the call fails
@@ -211,7 +211,7 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     # any interactive config login. (scar #1 HOME-fork-adjacent: the slot→bare
     # mapping lived only in a shell wrapper, not in the code that needs it.)
     if not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        for _slot in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2", "CLAUDE_CODE_OAUTH_TOKEN_3"):
+        for _slot in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2", "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4"):
             _val = env.get(_slot)
             if _val:
                 env["CLAUDE_CODE_OAUTH_TOKEN"] = _val

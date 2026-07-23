@@ -148,7 +148,7 @@ describe("BonusesPage", () => {
     expect(screen.getAllByText("Rp 1.750.000").length).toBeGreaterThan(0);
   });
 
-  it("shows the legacy PDF recap as excluded, with the delta", async () => {
+  it("when every paid member is in the ledger, the ledger wins and the PDF is a reference snapshot", async () => {
     hrApiMock.listBonusHistorical.mockResolvedValue({
       records: [
         {
@@ -170,19 +170,190 @@ describe("BonusesPage", () => {
       count: 1,
     });
     render(<BonusesPage />);
-    const strip = await screen.findByText(/Legacy PDF recap/);
+    // Surya (id 3) is in the July ledger → ledger authoritative, PDF snapshot.
+    const strip = await screen.findByText(/pre-system PDF recap/);
     expect(strip).toHaveTextContent("Rp 3.000.000");
-    expect(strip).toHaveTextContent("not included");
+    expect(strip).toHaveTextContent("ledger is authoritative");
+    expect(strip).toHaveTextContent("not summed");
     // July ledger = 3.250.000, PDF = 3.000.000 → delta 250.000
     expect(strip).toHaveTextContent("Rp 250.000");
     // And the headline total still counts the ledger only.
     expect(screen.getAllByText("Rp 4.250.000").length).toBeGreaterThan(0);
   });
 
-  it("scopes the legacy recap to the member filter, so the delta stays honest", async () => {
-    // Ledger July: Surya 2.500.000 + Adit 750.000. PDF July: Surya 2.000.000 +
-    // Adit 750.000. Filtered to Adit, the delta must be 0 — NOT 750.000 minus
-    // the all-members PDF total of 2.750.000.
+  it("when the PDF paid a member the ledger never captured, the PDF is authoritative and the ledger is flagged incomplete", async () => {
+    // Vino (id 99) was paid 1.500.000 in the PDF but has zero July ledger rows —
+    // the ledger was not yet capturing him. The strip must flip to PDF-wins.
+    hrApiMock.listBonusHistorical.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          employee_name: "SURYA",
+          employee_id: 3,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: 2_000_000,
+          task_count: 8,
+          source_pdf: "LIST BONUS JULY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+        {
+          id: 2,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: 1_500_000,
+          task_count: 5,
+          source_pdf: "LIST BONUS JULY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+      ],
+      count: 2,
+    });
+    render(<BonusesPage />);
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("Ledger incomplete");
+    expect(strip).toHaveTextContent("1 member the PDF");
+    expect(strip).toHaveTextContent("authoritative record");
+    expect(strip).toHaveTextContent("use the PDF total");
+    // pdfTotal = 2.000.000 + 1.500.000 = 3.500.000
+    expect(strip).toHaveTextContent("Rp 3.500.000");
+    // ledger figure for July is still shown as the partial backfill.
+    expect(strip).toHaveTextContent("Rp 3.250.000");
+    // The headline still sums the ledger only — the strip does not mutate it.
+    expect(screen.getAllByText("Rp 4.250.000").length).toBeGreaterThan(0);
+  });
+
+  // The verdict is a whole-month property. Filtering the view must never flip
+  // it (that would headline the wrong, smaller number) nor hide it.
+  const julyPdfAuthoritative = {
+    records: [
+      {
+        id: 1,
+        employee_name: "SURYA",
+        employee_id: 3,
+        bonus_month: 7,
+        bonus_year: 2026,
+        total_amount_idr: 2_000_000,
+        task_count: 8,
+        source_pdf: "recap.pdf",
+        accounting_total_data: null,
+        accounting_not_paid: null,
+        accounting_paid: null,
+        imported_at: "2026-08-01T00:00:00.000Z",
+        notes: null,
+      },
+      {
+        id: 2,
+        employee_name: "VINO",
+        employee_id: 99, // paid by the PDF, absent from the ledger
+        bonus_month: 7,
+        bonus_year: 2026,
+        total_amount_idr: 1_500_000,
+        task_count: 5,
+        source_pdf: "recap.pdf",
+        accounting_total_data: null,
+        accounting_not_paid: null,
+        accounting_paid: null,
+        imported_at: "2026-08-01T00:00:00.000Z",
+        notes: null,
+      },
+    ],
+    count: 2,
+  };
+
+  it("a member filter does NOT flip a PDF-authoritative month to ledger-authoritative", async () => {
+    hrApiMock.listBonusHistorical.mockResolvedValue(julyPdfAuthoritative);
+    const user = userEvent.setup();
+    render(<BonusesPage />);
+    await screen.findByText(/pre-system PDF list/);
+    // Filter to Surya (id 3) — who IS in the ledger. Before the fix this
+    // dropped Vino from the input and flipped the verdict to "ledger wins".
+    await user.selectOptions(screen.getByLabelText("Filter by member"), "id:3");
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("Ledger incomplete");
+    expect(strip).toHaveTextContent("authoritative record");
+    // Whole-month PDF total, NOT Surya's filtered 2.000.000.
+    expect(strip).toHaveTextContent("Rp 3.500.000");
+    expect(strip).toHaveTextContent("verdict is for the whole month");
+  });
+
+  it("a status filter does NOT hide the whole-month verdict", async () => {
+    hrApiMock.listBonusHistorical.mockResolvedValue(julyPdfAuthoritative);
+    const user = userEvent.setup();
+    render(<BonusesPage />);
+    await screen.findByText(/pre-system PDF list/);
+    await user.selectOptions(
+      screen.getByLabelText("Filter by status"),
+      "pending",
+    );
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("Ledger incomplete");
+    expect(strip).toHaveTextContent("Rp 3.500.000");
+    expect(strip).toHaveTextContent("verdict is for the whole month");
+  });
+
+  it("renders a PDF-only month (no ledger rows) instead of silently hiding it", async () => {
+    // May 2026 exists only in the PDF — the ledger never captured it.
+    hrApiMock.listBonusHistorical.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 5,
+          bonus_year: 2026,
+          total_amount_idr: 2_000_000,
+          task_count: 6,
+          source_pdf: "LIST BONUS MAY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-06-01T00:00:00.000Z",
+          notes: null,
+        },
+      ],
+      count: 1,
+    });
+    const user = userEvent.setup();
+    render(<BonusesPage />);
+    const mayHeader = await screen.findByRole("button", { name: /May 2026/ });
+    expect(mayHeader).toHaveTextContent(
+      "PDF recap only — not yet in the ledger",
+    );
+    await user.click(mayHeader);
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("Ledger incomplete");
+    expect(strip).toHaveTextContent("Rp 2.000.000");
+  });
+
+  it("does NOT relabel a real ledger month as 'PDF recap only' when a filter empties it", async () => {
+    // July HAS ledger rows and a PDF verdict. Filtering to a status with zero
+    // July rows must not turn the real month into a synthetic PDF-only card.
+    hrApiMock.listBonusHistorical.mockResolvedValue(julyPdfAuthoritative);
+    const user = userEvent.setup();
+    render(<BonusesPage />);
+    await screen.findByText(/pre-system PDF list/);
+    await user.selectOptions(
+      screen.getByLabelText("Filter by status"),
+      "rejected", // no July bonus is rejected → July has no rows in this view
+    );
+    // The filter empties the view — confirm it took effect, then confirm the
+    // real month was NOT resurrected as a fake "PDF recap only" card.
+    await screen.findByText(/No bonuses for this selection/);
+    expect(screen.queryByText(/PDF recap only/)).not.toBeInTheDocument();
+  });
+
+  it("refuses to issue a pay instruction when a PDF amount is unreadable", async () => {
     hrApiMock.listBonusHistorical.mockResolvedValue({
       records: [
         {
@@ -202,12 +373,12 @@ describe("BonusesPage", () => {
         },
         {
           id: 2,
-          employee_name: "ADIT",
-          employee_id: 1,
+          employee_name: "VINO",
+          employee_id: 99,
           bonus_month: 7,
           bonus_year: 2026,
-          total_amount_idr: 750_000,
-          task_count: 3,
+          total_amount_idr: "500,000" as unknown as number, // unreadable
+          task_count: 5,
           source_pdf: "recap.pdf",
           accounting_total_data: null,
           accounting_not_paid: null,
@@ -218,54 +389,62 @@ describe("BonusesPage", () => {
       ],
       count: 2,
     });
-    const user = userEvent.setup();
     render(<BonusesPage />);
-    await screen.findByText(/Legacy PDF recap/);
-    await user.selectOptions(screen.getByLabelText("Filter by member"), "id:1");
-    const strip = await screen.findByText(/Legacy PDF recap/);
-    expect(strip).toHaveTextContent("Rp 750.000");
-    expect(strip).toHaveTextContent("Rp 0");
-    expect(strip).not.toHaveTextContent("Rp 2.750.000");
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("PDF total shown is incomplete");
+    expect(strip).toHaveTextContent("verify the source PDF manually");
+    expect(strip).not.toHaveTextContent("use the PDF total for this month");
   });
 
-  it("suppresses the legacy recap under a status filter — the sides stop being comparable", async () => {
+  it("a PDF-only month with an unreadable amount headlines '—', not the understated total", async () => {
     hrApiMock.listBonusHistorical.mockResolvedValue({
       records: [
         {
           id: 1,
-          employee_name: "SURYA",
-          employee_id: 3,
-          bonus_month: 7,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 5,
           bonus_year: 2026,
           total_amount_idr: 2_000_000,
-          task_count: 8,
-          source_pdf: "recap.pdf",
+          task_count: 6,
+          source_pdf: "LIST BONUS MAY 2026.pdf",
           accounting_total_data: null,
           accounting_not_paid: null,
           accounting_paid: null,
-          imported_at: "2026-08-01T00:00:00.000Z",
+          imported_at: "2026-06-01T00:00:00.000Z",
+          notes: null,
+        },
+        {
+          id: 2,
+          employee_name: "ARI",
+          employee_id: 2,
+          bonus_month: 5,
+          bonus_year: 2026,
+          total_amount_idr: "1,000,000" as unknown as number, // unreadable
+          task_count: 3,
+          source_pdf: "LIST BONUS MAY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-06-01T00:00:00.000Z",
           notes: null,
         },
       ],
-      count: 1,
+      count: 2,
     });
-    const user = userEvent.setup();
     render(<BonusesPage />);
-    await screen.findByText(/Legacy PDF recap/);
-    await user.selectOptions(
-      screen.getByLabelText("Filter by status"),
-      "pending",
-    );
-    await waitFor(() =>
-      expect(screen.queryByText(/Legacy PDF recap/)).not.toBeInTheDocument(),
-    );
+    const mayHeader = await screen.findByRole("button", { name: /May 2026/ });
+    // The parseable 2.000.000 is an understatement of the true total — the
+    // header must not present it as the month figure.
+    expect(mayHeader).not.toHaveTextContent("Rp 2.000.000");
+    expect(mayHeader).toHaveTextContent("—");
   });
 
   it("hides the reconciliation strip when the endpoint rejects (non-admin)", async () => {
     hrApiMock.listBonusHistorical.mockRejectedValue(new Error("403"));
     render(<BonusesPage />);
     await screen.findByText("July 2026");
-    expect(screen.queryByText(/Legacy PDF recap/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pre-system PDF/)).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no bonuses", async () => {

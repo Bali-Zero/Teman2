@@ -2,12 +2,11 @@
 # claude-cascade.sh — single entry point for autonomous Claude invocations with full fallback cascade.
 #
 # Tries CLI binaries in this order, falling back on quota exhaustion:
-#   1. claude          (default OAuth slot, MAX plan #1)
-#   2. claude-acct2    (MAX plan #2, if setup-acct-slot.sh 2 + /login completed)
-#   3. agy -p (Antigravity CLI Gemini 3.1 Pro, Google AI Ultra sub)
-#   4. codex exec --sandbox read-only    (ChatGPT Plus / Pro)
-#   5. ollama run qwen3.5:9b             (local, always available)
-# Note: slot 3 was removed 2026-05-09 — only 2 MAX plans active (kaiser + #2).
+#   1. Claude OAuth seats: default, acct2, acct3, acct4, zero-team
+#   2. agy -p (Antigravity CLI Gemini 3.1 Pro, Google AI Ultra sub)
+#   3. Kimi Code K3
+#   4. codex exec --sandbox read-only (ChatGPT Pro)
+#   5. ollama run qwen3.5:9b (Pro/Mini local safety net)
 #
 # Usage:
 #   claude-cascade.sh "<prompt text>" [--model MODEL] [--agent AGENT_NAME]
@@ -74,14 +73,13 @@ if [ -z "$PROMPT" ]; then
     exit 2
 fi
 
-QUOTA_PATTERN="out of extra usage|usage limit|quota exceeded|rate.limit|429|exhausted|please try again later"
+QUOTA_PATTERN="out of extra usage|usage limit|weekly limit|quota exceeded|rate.limit|429|exhausted|please try again later"
 
 # build claude args (model + agent + extras)
 build_claude_args() {
     local args=("--print")
     [ -n "$MODEL" ] && args+=("--model" "$MODEL")
     [ -n "$AGENT" ] && args+=("--agent" "$AGENT")
-    args+=("--max-budget-usd" "${CASCADE_MAX_BUDGET_USD:-5}")
     args+=("${EXTRA_ARGS[@]}")
     echo "${args[@]}"
 }
@@ -109,6 +107,11 @@ try_claude() {
         rm -f "$tmpout"
         return $exit
     fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] $label returned empty output" >&2
+        rm -f "$tmpout"
+        return 97
+    fi
 
     cat "$tmpout"
     rm -f "$tmpout"
@@ -117,35 +120,116 @@ try_claude() {
 }
 
 try_gemini() {
-    local agy="$HOME/.local/bin/agy"
-    [ ! -x "$agy" ] && { echo "  [skip] tier3 agy not installed" >&2; return 99; }
+    local agy_bin="$HOME/.local/bin/agy"
+    local gemini_bin="/opt/homebrew/bin/gemini"
+    local bin=""
+    local label=""
+    if [ -x "$agy_bin" ]; then
+        bin="$agy_bin"
+        label="agy (Gemini 3.1 Pro)"
+    elif [ -x "$gemini_bin" ]; then
+        bin="$gemini_bin"
+        label="legacy gemini-3.1-pro-preview"
+    else
+        echo "  [skip] neither agy nor gemini installed" >&2
+        return 99
+    fi
+    if [ -n "$AGENT" ]; then
+        echo "  [skip] Gemini $label — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
     local tmpout=$(mktemp)
-    echo "  [try] tier3 agy (Gemini 3.1 Pro)" >&2
-    echo "$PROMPT" | "$agy" -p --print-timeout 5m >"$tmpout" 2>&1
+    echo "  [try] Gemini $label" >&2
+    if [ "$bin" = "$agy_bin" ]; then
+        printf '%s' "$PROMPT" | "$bin" -p --print-timeout 5m >"$tmpout" 2>&1
+    else
+        "$bin" -m gemini-3.1-pro-preview -p "$PROMPT" >"$tmpout" 2>&1
+    fi
     local exit=$?
+    if grep -qiE "$QUOTA_PATTERN|TerminalQuotaError" "$tmpout"; then
+        echo "  [exhausted] $label quota" >&2
+        rm -f "$tmpout"
+        return 98
+    fi
     if [ $exit -ne 0 ]; then
-        echo "  [error] agy exit=$exit" >&2
+        echo "  [error] $label exit=$exit" >&2
         cat "$tmpout" >&2
         rm -f "$tmpout"
         return $exit
     fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] $label returned empty output" >&2
+        rm -f "$tmpout"
+        return 97
+    fi
     cat "$tmpout"
     rm -f "$tmpout"
-    echo "[claude-cascade] used: tier3 agy-gemini3.1pro" >&2
+    echo "[claude-cascade] used: Gemini $label" >&2
+    return 0
+}
+
+try_kimi() {
+    local kimi_bin="$HOME/.kimi-code/bin/kimi"
+    [ ! -x "$kimi_bin" ] && { echo "  [skip] Kimi K3 not installed" >&2; return 99; }
+    if [ -n "$AGENT" ]; then
+        echo "  [skip] Kimi K3 — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
+    local tmpout=$(mktemp)
+    echo "  [try] Kimi Code K3" >&2
+    # Fleet config pins default_model to kimi-code/k3. Invoking the configured
+    # default is more reliable than repeating the alias on every call.
+    "$kimi_bin" --prompt "$PROMPT" >"$tmpout" 2>&1
+    local exit=$?
+    if grep -qiE "$QUOTA_PATTERN" "$tmpout"; then
+        echo "  [exhausted] Kimi K3 quota" >&2
+        rm -f "$tmpout"
+        return 98
+    fi
+    if [ $exit -ne 0 ]; then
+        echo "  [error] Kimi K3 exit=$exit" >&2
+        cat "$tmpout" >&2
+        rm -f "$tmpout"
+        return $exit
+    fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] Kimi K3 returned empty output" >&2
+        rm -f "$tmpout"
+        return 97
+    fi
+    cat "$tmpout"
+    rm -f "$tmpout"
+    echo "[claude-cascade] used: Kimi Code K3" >&2
     return 0
 }
 
 try_codex() {
-    [ ! -x /opt/homebrew/bin/codex ] && { echo "  [skip] tier4 codex not installed" >&2; return 99; }
+    local codex_bin="$HOME/.local/bin/codex"
+    [ ! -x "$codex_bin" ] && codex_bin="/opt/homebrew/bin/codex"
+    [ ! -x "$codex_bin" ] && { echo "  [skip] tier4 codex not installed" >&2; return 99; }
+    if [ -n "$AGENT" ]; then
+        echo "  [skip] tier4 codex — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
     local tmpout=$(mktemp)
     echo "  [try] tier4 codex" >&2
-    /opt/homebrew/bin/codex exec --sandbox read-only --skip-git-repo-check "$PROMPT" >"$tmpout" 2>&1
+    "$codex_bin" exec --sandbox read-only --skip-git-repo-check "$PROMPT" >"$tmpout" 2>&1
     local exit=$?
+    if grep -qiE "$QUOTA_PATTERN" "$tmpout"; then
+        echo "  [exhausted] codex quota" >&2
+        rm -f "$tmpout"
+        return 98
+    fi
     if [ $exit -ne 0 ]; then
         echo "  [error] codex exit=$exit" >&2
         cat "$tmpout" >&2
         rm -f "$tmpout"
         return $exit
+    fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] codex returned empty output" >&2
+        rm -f "$tmpout"
+        return 97
     fi
     cat "$tmpout"
     rm -f "$tmpout"
@@ -169,6 +253,11 @@ try_ollama() {
         rm -f "$tmpout"
         return $exit
     fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] ollama returned empty output" >&2
+        rm -f "$tmpout"
+        return 97
+    fi
     cat "$tmpout"
     rm -f "$tmpout"
     echo "[claude-cascade] used: tier5 ollama-qwen3.5:9b-local" >&2
@@ -178,10 +267,17 @@ try_ollama() {
 # ============= CASCADE =============
 echo "[claude-cascade] starting (prompt ${#PROMPT} chars, agent='$AGENT', model='$MODEL')" >&2
 
-# Tier 1-2: Claude OAuth slots (if configured)
-for slot in "$HOME/.local/bin/claude:tier1-claude-default" \
+# Claude OAuth seats (if configured)
+DEFAULT_CLAUDE_BIN="$HOME/.local/share/mise/shims/claude"
+[ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="$HOME/.local/bin/claude"
+[ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/Claude"
+[ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/claude"
+
+for slot in "${DEFAULT_CLAUDE_BIN}:tier1-claude-default" \
             "$HOME/.local/bin/claude-acct2:tier2-claude-acct2" \
-            "$HOME/.local/bin/claude-acct3:tier2b-claude-acct3"; do
+            "$HOME/.local/bin/claude-acct3:tier2b-claude-acct3" \
+            "$HOME/.local/bin/claude-acct4:tier2c-claude-acct4" \
+            "$HOME/.local/bin/claude-zero-team:tier2d-claude-zero-team"; do
     bin="${slot%:*}"
     label="${slot#*:}"
     try_claude "$bin" "$label"
@@ -192,10 +288,13 @@ for slot in "$HOME/.local/bin/claude:tier1-claude-default" \
     # other errors: try next tier (could be transient; cascade is permissive)
 done
 
-# Tier 3: Gemini
+# Gemini
 try_gemini && exit 0
 
-# Tier 4: Codex
+# Kimi K3
+try_kimi && exit 0
+
+# Codex
 try_codex && exit 0
 
 # Tier 5: Ollama local (always-on safety net)

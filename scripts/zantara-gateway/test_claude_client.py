@@ -349,6 +349,20 @@ def test_sdk_options_omit_effort_for_long_query(monkeypatch):
 # ── env hygiene ──
 
 
+def test_token_chain_reaches_slot_four_in_order(monkeypatch):
+    for slot in range(1, 5):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"tok{slot}")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+
+    assert claude_client._token_chain() == [
+        ("token_1", "tok1"),
+        ("token_2", "tok2"),
+        ("token_3", "tok3"),
+        ("token_4", "tok4"),
+        ("keychain", ""),
+    ]
+
+
 def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     # Hermeticity: clear any real indexed tokens from the runner's env, else
     # `_token_chain()[0]` (which `_build_sdk_env` seeds from) returns a live
@@ -358,6 +372,7 @@ def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
 
@@ -384,6 +399,7 @@ def test_sdk_env_seeds_oauth_token_from_indexed_chain(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
 
@@ -411,6 +427,7 @@ def test_sdk_env_no_chain_token_leaves_var_absent(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
 
     captured: list = []
     fake_module = _make_fake_sdk_module(

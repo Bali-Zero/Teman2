@@ -157,6 +157,7 @@ def call_claude_synthesis(prompt: str) -> str:
         "CLAUDE_CODE_OAUTH_TOKEN_1",
         "CLAUDE_CODE_OAUTH_TOKEN_2",
         "CLAUDE_CODE_OAUTH_TOKEN_3",
+        "CLAUDE_CODE_OAUTH_TOKEN_4",
     ]
 
     for var in token_vars:
