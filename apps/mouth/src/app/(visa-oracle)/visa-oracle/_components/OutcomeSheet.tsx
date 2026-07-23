@@ -452,134 +452,141 @@ export function OutcomeSheet({
         </>
       )}
 
+      {/* W0b (legal-disclaimer fix, 2026-07-23): only the next-3-steps
+          section stays gated — its copy ("Gather the documents listed
+          above") references the candidate checklist, which exists only
+          when candidates exist. Everything below renders on ALL FIVE
+          terminal states, NEEDS_INPUT included: spec §A.3.2 makes
+          NEEDS_INPUT a first-class terminal legal-advice state whose
+          escape hatch "is always present" and which must never render as
+          a dead end, and the 4-line disclaimer (KEEP verbatim, spec §A.9)
+          is the legal floor under every verdict. Previously this guard
+          wrapped the whole footer, so NEEDS_INPUT rendered with no
+          WhatsApp handoff, no assumptions receipt, no print/copy and no
+          disclaimer at all. */}
       {result.state !== "NEEDS_INPUT" && (
-        <>
-          <section>
-            <h2 className="oracle-outcome__section-title">
-              {translate(language, "outcome.next_steps_title")}
-            </h2>
-            <ol className="oracle-next-steps">
-              {[1, 2, 3].map((n) => (
-                <li key={n}>
-                  <span className="oracle-next-steps__index oracle-tabular-nums">
-                    {n}
-                  </span>
-                  <span>
-                    {translate(
-                      language,
-                      `outcome.next_steps.default.${n}` as I18nKey,
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          <section
-            className="oracle-no-print"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "var(--space-4)",
-              alignItems: "center",
-            }}
-          >
-            <a
-              className="oracle-whatsapp-cta"
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <MessageCircle aria-hidden="true" size={18} />
-              {translate(language, "outcome.whatsapp_cta")}
-            </a>
-            {/* Item 3: a real, scannable QR encoding the exact same
-                pre-loaded wa.me URL as the link beside it — the link
-                itself is the text alternative (never aria-hidden). */}
-            <OracleQrCode
-              value={whatsappUrl}
-              label={translate(language, "outcome.qr_aria" as I18nKey)}
-            />
-          </section>
-
-          <section className="oracle-outcome-actions oracle-no-print">
-            <button
-              type="button"
-              className="oracle-print-cta"
-              onClick={() => window.print()}
-            >
-              <Printer aria-hidden="true" size={18} />
-              {translate(language, "outcome.print_cta" as I18nKey)}
-            </button>
-            <button
-              type="button"
-              className="oracle-copy-cta"
-              data-copy-state={copyState}
-              onClick={handleCopySummary}
-            >
-              {copyState === "copied" ? (
-                <Check aria-hidden="true" size={18} />
-              ) : copyState === "failed" ? (
-                <CircleAlert aria-hidden="true" size={18} />
-              ) : (
-                <Copy aria-hidden="true" size={18} />
-              )}
-              {translate(
-                language,
-                copyState === "copied"
-                  ? ("outcome.copy_confirmed" as I18nKey)
-                  : copyState === "failed"
-                    ? ("outcome.copy_failed" as I18nKey)
-                    : ("outcome.copy_cta" as I18nKey),
-              )}
-            </button>
-            <span role="status" aria-live="polite" className="oracle-sr-only">
-              {copyState === "copied"
-                ? translate(language, "outcome.copy_confirmed" as I18nKey)
-                : copyState === "failed"
-                  ? translate(language, "outcome.copy_failed" as I18nKey)
-                  : ""}
-            </span>
-          </section>
-
-          <section className="oracle-receipt">
-            <h2
-              className="oracle-outcome__section-title"
-              style={{ marginBottom: 0 }}
-            >
-              {translate(language, "outcome.assumptions_receipt_title")}
-            </h2>
-            {result.assumptions.length === 0 ? (
-              <p style={{ margin: 0 }}>
-                {translate(language, "outcome.assumptions_receipt_empty")}
-              </p>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
-                {result.assumptions.map((a: Assumption) => (
-                  <li key={a.questionId}>
-                    {translate(
-                      language,
-                      `assumption.${a.questionId}` as I18nKey,
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="oracle-tabular-nums" style={{ margin: 0 }}>
-              {translate(language, "outcome.freshness_stamp", {
-                date: freshnessDate,
-              })}
-            </p>
-          </section>
-
-          <section className="oracle-disclaimer">
-            <p>{translate(language, "outcome.disclaimer.not_government")}</p>
-            <p>{translate(language, "outcome.disclaimer.based_on_facts")}</p>
-            <p>{translate(language, "outcome.disclaimer.not_approval")}</p>
-            <p>{translate(language, "outcome.disclaimer.complex_to_human")}</p>
-          </section>
-        </>
+        <section>
+          <h2 className="oracle-outcome__section-title">
+            {translate(language, "outcome.next_steps_title")}
+          </h2>
+          <ol className="oracle-next-steps">
+            {[1, 2, 3].map((n) => (
+              <li key={n}>
+                <span className="oracle-next-steps__index oracle-tabular-nums">
+                  {n}
+                </span>
+                <span>
+                  {translate(
+                    language,
+                    `outcome.next_steps.default.${n}` as I18nKey,
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
+
+      <section
+        className="oracle-no-print"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "var(--space-4)",
+          alignItems: "center",
+        }}
+      >
+        <a
+          className="oracle-whatsapp-cta"
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <MessageCircle aria-hidden="true" size={18} />
+          {translate(language, "outcome.whatsapp_cta")}
+        </a>
+        {/* Item 3: a real, scannable QR encoding the exact same
+            pre-loaded wa.me URL as the link beside it — the link
+            itself is the text alternative (never aria-hidden). */}
+        <OracleQrCode
+          value={whatsappUrl}
+          label={translate(language, "outcome.qr_aria" as I18nKey)}
+        />
+      </section>
+
+      <section className="oracle-outcome-actions oracle-no-print">
+        <button
+          type="button"
+          className="oracle-print-cta"
+          onClick={() => window.print()}
+        >
+          <Printer aria-hidden="true" size={18} />
+          {translate(language, "outcome.print_cta" as I18nKey)}
+        </button>
+        <button
+          type="button"
+          className="oracle-copy-cta"
+          data-copy-state={copyState}
+          onClick={handleCopySummary}
+        >
+          {copyState === "copied" ? (
+            <Check aria-hidden="true" size={18} />
+          ) : copyState === "failed" ? (
+            <CircleAlert aria-hidden="true" size={18} />
+          ) : (
+            <Copy aria-hidden="true" size={18} />
+          )}
+          {translate(
+            language,
+            copyState === "copied"
+              ? ("outcome.copy_confirmed" as I18nKey)
+              : copyState === "failed"
+                ? ("outcome.copy_failed" as I18nKey)
+                : ("outcome.copy_cta" as I18nKey),
+          )}
+        </button>
+        <span role="status" aria-live="polite" className="oracle-sr-only">
+          {copyState === "copied"
+            ? translate(language, "outcome.copy_confirmed" as I18nKey)
+            : copyState === "failed"
+              ? translate(language, "outcome.copy_failed" as I18nKey)
+              : ""}
+        </span>
+      </section>
+
+      <section className="oracle-receipt">
+        <h2
+          className="oracle-outcome__section-title"
+          style={{ marginBottom: 0 }}
+        >
+          {translate(language, "outcome.assumptions_receipt_title")}
+        </h2>
+        {result.assumptions.length === 0 ? (
+          <p style={{ margin: 0 }}>
+            {translate(language, "outcome.assumptions_receipt_empty")}
+          </p>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
+            {result.assumptions.map((a: Assumption) => (
+              <li key={a.questionId}>
+                {translate(language, `assumption.${a.questionId}` as I18nKey)}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="oracle-tabular-nums" style={{ margin: 0 }}>
+          {translate(language, "outcome.freshness_stamp", {
+            date: freshnessDate,
+          })}
+        </p>
+      </section>
+
+      <section className="oracle-disclaimer">
+        <p>{translate(language, "outcome.disclaimer.not_government")}</p>
+        <p>{translate(language, "outcome.disclaimer.based_on_facts")}</p>
+        <p>{translate(language, "outcome.disclaimer.not_approval")}</p>
+        <p>{translate(language, "outcome.disclaimer.complex_to_human")}</p>
+      </section>
     </div>
   );
 }
