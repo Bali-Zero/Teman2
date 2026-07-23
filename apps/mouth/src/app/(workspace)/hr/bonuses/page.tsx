@@ -460,9 +460,15 @@ export default function BonusesPage() {
                         </span>
                       )}
                       <span className="text-base font-semibold text-[var(--bz-accent)] tabular-nums">
-                        {formatIDR(
-                          pdfOnly && recon ? recon.pdfTotal : month.total,
-                        )}
+                        {pdfOnly && recon
+                          ? // A PDF-only month headlines the PDF figure, but
+                            // NOT when an amount was unreadable — showing the
+                            // understated total would contradict the strip and
+                            // imply a wrong pay figure.
+                            recon.pdfTotalReliable
+                            ? formatIDR(recon.pdfTotal)
+                            : "—"
+                          : formatIDR(month.total)}
                       </span>
                     </div>
                   </button>

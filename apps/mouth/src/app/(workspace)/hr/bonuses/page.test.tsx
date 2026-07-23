@@ -396,6 +396,50 @@ describe("BonusesPage", () => {
     expect(strip).not.toHaveTextContent("use the PDF total for this month");
   });
 
+  it("a PDF-only month with an unreadable amount headlines '—', not the understated total", async () => {
+    hrApiMock.listBonusHistorical.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 5,
+          bonus_year: 2026,
+          total_amount_idr: 2_000_000,
+          task_count: 6,
+          source_pdf: "LIST BONUS MAY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-06-01T00:00:00.000Z",
+          notes: null,
+        },
+        {
+          id: 2,
+          employee_name: "ARI",
+          employee_id: 2,
+          bonus_month: 5,
+          bonus_year: 2026,
+          total_amount_idr: "1,000,000" as unknown as number, // unreadable
+          task_count: 3,
+          source_pdf: "LIST BONUS MAY 2026.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-06-01T00:00:00.000Z",
+          notes: null,
+        },
+      ],
+      count: 2,
+    });
+    render(<BonusesPage />);
+    const mayHeader = await screen.findByRole("button", { name: /May 2026/ });
+    // The parseable 2.000.000 is an understatement of the true total — the
+    // header must not present it as the month figure.
+    expect(mayHeader).not.toHaveTextContent("Rp 2.000.000");
+    expect(mayHeader).toHaveTextContent("—");
+  });
+
   it("hides the reconciliation strip when the endpoint rejects (non-admin)", async () => {
     hrApiMock.listBonusHistorical.mockRejectedValue(new Error("403"));
     render(<BonusesPage />);
