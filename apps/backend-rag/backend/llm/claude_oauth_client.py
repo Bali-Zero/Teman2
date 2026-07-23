@@ -6,7 +6,7 @@ The Python SDK ``anthropic.Anthropic`` has no OAuth-token mode — this module
 is the substitute: it shells out to the ``claude`` CLI which reads
 ``CLAUDE_CODE_OAUTH_TOKEN`` from the environment.
 
-Pattern mirrored from ``scripts/cron-agent.sh`` tier-2 handler (same 3-token
+Pattern mirrored from ``scripts/cron-agent.sh`` tier-2 handler (same 4-token
 fallback + rate-limit detection + empty-output guard). Kept intentionally
 minimal — no streaming, no tool-use — because the only 3 backend consumers
 (``article_composer``, ``coreference``, ``multi_ai_adapter.ClaudeAdapter``)
@@ -128,7 +128,7 @@ def _collect_tokens() -> list[tuple[str, str]]:
     """Return ordered list of ``(token, label)`` pairs to try.
 
     Order:
-    1. ``CLAUDE_CODE_OAUTH_TOKEN_1/2/3`` in numeric order (skip empties),
+    1. ``CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4`` in numeric order (skip empties),
     2. Legacy ``CLAUDE_CODE_OAUTH_TOKEN`` if not already covered,
     3. Sentinel ``("", "keychain")`` — runs the CLI with the env var *unset*
        so it falls back to the macOS keychain-stored token.
@@ -136,7 +136,7 @@ def _collect_tokens() -> list[tuple[str, str]]:
     collected: list[tuple[str, str]] = []
     seen: set[str] = set()
 
-    for i in (1, 2, 3):
+    for i in (1, 2, 3, 4):
         tok = os.getenv(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             collected.append((tok, f"token_{i}"))
@@ -327,7 +327,7 @@ async def complete_async(
     request_id: str | None = None,
     json_schema: dict[str, Any] | None = None,
 ) -> ClaudeOAuthResponse:
-    """Run ``claude -p`` with 3-token fallback and return the text completion.
+    """Run ``claude -p`` with 4-token fallback and return the text completion.
 
     When ``json_schema`` is provided AND the CLI supports ``--json-schema``,
     the call switches to ``--output-format json --json-schema <schema>`` and

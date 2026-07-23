@@ -16,6 +16,7 @@ def clear_oauth_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "CLAUDE_CODE_OAUTH_TOKEN_1",
         "CLAUDE_CODE_OAUTH_TOKEN_2",
         "CLAUDE_CODE_OAUTH_TOKEN_3",
+        "CLAUDE_CODE_OAUTH_TOKEN_4",
         "ANTHROPIC_API_KEY",
     ):
         monkeypatch.delenv(k, raising=False)
@@ -46,13 +47,22 @@ async def test_collect_tokens_ordering(
     from backend.llm import claude_oauth_client as mod
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "tok2")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "tok3")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "tok_legacy")
 
     got = mod._collect_tokens()
 
-    assert [label for _, label in got] == ["token_1", "token_3", "token_legacy", "keychain"]
-    assert [t for t, _ in got] == ["tok1", "tok3", "tok_legacy", ""]
+    assert [label for _, label in got] == [
+        "token_1",
+        "token_2",
+        "token_3",
+        "token_4",
+        "token_legacy",
+        "keychain",
+    ]
+    assert [t for t, _ in got] == ["tok1", "tok2", "tok3", "tok4", "tok_legacy", ""]
 
 
 @pytest.mark.asyncio
@@ -137,6 +147,37 @@ async def test_complete_async_rate_limit_falls_through(
     assert resp.text == "ok"
     assert resp.token_label == "token_2"
     assert resp.attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_complete_async_falls_through_to_fourth_token(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    for slot in range(1, 5):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"t{slot}")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-propagate")
+
+    attempted_tokens: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        env = kwargs["env"]
+        attempted_tokens.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        assert "ANTHROPIC_API_KEY" not in env
+        if len(attempted_tokens) < 4:
+            return _fake_proc(stdout=b"", stderr=b"OAuth quota exhausted", returncode=1)
+        return _fake_proc(stdout=b"slot four succeeded", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    resp = await mod.complete_async("ping")
+
+    assert attempted_tokens == ["t1", "t2", "t3", "t4"]
+    assert resp.text == "slot four succeeded"
+    assert resp.token_label == "token_4"
+    assert resp.attempts == 4
 
 
 @pytest.mark.asyncio
