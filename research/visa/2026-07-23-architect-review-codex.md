@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: kimi
 ---
 
 ## SEAT VERDICT
@@ -60,3 +60,7 @@ Current order is wrong for the gate. Correct order:
 
 
 codex exit=0
+
+## Adversarial review
+
+Orchestrator re-verified every load-bearing claim on disk (catch-all proxy + POST export, public_endpoints registry contents, shadow.py 3-of-35 fact build, collector constants, 18-field Decision). All held. None survived, 0 raised.

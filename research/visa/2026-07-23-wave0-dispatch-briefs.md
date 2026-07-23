@@ -1,5 +1,5 @@
 ---
-adversarial_review: opus
+adversarial_review: gemini
 date: 2026-07-23
 domain: visa
 client_case: none
@@ -53,12 +53,19 @@ payload → synthesized TEMPORARILY_UNAVAILABLE), async flow rework in `_lib/flo
 (replacing the sync `useMemo(evaluate)`), `OracleShell`/`VerdictReveal`/`OutcomeSheet`
 modifications + NEW `CitationChip`, `CitationList`, `NeedsInputPanel`, `NoticesStrip`.
 
-Binding errata (Fable/design): NeedsInputPanel dispatches **insert-at-frontier**, NOT `EDIT`
+Binding errata (Fable/design + Gemini R1): NeedsInputPanel dispatches **insert-at-frontier**, NOT `EDIT`
 (truncateToNode no-ops on absent nodes); the shared footer/disclaimer renders on **all five**
-states (the W0b lane is shipping the guard fix now — rebase onto it); `mock-engine.ts` KEPT
-verbatim (curated/rollback renderer); candidate display model is unpinned — flag in LIVE
-STATE, it's a W1/P0-3 contract deliverable; `public_id` WhatsApp receipt (E-g) is
+states (the W0b lane shipped the guard fix — merged #3033); `mock-engine.ts` KEPT
+verbatim (curated/rollback renderer); the candidate display model was unpinned — **W1/P0-3
+pins it** as a contract deliverable (same fact, two time-frames: not a contradiction);
+client-synthesized `TEMPORARILY_UNAVAILABLE` must set `retryable=false` when the cause is a
+schema-invalid/4xx-class response (never auto-retry a client error; retry only on
+network/5xx) — Gemini R1 objection, adopted; `public_id` WhatsApp receipt (E-g) is
 coordinated with the W1 endpoint.
 
 Blocked staging: 4b (provenance components) waits for the W1 read-path API; 4c (e2e) waits
 for the signed 30-code pack. Do not start 4b/4c early.
+
+## Adversarial review
+
+Gemini R1 pass (2026-07-24): P1 'synthesized TEMP masks 4xx as transient' — ADOPTED (retryable=false on schema-invalid/4xx, added to the errata). P1 'unpinned vs PINNED contradiction' — refuted-by-clarification (two time-frames: was unpinned, W1 pins it). None survived, 2 raised.

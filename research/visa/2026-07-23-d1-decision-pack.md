@@ -1,5 +1,5 @@
 ---
-adversarial_review: opus
+adversarial_review: gemini
 date: 2026-07-23
 domain: visa
 client_case: none
@@ -43,9 +43,11 @@ Derived rates:
 
 - **G-a-vol (real requests, reported):** any fixed threshold ≥1,000/7d is unreachable without
   a paid/owned traffic program. Realistic proposal: **≥100 distinct real requests over a
-  ≥14-day window with zero engine errors** as the stability signal — reachable in ~2–4 weeks
-  with the modest traffic push below, and honest about what it measures (stability under
-  real load, not coverage).
+  ≥14-day window with zero unexplained engine errors** — evaluator-logic failures fail the
+  gate; transient infrastructure errors (deploys, 5xx from unrelated systems) are excluded
+  but must be explained in the window report (Gemini R1 objection, adopted). Reachable in
+  ~2–4 weeks with the modest traffic push below, and honest about what it measures
+  (stability under real load, not coverage).
 - **G-a-breadth (7 categories / 30 codes):** corpus-driven per Fable-delta-2 — gold-persona
   fleet extended to the 30 priority codes, explicitly labeled `traffic_source=synthetic`
   (needs migration 256). Real usage will never cover business/diaspora/bridging lanes in
@@ -60,8 +62,9 @@ Derived rates:
 ## Traffic levers inventory (existing assets, no new build)
 
 - 107 `/visas/*` article URLs already indexed (SEO base, 5–20 views each per 90d).
-- `ArticleToolEmbed` mapping `visa-match` → `/visa/match` (embed points to the BROKEN v1
-  wizard today — re-point to `/visa-oracle` after Track C wiring, or fix v1 first per W0).
+- `ArticleToolEmbed` mapping `visa-match` → `/visa/match`. The v1 wizard is FIXED since
+  2026-07-24 (PR #3032 merged; live smoke 201 + row in `visa_checks`), so the embed works
+  today; re-pointing to `/visa-oracle` is a separate Track-C-time decision at ENFORCE.
 - Newsletter subscribers (MCP `list_subscribers`), WhatsApp broadcast lists, IG via WR2.
 - Ditjen-demo angle (Track D) doubles as an authority backlink source once G-b is green.
 
@@ -72,3 +75,7 @@ higher); **G-a-breadth = corpus-labeled**; run one funded traffic push during th
 the real-volume number means something. If Zero instead wants 1,000/7d strictly real:
 budget a real acquisition campaign (~2 orders of magnitude over current organic) or accept a
 multi-month window — the data says there is no third way.
+
+## Adversarial review
+
+Gemini R1 pass (2026-07-24): P1 'zero engine errors conflates infra with evaluator failures' — ADOPTED, criterion rewritten ('zero unexplained engine errors', infra excluded but must be explained). P2 'contradictory embed re-pointing' — clarified (v1 fixed via #3032; re-point is a Track-C-time decision). None survived, 2 raised.

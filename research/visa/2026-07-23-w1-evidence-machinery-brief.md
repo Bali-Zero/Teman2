@@ -1,5 +1,5 @@
 ---
-adversarial_review: opus
+adversarial_review: gemini
 date: 2026-07-23
 domain: visa
 client_case: none
@@ -49,7 +49,7 @@ Public, exact, rate-limited endpoint (working name `POST /api/visa-oracle/evalua
 ## Item 3 — category mapping ruling (Fable delta 3; proposal, gate with Fable)
 
 v2 interview has 10 tiles; `request_category` enum has 8 values. Proposal: **extend the enum
-in migration 256** to 11: add `business` and `diaspora`, keep `other`:
+in migration 256** to 10: add `business` and `diaspora`, keep `other`:
 
 | v2 tile | request_category |
 |---|---|
@@ -85,3 +85,7 @@ the G-a-breadth evidence artifact — corpus-driven, honestly labeled.
 - Collector emits the G-a-vol / G-a-breadth split.
 - Suite: new tests guilt+innocence per item; full visa_engine suite green.
 - Fable gate on the PR(s).
+
+## Adversarial review
+
+Gemini R1 pass (2026-07-24): P2 arithmetic error (8 existing + 2 new = 10 enum values, not 11) — FIXED. None survived, 1 raised.

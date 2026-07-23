@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: kimi
 ---
 
 ## SEAT VERDICT
@@ -43,3 +43,7 @@ The critical path order is fundamentally sound but requires the following deltas
 - **Step 4**: *DELTA* — Add "Author remaining 80 codes for full M.IP-08/2025 compliance" to the parallel workstream. Add "Strengthen Evaluator for negative constraints."
 - **Step 5**: *DELTA* — Block the ENFORCE flip until Track B FASE 2 is complete (110 codes live).
 agy exit=0
+
+## Adversarial review
+
+Orchestrator (kimi) + Fable 5 adjudication: Gemini's 'do not repoint SHADOW to v2 (deadlock)' REFUTED (category error: headless endpoint != UI launch); its remaining corrections (synthetic breadth, 110-for-ENFORCE, negative constraints, regulatory decay) adopted. None survived, 1 raised.

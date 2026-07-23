@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: kimi
 ---
 
 All evidence gathered. Writing the report.
@@ -125,3 +125,6 @@ Steps 0→1→2→3 (feed → pack → arm → window) are correctly ordered. Tw
 2. **Pull G-b's independent replay forward.** It's cheap, depends on nothing in the window, unblocks Track D (M8), and derisks the only gate whose "grader ≠ engine" artifact is still missing. It currently sits inside the step-4 grab-bag; it belongs beside step 1.
 
 One open question the panel should force the analysis to answer rather than defer: **if the v1 feed fix is a one-line registry entry, does SHADOW stay on the v1 quiz (7 shallow fields, `QuizAnswers` at `types.ts:1-13`) or is that feed too fact-poor to make G-b/G-c meaningful against a 35-fact engine?** The v1 quiz exercises purposes but almost none of the load-bearing facts (no expiry, no violation history, no employer facts) — a SHADOW window on it measures volume and grounding plumbing, not the engine's real decision surface. That trade-off deserves an explicit owner-visible sentence in the plan.
+## Adversarial review
+
+Fable 5 refined its C6 claim: 'matches no vocabulary' was overstated (collector's 7 = Purpose minus OTHER IS a real in-code vocabulary; recorded in the synthesis addendum). All other findings stand. None survived, 1 raised.

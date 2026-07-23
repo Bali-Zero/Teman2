@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: codex
 date: 2026-07-23
 domain: visa
 client_case: none
@@ -271,3 +271,7 @@ D3 adopt with tiers (E-a/E-e/E-g blocking; E-b latency and E-f Lighthouse-95 fas
 - Regulatory: official decree PDF (kemenimipas.go.id), JDIH BPK Permen Imipas 5/2025,
   imigrasi.go.id BVK list, ANTARA/VnExpress/IMI Golden Visa 2026-05-18 — URLs in the
   web-grounded lane file.
+
+## Adversarial review
+
+Panel corrections incorporated before publication; Fable 5 final gate: FIX-FIRST with 7 deltas, ALL adopted into the addendum (none rejected). Gemini's deadlock objection refuted by Fable (evaluate endpoint != UI launch). Gemini R1-pass (2026-07-24): no surviving objections. None survived, 9 raised.

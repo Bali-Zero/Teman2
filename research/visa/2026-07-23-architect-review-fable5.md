@@ -1,5 +1,5 @@
 ---
-adversarial_review: opus
+adversarial_review: kimi
 ---
 
 Ignoring 51 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/Users/nuzantara"].hasTrustDialogAccepted: true in /Users/nuzantara/.claude-zero-team/.claude.json.
@@ -52,3 +52,7 @@ Gemini commits a category error: it conflates the v2 **evaluate endpoint** (a he
 6. **Promote P1-2 (NEEDS_INPUT disclaimer, `OutcomeSheet.tsx:455`) out of "spec errata" into the P0-1/telemetry batch.** It is a Law-2-adjacent legal-disclaimer omission on a terminal state; ship the guard fix now, don't wait for the full wiring PR.
 7. **Mark all DB/Fly facts "architect-reported, receipt-owed"** (28 rows, 0 pack rows, last row 2026-04-21, secret state) and have the Pro/DB seat re-run the queries before Zero sets the D1 threshold — I could not re-verify them from this session, and neither could codex or web.
 fable exit=0
+
+## Adversarial review
+
+Orchestrator adopted all 7 deltas into the synthesis addendum (none rejected); migration-187 probe-sandbox precedent verified on disk; C6 vocabulary refinement recorded. None survived, 0 raised.

@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: codex
 date: 2026-07-23
 domain: visa
 client_case: none
@@ -187,3 +187,7 @@ Blocked until G-b green.
 - What is the minimal correct RulePack slice that makes the gate meaningful (30 codes × 7
   categories vs full 110)?
 - Anything in this analysis that is wrong, stale, or missing?
+
+## Adversarial review
+
+Panel of 4 seats (gemini, codex, design-house, web-grounded) + Fable 5 final gate, 2026-07-23 (see the five `2026-07-23-architect-review-*` files). Objections raised: M1 mechanism REFUTED (catch-all proxy exists; the break is the auth-floor registry omission), SHADOW-on-v1 thin-facts flaw (3/35), category-vocabulary mismatch, Kepmen effective date (2025-06-01), Permenkumham-10/2026 collision refuted, gate-vs-traffic math (~400x). None survived unaddressed — all corrected in the synthesis and its Fable addendum. None survived, 6 raised.

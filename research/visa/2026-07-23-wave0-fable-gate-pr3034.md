@@ -1,5 +1,5 @@
 ---
-adversarial_review: opus
+adversarial_review: gemini
 ---
 
 Ignoring 51 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/Users/nuzantara"].hasTrustDialogAccepted: true in /Users/nuzantara/.claude-zero-team/.claude.json.
@@ -55,3 +55,7 @@ Nessun blocker. Un solo rilievo minore (non-gating):
 ## GATE SUMMARY
 **SHIP** — replay deterministico byte-identical (exit 0, 0 divergenze, 20/20), 176/176 test verdi, le 3 proprietà metamorfiche non sono vacue (co-firing mutation probe verificato di persona: fallisce senza il sort), diff pulito ai soli 4 file dichiarati con evaluator/fixtures intatti; unico rilievo è la cifra "182" imprecisa nel testo del PR (reale = 176), non-gating.
 fable-gate exit=0
+
+## Adversarial review
+
+Gemini R1 pass (2026-07-24): P0 '8->3->5->0 not monotonic' — REFUTED: the test asserts three INDEPENDENT de-know drops from a proven baseline of 8 (8->3, 8->5, 8->0), not a sequence; the gate report's '->' phrasing was sloppy, the test is sound (Fable re-executed the co-firing mutation probe itself). None survived, 1 raised.

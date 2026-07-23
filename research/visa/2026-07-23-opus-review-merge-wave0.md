@@ -39,3 +39,7 @@ Contenuto **verificato positivo**, ma gate required rosso.
 
 Nessun force-push, nessun branch editato, nessun merge su CI rosso/pending. I due PR aperti richiedono azione dell'autore (entrambe operazioni sul branch, fuori dal mio mandato).
 opus exit=0
+
+## Adversarial review
+
+Gemini R1 pass (2026-07-24): P2 'adding keys to frontmatter-less files malforms them' — REFUTED: the cure handled both cases (insert vs prepend block); files validated by prettier and by this gate's own re-scan. None survived, 1 raised.

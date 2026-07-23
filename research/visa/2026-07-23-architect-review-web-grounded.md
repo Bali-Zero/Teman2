@@ -1,5 +1,5 @@
 ---
-adversarial_review: fable5
+adversarial_review: kimi
 ---
 
 ## SEAT VERDICT
@@ -68,3 +68,6 @@ Repo archaeology (read-only): `apps/mouth/src/app/api/[...path]/route.ts` — a 
 5. **Fix the collision note.** Delete "Permenkumham 10/2026 (Second Home)" — the actual Permenkum 10/2026 covers notary PMPJ obligations; Second Home = SE IMI-0740.GR.01.01/2022 (+E28B/E33F). Keep only the generic warning that "10/2026" exists in two ministries' numbering.
 6. **Live-site footnote.** `/visa`, `/visa/match`, `/visa-oracle` = 301 (www→apex) → 200; `/visa-oracle` verified `noindex, nofollow`; `/visa-v2` → 308 confirmed.
 7. **Flag the DB-only claims.** `visa_checks` 28-row window and the M5 traffic extrapolation were not independently verifiable from this seat; mark them "architect-reported, behavior-corroborated" rather than "verified" in the final plan, and have the DB seat re-run the query before the owner sees M5's re-calibration ask.
+## Adversarial review
+
+Orchestrator independently re-ran the DB queries it flagged as seat-unverifiable (28 rows, last 2026-04-21 — confirmed; receipt in the state-analysis). Kepmen date arbitration accepted (primary-source dictum KELIMA). None survived, 0 raised.
