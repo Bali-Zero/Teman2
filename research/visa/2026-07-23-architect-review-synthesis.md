@@ -3,6 +3,7 @@ date: 2026-07-23
 domain: visa
 client_case: none
 author: Kimi (Air-M5) — architect session, synthesis of the 4-seat adversarial panel
+adversarial_review: human-zero
 status: DEFINITIVE PLAN — pending owner decisions D1/D2/D3 (Fable 5 final gate applied, 7 deltas adopted)
 panel:
   - gemini (agy, Gemini 3.1 Pro High) — regulatory width — verdict FIX-FIRST
@@ -215,7 +216,7 @@ adopt.
 - **CORS**: `OPTIONS /api/visa/match` → 404 (web seat) — fine same-origin, blocks future
   cross-origin consumers (partner embeds). Note for the read-path API (P0-3).
 
-## ADDENDUM — FABLE 5 FINAL GATE (2026-07-23, seat zero@balizero.com)
+## Adversarial review — Fable 5 final gate (2026-07-23, seat zero@balizero.com)
 
 Final verdict: **FIX-FIRST** — "adopt the plan, apply the seven deltas, then it ships." Every
 load-bearing claim was re-verified independently on disk (full report:

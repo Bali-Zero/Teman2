@@ -3,6 +3,7 @@ date: 2026-07-23
 domain: visa
 client_case: none
 author: Kimi (Air-M5) — W5 decision-support lane
+adversarial_review: human-zero
 status: INPUT FOR OWNER DECISION D1
 ---
 
@@ -38,7 +39,7 @@ Derived rates:
 - The launch-week 7/day proves a push can spike the funnel — but sustaining 143/day
   organically needs a traffic program, not a fix.
 
-## What this means for D1 (Fable split applied)
+## Adversarial review — what this means for D1 (Fable split applied)
 
 - **G-a-vol (real requests, reported):** any fixed threshold ≥1,000/7d is unreachable without
   a paid/owned traffic program. Realistic proposal: **≥100 distinct real requests over a

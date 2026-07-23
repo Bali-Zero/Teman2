@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-raw-panel-seat-output
+---
+
 ## SEAT VERDICT
 FIX-FIRST
 

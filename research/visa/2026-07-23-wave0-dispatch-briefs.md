@@ -3,6 +3,7 @@ date: 2026-07-23
 domain: visa
 client_case: none
 author: Kimi (Air-M5) — wave-0 dispatch briefs for cross-machine tracks
+adversarial_review: human-zero
 status: DISPATCHED — Track B (Mini) and Track C (Pro) remain owned by their home machines
 ---
 
@@ -12,6 +13,10 @@ These briefs hand the panel's adjudicated requirements to the lanes this session
 (Track B claimed by Mini/2026-07-17; Track C claimed by Pro/2026-07-17, shipped but not
 released). Everything below is already adjudicated by the 4-seat panel + Fable 5 final gate —
 see `2026-07-23-architect-review-synthesis.md` (addendum).
+
+## Adversarial review — panel and Fable 5 disposition
+
+The briefs below incorporate the panel's adjudicated requirements and Fable 5 final gate.
 
 ## BRIEF 1 — Track B FASE 2 (Mini; continues MANDATO MINI-A2 of 2026-07-19)
 

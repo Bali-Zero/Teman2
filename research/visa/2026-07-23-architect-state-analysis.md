@@ -3,6 +3,7 @@ date: 2026-07-23
 domain: visa
 client_case: none
 author: Kimi (Air-M5) — architect state-analysis session
+adversarial_review: human-zero
 status: UNDER ADVERSARIAL REVIEW (4 seats: gemini / codex / glm / web-grounded)
 ---
 
@@ -177,6 +178,7 @@ Blocked until G-b green.
    capture.
 
 ## Open questions for the panel
+
 - Is fixing the v1 feed the right P0, or should SHADOW be re-pointed at a NEW public
   evaluate endpoint (v2 surface) instead of repairing v1?
 - Is the Next-route-with-service-token the right auth pattern, given the backend's
@@ -186,3 +188,8 @@ Blocked until G-b green.
 - What is the minimal correct RulePack slice that makes the gate meaningful (30 codes × 7
   categories vs full 110)?
 - Anything in this analysis that is wrong, stale, or missing?
+
+## Adversarial review — Fable 5 final gate
+
+The panel disposition and surviving objections are recorded in
+`2026-07-23-architect-review-synthesis.md`.

@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-raw-panel-seat-output
+---
+
 All evidence gathered. Writing the report.
 
 ## SEAT VERDICT — one line
