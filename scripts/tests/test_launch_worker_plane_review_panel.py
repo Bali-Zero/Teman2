@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import textwrap
@@ -1120,6 +1121,43 @@ def test_codesign_identity_accepts_adhoc_designated_requirement_prefix(
         "e31a6a98489a6d1c0afeaec28a86c70c9f8d3644",
         "not set",
         'cdhash H"e31a6a98489a6d1c0afeaec28a86c70c9f8d3644"',
+    )
+
+
+def test_macho_cdhash_ignores_short_non_code_directory_blob() -> None:
+    non_code_directory = struct.pack(">II", 0xFADE0C01, 8)
+    code_directory = bytearray(44)
+    struct.pack_into(">II", code_directory, 0, 0xFADE0C02, len(code_directory))
+    code_directory[37] = 2
+    index_bytes = 2 * 8
+    first_blob_offset = 12 + index_bytes
+    second_blob_offset = first_blob_offset + len(non_code_directory)
+    signature_length = second_blob_offset + len(code_directory)
+    signature = b"".join(
+        (
+            struct.pack(">III", 0xFADE0CC0, signature_length, 2),
+            struct.pack(">II", 0, first_blob_offset),
+            struct.pack(">II", 0, second_blob_offset),
+            non_code_directory,
+            bytes(code_directory),
+        )
+    )
+    header_size = 32
+    command_size = 16
+    signature_offset = header_size + command_size
+    header = bytearray(header_size)
+    header[:4] = b"\xcf\xfa\xed\xfe"
+    struct.pack_into("<I", header, 16, 1)
+    command = struct.pack(
+        "<IIII",
+        0x1D,
+        command_size,
+        signature_offset,
+        len(signature),
+    )
+
+    assert launcher._macho_cdhash(bytes(header) + command + signature) == (
+        hashlib.sha256(code_directory).digest()[:20]
     )
 
 

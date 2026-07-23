@@ -1296,13 +1296,15 @@ def _macho_cdhash(payload: bytes) -> bytes:
         if blob_offset + 8 > signature_length:
             raise LauncherError("private Mach-O signature index is invalid")
         blob_magic, blob_length = struct.unpack_from(">II", signature, blob_offset)
-        # CS_CodeDirectory's fixed header ends after the 32-bit spare2 field.
-        # Forty bytes exposes hashType but is still a structurally truncated
-        # CodeDirectory; the minimum complete fixed header is 44 bytes.
-        if blob_offset + blob_length > signature_length or blob_length < 44:
+        if blob_length < 8 or blob_offset + blob_length > signature_length:
             raise LauncherError("private Mach-O signature blob is invalid")
         if blob_magic != 0xFADE0C02:
             continue
+        # CS_CodeDirectory's fixed header ends after the 32-bit spare2 field.
+        # Forty bytes exposes hashType but is still a structurally truncated
+        # CodeDirectory; the minimum complete fixed header is 44 bytes.
+        if blob_length < 44:
+            raise LauncherError("private Mach-O signature blob is invalid")
         hash_type = signature[blob_offset + 37]
         hash_function = hash_functions.get(hash_type)
         if hash_function is None:
