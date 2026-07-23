@@ -316,6 +316,26 @@ def test_innocence_jsx_full_line_comment() -> None:
         assert result.violations == [], f"flagged: {line!r}"
 
 
+def test_guilt_jsx_closer_with_space_before_brace() -> None:
+    """GUILT (PR #2987 round-8, codex P0): `{/* comment */ }` (whitespace
+    before the brace) is valid JSX — treating it as unclosed would exempt
+    the whole line and smuggle the hex."""
+    line = "{/* comment */ } color: #d4845a;"
+    assert tl.effective_code(line) == "color: #d4845a;"
+    result = tl.scan(make_diff(WORKSPACE_PAGE, [line]), [WORKSPACE_PAGE])
+    assert [v.hex for v in result.violations] == ["#d4845a"]
+
+
+def test_innocence_jsx_full_line_comment_spaced_brace() -> None:
+    """INNOCENCE (round-8): a full-line JSX comment with a spaced brace is
+    still a comment."""
+    result = tl.scan(
+        make_diff(WORKSPACE_PAGE, ["{/* palette: #d4845a */ }"]),
+        [WORKSPACE_PAGE],
+    )
+    assert result.violations == []
+
+
 def test_workflow_scan_step_runs_before_proof_suite() -> None:
     """ORDERING LOCK (PR #2987 round-6, codex RED P0): the scan step MUST
     run before the pytest proof suite in the gate workflow. pytest

@@ -502,6 +502,11 @@ INLINE_COMMENT_PAIRS: tuple[tuple[str, str], ...] = (
     ("<!--", "-->"),
 )
 
+# JSX closers tolerate whitespace before the brace (round-8, codex P0):
+# `{/* comment */ }` is valid JSX — an exact-"*/}" match would treat it as
+# unclosed and exempt the whole line (fail-open bypass).
+JSX_CLOSER_RE = re.compile(r"\*/\s*\}")
+
 
 def effective_code(content: str) -> str:
     """The portion of an added line that is JUDGED for hexes (PR #2987
@@ -532,10 +537,17 @@ def effective_code(content: str) -> str:
         if pair is None:
             return remainder if saw_comment else content
         opener, closer = pair
-        idx = remainder.find(closer, len(opener))
-        if idx == -1:
-            return ""
-        remainder = remainder[idx + len(closer) :].lstrip()
+        if opener == "{/*":
+            m = JSX_CLOSER_RE.search(remainder, len(opener))
+            if m is None:
+                return ""
+            idx, closer_len = m.start(), m.end() - m.start()
+        else:
+            idx = remainder.find(closer, len(opener))
+            if idx == -1:
+                return ""
+            closer_len = len(closer)
+        remainder = remainder[idx + closer_len :].lstrip()
         saw_comment = True
 
 
