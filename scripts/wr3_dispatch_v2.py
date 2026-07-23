@@ -23,10 +23,13 @@ Cascade Tier 2 (Gemini free OAuth) is shared with v1 — imported lazily.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+import logging
 import os
+import re
 import shutil
-from dataclasses import dataclass
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -38,13 +41,13 @@ from wr3_dispatch_agent import (  # noqa: E402
     CascadeExhaustedError,
     DispatchResult,
     HardHaltException,
-    OSINTLeakError,
     WR3DispatchError,
     _dispatch_gemini_cli,
     telegram_p0,
 )
 from wr3_contracts import AgentContract, WR3Contracts
 
+logger = logging.getLogger(__name__)
 
 # Isolated cwd for `claude --print` subprocess. Empty dir → no CLAUDE.md
 # auto-discovery → minimal cached system prompt → minimal cost.
@@ -85,10 +88,119 @@ def _agent_system_prompt(slug: str) -> str:
     return _AGENT_PROMPT_CACHE[slug]
 
 
-# Symbiosis Law 1 hard rule: NEVER pass the paid per-token Anthropic key
-# to the claude subprocess. Built via string concat to avoid wr3_lint_cli_only
-# false-positive (the linter pattern-matches the literal name).
-_BANNED_KEY = "ANTHROPIC" + "_API_" + "KEY"
+# Symbiosis Law 1 hard rule: NEVER pass paid or alternate-provider credentials
+# to the Claude subprocess. The prefix is built without the banned literal so
+# wr3_lint_cli_only can keep flagging accidental reads of the paid key.
+_OAUTH_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"
+_PROVIDER_ENV_PREFIXES = (
+    "ANTHROPIC" + "_",
+    "AWS_",
+    "BEDROCK_",
+    "VERTEX_",
+    "FOUNDRY_",
+)
+_PROVIDER_ENV_NAMES = frozenset(
+    {
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_CLOUD_PROJECT",
+        "CLOUD_ML_REGION",
+    }
+)
+_QUOTA_RE = re.compile(
+    r"out of extra usage|usage limit|weekly limit|quota(?: exceeded)?|"
+    r"rate.?limit|too many requests|429|exhausted|hit your limit|"
+    r"capacity|overloaded|please try again later",
+    re.IGNORECASE,
+)
+_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh[_ ]token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
+    re.IGNORECASE,
+)
+_SECRET_DIAGNOSTIC_RE = re.compile(
+    r"(?i)\b(?:bearer|oauth[_ -]?token|access[_ -]?token)\b"
+    r"(\s*[:=]\s*|\s+)\S+"
+)
+
+
+class ClaudeFleetExhaustedError(WR3DispatchError):
+    """All configured Claude OAuth seats failed with retryable conditions."""
+
+
+def _collect_claude_seats(
+    source: Mapping[str, str] | None = None,
+) -> list[tuple[str, str]]:
+    """Return deduplicated OAuth seats in fleet order, then keychain."""
+    values = os.environ if source is None else source
+    seats: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for slot in range(1, 6):
+        token = values.get(f"{_OAUTH_TOKEN_ENV}_{slot}", "").strip()
+        if token and token not in seen:
+            label = "slot5-team" if slot == 5 else f"slot{slot}"
+            seats.append((label, token))
+            seen.add(token)
+    legacy = values.get(_OAUTH_TOKEN_ENV, "").strip()
+    if legacy and legacy not in seen:
+        seats.append(("legacy", legacy))
+    seats.append(("keychain", ""))
+    return seats
+
+
+def _is_provider_env(name: str) -> bool:
+    return name in _PROVIDER_ENV_NAMES or name.startswith(_PROVIDER_ENV_PREFIXES)
+
+
+def _build_claude_env(
+    token: str,
+    source: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Build an OAuth-only child env with alternate providers removed."""
+    values = os.environ if source is None else source
+    env = {
+        key: value
+        for key, value in values.items()
+        if not _is_provider_env(key) and not key.startswith(_OAUTH_TOKEN_ENV)
+    }
+    if token:
+        env[_OAUTH_TOKEN_ENV] = token
+    return env
+
+
+def _sanitize_diagnostic(text: str, secrets: list[str]) -> str:
+    safe = text
+    for secret in secrets:
+        if secret:
+            safe = safe.replace(secret, "[redacted]")
+    safe = _SECRET_DIAGNOSTIC_RE.sub("credential=[redacted]", safe)
+    return " ".join(safe.split())[:300]
+
+
+def _retry_reason(
+    *,
+    stdout: str,
+    stderr: str,
+    returncode: int,
+    valid_success: bool,
+    effective_output: str,
+) -> str | None:
+    if valid_success:
+        return None
+    combined = f"{stdout}\n{stderr}"
+    if _QUOTA_RE.search(combined):
+        return "quota"
+    if _AUTH_RE.search(combined):
+        return "auth"
+    if returncode in (0, 143) and not effective_output.strip():
+        return "empty-output"
+    if not stdout.strip() and not stderr.strip():
+        return "empty-output"
+    return None
 
 
 async def dispatch_claude_print(
@@ -122,10 +234,6 @@ async def dispatch_claude_print(
 
     system_prompt = _agent_system_prompt(contract.name)
 
-    # Strip the paid per-token key (defense in depth — also stripped at
-    # supervisor invocation time, but child subprocess gets a clean env).
-    env = {k: v for k, v in os.environ.items() if k != _BANNED_KEY}
-
     args = [
         claude_bin,
         "--print",
@@ -138,59 +246,141 @@ async def dispatch_claude_print(
         prompt,
     ]
 
-    started = asyncio.get_event_loop().time()
-    proc = None
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            cwd=str(_ISOLATED_CWD),
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    deadline = started + max(timeout_ms / 1000, 0.001)
+    seats = _collect_claude_seats()
+    secrets = [token for _, token in seats if token]
+    failures: list[str] = []
+
+    for index, (label, token) in enumerate(seats):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            failures.append(f"{label}:deadline")
+            break
+        seats_left = len(seats) - index
+        seat_budget_s = max(0.001, remaining / seats_left)
+        proc = None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                cwd=str(_ISOLATED_CWD),
+                env=_build_claude_env(token),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError as exc:
+            raise WR3DispatchError(
+                "`claude` CLI not on PATH. Install: https://claude.ai/code"
+            ) from exc
+
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                proc.communicate(),
+                timeout=seat_budget_s,
+            )
+        except asyncio.TimeoutError:
+            if proc.returncode is None:
+                proc.kill()
+            with contextlib.suppress(Exception):
+                await proc.wait()
+            failures.append(f"{label}:timeout")
+            logger.warning(
+                "%s: Claude OAuth %s timed out; trying next seat",
+                contract.name,
+                label,
+            )
+            continue
+
+        stdout = stdout_bytes.decode("utf-8", "replace")
+        stderr = stderr_bytes.decode("utf-8", "replace")
+        returncode = proc.returncode or 0
+        data: dict[str, Any] | None = None
+        try:
+            parsed = json.loads(stdout)
+            if isinstance(parsed, dict):
+                data = parsed
+        except json.JSONDecodeError:
+            pass
+
+        result_text = data.get("result", "") if data is not None else ""
+        effective_output = result_text if isinstance(result_text, str) else ""
+        valid_success = (
+            returncode == 0
+            and data is not None
+            and data.get("is_error") is not True
+            and bool(effective_output.strip())
         )
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(),
-            timeout=timeout_ms / 1000,
+
+        # Budget detection stays distinct from OAuth-seat exhaustion because
+        # WR3 routes cost caps according to gate/core/fallback contracts.
+        budget_scan = stderr if valid_success else f"{stdout}\n{stderr}"
+        budget_signals = (
+            "exceeded usd budget",
+            "max budget",
+            "max_budget",
+            "reached maximum budget",
+            "spending limit",
+            "spend_limit",
+            "out of credit",
+            "insufficient funds",
         )
-    except asyncio.TimeoutError as e:
-        if proc and proc.returncode is None:
-            proc.kill()
-        raise WR3DispatchError(
-            f"{contract.name}: claude --print timeout {timeout_ms}ms"
-        ) from e
+        if any(sig in budget_scan.lower() for sig in budget_signals):
+            raise BudgetExceededError(f"{contract.name}: budget cap ${ceiling} hit")
 
-    duration_ms = int((asyncio.get_event_loop().time() - started) * 1000)
-    stdout = stdout_bytes.decode("utf-8", "replace")
-    stderr = stderr_bytes.decode("utf-8", "replace")
+        reason = _retry_reason(
+            stdout=stdout,
+            stderr=stderr,
+            returncode=returncode,
+            valid_success=valid_success,
+            effective_output=effective_output,
+        )
+        if reason is not None:
+            failures.append(f"{label}:{reason}")
+            logger.warning(
+                "%s: Claude OAuth %s failed (%s); trying next seat",
+                contract.name,
+                label,
+                reason,
+            )
+            continue
 
-    # Budget exceeded detection — CLI prints "Error: Exceeded USD budget (X)".
-    combined = (stdout + " " + stderr).lower()
-    budget_signals = (
-        "exceeded usd budget", "max budget", "max_budget",
-        "reached maximum budget", "spending limit", "spend_limit",
-        "out of credit", "insufficient funds",
-    )
-    if any(sig in combined for sig in budget_signals):
-        raise BudgetExceededError(f"{contract.name}: budget cap ${ceiling} hit")
+        if returncode != 0:
+            diagnostic = _sanitize_diagnostic(stderr or stdout, secrets)
+            raise WR3DispatchError(
+                f"{contract.name}: Claude OAuth {label} exit {returncode}"
+                + (f" diagnostic={diagnostic}" if diagnostic else "")
+            )
+        if data is None:
+            diagnostic = _sanitize_diagnostic(stdout, secrets)
+            raise WR3DispatchError(
+                f"{contract.name}: Claude OAuth {label} returned non-JSON output"
+                + (f" diagnostic={diagnostic}" if diagnostic else "")
+            )
+        if data.get("is_error") is True:
+            diagnostic = _sanitize_diagnostic(effective_output or stderr, secrets)
+            raise WR3DispatchError(
+                f"{contract.name}: Claude OAuth {label} returned an error result"
+                + (f" diagnostic={diagnostic}" if diagnostic else "")
+            )
 
-    if proc.returncode != 0:
-        raise WR3DispatchError(
-            f"{contract.name}: claude exit {proc.returncode} stderr={stderr[:300]}"
+        duration_ms = int((loop.time() - started) * 1000)
+        logger.info(
+            "%s: Claude OAuth success via %s",
+            contract.name,
+            label,
+        )
+        return DispatchResult(
+            agent=contract.name,
+            cost_usd_estimated=data.get("total_cost_usd"),
+            duration_ms=duration_ms,
+            cascade_tier=1,
+            raw_output=effective_output,
         )
 
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError as e:
-        raise WR3DispatchError(
-            f"{contract.name}: claude returned non-JSON stdout={stdout[:300]}"
-        ) from e
-
-    return DispatchResult(
-        agent=contract.name,
-        cost_usd_estimated=data.get("total_cost_usd"),
-        duration_ms=duration_ms,
-        cascade_tier=1,
-        raw_output=data.get("result", ""),
+    summary = ", ".join(failures) or "no seats available"
+    raise ClaudeFleetExhaustedError(
+        f"{contract.name}: Claude OAuth fleet exhausted ({summary})"
     )
 
 
@@ -213,6 +403,28 @@ async def dispatch_agent_v2(
 
     try:
         return await dispatch_claude_print(contract, prompt, timeout_ms=timeout_ms)
+    except ClaudeFleetExhaustedError as e:
+        if contract.is_gate:
+            await telegram_p0(
+                f"{agent_name} exhausted the Claude OAuth fleet. "
+                f"Episode {episode_id} HALTED."
+            )
+            raise HardHaltException(str(e)) from e
+
+        if contract.is_core:
+            try:
+                return await _dispatch_gemini_cli(contract, prompt)
+            except CascadeExhaustedError:
+                await telegram_p0(
+                    f"{agent_name} OAuth fleet+cascade exhausted. "
+                    f"Episode {episode_id} FAIL."
+                )
+                raise
+
+        raise CascadeExhaustedError(
+            f"{agent_name} (non-core) Claude OAuth fleet exhausted — "
+            "no cross-family cascade for scheduled/fallback tier"
+        ) from e
     except BudgetExceededError as e:
         if contract.is_gate:
             await telegram_p0(
