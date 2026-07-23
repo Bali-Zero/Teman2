@@ -715,8 +715,13 @@ The side-effect ledger separates stable effect identity from attempt history.
 One projection row keyed by the generation-independent `effect_key` records
 `prepared`, `attempting`, `confirmed`, `failed`, or `outcome_unknown`; every
 begin, confirmation, failure, reconciliation, and resolution is also appended
-to an immutable attempt/audit table with attempt ID, owner, generation, claim
-token, lease, expected state, and resulting state. Ownership generation and
+to an immutable-to-runtime-writers attempt/audit table with attempt ID, owner,
+generation, claim token, lease, expected state, and resulting state. To prevent
+unbounded growth, a protected workload-specific retention function may delete
+only unreferenced terminal attempts older than 180 days in batches of at most
+10,000, never `prepared`, `attempting`, retryable `failed`, or
+`outcome_unknown`; the same transaction records cutoff, ID range, count, and
+aggregate hash in the payload-free ownership audit. Ownership generation and
 attempt identity never become part of the stable effect key.
 
 If these ledger tables are shared by several workloads, each workload reaches
@@ -755,6 +760,13 @@ constraints such as WhatsApp thread ordering. They implement a shared claim,
 lease, retry, telemetry, and fencing protocol through adapters. A generic job
 table is allowed only for truly generic commands; it must not erase domain
 invariants into an untyped JSON queue.
+
+A non-reconcilable ambiguous WhatsApp result pages within 15 minutes and
+requires an audited operator decision within four hours. Provider-confirmed
+delivery resolves the exact attempt; otherwise an exact-row protected
+`failed-no-retry` action moves the source message to `manual_hold` and may
+release only the next supplied thread boundary. It never resends the ambiguous
+message, never bulk-skips a thread, and writes no message content to audit.
 
 Periodic schedules use a generation-independent deterministic run key such as
 `(workload_name, scheduled_for)`. The ownership generation is stored as a
@@ -807,15 +819,21 @@ release adds an idempotent dual-read/dual-write bridge but keeps global
 event-ID high watermark: already consumed rows create terminal receipts only
 for the legacy subscriber, unconsumed rows create pending legacy receipts, and
 subscribers introduced later start strictly after their audited activation
-boundary. Backfill never replays consumed history to a new subscriber and is
-resumable across crashes on either side of the dual write. A second protected
+boundary. A durable pruning interlock protects every source row through that
+high watermark and is released only after count/hash completeness and
+reconciliation proof. Backfill never replays consumed history to a new
+subscriber and is resumable across crashes on either side of the dual write. A second protected
 release remains bridge-compatible during rolling overlap and may activate
 receipt authority only after the authoritative expected RAG census equals the
 fresh activation-build heartbeat set, the old/new binary matrix is green, the
 backfill/reconciliation checkpoint is complete, and an audited CAS binds the
-catalog hash plus subscriber boundaries. Once a post-boundary fan-out event is
-admitted, an old binary cannot be restored until fan-out publication stops and
-every named receipt is drained/reconciled back to bridge-safe state.
+catalog hash plus subscriber boundaries. Activation and pre-fan-out reversal
+are protected live-control commands with exact expected version/digest/panel
+hash. Once a post-boundary fan-out event is admitted, an old binary cannot be
+restored until bounded `force-bridge` stops publication and every named receipt
+is terminal or individually quarantined with an audited held source event; if
+that proof cannot complete within 30 minutes, Release B remains deployed and
+fails closed.
 
 Each event type has an owner, schema version, compatibility policy, allowed PII
 class, subscriber list, retention, and replay window. Unknown schema versions
@@ -824,7 +842,9 @@ fail closed into a DLQ rather than being guessed.
 Replay age is a per-event policy and must be at least the business recovery SLO.
 A durable or irreversible event that exceeds its replay window moves to a
 queryable quarantine/DLQ with an alert; it is never acknowledged merely to
-suppress replay. The current 60-minute selection window and stale-payload
+suppress replay. Recovery is an exact-row protected CAS against the recorded
+quarantine timestamp plus an atomic payload-free audit; normal workers, direct
+DML, stale timestamps, and bulk requeue are denied. The current 60-minute selection window and stale-payload
 acknowledgement are legacy behavior to remove before the event plane is called
 restart-safe.
 
@@ -1237,10 +1257,13 @@ explicit versioned compatibility window.
 
 ### G9 — Runtime regression stays bounded
 
-Compared with the Phase 0 baseline, each **runtime-observable release
-checkpoint** keeps API/RAG startup time, steady-state memory, DB connection
-count, and HTTP error rate within 10% unless an owner approves a measured
-exception. Here a migration step means one authoritative deployment checkpoint
+The Phase 0 Pro/CI baseline gates pre-merge code regression. Live rollout first
+captures an inert Release-A baseline independently in production and staging,
+then each **runtime-observable release checkpoint** keeps API/RAG startup time,
+steady-state memory, DB connection count, and HTTP error rate within 10% of
+the baseline from the same environment, topology, protocol, and sample window
+unless an owner approves a measured environment/digest-scoped exception.
+Cross-environment deltas are informational and cannot pass this gate. Here a migration step means one authoritative deployment checkpoint
 at which the running process/schema pair can be measured; it does not mean each
 individual DDL file inside one atomic protected migration chain. For this
 release, migrations 247–251 form one authoritative compatibility-chain

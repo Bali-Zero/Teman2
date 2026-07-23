@@ -117,9 +117,10 @@ Documents under review:
   activate/reverse CAS consume and immediately re-audit an immutable effective
   grant plus allowed-secret-symbol state hash so capability cannot change
   between admission and activation?
-- Does effect execution separate stable effect identity from append-only
-  attempts, atomically lock and validate grant/domain claim/effect state at
-  attempt start, and block cutover on every live lease, pending run, prepared,
+- Does effect execution separate stable effect identity from an
+  append-only-at-runtime attempt ledger with protected bounded retention,
+  atomically lock and validate grant/domain claim/effect state at attempt
+  start, and block cutover on every live lease, pending run, prepared,
   retryable, attempting, or unresolved blocking effect?
 - Are forward and reverse transitions strictly drain -> lease/effect barrier ->
   atomic generation advance/activation, with no interval containing two active
@@ -127,9 +128,11 @@ Documents under review:
 - Is all execution bound to Pro/CI with no remaining Air-M5 worktree, artifact, provider, or service dependency?
 - Does G8 execute real breaking-contract tests against generated backend
   OpenAPI plus Mouth types/routes and MCP consumers, rather than only naming
-  those adapters? Does G9 compare all four API/RAG metrics against the Phase 0
-  baseline after the complete authoritative 247–251 migration chain and after
-  every workload forward, reverse, and final re-cutover, while keeping worker
+  those adapters? Does G9 retain Phase 0 only as a pre-merge code-regression
+  gate, capture inert production-local and staging-local baselines after the
+  complete authoritative 247–251 migration chain, and compare all four API/RAG
+  metrics after every workload forward, reverse, and final re-cutover only
+  against the matching environment-local baseline while keeping worker
   absolute budgets separate? Does G10 reject prohibited raw PII before both job and
   event publication and prove logs, receipts, quarantine, and DLQ captures are
   redacted or opaque?
@@ -153,8 +156,17 @@ Return Markdown with exactly these top-level sections:
 5. `# Required amendments`
 6. `# Falsification test`
 
-The verdict must be one of `GO`, `GO-WITH-CHANGES`, or `NO-GO`, followed by a
-confidence from 0 to 100 and the reviewed `input_manifest_sha256`. Every finding
+Under `# Verdict`, the first two nonblank lines must be exactly:
+
+```text
+GO-WITH-CHANGES — confidence 84
+input_manifest_sha256: <the exact 64-hex value from the stdin header>
+```
+
+Substitute the actual verdict and an integer confidence from 0 through 100.
+Do not use Markdown emphasis, backticks, labels such as `Confidence: High`, or
+place the manifest field on the verdict line. The validator accepts only this
+machine-readable two-line shape. Every finding
 must cite a packet document section/path and, when
 based on repository state, the repository path. Separate verified facts from
 inference. A blocking finding must identify a concrete failure mode and a
