@@ -70,9 +70,66 @@ def _start_claude_cli_span(model_name: str, prompt_len_tokens: int) -> Any:
 
 
 DEFAULT_TIMEOUT_S: Final[int] = 120
+DEFAULT_TOTAL_TIMEOUT_S: Final[int] = 300
 RATE_LIMIT_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"rate.limit|too many requests|429|exhausted|quota|hit your limit|capacity|overloaded",
     re.IGNORECASE,
+)
+_MAX_DIAGNOSTIC_CHARS: Final[int] = 512
+_MAX_DIAGNOSTIC_LINES: Final[int] = 6
+_DIAGNOSTIC_FRAME_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^(?:"
+    r"(?:error|fatal)(?:\[[^\]]+\])?\s*[:\-]|"
+    r"you(?:'ve| have)\s+hit\s+(?:your\s+)?(?:weekly|usage)\s+limit\b|"
+    r"(?:weekly|usage)\s+(?:limit|quota)\s+(?:reached|exceeded|exhausted)\b|"
+    r"quota\s+(?:exceeded|exhausted)\b|"
+    r"(?:http(?:\s+status)?\s*)?401(?:\s|:|$)|"
+    r"unauthorized\b|"
+    r"auth(?:entication)?\s+(?:failed|error|required|expired)\b|"
+    r"oauth\s+(?:failed|error|required|expired)\b|"
+    r"token_revoked\b|"
+    r"refresh_token(?:_reused|_revoked|_expired)?\b"
+    r")",
+    re.IGNORECASE,
+)
+_AUTH_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:"
+    r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?|"
+    r"401|unauthorized|"
+    r"auth(?:entication)?\s+(?:failed|error|required|expired)|"
+    r"oauth\s+(?:failed|error|required|expired)"
+    r")\b",
+    re.IGNORECASE,
+)
+_QUOTA_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:"
+    r"out of extra usage|"
+    r"(?:weekly|usage)\s+(?:limit|quota)|"
+    r"quota\s+(?:exceeded|exhausted)|"
+    r"rate[ -]?limit(?:ed| exceeded)?|"
+    r"too many requests|429"
+    r")\b",
+    re.IGNORECASE,
+)
+_PROVIDER_ENV_EXACT: Final[frozenset[str]] = frozenset(
+    {
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_QUOTA_PROJECT",
+        "CLOUD_ML_REGION",
+    }
+)
+_PROVIDER_ENV_PREFIXES: Final[tuple[str, ...]] = (
+    "AWS_",
+    "BEDROCK_",
+    "ANTHROPIC_BEDROCK_",
+    "VERTEX_",
+    "ANTHROPIC_VERTEX_",
 )
 CLAUDE_CLI_CANDIDATES: Final[tuple[Path, ...]] = (
     Path("/opt/homebrew/bin/claude"),
@@ -84,9 +141,7 @@ CLAUDE_CLI_CANDIDATES: Final[tuple[Path, ...]] = (
 # reject anything that isn't a plain ``claude-*`` slug (blocks argv/flag
 # smuggling via the model field). All current call-site slugs pass:
 # ``claude-sonnet-4-6``, ``claude-haiku-4-5``, ``claude-haiku-4-5-20251001``.
-_ALLOWED_MODEL_RE: Final[re.Pattern[str]] = re.compile(
-    r"^claude-[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"
-)
+_ALLOWED_MODEL_RE: Final[re.Pattern[str]] = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9._-]{1,63}$")
 # Pure text-completion never needs tools. Block the destructive/exfil ones
 # defense-in-depth so an untrusted prompt (e.g. a raw user query routed
 # through ``surface_router``) can never reach a tool — replaces the unsafe
@@ -154,16 +209,58 @@ def _collect_tokens() -> list[tuple[str, str]]:
 def _build_env(token: str) -> dict[str, str]:
     """Env vars for the ``claude`` subprocess.
 
-    Strips ``ANTHROPIC_API_KEY`` unconditionally (Golden Rule: never let the
-    CLI silently pick up a pay-as-you-go key) and sets
-    ``CLAUDE_CODE_OAUTH_TOKEN`` when the caller passes one.
+    Strips every alternate Anthropic provider credential/selector so the CLI
+    cannot silently escape the Max OAuth path through a direct API key,
+    Bedrock, or Vertex. Numbered seat tokens are also removed; the child sees
+    only the selected ``CLAUDE_CODE_OAUTH_TOKEN``.
     """
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _PROVIDER_ENV_EXACT
+        and not key.startswith(_PROVIDER_ENV_PREFIXES)
+        and not key.startswith("CLAUDE_CODE_OAUTH_TOKEN_")
+    }
     if token:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
     else:
         env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env
+
+
+def _classify_cli_diagnostic(text: str) -> str | None:
+    """Return a safe diagnostic class for a short, clearly framed CLI error.
+
+    Claude may occasionally exit 0 while printing a quota/auth diagnostic.
+    Scanning arbitrary successful content for words such as "quota" causes
+    false positives, so this gate only examines bounded, low-line-count text
+    that starts like a CLI error. The returned value is a fixed class suitable
+    for logs; raw output is never returned.
+    """
+    sample = (text or "").strip()
+    if (
+        not sample
+        or len(sample) > _MAX_DIAGNOSTIC_CHARS
+        or len(sample.splitlines()) > _MAX_DIAGNOSTIC_LINES
+    ):
+        return None
+
+    compact = " ".join(sample.split())
+    if _DIAGNOSTIC_FRAME_PATTERN.search(compact) is None:
+        return None
+    if _AUTH_DIAGNOSTIC_PATTERN.search(compact):
+        return "authentication"
+    if _QUOTA_DIAGNOSTIC_PATTERN.search(compact):
+        return "quota"
+    return None
+
+
+async def _kill_and_reap(proc: Any) -> None:
+    """Terminate a timed-out child and wait for it so no zombie remains."""
+    with contextlib.suppress(ProcessLookupError):
+        proc.kill()
+    with contextlib.suppress(Exception):
+        await proc.wait()
 
 
 def _resolve_claude_cli() -> str:
@@ -196,7 +293,7 @@ _MAX_SCHEMA_BYTES: Final[int] = 16 * 1024
 _JSON_SCHEMA_SUPPORTED: bool | None = None
 
 
-def _cli_supports_json_schema(claude_cli: str) -> bool:
+def _cli_supports_json_schema(claude_cli: str, timeout_s: float = 10) -> bool:
     """Return True iff the resolved `claude` CLI advertises ``--json-schema``.
 
     Probed once and memoized (review D4): a CLI that predates the flag answers
@@ -215,7 +312,7 @@ def _cli_supports_json_schema(claude_cli: str) -> bool:
             [claude_cli, "--help"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=max(0.001, min(10, timeout_s)),
         )
         _JSON_SCHEMA_SUPPORTED = "--json-schema" in (out.stdout + out.stderr)
     except Exception:
@@ -241,8 +338,10 @@ def _serialize_schema(json_schema: dict[str, Any]) -> str:
     return blob
 
 
-def _parse_json_envelope(stdout: str) -> tuple[str, dict[str, Any] | None, dict[str, int] | None]:
-    """Parse a ``claude --output-format json`` stdout into (text, structured, usage).
+def _parse_json_envelope(
+    stdout: str,
+) -> tuple[str, dict[str, Any] | None, dict[str, int] | None, bool]:
+    """Parse JSON stdout into ``(text, structured, usage, is_error)``.
 
     Defensive per review D2/D5:
     - Accepts a single JSON object OR newline-delimited events; in the NDJSON
@@ -253,15 +352,17 @@ def _parse_json_envelope(stdout: str) -> tuple[str, dict[str, Any] | None, dict[
       do not feed it to a schema validator).
     - ``usage`` are the REAL token counts (``usage.input_tokens`` /
       ``usage.output_tokens``) for the cost ledger.
-    - Returns ``("", None, None)`` for an unparseable / error envelope so the
-      caller routes it through the existing empty-output gate.
+    - Preserves the envelope's explicit ``is_error`` bit so an exit-0 error
+      cannot be mistaken for a successful structured response.
+    - Returns ``("", None, None, False)`` for unparseable input so the caller
+      routes it through the existing empty-output gate.
     """
     import json as _json
 
     envelope: dict[str, Any] | None = None
     text = (stdout or "").strip()
     if not text:
-        return "", None, None
+        return "", None, None, False
 
     # Fast path: whole stdout is one JSON object.
     try:
@@ -285,24 +386,11 @@ def _parse_json_envelope(stdout: str) -> tuple[str, dict[str, Any] | None, dict[
                 envelope = obj  # last-resort: any object
 
     if envelope is None:
-        return "", None, None
-
-    # An error envelope (is_error true, even on exit 0) → treat as empty so the
-    # retry/rate-limit gates handle it.
-    if envelope.get("is_error") is True:
-        return "", None, None
+        return "", None, None, False
 
     structured = envelope.get("structured_output")
     if not isinstance(structured, dict):
         structured = None
-        # Diagnostic: an envelope arrived but carried no structured_output. The
-        # caller will treat this as empty and retry/fall back — surface WHY so a
-        # cron debugging a degraded run can tell "malformed envelope" from "CLI
-        # emitted only log events" (panel DeepSeek MEDIO).
-        logger.warning(
-            "claude --json-schema envelope had no structured_output (type=%s)",
-            envelope.get("type"),
-        )
 
     result_text = envelope.get("result")
     text_out = result_text if isinstance(result_text, str) else ""
@@ -315,14 +403,24 @@ def _parse_json_envelope(stdout: str) -> tuple[str, dict[str, Any] | None, dict[
         if isinstance(it, int) and isinstance(ot, int):
             usage = {"input_tokens": it, "output_tokens": ot}
 
-    return text_out, structured, usage
+    is_error = envelope.get("is_error") is True
+    if not is_error and structured is None:
+        # Diagnostic: an envelope arrived but carried no structured_output. The
+        # caller will retry; only log the public envelope type, never payload.
+        logger.warning(
+            "claude --json-schema envelope had no structured_output (type=%s)",
+            envelope.get("type"),
+        )
+
+    return text_out, structured, usage, is_error
 
 
 async def complete_async(
     prompt: str,
     *,
     model: str | None = None,
-    timeout_s: int = DEFAULT_TIMEOUT_S,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    total_timeout_s: float = DEFAULT_TOTAL_TIMEOUT_S,
     endpoint: str | None = None,
     request_id: str | None = None,
     json_schema: dict[str, Any] | None = None,
@@ -347,8 +445,9 @@ async def complete_async(
         model: Optional model id forwarded as ``claude -p --model <id>``.
             Accepts any slug the CLI accepts (``claude-opus-4-7``,
             ``claude-sonnet-4-6``, ``claude-haiku-4-5``, …).
-        timeout_s: Per-attempt wall-clock timeout. The total cap is roughly
-            ``timeout_s × len(tokens)``.
+        timeout_s: Per-seat wall-clock timeout.
+        total_timeout_s: Hard wall-clock budget for the entire fallback call.
+            Every seat receives ``min(timeout_s, remaining_global_budget)``.
         endpoint: Caller identifier for cost attribution. Strongly
             recommended.
         request_id: HTTP correlation id if available.
@@ -364,10 +463,16 @@ async def complete_async(
     """
     if not prompt:
         raise ValueError("prompt must be non-empty")
+    if timeout_s <= 0:
+        raise ValueError("timeout_s must be positive")
+    if total_timeout_s <= 0:
+        raise ValueError("total_timeout_s must be positive")
 
     tokens = _collect_tokens()
     start = time.monotonic()
+    deadline = start + total_timeout_s
     last_error = ""
+    attempts_made = 0
     # Reported only at the end (success OR failure)
     _recorder_model = model or "claude-unknown"
     _recorder_input_tokens = max(1, len(prompt) // 4)
@@ -407,11 +512,25 @@ async def complete_async(
         # synchronously (memoized after), and a blocking subprocess.run inside a
         # coroutine would freeze sibling tasks on a shared loop (panel: both LLMs
         # flagged the cron-headless risk). asyncio.to_thread keeps the loop free.
-        supports = (
-            _JSON_SCHEMA_SUPPORTED
-            if _JSON_SCHEMA_SUPPORTED is not None
-            else await asyncio.to_thread(_cli_supports_json_schema, claude_cli)
-        )
+        supports = _JSON_SCHEMA_SUPPORTED
+        if supports is None:
+            probe_budget_s = deadline - time.monotonic()
+            if probe_budget_s <= 0:
+                supports = False
+                last_error = "global_deadline"
+            else:
+                try:
+                    supports = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            _cli_supports_json_schema,
+                            claude_cli,
+                            probe_budget_s,
+                        ),
+                        timeout=probe_budget_s,
+                    )
+                except asyncio.TimeoutError:
+                    supports = False
+                    last_error = "global_deadline"
         if supports:
             try:
                 schema_blob = _serialize_schema(json_schema)
@@ -422,6 +541,17 @@ async def complete_async(
     use_schema = schema_blob is not None
 
     for attempt, (token, label) in enumerate(tokens, start=1):
+        remaining_global_s = deadline - time.monotonic()
+        if remaining_global_s <= 0:
+            last_error = "global_deadline"
+            logger.warning(
+                "claude OAuth global deadline exhausted after %d attempt(s)",
+                attempts_made,
+            )
+            break
+        attempts_made = attempt
+        seat_deadline = min(deadline, time.monotonic() + timeout_s)
+
         # No bypassPermissions: tools are explicitly disallowed and the
         # default permission mode fails-closed on any tool the model still
         # attempts. The `--` sentinel guarantees the (possibly untrusted)
@@ -446,25 +576,41 @@ async def complete_async(
         env = _build_env(token)
 
         try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                env=env,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+            proc = await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    *cmd,
+                    env=env,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                ),
+                timeout=max(0.0, seat_deadline - time.monotonic()),
             )
         except FileNotFoundError as exc:
             raise ClaudeOAuthNotAvailable(
                 "`claude` CLI not found in PATH. Install: https://claude.ai/code",
             ) from exc
+        except asyncio.TimeoutError:
+            if time.monotonic() >= deadline:
+                last_error = "global_deadline"
+                logger.warning("claude OAuth global deadline exhausted during CLI launch")
+                break
+            last_error = f"{label}: launch_timeout"
+            logger.warning("%s: CLI launch timed out, trying next", label)
+            continue
 
         try:
-            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
+            stdout_b, stderr_b = await asyncio.wait_for(
+                proc.communicate(),
+                timeout=max(0.0, seat_deadline - time.monotonic()),
+            )
         except asyncio.TimeoutError:
-            proc.kill()
-            with contextlib.suppress(Exception):
-                await proc.wait()
-            last_error = f"{label}: timeout after {timeout_s}s"
-            logger.warning(last_error)
+            await _kill_and_reap(proc)
+            if time.monotonic() >= deadline:
+                last_error = "global_deadline"
+                logger.warning("claude OAuth global deadline exhausted during CLI attempt")
+                break
+            last_error = f"{label}: attempt_timeout"
+            logger.warning("%s: CLI attempt timed out, trying next", label)
             continue
 
         exit_code = proc.returncode or 0
@@ -490,23 +636,51 @@ async def complete_async(
         parsed_text = output
         parsed_structured: dict[str, Any] | None = None
         parsed_usage: dict[str, int] | None = None
+        structured_error = False
         if use_schema and exit_code == 0:
-            parsed_text, parsed_structured, parsed_usage = _parse_json_envelope(output)
+            (
+                parsed_text,
+                parsed_structured,
+                parsed_usage,
+                structured_error,
+            ) = _parse_json_envelope(output)
+            if structured_error:
+                diagnostic_class = _classify_cli_diagnostic(parsed_text) or "structured_error"
+                last_error = f"{label}: {diagnostic_class}"
+                logger.warning(
+                    "%s: CLI structured error (%s), trying next",
+                    label,
+                    diagnostic_class,
+                )
+                continue
             # Structured path only "succeeds" if we got a structured_output.
-            # Missing/error envelope → empty so the token loop retries, and the
+            # Missing envelope → empty so the token loop retries, and the
             # caller's text fallback can run on a clean separate call.
             effective_output = parsed_text if parsed_structured is not None else ""
         else:
             effective_output = output
 
+        if exit_code == 0 and not use_schema:
+            diagnostic_class = _classify_cli_diagnostic(output)
+            if diagnostic_class is None:
+                diagnostic_class = _classify_cli_diagnostic(stderr)
+            if diagnostic_class is not None:
+                last_error = f"{label}: {diagnostic_class}"
+                logger.warning(
+                    "%s: CLI diagnostic (%s), trying next",
+                    label,
+                    diagnostic_class,
+                )
+                continue
+
         if not effective_output and exit_code in (0, 143) and parsed_structured is None:
-            last_error = f"{label}: empty output (quota?)"
-            logger.warning("%s: empty output (likely quota/rate issue), trying next", label)
+            last_error = f"{label}: empty_output"
+            logger.warning("%s: empty CLI output, trying next", label)
             continue
 
         if exit_code != 0:
-            last_error = f"{label}: exit={exit_code} stderr={stderr[:200]}"
-            logger.warning(last_error)
+            last_error = f"{label}: cli_exit_{exit_code}"
+            logger.warning("%s: CLI failed (exit=%d), trying next", label, exit_code)
             continue
 
         elapsed = time.monotonic() - start
@@ -554,14 +728,15 @@ async def complete_async(
             )
 
     err = ClaudeOAuthError(
-        f"All {len(tokens)} OAuth attempts failed. Last error: {last_error}",
+        f"Claude OAuth failed after {attempts_made} attempt(s). "
+        f"Last error class: {last_error or 'unknown'}",
     )
     _recorder_error_class = type(err).__name__
     if _span_set is not None:
         try:
             from opentelemetry.trace import Status, StatusCode
 
-            _span_set.set_attribute("nuzantara.claude_oauth.attempts", len(tokens))
+            _span_set.set_attribute("nuzantara.claude_oauth.attempts", attempts_made)
             _span_set.set_attribute("error.message", last_error[:200])
             _span_set.set_status(Status(StatusCode.ERROR, "all OAuth tokens failed"))
         except Exception:
@@ -632,7 +807,8 @@ def complete(
     prompt: str,
     *,
     model: str | None = None,
-    timeout_s: int = DEFAULT_TIMEOUT_S,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    total_timeout_s: float = DEFAULT_TOTAL_TIMEOUT_S,
 ) -> ClaudeOAuthResponse:
     """Synchronous wrapper around :func:`complete_async`.
 
@@ -650,4 +826,11 @@ def complete(
             "complete() is sync; inside a running event loop call complete_async() instead",
         )
 
-    return asyncio.run(complete_async(prompt, model=model, timeout_s=timeout_s))
+    return asyncio.run(
+        complete_async(
+            prompt,
+            model=model,
+            timeout_s=timeout_s,
+            total_timeout_s=total_timeout_s,
+        )
+    )
