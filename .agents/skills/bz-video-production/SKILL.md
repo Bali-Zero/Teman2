@@ -92,9 +92,9 @@ Always include in EVERY prompt:
 - Language: English for video (NLM cinematic English-only)
 - Visual language: concrete ("officers at airport") not abstract ("unified system")
 
-## Post-Processing (handled by Claude Code)
+## Post-Processing (handled by the coding-agent lane)
 
-After Flow generates intro → Claude Code handles:
+After Flow generates intro → the coding-agent lane handles:
 
 - ffmpeg concatenation (intro + NLM content)
 - Logo overlay
