@@ -1,6 +1,7 @@
 ---
 date: 2026-07-23
 domain: marketing
+adversarial_review: gemini
 status: DRAFT — decision-ready proposal, NOT client-facing, NOT live pricing
 author: Kimi (docs-e33-dependent-pricing lane)
 governing_decisions:
@@ -115,3 +116,12 @@ launch decision):
 > single all-inclusive fee of IDR 12,000,000 per person, processed together
 > with your own application. One coordinated submission, one timeline, one
 > point of contact for the whole family.
+
+## Adversarial review
+
+Reviewed 2026-07-24 by seats != author (author: kimi) on the full branch diff:
+**gemini** (verdict MERGE — margin math and pending gates acknowledged) and
+**glm-5.2** (no FIX-FIRST). Open items remain owner-side by design: confirm
+the IDR 12M figure and the no-volume-discount stance, then route through
+PricingTool before go-live. Review artifacts: PR #3045 comments +
+`/tmp/secondhome_review/pr_review_gemini.md`, `pr_review_glm.md`.
