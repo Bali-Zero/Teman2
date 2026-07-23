@@ -59,6 +59,97 @@
         "verified_at": "2026-07-17T00:00:00Z",
         "verified_by": "gold-harness-authoring",
         "supersedes_source_record_id": null
+      },
+      {
+        "source_record_id": "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+        "source_key": "imigrasi.go.id.e33-secondhome.2026-07-19",
+        "version": 1,
+        "authority_type": "OFFICIAL_PORTAL",
+        "status": "VERIFIED",
+        "jurisdiction": "ID",
+        "title": "Ditjen Imigrasi official Second Home Visa (E33) pages — deposit/property/income thresholds",
+        "publisher": "Direktorat Jenderal Imigrasi",
+        "canonical_url": "https://www.imigrasi.go.id/",
+        "language": "id",
+        "document_number": null,
+        "locators": [],
+        "content_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "legal_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "recorded_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "retrieved_at": "2026-07-19T00:00:00Z",
+        "verified_at": "2026-07-19T00:00:00Z",
+        "verified_by": "gold-harness-authoring",
+        "supersedes_source_record_id": null
+      },
+      {
+        "source_record_id": "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a02",
+        "source_key": "permenkumham.22.2023",
+        "version": 1,
+        "authority_type": "PRIMARY_LAW",
+        "status": "VERIFIED",
+        "jurisdiction": "ID",
+        "title": "Permenkumham 22 Tahun 2023 — Pasal 113 cumulative stay caps (>=5y first grant: 10y cap; <5y: 6y cap) and Pasal 185 first-grant durations",
+        "publisher": "Kementerian Hukum dan HAM",
+        "canonical_url": "https://peraturan.bpk.go.id/",
+        "language": "id",
+        "document_number": "Permenkumham 22 Tahun 2023",
+        "locators": [
+          {
+            "kind": "ARTICLE",
+            "value": "Pasal 113"
+          }
+        ],
+        "content_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "legal_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "recorded_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "retrieved_at": "2026-07-21T00:00:00Z",
+        "verified_at": "2026-07-21T00:00:00Z",
+        "verified_by": "gold-harness-authoring",
+        "supersedes_source_record_id": null
+      },
+      {
+        "source_record_id": "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03",
+        "source_key": "permenkumham.11.2024",
+        "version": 1,
+        "authority_type": "PRIMARY_LAW",
+        "status": "VERIFIED",
+        "jurisdiction": "ID",
+        "title": "Permenkumham 11 Tahun 2024 — senior age threshold amended to 55 (Pasal 33(2)(j)(4)) while Pasal 33(10)(d) still reads 60; operate on 55, disclose the 55-59 band ambiguity",
+        "publisher": "Kementerian Hukum dan HAM",
+        "canonical_url": "https://peraturan.bpk.go.id/",
+        "language": "id",
+        "document_number": "Permenkumham 11 Tahun 2024",
+        "locators": [
+          {
+            "kind": "ARTICLE",
+            "value": "Pasal 33"
+          }
+        ],
+        "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "legal_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "recorded_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "retrieved_at": "2026-07-21T00:00:00Z",
+        "verified_at": "2026-07-21T00:00:00Z",
+        "verified_by": "gold-harness-authoring",
+        "supersedes_source_record_id": null
       }
     ],
     "products": [
@@ -321,13 +412,13 @@
         "public_catalog": true
       },
       {
-        "product_version_id": "83e860db-3e7a-42c8-8e8e-64c7d03dd540",
-        "product_code": "E33R",
+        "product_version_id": "2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5",
+        "product_code": "E33E",
         "legacy_codes": [],
         "legacy_slugs": [],
         "names": {
-          "id": "Visa E33R (gold harness)",
-          "en": "E33R product (gold harness)"
+          "id": "Visa Rumah Kedua Lansia untuk 5 Tahun (Golden Visa)",
+          "en": "Second Home Visa Elderly for 5 Years (E33E, Golden Visa)"
         },
         "category": "LIMITED_STAY",
         "status": "ACTIVE",
@@ -342,9 +433,55 @@
           "entry_count": "MULTIPLE"
         },
         "stay_policy": {
-          "kind": "VARIABLE_BY_GRANT",
-          "minimum_days": null,
-          "maximum_days": null
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 1825
+        },
+        "extension_policy": {
+          "allowed": false,
+          "maximum_extensions": 0,
+          "days_per_extension": null
+        },
+        "clock_policy": {
+          "available": true,
+          "anchor": "PERMIT_ISSUED_AT",
+          "checkpoints": []
+        },
+        "pricing_key": {
+          "category": "kitas_permits",
+          "item_key": "e33e_second_home_elderly_5y"
+        },
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"
+        ],
+        "public_catalog": true
+      },
+      {
+        "product_version_id": "2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33f6",
+        "product_code": "E33F",
+        "legacy_codes": [],
+        "legacy_slugs": [],
+        "names": {
+          "id": "Visa Rumah Kedua Lansia untuk 1 Tahun",
+          "en": "Second Home Visa Elderly for 1 Year (E33F)"
+        },
+        "category": "LIMITED_STAY",
+        "status": "ACTIVE",
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "covered_purposes": ["RETIREMENT"],
+        "prohibited_activities": [],
+        "sponsor_types": ["NONE"],
+        "entry_policy": {
+          "entry_count": "MULTIPLE"
+        },
+        "stay_policy": {
+          "kind": "FIXED_DAYS",
+          "minimum_days": 1,
+          "maximum_days": 365
         },
         "extension_policy": {
           "allowed": true,
@@ -358,9 +495,12 @@
         },
         "pricing_key": {
           "category": "kitas_permits",
-          "item_key": "e33r_retirement"
+          "item_key": "e33f_second_home_elderly_1y"
         },
-        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"
+        ],
         "public_catalog": true
       },
       {
@@ -450,13 +590,13 @@
         "public_catalog": true
       },
       {
-        "product_version_id": "9f91257a-2df8-4495-b22f-2a6abb949e51",
-        "product_code": "E33S",
+        "product_version_id": "2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e0",
+        "product_code": "E33",
         "legacy_codes": [],
         "legacy_slugs": [],
         "names": {
-          "id": "Visa E33S (gold harness)",
-          "en": "E33S product (gold harness)"
+          "id": "Visa Rumah Kedua (Second Home)",
+          "en": "Second Home Visa (E33)"
         },
         "category": "LIMITED_STAY",
         "status": "ACTIVE",
@@ -472,8 +612,8 @@
         },
         "stay_policy": {
           "kind": "FIXED_DAYS",
-          "minimum_days": 1825,
-          "maximum_days": 3650
+          "minimum_days": 1,
+          "maximum_days": 1825
         },
         "extension_policy": {
           "allowed": true,
@@ -487,9 +627,12 @@
         },
         "pricing_key": {
           "category": "kitas_permits",
-          "item_key": "e33s_second_home"
+          "item_key": "e33_second_home"
         },
-        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a02"
+        ],
         "public_catalog": true
       }
     ],
@@ -943,7 +1086,7 @@
         "product_version_ids": ["5fcfb488-ae0c-4739-ad81-0b8b7d0b1701"]
       },
       {
-        "rule_id": "el-e33r-retirement",
+        "rule_id": "el-e33e-retirement",
         "stage": "ELIGIBILITY",
         "scope": "PRODUCTS",
         "priority": 100,
@@ -963,6 +1106,26 @@
               "op": "gte",
               "fact": "derived.age_years",
               "value": 55
+            },
+            {
+              "op": "gte",
+              "fact": "secondhome.bank_deposit_usd",
+              "value": 50000
+            },
+            {
+              "op": "eq",
+              "fact": "secondhome.bank_deposit_at_state_bank",
+              "value": true
+            },
+            {
+              "op": "eq",
+              "fact": "secondhome.bank_deposit_in_own_name",
+              "value": true
+            },
+            {
+              "op": "gte",
+              "fact": "secondhome.passive_monthly_income_usd",
+              "value": 3000
             }
           ]
         },
@@ -972,11 +1135,95 @@
           "covered_purposes": ["RETIREMENT"]
         },
         "on_unknown": "NEEDS_INPUT",
-        "required_facts": ["intent.purposes", "derived.age_years"],
-        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
-        "explanation_key": "explain.el_e33r_retirement",
+        "required_facts": [
+          "intent.purposes",
+          "derived.age_years",
+          "secondhome.bank_deposit_usd",
+          "secondhome.bank_deposit_at_state_bank",
+          "secondhome.bank_deposit_in_own_name",
+          "secondhome.passive_monthly_income_usd"
+        ],
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"
+        ],
+        "explanation_key": "explain.el_e33e_retirement",
         "safety_critical": false,
-        "product_version_ids": ["83e860db-3e7a-42c8-8e8e-64c7d03dd540"]
+        "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5"]
+      },
+      {
+        "rule_id": "hr-e33e-age-band-55-59",
+        "stage": "HUMAN_REVIEW",
+        "scope": "PRODUCTS",
+        "priority": 70,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "between",
+          "fact": "derived.age_years",
+          "lower": 55,
+          "upper": 59
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "SECOND_HOME_SENIOR_AGE_AMBIGUITY_REVIEW"
+        },
+        "on_unknown": "HUMAN_REVIEW",
+        "required_facts": ["derived.age_years"],
+        "source_refs": ["7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"],
+        "explanation_key": "explain.hr_e33e_age_band_55_59",
+        "safety_critical": false,
+        "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e5"]
+      },
+      {
+        "rule_id": "el-e33f-retirement",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-17T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "intersects",
+              "fact": "intent.purposes",
+              "values": ["RETIREMENT"]
+            },
+            {
+              "op": "gte",
+              "fact": "derived.age_years",
+              "value": 55
+            },
+            {
+              "op": "gte",
+              "fact": "secondhome.passive_monthly_income_usd",
+              "value": 3000
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "RETIREMENT_INCOME_ONLY_SUPPORTED",
+          "covered_purposes": ["RETIREMENT"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "derived.age_years",
+          "secondhome.passive_monthly_income_usd"
+        ],
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a03"
+        ],
+        "explanation_key": "explain.el_e33f_retirement",
+        "safety_critical": false,
+        "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33f6"]
       },
       {
         "rule_id": "el-e30-student",
@@ -1050,7 +1297,7 @@
         "product_version_ids": ["ec84d6ca-b9a7-4a69-a8b7-097d634d0cba"]
       },
       {
-        "rule_id": "el-e33s-secondhome",
+        "rule_id": "el-e33-secondhome",
         "stage": "ELIGIBILITY",
         "scope": "PRODUCTS",
         "priority": 100,
@@ -1067,9 +1314,34 @@
               "values": ["SECOND_HOME"]
             },
             {
-              "op": "eq",
-              "fact": "process.application_channel",
-              "value": "OFFSHORE"
+              "op": "any",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "op": "gte",
+                      "fact": "secondhome.bank_deposit_usd",
+                      "value": 130000
+                    },
+                    {
+                      "op": "eq",
+                      "fact": "secondhome.bank_deposit_at_state_bank",
+                      "value": true
+                    },
+                    {
+                      "op": "eq",
+                      "fact": "secondhome.bank_deposit_in_own_name",
+                      "value": true
+                    }
+                  ]
+                },
+                {
+                  "op": "gte",
+                  "fact": "secondhome.qualifying_property_value_usd",
+                  "value": 1000000
+                }
+              ]
             }
           ]
         },
@@ -1079,11 +1351,20 @@
           "covered_purposes": ["SECOND_HOME"]
         },
         "on_unknown": "NEEDS_INPUT",
-        "required_facts": ["intent.purposes", "process.application_channel"],
-        "source_refs": ["c43c40ab-387a-46a1-a2a0-996692ee833e"],
-        "explanation_key": "explain.el_e33s_secondhome",
+        "required_facts": [
+          "intent.purposes",
+          "secondhome.bank_deposit_usd",
+          "secondhome.bank_deposit_at_state_bank",
+          "secondhome.bank_deposit_in_own_name",
+          "secondhome.qualifying_property_value_usd"
+        ],
+        "source_refs": [
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a01",
+          "7f3a9c1e-2b4d-4e5f-9a6b-1c2d3e4f5a02"
+        ],
+        "explanation_key": "explain.el_e33_secondhome",
         "safety_critical": false,
-        "product_version_ids": ["9f91257a-2df8-4495-b22f-2a6abb949e51"]
+        "product_version_ids": ["2c7f1a94-5b6d-4e3a-9c8f-7d2e1b0a33e0"]
       }
     ]
   },

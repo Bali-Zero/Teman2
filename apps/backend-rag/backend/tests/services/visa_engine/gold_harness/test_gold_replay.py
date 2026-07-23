@@ -1,4 +1,4 @@
-"""Gold-persona replay: for each of the 20 gold personas x each of the 10
+"""Gold-persona replay: for each of the 20 gold personas x each of the 11
 products in the designed gold rule pack, run the REAL evaluator
 (``ast.evaluate_condition`` + ``compiler.build_compiled_pack``, via this
 package's ``adapter.py``) and assert the resulting proof state -- plus
@@ -31,8 +31,8 @@ PERSONAS = loader.load_all_personas()
 PRODUCT_CODES = sorted(p.product_code for p in PACK.products)
 
 assert len(PERSONAS) == 20, f"expected exactly 20 gold personas, found {len(PERSONAS)}"
-assert len(PRODUCT_CODES) == 10, (
-    f"expected exactly 10 products in the gold pack, found {len(PRODUCT_CODES)}"
+assert len(PRODUCT_CODES) == 11, (
+    f"expected exactly 11 products in the gold pack, found {len(PRODUCT_CODES)}"
 )
 
 _PERSONAS_BY_ID = {p.persona_id: p for p in PERSONAS}
@@ -60,7 +60,7 @@ RESULTS = _evaluate_every_persona()
 
 
 class TestPersonaProductReplay:
-    """20 personas x 10 products = 200 (persona, product) proof assertions."""
+    """20 personas x 11 products = 220 (persona, product) proof assertions."""
 
     @pytest.mark.parametrize("persona_id", sorted(_PERSONAS_BY_ID))
     @pytest.mark.parametrize("product_code", PRODUCT_CODES)

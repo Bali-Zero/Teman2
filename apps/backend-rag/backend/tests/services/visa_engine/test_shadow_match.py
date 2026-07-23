@@ -192,15 +192,15 @@ class TestBuildShadowFacts:
         assert f1 is not None and f2 is not None
         assert f1.assessment_id != f2.assessment_id
 
-    def test_exactly_3_known_and_32_unknown_fields(self) -> None:
+    def test_exactly_3_known_and_37_unknown_fields(self) -> None:
         facts = shadow.build_shadow_facts(
             nationality="US", purpose=Purpose.LONG_TOURISM, duration_months=2, match_hash="h5"
         )
         assert facts is not None
         statuses = [getattr(facts.facts, name).status for name in type(facts.facts).model_fields]
-        assert len(statuses) == 35
+        assert len(statuses) == 40
         assert statuses.count("KNOWN") == 3
-        assert statuses.count("UNKNOWN") == 32
+        assert statuses.count("UNKNOWN") == 37
 
 
 # ---------------------------------------------------------------------------

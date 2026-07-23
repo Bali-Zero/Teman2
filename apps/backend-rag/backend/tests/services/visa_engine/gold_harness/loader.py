@@ -34,7 +34,7 @@ PERSONAS_DIR = FIXTURES_DIR / "personas"
 #: back-reference into the DB-fixture-heavy sibling conftest module).
 GOLD_EFFECTIVE_AT = datetime(2026, 7, 17, 0, 0, 0, tzinfo=timezone.utc)
 
-#: The full closed 35-key wire vocabulary (``ApplicantFactsData``'s aliases),
+#: The full closed 40-key wire vocabulary (``ApplicantFactsData``'s aliases),
 #: used to fail loudly if a persona fixture is missing a key or carries an
 #: extra one -- Pydantic's own ``extra="forbid"``/required-field validation
 #: already enforces this at ``ApplicantFacts.model_validate()`` time; this
@@ -88,7 +88,7 @@ def _validate_wire_keys(persona_id: str, raw_facts: dict[str, Any]) -> None:
     extra = got - APPLICANT_FACT_WIRE_KEYS
     if missing or extra:
         raise ValueError(
-            f"persona {persona_id!r}: facts do not match the closed 35-path "
+            f"persona {persona_id!r}: facts do not match the closed 40-path "
             f"FactPath vocabulary -- missing={sorted(missing)} extra={sorted(extra)}"
         )
 

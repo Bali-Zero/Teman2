@@ -54,7 +54,8 @@ them as bugs):
    across every product in that bucket, deduplicated and sorted for
    determinism -- there is no dedicated "global-only" rule stage in this
    pack (every review/hard-filter trigger in the designed pack is GLOBAL
-   scope, so it fires identically for every product; the union is therefore
+   scope except the E33E-scoped ``hr-e33e-age-band-55-59`` BERSYARAT band
+   rule, which for the current personas never fires TRUE, so the union is
    always a singleton set in this harness's personas, but the aggregation
    code does not assume that).
 """
