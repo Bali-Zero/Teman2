@@ -11,6 +11,7 @@ sources:
   - independent disk re-verification (agentic_rag.py, hybrid_auth.py, tool_executor.py, wa_outbox_worker.py, team_crm_tools.py, observability.py, orchestrator_core.py)
 client_case: n/a (infrastructure/product)
 consumers: Opus 4.8 (architect, executes), Zero (Legge-5 gates)
+adversarial_review: codex
 ---
 
 # Zantara WA bot — the perfect client consultant + agentic team assistant
@@ -18,6 +19,43 @@ consumers: Opus 4.8 (architect, executes), Zero (Legge-5 gates)
 > **Reader's contract.** Verdicts from the council are LEADS, not facts (W65). Every 🔴 P0 in
 > this spec was re-grepped on disk THIS synthesis and carries its file:line. Where the council
 > was wrong (Gemini's BKPM "correction"), this spec keeps the org's verified fact and says so.
+
+## Adversarial review
+
+Generator≠grader (R1): this spec (drafted by Fable 5, the author) was reviewed by a **3-seat
+cross-family council on fresh context** — none of the three had seen the draft's reasoning before
+being asked to attack it — and every P0 verdict was re-verified on disk by the author before being
+folded in (a council verdict is a LEAD, not a fact; W65).
+
+- **codex** (OpenAI family, red-team chair — *find the flaw, default to defective*): found the two
+  most consequential flaws in the entire draft — (1) the draft's "cross-session memory works" claim
+  was actually a **live P0**: the router discards the per-phone WhatsApp identity and substitutes a
+  single shared internal pseudo-identity as the memory key, so all clients' long-term facts were
+  being saved/read under ONE bucket (cross-client bleed, UU PDP); (2) the persona-override + a
+  reserved tool-call argument were both forgeable via the same shared internal key. Both SURVIVED
+  into the final spec as W-1 P0-MEM / P0-ID / P0-ARG and were disk-confirmed by the author
+  (`hybrid_auth.py:380-385`, `agentic_rag.py:398-405,475`, `memory_handler.py:138`,
+  `tool_executor.py:346-349`) before the containment fix was built and shipped (PR #3036).
+- **gemini** (Google family, costruttivo chair — *save the plan by improving it*): raised real
+  WhatsApp-platform gaps (media-URL expiry before ack, chunk-ordering/formatting risk, UU PDP
+  consent capture, advocate-license disclaimer) — SURVIVED into C1/C2/C16. Also asserted the
+  BKPM PT-PMA capital baseline should be 10 miliar — this did **NOT** survive: it contradicts the
+  org's own verified fact (BKPM 5/2025 abrogated 4/2021, baseline is 2.5 miliar,
+  `fact_bkpm_5_2025_paidup_capital_2_5_mld_2026_07_16`), so the author kept the verified fact and
+  logged the disagreement in §4/C15 rather than silently trusting the external seat (W90 —
+  even a ground-truth-shaped verdict can be stale).
+  Docs-only PRs are exempt from CI code checks; this section satisfies the R1 gate
+  (`scripts/check_adversarial_review.py`) for the research-deliverable convention.
+- **kimi** (Moonshot family, refuter chair — *falsify the core claim*): refused the draft's
+  "reconnect the nerves, don't build" framing as incomplete — flagged an unowned landmine
+  (`whatsapp_persona.py`'s hardcoded price list), an undefined O-item shorthand, a sequencing risk
+  (arming the team CRM surface before observability lands), and the retention/consent tension in
+  the memory-governance claim. All SURVIVED into §3 (whatsapp_persona landmine → W0), §6 (O1-O6
+  defined), and §10 (W2 reordered to sit with/after W3's security telemetry).
+
+No verdict was accepted uncritically: every P0 was re-grepped on disk by the author (Fable 5) before
+being written into the final spec, per the org's anti-hallucination discipline (a refuter can
+hallucinate too — W65).
 
 ## 0. Verdict
 
