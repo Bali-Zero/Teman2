@@ -2741,8 +2741,13 @@ def _register_kimi_read_calls(
     seen_tool_ids: set[str],
 ) -> None:
     tool_calls = value.get("tool_calls")
-    if not isinstance(tool_calls, list) or len(tool_calls) != 1 or pending_tool_reads:
-        raise LauncherError("Kimi must issue one canonical Read page at a time")
+    if not isinstance(tool_calls, list) or not tool_calls or pending_tool_reads:
+        raise LauncherError(
+            "Kimi must issue canonical Read pages only with no result pending"
+        )
+    staged_reads: list[tuple[str, tuple[int, int]]] = []
+    staged_tool_ids: set[str] = set()
+    staged_read_pages: set[tuple[int, int]] = set()
     for tool_call in tool_calls:
         if not isinstance(tool_call, dict) or tool_call.get("type") != "function":
             raise LauncherError("Kimi emitted an invalid tool call")
@@ -2752,6 +2757,7 @@ def _register_kimi_read_calls(
             not isinstance(tool_call_id, str)
             or not tool_call_id
             or tool_call_id in seen_tool_ids
+            or tool_call_id in staged_tool_ids
             or not isinstance(function, dict)
             or function.get("name") != "Read"
             or not isinstance(function.get("arguments"), str)
@@ -2779,16 +2785,20 @@ def _register_kimi_read_calls(
         ):
             raise LauncherError("Kimi emitted an invalid Read range")
         read_page = (line_offset, n_lines)
-        next_page_index = len(seen_read_pages)
+        next_page_index = len(seen_read_pages) + len(staged_reads)
         if (
             read_page in seen_read_pages
+            or read_page in staged_read_pages
             or next_page_index >= len(planned_read_pages)
             or read_page != planned_read_pages[next_page_index]
         ):
             raise LauncherError("Kimi Read call differs from the canonical page plan")
-        seen_tool_ids.add(tool_call_id)
-        seen_read_pages.append(read_page)
-        pending_tool_reads[tool_call_id] = read_page
+        staged_tool_ids.add(tool_call_id)
+        staged_read_pages.add(read_page)
+        staged_reads.append((tool_call_id, read_page))
+    seen_tool_ids.update(staged_tool_ids)
+    seen_read_pages.extend(read_page for _, read_page in staged_reads)
+    pending_tool_reads.update(staged_reads)
 
 
 def _consume_kimi_read_result(
@@ -2808,10 +2818,14 @@ def _consume_kimi_read_result(
         or "\r" in content
     ):
         raise LauncherError("Kimi emitted an invalid Read result")
-    line_offset, n_lines = pending_tool_reads.pop(tool_call_id)
+    expected_tool_call_id = next(iter(pending_tool_reads))
+    if tool_call_id != expected_tool_call_id:
+        raise LauncherError("Kimi Read results are out of canonical order")
+    line_offset, n_lines = pending_tool_reads[tool_call_id]
     rendered_lines = content.split("\n")
     if len(rendered_lines) != n_lines or len(rendered_lines) > KIMI_READ_MAX_LINES:
         raise LauncherError("Kimi Read result lacks its exact requested range")
+    validated_line_numbers: list[int] = []
     for index, rendered_line in enumerate(rendered_lines):
         prefix, separator, actual = rendered_line.partition("\t")
         expected_line_number = line_offset + index
@@ -2822,7 +2836,9 @@ def _consume_kimi_read_result(
             or actual != transport_lines[expected_line_number - 1]
         ):
             raise LauncherError("Kimi Read result differs from the review transport")
-        covered_lines.add(expected_line_number)
+        validated_line_numbers.append(expected_line_number)
+    pending_tool_reads.pop(tool_call_id)
+    covered_lines.update(validated_line_numbers)
 
 
 def _extract_review_body(run: SeatRun) -> bytes:

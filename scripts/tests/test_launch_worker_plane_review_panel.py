@@ -331,7 +331,8 @@ def _fake_clients(
             if not transport_text.endswith('\\n') or '\\r' in transport_text:
                 raise SystemExit(14)
             transport_lines = transport_text[:-1].split('\\n')
-            read_events = []
+            tool_calls = []
+            tool_events = []
             for page_index, (line_offset, n_lines) in enumerate(page_plan):
                 tool_call_id = f'tool-read-review-input-{{page_index}}'
                 page_path = tool_path
@@ -369,31 +370,31 @@ def _fake_clients(
                         'Tool output exceeded 50000 characters; '
                         'showing a preview only.'
                     )
-                read_events.extend(
-                    [
-                        {{'role': 'assistant', 'tool_calls': [tool_call]}},
-                        {{
-                            'role': 'tool',
-                            'tool_call_id': tool_call_id,
-                            'content': tool_content,
-                        }},
-                    ]
+                tool_calls.append(tool_call)
+                tool_events.append(
+                    {{
+                        'role': 'tool',
+                        'tool_call_id': tool_call_id,
+                        'content': tool_content,
+                    }}
                 )
+            if stream_mode == 'out_of_order' and len(tool_events) > 1:
+                tool_events[0], tool_events[1] = tool_events[1], tool_events[0]
             if stream_mode == 'mixed':
-                first_tool_call = read_events[0]['tool_calls'][0]
                 events.append(
                     {{
                         'role': 'assistant',
                         'content': body,
-                        'tool_calls': [first_tool_call],
+                        'tool_calls': tool_calls,
                     }}
                 )
-                events.extend(read_events[1:])
+                events.extend(tool_events)
                 events.append({{'role': 'assistant', 'content': body}})
             elif stream_mode == 'no_read':
                 events.append({{'role': 'assistant', 'content': body}})
             else:
-                events.extend(read_events)
+                events.append({{'role': 'assistant', 'tool_calls': tool_calls}})
+                events.extend(tool_events)
                 events.append({{'role': 'assistant', 'content': body}})
                 if stream_mode == 'multiple':
                     events.append({{'role': 'assistant', 'content': body + '-again'}})
@@ -971,6 +972,66 @@ def test_kimi_stream_accepts_attested_read_trace_before_review(
     )
 
 
+def test_kimi_stream_accepts_one_batched_assistant_event_for_many_pages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(launcher, "KIMI_READ_MAX_LINES", 1)
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    review_body = "Batched Kimi review body"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        review_body=review_body,
+    )
+
+    _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    kimi = next(seat for seat in launcher.SEATS if seat.name == "kimi")
+    events = [
+        json.loads(line)
+        for line in (output_dir / kimi.raw_name).read_text().splitlines()
+    ]
+    tool_calls = events[0]["tool_calls"]
+    tool_events = events[1:-2]
+    assert len(tool_calls) > 1
+    assert len(tool_events) == len(tool_calls)
+    assert [event["role"] for event in tool_events] == ["tool"] * len(tool_calls)
+    assert [event["tool_call_id"] for event in tool_events] == [
+        tool_call["id"] for tool_call in tool_calls
+    ]
+    assert events[-2] == {"role": "assistant", "content": review_body}
+    assert events[-1] == {"role": "meta", "type": "session.resume_hint"}
+
+
+def test_kimi_stream_rejects_out_of_order_batched_results_without_outputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(launcher, "KIMI_READ_MAX_LINES", 1)
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        kimi_stream_mode="out_of_order",
+    )
+
+    with pytest.raises(launcher.LauncherError, match="canonical order"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.iterdir())
+
+
 def test_kimi_stream_ignores_tool_preamble_and_keeps_only_terminal_review(
     tmp_path: Path,
 ) -> None:
@@ -1075,19 +1136,14 @@ def test_kimi_read_page_plan_honors_exact_independent_boundaries() -> None:
     assert sum(n_lines for _, n_lines in page_plan) == 2
 
 
-def test_kimi_read_registration_rejects_noncanonical_page_and_batching() -> None:
-    planned_pages = ((1, 10), (11, 10))
+def test_kimi_read_registration_accepts_exact_ordered_batch_atomically() -> None:
+    planned_pages = ((1, 10), (11, 10), (21, 10))
     expected_path = "/immutable/review.transport.txt"
     pending: dict[str, tuple[int, int]] = {}
     seen_pages: list[tuple[int, int]] = []
     seen_ids: set[str] = set()
 
-    def event(
-        tool_call_id: str,
-        *,
-        line_offset: int,
-        n_lines: int,
-    ) -> dict[str, object]:
+    def event(*calls: tuple[str, int, int]) -> dict[str, object]:
         return {
             "tool_calls": [
                 {
@@ -1104,36 +1160,135 @@ def test_kimi_read_registration_rejects_noncanonical_page_and_batching() -> None
                         ),
                     },
                 }
+                for tool_call_id, line_offset, n_lines in calls
             ]
         }
 
     with pytest.raises(launcher.LauncherError, match="canonical page plan"):
         launcher._register_kimi_read_calls(
-            event("swapped", line_offset=11, n_lines=10),
+            event(("swapped", 11, 10)),
             expected_input_path=expected_path,
             planned_read_pages=planned_pages,
             pending_tool_reads=pending,
             seen_read_pages=seen_pages,
             seen_tool_ids=seen_ids,
         )
+    assert pending == {}
+    assert seen_pages == []
+    assert seen_ids == set()
 
     launcher._register_kimi_read_calls(
-        event("first", line_offset=1, n_lines=10),
+        event(("first", 1, 10), ("second", 11, 10)),
         expected_input_path=expected_path,
         planned_read_pages=planned_pages,
         pending_tool_reads=pending,
         seen_read_pages=seen_pages,
         seen_tool_ids=seen_ids,
     )
-    with pytest.raises(launcher.LauncherError, match="one canonical Read page"):
+    assert pending == {"first": (1, 10), "second": (11, 10)}
+    assert seen_pages == [(1, 10), (11, 10)]
+    assert seen_ids == {"first", "second"}
+
+    with pytest.raises(launcher.LauncherError, match="no result pending"):
         launcher._register_kimi_read_calls(
-            event("second", line_offset=11, n_lines=10),
+            event(("third", 21, 10)),
             expected_input_path=expected_path,
             planned_read_pages=planned_pages,
             pending_tool_reads=pending,
             seen_read_pages=seen_pages,
             seen_tool_ids=seen_ids,
         )
+
+
+@pytest.mark.parametrize(
+    "invalid_calls",
+    (
+        (("first", 1, 10), ("first", 11, 10)),
+        (("first", 1, 10), ("third", 21, 10)),
+    ),
+)
+def test_kimi_read_registration_rejects_invalid_batch_without_partial_state(
+    invalid_calls: tuple[tuple[str, int, int], ...],
+) -> None:
+    expected_path = "/immutable/review.transport.txt"
+    planned_pages = ((1, 10), (11, 10), (21, 10))
+    event = {
+        "tool_calls": [
+            {
+                "type": "function",
+                "id": tool_call_id,
+                "function": {
+                    "name": "Read",
+                    "arguments": json.dumps(
+                        {
+                            "path": expected_path,
+                            "line_offset": line_offset,
+                            "n_lines": n_lines,
+                        }
+                    ),
+                },
+            }
+            for tool_call_id, line_offset, n_lines in invalid_calls
+        ]
+    }
+    pending: dict[str, tuple[int, int]] = {}
+    seen_pages: list[tuple[int, int]] = []
+    seen_ids: set[str] = set()
+
+    with pytest.raises(launcher.LauncherError):
+        launcher._register_kimi_read_calls(
+            event,
+            expected_input_path=expected_path,
+            planned_read_pages=planned_pages,
+            pending_tool_reads=pending,
+            seen_read_pages=seen_pages,
+            seen_tool_ids=seen_ids,
+        )
+
+    assert pending == {}
+    assert seen_pages == []
+    assert seen_ids == set()
+
+
+def test_kimi_read_results_must_follow_batched_call_order() -> None:
+    pending = {"first": (1, 1), "second": (2, 1)}
+    transport_lines = ("alpha", "beta")
+    covered_lines: set[int] = set()
+
+    with pytest.raises(launcher.LauncherError, match="canonical order"):
+        launcher._consume_kimi_read_result(
+            {
+                "role": "tool",
+                "tool_call_id": "second",
+                "content": "2\tbeta",
+            },
+            pending_tool_reads=pending,
+            transport_lines=transport_lines,
+            covered_lines=covered_lines,
+        )
+
+    assert pending == {"first": (1, 1), "second": (2, 1)}
+    assert covered_lines == set()
+
+
+def test_invalid_kimi_read_result_does_not_mutate_pending_or_coverage() -> None:
+    pending = {"first": (1, 2)}
+    covered_lines: set[int] = set()
+
+    with pytest.raises(launcher.LauncherError, match="review transport"):
+        launcher._consume_kimi_read_result(
+            {
+                "role": "tool",
+                "tool_call_id": "first",
+                "content": "1\talpha\n2\taltered",
+            },
+            pending_tool_reads=pending,
+            transport_lines=("alpha", "beta"),
+            covered_lines=covered_lines,
+        )
+
+    assert pending == {"first": (1, 2)}
+    assert covered_lines == set()
 
 
 @pytest.mark.parametrize(
