@@ -321,7 +321,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             duration_days=365,
             extensions=(1, 365),
             min_budget_idr=None,
-            notes="Standard 55+ retirement. >= USD 1,500/mo passive income.",
+            notes="Standard 55+ retirement. >= USD 3,000/mo passive income.",
             seed_source=SEED,
             duration_source=NB2,
         ),
