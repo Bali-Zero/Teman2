@@ -1,0 +1,47 @@
+name: Magazine auto-assets contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/magazine-auto-assets.yml"
+      - "apps/bali-zero-magazine/tests/deployed-platform.test.mjs"
+      - "apps/zantara-media/**"
+      - "docs/runbooks/bali-zero-magazine.md"
+      - "infra/launchagents/wrappers/bali-zero-magazine-publish.sh"
+      - "scripts/flowkit_cli.py"
+      - "scripts/tests/test_flowkit_cli.py"
+      - "scripts/tests/test_magazine_wrapper_lock.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/magazine-auto-assets.yml"
+      - "apps/bali-zero-magazine/tests/deployed-platform.test.mjs"
+      - "apps/zantara-media/**"
+      - "docs/runbooks/bali-zero-magazine.md"
+      - "infra/launchagents/wrappers/bali-zero-magazine-publish.sh"
+      - "scripts/flowkit_cli.py"
+      - "scripts/tests/test_flowkit_cli.py"
+      - "scripts/tests/test_magazine_wrapper_lock.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: magazine-auto-assets-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  deployed-platform:
+    name: Magazine deployed-platform contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Verify publisher wrapper contract
+        run: >-
+          node --experimental-strip-types --test
+          apps/bali-zero-magazine/tests/deployed-platform.test.mjs

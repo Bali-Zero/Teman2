@@ -50,12 +50,20 @@ test("publisher wrapper is Pro-only, locked, timed, and payload-secret safe", as
   );
   assert.match(wrapper, /HOSTNAME_VALUE="\$\(hostname/);
   assert.match(wrapper, /Nuzantara/);
-  assert.match(wrapper, /LOCKDIR=/);
+  assert.match(wrapper, /LOCKFILE=/);
+  assert.match(wrapper, /zsystem flock/);
   assert.match(wrapper, /duplicate suppressed/);
   assert.match(wrapper, /TIMEOUT_SECONDS/);
   assert.match(wrapper, /run_with_timeout/);
   assert.match(wrapper, /security find-generic-password -s bali-zero-magazine/);
   assert.match(wrapper, /MAGAZINE_PUBLISH_ENABLED/);
+  assert.match(
+    wrapper,
+    /MAGAZINE_AUTO_ASSETS="\$\{MAGAZINE_AUTO_ASSETS:-false\}"/,
+  );
+  assert.match(wrapper, /MAGAZINE_ASSET_STATE_DIR/);
+  assert.match(wrapper, /os\.setsid\(\)/);
+  assert.match(wrapper, /kill -TERM -- -"\$process_group_id"/);
   assert.match(wrapper, /zantara_media\.cli\.magazine_prepare/);
   assert.match(wrapper, /zantara_media\.cli\.magazine_publish/);
   assert.match(wrapper, /--required-system-id/);
@@ -63,6 +71,7 @@ test("publisher wrapper is Pro-only, locked, timed, and payload-secret safe", as
   assert.doesNotMatch(wrapper, /MAGAZINE_HMAC_SECRET\s*=/);
   assert.doesNotMatch(wrapper, /MAGAZINE_SIWC_BEARER_TOKEN\s*=/);
   assert.doesNotMatch(wrapper, /cat\s+"\$INPUT"|cat\s+\$INPUT/);
+  assert.doesNotMatch(wrapper, /asset manifest is missing/);
 });
 
 test("runbook records the deployed Sites capability proof and acceptance gates", async () => {
@@ -82,6 +91,8 @@ test("runbook records the deployed Sites capability proof and acceptance gates",
     "Breaking publication is atomic",
     "Role revocation takes effect",
     "Reduced-motion CSS",
+    "MAGAZINE_AUTO_ASSETS=false",
+    "typographic fallback",
   ]) {
     assert.match(
       runbook,
