@@ -3,8 +3,17 @@
   "version": "1.0.0",
   "created": "2026-07-23",
   "maintainer": "Bali Zero research (E33 vertical)",
-  "status_enum": ["confirmed", "pending", "disputed", "unknown"],
-  "confidence_enum": ["JELAS", "BERSYARAT", "BELUM_DIATUR_PUBLIK"],
+  "status_enum": [
+    "confirmed",
+    "pending",
+    "disputed",
+    "unknown"
+  ],
+  "confidence_enum": [
+    "JELAS",
+    "BERSYARAT",
+    "BELUM_DIATUR_PUBLIK"
+  ],
   "confidence_semantics": {
     "JELAS": "Clear — primary-source verified, may be stated as fact",
     "BERSYARAT": "Conditional — verified but with conditions/caveats that must travel with the claim",
@@ -75,11 +84,11 @@
       "id": "pnbp_5y_amount",
       "topic": "PNBP (government fee) for 5-year Second Home visa",
       "value": "IDR 13,000,000",
-      "status": "confirmed",
+      "status": "pending",
       "confidence": "JELAS",
       "source": "research/legal/2026-05-26-kepmen-visa-taxonomy/02-cross-ref-pnbp.md",
       "source_date": "2026-05-26",
-      "notes": "Refundability if the application is rejected is pending (pnbp_5y_amount_and_refundability, letter 006)."
+      "notes": "Refundability if the application is rejected is pending (pnbp_5y_amount_and_refundability, letter 006). RE-TIERED 2026-07-23 (Fable-5 gate 1.3/H4): official-page-sourced but written authority confirmation still pending with Ditjen Imigrasi (Letter 006 Q3/Q6) — must not be treated as publishable-settled until the reply arrives."
     },
     {
       "id": "pasal_113_cumulative_caps",
@@ -95,11 +104,11 @@
       "id": "dependent_spouse_code_e31b",
       "topic": "Dependent spouse visa code for E33 holders",
       "value": "E31B (spouse of KITAS holder)",
-      "status": "confirmed",
+      "status": "pending",
       "confidence": "BERSYARAT",
       "source": "GARUDA-E31 dossier, per research/visa/2026-07-21-e31j-e33f-kitap-verification.md",
       "source_date": "2026-07-21",
-      "notes": "BERSYARAT per source. Full dependent-code set (E31B/E31E/E31H/E31J) and concurrent-filing confirmation pending with Ditjen Imigrasi (dependent_codes_confirmation, letter 006)."
+      "notes": "BERSYARAT per source. Full dependent-code set (E31B/E31E/E31H/E31J) and concurrent-filing confirmation pending with Ditjen Imigrasi (dependent_codes_confirmation, letter 006). RE-TIERED 2026-07-23 (Fable-5 gate 1.3/H4): official-page-sourced but written authority confirmation still pending with Ditjen Imigrasi (Letter 006 Q3/Q6) — must not be treated as publishable-settled until the reply arrives."
     },
     {
       "id": "bank_proof_format",
