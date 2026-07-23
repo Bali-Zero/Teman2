@@ -329,6 +329,12 @@ redaction-before-egress is the gate, never a cloud prompt with raw PII.
 
 ## 12. §Solo-operatore — Zero's Legge-5 / credential / GUI decisions
 
+> **RATIFIED by Zero 2026-07-24** (all items GO): (1) P0-MEM — contain NOW (disable Path B long-term
+> memory immediately, fix in W-1). (2) C6 Gemini SPOF — fail-closed permanent + O1 alert as the mitigation;
+> no external fallback egress. (3) team write-tools — GO, staggered, check-in first, all AFTER T4. (4) 24h
+> window — quantify weekly real-client drop first, then decide on a Meta template. (5) JWT-expiry flip — GO
+> in W6 with an ops window after verifying refresh-token flow. These are decisions, not open questions.
+
 Cannot be session-armed. Opus surfaces, does not implement around:
 
 1. **P0-MEM incident call**: contain now (disable Path B long-term memory) vs. accept-and-fix-in-W-1. Given
@@ -367,12 +373,32 @@ Cannot be session-armed. Opus surfaces, does not implement around:
 
 ## 14. Open questions for Opus 4.8 (architect)
 
+> **RATIFIED by Zero 2026-07-24**: Q6 (T4 shape) → narrow-first (re-resolve phone server-side + drop
+> client `channel` from the trust decision), typed envelope same quarter. Q8 (corpus growth) → WR2/editorial
+> lane, operator-gated harvest. Q9 (baseline eval) → inside W-1 as the entry gate. Q7 (topology) → SEE THE
+> REVISED RULING BELOW — Zero directed "accelerate while keeping quality"; the passive "wait for metrics"
+> stance is superseded.
+
 1. **P0-MEM containment** — contain in-prod immediately (disable Path B long-term memory), or bundle into
    the first W-1 PR? (Recommend: contain first, design the pseudonymous subject second.)
 2. **T4 shape** — full typed identity envelope now, or a narrow "re-resolve phone server-side + drop client
    channel from the trust decision" first, envelope later? (Recommend narrow-first to unblock W2, envelope
    in the same quarter to kill the two-auth-system trap.)
-3. **Manager vs single-agent** for the four service lines — split only on measured routing failures; is there
-   instrumentation yet? (Ties to O5.)
+3. **Topology (Q7) — RULING (Zero 2026-07-24): accelerate now via a deterministic router, quality
+   protected, no premature process-split.** Do NOT wait passively for routing-failure metrics. Build a
+   **deterministic domain/intent router in front of the single orchestrator** (not an LLM, not separate
+   agents): (a) it classifies visa/company/tax/property at ingress and pre-loads the right tools + grounding
+   + prompt-pack BEFORE generation — faster (fewer ReAct steps, eases the max_steps=2 tension) and more
+   accurate (right grounding from step 0); this REPLACES C7's bare-substring classifier (real intent
+   classifier + alias dictionary). (b) Specialists are conditionally-loaded PROMPT-PACKS, not separate
+   agents — manager-pattern with specialization at the CONTEXT layer, not the process layer (specialist
+   depth without multi-agent handoff risk). (c) Compound queries ("visa + cost + spouse?") are split into
+   independent sub-questions run in PARALLEL, each grounded by its pack, then synthesized. Quality guardrail:
+   O5 metrics + golden-set become the A/B validator (router-on vs router-off), NOT a blocking gate before
+   improvement is allowed; ship only if quality holds/rises. True process-split into separate agents is the
+   last resort, only if the router shows failures context-conditional specialization can't fix. This lever
+   ABSORBS C7 (classifier→router), C8 (adaptive cap→router pre-points + parallel decompose), and O5
+   (metrics→A/B validator) into one coherent piece — home is W4 (the router is the natural spine of the
+   4-outcome gate + intent), with C7 folded in rather than done separately in W1.
 4. **Corpus growth (C12)** — WR2/editorial lane or bot lane?
 5. **Baseline eval** — is the τ²-Bench-style multi-turn set built inside W-1, or a prerequisite lane of its own?

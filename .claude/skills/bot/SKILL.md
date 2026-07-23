@@ -48,6 +48,10 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
     grounding IS on even though the prod env var is unset.
   - Spec is a PLAN for Opus 4.8 (executing architect); nothing here is shipped as code yet. Sequence:
     W-1 CONTAINMENT (P0s) → W0 safety → W1 reconnect-the-nerves → W2 arm-team (T4 first) → W3 observ → W4 gate.
+  - **Zero RATIFIED 2026-07-24** (all GO): P0-MEM contain-now · C6 fail-closed+O1 alert (no external egress) ·
+    team write-tools GO staggered after T4 · 24h-window quantify-first · JWT flip W6 · T4 narrow-first ·
+    corpus→WR2 lane · baseline-eval in W-1. Topology Q7 → deterministic router (intent-classify + conditional
+    prompt-packs + parallel decompose), absorbs C7/C8/O5, home W4; NO premature agent-split.
 
 - **GEMINI PREPAY DEPLETION P0 (2026-07-22) — RESOLVED via top-up + verifier revival PROVEN LIVE**:
   while carrying the RAG verifier revival to prove-live, live prod logs revealed the WHOLE bot was
