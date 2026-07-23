@@ -470,6 +470,7 @@ async def _stream_via_subprocess(
 
     # Try each token in the chain
     chain = _token_chain()
+    lines_to_process: list[bytes] = []
     for label, token in chain:
         env = {
             key: value
@@ -500,86 +501,98 @@ async def _stream_via_subprocess(
             limit=1024 * 1024,
         )
 
-        # Read first line to check for immediate rate-limit error
-        try:
-            first_line = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
-        except asyncio.TimeoutError:
-            logger.warning("Claude CLI %s: no output in 15s — trying next", label)
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
+        # A normal stream starts with a system/init line. Do not commit to an
+        # account until real assistant/tool content appears: quota/auth/empty
+        # terminal results can arrive after init and must still rotate safely.
+        attempt_lines: list[bytes] = []
+        retry_reason = ""
+        while True:
             try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
+                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
             except asyncio.TimeoutError:
-                pass
-            continue
+                retry_reason = "no content in 15s"
+                break
 
-        # EOF before one protocol line is an empty completion, not success.
-        if not first_line:
-            logger.warning("Claude CLI %s returned empty output — trying next token", label)
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
+            if not raw:
                 try:
                     await asyncio.wait_for(proc.wait(), timeout=5)
                 except asyncio.TimeoutError:
-                    pass
-            continue
+                    with contextlib.suppress(ProcessLookupError):
+                        proc.kill()
+                stderr_data = b""
+                if proc.stderr:
+                    with contextlib.suppress(asyncio.TimeoutError):
+                        stderr_data = await asyncio.wait_for(
+                            proc.stderr.read(500), timeout=1
+                        )
+                terminal_text = stderr_data.decode("utf-8", errors="replace")
+                if _RATE_LIMIT_RE.search(terminal_text):
+                    retry_reason = "rate-limited"
+                elif _AUTH_FAILURE_RE.search(terminal_text):
+                    retry_reason = "authentication failed"
+                else:
+                    retry_reason = "empty completion"
+                break
 
-        decoded = first_line.decode("utf-8", errors="replace").strip()
-        # Check stderr too
-        stderr_data = b""
-        if proc.stderr:
+            decoded = raw.decode("utf-8", errors="replace").strip()
+            if _RATE_LIMIT_RE.search(decoded):
+                retry_reason = "rate-limited"
+                break
+            if _AUTH_FAILURE_RE.search(decoded):
+                retry_reason = "authentication failed"
+                break
+
+            attempt_lines.append(raw)
             try:
-                stderr_data = await asyncio.wait_for(proc.stderr.read(500), timeout=1)
-            except asyncio.TimeoutError:
-                pass
-        stderr_text = stderr_data.decode("utf-8", errors="replace")
+                obj = json.loads(decoded)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
 
-        if _RATE_LIMIT_RE.search(decoded + stderr_text):
-            logger.warning("Claude CLI %s rate-limited — trying next token", label)
+            msg_type = obj.get("type", "")
+            if msg_type == "assistant":
+                blocks = obj.get("message", {}).get("content", [])
+                has_content = any(
+                    (
+                        block.get("type") == "text"
+                        and bool(str(block.get("text", "")).strip())
+                    )
+                    or block.get("type") == "tool_use"
+                    for block in blocks
+                )
+                if has_content:
+                    lines_to_process = attempt_lines
+                    break
+                continue
+            if msg_type == "tool_result":
+                lines_to_process = attempt_lines
+                break
+            if msg_type == "result":
+                if not str(obj.get("result", "")).strip():
+                    retry_reason = "empty terminal result"
+                    break
+                # Preserve the existing result-only completion behavior. Any
+                # account-local error text was already classified above.
+                lines_to_process = attempt_lines
+                break
+
+        if lines_to_process:
+            break
+
+        logger.warning(
+            "Claude CLI %s %s — trying next token",
+            label,
+            retry_reason or "unavailable",
+        )
+        if proc.returncode is None:
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                pass
-            continue
-        if _AUTH_FAILURE_RE.search(decoded + stderr_text):
-            logger.warning("Claude CLI %s auth failed — trying next token", label)
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                pass
-            continue
-
-        # A terminal result as the first/only protocol line with no result text
-        # is the stream-json equivalent of an empty stdout completion.
         try:
-            first_obj = json.loads(decoded)
-        except json.JSONDecodeError:
-            first_obj = None
-        if (
-            isinstance(first_obj, dict)
-            and first_obj.get("type") == "result"
-            and not str(first_obj.get("result", "")).strip()
-        ):
-            logger.warning(
-                "Claude CLI %s returned an empty terminal result — trying next token",
-                label,
-            )
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
-            continue
-
-        # Good — this token works, proceed with streaming
-        break
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except asyncio.TimeoutError:
+            pass
+        continue
     else:
         logger.error("All Claude tokens exhausted")
         yield "data: [DONE]\n\n"
@@ -587,9 +600,6 @@ async def _stream_via_subprocess(
 
     try:
         seen_text = set()  # deduplicate partial messages
-
-        # Process the first_line we already read during fallback check
-        lines_to_process = [first_line] if first_line else []
 
         while True:
             if lines_to_process:

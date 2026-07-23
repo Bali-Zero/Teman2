@@ -511,6 +511,80 @@ def test_subprocess_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
     assert lines[-1] == "data: [DONE]\n\n"
 
 
+def test_subprocess_rotates_init_then_weekly_limit_to_slot_two(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    emitter = (
+        "import json, os\n"
+        "assert 'ANTHROPIC_API_KEY' not in os.environ\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "print(json.dumps({'type':'system','subtype':'init'}))\n"
+        "if token == 'sentinel-1':\n"
+        "    print(json.dumps({'type':'result','subtype':'error','result':'weekly limit reached'}))\n"
+        "elif token == 'sentinel-2':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-two-success'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-two-success'}))\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any("slot-two-success" in line for line in lines)
+    assert not any("weekly limit reached" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_does_not_rotate_limit_after_content(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+
+    emitter = (
+        "import json, os\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'sentinel-1':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'partial'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'error','result':'weekly limit reached'}))\n"
+        "elif token == 'sentinel-2':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'replayed'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'replayed'}))\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any('"data":"partial"' in line for line in lines)
+    assert not any("replayed" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
 def test_subprocess_streams_line_over_64kb_default_limit(monkeypatch):
     """GUILT: a single assistant NDJSON line larger than asyncio's 64KB default
     StreamReader limit must be read without LimitOverrunError. A small first

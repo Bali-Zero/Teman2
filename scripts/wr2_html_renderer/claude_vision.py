@@ -58,8 +58,13 @@ class VisionTimeout(VisionTransient):
 
 # A 429 surfaces either as a JSON envelope with api_error_status==429 / is_error
 # + a session-limit message, or (older CLI paths) as rc!=0 with the limit text
-# on stdout/stderr. Match the human text conservatively.
-_RATE_LIMIT_RE = re.compile(r"session limit|rate.?limit|usage limit", re.IGNORECASE)
+# on stdout/stderr. Bound the numeric status so KBLI codes such as 42911 do not
+# rotate accounts accidentally.
+_RATE_LIMIT_RE = re.compile(
+    r"session limit|rate.?limit|usage limit|weekly limit|quota|exhausted|"
+    r"too many requests|hit your limit|(?<![\d/])429(?![\d/])",
+    re.IGNORECASE,
+)
 _AUTH_FAILURE_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
@@ -194,18 +199,17 @@ _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 def _vision_token_chain(env: dict[str, str]) -> list[tuple[str, str]]:
     """Return OAuth seats in a stable order without duplicating credentials.
 
-    An explicitly supplied bare token remains the first override for backward
-    compatibility; otherwise the four numbered fleet slots are tried in order,
-    followed by the CLI keychain login.
+    The universal fleet order is numbered seats 1→2→3→4, then the legacy bare
+    token for backward compatibility, followed by the CLI keychain login.
     """
     chain: list[tuple[str, str]] = []
-    bare = env.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if bare:
-        chain.append(("token_legacy", bare))
     for index in (1, 2, 3, 4):
         token = env.get(f"CLAUDE_CODE_OAUTH_TOKEN_{index}", "").strip()
         if token and not any(existing == token for _, existing in chain):
             chain.append((f"token_{index}", token))
+    bare = env.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if bare and not any(existing == bare for _, existing in chain):
+        chain.append(("token_legacy", bare))
     chain.append(("keychain", ""))
     return chain
 

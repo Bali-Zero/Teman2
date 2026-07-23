@@ -148,10 +148,16 @@ CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics
 
 CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-/Users/nuzantara/.local/bin/claude}"
 RETRYABLE_RE='rate.?limit|too many requests|429|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9])401([^0-9]|$)'
-ACCOUNT_TIMEOUT_SECS="${WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS:-$((TIMEOUT_SECS / 5))}"
-if [ "$ACCOUNT_TIMEOUT_SECS" -lt 60 ]; then
-  ACCOUNT_TIMEOUT_SECS=60
+MAX_CLAUDE_ATTEMPTS=6
+DEFAULT_ACCOUNT_TIMEOUT_SECS=$((TIMEOUT_SECS / MAX_CLAUDE_ATTEMPTS))
+if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
+  DEFAULT_ACCOUNT_TIMEOUT_SECS=1
 fi
+ACCOUNT_TIMEOUT_SECS="${WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS:-$DEFAULT_ACCOUNT_TIMEOUT_SECS}"
+if [ "$ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
+  ACCOUNT_TIMEOUT_SECS=1
+fi
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] cascade budget: total=${TIMEOUT_SECS}s max_attempts=${MAX_CLAUDE_ATTEMPTS} account_timeout=${ACCOUNT_TIMEOUT_SECS}s" >> "$LOG"
 
 run_claude_account() {
   local label="$1"

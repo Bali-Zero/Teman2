@@ -206,6 +206,30 @@ esac
     path.chmod(0o700)
 
 
+def _write_fake_claude_legacy_success(path: Path) -> None:
+    path.write_text(
+        """#!/bin/bash
+set -u
+[ -z "${ANTHROPIC_API_KEY:-}" ] || exit 9
+token="${CLAUDE_CODE_OAUTH_TOKEN:-keychain}"
+echo "$token" >> "$OAUTH_TRACE_FILE"
+case "$token" in
+  sentinel-1|sentinel-2|sentinel-3|sentinel-4)
+    echo "weekly limit reached" >&2
+    exit 1
+    ;;
+  legacy-sentinel)
+    echo "legacy-success"
+    exit 0
+    ;;
+  *) echo "unexpected account" >&2; exit 7 ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o700)
+
+
 def test_ai_dispatch_shell_reaches_slot_four(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
@@ -242,6 +266,51 @@ def test_ai_dispatch_shell_reaches_slot_four(
 
     assert result.returncode == 0, result.stderr
     assert "slot-four-success" in result.stdout
+
+
+def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_claude = fake_bin / "claude"
+    _write_fake_claude_legacy_success(fake_claude)
+    trace_file = tmp_path / "oauth-trace.txt"
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env['PATH']}",
+            "CLAUDE_CODE_OAUTH_TOKEN_1": "sentinel-1",
+            "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
+            "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
+            "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "CLAUDE_CODE_OAUTH_TOKEN": "legacy-sentinel",
+            "ANTHROPIC_API_KEY": "must-not-leak",
+            "OAUTH_TRACE_FILE": str(trace_file),
+        }
+    )
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(REPO_ROOT / "scripts/ai-dispatch.sh"),
+            "claude-explain",
+            "Explain this harmless legacy fallback test.",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "legacy-success" in result.stdout
+    assert trace_file.read_text(encoding="utf-8").splitlines() == [
+        "sentinel-1",
+        "sentinel-2",
+        "sentinel-3",
+        "sentinel-4",
+        "legacy-sentinel",
+    ]
 
 
 def test_wr2_metrics_wrapper_declares_real_account_rotation() -> None:
@@ -285,7 +354,6 @@ def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
             "HOME": str(fake_home),
             "WR2_IG_CLAUDE_BIN": str(fake_claude),
             "WR2_IG_METRICS_TIMEOUT_SECS": "300",
-            "WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS": "60",
             "WR2_IG_METRICS_POLL_SECS": "1",
             "CLAUDE_CODE_OAUTH_TOKEN_1": "sentinel-1",
             "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
@@ -315,3 +383,4 @@ def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "used: CLAUDE_CODE_OAUTH_TOKEN_4" in log
+    assert "total=300s max_attempts=6 account_timeout=50s" in log

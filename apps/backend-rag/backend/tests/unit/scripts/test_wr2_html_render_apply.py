@@ -304,9 +304,8 @@ def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
     )
 
 
-def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
-    """If the bare CLAUDE_CODE_OAUTH_TOKEN is already set, it must be respected —
-    the numbered-slot promotion only fills an UNSET bare var, never overrides."""
+def test_run_claude_json_tries_numbered_slot_before_existing_bare_token(monkeypatch):
+    """The universal account order keeps numbered seats ahead of legacy bare."""
     from wr2_html_renderer import claude_vision
 
     captured = {}
@@ -320,7 +319,7 @@ def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
     monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
 
     claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-one-token"
 
 
 def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
@@ -358,6 +357,57 @@ def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
 
     assert result == {"passes": True}
     assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+
+
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "quota exceeded",
+        "weekly limit reached",
+        "account exhausted",
+        "HTTP 429 Too Many Requests",
+    ],
+)
+def test_run_claude_json_rotates_extended_limit_text_to_next_account(
+    monkeypatch, detail
+):
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    for slot in range(1, 5):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+    outcomes = (
+        _fake_proc(returncode=1, stderr=detail),
+        _fake_proc(
+            returncode=0,
+            stdout=_json.dumps({"structured_output": {"passes": True}}),
+        ),
+    )
+    seen: list[str] = []
+
+    def _capture(*args, **kwargs):
+        env = kwargs["env"]
+        assert "ANTHROPIC_API_KEY" not in env
+        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        return outcomes[len(seen) - 1]
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    result = claude_vision._run_claude_json("p", {"type": "object"})
+
+    assert result == {"passes": True}
+    assert seen == ["sentinel-1", "sentinel-2"]
+
+
+def test_detect_rate_limit_does_not_match_kbli_code_42911():
+    from wr2_html_renderer import claude_vision
+
+    assert not claude_vision._detect_rate_limit(None, "KBLI 42911", 1)
 
 
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
