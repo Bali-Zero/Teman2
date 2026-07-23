@@ -59,6 +59,10 @@ IDENTITY_POLICY_REVISION = "worker-plane-council-2026-07-23-v3"
 DEFAULT_WALL_TIMEOUT_SECONDS = 30 * 60.0
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 DEFAULT_MAX_OUTPUT_BYTES = 16 * 1024 * 1024
+KIMI_TRANSPORT_SCHEMA = "NUZANTARA-KIMI-LOSSLESS-TRANSPORT-V1"
+KIMI_TRANSPORT_MAX_LINE_BYTES = 1_800
+KIMI_TRANSPORT_SEGMENT_BYTES = 1_500
+KIMI_READ_MAX_LINES = 1_000
 OUTPUT_SPOOL_MEMORY_BYTES = 1024 * 1024
 MINIMUM_GEMINI_VERSION = (1, 1, 2)
 REQUIRED_KIMI_VERSION = (0, 29, 0)
@@ -417,6 +421,7 @@ class SeatRun:
     canary_write_denied: bool | None
     pre_run_input_sha256: str
     post_run_input_sha256: str
+    input_bytes: bytes
     home_path: Path
 
 
@@ -2224,6 +2229,96 @@ def _seed_codex_home(home: Path, *, production: bool) -> tuple[AuthenticatedFile
     return tuple(seeded)
 
 
+def _split_utf8_text(value: str, *, max_bytes: int) -> tuple[str, ...]:
+    if max_bytes <= 0:
+        raise LauncherError("Kimi transport segment limit must be positive")
+    segments: list[str] = []
+    characters: list[str] = []
+    byte_count = 0
+    for character in value:
+        encoded = character.encode("utf-8")
+        if len(encoded) > max_bytes:
+            raise LauncherError("Kimi transport cannot represent one UTF-8 character")
+        if characters and byte_count + len(encoded) > max_bytes:
+            segments.append("".join(characters))
+            characters = []
+            byte_count = 0
+        characters.append(character)
+        byte_count += len(encoded)
+    if characters or not segments:
+        segments.append("".join(characters))
+    return tuple(segments)
+
+
+def _kimi_review_transport_bytes(review_input_bytes: bytes) -> bytes:
+    """Render one lossless, Read-safe view of the immutable review input.
+
+    Kimi Code 0.29 caps each ``Read`` result at 1,000 lines / 100 KiB and
+    truncates individual lines after 2,000 characters.  The source packet is
+    therefore wrapped only where needed, with an explicit reconstruction rule;
+    the parser later proves that every rendered transport line was returned by
+    the local Read tool with exact content.
+    """
+    try:
+        source = review_input_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise LauncherError("Kimi review input is not UTF-8") from exc
+    if "\x00" in source or "\r" in source or not source.endswith("\n"):
+        raise LauncherError("Kimi review input must use canonical LF termination")
+
+    source_lines = source[:-1].split("\n")
+    source_sha256 = _sha256(review_input_bytes)
+    marker = f"NUZANTARA-KIMI-CONTINUATION-{source_sha256[:16]}"
+    begin_marker = f"{marker}-BEGIN-SOURCE-REVIEW-INPUT"
+    end_marker = f"{marker}-END-SOURCE-REVIEW-INPUT"
+    if any(line.startswith(marker) for line in source_lines):
+        raise LauncherError("Kimi transport continuation marker collides with input")
+
+    transport_lines = [
+        KIMI_TRANSPORT_SCHEMA,
+        f"SOURCE_REVIEW_INPUT_SHA256 {source_sha256}",
+        f"SOURCE_REVIEW_INPUT_BYTES {len(review_input_bytes)}",
+        f"SOURCE_REVIEW_INPUT_LINES {len(source_lines)}",
+        (
+            f"RECONSTRUCTION_RULE After {begin_marker}, ordinary lines are "
+            "source lines. For continuation records, concatenate the text "
+            "after the first TAB in ascending part order with no separator "
+            "to recover that one source line."
+        ),
+        f"CONTINUATION_MARKER {marker}",
+        f"BEGIN_MARKER {begin_marker}",
+        f"END_MARKER {end_marker}",
+        begin_marker,
+    ]
+    reconstructed_lines: list[str] = []
+    for line_number, line in enumerate(source_lines, start=1):
+        if len(line.encode("utf-8")) <= KIMI_TRANSPORT_SEGMENT_BYTES:
+            transport_lines.append(line)
+            reconstructed_lines.append(line)
+            continue
+        segments = _split_utf8_text(
+            line,
+            max_bytes=KIMI_TRANSPORT_SEGMENT_BYTES,
+        )
+        for part_number, segment in enumerate(segments, start=1):
+            transport_lines.append(
+                f"{marker} line={line_number} "
+                f"part={part_number}/{len(segments)}\t{segment}"
+            )
+        reconstructed_lines.append("".join(segments))
+    transport_lines.append(end_marker)
+
+    reconstructed = ("\n".join(reconstructed_lines) + "\n").encode("utf-8")
+    if reconstructed != review_input_bytes:
+        raise LauncherError("Kimi lossless transport failed reconstruction")
+    if any(
+        len(line.encode("utf-8")) > KIMI_TRANSPORT_MAX_LINE_BYTES
+        for line in transport_lines
+    ):
+        raise LauncherError("Kimi transport contains an over-limit line")
+    return ("\n".join(transport_lines) + "\n").encode("utf-8")
+
+
 def _sandbox_profile_bytes(writable_home: Path) -> bytes:
     rendered_home = json.dumps(str(writable_home.resolve()))
     profile = (
@@ -2248,10 +2343,14 @@ def _prepare_kimi_read_only_inputs(
     production: bool,
 ) -> tuple[Path, Path, Path, str, str]:
     _seed_kimi_home(home, production=production)
-    input_path = cwd / "00-review-input.bin"
+    input_path = cwd / "00-review-input.transport.txt"
     profile_path = cwd / "kimi-read-only.sb"
     canary_path = cwd / "write-denied.canary"
-    _write_private_data(input_path, review_input_bytes, 0o400)
+    _write_private_data(
+        input_path,
+        _kimi_review_transport_bytes(review_input_bytes),
+        0o400,
+    )
     profile_bytes = _sandbox_profile_bytes(home)
     _write_private_data(profile_path, profile_bytes, 0o400)
     canary_bytes = b"nuzantara-worker-plane-read-only-canary-v1\n"
@@ -2331,21 +2430,26 @@ def _run_seat(
         if input_path is None:
             raise LauncherError(f"{seat.name} requires file-based review input")
         prompt = (
-            "Read the complete immutable review input at:\n"
+            "Read every line of the lossless immutable review transport at:\n"
             f"@{input_path}\n"
+            "The transport header explains how to reconstruct continued source "
+            "lines. Page with Read until every transport line has been read. "
             "Follow its instruction brief exactly. "
             "Do not modify any file. Return only the required review."
         )
         provider_args = (*seat.argv_suffix, "--prompt", prompt)
         stdin_bytes = b""
-        pre_run_input_sha256 = _sha256(
-            _read_regular_file(input_path, f"{seat.name} review input")[0]
-        )
+        attested_input_bytes = _read_regular_file(
+            input_path,
+            f"{seat.name} review input",
+        )[0]
+        pre_run_input_sha256 = _sha256(attested_input_bytes)
     else:
         if input_path is not None:
             raise LauncherError(f"{seat.name} must consume review input on stdin")
         provider_args = seat.argv_suffix
         stdin_bytes = review_input_bytes
+        attested_input_bytes = review_input_bytes
         pre_run_input_sha256 = _sha256(review_input_bytes)
     actual_runner = runner_executable or executable
     if runner_executable is None:
@@ -2423,6 +2527,7 @@ def _run_seat(
         ),
         pre_run_input_sha256=pre_run_input_sha256,
         post_run_input_sha256=post_run_input_sha256,
+        input_bytes=attested_input_bytes,
         home_path=home,
     )
 
@@ -2507,6 +2612,130 @@ def _jsonl_objects(payload: bytes, label: str) -> tuple[dict[str, Any], ...]:
     return tuple(objects)
 
 
+def _expected_kimi_input_path(run: SeatRun) -> str:
+    prompt_indexes = [
+        index for index, argument in enumerate(run.argv) if argument == "--prompt"
+    ]
+    if len(prompt_indexes) != 1:
+        raise LauncherError("Kimi invocation lacks one exact prompt argument")
+    prompt_index = prompt_indexes[0]
+    if prompt_index + 1 >= len(run.argv):
+        raise LauncherError("Kimi invocation lacks prompt content")
+    prompt = run.argv[prompt_index + 1]
+    prefix = "Read every line of the lossless immutable review transport at:\n@"
+    suffix = (
+        "\nThe transport header explains how to reconstruct continued source "
+        "lines. Page with Read until every transport line has been read. "
+        "Follow its instruction brief exactly. "
+        "Do not modify any file. Return only the required review."
+    )
+    if not prompt.startswith(prefix) or not prompt.endswith(suffix):
+        raise LauncherError("Kimi invocation prompt differs from the canonical form")
+    input_path = prompt[len(prefix) : -len(suffix)]
+    if not input_path or "\n" in input_path or "\r" in input_path:
+        raise LauncherError("Kimi invocation contains an invalid input path")
+    return input_path
+
+
+def _expected_kimi_transport_lines(run: SeatRun) -> tuple[str, ...]:
+    payload = run.input_bytes
+    if _sha256(payload) != run.pre_run_input_sha256:
+        raise LauncherError("Kimi review transport differs from its attested input")
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise LauncherError("Kimi review transport is not UTF-8") from exc
+    if "\r" in text or not text.endswith("\n"):
+        raise LauncherError("Kimi review transport is not canonical LF text")
+    lines = tuple(text[:-1].split("\n"))
+    if not lines or lines[0] != KIMI_TRANSPORT_SCHEMA:
+        raise LauncherError("Kimi review transport schema is not supported")
+    return lines
+
+
+def _register_kimi_read_calls(
+    value: Mapping[str, Any],
+    *,
+    expected_input_path: str,
+    pending_tool_reads: dict[str, tuple[int, int]],
+    seen_tool_ids: set[str],
+) -> None:
+    tool_calls = value.get("tool_calls")
+    if not isinstance(tool_calls, list) or not tool_calls:
+        raise LauncherError("Kimi assistant event lacks review text or tool calls")
+    for tool_call in tool_calls:
+        if not isinstance(tool_call, dict) or tool_call.get("type") != "function":
+            raise LauncherError("Kimi emitted an invalid tool call")
+        tool_call_id = tool_call.get("id")
+        function = tool_call.get("function")
+        if (
+            not isinstance(tool_call_id, str)
+            or not tool_call_id
+            or tool_call_id in seen_tool_ids
+            or not isinstance(function, dict)
+            or function.get("name") != "Read"
+            or not isinstance(function.get("arguments"), str)
+        ):
+            raise LauncherError("Kimi emitted an invalid Read call")
+        try:
+            arguments = json.loads(function["arguments"])
+        except json.JSONDecodeError as exc:
+            raise LauncherError("Kimi Read call arguments are invalid JSON") from exc
+        if (
+            not isinstance(arguments, dict)
+            or arguments.get("path") != expected_input_path
+            or set(arguments) - {"path", "line_offset", "n_lines"}
+        ):
+            raise LauncherError("Kimi attempted to read outside its review input")
+        line_offset = arguments.get("line_offset", 1)
+        n_lines = arguments.get("n_lines", KIMI_READ_MAX_LINES)
+        if (
+            isinstance(line_offset, bool)
+            or not isinstance(line_offset, int)
+            or line_offset < 1
+            or isinstance(n_lines, bool)
+            or not isinstance(n_lines, int)
+            or not 1 <= n_lines <= KIMI_READ_MAX_LINES
+        ):
+            raise LauncherError("Kimi emitted an invalid Read range")
+        seen_tool_ids.add(tool_call_id)
+        pending_tool_reads[tool_call_id] = (line_offset, n_lines)
+
+
+def _consume_kimi_read_result(
+    value: Mapping[str, Any],
+    *,
+    pending_tool_reads: dict[str, tuple[int, int]],
+    transport_lines: tuple[str, ...],
+    covered_lines: set[int],
+) -> None:
+    tool_call_id = value.get("tool_call_id")
+    content = value.get("content")
+    if (
+        not isinstance(tool_call_id, str)
+        or tool_call_id not in pending_tool_reads
+        or not isinstance(content, str)
+        or not content
+        or "\r" in content
+    ):
+        raise LauncherError("Kimi emitted an invalid Read result")
+    line_offset, n_lines = pending_tool_reads.pop(tool_call_id)
+    rendered_lines = content.split("\n")
+    if len(rendered_lines) > n_lines or len(rendered_lines) > KIMI_READ_MAX_LINES:
+        raise LauncherError("Kimi Read result exceeds its requested range")
+    for index, rendered_line in enumerate(rendered_lines):
+        prefix, separator, actual = rendered_line.partition("\t")
+        expected_line_number = line_offset + index
+        if (
+            separator != "\t"
+            or prefix != str(expected_line_number)
+            or expected_line_number > len(transport_lines)
+            or actual != transport_lines[expected_line_number - 1]
+        ):
+            raise LauncherError("Kimi Read result differs from the review transport")
+        covered_lines.add(expected_line_number)
+
+
 def _extract_review_body(run: SeatRun) -> bytes:
     if run.seat.client == "gemini":
         try:
@@ -2515,23 +2744,75 @@ def _extract_review_body(run: SeatRun) -> bytes:
             raise LauncherError("Gemini raw response is not UTF-8") from exc
         return run.stdout
     if run.seat.client == "kimi":
-        assistant_messages: list[str] = []
-        for value in _jsonl_objects(run.stdout, "Kimi"):
+        assistant_message: str | None = None
+        pending_tool_reads: dict[str, tuple[int, int]] = {}
+        seen_tool_ids: set[str] = set()
+        covered_lines: set[int] = set()
+        expected_input_path = _expected_kimi_input_path(run)
+        transport_lines = _expected_kimi_transport_lines(run)
+        events = _jsonl_objects(run.stdout, "Kimi")
+        for event_index, value in enumerate(events):
             if value.get("role") == "assistant":
                 content = value.get("content")
-                if not isinstance(content, str) or not content:
-                    raise LauncherError("Kimi assistant event lacks string content")
-                assistant_messages.append(content)
+                if isinstance(content, str) and content:
+                    if "tool_calls" in value:
+                        raise LauncherError(
+                            "Kimi mixed review text with tool calls"
+                        )
+                    if assistant_message is not None:
+                        raise LauncherError("Kimi emitted multiple review responses")
+                    if pending_tool_reads:
+                        raise LauncherError(
+                            "Kimi emitted review text before its Read call completed"
+                        )
+                    if len(covered_lines) != len(transport_lines):
+                        raise LauncherError(
+                            "Kimi emitted review text before reading the full transport"
+                        )
+                    assistant_message = content
+                    continue
+                if content is not None or assistant_message is not None:
+                    raise LauncherError("Kimi emitted an invalid assistant event")
+                _register_kimi_read_calls(
+                    value,
+                    expected_input_path=expected_input_path,
+                    pending_tool_reads=pending_tool_reads,
+                    seen_tool_ids=seen_tool_ids,
+                )
+                continue
+            if value.get("role") == "tool":
+                if assistant_message is not None:
+                    raise LauncherError("Kimi emitted a tool result after its review")
+                _consume_kimi_read_result(
+                    value,
+                    pending_tool_reads=pending_tool_reads,
+                    transport_lines=transport_lines,
+                    covered_lines=covered_lines,
+                )
                 continue
             if (
                 value.get("role") == "meta"
                 and value.get("type") == "session.resume_hint"
             ):
+                if event_index != len(events) - 1:
+                    raise LauncherError("Kimi resume hint is not the final event")
+                if pending_tool_reads:
+                    raise LauncherError("Kimi stream ended with an incomplete Read call")
                 continue
             raise LauncherError("Kimi stream contains an unexpected event")
-        if not assistant_messages:
+        if pending_tool_reads:
+            raise LauncherError("Kimi stream ended with an incomplete Read call")
+        if (
+            not events
+            or events[-1].get("role") != "meta"
+            or events[-1].get("type") != "session.resume_hint"
+        ):
+            raise LauncherError("Kimi stream lacks a terminal resume hint")
+        if len(covered_lines) != len(transport_lines):
+            raise LauncherError("Kimi stream did not read the full review transport")
+        if assistant_message is None:
             raise LauncherError("Kimi stream lacks an assistant event")
-        return assistant_messages[-1].encode("utf-8")
+        return assistant_message.encode("utf-8")
     if run.seat.client == "codex":
         assistant_messages: list[str] = []
         for value in _jsonl_objects(run.stdout, "Codex"):

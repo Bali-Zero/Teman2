@@ -130,7 +130,7 @@ def _frozen_review(
     launcher_git_blob_oid: str | None = None,
 ) -> tuple[Path, bytes, bytes, bytes]:
     documents = (
-        ("covered", "covered.bin", b"covered\x00bytes\n\n"),
+        ("covered", "covered.bin", b"covered bytes\n\n"),
         ("instructions", "00-review-brief.md", b"review exactly these bytes\n"),
     )
     entries = [
@@ -238,6 +238,7 @@ def _fake_clients(
     emit_claude_metadata: bool = False,
     mutate_packet: Path | None = None,
     review_body: str | None = None,
+    kimi_stream_mode: str = "complete",
 ) -> Any:
     sync_dir = tmp_path / "sync"
     sync_dir.mkdir()
@@ -315,17 +316,66 @@ def _fake_clients(
                 ) + '\\n'
             ).encode('utf-8')
         else:
+            events = []
+            stream_mode = {kimi_stream_mode!r}
+            tool_call_id = 'tool-read-review-input'
+            tool_path = match.group(1)
+            if stream_mode == 'outside':
+                tool_path += '.outside'
+            tool_call = {{
+                'type': 'function',
+                'id': tool_call_id,
+                'function': {{
+                    'name': 'Read',
+                    'arguments': json.dumps(
+                        {{'path': tool_path}},
+                        sort_keys=True,
+                    ),
+                }},
+            }}
+            transport_lines = data.decode('utf-8').splitlines()
+            if stream_mode == 'partial':
+                transport_lines = transport_lines[:1]
+            tool_content = '\\n'.join(
+                f'{{line_number}}\\t{{line}}'
+                for line_number, line in enumerate(transport_lines, start=1)
+            )
+            if stream_mode == 'mixed':
+                events.append(
+                    {{
+                        'role': 'assistant',
+                        'content': body,
+                        'tool_calls': [tool_call],
+                    }}
+                )
+            elif stream_mode == 'no_read':
+                events.append({{'role': 'assistant', 'content': body}})
+            else:
+                events.extend(
+                    [
+                        {{'role': 'assistant', 'tool_calls': [tool_call]}},
+                        {{
+                            'role': 'tool',
+                            'tool_call_id': tool_call_id,
+                            'content': tool_content,
+                        }},
+                        {{'role': 'assistant', 'content': body}},
+                    ]
+                )
+                if stream_mode == 'multiple':
+                    events.append({{'role': 'assistant', 'content': body + '-again'}})
+            events.append({{'role': 'meta', 'type': 'session.resume_hint'}})
+            if stream_mode == 'post_meta':
+                events.append({{'role': 'assistant', 'content': body + '-late'}})
             output = (
-                json.dumps(
-                    {{'role': 'assistant', 'content': body}},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                ) + '\\n' +
-                json.dumps(
-                    {{'role': 'meta', 'type': 'session.resume_hint'}},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                ) + '\\n'
+                ''.join(
+                    json.dumps(
+                        event,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ) + '\\n'
+                    for event in events
+                )
             ).encode('utf-8')
         sys.stdout.buffer.write(output)
         sys.stderr.buffer.write(('stderr-' + seat + '\\n').encode())
@@ -419,7 +469,15 @@ def _raw_payload(
     elif seat.client == "codex":
         body = json.loads(raw.decode("utf-8").splitlines()[-1])["item"]["text"]
     else:
-        body = json.loads(raw.decode("utf-8").splitlines()[0])["content"]
+        events = [
+            json.loads(line) for line in raw.decode("utf-8").splitlines()
+        ]
+        body = next(
+            event["content"]
+            for event in events
+            if event.get("role") == "assistant"
+            and isinstance(event.get("content"), str)
+        )
     return json.loads(body), raw
 
 
@@ -557,9 +615,12 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
         packet_bytes=packet_bytes,
         input_manifest_sha256=_sha256(manifest_bytes),
     )
-    assert {bytes.fromhex(value["input_hex"]) for value in observed.values()} == {
+    assert bytes.fromhex(observed["gemini"]["input_hex"]) == expected_review_input
+    assert bytes.fromhex(observed["codex"]["input_hex"]) == expected_review_input
+    expected_kimi_transport = launcher._kimi_review_transport_bytes(
         expected_review_input
-    }
+    )
+    assert bytes.fromhex(observed["kimi"]["input_hex"]) == expected_kimi_transport
     for receipt in receipt_by_seat.values():
         assert receipt["review_input_schema"] == launcher.REVIEW_INPUT_SCHEMA
         assert receipt["review_input_bytes"] == len(expected_review_input)
@@ -572,7 +633,7 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
     assert observed["gemini"]["cwd_entries"] == []
     assert observed["codex"]["cwd_entries"] == []
     assert observed["kimi"]["cwd_entries"] == [
-        "00-review-input.bin",
+        "00-review-input.transport.txt",
         "kimi-read-only.sb",
         "write-denied.canary",
     ]
@@ -826,12 +887,110 @@ def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
             events = [
                 json.loads(line) for line in raw.decode("utf-8").splitlines()
             ]
-            assert events[0]["content"] == body
-            assert events[1]["type"] == "session.resume_hint"
+            assert [event["role"] for event in events] == [
+                "assistant",
+                "tool",
+                "assistant",
+                "meta",
+            ]
+            assert events[0]["tool_calls"][0]["function"]["name"] == "Read"
+            assert events[2]["content"] == body
+            assert events[3]["type"] == "session.resume_hint"
         receipt_bytes = (output_dir / seat.receipt_name).read_bytes()
         assert frontmatter["launcher_proof_sha256"] == _sha256(receipt_bytes)
         assert frontmatter["raw_response_sha256"] == _sha256(raw)
     assert not (output_dir / launcher.FINAL_GATE_MARKER_NAME).exists()
+
+
+def test_kimi_stream_accepts_attested_read_trace_before_review(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    review_body = "Kimi review body"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        review_body=review_body,
+    )
+
+    _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    kimi = next(seat for seat in launcher.SEATS if seat.name == "kimi")
+    events = [
+        json.loads(line)
+        for line in (output_dir / kimi.raw_name).read_text().splitlines()
+    ]
+    assert [event["role"] for event in events] == [
+        "assistant",
+        "tool",
+        "assistant",
+        "meta",
+    ]
+    assert events[0]["tool_calls"][0]["function"]["name"] == "Read"
+    assert events[2]["content"] == review_body
+    assert (output_dir / kimi.review_name).read_bytes().endswith(
+        review_body.encode("utf-8")
+    )
+
+
+def test_kimi_transport_wraps_long_lines_losslessly_below_read_limit() -> None:
+    source = (
+        "short\n"
+        + ("A" * 2_500)
+        + "\n"
+        + ("🌋" * 600)
+        + "\n"
+    ).encode("utf-8")
+
+    transport = launcher._kimi_review_transport_bytes(source)
+    lines = transport.decode("utf-8").splitlines()
+
+    assert lines[0] == launcher.KIMI_TRANSPORT_SCHEMA
+    assert f"SOURCE_REVIEW_INPUT_SHA256 {_sha256(source)}" in lines
+    assert any(" part=1/2\t" in line for line in lines)
+    assert max(len(line.encode("utf-8")) for line in lines) <= (
+        launcher.KIMI_TRANSPORT_MAX_LINE_BYTES
+    )
+
+
+@pytest.mark.parametrize(
+    ("stream_mode", "message"),
+    (
+        ("no_read", "before reading the full transport"),
+        ("partial", "before reading the full transport"),
+        ("outside", "outside its review input"),
+        ("mixed", "mixed review text with tool calls"),
+        ("multiple", "multiple review responses"),
+        ("post_meta", "resume hint is not the final event"),
+    ),
+)
+def test_kimi_stream_rejects_incomplete_or_ambiguous_read_proof(
+    tmp_path: Path,
+    stream_mode: str,
+    message: str,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        kimi_stream_mode=stream_mode,
+    )
+
+    with pytest.raises(launcher.LauncherError, match=message):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.glob("*.raw.*"))
+    assert not list(output_dir.glob("*.invocation.json"))
 
 
 def test_failed_launch_cleans_own_validator_inputs_and_can_retry_same_directory(
