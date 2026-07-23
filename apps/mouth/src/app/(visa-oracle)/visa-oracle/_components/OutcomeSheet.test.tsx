@@ -12,6 +12,9 @@ import type { Language } from "../_lib/flow";
  * disclaimer is KEEP-verbatim under every verdict). These tests pin the
  * disclaimer + footer on ALL five terminal states, in both languages, and
  * the print anatomy (recap + disclaimer print; CTAs stay screen-only).
+ * Follow-up (owner call 2026-07-23, Fable MEDIUM): next-steps is pinned to
+ * SUPPORTED_CANDIDATES only — its step copy references the candidate
+ * checklist, absent on every other state.
  */
 
 const TODAY = new Date("2026-07-23T12:00:00Z");
@@ -132,19 +135,25 @@ describe("OutcomeSheet — shared footer on every terminal state (W0b)", () => {
     expect(qr?.getAttribute("data-qr-value")).toBe(cta.getAttribute("href"));
   });
 
-  it("gates the candidate-referencing next-steps copy on NEEDS_INPUT", () => {
-    // "Gather the documents listed above" points at a checklist that exists
-    // only when candidates exist — rendering it on NEEDS_INPUT would dangle.
-    renderSheet("NEEDS_INPUT");
-    expect(screen.queryByText("Your next 3 steps")).not.toBeInTheDocument();
-  });
+  it.each([
+    "NEEDS_INPUT",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+    "TEMPORARILY_UNAVAILABLE",
+  ] as const)(
+    "hides next-steps on %s (no candidate checklist to reference)",
+    (state) => {
+      // "Gather the documents listed above" points at a checklist that exists
+      // only under SUPPORTED_CANDIDATES — anywhere else the section dangles.
+      // Gated on SUPPORTED_CANDIDATES (owner call 2026-07-23, Fable MEDIUM).
+      renderSheet(state);
+      expect(screen.queryByText("Your next 3 steps")).not.toBeInTheDocument();
+    },
+  );
 
   it("keeps next-steps on SUPPORTED_CANDIDATES (checklist present)", () => {
-    // Only this state is pinned: the default step copy ("documents listed
-    // above") is unambiguously correct here. Visibility on the other three
-    // states is pre-existing main behavior, deliberately left untouched by
-    // W0b (flagged for content review — step 2 dangles where no checklist
-    // renders).
+    // The only state where the default step copy ("documents listed above")
+    // is unambiguously correct: the candidate checklist renders above it.
     renderSheet("SUPPORTED_CANDIDATES");
     expect(screen.getByText("Your next 3 steps")).toBeInTheDocument();
   });
