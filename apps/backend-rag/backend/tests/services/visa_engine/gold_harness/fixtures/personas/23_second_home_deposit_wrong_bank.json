@@ -1,19 +1,19 @@
 {
-  "persona_id": "07_retiree",
-  "narrative": "British retiree, 61, settling in Bali long-term on a retirement permit, with a USD 60,000 own-name deposit at a state-owned (BUMN) bank and USD 3,500/month passive income -- qualifies for both the E33E 5-year golden track and the E33F 1-year income-only track.",
-  "notes": "",
+  "persona_id": "23_second_home_deposit_wrong_bank",
+  "narrative": "German applicant, 52, with a USD 130,000 own-name deposit at a PRIVATE (non-BUMN) Indonesian bank and no qualifying property -- the amount meets the threshold but the state-owned-bank condition fails.",
+  "notes": "Negative boundary for el-e33-secondhome: deposit exactly at the USD 130,000 threshold but secondhome.bank_deposit_at_state_bank=false, and the property arm definitely below threshold (KNOWN 250,000), so the whole any-branch resolves FALSE (never UNKNOWN) and E33 is mechanically UNSUPPORTED with SECOND_HOME missing -- a wrong-bank deposit must never produce a SUPPORTED or BLOCKED_UNKNOWN verdict.",
   "facts": {
     "person.birth_date": {
       "status": "KNOWN",
-      "value": "1965-02-10"
+      "value": "1974-01-15"
     },
     "person.nationalities": {
       "status": "KNOWN",
-      "value": ["GB"]
+      "value": ["DE"]
     },
     "person.marital_status": {
-      "status": "KNOWN",
-      "value": "WIDOWED"
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "immigration.currently_in_indonesia": {
       "status": "KNOWN",
@@ -41,7 +41,7 @@
     },
     "intent.purposes": {
       "status": "KNOWN",
-      "value": ["RETIREMENT"]
+      "value": ["SECOND_HOME"]
     },
     "intent.stay_days": {
       "status": "UNKNOWN",
@@ -129,23 +129,23 @@
     },
     "secondhome.bank_deposit_usd": {
       "status": "KNOWN",
-      "value": 60000
+      "value": 130000
     },
     "secondhome.bank_deposit_at_state_bank": {
       "status": "KNOWN",
-      "value": true
+      "value": false
     },
     "secondhome.bank_deposit_in_own_name": {
       "status": "KNOWN",
       "value": true
     },
     "secondhome.qualifying_property_value_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 250000
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "KNOWN",
-      "value": 3500
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "process.application_channel": {
       "status": "KNOWN",
@@ -165,27 +165,17 @@
     }
   },
   "expected": {
-    "global_state": "SUPPORTED_CANDIDATES",
+    "global_state": "NO_SUPPORTED_PATH",
     "global_reason_codes": [],
     "products": {
-      "E33E": {
-        "proof_state": "SUPPORTED",
-        "reason_codes": ["RETIREMENT_SUPPORTED"],
-        "covered_purposes": ["RETIREMENT"]
-      },
-      "E33F": {
-        "proof_state": "SUPPORTED",
-        "reason_codes": ["RETIREMENT_INCOME_ONLY_SUPPORTED"],
-        "covered_purposes": ["RETIREMENT"]
+      "E33": {
+        "proof_state": "UNSUPPORTED",
+        "missing_purposes": ["SECOND_HOME"]
       }
     },
     "default": {
       "kind": "UNSUPPORTED_NO_PURPOSE_OVERLAP",
-      "requested_purposes": ["RETIREMENT"]
-    },
-    "extra_checks": {
-      "derived_age_years": 61,
-      "derived_is_minor": false
+      "requested_purposes": ["SECOND_HOME"]
     }
   }
 }

@@ -23,9 +23,15 @@ Two authoring tiers per persona (see each persona JSON's ``expected`` key):
      19-07-2026 audit that caught exactly this gap for E33G against three
      TOURISM-only personas before it shipped).
    - ``DOMINANT_GLOBAL``: a GLOBAL HARD_FILTER/HUMAN_REVIEW rule in the
-     designed pack fires identically for every product (this harness's pack
-     never scopes a HARD_FILTER/HUMAN_REVIEW rule to PRODUCTS), so every
-     product collapses to the same EXCLUDED/REVIEW/BLOCKED_UNKNOWN outcome.
+     designed pack fires identically for every product, so every product
+     collapses to the same EXCLUDED/REVIEW/BLOCKED_UNKNOWN outcome. (The one
+     PRODUCTS-scoped HUMAN_REVIEW rule in the pack --
+     ``hr-e33e-e33f-age-band-55-59`` on E33E+E33F, the Permenkumham 11/2024
+     55-vs-60 BERSYARAT band -- is purpose-guarded to RETIREMENT and inert
+     for every persona that uses this default: all of them are either
+     blocked earlier by a GLOBAL rule or declare no RETIREMENT purpose, so
+     it never fires TRUE and never becomes the UNKNOWN that gates the
+     decision.)
 """
 
 from __future__ import annotations
