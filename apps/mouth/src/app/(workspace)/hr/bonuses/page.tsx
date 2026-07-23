@@ -15,11 +15,12 @@ import type { Bonus, BonusHistoricalRecord } from "@/types/hr";
 import {
   aggregateByMember,
   bonusesToCsv,
+  buildMonthlyReconciliation,
   formatBonusDate,
   groupBonusesByMonth,
-  reconcileMonthHistorical,
   UNDATED_KEY,
   witaMonthKey,
+  type MonthAggregate,
 } from "@/lib/hr/bonus-aggregation";
 import { formatIDR } from "@balizero/core/utils";
 
@@ -140,35 +141,56 @@ export default function BonusesPage() {
   );
 
   /**
-   * Pre-system PDF recap records grouped by month key, scoped to the SAME
-   * selection as the ledger they are compared against — otherwise the delta
-   * would subtract an all-members PDF total from a single-member ledger total
-   * and read as a phantom shortfall. A status filter has no counterpart in the
-   * PDF recaps (they carry no status), so it makes the two sides
-   * non-comparable and suppresses the strip entirely.
+   * The reconciliation verdict is a property of the WHOLE month, computed once
+   * from the UNFILTERED ledger + PDF. It must never be recomputed from a
+   * filtered slice: filtering to one member drops the very members whose
+   * absence defines the incompleteness, which would flip a PDF-authoritative
+   * month to "ledger authoritative" and headline the wrong (smaller) number.
+   * Filters below change only what is DISPLAYED, never this verdict.
    */
-  const historicalRecordsByMonth = useMemo(() => {
-    const map = new Map<string, BonusHistoricalRecord[]>();
-    if (status !== ALL) return map;
-    const scoped =
-      member === ALL
-        ? historical
-        : historical.filter(
-            (r) => r.employee_id != null && `id:${r.employee_id}` === member,
-          );
-    for (const r of scoped) {
-      const key = `${r.bonus_year}-${String(r.bonus_month).padStart(2, "0")}`;
-      const arr = map.get(key) ?? [];
-      arr.push(r);
-      map.set(key, arr);
+  const reconByMonth = useMemo(
+    () => buildMonthlyReconciliation(bonuses, historical),
+    [bonuses, historical],
+  );
+
+  const filtersNarrowView = status !== ALL || member !== ALL;
+
+  /**
+   * Months to render = the filtered ledger months UNION any month that has a
+   * PDF verdict but no ledger rows in the current view (a month the ledger has
+   * not captured yet). Without the union, a purely-PDF month — the clearest
+   * case of an incomplete ledger — would silently not render at all. Year is a
+   * legitimate scope; status/member are not allowed to hide a whole-month
+   * verdict.
+   */
+  const displayMonths = useMemo<MonthAggregate[]>(() => {
+    const present = new Set(months.map((m) => m.key));
+    const extras: MonthAggregate[] = [];
+    for (const recon of reconByMonth.values()) {
+      if (present.has(recon.monthKey)) continue;
+      if (year !== ALL && !recon.monthKey.startsWith(year)) continue;
+      extras.push({
+        key: recon.monthKey,
+        label: recon.monthLabel,
+        count: 0,
+        memberCount: 0,
+        total: 0,
+        pendingTotal: 0,
+        approvedTotal: 0,
+        members: [],
+      });
     }
-    return map;
-  }, [historical, member, status]);
+    return [...months, ...extras].sort((a, b) => {
+      if (a.key === UNDATED_KEY) return 1;
+      if (b.key === UNDATED_KEY) return -1;
+      return b.key.localeCompare(a.key);
+    });
+  }, [months, reconByMonth, year]);
 
   // Newest month starts expanded, the rest collapsed — DERIVED, not set by an
   // effect: an effect would paint one frame with everything closed and only
   // then expand. An explicit toggle writes a boolean and always wins.
-  const newestMonthKey = months.length > 0 ? months[0].key : null;
+  const newestMonthKey = displayMonths.length > 0 ? displayMonths[0].key : null;
 
   if (loading) {
     return (
@@ -269,7 +291,7 @@ export default function BonusesPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {displayMonths.length === 0 ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
           <Gift size={20} className="mx-auto mb-2 opacity-50" />
           No bonuses for this selection. Bonuses are created automatically when
@@ -278,97 +300,104 @@ export default function BonusesPage() {
       ) : (
         <>
           {/* ─── Total per member, across the selected months ─────────── */}
-          <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-zinc-200">
-                Total per member
-              </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Across every month in the current selection.
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wide text-zinc-500">
-                    <th className="text-left font-medium px-4 py-2">Member</th>
-                    <th className="text-right font-medium px-4 py-2">Months</th>
-                    <th className="text-right font-medium px-4 py-2">
-                      Bonuses
-                    </th>
-                    <th className="text-right font-medium px-4 py-2">
-                      Pending
-                    </th>
-                    <th className="text-right font-medium px-4 py-2">
-                      Approved
-                    </th>
-                    <th className="text-right font-medium px-4 py-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {memberTotals.map((m) => (
-                    <tr
-                      key={m.memberKey}
-                      className="border-t border-zinc-800/70 text-zinc-300"
-                    >
-                      <td className="px-4 py-2 text-zinc-200">
-                        {m.employeeName}
+          {memberTotals.length > 0 && (
+            <section className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-800">
+                <h2 className="text-sm font-semibold text-zinc-200">
+                  Total per member
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Across every month in the current selection.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wide text-zinc-500">
+                      <th className="text-left font-medium px-4 py-2">
+                        Member
+                      </th>
+                      <th className="text-right font-medium px-4 py-2">
+                        Months
+                      </th>
+                      <th className="text-right font-medium px-4 py-2">
+                        Bonuses
+                      </th>
+                      <th className="text-right font-medium px-4 py-2">
+                        Pending
+                      </th>
+                      <th className="text-right font-medium px-4 py-2">
+                        Approved
+                      </th>
+                      <th className="text-right font-medium px-4 py-2">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {memberTotals.map((m) => (
+                      <tr
+                        key={m.memberKey}
+                        className="border-t border-zinc-800/70 text-zinc-300"
+                      >
+                        <td className="px-4 py-2 text-zinc-200">
+                          {m.employeeName}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {m.monthCount}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {m.count}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums text-amber-400">
+                          {m.byStatus.pending
+                            ? formatIDR(m.byStatus.pending)
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {m.byStatus.approved
+                            ? formatIDR(m.byStatus.approved)
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums font-semibold text-[var(--bz-accent)]">
+                          {formatIDR(m.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-zinc-700 text-zinc-200 font-semibold">
+                      <td className="px-4 py-2">All members</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {months.length}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {m.monthCount}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums">
-                        {m.count}
+                        {filtered.length}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-amber-400">
-                        {m.byStatus.pending
-                          ? formatIDR(m.byStatus.pending)
-                          : "—"}
+                        {grandPending ? formatIDR(grandPending) : "—"}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {m.byStatus.approved
-                          ? formatIDR(m.byStatus.approved)
-                          : "—"}
+                        {formatIDR(grandApproved)}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums font-semibold text-[var(--bz-accent)]">
-                        {formatIDR(m.total)}
+                      <td className="px-4 py-2 text-right tabular-nums text-[var(--bz-accent)]">
+                        {formatIDR(grandTotal)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-zinc-700 text-zinc-200 font-semibold">
-                    <td className="px-4 py-2">All members</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {months.length}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {filtered.length}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-amber-400">
-                      {grandPending ? formatIDR(grandPending) : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatIDR(grandApproved)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-[var(--bz-accent)]">
-                      {formatIDR(grandTotal)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </section>
+                  </tfoot>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* ─── Month by month → member by member ────────────────────── */}
           <div className="space-y-3">
-            {months.map((month) => {
+            {displayMonths.map((month) => {
               const isOpen =
                 openMonths[month.key] ?? month.key === newestMonthKey;
-              const recon = reconcileMonthHistorical(
-                month,
-                historicalRecordsByMonth.get(month.key) ?? [],
-              );
+              // Global, filter-independent verdict for the whole month.
+              const recon = reconByMonth.get(month.key) ?? null;
+              const pdfOnly = recon != null && month.members.length === 0;
               return (
                 <section
                   key={month.key || "undated"}
@@ -397,10 +426,16 @@ export default function BonusesPage() {
                         {month.label}
                       </span>
                       <span className="text-xs text-zinc-500 truncate">
-                        {month.memberCount} member
-                        {month.memberCount === 1 ? "" : "s"} · {month.count}{" "}
-                        bonus
-                        {month.count === 1 ? "" : "es"}
+                        {pdfOnly ? (
+                          "PDF recap only — not yet in the ledger"
+                        ) : (
+                          <>
+                            {month.memberCount} member
+                            {month.memberCount === 1 ? "" : "s"} · {month.count}{" "}
+                            bonus
+                            {month.count === 1 ? "" : "es"}
+                          </>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -410,7 +445,9 @@ export default function BonusesPage() {
                         </span>
                       )}
                       <span className="text-base font-semibold text-[var(--bz-accent)] tabular-nums">
-                        {formatIDR(month.total)}
+                        {formatIDR(
+                          pdfOnly && recon ? recon.pdfTotal : month.total,
+                        )}
                       </span>
                     </div>
                   </button>
@@ -425,20 +462,32 @@ export default function BonusesPage() {
                               className="mt-0.5 shrink-0"
                             />
                             <span>
-                              A pre-system PDF recap exists for this month (
+                              No PDF-only paid members detected for this month,
+                              so per the ruling the{" "}
+                              <strong>ledger is authoritative</strong>. A
+                              pre-system PDF recap (
                               <strong className="tabular-nums">
                                 {formatIDR(recon.pdfTotal)}
                               </strong>
                               , {recon.pdfTasks} tasks —{" "}
-                              {recon.sources.join(", ")}). The{" "}
-                              <strong>ledger is authoritative</strong> here; the
-                              recap is a historical snapshot shown for
-                              reference, <strong>not summed</strong> into the
-                              totals above (delta{" "}
+                              {recon.sources.join(", ")}) is shown for
+                              reference, <strong>not summed</strong>{" "}
+                              (whole-month ledger{" "}
                               <span className="tabular-nums">
-                                {formatIDR(month.total - recon.pdfTotal)}
+                                {formatIDR(recon.ledgerTotal)}
+                              </span>
+                              , delta{" "}
+                              <span className="tabular-nums">
+                                {formatIDR(recon.ledgerTotal - recon.pdfTotal)}
                               </span>
                               ).
+                              {filtersNarrowView && (
+                                <>
+                                  {" "}
+                                  This verdict is for the whole month; the rows
+                                  below are filtered.
+                                </>
+                              )}
                             </span>
                           </div>
                         ) : (
@@ -449,23 +498,50 @@ export default function BonusesPage() {
                             />
                             <span>
                               <strong>Ledger incomplete for this month.</strong>{" "}
-                              {recon.missingPaidMembers} member
-                              {recon.missingPaidMembers === 1 ? "" : "s"} the
-                              PDF paid have no ledger rows — the pre-system PDF
-                              list (
+                              {recon.missingPaidMembers > 0 && (
+                                <>
+                                  {recon.missingPaidMembers} member
+                                  {recon.missingPaidMembers === 1
+                                    ? ""
+                                    : "s"}{" "}
+                                  the PDF paid{" "}
+                                  {recon.missingPaidMembers === 1
+                                    ? "has"
+                                    : "have"}{" "}
+                                  no ledger rows.{" "}
+                                </>
+                              )}
+                              {recon.unresolvedPaidRecords > 0 && (
+                                <>
+                                  {recon.unresolvedPaidRecords} PDF payment
+                                  {recon.unresolvedPaidRecords === 1
+                                    ? ""
+                                    : "s"}{" "}
+                                  could not be matched to a member — verify
+                                  manually.{" "}
+                                </>
+                              )}
+                              The pre-system PDF list (
                               <strong className="tabular-nums">
                                 {formatIDR(recon.pdfTotal)}
                               </strong>
                               , {recon.pdfTasks} tasks —{" "}
                               {recon.sources.join(", ")}) is the{" "}
-                              <strong>authoritative record</strong>. The ledger
-                              figures above (
+                              <strong>authoritative record</strong>; the ledger
+                              (
                               <span className="tabular-nums">
                                 {formatIDR(recon.ledgerTotal)}
                               </span>
-                              ) are a partial backfill —{" "}
+                              ) is a partial backfill —{" "}
                               <strong>use the PDF total for this month</strong>{" "}
                               until the ledger is backfilled. Not summed.
+                              {filtersNarrowView && (
+                                <>
+                                  {" "}
+                                  This verdict is for the whole month; the rows
+                                  below are filtered.
+                                </>
+                              )}
                             </span>
                           </div>
                         ))}

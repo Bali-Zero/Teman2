@@ -317,55 +317,174 @@ export function bonusesToCsv(months: MonthAggregate[]): string {
  * pick which figure to headline; the ledger stays the stored truth.
  */
 export interface HistoricalReconciliation {
+  /** `YYYY-MM` this verdict is for. */
+  monthKey: string;
+  /** Human label, e.g. `February 2026` — derived from the key, timezone-free. */
+  monthLabel: string;
   pdfTotal: number;
   pdfTasks: number;
   sources: string[];
+  /** Full-month ledger total (unfiltered) — the figure the strip compares against. */
   ledgerTotal: number;
   /** true → ledger wins, PDF is a historical snapshot; false → ledger is incomplete, PDF is authoritative. */
   ledgerAuthoritative: boolean;
   /** Members the PDF paid (>0) that have zero ledger rows this month. */
   missingPaidMembers: number;
+  /**
+   * PDF paid lines that cannot be reconciled to a ledger member: a positive
+   * amount with no `employee_id`, or an amount that does not parse to a
+   * non-negative safe integer. Any of these blocks a clean ledger-authoritative
+   * verdict — we cannot assert the ledger covers a payment we cannot attribute.
+   */
+  unresolvedPaidRecords: number;
 }
 
-export function reconcileMonthHistorical(
-  month: MonthAggregate,
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** `2026-02` → `February 2026`. No timestamp needed (PDF months carry no time). */
+export function monthKeyLabel(key: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(key);
+  if (!m) return "Undated";
+  const name = MONTH_NAMES[Number(m[2]) - 1];
+  return name ? `${name} ${m[1]}` : key;
+}
+
+/**
+ * A historical PDF amount is a `bigint` that may arrive as a JSON string. Accept
+ * ONLY a non-negative safe integer; a comma-formatted string, `NaN`, `Infinity`
+ * or a value beyond 2^53 returns `null` ("unparseable"). It must NOT silently
+ * become 0 (as `Number(x) || 0` would): a swallowed amount reads as "member not
+ * paid" and could wrongly clear the ledger-incomplete flag.
+ */
+export function parseHistoricalAmount(value: number | string): number | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const n = Number(value.trim());
+    return Number.isSafeInteger(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Reconciliation verdict for ONE month, computed from the FULL-month ledger
+ * member set + ledger total (both unfiltered) and the month's PDF records.
+ * Kept pure and filter-agnostic on purpose — see `buildMonthlyReconciliation`.
+ */
+export function reconcileMonth(
+  monthKey: string,
+  ledgerMemberIds: ReadonlySet<number>,
+  ledgerTotal: number,
   historicalForMonth: BonusHistoricalRecord[],
 ): HistoricalReconciliation | null {
   if (historicalForMonth.length === 0) return null;
 
-  const ledgerMemberIds = new Set<number>();
-  for (const m of month.members) {
-    if (m.employeeId != null) ledgerMemberIds.add(m.employeeId);
-  }
-
   let pdfTotal = 0;
   let pdfTasks = 0;
   let missingPaidMembers = 0;
+  let unresolvedPaidRecords = 0;
   const sources = new Set<string>();
 
   for (const r of historicalForMonth) {
-    const amt = Number(r.total_amount_idr) || 0;
-    pdfTotal += amt;
-    pdfTasks += Number(r.task_count) || 0;
+    const amt = parseHistoricalAmount(r.total_amount_idr as number | string);
+    pdfTotal += amt ?? 0;
+    const tasks = Number(r.task_count);
+    pdfTasks += Number.isSafeInteger(tasks) && tasks >= 0 ? tasks : 0;
     if (r.source_pdf) sources.add(r.source_pdf);
-    // A member the PDF actually paid (>0) but the ledger has no row for =
-    // the ledger was not yet capturing that month. A 0-IDR PDF line (e.g.
-    // an early draft) is NOT evidence of a missing payment.
-    if (
-      amt > 0 &&
-      r.employee_id != null &&
-      !ledgerMemberIds.has(r.employee_id)
-    ) {
-      missingPaidMembers += 1;
+
+    if (amt === null) {
+      // A paid line we cannot read — never treat as reconciled.
+      unresolvedPaidRecords += 1;
+      continue;
+    }
+    if (amt > 0) {
+      if (r.employee_id == null) {
+        // Paid on paper but not attributable to a ledger member.
+        unresolvedPaidRecords += 1;
+      } else if (!ledgerMemberIds.has(r.employee_id)) {
+        // The ledger was not yet capturing this member's payment this month.
+        // A 0-IDR PDF line is NOT evidence of a missing payment.
+        missingPaidMembers += 1;
+      }
     }
   }
 
   return {
+    monthKey,
+    monthLabel: monthKeyLabel(monthKey),
     pdfTotal,
     pdfTasks,
     sources: [...sources],
-    ledgerTotal: month.total,
-    ledgerAuthoritative: missingPaidMembers === 0,
+    ledgerTotal,
+    ledgerAuthoritative:
+      missingPaidMembers === 0 && unresolvedPaidRecords === 0,
     missingPaidMembers,
+    unresolvedPaidRecords,
   };
+}
+
+/**
+ * Build the per-month reconciliation verdict for EVERY month that has a
+ * pre-system PDF recap, from the FULL unfiltered ledger + PDF.
+ *
+ * The verdict is a property of the whole MONTH and must NOT depend on the page's
+ * year/status/member display filters. Computing it on a filtered slice was a
+ * real defect: filtering to a single member drops the very members whose absence
+ * defines the incompleteness, silently flipping a PDF-authoritative month to
+ * "ledger authoritative" and telling accounting to pay the wrong (smaller)
+ * number. The page looks this map up by month key and NEVER recomputes it from a
+ * filtered slice; filters only change which months/rows/amounts are displayed.
+ */
+export function buildMonthlyReconciliation(
+  bonuses: Bonus[],
+  historical: BonusHistoricalRecord[],
+): Map<string, HistoricalReconciliation> {
+  const ledgerIds = new Map<string, Set<number>>();
+  const ledgerTotals = new Map<string, number>();
+  for (const b of bonuses) {
+    const key = witaMonthKey(b.awarded_at);
+    if (b.employee_id != null) {
+      let set = ledgerIds.get(key);
+      if (!set) {
+        set = new Set();
+        ledgerIds.set(key, set);
+      }
+      set.add(b.employee_id);
+    }
+    ledgerTotals.set(key, (ledgerTotals.get(key) ?? 0) + amountOf(b));
+  }
+
+  const pdfByMonth = new Map<string, BonusHistoricalRecord[]>();
+  for (const r of historical) {
+    const key = `${r.bonus_year}-${String(r.bonus_month).padStart(2, "0")}`;
+    const arr = pdfByMonth.get(key) ?? [];
+    arr.push(r);
+    pdfByMonth.set(key, arr);
+  }
+
+  const out = new Map<string, HistoricalReconciliation>();
+  for (const [key, recs] of pdfByMonth) {
+    const recon = reconcileMonth(
+      key,
+      ledgerIds.get(key) ?? new Set<number>(),
+      ledgerTotals.get(key) ?? 0,
+      recs,
+    );
+    if (recon) out.set(key, recon);
+  }
+  return out;
 }

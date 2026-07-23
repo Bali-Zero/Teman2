@@ -3,8 +3,11 @@ import type { Bonus, BonusHistoricalRecord } from "@/types/hr";
 import {
   aggregateByMember,
   bonusesToCsv,
+  buildMonthlyReconciliation,
   groupBonusesByMonth,
-  reconcileMonthHistorical,
+  monthKeyLabel,
+  parseHistoricalAmount,
+  reconcileMonth,
   witaMonthKey,
 } from "./bonus-aggregation";
 
@@ -308,46 +311,66 @@ describe("bonusesToCsv", () => {
   });
 });
 
-describe("reconcileMonthHistorical", () => {
-  function hist(
-    over: Partial<BonusHistoricalRecord> & { id: number },
-  ): BonusHistoricalRecord {
-    return {
-      employee_name: "SURYA",
-      employee_id: 3,
-      bonus_month: 2,
-      bonus_year: 2026,
-      total_amount_idr: 3_000_000,
-      task_count: 13,
-      source_pdf: "LIST BONUS FEBRUARY 2026.pdf",
-      accounting_total_data: null,
-      accounting_not_paid: null,
-      accounting_paid: null,
-      imported_at: "2026-03-01T00:00:00.000Z",
-      notes: null,
-      ...over,
-    } as BonusHistoricalRecord;
-  }
+function hist(
+  over: Partial<BonusHistoricalRecord> & { id: number },
+): BonusHistoricalRecord {
+  return {
+    employee_name: "SURYA",
+    employee_id: 3,
+    bonus_month: 2,
+    bonus_year: 2026,
+    total_amount_idr: 3_000_000,
+    task_count: 13,
+    source_pdf: "LIST BONUS FEBRUARY 2026.pdf",
+    accounting_total_data: null,
+    accounting_not_paid: null,
+    accounting_paid: null,
+    imported_at: "2026-03-01T00:00:00.000Z",
+    notes: null,
+    ...over,
+  } as BonusHistoricalRecord;
+}
 
-  const monthOf = (bonuses: Bonus[]) => groupBonusesByMonth(bonuses)[0];
-
-  it("returns null when the month has no PDF recap", () => {
-    const month = monthOf([bonus({ id: 1 })]);
-    expect(reconcileMonthHistorical(month, [])).toBeNull();
+describe("parseHistoricalAmount", () => {
+  it("accepts a non-negative safe integer, as number or digit-string", () => {
+    expect(parseHistoricalAmount(550_000)).toBe(550_000);
+    expect(parseHistoricalAmount("550000")).toBe(550_000);
+    expect(parseHistoricalAmount(" 550000 ")).toBe(550_000);
+    expect(parseHistoricalAmount(0)).toBe(0);
   });
 
-  it("FEBRUARY case: ledger missing paid members → PDF authoritative", () => {
-    // Ledger Feb: only SURYA (id 3) has rows. PDF paid ADIT + ARI too.
-    const month = monthOf([
-      bonus({
-        id: 1,
-        employee_id: 3,
-        employee_name: "Surya",
-        amount_idr: 2_760_000,
-        awarded_at: "2026-02-10T02:00:00.000Z",
-      }),
-    ]);
-    const rec = reconcileMonthHistorical(month, [
+  it("returns null for anything that must NOT silently become 0", () => {
+    // A comma-formatted string coerced by `Number(x)||0` would become 0 and
+    // read as "member not paid" — hiding a real incompleteness.
+    expect(parseHistoricalAmount("500,000")).toBeNull();
+    expect(parseHistoricalAmount("Infinity")).toBeNull();
+    expect(parseHistoricalAmount("12.5")).toBeNull();
+    expect(parseHistoricalAmount("")).toBeNull();
+    expect(parseHistoricalAmount(-5 as unknown as number)).toBeNull();
+    // Beyond 2^53 — a bigint that would lose precision through Number().
+    expect(parseHistoricalAmount("9007199254740993")).toBeNull();
+  });
+});
+
+describe("monthKeyLabel", () => {
+  it("labels a YYYY-MM key with no timestamp", () => {
+    expect(monthKeyLabel("2026-02")).toBe("February 2026");
+    expect(monthKeyLabel("2026-12")).toBe("December 2026");
+  });
+  it("falls back for keys it cannot parse", () => {
+    expect(monthKeyLabel("")).toBe("Undated");
+    expect(monthKeyLabel("garbage")).toBe("Undated");
+  });
+});
+
+describe("reconcileMonth", () => {
+  it("returns null when the month has no PDF recap", () => {
+    expect(reconcileMonth("2026-07", new Set([1]), 100_000, [])).toBeNull();
+  });
+
+  it("FEBRUARY case: a paid member absent from the ledger → PDF authoritative", () => {
+    // Ledger Feb member set: only SURYA (id 3). PDF paid ADIT + ARI too.
+    const rec = reconcileMonth("2026-02", new Set([3]), 2_760_000, [
       hist({ id: 1, employee_id: 3, total_amount_idr: 3_000_000 }),
       hist({
         id: 2,
@@ -364,21 +387,14 @@ describe("reconcileMonthHistorical", () => {
     ])!;
     expect(rec.ledgerAuthoritative).toBe(false);
     expect(rec.missingPaidMembers).toBe(2); // ADIT + ARI
+    expect(rec.unresolvedPaidRecords).toBe(0);
     expect(rec.pdfTotal).toBe(14_950_000);
     expect(rec.ledgerTotal).toBe(2_760_000);
+    expect(rec.monthLabel).toBe("February 2026");
   });
 
   it("MARCH case: every paid PDF member is in the ledger → ledger authoritative", () => {
-    const month = monthOf([
-      bonus({
-        id: 1,
-        employee_id: 2,
-        employee_name: "Ari",
-        amount_idr: 6_100_000,
-        awarded_at: "2026-03-10T02:00:00.000Z",
-      }),
-    ]);
-    const rec = reconcileMonthHistorical(month, [
+    const rec = reconcileMonth("2026-03", new Set([2]), 6_100_000, [
       hist({
         id: 1,
         employee_id: 2,
@@ -399,10 +415,7 @@ describe("reconcileMonthHistorical", () => {
   });
 
   it("a 0-IDR PDF line for an absent member is not counted as missing", () => {
-    const month = monthOf([
-      bonus({ id: 1, employee_id: 3, amount_idr: 500_000 }),
-    ]);
-    const rec = reconcileMonthHistorical(month, [
+    const rec = reconcileMonth("2026-07", new Set([3]), 500_000, [
       hist({
         id: 1,
         employee_id: 9,
@@ -414,9 +427,35 @@ describe("reconcileMonthHistorical", () => {
     expect(rec.ledgerAuthoritative).toBe(true);
   });
 
+  it("a positive PDF payment with a null employee_id is UNRESOLVED, never ledger-authoritative", () => {
+    const rec = reconcileMonth("2026-02", new Set([3]), 2_760_000, [
+      hist({
+        id: 1,
+        employee_id: null,
+        employee_name: "UNMATCHED",
+        total_amount_idr: 500_000,
+      }),
+    ])!;
+    expect(rec.unresolvedPaidRecords).toBe(1);
+    expect(rec.missingPaidMembers).toBe(0);
+    expect(rec.ledgerAuthoritative).toBe(false);
+  });
+
+  it("an unparseable amount is UNRESOLVED and does not silently become 0", () => {
+    const rec = reconcileMonth("2026-02", new Set([3]), 2_760_000, [
+      hist({
+        id: 1,
+        employee_id: 3,
+        total_amount_idr: "500,000" as unknown as number,
+      }),
+    ])!;
+    expect(rec.unresolvedPaidRecords).toBe(1);
+    expect(rec.pdfTotal).toBe(0); // NOT counted as a real amount
+    expect(rec.ledgerAuthoritative).toBe(false);
+  });
+
   it("dedupes source filenames and sums tasks", () => {
-    const month = monthOf([bonus({ id: 1, employee_id: 3 })]);
-    const rec = reconcileMonthHistorical(month, [
+    const rec = reconcileMonth("2026-02", new Set([3]), 100_000, [
       hist({ id: 1, employee_id: 3, task_count: 13, source_pdf: "recap.pdf" }),
       hist({ id: 2, employee_id: 3, task_count: 5, source_pdf: "recap.pdf" }),
     ])!;
@@ -425,8 +464,7 @@ describe("reconcileMonthHistorical", () => {
   });
 
   it("coerces string amounts (BIGINT-as-text) before comparing", () => {
-    const month = monthOf([bonus({ id: 1, employee_id: 3 })]);
-    const rec = reconcileMonthHistorical(month, [
+    const rec = reconcileMonth("2026-02", new Set([3]), 100_000, [
       hist({
         id: 1,
         employee_id: 7,
@@ -436,5 +474,71 @@ describe("reconcileMonthHistorical", () => {
     expect(rec.pdfTotal).toBe(550_000);
     expect(rec.missingPaidMembers).toBe(1); // id 7 paid, absent from ledger
     expect(rec.ledgerAuthoritative).toBe(false);
+  });
+});
+
+describe("buildMonthlyReconciliation", () => {
+  it("computes the verdict from the FULL ledger, not a filtered slice", () => {
+    // The real Feb 2026 shape: ledger members {3,4,7}, PDF paid {1,2,3,4,5,7}.
+    const bonuses: Bonus[] = [
+      bonus({
+        id: 1,
+        employee_id: 3,
+        amount_idr: 1_000_000,
+        awarded_at: "2026-02-10T02:00:00.000Z",
+      }),
+      bonus({
+        id: 2,
+        employee_id: 4,
+        amount_idr: 1_000_000,
+        awarded_at: "2026-02-11T02:00:00.000Z",
+      }),
+      bonus({
+        id: 3,
+        employee_id: 7,
+        amount_idr: 1_660_000,
+        awarded_at: "2026-02-12T02:00:00.000Z",
+      }),
+    ];
+    const historical = [1, 2, 3, 4, 5, 7].map((eid, i) =>
+      hist({ id: i + 1, employee_id: eid, total_amount_idr: 1_000_000 }),
+    );
+    const map = buildMonthlyReconciliation(bonuses, historical);
+    const feb = map.get("2026-02")!;
+    // ids 1,2,5 are paid by the PDF but absent from the ledger → 3 missing.
+    expect(feb.missingPaidMembers).toBe(3);
+    expect(feb.ledgerAuthoritative).toBe(false);
+    // ledgerTotal is the FULL month ledger, independent of the PDF.
+    expect(feb.ledgerTotal).toBe(3_660_000);
+  });
+
+  it("keys the verdict by WITA month, and omits months with no PDF recap", () => {
+    const bonuses: Bonus[] = [
+      // A July ledger month with no PDF recap — must NOT appear.
+      bonus({ id: 1, employee_id: 3, awarded_at: "2026-07-10T02:00:00.000Z" }),
+    ];
+    const historical = [hist({ id: 1, employee_id: 3 })]; // Feb 2026
+    const map = buildMonthlyReconciliation(bonuses, historical);
+    expect(map.has("2026-02")).toBe(true);
+    expect(map.has("2026-07")).toBe(false);
+  });
+
+  it("a WITA-boundary ledger row lands in the right month for the verdict", () => {
+    // 2026-01-31T16:00:00Z is 2026-02-01 00:00 WITA → February ledger.
+    const bonuses: Bonus[] = [
+      bonus({ id: 1, employee_id: 3, awarded_at: "2026-01-31T16:00:00.000Z" }),
+    ];
+    const historical = [
+      hist({ id: 1, employee_id: 3, total_amount_idr: 1_000_000 }),
+      hist({
+        id: 2,
+        employee_id: 1,
+        employee_name: "ADIT",
+        total_amount_idr: 500_000,
+      }),
+    ];
+    const feb = buildMonthlyReconciliation(bonuses, historical).get("2026-02")!;
+    // id 3 is present in Feb (via the WITA boundary), id 1 is missing.
+    expect(feb.missingPaidMembers).toBe(1);
   });
 });
