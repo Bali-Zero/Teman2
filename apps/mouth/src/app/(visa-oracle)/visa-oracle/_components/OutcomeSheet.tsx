@@ -452,19 +452,17 @@ export function OutcomeSheet({
         </>
       )}
 
-      {/* W0b (legal-disclaimer fix, 2026-07-23): only the next-3-steps
-          section stays gated — its copy ("Gather the documents listed
-          above") references the candidate checklist, which exists only
-          when candidates exist. Everything below renders on ALL FIVE
-          terminal states, NEEDS_INPUT included: spec §A.3.2 makes
-          NEEDS_INPUT a first-class terminal legal-advice state whose
-          escape hatch "is always present" and which must never render as
-          a dead end, and the 4-line disclaimer (KEEP verbatim, spec §A.9)
-          is the legal floor under every verdict. Previously this guard
-          wrapped the whole footer, so NEEDS_INPUT rendered with no
-          WhatsApp handoff, no assumptions receipt, no print/copy and no
-          disclaimer at all. */}
-      {result.state !== "NEEDS_INPUT" && (
+      {/* W0b (legal-disclaimer fix, 2026-07-23): the footer below renders
+          on ALL FIVE terminal states — disclaimer/receipt/handoff are the
+          legal floor under every verdict, NEEDS_INPUT included (spec
+          §A.3.2/§A.9). The next-3-steps section is instead gated on
+          SUPPORTED_CANDIDATES only (owner call 2026-07-23, Fable MEDIUM):
+          its step-2 copy ("Gather the documents listed above") references
+          the candidate checklist, which exists only when candidates exist
+          (visas is [] on every other state) — on HUMAN_REVIEW_REQUIRED /
+          NO_SUPPORTED_PATH / TEMPORARILY_UNAVAILABLE / NEEDS_INPUT the
+          section dangled. */}
+      {result.state === "SUPPORTED_CANDIDATES" && (
         <section>
           <h2 className="oracle-outcome__section-title">
             {translate(language, "outcome.next_steps_title")}
