@@ -59,8 +59,8 @@ _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
         "Spouse 1 Year (Offshore)",
         "Family",
     ),
-    VisaType.E33E: ("Retirement KITAP + MERP", "Retirement"),
-    VisaType.E33F: ("Retirement (Offshore)", "Retirement"),
+    VisaType.E33E: ("E33E Second Home Senior (5 Years, Offshore)", "E33E Second Home Senior"),
+    VisaType.E33F: ("E33F Second Home Senior (1 Year, Offshore)", "E33F Second Home Senior"),
     VisaType.E33G: ("E33G Remote Worker (Offshore)", "E33G Remote Worker"),
 }
 
