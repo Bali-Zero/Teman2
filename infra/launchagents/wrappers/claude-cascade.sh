@@ -167,11 +167,11 @@ if [ -z "$PROMPT" ]; then
 fi
 
 QUOTA_PATTERN="out of extra usage|usage limit|weekly limit|quota exceeded|rate.limit|429|exhausted|please try again later"
-AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|unauthorized|invalid (api key|(oauth )?token)|oauth token.*(expired|invalid|revoked)|(api|http|auth|authentication|authorization|error|request|status)[^[:digit:]/]{0,40}401([^[:digit:]/]|$)|401[[:space:]:_-]+(unauthorized|authentication|invalid)|token_revoked|refresh_token(_reused)?"
+AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|unauthorized|invalid (api key|(oauth )?token)|oauth token.*(expired|invalid|revoked)|api[[:space:]]+error[[:space:]:_-]+401|http[[:space:]:_-]+401|http[[:space:]]+(error|status)[[:space:]:_-]+401|error[[:space:]:_-]+401|request failed[^[:digit:]/]{0,20}401|status([[:space:]]+code)?[[:space:]:=_-]+401|401[[:space:]:_-]+(unauthorized|authentication|invalid)|token_revoked|refresh_token(_reused)?"
 RETRYABLE_PATTERN="$QUOTA_PATTERN|$AUTH_PATTERN"
 RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|401[[:space:]:_-]+(unauthorized|authentication required|invalid (api key|token))|http[[:space:]]+401([[:space:]:_-]+(unauthorized|authentication|invalid))?|token_revoked|refresh_token(_reused)?|invalid (api key|(oauth )?token)|oauth token (expired|invalid|revoked)"
-CLI_LOGIN_BANNER_PATTERN="(not logged in|invalid api key)[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(please (log in|run /login)|run /login)(.{0,120})?"
-CLI_USAGE_BANNER_PATTERN="(you('re| are| have)[[:space:]]+)?out of extra usage[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(your[[:space:]]+)?(usage|limit).{0,80}(reset|renew|available)(.{0,80})?"
+CLI_LOGIN_BANNER_PATTERN="(not logged in|invalid api key)[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(please (log in|run /login)|run /login)[[:space:][:punct:]]*"
+CLI_USAGE_BANNER_PATTERN="((you('re| are| have)[[:space:]]+)?out of extra usage[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(your[[:space:]]+)?(usage|limit)[[:space:]]+(will[[:space:]]+)?(reset|renew|be available)([[:space:]]+(soon|at|in|on).{0,60})?[[:space:][:punct:]]*|you('ve| have)[[:space:]]+hit your[[:space:]]+(session[[:space:]]+|weekly[[:space:]]+)?limit[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*resets?([[:space:]].{0,80})?)"
 
 new_temp_file
 PROMPT_FILE="$REPLY"

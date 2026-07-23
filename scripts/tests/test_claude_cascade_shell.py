@@ -226,6 +226,7 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
         "Not logged in · Please run /login",
         "Please run /login",
         "You are out of extra usage. Your limit will reset soon.",
+        "You have hit your session limit · resets 11:20pm (Asia/Makassar)",
         "Error: 401",
         '{"error":{"type":"refresh_token_reused","message":"login again"}}',
         (
@@ -299,6 +300,7 @@ def test_exit_zero_weekly_limit_prose_is_not_a_false_positive(
     "answer",
     (
         "Invalid API key handling is documented in this operator guide.",
+        "Invalid API key · Please run /login is the example this guide explains.",
         "Not logged in is a user-interface state covered by this runbook.",
         "You are out of extra usage is the banner this test describes.",
     ),
@@ -324,6 +326,24 @@ def test_exit_zero_innocent_401_metrics_on_stderr_are_preserved(
     bodies = _default_bodies()
     bodies["token1"] = (
         'printf "Indexed 401 documents in 401 ms\\n" >&2\n'
+        'printf "valid-success\\n"\n'
+        "exit 0"
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "valid-success\n"
+    assert _labels(call_log) == ["token1"]
+
+
+def test_exit_zero_innocent_api_401_metrics_on_stderr_are_preserved(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'printf "API indexed 401 documents successfully\\n" >&2\n'
         'printf "valid-success\\n"\n'
         "exit 0"
     )
