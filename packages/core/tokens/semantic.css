@@ -11,7 +11,9 @@
  *   - Text rendering funnel color reads --accent-funnel-text
  *     (contrast-verified variant, see §R7).
  *
- * Cap: ≤60 variable declarations (success criterion §10.1).
+ * Cap: ≤60 variable declarations (success criterion §10.1). Count covers the
+ * :root block only; theme-override blocks ([data-funnel], [data-theme]) are
+ * additive and excluded by the [data-funnel] precedent below.
  */
 
 :root {
@@ -146,6 +148,47 @@
   --motion-duration-base: var(--motion-duration-standard);
   --motion-curve-editorial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --motion-curve-reveal: cubic-bezier(0.5, 0, 0.3, 1.2);
+}
+
+/* ─── Light-theme AA repair (WS2 round-3, codex RED PR #2988, 2026-07-22) ───
+ * Placed immediately after :root (the State section lives INSIDE :root, so a
+ * sibling rule cannot sit mid-block without breaking it; this is the nearest
+ * valid position, before the [data-funnel] overrides).
+ *
+ * Dark-theme state primitives measure 2.25:1 (success #10b981), 1.90:1
+ * (warning #f59e0b), 3.34:1 (danger #ef4444), 3.26:1 (info #3b82f6) and
+ * 2.68:1 (text-tertiary rgba(9,9,11,0.4)) on the light themes' paper
+ * --surface-base #f4f1ea — all below the 4.5:1 AA floor for 12px text
+ * (SystemPulse status words, ComplianceRadar severity labels). Dark-theme
+ * values are NOT touched; this block scopes darker steps to the two paper
+ * themes only.
+ * Selector is :root[data-theme=…] (specificity 0-2-0), not bare [data-theme]
+ * (0-1-0): tokens/index.css imports themes/light.css and
+ * themes/operative-light.css AFTER this file ("Themes override semantic
+ * values") and both redeclare --text-tertiary at 0-1-0 — the extra :root is
+ * required for the tertiary repair to actually win. data-theme lives on
+ * <html> (ThemeProvider), so :root matches.
+ * Ratios computed via the WCAG rel-luminance formula against #f4f1ea
+ * (L=0.8808); steps chosen to clear 4.5:1 with margin:
+ *   --state-danger    #b91c1c              5.74:1  (was 3.34:1)
+ *   --state-info      #1d4ed8              5.94:1  (was 3.26:1)
+ *   --state-warning   #ad4f08              4.78:1  (was 1.90:1; the suggested
+ *                     #b45309 computes 4.45:1 — one step darker)
+ *   --state-success   #147a3a              4.80:1  (was 2.25:1; the suggested
+ *                     #15803d computes 4.45:1 — one step darker)
+ *   --text-tertiary   rgba(9,9,11,0.58)    4.77:1  (blends ≈ #6c6a69; was
+ *                     rgba(9,9,11,0.4) at 2.68:1; stays dimmer than
+ *                     --text-secondary rgba(9,9,11,0.6) ≈ 5.08:1)
+ * Cap note (§10.1): :root stays at 60 declarations; these 5 live in a
+ * theme-override block, excluded from the count by the [data-funnel] precedent.
+ */
+:root[data-theme="light"],
+:root[data-theme="operative-light"] {
+  --state-success: #147a3a;
+  --state-warning: #ad4f08;
+  --state-danger: #b91c1c;
+  --state-info: #1d4ed8;
+  --text-tertiary: rgba(9, 9, 11, 0.58);
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works
