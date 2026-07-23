@@ -154,18 +154,18 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:SKILLS_INDEX_START -->
 | Skill | Description (truncated) |
 | ----- | ----------------------- |
+| `.agents/skills/bot/` (canonical; `.claude/skills/bot` → symlink) | "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, ... |
+| `.agents/skills/kbli-navigator/` (canonical; `.claude/skills/kbli-navigator` → symlink) | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
+| `.agents/skills/visaoracle/` (canonical; `.claude/skills/visaoracle` → symlink) | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |
+| `.agents/skills/wr2/` (canonical; `.claude/skills/wr2` → symlink) | "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control ... |
 | `.claude/skills/agent-session-discipline/` | Use at session start when working on a feature/fix that involves code changes. Creates an isolated worktree via L1 broker (scripts/agent_start.py) to prevent... |
-| `.claude/skills/bot/` | "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, ... |
 | `.claude/skills/intake/` | "Intake corner — the live shared context for the document-intake organism (WhatsApp/Drive docs → OCR → classify → extract → route → attach-to-client). Load B... |
 | `.claude/skills/karpathy-discipline/` | Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles to reduce common LLM coding mistakes (sil... |
-| `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
 | `.claude/skills/reuse-first/` | Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). C... |
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
 | `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
-| `.claude/skills/visaoracle/` | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |
 | `.claude/skills/workflow/` | Strategic multi-agent orchestration playbook — the Workflow tool wired to the full cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy wi... |
-| `.claude/skills/wr2/` | "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control ... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 
 ### LaunchAgents — copertura documentale
