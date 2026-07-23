@@ -1,4 +1,5 @@
 ---
+adversarial_review: fable5
 date: 2026-07-23
 domain: visa
 client_case: none

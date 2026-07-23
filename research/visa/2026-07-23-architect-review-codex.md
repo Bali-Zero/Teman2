@@ -1,3 +1,7 @@
+---
+adversarial_review: fable5
+---
+
 ## SEAT VERDICT
 FIX-FIRST. The analysis is useful as a blocker inventory, but not usable as the plan basis until two corrections land: the “missing Next route” diagnosis is wrong, and SHADOW-on-v1 would collect invalid gate evidence because STEP-6c maps only 3 known facts out of the v2 engine’s 35 applicant-fact vocabulary.
 

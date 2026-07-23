@@ -1,3 +1,7 @@
+---
+adversarial_review: opus
+---
+
 Ignoring 51 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/Users/nuzantara"].hasTrustDialogAccepted: true in /Users/nuzantara/.claude-zero-team/.claude.json.
 Tutto verificato. Worktree rimosso, main intatto. Ecco il verdetto.
 

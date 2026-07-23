@@ -1,3 +1,7 @@
+---
+adversarial_review: opus
+---
+
 Ignoring 51 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/Users/nuzantara"].hasTrustDialogAccepted: true in /Users/nuzantara/.claude-zero-team/.claude.json.
 Ho verificato tutte le affermazioni load-bearing contro il repo a HEAD `f3bf426de3`. Scrivo il verdetto finale. (Nota di lingua: questo è un technical review doc che si affianca ai 4 file del panel, tutti in inglese, con header di formato prescritti in inglese — quindi lo redigo in inglese per coerenza col corpus e con la regola "technical doc: English".)
 

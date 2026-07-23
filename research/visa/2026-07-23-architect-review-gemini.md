@@ -1,3 +1,7 @@
+---
+adversarial_review: fable5
+---
+
 ## SEAT VERDICT
 FIX-FIRST
 

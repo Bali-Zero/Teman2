@@ -1,3 +1,7 @@
+---
+adversarial_review: fable5
+---
+
 All evidence gathered. Writing the report.
 
 ## SEAT VERDICT — one line

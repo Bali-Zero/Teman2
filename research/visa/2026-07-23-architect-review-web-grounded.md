@@ -1,3 +1,7 @@
+---
+adversarial_review: fable5
+---
+
 ## SEAT VERDICT
 
 **FIX-FIRST** — the analysis is usable as the plan basis: the P0 (broken feed) is real and correctly prioritized, and 3 of 4 regulatory anchors verify cleanly. But it carries one material mechanism error in M1 (the request *does* reach the backend — a catch-all proxy the architect missed), one wrong regulatory date (Kepmen effective 2025-06-01, not 2026-06-02), and one refuted detail (no "Permenkumham 10/2026 Second Home" exists). Corrections below are cheap; none changes the critical path ordering.
