@@ -589,7 +589,7 @@ VISAS = [
             "Age 55+ years old",
             "Passport valid min 18 months",
             "Photo 4x6 red background",
-            "Proof of monthly income/pension USD 1,500+",
+            "Proof of monthly income/pension USD 3,000+",
             "Local sponsor required (visa agent)",
             "Health insurance valid in Indonesia",
             "No criminal record",
@@ -597,7 +597,7 @@ VISAS = [
         ],
         "benefits": [
             "No large upfront deposit required",
-            "Lower financial threshold (USD 1,500 vs USD 3,000)",
+            "Income-only route (USD 3,000/month, no deposit)",
             "Multiple entry/exit",
             "Path to KITAP after 5 consecutive years",
             "Sponsor handles all paperwork",
@@ -627,7 +627,7 @@ VISAS = [
         ],
         "metadata": {
             "age_requirement": 55,
-            "monthly_income": 1500,
+            "monthly_income": 3000,
             "sponsor_required": True,
             "popularity": "high",
             "difficulty": "low",

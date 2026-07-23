@@ -1,0 +1,345 @@
+{
+  "registry": "E33 Second Home Visa — fact registry",
+  "version": "1.0.0",
+  "created": "2026-07-23",
+  "maintainer": "Bali Zero research (E33 vertical)",
+  "status_enum": ["confirmed", "pending", "disputed", "unknown"],
+  "confidence_enum": ["JELAS", "BERSYARAT", "BELUM_DIATUR_PUBLIK"],
+  "confidence_semantics": {
+    "JELAS": "Clear — primary-source verified, may be stated as fact",
+    "BERSYARAT": "Conditional — verified but with conditions/caveats that must travel with the claim",
+    "BELUM_DIATUR_PUBLIK": "Not publicly regulated/confirmed — must NOT be stated as fact until resolved"
+  },
+  "facts": [
+    {
+      "id": "e33_base_deposit_amount",
+      "topic": "Base E33 qualifying basis — bank deposit",
+      "value": "USD 130,000 deposit in the applicant's own name at a state-owned (BUMN) Indonesian bank",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "live imigrasi.go.id E33 page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q2",
+      "source_date": "2026-07-19",
+      "notes": "Own-name requirement is explicit. Which proof format the bank must issue is pending (bank_proof_format). Whether sharia (BSI) placement counts is pending (bsi_sharia_accepted)."
+    },
+    {
+      "id": "e33_base_property_alternative",
+      "topic": "Base E33 qualifying basis — property alternative",
+      "value": "USD 1,000,000 qualifying property — completed strata-title (hak milik atas satuan rumah susun) only; off-plan/leasehold do NOT qualify",
+      "status": "confirmed",
+      "confidence": "BERSYARAT",
+      "source": "live imigrasi.go.id E33 page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q2",
+      "source_date": "2026-07-19",
+      "notes": "BERSYARAT: the strata-title-only condition must always travel with the claim. How immigration validates the property (appraisal standard) is unknown (property_validation_standard)."
+    },
+    {
+      "id": "e33_first_grant_duration",
+      "topic": "Base E33 first-grant duration",
+      "value": "Up to 5 years first grant",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "live imigrasi.go.id E33 page fetch 2026-07-19; Permenkumham 22/2023 Pasal 185 (5-or-10-year first-grant activities)",
+      "source_date": "2026-07-19",
+      "notes": "KG golden-route text previously said '5-10 years' — corrected 2026-07-23 in kg_enhanced_retrieval.py. 10-year figure applies to other first-grant categories, not base E33."
+    },
+    {
+      "id": "e33_not_work_visa",
+      "topic": "Base E33 permitted activities",
+      "value": "Base E33 (deposit/property route) is a pure residence permit — it does NOT authorize employment; paid work needs a separate work permit/KITAS",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "research/curated-qa-corrections-2026-07-21/visa-golden-investor.jsonl Q17 (round-3 correction)",
+      "source_date": "2026-07-21",
+      "notes": "Work appears only on government-sponsored E33A/E33C variants with dual-activity (rangkap kegiatan) reporting."
+    },
+    {
+      "id": "e33e_requirements",
+      "topic": "E33E senior/retirement 5-year golden visa — requirements",
+      "value": "Age 55+, USD 50,000 deposit (state-owned bank) + USD 3,000/month income; 5-year validity",
+      "status": "confirmed",
+      "confidence": "BERSYARAT",
+      "source": "live imigrasi.go.id E33E page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q7",
+      "source_date": "2026-07-19",
+      "notes": "BERSYARAT: age threshold is disputed for the 55-59 band in the regulation text itself — see age_55_59_ambiguity_e33e. Financial figures are not disputed."
+    },
+    {
+      "id": "e33f_requirements",
+      "topic": "E33F senior 1-year route — requirements",
+      "value": "Senior 1-year route; USD 3,000/month income only (no deposit). USD 1,500/month is the SUPERSEDED pre-2024 figure",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q8; visa-catalog-sweep.jsonl KITAP-RET row (round-1 correction: 'USD 3,000/month is current; USD 1,500 is the superseded pre-2024 figure')",
+      "source_date": "2026-07-21",
+      "notes": "Code fixes applied 2026-07-23: catalogue.py E33F notes, match_tree.py _STEPS_RETIREMENT, generate_visa_cards.py E33F card (all said USD 1,500). Family inclusion and sponsor requirement for E33F remain unknown (e33f_family_inclusion, e33f_sponsor_requirement)."
+    },
+    {
+      "id": "pnbp_5y_amount",
+      "topic": "PNBP (government fee) for 5-year Second Home visa",
+      "value": "IDR 13,000,000",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "research/legal/2026-05-26-kepmen-visa-taxonomy/02-cross-ref-pnbp.md",
+      "source_date": "2026-05-26",
+      "notes": "Refundability if the application is rejected is pending (pnbp_5y_amount_and_refundability, letter 006)."
+    },
+    {
+      "id": "pasal_113_cumulative_caps",
+      "topic": "Cumulative stay caps (Permenkumham 22/2023 Pasal 113)",
+      "value": "First grant <5 years → 6-year cumulative cap; first grant ≥5 years → 10-year cumulative cap",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "Permenkumham 22/2023 Pasal 113 (primary-text pdftotext); research/visa/2026-07-21-e31j-e33f-kitap-verification.md",
+      "source_date": "2026-07-21",
+      "notes": "Operative cap article is Pasal 113, NOT Pasal 185 (Pasal 185 defines first-grant durations). E33F is capped: ~5 years annual renewal → Retirement KITAP, not an exception to the 6-year ceiling."
+    },
+    {
+      "id": "dependent_spouse_code_e31b",
+      "topic": "Dependent spouse visa code for E33 holders",
+      "value": "E31B (spouse of KITAS holder)",
+      "status": "confirmed",
+      "confidence": "BERSYARAT",
+      "source": "GARUDA-E31 dossier, per research/visa/2026-07-21-e31j-e33f-kitap-verification.md",
+      "source_date": "2026-07-21",
+      "notes": "BERSYARAT per source. Full dependent-code set (E31B/E31E/E31H/E31J) and concurrent-filing confirmation pending with Ditjen Imigrasi (dependent_codes_confirmation, letter 006)."
+    },
+    {
+      "id": "bank_proof_format",
+      "topic": "Proof-of-deposit format accepted by immigration",
+      "value": "Which bank-issued document format immigration accepts as proof of the USD 130,000 deposit",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q1",
+      "source_date": "2026-07-21",
+      "notes": "Awaiting written reply from Ditjen Imigrasi."
+    },
+    {
+      "id": "bsi_sharia_accepted",
+      "topic": "BSI (sharia) placement as qualifying state-bank deposit",
+      "value": "Whether a deposit at Bank Syariah Indonesia counts as the state-owned-bank deposit for E33",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 005/BZ-EXT/E33/VII/2026 (BSI) Q1",
+      "source_date": "2026-07-21",
+      "notes": "FORBIDDEN to claim BSI equivalence until answered. Owner decision pending: BSI conditional offering."
+    },
+    {
+      "id": "split_deposit_accepted",
+      "topic": "Split deposit across multiple state banks",
+      "value": "Whether the USD 130,000 may be split across more than one BUMN bank",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q2",
+      "source_date": "2026-07-21",
+      "notes": "FORBIDDEN to claim split deposits are accepted until answered."
+    },
+    {
+      "id": "pnbp_5y_amount_and_refundability",
+      "topic": "PNBP 5-year amount confirmation + refundability on rejection",
+      "value": "Written confirmation of IDR 13,000,000 PNBP and whether it is refunded if the application is rejected",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q3",
+      "source_date": "2026-07-21",
+      "notes": "Amount itself already confirmed (pnbp_5y_amount); the written confirmation + refundability half is pending."
+    },
+    {
+      "id": "entry_window_90d_and_force_majeure",
+      "topic": "90-day entry window after visa issuance + force majeure handling",
+      "value": "Confirmation of the 90-day must-enter window and what happens if entry is impossible (force majeure)",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q4",
+      "source_date": "2026-07-21",
+      "notes": "Awaiting written reply from Ditjen Imigrasi."
+    },
+    {
+      "id": "annual_maintenance_proof_and_fx_grace",
+      "topic": "Annual proof of maintained deposit + FX-dip grace",
+      "value": "Whether the deposit must be re-proven annually and whether FX fluctuations below USD 130,000 trigger non-compliance",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q5",
+      "source_date": "2026-07-21",
+      "notes": "Related to idr_equivalence_and_fx_date (known gap)."
+    },
+    {
+      "id": "dependent_codes_confirmation",
+      "topic": "Dependent visa codes (E31B/E31E/E31H/E31J) + concurrent filing",
+      "value": "Written confirmation of the full dependent-code set for E33 holders and whether dependents may file concurrently",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q6",
+      "source_date": "2026-07-21",
+      "notes": "E31B already BERSYARAT-confirmed (dependent_spouse_code_e31b); the full set + concurrency is pending."
+    },
+    {
+      "id": "itap_after_3y_criteria",
+      "topic": "ITAP (permanent stay) after 3 years — eligibility criteria",
+      "value": "Whether/under what criteria an E33 holder may convert to ITAP after 3 years",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q7",
+      "source_date": "2026-07-21",
+      "notes": "FORBIDDEN to market ITAP-after-3y until answered. Owner decision pending: ITAP marketing."
+    },
+    {
+      "id": "processing_time_4wd",
+      "topic": "Official processing time",
+      "value": "Confirmation of the advertised 4-working-day processing time",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letter 006/BZ-EXT/E33/VII/2026 (Ditjen Imigrasi) Q8",
+      "source_date": "2026-07-21",
+      "notes": "Awaiting written reply from Ditjen Imigrasi."
+    },
+    {
+      "id": "bank_kyc_nonresident",
+      "topic": "Bank KYC for non-resident applicants",
+      "value": "Whether each state bank can KYC/onboard a non-resident E33 applicant (and how)",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q1",
+      "source_date": "2026-07-21",
+      "notes": "Related to remote_account_opening (known gap)."
+    },
+    {
+      "id": "bank_confirmation_letter_format_and_timing",
+      "topic": "Bank confirmation-letter format + issuance timing",
+      "value": "The exact letter each bank issues to evidence the deposit, and how long issuance takes",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q2",
+      "source_date": "2026-07-21",
+      "notes": "Feeds bank_proof_format (immigration side)."
+    },
+    {
+      "id": "bank_split_placement_operations",
+      "topic": "Bank-side operations for split placement",
+      "value": "Whether each bank operationally supports split placement alongside other banks",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q3",
+      "source_date": "2026-07-21",
+      "notes": "Bank-side twin of split_deposit_accepted (immigration side)."
+    },
+    {
+      "id": "usd_deposit_rates_and_lps_cap_confirmation",
+      "topic": "USD deposit rates + LPS guarantee cap confirmation",
+      "value": "Each bank's USD deposit rates and confirmation of LPS deposit-insurance cap applicability",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q4",
+      "source_date": "2026-07-21",
+      "notes": "Rates are DINAMIS — registry records the question, not a rate figure."
+    },
+    {
+      "id": "bank_annual_proof_documents",
+      "topic": "Bank documents for annual proof",
+      "value": "Which documents each bank can issue for annual maintenance proof",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q5",
+      "source_date": "2026-07-21",
+      "notes": "Feeds annual_maintenance_proof_and_fx_grace (immigration side)."
+    },
+    {
+      "id": "fund_release_process",
+      "topic": "Fund-release process at permit end/cancellation",
+      "value": "How and when the deposit is released if the permit ends or is cancelled",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q6",
+      "source_date": "2026-07-21",
+      "notes": "Related to blocked_deposit_requirement (known gap)."
+    },
+    {
+      "id": "bank_liaison_contact",
+      "topic": "Named bank liaison for E33 clients",
+      "value": "A named contact/desk at each bank for E33 deposit handling",
+      "status": "pending",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "letters 001-005/BZ-EXT/E33/VII/2026 (Mandiri, BRI, BNI, BTN, BSI) Q7",
+      "source_date": "2026-07-21",
+      "notes": "Operational, not regulatory — still gates the client journey."
+    },
+    {
+      "id": "age_55_59_ambiguity_e33e",
+      "topic": "Senior age threshold ambiguity (55 vs 60)",
+      "value": "Permenkumham 11/2024 internal inconsistency: Pasal 33(2)(j)(4) says 55, Pasal 33(10)(d) says 60",
+      "status": "disputed",
+      "confidence": "BERSYARAT",
+      "source": "Permenkumham 11/2024 (primary-text pdftotext), per research/curated-qa-corrections-2026-07-21/README.md round-2 adjudication; research/visa/2026-07-21-e31j-e33f-kitap-verification.md",
+      "source_date": "2026-07-21",
+      "notes": "11/2024 amends Pasal 33/61/62 from 60 to '55 (lima puluh lima) tahun atau lebih' but Pasal 33(10)(d) still reads 60. Live imigrasi pages state 55 — operate on 55, disclose the ambiguity, never assert the 55-59 band is uncontested."
+    },
+    {
+      "id": "e33f_family_inclusion",
+      "topic": "E33F family inclusion",
+      "value": "Whether an E33F holder can bring dependents and under which codes",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
+      "source_date": "2026-07-21",
+      "notes": "Partially illuminated when dependent_codes_confirmation (letter 006 Q6) is answered."
+    },
+    {
+      "id": "e33f_sponsor_requirement",
+      "topic": "E33F sponsor requirement",
+      "value": "Whether E33F requires a local sponsor (visa agent) or is sponsor-free like the golden-visa routes",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
+      "source_date": "2026-07-21",
+      "notes": "generate_visa_cards.py E33F card currently claims 'Local sponsor required (visa agent)' — unverified, do not propagate until resolved."
+    },
+    {
+      "id": "basis_switch_deposit_property_mid_permit",
+      "topic": "Switching qualifying basis (deposit ↔ property) mid-permit",
+      "value": "Whether a base-E33 holder may switch from deposit-evidence to property-evidence (or back) within the same permit",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q13 (classified BELUM_DIATUR_PUBLIK)",
+      "source_date": "2026-07-21",
+      "notes": "Not covered by the 6 letters. Candidate for a follow-up letter."
+    },
+    {
+      "id": "blocked_deposit_requirement",
+      "topic": "Blocked/escrow deposit requirement",
+      "value": "Whether the USD 130,000 deposit must be blocked/pledged for the permit's duration or merely evidenced",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
+      "source_date": "2026-07-21",
+      "notes": "Bank letters (fund_release_process) may partially illuminate; immigration side unasked."
+    },
+    {
+      "id": "remote_account_opening",
+      "topic": "Remote account opening from abroad",
+      "value": "Whether the qualifying deposit account can be opened remotely before arrival in Indonesia",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (bank KYC letters may partially illuminate)",
+      "source_date": "2026-07-21",
+      "notes": "Key client-journey question; bank_kyc_nonresident answers may cover it."
+    },
+    {
+      "id": "idr_equivalence_and_fx_date",
+      "topic": "IDR equivalence + FX valuation date",
+      "value": "Whether IDR equivalents are accepted and which FX date/rate is used to test the USD thresholds",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
+      "source_date": "2026-07-21",
+      "notes": "Related to annual_maintenance_proof_and_fx_grace (letter 006 Q5)."
+    },
+    {
+      "id": "property_validation_standard",
+      "topic": "Property-route validation standard",
+      "value": "How immigration validates the USD 1,000,000 property value (appraisal, certificate, NJOP, purchase price)",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
+      "source_date": "2026-07-21",
+      "notes": "Gates the property-route module (owner decision pending)."
+    }
+  ]
+}

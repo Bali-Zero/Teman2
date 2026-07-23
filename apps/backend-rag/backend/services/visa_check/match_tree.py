@@ -139,7 +139,7 @@ _STEPS_EMPLOYEE: list[str] = [
 ]
 
 _STEPS_RETIREMENT: list[str] = [
-    "Proof of pension or passive income ≥ USD 1,500/month",
+    "Proof of pension or passive income ≥ USD 3,000/month",
     "Passport valid ≥ 18 months",
     "Proof of accommodation (rental or property in Indonesia)",
     "Domestic helper hire letter (optional but recommended)",
