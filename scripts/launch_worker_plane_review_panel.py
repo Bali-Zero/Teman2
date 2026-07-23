@@ -63,6 +63,9 @@ KIMI_TRANSPORT_SCHEMA = "NUZANTARA-KIMI-LOSSLESS-TRANSPORT-V1"
 KIMI_TRANSPORT_MAX_LINE_BYTES = 1_800
 KIMI_TRANSPORT_SEGMENT_BYTES = 1_500
 KIMI_READ_MAX_LINES = 1_000
+KIMI_READ_MAX_PAGES = 256
+KIMI_READ_PAGE_MAX_UTF16_UNITS = 40_000
+KIMI_READ_PAGE_MAX_UTF8_BYTES = 80 * 1024
 OUTPUT_SPOOL_MEMORY_BYTES = 1024 * 1024
 MINIMUM_GEMINI_VERSION = (1, 1, 2)
 REQUIRED_KIMI_VERSION = (0, 29, 0)
@@ -2319,6 +2322,89 @@ def _kimi_review_transport_bytes(review_input_bytes: bytes) -> bytes:
     return ("\n".join(transport_lines) + "\n").encode("utf-8")
 
 
+def _utf16_code_units(value: str) -> int:
+    """Return JavaScript ``String.length`` for canonical Unicode text."""
+    return len(value.encode("utf-16-le")) // 2
+
+
+def _kimi_read_page_plan(
+    transport_bytes: bytes,
+) -> tuple[tuple[int, int], ...]:
+    """Partition one transport into exact Read results below Kimi's caps.
+
+    Kimi Code 0.29 persists and replaces tool results above 50,000 JavaScript
+    string units with a short preview.  Every declared page therefore remains
+    comfortably below that framework threshold and the Read tool's own
+    1,000-line / 100-KiB limits.  The accounting includes the decimal line
+    number, TAB separator, and inter-line newlines emitted by Read.
+    """
+    try:
+        text = transport_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise LauncherError("Kimi review transport is not UTF-8") from exc
+    if "\r" in text or not text.endswith("\n"):
+        raise LauncherError("Kimi review transport is not canonical LF text")
+    transport_lines = tuple(text[:-1].split("\n"))
+    if not transport_lines:
+        raise LauncherError("Kimi review transport is empty")
+
+    pages: list[tuple[int, int]] = []
+    next_index = 0
+    while next_index < len(transport_lines):
+        page_offset = next_index + 1
+        page_lines = 0
+        page_utf16_units = 0
+        page_utf8_bytes = 0
+        while (
+            next_index + page_lines < len(transport_lines)
+            and page_lines < KIMI_READ_MAX_LINES
+        ):
+            line_number = next_index + page_lines + 1
+            separator = "" if page_lines == 0 else "\n"
+            rendered = f"{separator}{line_number}\t{transport_lines[line_number - 1]}"
+            rendered_utf16_units = _utf16_code_units(rendered)
+            rendered_utf8_bytes = len(rendered.encode("utf-8"))
+            if page_lines and (
+                page_utf16_units + rendered_utf16_units > KIMI_READ_PAGE_MAX_UTF16_UNITS
+                or page_utf8_bytes + rendered_utf8_bytes > KIMI_READ_PAGE_MAX_UTF8_BYTES
+            ):
+                break
+            if (
+                rendered_utf16_units > KIMI_READ_PAGE_MAX_UTF16_UNITS
+                or rendered_utf8_bytes > KIMI_READ_PAGE_MAX_UTF8_BYTES
+            ):
+                raise LauncherError("one Kimi transport line exceeds a Read page")
+            page_utf16_units += rendered_utf16_units
+            page_utf8_bytes += rendered_utf8_bytes
+            page_lines += 1
+        if page_lines == 0:
+            raise LauncherError("Kimi Read page planner made no progress")
+        pages.append((page_offset, page_lines))
+        if len(pages) > KIMI_READ_MAX_PAGES:
+            raise LauncherError("Kimi review transport exceeds the page-count limit")
+        next_index += page_lines
+    return tuple(pages)
+
+
+def _kimi_review_prompt(input_path: Path, transport_bytes: bytes) -> str:
+    page_plan = json.dumps(
+        _kimi_read_page_plan(transport_bytes),
+        separators=(",", ":"),
+    )
+    return (
+        "Read every line of the lossless immutable review transport at:\n"
+        f"@{input_path}\n"
+        "Use Read exactly once for each canonical page below, in the listed "
+        "order. Every call must explicitly provide this exact path plus the "
+        "listed line_offset and n_lines. Do not read any other path or range.\n"
+        f"NUZANTARA_KIMI_READ_PAGE_PLAN {page_plan}\n"
+        "The transport header explains how to reconstruct continued source "
+        "lines. Complete every declared Read page before answering. "
+        "Follow its instruction brief exactly. "
+        "Do not modify any file. Return only the required review."
+    )
+
+
 def _sandbox_profile_bytes(writable_home: Path) -> bytes:
     rendered_home = json.dumps(str(writable_home.resolve()))
     profile = (
@@ -2429,20 +2515,13 @@ def _run_seat(
     if seat.input_transport == "file":
         if input_path is None:
             raise LauncherError(f"{seat.name} requires file-based review input")
-        prompt = (
-            "Read every line of the lossless immutable review transport at:\n"
-            f"@{input_path}\n"
-            "The transport header explains how to reconstruct continued source "
-            "lines. Page with Read until every transport line has been read. "
-            "Follow its instruction brief exactly. "
-            "Do not modify any file. Return only the required review."
-        )
-        provider_args = (*seat.argv_suffix, "--prompt", prompt)
-        stdin_bytes = b""
         attested_input_bytes = _read_regular_file(
             input_path,
             f"{seat.name} review input",
         )[0]
+        prompt = _kimi_review_prompt(input_path, attested_input_bytes)
+        provider_args = (*seat.argv_suffix, "--prompt", prompt)
+        stdin_bytes = b""
         pre_run_input_sha256 = _sha256(attested_input_bytes)
     else:
         if input_path is not None:
@@ -2623,17 +2702,16 @@ def _expected_kimi_input_path(run: SeatRun) -> str:
         raise LauncherError("Kimi invocation lacks prompt content")
     prompt = run.argv[prompt_index + 1]
     prefix = "Read every line of the lossless immutable review transport at:\n@"
-    suffix = (
-        "\nThe transport header explains how to reconstruct continued source "
-        "lines. Page with Read until every transport line has been read. "
-        "Follow its instruction brief exactly. "
-        "Do not modify any file. Return only the required review."
-    )
-    if not prompt.startswith(prefix) or not prompt.endswith(suffix):
+    if not prompt.startswith(prefix):
         raise LauncherError("Kimi invocation prompt differs from the canonical form")
-    input_path = prompt[len(prefix) : -len(suffix)]
+    input_path, separator, _ = prompt[len(prefix) :].partition("\n")
     if not input_path or "\n" in input_path or "\r" in input_path:
         raise LauncherError("Kimi invocation contains an invalid input path")
+    if separator != "\n" or prompt != _kimi_review_prompt(
+        Path(input_path),
+        run.input_bytes,
+    ):
+        raise LauncherError("Kimi invocation prompt differs from the canonical form")
     return input_path
 
 
@@ -2657,12 +2735,14 @@ def _register_kimi_read_calls(
     value: Mapping[str, Any],
     *,
     expected_input_path: str,
+    planned_read_pages: tuple[tuple[int, int], ...],
     pending_tool_reads: dict[str, tuple[int, int]],
+    seen_read_pages: list[tuple[int, int]],
     seen_tool_ids: set[str],
 ) -> None:
     tool_calls = value.get("tool_calls")
-    if not isinstance(tool_calls, list) or not tool_calls:
-        raise LauncherError("Kimi assistant event lacks review text or tool calls")
+    if not isinstance(tool_calls, list) or len(tool_calls) != 1 or pending_tool_reads:
+        raise LauncherError("Kimi must issue one canonical Read page at a time")
     for tool_call in tool_calls:
         if not isinstance(tool_call, dict) or tool_call.get("type") != "function":
             raise LauncherError("Kimi emitted an invalid tool call")
@@ -2684,11 +2764,11 @@ def _register_kimi_read_calls(
         if (
             not isinstance(arguments, dict)
             or arguments.get("path") != expected_input_path
-            or set(arguments) - {"path", "line_offset", "n_lines"}
+            or set(arguments) != {"path", "line_offset", "n_lines"}
         ):
             raise LauncherError("Kimi attempted to read outside its review input")
-        line_offset = arguments.get("line_offset", 1)
-        n_lines = arguments.get("n_lines", KIMI_READ_MAX_LINES)
+        line_offset = arguments["line_offset"]
+        n_lines = arguments["n_lines"]
         if (
             isinstance(line_offset, bool)
             or not isinstance(line_offset, int)
@@ -2698,8 +2778,17 @@ def _register_kimi_read_calls(
             or not 1 <= n_lines <= KIMI_READ_MAX_LINES
         ):
             raise LauncherError("Kimi emitted an invalid Read range")
+        read_page = (line_offset, n_lines)
+        next_page_index = len(seen_read_pages)
+        if (
+            read_page in seen_read_pages
+            or next_page_index >= len(planned_read_pages)
+            or read_page != planned_read_pages[next_page_index]
+        ):
+            raise LauncherError("Kimi Read call differs from the canonical page plan")
         seen_tool_ids.add(tool_call_id)
-        pending_tool_reads[tool_call_id] = (line_offset, n_lines)
+        seen_read_pages.append(read_page)
+        pending_tool_reads[tool_call_id] = read_page
 
 
 def _consume_kimi_read_result(
@@ -2721,8 +2810,8 @@ def _consume_kimi_read_result(
         raise LauncherError("Kimi emitted an invalid Read result")
     line_offset, n_lines = pending_tool_reads.pop(tool_call_id)
     rendered_lines = content.split("\n")
-    if len(rendered_lines) > n_lines or len(rendered_lines) > KIMI_READ_MAX_LINES:
-        raise LauncherError("Kimi Read result exceeds its requested range")
+    if len(rendered_lines) != n_lines or len(rendered_lines) > KIMI_READ_MAX_LINES:
+        raise LauncherError("Kimi Read result lacks its exact requested range")
     for index, rendered_line in enumerate(rendered_lines):
         prefix, separator, actual = rendered_line.partition("\t")
         expected_line_number = line_offset + index
@@ -2747,9 +2836,11 @@ def _extract_review_body(run: SeatRun) -> bytes:
         assistant_message: str | None = None
         pending_tool_reads: dict[str, tuple[int, int]] = {}
         seen_tool_ids: set[str] = set()
+        seen_read_pages: list[tuple[int, int]] = []
         covered_lines: set[int] = set()
         expected_input_path = _expected_kimi_input_path(run)
         transport_lines = _expected_kimi_transport_lines(run)
+        planned_read_pages = _kimi_read_page_plan(run.input_bytes)
         events = _jsonl_objects(run.stdout, "Kimi")
         for event_index, value in enumerate(events):
             if value.get("role") == "assistant":
@@ -2776,7 +2867,9 @@ def _extract_review_body(run: SeatRun) -> bytes:
                 _register_kimi_read_calls(
                     value,
                     expected_input_path=expected_input_path,
+                    planned_read_pages=planned_read_pages,
                     pending_tool_reads=pending_tool_reads,
+                    seen_read_pages=seen_read_pages,
                     seen_tool_ids=seen_tool_ids,
                 )
                 continue
@@ -2810,6 +2903,8 @@ def _extract_review_body(run: SeatRun) -> bytes:
             raise LauncherError("Kimi stream lacks a terminal resume hint")
         if len(covered_lines) != len(transport_lines):
             raise LauncherError("Kimi stream did not read the full review transport")
+        if tuple(seen_read_pages) != planned_read_pages:
+            raise LauncherError("Kimi stream did not complete its canonical page plan")
         if assistant_message is None:
             raise LauncherError("Kimi stream lacks an assistant event")
         return assistant_message.encode("utf-8")

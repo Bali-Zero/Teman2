@@ -318,40 +318,58 @@ def _fake_clients(
         else:
             events = []
             stream_mode = {kimi_stream_mode!r}
-            tool_call_id = 'tool-read-review-input'
             tool_path = match.group(1)
-            if stream_mode == 'outside':
-                tool_path += '.outside'
-            tool_call = {{
-                'type': 'function',
-                'id': tool_call_id,
-                'function': {{
-                    'name': 'Read',
-                    'arguments': json.dumps(
-                        {{'path': tool_path}},
-                        sort_keys=True,
-                    ),
-                }},
-            }}
-            transport_lines = data.decode('utf-8').splitlines()
-            if stream_mode == 'partial':
-                transport_lines = transport_lines[:1]
-            tool_content = '\\n'.join(
-                f'{{line_number}}\\t{{line}}'
-                for line_number, line in enumerate(transport_lines, start=1)
+            page_plan_match = re.search(
+                r'^NUZANTARA_KIMI_READ_PAGE_PLAN (\\[[^\\n]+\\])$',
+                prompt,
+                flags=re.MULTILINE,
             )
-            if stream_mode == 'mixed':
-                events.append(
-                    {{
-                        'role': 'assistant',
-                        'content': body,
-                        'tool_calls': [tool_call],
-                    }}
+            if page_plan_match is None:
+                raise SystemExit(13)
+            page_plan = json.loads(page_plan_match.group(1))
+            transport_text = data.decode('utf-8')
+            if not transport_text.endswith('\\n') or '\\r' in transport_text:
+                raise SystemExit(14)
+            transport_lines = transport_text[:-1].split('\\n')
+            read_events = []
+            for page_index, (line_offset, n_lines) in enumerate(page_plan):
+                tool_call_id = f'tool-read-review-input-{{page_index}}'
+                page_path = tool_path
+                if stream_mode == 'outside' and page_index == 0:
+                    page_path += '.outside'
+                tool_call = {{
+                    'type': 'function',
+                    'id': tool_call_id,
+                    'function': {{
+                        'name': 'Read',
+                        'arguments': json.dumps(
+                            {{
+                                'path': page_path,
+                                'line_offset': line_offset,
+                                'n_lines': n_lines,
+                            }},
+                            sort_keys=True,
+                        ),
+                    }},
+                }}
+                selected_lines = transport_lines[
+                    line_offset - 1 : line_offset - 1 + n_lines
+                ]
+                if stream_mode == 'partial' and page_index == 0:
+                    selected_lines = selected_lines[:-1]
+                tool_content = '\\n'.join(
+                    f'{{line_number}}\\t{{line}}'
+                    for line_number, line in enumerate(
+                        selected_lines,
+                        start=line_offset,
+                    )
                 )
-            elif stream_mode == 'no_read':
-                events.append({{'role': 'assistant', 'content': body}})
-            else:
-                events.extend(
+                if stream_mode == 'preview' and page_index == 0:
+                    tool_content = (
+                        'Tool output exceeded 50000 characters; '
+                        'showing a preview only.'
+                    )
+                read_events.extend(
                     [
                         {{'role': 'assistant', 'tool_calls': [tool_call]}},
                         {{
@@ -359,9 +377,22 @@ def _fake_clients(
                             'tool_call_id': tool_call_id,
                             'content': tool_content,
                         }},
-                        {{'role': 'assistant', 'content': body}},
                     ]
                 )
+            if stream_mode == 'mixed':
+                first_tool_call = read_events[0]['tool_calls'][0]
+                events.append(
+                    {{
+                        'role': 'assistant',
+                        'content': body,
+                        'tool_calls': [first_tool_call],
+                    }}
+                )
+            elif stream_mode == 'no_read':
+                events.append({{'role': 'assistant', 'content': body}})
+            else:
+                events.extend(read_events)
+                events.append({{'role': 'assistant', 'content': body}})
                 if stream_mode == 'multiple':
                     events.append({{'role': 'assistant', 'content': body + '-again'}})
             events.append({{'role': 'meta', 'type': 'session.resume_hint'}})
@@ -958,11 +989,125 @@ def test_kimi_transport_wraps_long_lines_losslessly_below_read_limit() -> None:
     )
 
 
+def test_kimi_read_page_plan_stays_below_framework_and_tool_limits() -> None:
+    source = (
+        "".join(
+            f"line-{index:05d} " + ("🌋" if index % 7 == 0 else "A") * 240 + "\n"
+            for index in range(2_500)
+        )
+    ).encode("utf-8")
+    transport = launcher._kimi_review_transport_bytes(source)
+    transport_text = transport.decode("utf-8")
+    transport_lines = transport_text[:-1].split("\n")
+    page_plan = launcher._kimi_read_page_plan(transport)
+
+    assert len(page_plan) > 1
+    assert page_plan[0][0] == 1
+    assert sum(n_lines for _, n_lines in page_plan) == len(transport_lines)
+    expected_offset = 1
+    for line_offset, n_lines in page_plan:
+        assert line_offset == expected_offset
+        assert 1 <= n_lines <= launcher.KIMI_READ_MAX_LINES
+        rendered = "\n".join(
+            f"{line_number}\t{transport_lines[line_number - 1]}"
+            for line_number in range(line_offset, line_offset + n_lines)
+        )
+        assert launcher._utf16_code_units(rendered) <= (
+            launcher.KIMI_READ_PAGE_MAX_UTF16_UNITS
+        )
+        assert len(rendered.encode("utf-8")) <= (launcher.KIMI_READ_PAGE_MAX_UTF8_BYTES)
+        expected_offset += n_lines
+
+
+def test_kimi_read_page_plan_honors_exact_independent_boundaries() -> None:
+    exact_utf16 = (("🌋" * 19_999) + "\nnext\n").encode("utf-8")
+    assert (
+        launcher._utf16_code_units("1\t" + ("🌋" * 19_999))
+        == launcher.KIMI_READ_PAGE_MAX_UTF16_UNITS
+    )
+    assert launcher._kimi_read_page_plan(exact_utf16) == ((1, 1), (2, 1))
+
+    exact_utf8 = (("€" * 27_306) + "\nnext\n").encode("utf-8")
+    assert len(("1\t" + ("€" * 27_306)).encode("utf-8")) == (
+        launcher.KIMI_READ_PAGE_MAX_UTF8_BYTES
+    )
+    assert launcher._kimi_read_page_plan(exact_utf8) == ((1, 1), (2, 1))
+
+    line_limited = ("x\n" * 1_001).encode("utf-8")
+    assert launcher._kimi_read_page_plan(line_limited) == ((1, 1_000), (1_001, 1))
+
+    unicode_separator_is_content = "alpha\u2028beta\nomega\n".encode("utf-8")
+    page_plan = launcher._kimi_read_page_plan(unicode_separator_is_content)
+    assert sum(n_lines for _, n_lines in page_plan) == 2
+
+
+def test_kimi_read_registration_rejects_noncanonical_page_and_batching() -> None:
+    planned_pages = ((1, 10), (11, 10))
+    expected_path = "/immutable/review.transport.txt"
+    pending: dict[str, tuple[int, int]] = {}
+    seen_pages: list[tuple[int, int]] = []
+    seen_ids: set[str] = set()
+
+    def event(
+        tool_call_id: str,
+        *,
+        line_offset: int,
+        n_lines: int,
+    ) -> dict[str, object]:
+        return {
+            "tool_calls": [
+                {
+                    "type": "function",
+                    "id": tool_call_id,
+                    "function": {
+                        "name": "Read",
+                        "arguments": json.dumps(
+                            {
+                                "path": expected_path,
+                                "line_offset": line_offset,
+                                "n_lines": n_lines,
+                            }
+                        ),
+                    },
+                }
+            ]
+        }
+
+    with pytest.raises(launcher.LauncherError, match="canonical page plan"):
+        launcher._register_kimi_read_calls(
+            event("swapped", line_offset=11, n_lines=10),
+            expected_input_path=expected_path,
+            planned_read_pages=planned_pages,
+            pending_tool_reads=pending,
+            seen_read_pages=seen_pages,
+            seen_tool_ids=seen_ids,
+        )
+
+    launcher._register_kimi_read_calls(
+        event("first", line_offset=1, n_lines=10),
+        expected_input_path=expected_path,
+        planned_read_pages=planned_pages,
+        pending_tool_reads=pending,
+        seen_read_pages=seen_pages,
+        seen_tool_ids=seen_ids,
+    )
+    with pytest.raises(launcher.LauncherError, match="one canonical Read page"):
+        launcher._register_kimi_read_calls(
+            event("second", line_offset=11, n_lines=10),
+            expected_input_path=expected_path,
+            planned_read_pages=planned_pages,
+            pending_tool_reads=pending,
+            seen_read_pages=seen_pages,
+            seen_tool_ids=seen_ids,
+        )
+
+
 @pytest.mark.parametrize(
     ("stream_mode", "message"),
     (
         ("no_read", "before reading the full transport"),
-        ("partial", "before reading the full transport"),
+        ("partial", "lacks its exact requested range"),
+        ("preview", "lacks its exact requested range"),
         ("outside", "outside its review input"),
         ("mixed", "mixed review text with tool calls"),
         ("multiple", "multiple review responses"),
