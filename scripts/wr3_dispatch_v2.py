@@ -18,7 +18,8 @@ Empirical cost on realistic brief-interpreter workload: $0.09 (~50× less
 than v1). Symbiosis Law 1 compliant (CLI subprocess wrapper) and Law 7
 compliant (real ceilings now match contract caps).
 
-Cascade Tier 2 (Gemini free OAuth) is shared with v1 — imported lazily.
+Cascade Tier 2 (Gemini free OAuth) runs locally with the same process-tree
+cleanup and credential isolation as the Claude fleet.
 """
 from __future__ import annotations
 

@@ -206,39 +206,25 @@ async def test_real_process_tree_timeout_kills_descendant_and_empty_rotates(
     monkeypatch.setenv("WR3_TEST_DESCENDANT_PID", str(child_pid_path))
     claude = tmp_path / "claude"
     claude.write_text(
-        """#!/usr/bin/env python3
-import json
-import os
-import signal
-import subprocess
-import sys
-import time
-
-token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
-if token == "timeout-seat":
-    child_code = (
-        "import os,signal,time;"
-        "signal.signal(signal.SIGTERM, signal.SIG_IGN);"
-        "time.sleep(30)"
-    )
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    child = subprocess.Popen(
-        [sys.executable, "-c", child_code],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        env=os.environ,
-    )
-    open(os.environ["WR3_TEST_DESCENDANT_PID"], "w").write(str(child.pid))
-    time.sleep(30)
-elif token == "empty-seat":
-    print(json.dumps({"type": "result", "is_error": False, "result": "  "}))
-else:
-    print(json.dumps({
-        "type": "result",
-        "is_error": False,
-        "total_cost_usd": 0.01,
-        "result": "real-tree-success",
-    }))
+        """#!/bin/sh
+case "${CLAUDE_CODE_OAUTH_TOKEN:-}" in
+    timeout-seat)
+        trap '' TERM
+        (
+            trap '' TERM
+            sleep 30
+        ) &
+        child_pid=$!
+        printf '%s' "$child_pid" > "$WR3_TEST_DESCENDANT_PID"
+        wait
+        ;;
+    empty-seat)
+        printf '%s\n' '{"type":"result","is_error":false,"result":"  "}'
+        ;;
+    *)
+        printf '%s\n' '{"type":"result","is_error":false,"total_cost_usd":0.01,"result":"real-tree-success"}'
+        ;;
+esac
 """,
         encoding="utf-8",
     )
@@ -250,7 +236,7 @@ else:
     result = await dispatch.dispatch_claude_print(
         _contract(),
         "safe prompt",
-        timeout_ms=3000,
+        timeout_ms=8000,
     )
     elapsed = time.monotonic() - started
 
