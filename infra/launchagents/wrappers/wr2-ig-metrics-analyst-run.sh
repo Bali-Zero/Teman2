@@ -50,7 +50,7 @@ set +a
 # MAX-4 → expose the un-suffixed CLAUDE_CODE_OAUTH_TOKEN that the `claude` CLI reads
 # (the _1/_2/_3/_4 suffix is a client convention; the bare CLI ignores it).
 if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN_2:-${CLAUDE_CODE_OAUTH_TOKEN_3:-${CLAUDE_CODE_OAUTH_TOKEN_4:-}}}}"
+  export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN_2:-${CLAUDE_CODE_OAUTH_TOKEN_3:-${CLAUDE_CODE_OAUTH_TOKEN_4:-${CLAUDE_CODE_OAUTH_TOKEN_5:-}}}}}"
 fi
 
 

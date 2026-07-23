@@ -413,7 +413,7 @@ _IMG_EXHAUSTED_TOKENS: dict[str, str] = {}
 def _load_img_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) for image prompt generation."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))

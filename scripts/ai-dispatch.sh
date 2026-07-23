@@ -431,7 +431,7 @@ run_claude() {
     check_safety "$prompt"
 
     # Multi-account fallback: try each CLAUDE_CODE_OAUTH_TOKEN_N, then keychain
-    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4")
+    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4" "CLAUDE_CODE_OAUTH_TOKEN_5")
     local tried=0
 
     for tv in "${token_vars[@]}" "keychain"; do

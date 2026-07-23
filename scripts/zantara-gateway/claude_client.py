@@ -41,7 +41,7 @@ _sdk_import_warned = False
 def _token_chain() -> list[tuple[str, str]]:
     """Build ordered list of (label, token_or_empty) for fallback."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
