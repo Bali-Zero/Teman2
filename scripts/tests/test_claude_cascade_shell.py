@@ -298,6 +298,47 @@ def test_exit_zero_weekly_limit_prose_is_not_a_false_positive(
 @pytest.mark.parametrize(
     "answer",
     (
+        "Invalid API key handling is documented in this operator guide.",
+        "Not logged in is a user-interface state covered by this runbook.",
+        "You are out of extra usage is the banner this test describes.",
+    ),
+)
+def test_exit_zero_cli_banner_prefix_prose_is_not_a_false_positive(
+    tmp_path: Path,
+    answer: str,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = f"printf '%s\\n' '{answer}'\nexit 0"
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{answer}\n"
+    assert _labels(call_log) == ["token1"]
+
+
+def test_exit_zero_innocent_401_metrics_on_stderr_are_preserved(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'printf "Indexed 401 documents in 401 ms\\n" >&2\n'
+        'printf "valid-success\\n"\n'
+        "exit 0"
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "valid-success\n"
+    assert _labels(call_log) == ["token1"]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    (
         "Unauthorized access is a topic in this security guide.",
         "Quota exceeded is the condition this runbook explains.",
     ),

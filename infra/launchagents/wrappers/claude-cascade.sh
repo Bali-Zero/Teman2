@@ -167,10 +167,11 @@ if [ -z "$PROMPT" ]; then
 fi
 
 QUOTA_PATTERN="out of extra usage|usage limit|weekly limit|quota exceeded|rate.limit|429|exhausted|please try again later"
-AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|unauthorized|invalid (api key|(oauth )?token)|oauth token.*(expired|invalid|revoked)|(^|[^[:digit:]/])401([^[:digit:]/]|$)|token_revoked|refresh_token(_reused)?"
+AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|unauthorized|invalid (api key|(oauth )?token)|oauth token.*(expired|invalid|revoked)|(api|http|auth|authentication|authorization|error|request|status)[^[:digit:]/]{0,40}401([^[:digit:]/]|$)|401[[:space:]:_-]+(unauthorized|authentication|invalid)|token_revoked|refresh_token(_reused)?"
 RETRYABLE_PATTERN="$QUOTA_PATTERN|$AUTH_PATTERN"
 RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|401[[:space:]:_-]+(unauthorized|authentication required|invalid (api key|token))|http[[:space:]]+401([[:space:]:_-]+(unauthorized|authentication|invalid))?|token_revoked|refresh_token(_reused)?|invalid (api key|(oauth )?token)|oauth token (expired|invalid|revoked)"
-CLI_AUTH_QUOTA_BANNER_PATTERN="not logged in|invalid api key|((you are|you have)[[:space:]]+)?out of extra usage"
+CLI_LOGIN_BANNER_PATTERN="(not logged in|invalid api key)[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(please (log in|run /login)|run /login)(.{0,120})?"
+CLI_USAGE_BANNER_PATTERN="(you('re| are| have)[[:space:]]+)?out of extra usage[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(your[[:space:]]+)?(usage|limit).{0,80}(reset|renew|available)(.{0,80})?"
 
 new_temp_file
 PROMPT_FILE="$REPLY"
@@ -192,11 +193,11 @@ stdout_is_retryable_envelope() {
         "^[[:space:]]*($RAW_RETRYABLE_PATTERN)[[:space:].!]*$"; then
         return 0
     fi
-    # Known Claude CLI banners often append a reset/login hint. These prefixes
-    # are unambiguous diagnostics; keep weekly-limit prose out of this branch so
-    # a normal answer such as "Weekly limit reached for seat 2..." stays valid.
+    # Known Claude CLI banners append a structured login/reset hint. Require
+    # that hint instead of matching any answer that merely starts with the same
+    # words; keep normal operator-guide and weekly-limit prose valid.
     if printf '%s\n' "$compact" | grep -qiE \
-        "^[[:space:]]*($CLI_AUTH_QUOTA_BANNER_PATTERN)(.{0,240})?[[:space:]]*$"; then
+        "^[[:space:]]*($CLI_LOGIN_BANNER_PATTERN|$CLI_USAGE_BANNER_PATTERN)[[:space:]]*$"; then
         return 0
     fi
     if printf '%s\n' "$compact" | grep -qiE \
