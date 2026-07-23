@@ -274,18 +274,36 @@ CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 
-# wall-clock watchdog (macOS has no timeout(1))
-(
-    sleep "$MAX_WALL_S"
-    if kill -0 "$CPID" 2>/dev/null; then
-        kill "$CPID" 2>/dev/null
-        echo "[$(ts)] WATCHDOG: killed session after ${MAX_WALL_S}s" >> "$LOG"
-    fi
-) &
+# Single-process wall-clock watchdog (macOS has no timeout(1)). Python sleeps
+# in-process so cancelling the watchdog cannot orphan an external sleep under
+# PID 1 after a fast cascade return.
+python3 -c '
+import datetime
+import os
+import signal
+import sys
+import time
+
+child_pid = int(sys.argv[1])
+time.sleep(float(sys.argv[2]))
+try:
+    os.kill(child_pid, 0)
+except ProcessLookupError:
+    raise SystemExit(0)
+try:
+    os.kill(child_pid, signal.SIGTERM)
+except ProcessLookupError:
+    raise SystemExit(0)
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+with open(sys.argv[3], "a", encoding="utf-8") as handle:
+    handle.write("[%s] WATCHDOG: %s\n" % (timestamp, sys.argv[4]))
+' "$CPID" "$MAX_WALL_S" "$LOG" \
+    "killed session after ${MAX_WALL_S}s" </dev/null >/dev/null 2>&1 &
 WPID=$!
 wait "$CPID"
 CEXIT=$?
-kill "$WPID" 2>/dev/null
+kill "$WPID" 2>/dev/null || true
+wait "$WPID" 2>/dev/null || true
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$CEXIT — tail: ${TAIL:0:300}"

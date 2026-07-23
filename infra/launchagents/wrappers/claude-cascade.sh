@@ -167,9 +167,9 @@ if [ -z "$PROMPT" ]; then
 fi
 
 QUOTA_PATTERN="out of extra usage|usage limit|weekly limit|quota exceeded|rate.limit|429|exhausted|please try again later"
-AUTH_PATTERN="authentication required|not logged in|please log in|unauthorized|invalid (oauth )?token|oauth token.*(expired|invalid|revoked)|401[[:space:]:_-]+(unauthorized|authentication|invalid)|token_revoked|refresh_token(_reused)?"
+AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|unauthorized|invalid (api key|(oauth )?token)|oauth token.*(expired|invalid|revoked)|401[[:space:]:_-]+(unauthorized|authentication|invalid)|http[[:space:]]+401|token_revoked|refresh_token(_reused)?"
 RETRYABLE_PATTERN="$QUOTA_PATTERN|$AUTH_PATTERN"
-RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|not logged in|please log in|401[[:space:]:_-]+(unauthorized|authentication required|invalid token)|token_revoked|refresh_token(_reused)?|invalid (oauth )?token|oauth token (expired|invalid|revoked)"
+RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|401[[:space:]:_-]+(unauthorized|authentication required|invalid (api key|token))|http[[:space:]]+401([[:space:]:_-]+(unauthorized|authentication|invalid))?|token_revoked|refresh_token(_reused)?|invalid (api key|(oauth )?token)|oauth token (expired|invalid|revoked)"
 
 new_temp_file
 PROMPT_FILE="$REPLY"

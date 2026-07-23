@@ -218,9 +218,16 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     "diagnostic",
     (
         "401 Unauthorized",
+        "HTTP 401 Unauthorized",
         "token_revoked",
         "Error: refresh_token",
+        "Invalid API key",
+        "Please run /login",
         '{"error":{"type":"refresh_token_reused","message":"login again"}}',
+        (
+            '{"type":"error","error":{"type":"authentication_error",'
+            '"message":"Invalid authentication credentials"}}'
+        ),
     ),
 )
 def test_exit_zero_stdout_error_envelopes_rotate(
@@ -694,7 +701,9 @@ def test_healer_cascade_deadline_precedes_outer_watchdog(
         in source
     )
     assert '"$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S"' in source
-    assert "sleep \"$MAX_WALL_S\"" in source
+    assert "sleep \"$MAX_WALL_S\"" not in source
+    assert "time.sleep(float(sys.argv[2]))" in source
+    assert 'wait "$WPID" 2>/dev/null || true' in source
 
 
 def test_organ_birth_imprints_claude_only_cascade() -> None:
@@ -729,3 +738,14 @@ def test_organ_birth_imprints_claude_only_cascade() -> None:
         'ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}"'
     ) in wrapper
     assert '"$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S"' in wrapper
+    assert 'sleep "$MAX_WALL_S"' not in wrapper
+    assert "time.sleep(float(sys.argv[2]))" in wrapper
+    assert 'wait "$WPID" 2>/dev/null || true' in wrapper
+    syntax = subprocess.run(
+        ["/bin/bash", "-n"],
+        input=wrapper,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert syntax.returncode == 0, syntax.stderr

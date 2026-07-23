@@ -217,11 +217,33 @@ CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
-( sleep "$MAX_WALL_S"; kill -0 "$CPID" 2>/dev/null && kill "$CPID" && \
-    echo "[$(ts)] WATCHDOG: killed after ${MAX_WALL_S}s" >> "$LOG" ) &
+# Keep the watchdog single-process so fast cascade returns cannot orphan sleep.
+python3 -c '
+import datetime
+import os
+import signal
+import sys
+import time
+
+child_pid = int(sys.argv[1])
+time.sleep(float(sys.argv[2]))
+try:
+    os.kill(child_pid, 0)
+except ProcessLookupError:
+    raise SystemExit(0)
+try:
+    os.kill(child_pid, signal.SIGTERM)
+except ProcessLookupError:
+    raise SystemExit(0)
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+with open(sys.argv[3], "a", encoding="utf-8") as handle:
+    handle.write("[%s] WATCHDOG: %s\n" % (timestamp, sys.argv[4]))
+' "$CPID" "$MAX_WALL_S" "$LOG" \
+    "killed after ${MAX_WALL_S}s" </dev/null >/dev/null 2>&1 &
 WPID=$!
 wait "$CPID"; RC=$?
-kill "$WPID" 2>/dev/null
+kill "$WPID" 2>/dev/null || true
+wait "$WPID" 2>/dev/null || true
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$RC — tail: ${TAIL:0:300}"
