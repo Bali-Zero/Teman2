@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   FileText,
   TrendingUp,
+  Activity,
+  ShieldCheck,
 } from "lucide-react";
 import {
   LiveActivityFeed,
@@ -33,6 +35,13 @@ import { logger } from "@/lib/logger";
 import { STRINGS } from "@/lib/strings";
 import { api } from "@/lib/api";
 import { formatIDRCompact } from "@balizero/core/utils";
+import {
+  ComplianceRadar,
+  SystemPulse,
+  type ComplianceAlert,
+  type SystemPulseService,
+} from "@balizero/core";
+import { getComplianceAlerts, getSystemPulse } from "./_lib/opsAdapters";
 import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
@@ -82,6 +91,31 @@ function useIntakeReviewCount() {
       );
       return (res.items ?? []).length;
     },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: false,
+  });
+}
+
+// ── Ops panels (WS2 slice 2) ───────────────────────────────
+// System Pulse probes /api/admin/system-health (admin-only — non-admins get
+// the honest all-idle fallback from the adapter); Compliance Radar reads
+// /api/compliance/alerts (RBAC-scoped like the pipeline). retry:false per the
+// intake-queue precedent: a dead probe must not degrade the dashboard.
+function useSystemPulse() {
+  return useQuery<SystemPulseService[]>({
+    queryKey: ["system-pulse"],
+    queryFn: getSystemPulse,
+    staleTime: 60_000,
+    refetchInterval: 2 * 60_000,
+    retry: false,
+  });
+}
+
+function useComplianceAlerts() {
+  return useQuery<ComplianceAlert[]>({
+    queryKey: ["compliance-radar"],
+    queryFn: () => getComplianceAlerts(6),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
     retry: false,
@@ -389,6 +423,9 @@ function Divider() {
 // ── Main page ──────────────────────────────────────────────
 export default function DashboardPage() {
   const { data: intelArticles, isLoading: intelLoading } = useIntelFeed();
+  const { data: pulseServices, isLoading: pulseLoading } = useSystemPulse();
+  const { data: complianceAlerts, isLoading: complianceLoading } =
+    useComplianceAlerts();
 
   // Team stats — loaded lazily after main data resolves
   const [teamEnabled, setTeamEnabled] = React.useState(false);
@@ -634,6 +671,74 @@ export default function DashboardPage() {
               isLoading={teamLoading || !teamEnabled}
             />
           )}
+
+          {/* ROW 3.5: System Pulse + Compliance Radar (WS2 slice 2 — live ops probes) */}
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: "1fr 1fr" }}
+          >
+            {/* System Pulse panel */}
+            <div
+              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
+              style={{
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <Activity size={12} className="text-white/30" />
+                  <span className="text-[11px] font-semibold text-white/60">
+                    System Pulse
+                  </span>
+                </div>
+                <span className="text-[9px] text-white/25">live stack</span>
+              </div>
+              {pulseLoading ? (
+                <div className="flex flex-col gap-1 p-3">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-8 rounded-lg bg-white/[0.03] animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <SystemPulse services={pulseServices ?? []} />
+              )}
+            </div>
+
+            {/* Compliance Radar panel */}
+            <div
+              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
+              style={{
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={12} className="text-white/30" />
+                  <span className="text-[11px] font-semibold text-white/60">
+                    Compliance Radar
+                  </span>
+                </div>
+                <span className="text-[9px] text-white/25">auto-tracked</span>
+              </div>
+              {complianceLoading ? (
+                <div className="flex flex-col gap-1 p-3">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-8 rounded-lg bg-white/[0.03] animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <ComplianceRadar alerts={complianceAlerts ?? []} />
+              )}
+            </div>
+          </div>
 
           {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
           <div

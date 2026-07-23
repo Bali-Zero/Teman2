@@ -12,6 +12,7 @@ import {
   type DashboardData,
 } from "@/lib/api/dashboard/dashboard.api";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { getComplianceAlerts, getSystemPulse } from "../_lib/opsAdapters";
 import { logger } from "@/lib/logger";
 
 // Mock dependencies
@@ -26,6 +27,10 @@ vi.mock("@/hooks/useDashboardData", () => ({
   useDashboardData: vi.fn(),
 }));
 vi.mock("@/lib/logger");
+vi.mock("../_lib/opsAdapters", () => ({
+  getSystemPulse: vi.fn(),
+  getComplianceAlerts: vi.fn(),
+}));
 vi.mock("@/lib/realtime", () => ({
   useRealtime: () => ({
     isConnected: false,
@@ -244,6 +249,25 @@ describe("DashboardPage - Unit Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useDashboardData).mockReturnValue(mockUseDashboardData());
+    // Ops panel adapters (WS2 slice 2) — default to live, healthy data
+    vi.mocked(getSystemPulse).mockResolvedValue([
+      {
+        id: "postgres",
+        label: "PostgreSQL",
+        status: "ok",
+        latencyMs: 12,
+        detail: "Connected",
+      },
+    ]);
+    vi.mocked(getComplianceAlerts).mockResolvedValue([
+      {
+        id: "a1",
+        title: "KITAS expiry < 30 days",
+        detail: "CLI-2207 · visa expiry",
+        severity: "critical",
+        timeLeft: "6d",
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -317,5 +341,49 @@ describe("DashboardPage - Unit Tests", () => {
       metricLabel.compareDocumentPosition(hero) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("renders the ops panels with live adapter data (WS2 slice 2)", async () => {
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText("System Pulse")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Compliance Radar")).toBeInTheDocument();
+
+    // SystemPulse row from the mocked probe
+    await waitFor(() => {
+      expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+    });
+    expect(screen.getByText("OK · 12ms")).toBeInTheDocument();
+
+    // ComplianceRadar row from the mocked alerts endpoint
+    await waitFor(() => {
+      expect(screen.getByText("KITAS expiry < 30 days")).toBeInTheDocument();
+    });
+    expect(screen.getByText("CRITICAL")).toBeInTheDocument();
+    expect(screen.getByText("6d")).toBeInTheDocument();
+  });
+
+  it("renders honest fallbacks when probes fail (idle services, empty radar)", async () => {
+    vi.mocked(getSystemPulse).mockResolvedValue([
+      {
+        id: "postgres",
+        label: "PostgreSQL",
+        status: "idle",
+        detail: "probe unavailable",
+      },
+    ]);
+    vi.mocked(getComplianceAlerts).mockResolvedValue([]);
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    // Panels still render; the failed probe shows as honest idle rows
+    await waitFor(() => {
+      expect(screen.getByText("probe unavailable")).toBeInTheDocument();
+    });
+    expect(screen.getByText("IDLE")).toBeInTheDocument();
+    expect(screen.getByText("System Pulse")).toBeInTheDocument();
+    expect(screen.getByText("Compliance Radar")).toBeInTheDocument();
   });
 });
