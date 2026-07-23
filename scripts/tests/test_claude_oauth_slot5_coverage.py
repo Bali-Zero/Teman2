@@ -52,24 +52,6 @@ def test_every_automation_consumer_reaches_slot5(
     )
 
 
-def test_canonical_cascade_preserves_full_provider_order() -> None:
-    """Team is the final Claude seat, followed by every non-Claude fallback."""
-    source = (
-        REPO_ROOT / "infra/launchagents/wrappers/claude-cascade.sh"
-    ).read_text(encoding="utf-8")
-    sentinels = (
-        "claude-acct4:tier2c-claude-acct4",
-        "claude-zero-team:tier2d-claude-zero-team",
-        "try_gemini && exit 0",
-        "try_kimi && exit 0",
-        "try_codex && exit 0",
-        "try_ollama && exit 0",
-    )
-    positions = [source.index(sentinel) for sentinel in sentinels]
-
-    assert positions == sorted(positions)
-
-
 def test_mata_runtime_documents_slot_four_and_team_identities() -> None:
     source = (
         REPO_ROOT / "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py"

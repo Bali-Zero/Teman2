@@ -38,6 +38,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,41 @@ PROJECT_ROOT = SCRIPTS_DIR.parents[2]
 CLAIMS_DB_DIR = SCRIPTS_DIR / "claims_db"
 AI_DISPATCH = PROJECT_ROOT / "scripts" / "ai-dispatch.sh"
 CLAIM_ID_PATTERN = re.compile(r"\[([A-Z]{2,3}-\d{3})\]")
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 # NLM notebook IDs per dominio (da ai-dispatch.sh oracolo-nb mapping)
 DOMAIN_NB_TAGS: dict[str, str] = {
@@ -432,10 +468,10 @@ def generate_document(
         env = _gen_oauth_env(token)
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "3"],
-                input=prompt, capture_output=True, text=True,
+                input=prompt,
                 timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:

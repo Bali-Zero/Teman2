@@ -20,6 +20,7 @@ import logging
 import math
 import os
 import re
+import signal
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -141,6 +142,26 @@ def _oauth_cli_env(token: str) -> dict[str, str]:
     else:
         env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env
+
+
+async def _terminate_process_group(
+    proc: asyncio.subprocess.Process,
+) -> None:
+    """TERM, grace, KILL, and drain a CLI session including descendants."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    else:
+        await asyncio.sleep(0.1)
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(proc.pid, signal.SIGKILL)
+    with contextlib.suppress(
+        BrokenPipeError,
+        ConnectionResetError,
+        ProcessLookupError,
+    ):
+        await proc.communicate()
 
 
 def _claude_retryable(stdout: str, stderr: str) -> bool:
@@ -445,16 +466,14 @@ class T4RelevanceFilter:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=_oauth_cli_env(token),
+                start_new_session=True,
             )
             try:
                 stdout, stderr = await asyncio.wait_for(
                     proc.communicate(), timeout=attempt_timeout
                 )
             except asyncio.TimeoutError:
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
-                with contextlib.suppress(ProcessLookupError):
-                    await proc.wait()
+                await _terminate_process_group(proc)
                 logger.warning(
                     "Haiku via OAuth CLI %s timed out — classifier unavailable",
                     label,

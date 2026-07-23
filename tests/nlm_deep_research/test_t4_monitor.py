@@ -4,6 +4,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
+import time
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -17,6 +19,7 @@ from apps.evaluator.nlm_deep_research.t4_monitor import (
     T4Fetcher,
     T4Monitor,
     T4RelevanceFilter,
+    _terminate_process_group,
 )
 from apps.evaluator.nlm_deep_research.t4_state import T4State, T4StatePersistence
 
@@ -321,14 +324,72 @@ class TestHaikuClassifyHonesty:
     """Guilt+innocence for _haiku_classify's None-vs-fabricated-0.0 contract."""
 
     @pytest.mark.asyncio
-    async def test_timeout_returns_none_not_zero(self):
+    async def test_timeout_returns_none_not_zero(self, monkeypatch):
         filt = T4RelevanceFilter()
+        for slot in range(1, 6):
+            monkeypatch.delenv(
+                f"CLAUDE_CODE_OAUTH_TOKEN_{slot}",
+                raising=False,
+            )
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         mock_proc = AsyncMock()
         mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
-        mock_proc.kill = MagicMock()
-        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+        cleanup = AsyncMock()
+        with (
+            patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)),
+            patch(
+                "apps.evaluator.nlm_deep_research.t4_monitor._terminate_process_group",
+                cleanup,
+            ),
+        ):
             score = await filt._haiku_classify("some article text")
         assert score is None
+        cleanup.assert_awaited_once_with(mock_proc)
+
+    @pytest.mark.asyncio
+    async def test_timeout_cleanup_reaps_term_ignoring_descendant(self, tmp_path):
+        fake_claude = tmp_path / "claude"
+        pid_file = tmp_path / "descendant.pid"
+        fake_claude.write_text(
+            "#!/bin/bash\n"
+            "(\n"
+            "  trap '' TERM\n"
+            "  sleep 60\n"
+            ") &\n"
+            "descendant=$!\n"
+            "echo \"$descendant\" > \"$DESCENDANT_PID_FILE\"\n"
+            "wait \"$descendant\"\n",
+            encoding="utf-8",
+        )
+        fake_claude.chmod(0o700)
+        env = {
+            "PATH": os.environ.get("PATH", ""),
+            "DESCENDANT_PID_FILE": str(pid_file),
+        }
+        proc = await asyncio.create_subprocess_exec(
+            str(fake_claude),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+            start_new_session=True,
+        )
+        deadline = time.monotonic() + 2
+        while not pid_file.exists() and time.monotonic() < deadline:
+            await asyncio.sleep(0.01)
+        assert pid_file.exists()
+
+        await _terminate_process_group(proc)
+
+        descendant = int(pid_file.read_text(encoding="utf-8"))
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            try:
+                os.kill(descendant, 0)
+            except ProcessLookupError:
+                break
+            await asyncio.sleep(0.05)
+        else:
+            pytest.fail(f"descendant pid {descendant} survived process-group cleanup")
 
     @pytest.mark.asyncio
     async def test_nonzero_exit_returns_none_not_zero(self):
@@ -401,6 +462,7 @@ class TestHaikuClassifyHonesty:
         seen_tokens: list[str] = []
 
         async def _spawn(*args, **kwargs):
+            assert kwargs["start_new_session"] is True
             seen_tokens.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
             for key in (
                 "ANTHROPIC_API_KEY",
@@ -413,15 +475,20 @@ class TestHaikuClassifyHonesty:
             outcome = outcomes[len(seen_tokens) - 1]
             if outcome == "timeout":
                 proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
-                proc.kill = MagicMock()
-                proc.wait = AsyncMock(return_value=0)
                 return proc
             returncode, stdout, stderr = outcome
             proc.returncode = returncode
             proc.communicate = AsyncMock(return_value=(stdout, stderr))
             return proc
 
-        with patch("asyncio.create_subprocess_exec", new=_spawn):
+        cleanup = AsyncMock()
+        with (
+            patch("asyncio.create_subprocess_exec", new=_spawn),
+            patch(
+                "apps.evaluator.nlm_deep_research.t4_monitor._terminate_process_group",
+                cleanup,
+            ),
+        ):
             score = await filt._haiku_classify("some article text")
 
         assert score == 0.91
@@ -432,6 +499,7 @@ class TestHaikuClassifyHonesty:
             "sentinel-4",
             "sentinel-5",
         ]
+        cleanup.assert_awaited_once()
 
 
 class TestClassifyFailOpen:

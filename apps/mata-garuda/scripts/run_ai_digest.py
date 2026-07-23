@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
 from mata_garuda.runtime.cli_runtime import (
+    _run_process_group,
     claude_token_chain,
     classify_claude_retry,
     provider_cli_env,
@@ -167,10 +168,8 @@ def call_claude_synthesis(prompt: str) -> str:
             break
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "-p", prompt],
-                capture_output=True,
-                text=True,
                 timeout=attempt_timeout,
                 env=provider_cli_env("claude", token),
             )

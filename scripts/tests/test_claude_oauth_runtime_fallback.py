@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import importlib.util
 import json
 import os
@@ -12,6 +11,8 @@ import time
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -23,6 +24,18 @@ def _load_module(relative_path: str, name: str) -> ModuleType:
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _load_wr2_vision(name: str) -> ModuleType:
+    """Load claude_vision from this checkout without package-cache bleed."""
+    package_name = f"{name}_package"
+    package = ModuleType(package_name)
+    package.__path__ = [str(REPO_ROOT / "scripts/wr2_html_renderer")]  # type: ignore[attr-defined]
+    sys.modules[package_name] = package
+    return _load_module(
+        "scripts/wr2_html_renderer/claude_vision.py",
+        f"{package_name}.claude_vision",
+    )
 
 
 def _install_five_slots(monkeypatch: Any) -> None:
@@ -92,7 +105,7 @@ def _five_outcome_runner(
             raise subprocess.TimeoutExpired(args[0] if args else "claude", timeout=1)
         return outcome
 
-    monkeypatch.setattr(module.subprocess, "run", _run)
+    monkeypatch.setattr(module, "_run_process_group", _run)
     return seen_tokens
 
 
@@ -312,7 +325,9 @@ def test_mata_keychain_fallbacks_strip_paid_api_key(
         "apps/mata-garuda/scripts/run_ai_digest.py",
         "oauth_ai_digest_keychain",
     )
-    monkeypatch.setattr(subprocess, "run", _run)
+    monkeypatch.setattr(daily, "_run_process_group", _run)
+    monkeypatch.setattr(weekly, "_run_process_group", _run)
+    monkeypatch.setattr(digest, "_run_process_group", _run)
 
     assert daily._tldr_claude("Title", "Body") == "keychain-success"
     assert weekly.call_claude("safe prompt") == "keychain-success"
@@ -422,8 +437,7 @@ def test_python_claude_consumers_isolate_actual_child_environments(
             if key != "CLAUDE_CODE_OAUTH_TOKEN"
         ), f"{module.__name__} leaked credentials: {child}"
 
-    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
-    vision = importlib.import_module("wr2_html_renderer.claude_vision")
+    vision = _load_wr2_vision("oauth_env_vision")
     child = _child_environment_snapshot(
         vision._oauth_cli_env(dict(os.environ), "selected-seat"),
         keys,
@@ -582,7 +596,7 @@ def test_python_retry_classifiers_are_guilty_only_for_diagnostics() -> None:
     assert t4._claude_retryable(error_envelope, "")
     assert t4._claude_retryable("valid answer", "warning: quota exhausted")
 
-    vision = importlib.import_module("wr2_html_renderer.claude_vision")
+    vision = _load_wr2_vision("oauth_classifier_vision")
     success_payload = json.loads(success_envelope)
     error_payload = json.loads(error_envelope)
     assert (
@@ -684,8 +698,7 @@ def test_all_python_token_chains_deduplicate_values_before_budgeting(
         values = [value for _, value in getattr(module, chain_name)()]
         assert values == ["same", "other", ""], module.__name__
 
-    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
-    vision = importlib.import_module("wr2_html_renderer.claude_vision")
+    vision = _load_wr2_vision("oauth_chain_vision")
     values = [
         value
         for _, value in vision._vision_token_chain(
@@ -744,7 +757,7 @@ def test_mata_direct_callers_accept_valid_quota_prose_without_rotation(
                 stderr="",
             )
 
-        monkeypatch.setattr(module.subprocess, "run", _run)
+        monkeypatch.setattr(module, "_run_process_group", _run)
         assert "quota planning" in invoke(module)
         assert seen == ["first-seat"]
 
@@ -1070,6 +1083,19 @@ def _write_timeout_passthrough(path: Path) -> None:
     path.chmod(0o700)
 
 
+def _write_first_account_timeout(path: Path) -> None:
+    path.write_text(
+        "#!/bin/bash\n"
+        "shift\n"
+        "if [ \"${CLAUDE_CODE_OAUTH_TOKEN:-}\" = \"first-seat\" ]; then\n"
+        "  exit 124\n"
+        "fi\n"
+        "exec \"$@\"\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o700)
+
+
 def _base_shell_env(
     fake_claude: Path,
     trace_file: Path,
@@ -1204,6 +1230,51 @@ def test_cron_agent_accepts_valid_quota_prose_without_rotation(
     assert trace.read_text(encoding="utf-8").splitlines() == ["first-seat"]
 
 
+def test_cron_agent_rotates_exit_124_within_global_budget(
+    tmp_path: Path,
+) -> None:
+    fake_claude = tmp_path / "claude"
+    _write_fake_claude_with_mode(fake_claude)
+    trace = tmp_path / "trace"
+    prompt = tmp_path / "prompt.txt"
+    prompt.write_text("Harmless test prompt.", encoding="utf-8")
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    fake_timeout = tmp_path / "timeout"
+    _write_first_account_timeout(fake_timeout)
+    env = _base_shell_env(fake_claude, trace)
+    env.update(
+        {
+            "HOME": str(fake_home),
+            "CRON_AGENT_HOME": str(fake_home),
+            "CRON_AGENT_TIMEOUT": "10",
+            "CRON_AGENT_TIMEOUT_BIN": str(fake_timeout),
+        }
+    )
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(REPO_ROOT / "infra/launchagents/wrappers/cron-agent.sh"),
+            "agent",
+            "timeout-rotation",
+            str(prompt),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    log = (fake_home / "logs/cron-agent/timeout-rotation.log").read_text(
+        encoding="utf-8"
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "token_1: timed out, trying next account" in log
+    assert "used: tier2-claude-token_2" in log
+    assert trace.read_text(encoding="utf-8").splitlines() == ["second-seat"]
+
+
 def test_cron_agent_all_retryable_attempts_fail_and_dedupe(
     tmp_path: Path,
 ) -> None:
@@ -1331,6 +1402,75 @@ def _assert_pid_disappears(pid_file: Path) -> None:
     raise AssertionError(f"descendant pid {pid} survived process-group cleanup")
 
 
+@pytest.mark.parametrize(
+    ("relative_path", "module_name"),
+    (
+        ("apps/backend-rag/scripts/auto_verifier.py", "oauth_pg_auto_verifier"),
+        (
+            "apps/backend-rag/scripts/verified_generator.py",
+            "oauth_pg_verified_generator",
+        ),
+        (
+            "apps/bali-intel-scraper/scripts/bz_image_style.py",
+            "oauth_pg_bz_image_style",
+        ),
+        ("scripts/dlq_autopilot.py", "oauth_pg_dlq_autopilot"),
+        (
+            "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
+            "oauth_pg_mata_runtime",
+        ),
+    ),
+)
+def test_python_timeout_reaps_descendant_process_group(
+    relative_path: str,
+    module_name: str,
+    tmp_path: Path,
+) -> None:
+    module = _load_module(relative_path, module_name)
+    fake_claude = tmp_path / "claude"
+    _write_descendant_claude(fake_claude)
+    pid_file = tmp_path / "descendant.pid"
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "DESCENDANT_PID_FILE": str(pid_file),
+    }
+
+    started = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        module._run_process_group(
+            [str(fake_claude)],
+            timeout=0.5,
+            env=env,
+        )
+
+    assert time.monotonic() - started < 2
+    assert pid_file.exists()
+    _assert_pid_disappears(pid_file)
+
+
+def test_wr2_vision_timeout_reaps_descendant_process_group(
+    tmp_path: Path,
+) -> None:
+    module = _load_wr2_vision("oauth_pg_vision")
+    fake_claude = tmp_path / "claude"
+    _write_descendant_claude(fake_claude)
+    pid_file = tmp_path / "descendant.pid"
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "DESCENDANT_PID_FILE": str(pid_file),
+    }
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        module._run_process_group(
+            [str(fake_claude)],
+            timeout=0.5,
+            env=env,
+        )
+
+    assert pid_file.exists()
+    _assert_pid_disappears(pid_file)
+
+
 def test_ai_dispatch_bash_timeout_kills_descendant_process_group(
     tmp_path: Path,
 ) -> None:
@@ -1338,14 +1478,24 @@ def test_ai_dispatch_bash_timeout_kills_descendant_process_group(
     fake_bin.mkdir()
     fake_claude = fake_bin / "claude"
     _write_descendant_claude(fake_claude)
+    fake_gtimeout = fake_bin / "gtimeout"
+    fake_gtimeout.write_text(
+        "#!/bin/bash\n"
+        "echo invoked > \"$GTIMEOUT_MARKER\"\n"
+        "shift\n"
+        "exec \"$@\"\n",
+        encoding="utf-8",
+    )
+    fake_gtimeout.chmod(0o700)
     trace = tmp_path / "unused-trace"
     pid_file = tmp_path / "descendant.pid"
+    gtimeout_marker = tmp_path / "gtimeout-invoked"
     env = _base_shell_env(fake_claude, trace)
     env.update(
         {
             "PATH": f"{fake_bin}:{env['PATH']}",
             "DESCENDANT_PID_FILE": str(pid_file),
-            "AI_DISPATCH_FORCE_BASH_TIMEOUT": "1",
+            "GTIMEOUT_MARKER": str(gtimeout_marker),
             "AI_DISPATCH_CLAUDE_TIMEOUT": "1",
             "AI_DISPATCH_TIMEOUT_GRACE_SECS": "0",
         }
@@ -1368,6 +1518,7 @@ def test_ai_dispatch_bash_timeout_kills_descendant_process_group(
 
     assert result.returncode != 0
     assert pid_file.exists()
+    assert not gtimeout_marker.exists()
     _assert_pid_disappears(pid_file)
 
 

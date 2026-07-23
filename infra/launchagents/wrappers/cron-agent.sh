@@ -374,6 +374,16 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
             >"$attempt_out" 2>"$attempt_err" && exit_code=0 || exit_code=$?
         output="$(cat "$attempt_out")"
 
+        # A timeout is account-local until the shared deadline is exhausted.
+        # Rotate immediately; the next loop iteration recomputes the remaining
+        # global budget and records a final 124 only when no time remains.
+        if [[ $exit_code -eq 124 ]]; then
+            log "$label: timed out, trying next account within global budget"
+            output=""
+            rm -f "$attempt_out" "$attempt_err"
+            continue
+        fi
+
         # OAuth quota/auth diagnostics can exit 0: classify before success.
         if claude_retryable_files "$attempt_out" "$attempt_err"; then
             log "$label: OAuth account unavailable, trying next"
@@ -386,7 +396,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # Claude CLI with exhausted Max-plan token returns empty output with exit 0 or 143.
         # Real errors have messages; real success has non-empty output.
         local output_trimmed="${output//[[:space:]]/}"
-        if [[ -z "$output_trimmed" ]] && [[ $exit_code -ne 124 ]]; then
+        if [[ -z "$output_trimmed" ]]; then
             log "$label: empty output (likely quota/rate issue), trying next"
             rm -f "$attempt_out" "$attempt_err"
             continue

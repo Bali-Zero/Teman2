@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -32,6 +33,41 @@ logger = logging.getLogger(__name__)
 
 CLAIM_ID_PATTERN = re.compile(r"\[([A-Z]{2,3}-\d{3})\]")
 MIN_VERIFIED_RATIO = 0.95
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
 @dataclass
@@ -230,10 +266,10 @@ def call_claude_verifier(
         env = _verifier_oauth_env(token)
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "1"],
-                input=prompt, capture_output=True, text=True,
+                input=prompt,
                 timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:

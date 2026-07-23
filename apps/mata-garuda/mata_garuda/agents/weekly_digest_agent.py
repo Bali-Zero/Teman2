@@ -22,6 +22,7 @@ from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.runtime.cli_runtime import (
+    _run_process_group,
     claude_token_chain,
     classify_claude_retry,
     provider_cli_env,
@@ -123,10 +124,8 @@ def call_claude(prompt: str, timeout: int = 120) -> str:
             break
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "-p", prompt],
-                capture_output=True,
-                text=True,
                 timeout=attempt_timeout,
                 env=provider_cli_env("claude", token),
             )

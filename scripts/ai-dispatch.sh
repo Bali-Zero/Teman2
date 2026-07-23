@@ -61,57 +61,43 @@ GEMINI_MODEL_FALLBACK="gemini-2.5-pro"
 GEMINI_MODEL_FAST="gemini-2.5-flash"
 GEMINI_MODEL="${GEMINI_MODEL:-$GEMINI_MODEL_PRIMARY}"
 
-# ═══════════════════════════════════════════════════════
-# Timeout: macOS has no native timeout, use gtimeout if available
-# ═══════════════════════════════════════════════════════
-TIMEOUT_CMD=""
-if command -v gtimeout &>/dev/null; then
-    TIMEOUT_CMD="gtimeout"
-elif command -v timeout &>/dev/null; then
-    TIMEOUT_CMD="timeout"
-fi
-
 run_with_timeout() {
     local secs="$1"
     shift
-    if [ -n "$TIMEOUT_CMD" ] && [ "${AI_DISPATCH_FORCE_BASH_TIMEOUT:-0}" != "1" ]; then
-        $TIMEOUT_CMD "$secs" "$@"
-    else
-        (
-            set +e
-            set -m
-            "$@" &
-            local child_pid=$!
-            local child_pgid="$child_pid"
-            local grace="${AI_DISPATCH_TIMEOUT_GRACE_SECS:-2}"
-            local deadline=$(( $(date +%s) + secs ))
+    (
+        set +e
+        set -m
+        "$@" &
+        local child_pid=$!
+        local child_pgid="$child_pid"
+        local grace="${AI_DISPATCH_TIMEOUT_GRACE_SECS:-2}"
+        local deadline=$(( $(date +%s) + secs ))
 
-            cleanup_timeout_group() {
-                trap - EXIT INT TERM
-                if kill -TERM -- -"$child_pgid" 2>/dev/null; then
-                    sleep "$grace"
-                    # The leader may already be gone while a descendant ignored
-                    # TERM, so escalation always targets the process group.
-                    kill -KILL -- -"$child_pgid" 2>/dev/null || true
-                fi
-                wait "$child_pid" 2>/dev/null || true
-            }
-            trap cleanup_timeout_group EXIT
-            trap 'cleanup_timeout_group; exit 130' INT TERM
+        cleanup_timeout_group() {
+            trap - EXIT INT TERM
+            if kill -TERM -- -"$child_pgid" 2>/dev/null; then
+                sleep "$grace"
+                # The leader may already be gone while a descendant ignored
+                # TERM, so escalation always targets the process group.
+                kill -KILL -- -"$child_pgid" 2>/dev/null || true
+            fi
+            wait "$child_pid" 2>/dev/null || true
+        }
+        trap cleanup_timeout_group EXIT
+        trap 'cleanup_timeout_group; exit 130' INT TERM
 
-            while kill -0 "$child_pid" 2>/dev/null; do
-                if [ "$(date +%s)" -ge "$deadline" ]; then
-                    cleanup_timeout_group
-                    exit 124
-                fi
-                sleep 1
-            done
-            wait "$child_pid"
-            local child_rc=$?
-            cleanup_timeout_group
-            exit "$child_rc"
-        )
-    fi
+        while kill -0 "$child_pid" 2>/dev/null; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+                cleanup_timeout_group
+                exit 124
+            fi
+            sleep 1
+        done
+        wait "$child_pid"
+        local child_rc=$?
+        cleanup_timeout_group
+        exit "$child_rc"
+    )
 }
 
 # ═══════════════════════════════════════════════════════

@@ -400,6 +400,8 @@ async def _stream_via_sdk(
     the gateway.
     """
     global _sdk_import_warned
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
     try:
         from claude_agent_sdk import query as sdk_query, ClaudeAgentOptions  # type: ignore
     except ImportError as e:
@@ -413,7 +415,7 @@ async def _stream_via_sdk(
             model=model,
             mcp_config=mcp_config,
             system_prompt=system_prompt,
-            timeout=timeout,
+            timeout=max(0.0, deadline - loop.time()),
             cwd=cwd,
         ):
             yield line
@@ -459,7 +461,13 @@ async def _stream_via_sdk(
         message_iter = sdk_query(prompt=query, options=options).__aiter__()
         while True:
             try:
-                message = await asyncio.wait_for(message_iter.__anext__(), timeout=timeout)
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                message = await asyncio.wait_for(
+                    message_iter.__anext__(),
+                    timeout=remaining,
+                )
             except StopAsyncIteration:
                 break
             except asyncio.TimeoutError:
@@ -472,17 +480,10 @@ async def _stream_via_sdk(
                     yield "data: [DONE]\n\n"
                 else:
                     logger.warning(
-                        "Claude SDK timeout after %ds — falling back to subprocess", timeout
+                        "Claude SDK global deadline exceeded before content"
                     )
-                    async for line in _stream_via_subprocess(
-                        query,
-                        model=model,
-                        mcp_config=mcp_config,
-                        system_prompt=system_prompt,
-                        timeout=timeout,
-                        cwd=cwd,
-                    ):
-                        yield line
+                    yield f'data: {json.dumps({"type": "error", "data": "timeout"}, separators=(",", ":"))}\n\n'
+                    yield "data: [DONE]\n\n"
                 return
 
             lines, is_terminal, error_subtype = _convert_sdk_message(message, seen_text)
@@ -510,7 +511,7 @@ async def _stream_via_sdk(
                             model=model,
                             mcp_config=mcp_config,
                             system_prompt=system_prompt,
-                            timeout=timeout,
+                            timeout=max(0.0, deadline - loop.time()),
                             cwd=cwd,
                         ):
                             yield line
@@ -530,15 +531,20 @@ async def _stream_via_sdk(
             logger.warning("Claude SDK rate-limited — falling back to subprocess")
         else:
             logger.warning("Claude SDK error — falling back to subprocess")
-        async for line in _stream_via_subprocess(
-            query,
-            model=model,
-            mcp_config=mcp_config,
-            system_prompt=system_prompt,
-            timeout=timeout,
-            cwd=cwd,
-        ):
-            yield line
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            yield f'data: {json.dumps({"type": "error", "data": "timeout"}, separators=(",", ":"))}\n\n'
+            yield "data: [DONE]\n\n"
+        else:
+            async for line in _stream_via_subprocess(
+                query,
+                model=model,
+                mcp_config=mcp_config,
+                system_prompt=system_prompt,
+                timeout=remaining,
+                cwd=cwd,
+            ):
+                yield line
 
 
 async def _stream_via_subprocess(
@@ -556,6 +562,11 @@ async def _stream_via_subprocess(
       {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
       {"type":"result","subtype":"success","result":"..."}
     """
+    if timeout <= 0:
+        logger.warning("Claude CLI skipped because the shared deadline is exhausted")
+        yield "data: [DONE]\n\n"
+        return
+
     cmd = _build_subprocess_cmd(query, model, mcp_config, system_prompt)
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout

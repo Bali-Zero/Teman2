@@ -282,9 +282,8 @@ def test_stream_via_sdk_timeout_after_yield_no_replay(monkeypatch):
     assert lines[-1] == "data: [DONE]\n\n"
 
 
-def test_stream_via_sdk_timeout_before_yield_falls_back_to_subprocess(monkeypatch):
-    """A timeout with NOTHING yielded yet is still safe to fall back on —
-    unchanged pre-P1-2 behavior, kept green as a regression guard."""
+def test_stream_via_sdk_timeout_before_yield_respects_global_deadline(monkeypatch):
+    """An exhausted SDK deadline cannot restart a fresh subprocess budget."""
 
     async def fake_query(*, prompt, options):
         await asyncio.sleep(10)
@@ -307,8 +306,33 @@ def test_stream_via_sdk_timeout_before_yield_falls_back_to_subprocess(monkeypatc
         _collect(claude_client._stream_via_sdk("hi", timeout=0.05))
     )
 
-    assert calls["subprocess"] == 1
-    assert lines == ["data: [DONE]\n\n"]
+    assert calls["subprocess"] == 0
+    assert any('"type":"error"' in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_stream_via_sdk_uses_one_deadline_across_messages(monkeypatch):
+    """Several individually-fast messages must still share one wall-clock cap."""
+
+    async def fake_query(*, prompt, options):
+        for _ in range(3):
+            await asyncio.sleep(0.04)
+            yield _FakeSystemMessage("progress")
+
+    module = types.ModuleType("claude_agent_sdk")
+    module.query = fake_query
+    module.ClaudeAgentOptions = _FakeClaudeAgentOptions
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", module)
+
+    started = asyncio.get_event_loop().time()
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_sdk("hi", timeout=0.07))
+    )
+    elapsed = asyncio.get_event_loop().time() - started
+
+    assert elapsed < 0.13
+    assert any('"type":"error"' in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
 
 
 # ── P3-a / P3-c: cwd + effort passed to ClaudeAgentOptions ──

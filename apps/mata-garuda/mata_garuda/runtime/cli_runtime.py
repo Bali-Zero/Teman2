@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -117,6 +118,43 @@ def provider_cli_env(provider: str, token: str = "") -> dict[str, str]:
             if key.startswith("OPENAI_"):
                 env[key] = value
     return env
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=cwd,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
 # Compatibility alias for callers outside Mata Garuda. New code should use the
@@ -424,10 +462,8 @@ class CLIRuntime:
         timeout: float | None = None,
     ) -> subprocess.CompletedProcess:
         """Run a subprocess with optional env override."""
-        return subprocess.run(
+        return _run_process_group(
             cmd,
-            capture_output=True,
-            text=True,
             timeout=self.timeout if timeout is None else timeout,
             cwd=self.working_dir,
             env=env,

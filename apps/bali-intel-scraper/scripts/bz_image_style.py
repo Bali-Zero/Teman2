@@ -58,9 +58,43 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 # ── Mood classification ──────────────────────────────────────────────────────
 
@@ -545,10 +579,8 @@ def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> st
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--model", "claude-haiku-4-5-20251001", combined],
-                capture_output=True,
-                text=True,
                 timeout=attempt_timeout,
                 env=_img_oauth_env(token),
             )
