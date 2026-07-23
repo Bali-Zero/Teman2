@@ -15,6 +15,7 @@ import asyncio
 import contextlib
 import hashlib
 import httpx
+import json
 import logging
 import math
 import os
@@ -91,21 +92,40 @@ _CLAUDE_RETRYABLE_RE = re.compile(
     re.IGNORECASE,
 )
 _OAUTH_SCRUB_KEYS = frozenset({
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
 })
 _OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
     "AWS_",
     "VERTEX_AI_",
-    "ANTHROPIC_VERTEX_",
-    "ANTHROPIC_BEDROCK_",
-    "ANTHROPIC_FOUNDRY_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+_STDOUT_RETRYABLE_RE = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"capacity (?:exceeded|unavailable)|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
 )
 
 
@@ -121,6 +141,61 @@ def _oauth_cli_env(token: str) -> dict[str, str]:
     else:
         env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env
+
+
+def _claude_retryable(stdout: str, stderr: str) -> bool:
+    """Classify diagnostics without treating generated stdout as an error."""
+    if _CLAUDE_RETRYABLE_RE.search(stderr or ""):
+        return True
+    try:
+        envelope = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        envelope = None
+    if isinstance(envelope, dict):
+        result = envelope.get("result")
+        result_type = ""
+        if isinstance(result, dict):
+            result_type = str(
+                result.get("type")
+                or result.get("status")
+                or result.get("subtype")
+                or ""
+            ).lower()
+        envelope_type = str(
+            envelope.get("type") or envelope.get("status") or ""
+        ).lower()
+        is_error = (
+            envelope.get("is_error") is True
+            or envelope_type in {"error", "failed", "failure"}
+            or (
+                envelope_type == "result"
+                and envelope.get("subtype") not in (None, "success")
+            )
+            or result_type in {"error", "failed", "failure"}
+        )
+        if is_error and _CLAUDE_RETRYABLE_RE.search(
+            json.dumps(envelope, ensure_ascii=False)
+        ):
+            return True
+    return bool(_STDOUT_RETRYABLE_RE.fullmatch(stdout or ""))
+
+
+def _claude_token_chain() -> list[tuple[str, str]]:
+    """Build the OAuth chain once per unique credential value."""
+    chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for index in (1, 2, 3, 4, 5):
+        token = os.environ.get(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
+        ).strip()
+        if token and token not in seen:
+            chain.append((f"token_{index}", token))
+            seen.add(token)
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and legacy not in seen:
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
 
 
 # ---------------------------------------------------------------------------
@@ -348,17 +423,7 @@ class T4RelevanceFilter:
 
         # Build a real account chain. Promoting only the first numbered token
         # made TOKEN_2..5 unreachable whenever TOKEN_1 was expired or capped.
-        token_chain: list[tuple[str, str]] = []
-        for index in (1, 2, 3, 4, 5):
-            token = os.environ.get(
-                f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
-            ).strip()
-            if token:
-                token_chain.append((f"token_{index}", token))
-        legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-        if legacy and not any(token == legacy for _, token in token_chain):
-            token_chain.append(("token_legacy", legacy))
-        token_chain.append(("keychain", ""))
+        token_chain = _claude_token_chain()
 
         deadline = asyncio.get_running_loop().time() + 30
 
@@ -398,8 +463,7 @@ class T4RelevanceFilter:
 
             raw = stdout.decode("utf-8", errors="replace").strip()
             error = stderr.decode("utf-8", errors="replace").strip()
-            combined = f"{raw}\n{error}"
-            if _CLAUDE_RETRYABLE_RE.search(combined):
+            if _claude_retryable(raw, error):
                 logger.warning(
                     "claude CLI %s unavailable (exit=%s) — trying next account",
                     label,

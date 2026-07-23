@@ -48,7 +48,7 @@ NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
 ORGANISM_DIR = HOME / ".organism" / "last_seen"
 
 # D2.3: Per-machine escalation JSONL — import lazily to avoid circular issues
-import sys as _sys
+import sys as _sys  # noqa: E402
 
 _sys.path.insert(0, str(NUZANTARA_ROOT / "scripts"))
 try:
@@ -292,23 +292,47 @@ _AUTH_FAILURE_RE = re.compile(
     r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
+_RATE_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:rate.?limit(?:ed| reached| exceeded)?|"
+    r"too many requests|(?:http(?: status)?\s*)?429(?:\b.*)?|"
+    r"(?:quota|usage limit|weekly limit|capacity)\s+"
+    r"(?:exhausted|exceeded|reached|unavailable)(?:\b.*)?|"
+    r"(?:you(?:'ve| have)\s+)?hit your limit(?:\b.*)?|"
+    r"out of extra usage(?:\b.*)?|service (?:is )?overloaded(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_AUTH_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:401\s+unauthori[sz]ed(?:\b.*)?|"
+    r"unauthori[sz]ed(?:\b.*)?|authentication (?:failed|required|expired)(?:\b.*)?|"
+    r"auth required(?:\b.*)?|login required(?:\b.*)?|"
+    r"please (?:log in|login)(?:\b.*)?|not (?:logged in|authenticated)(?:\b.*)?|"
+    r"invalid[_ ](?:grant|token)(?:\b.*)?|token[_ ]revoked(?:\b.*)?|"
+    r"refresh_token(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
 _EXHAUSTED_TOKENS: dict[str, str] = {}  # label → reason (per-process latch)
 _OAUTH_SCRUB_KEYS = frozenset({
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
 })
 _OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
     "AWS_",
     "VERTEX_AI_",
-    "ANTHROPIC_VERTEX_",
-    "ANTHROPIC_BEDROCK_",
-    "ANTHROPIC_FOUNDRY_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
 )
 
 
@@ -334,15 +358,53 @@ def _claude_oauth_env(token: str) -> dict[str, str]:
 def _load_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) to try."""
     chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
+
+
+def _retry_reason(stdout: str, stderr: str) -> str | None:
+    if _RATE_LIMIT_RE.search(stderr or ""):
+        return "rate_limit"
+    if _AUTH_FAILURE_RE.search(stderr or ""):
+        return "auth"
+    stripped = (stdout or "").strip()
+    if not stripped:
+        return None
+    try:
+        envelope = json.loads(stripped)
+    except json.JSONDecodeError:
+        envelope = None
+    if isinstance(envelope, dict) and (
+        envelope.get("is_error")
+        or envelope.get("type") == "error"
+        or (
+            envelope.get("type") == "result"
+            and envelope.get("subtype") not in (None, "success")
+        )
+    ):
+        diagnostic = " ".join(
+            str(envelope.get(key, ""))
+            for key in ("error", "message", "result", "subtype")
+        )
+        if _RATE_LIMIT_RE.search(diagnostic):
+            return "rate_limit"
+        if _AUTH_FAILURE_RE.search(diagnostic):
+            return "auth"
+        return None
+    if _RATE_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "rate_limit"
+    if _AUTH_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "auth"
+    return None
 
 
 # ── Claude CLI reasoning ───────────────────────────────────────────────────────
@@ -408,14 +470,10 @@ Rules:
             logger.error("claude CLI not found — check PATH")
             return None
 
-        combined = (result.stdout or "") + (result.stderr or "")
-        if _RATE_LIMIT_RE.search(combined):
-            logger.warning(f"{job}: {label} rate-limited — trying next token")
-            _EXHAUSTED_TOKENS[label] = "rate_limit"
-            continue
-        if _AUTH_FAILURE_RE.search(combined):
-            logger.warning(f"{job}: {label} auth failed — trying next token")
-            _EXHAUSTED_TOKENS[label] = "auth"
+        retry_reason = _retry_reason(result.stdout, result.stderr)
+        if retry_reason is not None:
+            logger.warning(f"{job}: {label} unavailable ({retry_reason}) — trying next token")
+            _EXHAUSTED_TOKENS[label] = retry_reason
             continue
         if result.returncode != 0:
             logger.warning(f"{job}: {label} exit {result.returncode}")

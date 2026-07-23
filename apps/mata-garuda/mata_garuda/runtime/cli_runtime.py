@@ -43,8 +43,8 @@ CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_3",  # sianoantonello@gmail.com
-    "CLAUDE_CODE_OAUTH_TOKEN_4",  # fourth MAX automation account
-    "CLAUDE_CODE_OAUTH_TOKEN_5",  # Team premium seat, last-resort
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # applevisionpro1987@gmail.com (4th MAX x20)
+    "CLAUDE_CODE_OAUTH_TOKEN_5",  # zero@balizero.com (Team premium seat — weekly-capped, last-resort)
 ]
 
 # Rate limit detection patterns in stderr/stdout
@@ -62,37 +62,67 @@ AUTH_FAILURE_PATTERNS = re.compile(
     r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
-_OAUTH_SCRUB_KEYS = frozenset({
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
+_CREDENTIAL_SCRUB_KEYS = frozenset({
     "GOOGLE_APPLICATION_CREDENTIALS",
     "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
 })
-_OAUTH_SCRUB_PREFIXES = (
+_CREDENTIAL_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
     "AWS_",
     "VERTEX_AI_",
-    "ANTHROPIC_VERTEX_",
-    "ANTHROPIC_BEDROCK_",
-    "ANTHROPIC_FOUNDRY_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
 )
 
 
-def _oauth_cli_env(token: str) -> dict[str, str]:
+def provider_cli_env(provider: str, token: str = "") -> dict[str, str]:
+    """Return an isolated child environment for one CLI provider.
+
+    Every provider starts from an environment with all cloud credentials
+    removed. Only the credentials required by the selected provider are then
+    restored. This prevents a CLI from silently routing through a sibling
+    account or a paid/cross-provider endpoint.
+    """
+    source = dict(os.environ)
     env = {
         key: value
-        for key, value in os.environ.items()
-        if key not in _OAUTH_SCRUB_KEYS
-        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+        for key, value in source.items()
+        if key not in _CREDENTIAL_SCRUB_KEYS
+        and not key.startswith(_CREDENTIAL_SCRUB_PREFIXES)
     }
-    if token:
+
+    if provider == "claude" and token:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-    else:
-        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    elif provider == "agy":
+        for key in _CREDENTIAL_SCRUB_KEYS:
+            if key in source:
+                env[key] = source[key]
+        for key, value in source.items():
+            if key.startswith("GEMINI_"):
+                env[key] = value
+    elif provider == "codex":
+        for key, value in source.items():
+            if key.startswith("OPENAI_"):
+                env[key] = value
     return env
+
+
+# Compatibility alias for callers outside Mata Garuda. New code should use the
+# public provider-aware helper above.
+def _oauth_cli_env(token: str) -> dict[str, str]:
+    return provider_cli_env("claude", token)
 
 # Mapping model -> CLI command + flags
 DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
@@ -141,19 +171,93 @@ CLI_CONFIGS: dict[str, dict] = {
 _exhausted_tokens: set[str] = set()
 
 
+_STDOUT_RATE_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"capacity (?:exceeded|unavailable)|overloaded|try again later|"
+    r"hit your limit|timeout after 90s|possibly rate limit)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_STDOUT_AUTH_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:authentication (?:failed|required|expired)|auth required|"
+    r"login required|please (?:log in|login)|not logged in|"
+    r"not authenticated|invalid[_ ](?:grant|token)|token[_ ]revoked|"
+    r"refresh_token(?:_reused)?|unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _explicit_error_envelope(stdout: str) -> str | None:
+    """Return serialized JSON only when stdout is an explicit error envelope."""
+    try:
+        payload = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    result = payload.get("result")
+    result_type = ""
+    if isinstance(result, dict):
+        result_type = str(
+            result.get("type") or result.get("status") or result.get("subtype") or ""
+        ).lower()
+    envelope_type = str(payload.get("type") or payload.get("status") or "").lower()
+    if (
+        payload.get("is_error") is True
+        or envelope_type in {"error", "failed", "failure"}
+        or (
+            envelope_type == "result"
+            and payload.get("subtype") not in (None, "success")
+        )
+        or result_type in {"error", "failed", "failure"}
+    ):
+        return json.dumps(payload, ensure_ascii=False)
+    return None
+
+
+def classify_claude_retry(stdout: str, stderr: str) -> str | None:
+    """Classify retryable Claude diagnostics without scanning valid content.
+
+    Stderr is a diagnostic channel and may be searched freely. Stdout is only
+    searched broadly when it is an explicit JSON error envelope; otherwise the
+    complete stdout must itself look like a short standalone diagnostic.
+    """
+    diagnostic = stderr or ""
+    if RATE_LIMIT_PATTERNS.search(diagnostic):
+        return "rate_limit"
+    if AUTH_FAILURE_PATTERNS.search(diagnostic):
+        return "auth"
+
+    envelope = _explicit_error_envelope(stdout or "")
+    if envelope:
+        if RATE_LIMIT_PATTERNS.search(envelope):
+            return "rate_limit"
+        if AUTH_FAILURE_PATTERNS.search(envelope):
+            return "auth"
+    if _STDOUT_RATE_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "rate_limit"
+    if _STDOUT_AUTH_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "auth"
+    return None
+
+
 def _is_rate_limited(stdout: str, stderr: str) -> bool:
-    """Detect if a CLI call was rate-limited from output strings."""
-    combined = (stdout or "") + (stderr or "")
-    return bool(RATE_LIMIT_PATTERNS.search(combined))
+    """Compatibility wrapper for older callers."""
+    return classify_claude_retry(stdout, stderr) == "rate_limit"
 
 
 def _is_auth_failed(stdout: str, stderr: str) -> bool:
-    """Detect account-specific OAuth/login failures from CLI output."""
-    combined = (stdout or "") + (stderr or "")
-    return bool(AUTH_FAILURE_PATTERNS.search(combined))
+    """Compatibility wrapper for older callers."""
+    return classify_claude_retry(stdout, stderr) == "auth"
 
 
-def _get_token_chain() -> list[tuple[str, str]]:
+def claude_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
     Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py:
@@ -165,19 +269,26 @@ def _get_token_chain() -> list[tuple[str, str]]:
         List of (label, token_or_empty). Empty string means "use keychain default".
     """
     chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for var_name in CLAUDE_TOKEN_VARS:
         token = os.environ.get(var_name, "").strip()
-        if token:
+        if token and token not in seen:
             chain.append((var_name, token))
+            seen.add(token)
 
     # Legacy single token (e.g., from plist or older config)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
 
     # Always fall back to keychain as last resort (empty = let CLI use keychain)
     chain.append(("keychain", ""))
     return chain
+
+
+def _get_token_chain() -> list[tuple[str, str]]:
+    """Compatibility wrapper for older callers."""
+    return claude_token_chain()
 
 
 @dataclass
@@ -387,7 +498,7 @@ class CLIRuntime:
         """Invoke CLI with a specific token. Returns CLIResult."""
         # Build env with token override
         # Empty string = use keychain (pop the var so CLI falls back to keychain)
-        env = _oauth_cli_env(token_value)
+        env = provider_cli_env(self.model, token_value)
 
         start = time.monotonic()
         try:
@@ -464,7 +575,7 @@ class CLIRuntime:
             return self._invoke_single(cmd, "default", "")
 
         # Claude: try each token in the chain
-        token_chain = _get_token_chain()
+        token_chain = claude_token_chain()
         deadline = time.monotonic() + self.timeout
         last_result: CLIResult | None = None
 
@@ -493,14 +604,15 @@ class CLIRuntime:
             # Account-specific exhaustion/auth failures and empty success all
             # rotate to the next subscription seat. A zero exit with no output
             # is not a successful LLM response.
-            if _is_rate_limited(result.stdout, result.stderr):
+            retry_reason = classify_claude_retry(result.stdout, result.stderr)
+            if retry_reason == "rate_limit":
                 _exhausted_tokens.add(label)
                 logger.warning(
                     f"[CLIRuntime] {label} EXHAUSTED (rate limited). "
                     f"Latched for this run."
                 )
                 continue
-            if _is_auth_failed(result.stdout, result.stderr):
+            if retry_reason == "auth":
                 _exhausted_tokens.add(label)
                 logger.warning(
                     f"[CLIRuntime] {label} AUTH FAILED. Latched for this run."

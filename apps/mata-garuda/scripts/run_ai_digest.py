@@ -29,10 +29,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
 from mata_garuda.runtime.cli_runtime import (
-    _get_token_chain,
-    _is_auth_failed,
-    _is_rate_limited,
-    _oauth_cli_env,
+    claude_token_chain,
+    classify_claude_retry,
+    provider_cli_env,
 )
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.tools.stream_tools import stream_publish
@@ -161,7 +160,7 @@ Output SOLO il digest, niente altro."""
 def call_claude_synthesis(prompt: str) -> str:
     """Call Claude CLI for synthesis. Uses multi-account fallback."""
     deadline = time.monotonic() + 120
-    chain = _get_token_chain()
+    chain = claude_token_chain()
     for position, (label, token) in enumerate(chain):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -173,7 +172,7 @@ def call_claude_synthesis(prompt: str) -> str:
                 capture_output=True,
                 text=True,
                 timeout=attempt_timeout,
-                env=_oauth_cli_env(token),
+                env=provider_cli_env("claude", token),
             )
         except subprocess.TimeoutExpired:
             print(f"  [{label}] timeout, trying next...")
@@ -181,9 +180,7 @@ def call_claude_synthesis(prompt: str) -> str:
         except OSError:
             return ""
 
-        if _is_rate_limited(result.stdout, result.stderr) or _is_auth_failed(
-            result.stdout, result.stderr
-        ):
+        if classify_claude_retry(result.stdout, result.stderr):
             print(f"  [{label}] unavailable, trying next...")
             continue
         if result.returncode == 0 and result.stdout.strip():

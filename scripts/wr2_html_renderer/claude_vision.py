@@ -74,21 +74,44 @@ _AUTH_FAILURE_RE = re.compile(
     re.IGNORECASE,
 )
 _OAUTH_SCRUB_KEYS = frozenset({
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
 })
 _OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
     "AWS_",
     "VERTEX_AI_",
-    "ANTHROPIC_VERTEX_",
-    "ANTHROPIC_BEDROCK_",
-    "ANTHROPIC_FOUNDRY_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+_STDOUT_RATE_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:session limit|rate.?limit(?:ed| exceeded)?|usage limit(?: reached| exceeded)?|"
+    r"weekly limit(?: reached| exceeded)?|quota (?:exceeded|exhausted)|exhausted|"
+    r"too many requests|hit your limit|429(?:\s+too many requests)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_STDOUT_AUTH_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
 )
 
 
@@ -106,17 +129,53 @@ def _oauth_cli_env(source: dict[str, str], token: str) -> dict[str, str]:
     return env
 
 
-def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, returncode: int) -> bool:
+def _vision_retry_reason(
+    envelope: dict[str, Any] | None,
+    stdout: str,
+    stderr: str,
+) -> str | None:
+    """Classify retryable diagnostics while preserving valid vision output."""
+    if _RATE_LIMIT_RE.search(stderr or ""):
+        return "rate_limit"
+    if _AUTH_FAILURE_RE.search(stderr or ""):
+        return "auth"
     if isinstance(envelope, dict):
         if envelope.get("api_error_status") == 429:
-            return True
-        if envelope.get("is_error") and _RATE_LIMIT_RE.search(str(envelope.get("result", ""))):
-            return True
-    # A CLI diagnostic may exit 0. Only trust free text when no success
-    # envelope exists, preventing normal structured content from rotating.
-    if envelope is None and _RATE_LIMIT_RE.search(combined_text):
-        return True
-    return False
+            return "rate_limit"
+        envelope_type = str(
+            envelope.get("type") or envelope.get("status") or ""
+        ).lower()
+        if envelope.get("is_error") or envelope_type in {
+            "error",
+            "failed",
+            "failure",
+        } or (
+            envelope_type == "result"
+            and envelope.get("subtype") not in (None, "success")
+        ):
+            serialized = json.dumps(envelope, ensure_ascii=False)
+            if _RATE_LIMIT_RE.search(serialized):
+                return "rate_limit"
+            if _AUTH_FAILURE_RE.search(serialized):
+                return "auth"
+    if _STDOUT_RATE_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "rate_limit"
+    if _STDOUT_AUTH_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "auth"
+    return None
+
+
+def _detect_rate_limit(
+    envelope: dict[str, Any] | None,
+    combined_text: str,
+    returncode: int,
+) -> bool:
+    """Compatibility wrapper retained for the focused regression suite."""
+    del returncode
+    return (
+        _vision_retry_reason(envelope, combined_text, "")
+        == "rate_limit"
+    )
 
 # The lever vocabulary the critic may return — kept in sync with
 # designer_loop._apply_levers so the loop can act on them.
@@ -308,17 +367,14 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
                     envelope = parsed
             except json.JSONDecodeError:
                 envelope = None
-        combined = (proc.stdout or "") + (proc.stderr or "")
-        if _detect_rate_limit(envelope, combined, proc.returncode):
+        retry_reason = _vision_retry_reason(envelope, proc.stdout, proc.stderr)
+        if retry_reason == "rate_limit":
             saw_rate_limit = True
             logger.warning(
                 "claude vision %s rate-limited — trying next account", label
             )
             continue
-        if (
-            (envelope is None or envelope.get("is_error"))
-            and _AUTH_FAILURE_RE.search(combined)
-        ):
+        if retry_reason == "auth":
             logger.warning(
                 "claude vision %s authentication failed — trying next account",
                 label,
@@ -381,7 +437,11 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
                 levers=[],
             )
         return Critique(tier="vision", passed=True, issues=["vision unavailable — skipped"], levers=[])
-    levers = [l for l in obj.get("levers", []) if l.get("lever") in _ALLOWED_LEVERS]
+    levers = [
+        lever
+        for lever in obj.get("levers", [])
+        if lever.get("lever") in _ALLOWED_LEVERS
+    ]
     issues = list(obj.get("issues", []))
     # Read the structured boolean verdict the critic JSON already emits. These are
     # the authoritative, non-reformulable signal the designer-loop uses to decide

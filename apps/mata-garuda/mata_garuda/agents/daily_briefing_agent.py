@@ -40,10 +40,9 @@ from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.runtime.cli_runtime import (
-    _get_token_chain,
-    _is_auth_failed,
-    _is_rate_limited,
-    _oauth_cli_env,
+    claude_token_chain,
+    classify_claude_retry,
+    provider_cli_env,
 )
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
@@ -185,7 +184,7 @@ def _tldr_claude(title: str, content: str) -> str:
         f"Output: solo il riassunto, niente prefissi."
     )
     deadline = time.monotonic() + 45
-    chain = _get_token_chain()
+    chain = claude_token_chain()
     for position, (_label, token) in enumerate(chain):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -197,14 +196,12 @@ def _tldr_claude(title: str, content: str) -> str:
                 capture_output=True,
                 text=True,
                 timeout=attempt_timeout,
-                env=_oauth_cli_env(token),
+                env=provider_cli_env("claude", token),
             )
         except (subprocess.TimeoutExpired, OSError):
             continue
 
-        if _is_rate_limited(result.stdout, result.stderr) or _is_auth_failed(
-            result.stdout, result.stderr
-        ):
+        if classify_claude_retry(result.stdout, result.stderr):
             continue
         out = (result.stdout or "").strip()
         if result.returncode == 0 and out:
