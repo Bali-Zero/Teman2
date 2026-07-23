@@ -42,7 +42,7 @@ except ModuleNotFoundError:  # pragma: no cover - import path used by repository
 LAUNCHER_SCHEMA = "nuzantara.worker-plane-review-launcher-receipt/v2"
 PUBLICATION_MARKER_SCHEMA = "nuzantara.worker-plane-review-publication/v1"
 PUBLICATION_MARKER_NAME = "panel-complete.json"
-IDENTITY_POLICY_REVISION = "pro-clients-2026-07-23-v2"
+IDENTITY_POLICY_REVISION = "pro-clients-2026-07-23-v3"
 DEFAULT_WALL_TIMEOUT_SECONDS = 15 * 60.0
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 DEFAULT_MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -166,8 +166,8 @@ PRODUCTION_IDENTITIES = {
     ),
     "security": ExecutableIdentity(
         path=PRODUCTION_CLIENTS.security,
-        sha256="820e03eb8cc4d1b780828964d8d39c624be5d60e93f3265e995d6c29f9d70fc3",
-        cdhash="cb7db2e67b26b313b45e3fab3c874fbb6cf19b35",
+        sha256="b43489b6f8b06e89f3d8456f70e03c7805795f142c4c04f95b8403cd7a9e9867",
+        cdhash="8677dfd929a4052c59da9bf423e3e2b876a3457d",
         team_identifier="not set",
         designated_requirement='identifier "com.apple.security" and anchor apple',
     ),
