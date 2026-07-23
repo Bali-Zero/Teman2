@@ -447,6 +447,14 @@ run_claude() {
         -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
         -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
     )
+    local provider_var
+    while IFS= read -r provider_var; do
+        case "$provider_var" in
+            AWS_*|VERTEX_AI_*|ANTHROPIC_VERTEX_*|ANTHROPIC_BEDROCK_*|ANTHROPIC_FOUNDRY_*)
+                oauth_env+=(-u "$provider_var")
+                ;;
+        esac
+    done < <(compgen -e)
     local active_vars=()
     local candidate
     for candidate in "${token_vars[@]}"; do

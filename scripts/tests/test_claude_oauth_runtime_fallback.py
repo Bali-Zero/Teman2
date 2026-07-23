@@ -306,6 +306,10 @@ case "${CLAUDE_CODE_OAUTH_TOKEN:-keychain}" in
   sentinel-4) echo "quota exhausted" >&2; exit 1 ;;
   sentinel-5)
     [ -z "${ANTHROPIC_API_KEY:-}" ] || exit 9
+    [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ] || exit 10
+    [ -z "${ANTHROPIC_BASE_URL:-}" ] || exit 11
+    [ -z "${AWS_TEST_SENTINEL:-}" ] || exit 12
+    [ -z "${VERTEX_AI_TEST_SENTINEL:-}" ] || exit 13
     echo "slot-five-success"
     exit 0
     ;;
@@ -322,6 +326,8 @@ def _write_fake_claude_legacy_success(path: Path) -> None:
         """#!/bin/bash
 set -u
 [ -z "${ANTHROPIC_API_KEY:-}" ] || exit 9
+[ -z "${ANTHROPIC_AUTH_TOKEN:-}" ] || exit 10
+[ -z "${AWS_TEST_SENTINEL:-}" ] || exit 11
 token="${CLAUDE_CODE_OAUTH_TOKEN:-keychain}"
 echo "$token" >> "$OAUTH_TRACE_FILE"
 case "$token" in
@@ -358,6 +364,10 @@ def test_ai_dispatch_shell_reaches_slot_five(
             "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
             "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "ANTHROPIC_API_KEY": "must-not-leak",
+            "ANTHROPIC_AUTH_TOKEN": "must-not-leak",
+            "ANTHROPIC_BASE_URL": "https://must-not-leak.invalid",
+            "AWS_TEST_SENTINEL": "must-not-leak",
+            "VERTEX_AI_TEST_SENTINEL": "must-not-leak",
         }
     )
     env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
@@ -397,6 +407,8 @@ def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
             "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "CLAUDE_CODE_OAUTH_TOKEN": "legacy-sentinel",
             "ANTHROPIC_API_KEY": "must-not-leak",
+            "ANTHROPIC_AUTH_TOKEN": "must-not-leak",
+            "AWS_TEST_SENTINEL": "must-not-leak",
             "OAUTH_TRACE_FILE": str(trace_file),
         }
     )
@@ -476,6 +488,10 @@ def test_wr2_metrics_wrapper_reaches_slot_five(tmp_path: Path) -> None:
             "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
             "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "ANTHROPIC_API_KEY": "must-not-leak",
+            "ANTHROPIC_AUTH_TOKEN": "must-not-leak",
+            "ANTHROPIC_BASE_URL": "https://must-not-leak.invalid",
+            "AWS_TEST_SENTINEL": "must-not-leak",
+            "VERTEX_AI_TEST_SENTINEL": "must-not-leak",
         }
     )
     env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
