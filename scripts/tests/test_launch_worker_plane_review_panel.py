@@ -1084,6 +1084,45 @@ print("private")
     assert observed["expected_cdhash"] == bytes.fromhex(identity.cdhash)
 
 
+def test_codesign_identity_accepts_adhoc_designated_requirement_prefix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executable = _write_executable(tmp_path / "adhoc-client", "#!/bin/sh\n")
+    outputs = iter(
+        (
+            subprocess.CompletedProcess(
+                args=["codesign", "--verify"],
+                returncode=0,
+                stdout=b"",
+                stderr=b"",
+            ),
+            subprocess.CompletedProcess(
+                args=["codesign", "-dvvv"],
+                returncode=0,
+                stdout=b"",
+                stderr=(
+                    b"CDHash=e31a6a98489a6d1c0afeaec28a86c70c9f8d3644\n"
+                    b"TeamIdentifier=not set\n"
+                    b'# designated => cdhash H"e31a6a98489a6d1c0afeaec28a86c70c9f8d3644"\n'
+                ),
+            ),
+        )
+    )
+
+    monkeypatch.setattr(
+        launcher.subprocess,
+        "run",
+        lambda *args, **kwargs: next(outputs),
+    )
+
+    assert launcher._codesign_identity(executable, "ad-hoc fixture") == (
+        "e31a6a98489a6d1c0afeaec28a86c70c9f8d3644",
+        "not set",
+        'cdhash H"e31a6a98489a6d1c0afeaec28a86c70c9f8d3644"',
+    )
+
+
 @pytest.mark.skipif(sys.platform != "darwin", reason="Darwin vnode race proof")
 def test_private_copy_replacement_after_last_check_never_executes_replacement(
     tmp_path: Path,

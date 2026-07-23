@@ -1030,12 +1030,20 @@ def _codesign_identity(path: Path, label: str) -> tuple[str, str, str]:
     )
     values: dict[str, str] = {}
     for line in output.splitlines():
-        if line.startswith("CDHash="):
-            values["cdhash"] = line.removeprefix("CDHash=")
-        elif line.startswith("TeamIdentifier="):
-            values["team_identifier"] = line.removeprefix("TeamIdentifier=")
-        elif line.startswith("designated => "):
-            values["designated_requirement"] = line.removeprefix("designated => ")
+        # Ad-hoc signed Mach-O images prefix the designated requirement with
+        # "# "; platform-signed binaries do not. Both forms come from the
+        # system verifier and bind the same requirement.
+        normalized_line = line.removeprefix("# ")
+        if normalized_line.startswith("CDHash="):
+            values["cdhash"] = normalized_line.removeprefix("CDHash=")
+        elif normalized_line.startswith("TeamIdentifier="):
+            values["team_identifier"] = normalized_line.removeprefix(
+                "TeamIdentifier="
+            )
+        elif normalized_line.startswith("designated => "):
+            values["designated_requirement"] = normalized_line.removeprefix(
+                "designated => "
+            )
     if set(values) != {"cdhash", "team_identifier", "designated_requirement"}:
         raise LauncherError(f"{label} code signature identity is incomplete")
     if not re.fullmatch(r"[0-9a-f]{40}", values["cdhash"]):
