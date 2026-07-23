@@ -161,7 +161,7 @@ print("descendant-final", flush=True)
     ]
 
 
-def test_popen_times_out_and_kills_persistent_descendant_after_leader_exit(
+def test_popen_bounds_and_kills_persistent_descendant_after_leader_exit(
     tmp_path: Path,
 ) -> None:
     process_group_path = tmp_path / "process-group"
@@ -189,19 +189,63 @@ while True:
 """,
     )
 
-    with pytest.raises(launcher.LauncherError, match="wall timeout"):
-        launcher._run_popen_command(
-            argv=(str(executable),),
-            executable_path=executable,
-            input_bytes=b"",
-            cwd=tmp_path,
-            environment=os.environ,
-            label="persistent-provider",
-            wall_timeout_seconds=1,
-            termination_grace_seconds=0.2,
-            max_output_bytes=1024,
-        )
+    result = launcher._run_popen_command(
+        argv=(str(executable),),
+        executable_path=executable,
+        input_bytes=b"",
+        cwd=tmp_path,
+        environment=os.environ,
+        label="persistent-provider",
+        wall_timeout_seconds=3,
+        termination_grace_seconds=0.2,
+        max_output_bytes=1024,
+    )
 
+    assert result.returncode == 0
+    assert not launcher._process_group_exists(int(process_group_path.read_text()))
+
+
+def test_popen_contains_descendants_immediately_after_failed_leader_exit(
+    tmp_path: Path,
+) -> None:
+    process_group_path = tmp_path / "failed-process-group"
+    descendant_ready_path = tmp_path / "failed-descendant-ready"
+    executable = _write_executable(
+        tmp_path / "failed-provider",
+        f"""#!{sys.executable}
+import os
+import pathlib
+import signal
+import time
+
+pathlib.Path({str(process_group_path)!r}).write_text(str(os.getpid()))
+child_pid = os.fork()
+if child_pid:
+    ready_path = pathlib.Path({str(descendant_ready_path)!r})
+    deadline = time.monotonic() + 5
+    while not ready_path.exists() and time.monotonic() < deadline:
+        time.sleep(0.005)
+    raise SystemExit(7)
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+pathlib.Path({str(descendant_ready_path)!r}).write_text("ready")
+while True:
+    time.sleep(0.05)
+""",
+    )
+
+    result = launcher._run_popen_command(
+        argv=(str(executable),),
+        executable_path=executable,
+        input_bytes=b"",
+        cwd=tmp_path,
+        environment=os.environ,
+        label="failed-provider",
+        wall_timeout_seconds=3,
+        termination_grace_seconds=0.2,
+        max_output_bytes=1024,
+    )
+
+    assert result.returncode == 7
     assert not launcher._process_group_exists(int(process_group_path.read_text()))
 
 

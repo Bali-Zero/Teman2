@@ -1491,17 +1491,21 @@ def _wait_for_process_group_completion(
     leader_poll: Callable[[], int | None],
     overflow: threading.Event,
     deadline: float,
+    termination_grace_seconds: float,
     label: str,
     wall_timeout_seconds: float,
     max_output_bytes: int,
 ) -> int:
-    """Wait for both the direct child and its original process group.
+    """Wait for the leader, drain final output, and contain leaked helpers.
 
     Some provider launchers exit before a worker descendant emits the final
-    response.  The direct child's exit is therefore not a successful terminal
-    state: all members of the isolated group must finish within the same wall
-    deadline while stdout/stderr capture remains active.
+    response.  Keep capture active for one bounded grace period after a
+    successful leader exit.  Provider-owned MCP servers may instead remain
+    alive indefinitely; once the drain expires, terminate only the isolated
+    provider group and require it to disappear.  A failed leader has no useful
+    drain period and its descendants are contained immediately.
     """
+    leader_exit_deadline: float | None = None
     while True:
         leader_status = leader_poll()
         group_exists = _process_group_exists(process_group)
@@ -1515,7 +1519,28 @@ def _wait_for_process_group_completion(
             raise LauncherError(
                 f"{label} process group disappeared before its leader was reaped"
             )
-        if time.monotonic() >= deadline:
+        now = time.monotonic()
+        if leader_status is not None:
+            if leader_status != 0:
+                _terminate_process_group(
+                    process_group,
+                    grace_seconds=termination_grace_seconds,
+                    leader_poll=leader_poll,
+                )
+                return leader_status
+            if leader_exit_deadline is None:
+                leader_exit_deadline = min(
+                    deadline,
+                    now + termination_grace_seconds,
+                )
+            if now >= leader_exit_deadline:
+                _terminate_process_group(
+                    process_group,
+                    grace_seconds=termination_grace_seconds,
+                    leader_poll=leader_poll,
+                )
+                return leader_status
+        elif now >= deadline:
             raise LauncherError(
                 f"{label} exceeded the {wall_timeout_seconds:g}s wall timeout"
             )
@@ -1684,6 +1709,7 @@ def _run_popen_command(
                 leader_poll=process.poll,
                 overflow=overflow,
                 deadline=deadline,
+                termination_grace_seconds=termination_grace_seconds,
                 label=label,
                 wall_timeout_seconds=wall_timeout_seconds,
                 max_output_bytes=max_output_bytes,
@@ -1952,6 +1978,7 @@ def _darwin_spawn_suspended(
                     leader_poll=poll_leader,
                     overflow=overflow,
                     deadline=deadline,
+                    termination_grace_seconds=termination_grace_seconds,
                     label=label,
                     wall_timeout_seconds=wall_timeout_seconds,
                     max_output_bytes=max_output_bytes,
