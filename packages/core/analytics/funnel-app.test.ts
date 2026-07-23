@@ -61,6 +61,7 @@ describe("funnel-app", () => {
     await tracker.branchSelected("pma");
     await tracker.formStarted("sector");
     await tracker.formSubmitted(["sector"]);
+    await tracker.formSubmitFailed("/api/kbli/decode", 500);
     await tracker.wizardStep(1, 3);
     await tracker.wizardAbandoned(2);
     await tracker.resultViewed("abc123");
@@ -80,5 +81,46 @@ describe("funnel-app", () => {
     expect(new Set(emitted)).toEqual(
       new Set(APP_EVENTS as readonly FunnelAppEvent["type"][]),
     );
+  });
+
+  it("app_form_submit_failed carries endpoint + status only — never form values", async () => {
+    // Law 2 / MYTHOS §6: the failure signal that closes the silent-funnel
+    // gap (v1 visa funnel died unmeasured for 3 months) must not become a
+    // PII channel — no nationality, no dates, no payload keys, no message
+    // text that could embed user input.
+    const tracker = createFunnelAppTracker("visa_match");
+    await tracker.formSubmitFailed("/api/visa/match", 503);
+    await tracker.formSubmitFailed("/api/visa/match", null);
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const payloads = fetchMock.mock.calls.map(
+      ([, init]) =>
+        (
+          JSON.parse((init as RequestInit).body as string) as {
+            payload: Record<string, unknown>;
+          }
+        ).payload,
+    );
+    expect(payloads[0]).toEqual({
+      type: "app_form_submit_failed",
+      app: "visa_match",
+      endpoint: "/api/visa/match",
+      status: 503,
+    });
+    expect(payloads[1]).toEqual({
+      type: "app_form_submit_failed",
+      app: "visa_match",
+      endpoint: "/api/visa/match",
+      status: null,
+    });
+    for (const payload of payloads) {
+      expect(Object.keys(payload).sort()).toEqual([
+        "app",
+        "endpoint",
+        "status",
+        "type",
+      ]);
+    }
   });
 });
