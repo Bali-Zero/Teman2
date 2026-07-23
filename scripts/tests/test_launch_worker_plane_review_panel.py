@@ -87,6 +87,42 @@ def test_process_group_cleanup_waits_through_transient_permission_error(
     assert not outcomes
 
 
+def test_process_group_cleanup_reaps_zombie_leader_before_leak_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reaped = False
+    signals: list[int] = []
+    clock = iter((0.0, 1.0, 1.0, 2.0))
+
+    class ZombieLeader:
+        def poll(self) -> int:
+            nonlocal reaped
+            assert signals[-1] == launcher.signal.SIGKILL
+            reaped = True
+            return -launcher.signal.SIGKILL
+
+    def process_group_exists(process_group: int) -> bool:
+        assert process_group == 4242
+        return not reaped
+
+    def record_signal(process_group: int, requested_signal: int) -> None:
+        assert process_group == 4242
+        signals.append(requested_signal)
+
+    monkeypatch.setattr(launcher, "_process_group_exists", process_group_exists)
+    monkeypatch.setattr(launcher.os, "killpg", record_signal)
+    monkeypatch.setattr(launcher.time, "monotonic", lambda: next(clock))
+
+    launcher._terminate_process_group(
+        4242,
+        grace_seconds=0.1,
+        leader_process=ZombieLeader(),
+    )
+
+    assert reaped is True
+    assert signals == [launcher.signal.SIGTERM, launcher.signal.SIGKILL]
+
+
 def _frozen_review(
     tmp_path: Path,
     *,
@@ -1337,6 +1373,8 @@ def test_cli_pins_production_absolute_routes() -> None:
     assert launcher.PRODUCTION_CLIENTS.sandbox_exec == Path(
         "/usr/bin/sandbox-exec"
     )
+    assert launcher.DEFAULT_WALL_TIMEOUT_SECONDS == 30 * 60.0
+    assert launcher.GEMINI_ARGV_SUFFIX[4] == "30m"
 
 
 def test_kimi_timeout_124_marks_seat_unavailable_and_publishes_nothing(

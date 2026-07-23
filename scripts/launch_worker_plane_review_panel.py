@@ -56,7 +56,7 @@ REVIEWERS_MARKER_NAME = "reviewers-complete.json"
 FINAL_GATE_MARKER_SCHEMA = "nuzantara.worker-plane-final-gate-publication/v1"
 FINAL_GATE_MARKER_NAME = "final-gate-complete.json"
 IDENTITY_POLICY_REVISION = "worker-plane-council-2026-07-23-v3"
-DEFAULT_WALL_TIMEOUT_SECONDS = 15 * 60.0
+DEFAULT_WALL_TIMEOUT_SECONDS = 30 * 60.0
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 DEFAULT_MAX_OUTPUT_BYTES = 16 * 1024 * 1024
 OUTPUT_SPOOL_MEMORY_BYTES = 1024 * 1024
@@ -95,7 +95,7 @@ GEMINI_ARGV_SUFFIX = (
     "plan",
     "--sandbox",
     "--print-timeout",
-    "15m",
+    "30m",
     "--model",
     "Gemini 3.1 Pro (High)",
 )
@@ -1395,6 +1395,7 @@ def _terminate_process_group(
     process_group: int,
     *,
     grace_seconds: float,
+    leader_process: subprocess.Popen[bytes] | None = None,
 ) -> None:
     """Terminate the whole isolated group and prove that no member remains."""
     if not _process_group_exists(process_group):
@@ -1409,6 +1410,11 @@ def _terminate_process_group(
         pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
+        if leader_process is not None:
+            # Reap an exited direct child before probing its process group.
+            # Otherwise the zombie leader keeps killpg(..., 0) successful and
+            # can make a clean timeout teardown look like leaked descendants.
+            leader_process.poll()
         if not _process_group_exists(process_group):
             return
         time.sleep(0.02)
@@ -1420,9 +1426,15 @@ def _terminate_process_group(
         pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
+        if leader_process is not None:
+            leader_process.poll()
         if not _process_group_exists(process_group):
             return
         time.sleep(0.02)
+    if leader_process is not None:
+        leader_process.poll()
+    if not _process_group_exists(process_group):
+        return
     raise LauncherError(
         f"process group {process_group} still exists after TERM/KILL"
     )
@@ -1546,6 +1558,7 @@ def _run_popen_command(
                 _terminate_process_group(
                     process.pid,
                     grace_seconds=termination_grace_seconds,
+                    leader_process=process,
                 )
             finally:
                 try:
