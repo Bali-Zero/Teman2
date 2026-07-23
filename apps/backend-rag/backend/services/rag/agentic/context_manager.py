@@ -24,6 +24,7 @@ from typing import Any
 import asyncpg
 
 from backend.services.memory import MemoryOrchestrator, get_memory_cache
+from backend.services.rag.agentic._memory_identity import is_non_personal_memory_identity
 
 logger = logging.getLogger(__name__)
 
@@ -284,9 +285,13 @@ async def get_user_context(
     # Keep original user_id (email) for memory queries
     original_user_id = user_id
 
-    if not db_pool or not user_id or user_id == "anonymous":
+    # P0-MEM containment: treat the shared/service identity (e.g. the
+    # WhatsApp wa-mirror-internal pseudo-identity) exactly like
+    # "anonymous" — never fetch facts keyed on a bucket shared by many
+    # real clients. See is_non_personal_memory_identity docstring.
+    if not db_pool or is_non_personal_memory_identity(user_id):
         logger.debug(
-            "🧠 [ContextManager] DB Pool missing or user anonymous, returning empty context",
+            "🧠 [ContextManager] DB Pool missing or non-personal identity, returning empty context",
         )
         return context
 
