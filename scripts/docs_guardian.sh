@@ -16,6 +16,22 @@
 
 set -euo pipefail
 
+L25_AUDIT_JSON=""
+L25_SHIM_DIR=""
+PR_BODY_FILE=""
+cleanup_docs_guardian_temp() {
+  if [[ -n "${L25_SHIM_DIR:-}" ]]; then
+    rm -f -- "$L25_SHIM_DIR/claude" 2>/dev/null || true
+    rmdir -- "$L25_SHIM_DIR" 2>/dev/null || true
+  fi
+  [[ -n "${L25_AUDIT_JSON:-}" ]] && rm -f -- "$L25_AUDIT_JSON" 2>/dev/null || true
+  [[ -n "${PR_BODY_FILE:-}" ]] && rm -f -- "$PR_BODY_FILE" 2>/dev/null || true
+}
+trap cleanup_docs_guardian_temp EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 DRY_RUN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -199,6 +215,7 @@ if [[ "$BROKEN" != "0" ]]; then
       python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" --repo . 2>/dev/null || echo '{}')
     rm -f "$L25_SHIM_DIR/claude"
     rmdir "$L25_SHIM_DIR"
+    L25_SHIM_DIR=""
     L25_APPLIED=$(echo "$L25_RESULT" | python -c "
 import json, sys
 try:
@@ -247,6 +264,7 @@ Co-Authored-By: claude-haiku-4-5 <noreply@anthropic.com>"
       fi
     fi
     rm -f "$L25_AUDIT_JSON"
+    L25_AUDIT_JSON=""
   fi
 fi
 
@@ -340,6 +358,7 @@ PR_URL=$(gh pr create --base main --head "$BRANCH" \
   --title "$PR_TITLE" \
   --body-file "$PR_BODY_FILE" 2>&1 | tail -1 || echo "")
 rm -f "$PR_BODY_FILE"
+PR_BODY_FILE=""
 
 # Enable auto-merge only if there's no manual work pending
 if [[ "$BROKEN" == "0" && -n "$PR_URL" && "$PR_URL" =~ ^https://github.com/.+/pull/[0-9]+$ ]]; then

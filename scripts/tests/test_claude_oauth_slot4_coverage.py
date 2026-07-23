@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SLOT4_CONSUMERS = (
     (
         "infra/launchagents/wrappers/claude-cascade.sh",
-        'token="${CLAUDE_CODE_OAUTH_TOKEN_4:-}"',
+        'for index in 1 2 3 4 5; do',
     ),
     ("infra/launchagents/wrappers/cron-agent.sh", "for i in 1 2 3 4; do"),
     (
@@ -59,11 +59,13 @@ def test_canonical_cascade_preserves_all_subscription_and_fallback_tiers() -> No
     ).read_text(encoding="utf-8")
     cascade = source.split("# ============= CASCADE =============", maxsplit=1)[1]
     ordered_sentinels = (
-        "tier1-claude-default",
-        "tier2-claude-acct2",
-        "tier2b-claude-acct3",
-        "tier2c-claude-acct4",
-        "tier2d-claude-zero-team",
+        "claude-token-1-env",
+        "claude-token-2-env",
+        "claude-token-3-env",
+        "claude-token-4-env",
+        "claude-token-5-team-env",
+        "claude-token-legacy-env",
+        "claude-keychain",
         "try_gemini && exit 0",
         "try_kimi && exit 0",
         "try_codex && exit 0",

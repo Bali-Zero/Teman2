@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import subprocess
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -12,6 +13,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CASCADE = REPO_ROOT / "infra/launchagents/wrappers/claude-cascade.sh"
+TOKEN_VALUES = {
+    "token1": "fixture-seat-one-secret",
+    "token2": "fixture-seat-two-secret",
+    "token3": "fixture-seat-three-secret",
+    "token4": "fixture-seat-four-secret",
+    "token5": "fixture-zero-team-secret",
+    "legacy": "fixture-legacy-secret",
+}
 
 
 def _write_executable(path: Path, body: str) -> None:
@@ -20,25 +29,64 @@ def _write_executable(path: Path, body: str) -> None:
     path.chmod(0o755)
 
 
-def _fake_fleet(tmp_path: Path, seat_bodies: dict[str, str]) -> tuple[Path, dict[str, str]]:
+def _fake_fleet(
+    tmp_path: Path,
+    seat_bodies: dict[str, str],
+) -> tuple[Path, Path, dict[str, str]]:
+    """Build one fake Claude binary that identifies only its selected token."""
     home = tmp_path / "home"
+    temp_dir = tmp_path / "cascade-temp"
+    temp_dir.mkdir()
     call_log = tmp_path / "calls.log"
-    seat_paths = {
-        "default": home / ".local/share/mise/shims/claude",
-        "acct2": home / ".local/bin/claude-acct2",
-        "acct3": home / ".local/bin/claude-acct3",
-        "acct4": home / ".local/bin/claude-acct4",
-        "zero-team": home / ".local/bin/claude-zero-team",
-    }
-    for label, path in seat_paths.items():
-        body = (
-            'if [ "${CLAUDE_CODE_OAUTH_TOKEN+x}" = "x" ]; then '
-            'token_state=set; else token_state=unset; fi\n'
-            f'printf "%s:%s\\n" "{label}" "$token_state" >> "$CALL_LOG"\n'
-            f"{seat_bodies[label]}"
-        )
-        _write_executable(path, body)
+    claude = home / ".local/share/mise/shims/claude"
 
+    cases = "\n".join(
+        f'  "{TOKEN_VALUES[label]}") label="{label}" ;;'
+        for label in ("token1", "token2", "token3", "token4", "token5", "legacy")
+    )
+    actions = "\n".join(
+        f'  "{label}") {seat_bodies[label]} ;;'
+        for label in (
+            "token1",
+            "token2",
+            "token3",
+            "token4",
+            "token5",
+            "legacy",
+            "keychain",
+        )
+    )
+    _write_executable(
+        claude,
+        (
+            'token="${CLAUDE_CODE_OAUTH_TOKEN:-}"\n'
+            'label="keychain"\n'
+            'case "$token" in\n'
+            f"{cases}\n"
+            "esac\n"
+            'for forbidden in ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN '
+            "ANTHROPIC_BASE_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY "
+            "VERTEX_AI_PROJECT GOOGLE_APPLICATION_CREDENTIALS "
+            "CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX; do\n"
+            '  eval "value=\\${$forbidden:-}"\n'
+            '  [ -n "$value" ] && printf "LEAK:%s\\n" "$forbidden" >> "$CALL_LOG"\n'
+            "done\n"
+            'printf "%s:%s\\n" "$label" "${CLAUDE_CONFIG_DIR:-unset}" '
+            '>> "$CALL_LOG"\n'
+            'case "$label" in\n'
+            f"{actions}\n"
+            "esac"
+        ),
+    )
+
+    _write_executable(
+        home / ".local/bin/claude-zero-team",
+        (
+            'printf "team-wrapper:%s\\n" "${CLAUDE_CONFIG_DIR:-unset}" '
+            '>> "$CALL_LOG"\n'
+            f"{seat_bodies.get('team-wrapper', 'exit 1')}"
+        ),
+    )
     for label, path in {
         "agy": home / ".local/bin/agy",
         "kimi": home / ".kimi-code/bin/kimi",
@@ -46,42 +94,74 @@ def _fake_fleet(tmp_path: Path, seat_bodies: dict[str, str]) -> tuple[Path, dict
     }.items():
         _write_executable(
             path,
-            f'printf "nonclaude-{label}\\n" >> "$CALL_LOG"\nprintf "unexpected-{label}\\n"',
+            f'printf "nonclaude-{label}\\n" >> "$CALL_LOG"\n'
+            f'printf "unexpected-{label}\\n"',
         )
 
     env = {
         "HOME": str(home),
         "PATH": "/usr/bin:/bin",
+        "TMPDIR": str(temp_dir),
         "CALL_LOG": str(call_log),
-        "CLAUDE_CODE_OAUTH_TOKEN": "default-seat",
+        "CLAUDE_CODE_OAUTH_TOKEN_1": TOKEN_VALUES["token1"],
+        "CLAUDE_CODE_OAUTH_TOKEN_2": TOKEN_VALUES["token2"],
+        "CLAUDE_CODE_OAUTH_TOKEN_3": TOKEN_VALUES["token3"],
+        "CLAUDE_CODE_OAUTH_TOKEN_4": TOKEN_VALUES["token4"],
+        "CLAUDE_CODE_OAUTH_TOKEN_5": TOKEN_VALUES["token5"],
+        "CLAUDE_CODE_OAUTH_TOKEN": TOKEN_VALUES["legacy"],
     }
-    return call_log, env
+    return call_log, temp_dir, env
 
 
-def _run_cascade(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
+def _default_bodies() -> dict[str, str]:
+    return {
+        "token1": "exit 1",
+        "token2": "exit 1",
+        "token3": "exit 1",
+        "token4": "exit 1",
+        "token5": "exit 1",
+        "legacy": "exit 1",
+        "keychain": "exit 1",
+        "team-wrapper": "exit 1",
+    }
+
+
+def _run_cascade(
+    env: dict[str, str],
+    *args: str,
+    timeout: float = 10,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["/bin/zsh", str(CASCADE), *args],
         capture_output=True,
         text=True,
         check=False,
         env=env,
-        timeout=10,
+        timeout=timeout,
     )
 
 
-def test_claude_only_retries_auth_quota_empty_then_later_seat(
+def _labels(call_log: Path) -> list[str]:
+    return [
+        line.split(":", maxsplit=1)[0]
+        for line in call_log.read_text(encoding="utf-8").splitlines()
+        if not line.startswith("LEAK:")
+    ]
+
+
+def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     tmp_path: Path,
 ) -> None:
-    call_log, env = _fake_fleet(
-        tmp_path,
+    bodies = _default_bodies()
+    bodies.update(
         {
-            "default": 'printf "authentication required\\n" >&2\nexit 1',
-            "acct2": 'printf "weekly limit reached\\n"\nexit 0',
-            "acct3": "exit 0",
-            "acct4": 'printf "seat-four-success\\n"\nexit 0',
-            "zero-team": 'printf "unexpected-zero-team\\n"\nexit 0',
-        },
+            "token1": 'printf "authentication required\\n" >&2\nexit 0',
+            "token2": 'printf "weekly limit reached\\n"\nexit 0',
+            "token3": "exit 0",
+            "token4": 'printf "seat-four-success\\n"\nexit 0',
+        }
     )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
 
     result = _run_cascade(
         env,
@@ -93,60 +173,164 @@ def test_claude_only_retries_auth_quota_empty_then_later_seat(
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "seat-four-success\n"
-    assert call_log.read_text(encoding="utf-8").splitlines() == [
-        "default:set",
-        "acct2:unset",
-        "acct3:unset",
-        "acct4:unset",
+    assert _labels(call_log) == ["token1", "token2", "token3", "token4"]
+    assert "used: claude-token-4-env" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_explicit_order_reaches_team_then_legacy_then_keychain(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["keychain"] = 'printf "keychain-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "keychain-success\n"
+    assert _labels(call_log) == [
+        "token1",
+        "token2",
+        "token3",
+        "token4",
+        "token5",
+        "legacy",
+        "keychain",
     ]
-    assert "used: tier2c-claude-acct4" in result.stderr
+    assert "used: claude-keychain" in result.stderr
+
+
+def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["team-wrapper"] = 'printf "protected-team-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN_5")
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "protected-team-success\n"
+    assert _labels(call_log) == [
+        "token1",
+        "token2",
+        "token3",
+        "token4",
+        "team-wrapper",
+    ]
+    assert "used: claude-token-5-team-wrapper" in result.stderr
 
 
 def test_claude_only_never_crosses_provider_boundary_when_all_seats_fail(
     tmp_path: Path,
 ) -> None:
-    call_log, env = _fake_fleet(
-        tmp_path,
-        {
-            "default": "exit 1",
-            "acct2": 'printf "quota exceeded\\n"\nexit 0',
-            "acct3": "exit 0",
-            "acct4": "exit 2",
-            "zero-team": 'printf "not logged in\\n" >&2\nexit 1',
-        },
-    )
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies())
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 1
-    calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert [line.split(":", maxsplit=1)[0] for line in calls] == [
-        "default",
-        "acct2",
-        "acct3",
-        "acct4",
-        "zero-team",
-    ]
-    assert not any(line.startswith("nonclaude-") for line in calls)
+    assert not any(label.startswith("nonclaude-") for label in _labels(call_log))
+    assert result.stdout == ""
     assert "ALL CLAUDE SEATS FAILED" in result.stderr
 
 
-def test_cli_compat_shim_preserves_json_only_stdout(tmp_path: Path) -> None:
-    call_log, env = _fake_fleet(
-        tmp_path,
+def test_named_agent_fails_closed_before_cross_family_fallback(
+    tmp_path: Path,
+) -> None:
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies())
+
+    result = _run_cascade(env, "hermetic prompt", "--agent", "nb-curator")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert not any(label.startswith("nonclaude-") for label in _labels(call_log))
+    assert "cannot be preserved cross-family" in result.stderr
+
+
+def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies.update(
         {
-            "default": (
-                'payload="$(cat)"\n'
-                'printf "diagnostic-on-stderr\\n" >&2\n'
-                'printf \'{"action":"SKIP","reason":"%s"}\\n\' "$payload"\n'
-                "exit 0"
-            ),
-            "acct2": "exit 1",
-            "acct3": "exit 1",
-            "acct4": "exit 1",
-            "zero-team": "exit 1",
-        },
+            "token1": "sleep 3\nexit 0",
+            "token2": 'printf "after-timeout-success\\n"\nexit 0',
+        }
     )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "1"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "5"
+
+    started = time.monotonic()
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    elapsed = time.monotonic() - started
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "after-timeout-success\n"
+    assert _labels(call_log) == ["token1", "token2"]
+    assert elapsed < 4
+
+
+def test_global_deadline_prevents_later_seats_from_starting(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = "sleep 3\nexit 0"
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "5"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "1"
+
+    started = time.monotonic()
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    elapsed = time.monotonic() - started
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert _labels(call_log) == ["token1"]
+    assert elapsed < 4
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_paid_anthropic_bedrock_and_vertex_environment_is_scrubbed(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "scrubbed-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env.update(
+        {
+            "ANTHROPIC_API_KEY": "paid-secret",
+            "ANTHROPIC_AUTH_TOKEN": "wrong-auth-path",
+            "ANTHROPIC_BASE_URL": "https://paid.invalid",
+            "AWS_ACCESS_KEY_ID": "aws-id",
+            "AWS_SECRET_ACCESS_KEY": "aws-secret",
+            "VERTEX_AI_PROJECT": "vertex-project",
+            "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/vertex.json",
+            "CLAUDE_CODE_USE_BEDROCK": "1",
+            "CLAUDE_CODE_USE_VERTEX": "1",
+        }
+    )
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "scrubbed-success\n"
+    assert not any(
+        line.startswith("LEAK:")
+        for line in call_log.read_text(encoding="utf-8").splitlines()
+    )
+    for value in env.values():
+        if "secret" in value or value.startswith("https://paid"):
+            assert value not in result.stderr
+
+
+def test_cli_compat_shim_preserves_json_only_stdout(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'payload="$(cat)"\n'
+        'printf "diagnostic-on-stderr\\n" >&2\n'
+        'printf \'{"action":"SKIP","reason":"%s"}\\n\' "$payload"\n'
+        "exit 0"
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
     shim = tmp_path / "shim/claude"
     shim.parent.mkdir(parents=True)
     shim.symlink_to(CASCADE)
@@ -174,100 +358,7 @@ def test_cli_compat_shim_preserves_json_only_stdout(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == '{"action":"SKIP","reason":"link decision"}\n'
-    assert "diagnostic-on-stderr" in result.stderr
-    assert call_log.read_text(encoding="utf-8").splitlines() == [
-        "default:set"
-    ]
-
-
-@pytest.mark.parametrize(
-    ("target_index", "expected_label"),
-    (
-        (2, "tier2-claude-acct2-env"),
-        (3, "tier2b-claude-acct3-env"),
-        (4, "tier2c-claude-acct4-env"),
-    ),
-)
-def test_missing_account_wrapper_uses_indexed_env_token_without_logging_value(
-    tmp_path: Path,
-    target_index: int,
-    expected_label: str,
-) -> None:
-    token_var = f"CLAUDE_CODE_OAUTH_TOKEN_{target_index}"
-    config_dir = f"$HOME/.claude-acct{target_index}"
-    call_log, env = _fake_fleet(
-        tmp_path,
-        {
-            "default": (
-                f'if [ "${{CLAUDE_CONFIG_DIR:-}}" = "{config_dir}" ] '
-                '&& [ "${CLAUDE_CODE_OAUTH_TOKEN:-}" = '
-                f'"${{{token_var}:-}}" ]; then\n'
-                f'  printf "env-seat-{target_index}-success\\n"\n'
-                "  exit 0\n"
-                "fi\n"
-                'printf "authentication required\\n" >&2\n'
-                "exit 1"
-            ),
-            "acct2": "exit 1",
-            "acct3": "exit 0",
-            "acct4": "exit 1",
-            "zero-team": "exit 1",
-        },
-    )
-    for index in (2, 3, 4):
-        (Path(env["HOME"]) / f".local/bin/claude-acct{index}").unlink()
-    fixture_token = f"fixture-slot-{target_index}-value"
-    env[token_var] = fixture_token
-
-    result = _run_cascade(env, "hermetic prompt", "--claude-only")
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == f"env-seat-{target_index}-success\n"
-    calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert calls == [
-        "default:set",
-        "default:set",
-    ]
-    assert fixture_token not in result.stdout
-    assert fixture_token not in result.stderr
-    assert f"used: {expected_label}" in result.stderr
-
-
-def test_locked_default_config_retries_indexed_slot_one_token(
-    tmp_path: Path,
-) -> None:
-    call_log, env = _fake_fleet(
-        tmp_path,
-        {
-            "default": (
-                'if [ "${CLAUDE_CONFIG_DIR:-}" = "$HOME/.claude" ] '
-                '&& [ "${CLAUDE_CODE_OAUTH_TOKEN:-}" = '
-                '"${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then\n'
-                '  printf "env-seat-one-success\\n"\n'
-                "  exit 0\n"
-                "fi\n"
-                'printf "authentication required\\n" >&2\n'
-                "exit 1"
-            ),
-            "acct2": "exit 1",
-            "acct3": "exit 1",
-            "acct4": "exit 1",
-            "zero-team": "exit 1",
-        },
-    )
-    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = "fixture-slot-one-value"
-
-    result = _run_cascade(env, "hermetic prompt", "--claude-only")
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == "env-seat-one-success\n"
-    assert call_log.read_text(encoding="utf-8").splitlines() == [
-        "default:set",
-        "default:set",
-    ]
-    assert "fixture-slot-one-value" not in result.stdout
-    assert "fixture-slot-one-value" not in result.stderr
-    assert "used: tier1b-claude-token1-env" in result.stderr
+    assert _labels(call_log) == ["token1"]
 
 
 @pytest.mark.parametrize(
@@ -305,6 +396,14 @@ def test_existing_claude_specific_daemons_use_canonical_claude_only_cascade(
     assert "claude-cascade.sh" in source
     assert cascade_sentinel in source
     assert claude_only_sentinel in source
+
+
+def test_docs_guardian_traps_temporary_shim_cleanup() -> None:
+    source = (REPO_ROOT / "scripts/docs_guardian.sh").read_text(encoding="utf-8")
+
+    assert "trap cleanup_docs_guardian_temp EXIT" in source
+    assert 'rm -f -- "$L25_SHIM_DIR/claude"' in source
+    assert 'rmdir -- "$L25_SHIM_DIR"' in source
 
 
 def test_organ_birth_imprints_claude_only_cascade() -> None:
