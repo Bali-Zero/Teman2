@@ -66,11 +66,47 @@ else:
     )
 
 
-async def _wait_for_tree_pids(path: Path) -> list[int]:
+def _write_nonzero_leader_tree(path: Path) -> None:
+    path.write_text(
+        """\
+from pathlib import Path
+import os
+import signal
+import subprocess
+import sys
+import time
+
+if sys.argv[1] == "descendant":
+    pid_file = Path(sys.argv[2])
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    with pid_file.open("a", encoding="utf-8") as stream:
+        stream.write(f"{os.getpid()}\\n")
+    time.sleep(60)
+else:
+    destination = Path(sys.argv[sys.argv.index("--dest") + 1])
+    pid_file = destination.parent / "nonzero-tree-pids.txt"
+    pid_file.write_text(f"{os.getpid()}\\n", encoding="utf-8")
+    subprocess.Popen(
+        [sys.executable, __file__, "descendant", str(pid_file)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(100):
+        if len(pid_file.read_text(encoding="utf-8").splitlines()) == 2:
+            break
+        time.sleep(0.01)
+    raise SystemExit(9)
+""",
+        encoding="utf-8",
+    )
+
+
+async def _wait_for_tree_pids(path: Path, *, expected: int = 3) -> list[int]:
     for _ in range(60):
         if path.is_file():
             pids = [int(item) for item in path.read_text(encoding="utf-8").splitlines()]
-            if len(pids) == 3:
+            if len(pids) == expected:
                 return pids
         await asyncio.sleep(0.05)
     raise AssertionError("process tree did not start")
@@ -618,6 +654,34 @@ async def test_flowkit_cancellation_kills_process_tree_and_cleans_pending_output
 
 
 @pytest.mark.asyncio
+async def test_flowkit_nonzero_leader_exit_kills_stubborn_descendant(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flowkit_cli = tmp_path / "nonzero_flowkit.py"
+    _write_nonzero_leader_tree(flowkit_cli)
+    output_dir = tmp_path / "generated"
+    pid_file = output_dir / "nonzero-tree-pids.txt"
+    monkeypatch.setattr(media_resolver, "_PROCESS_TERMINATION_GRACE_S", 0.1)
+    packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=output_dir,
+        ledger=AssetFingerprintLedger(tmp_path / "fingerprints.jsonl"),
+        flowkit_cli=flowkit_cli,
+    )
+
+    pids = await _wait_for_tree_pids(pid_file, expected=2)
+    await _assert_processes_exit(pids)
+    assert result.fallback_reason == "generation_failed"
+    assert not list(output_dir.glob(".pending-hero-*"))
+
+
+@pytest.mark.asyncio
 async def test_perceptual_duplicate_is_not_silently_reused(
     tmp_path: Path,
     breaking_factory: Callable[..., dict[str, Any]],
@@ -730,6 +794,91 @@ async def test_fingerprint_is_reserved_before_generated_file_is_promoted(
     assert promoted_existed_during_reservation is False
     assert result.fallback_reason == "duplicate_asset"
     assert list(output_dir.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_cancellation_after_reservation_releases_asset_and_allows_identical_retry(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+) -> None:
+    packet = breaking_factory(story=story_factory(asset_digests=[]))
+    output_dir = tmp_path / "generated"
+    reserved = asyncio.Event()
+    continue_reservation = asyncio.Event()
+
+    async def generate(_prompt: str, destination: Path) -> Path:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(_image_bytes(color="#ABCDEF"))
+        return destination
+
+    async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
+        return "Abstract editorial composition.", {"model": "local"}
+
+    class PausingLedger(AssetFingerprintLedger):
+        pause_once = True
+
+        async def reserve(
+            self,
+            fingerprint: RasterFingerprint,
+            asset_id: str,
+            *,
+            manifest_path: Path | None = None,
+            source_path: Path | None = None,
+        ) -> str | None:
+            reservation_id = await super().reserve(
+                fingerprint,
+                asset_id,
+                manifest_path=manifest_path,
+                source_path=source_path,
+            )
+            if self.pause_once:
+                self.pause_once = False
+                reserved.set()
+                await continue_reservation.wait()
+            return reservation_id
+
+    ledger = PausingLedger(tmp_path / "fingerprints.jsonl", asset_root=output_dir)
+    task = asyncio.create_task(
+        resolve_asset_manifest(
+            packet,
+            breaking=True,
+            output_dir=output_dir,
+            ledger=ledger,
+            generate=generate,
+            describe=describe,
+            scan_dlp=_safe_dlp,
+            manifest_path=tmp_path / "assets.json",
+        )
+    )
+    await asyncio.wait_for(reserved.wait(), timeout=2)
+
+    task.cancel()
+    continue_reservation.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "fingerprints.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["event"] for record in records] == ["reserved", "released"]
+    assert list(output_dir.iterdir()) == []
+
+    retry = await resolve_asset_manifest(
+        packet,
+        breaking=True,
+        output_dir=output_dir,
+        ledger=ledger,
+        generate=generate,
+        describe=describe,
+        scan_dlp=_safe_dlp,
+        manifest_path=tmp_path / "assets.json",
+    )
+
+    assert retry.fallback_reason is None
+    assert len(retry.manifest.intents) == 1
+    assert retry.reservation_id is not None
 
 
 @pytest.mark.asyncio

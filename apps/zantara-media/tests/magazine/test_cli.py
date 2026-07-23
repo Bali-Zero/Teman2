@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import base64
@@ -22,10 +23,12 @@ from zantara_media.magazine.audit_anchor import build_audit_event_hash
 from zantara_media.magazine.media_resolver import (
     AssetResolutionResult,
     _generated_asset_id,
+    resolve_asset_manifest as resolve_generated_asset_manifest,
     select_asset_target,
     validate_generated_asset_bytes,
     validate_manifest_publication_binding,
 )
+from zantara_media.security.dlp import DLPResult
 
 
 PNG = bytes.fromhex(
@@ -257,6 +260,111 @@ async def test_empty_manifest_is_resolved_automatically_before_publish(
     assert result.fallback_reason is None
     stored = AssetIntentManifestV1.model_validate_json(manifest_path.read_bytes())
     assert [item.asset_id for item in stored.intents] == ["hero-auto"]
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_manifest_write_commits_and_identical_retry_succeeds(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from zantara_media.cli import magazine_publish
+
+    packet = breaking_factory()
+    packet["story"]["asset_digests"] = []
+    manifest_path = tmp_path / "assets.json"
+    output_dir = tmp_path / "generated"
+    ledger_path = tmp_path / "fingerprints.jsonl"
+    write_started = asyncio.Event()
+    continue_write = asyncio.Event()
+    block_once = True
+    monkeypatch.setenv("MAGAZINE_AUTO_ASSETS", "true")
+    monkeypatch.setenv("MAGAZINE_ASSET_OUTPUT_DIR", str(output_dir))
+    monkeypatch.setenv("MAGAZINE_ASSET_FINGERPRINT_LEDGER", str(ledger_path))
+
+    async def generate(_prompt: str, destination: Path) -> Path:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(PNG)
+        return destination
+
+    async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
+        return "Abstract editorial composition.", {"model": "local"}
+
+    async def scan(_text: str, _filename: str) -> DLPResult:
+        return DLPResult(has_pii=False)
+
+    async def resolve(
+        candidate_packet: dict[str, Any],
+        *,
+        breaking: bool,
+        output_dir: Path,
+        ledger: Any,
+        manifest_path: Path,
+    ) -> AssetResolutionResult:
+        return await resolve_generated_asset_manifest(
+            candidate_packet,
+            breaking=breaking,
+            output_dir=output_dir,
+            ledger=ledger,
+            generate=generate,
+            describe=describe,
+            scan_dlp=scan,
+            manifest_path=manifest_path,
+        )
+
+    real_write = magazine_publish._write_asset_manifest
+
+    async def blocking_write(path: Path, manifest: AssetIntentManifestV1) -> None:
+        nonlocal block_once
+        if block_once and manifest.intents:
+            block_once = False
+            write_started.set()
+            await continue_write.wait()
+        await real_write(path, manifest)
+
+    monkeypatch.setattr(magazine_publish, "resolve_asset_manifest", resolve)
+    monkeypatch.setattr(magazine_publish, "_write_asset_manifest", blocking_write)
+    task = asyncio.create_task(
+        _resolve_assets_if_needed(
+            packet,
+            breaking=True,
+            asset_manifest_path=manifest_path,
+        )
+    )
+    await asyncio.wait_for(write_started.wait(), timeout=2)
+
+    task.cancel()
+    continue_write.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    records = [
+        json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["event"] for record in records] == ["reserved", "committed"]
+    stored = AssetIntentManifestV1.model_validate_json(manifest_path.read_bytes())
+    assert len(stored.intents) == 1
+    assert stored.intents[0].source_path.is_file()
+
+    monkeypatch.setattr(magazine_publish, "_write_asset_manifest", real_write)
+
+    async def unexpected(*_args: Any, **_kwargs: Any) -> AssetResolutionResult:
+        raise AssertionError("committed cancellation retry must reuse the intact manifest")
+
+    monkeypatch.setattr(magazine_publish, "resolve_asset_manifest", unexpected)
+    retry = await _resolve_assets_if_needed(
+        packet,
+        breaking=True,
+        asset_manifest_path=manifest_path,
+    )
+
+    records = [
+        json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["event"] for record in records] == ["reserved", "committed"]
+    assert retry.fallback_reason is None
+    assert len(retry.manifest.intents) == 1
+    assert retry.manifest.intents[0].source_path.is_file()
 
 
 @pytest.mark.asyncio

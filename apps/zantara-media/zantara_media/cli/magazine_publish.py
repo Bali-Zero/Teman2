@@ -434,19 +434,70 @@ async def _resolve_assets_if_needed(
         ledger=ledger,
         manifest_path=asset_manifest_path,
     )
+    previous_manifest = manifest
+
+    async def finalize() -> None:
+        try:
+            await _write_asset_manifest(asset_manifest_path, result.manifest)
+            if result.reservation_id is not None:
+                await ledger.commit(result.reservation_id)
+        except Exception:
+            try:
+                await _write_asset_manifest(asset_manifest_path, previous_manifest)
+            except Exception:
+                logger.exception("Magazine asset manifest rollback failed")
+            await _cleanup_asset_resolution_shielded(
+                result,
+                ledger=ledger,
+                output_dir=output_dir,
+            )
+            raise
+
+    finalization = asyncio.create_task(finalize())
     try:
-        await _write_asset_manifest(asset_manifest_path, result.manifest)
-    except Exception:
-        if result.reservation_id is not None:
-            await ledger.release(result.reservation_id)
-            for intent in result.manifest.intents:
-                source_path = intent.source_path.resolve()
-                if source_path.parent == output_dir.resolve():
-                    await asyncio.to_thread(source_path.unlink, missing_ok=True)
+        await asyncio.shield(finalization)
+    except asyncio.CancelledError:
+        try:
+            await _finish_shielded_operation(finalization)
+        except Exception:
+            logger.exception("Magazine asset finalization failed during cancellation")
         raise
-    if result.reservation_id is not None:
-        await ledger.commit(result.reservation_id)
     return result
+
+
+async def _finish_shielded_operation(task: asyncio.Task[Any]) -> Any:
+    """Finish one transaction step before propagating caller cancellation."""
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+    return task.result()
+
+
+async def _cleanup_asset_resolution_shielded(
+    result: AssetResolutionResult,
+    *,
+    ledger: AssetFingerprintLedger,
+    output_dir: Path,
+) -> None:
+    if result.reservation_id is None:
+        return
+
+    async def cleanup() -> None:
+        try:
+            await ledger.release(result.reservation_id)
+        except (OSError, ValueError):
+            logger.exception("Magazine fingerprint reservation release failed")
+        resolved_output_dir = output_dir.resolve()
+        for intent in result.manifest.intents:
+            source_path = intent.source_path.resolve()
+            if source_path.parent == resolved_output_dir:
+                await asyncio.to_thread(source_path.unlink, missing_ok=True)
+
+    cleanup_task = asyncio.create_task(cleanup())
+    await _finish_shielded_operation(cleanup_task)
 
 
 async def _morning(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, Any]:

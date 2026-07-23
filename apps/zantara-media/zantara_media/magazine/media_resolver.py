@@ -381,56 +381,82 @@ async def resolve_asset_manifest(
     if approved_path.parent != output_dir:
         await _discard(source_path, output_dir)
         return _fallback("generation_failed")
-    try:
-        reservation_id = await ledger.reserve(
-            fingerprint,
-            asset_id,
-            manifest_path=manifest_path,
-            source_path=approved_path,
-        )
-    except (OSError, ValueError):
-        await _discard(source_path, output_dir)
-        return _fallback("duplicate_check_failed")
-    if reservation_id is None:
-        await _discard(source_path, output_dir)
-        return _fallback("duplicate_asset")
-    try:
-        await asyncio.to_thread(source_path.replace, approved_path)
-    except OSError:
+    async def reserve_and_promote() -> AssetResolutionResult:
         try:
-            await ledger.release(reservation_id)
+            reservation_id = await ledger.reserve(
+                fingerprint,
+                asset_id,
+                manifest_path=manifest_path,
+                source_path=approved_path,
+            )
         except (OSError, ValueError):
-            logger.exception("Magazine fingerprint reservation release failed")
-        await _discard(source_path, output_dir)
-        await _discard(approved_path, output_dir)
-        return _fallback("generation_failed")
+            await _discard(source_path, output_dir)
+            return _fallback("duplicate_check_failed")
+        if reservation_id is None:
+            await _discard(source_path, output_dir)
+            return _fallback("duplicate_asset")
+        try:
+            await asyncio.to_thread(source_path.replace, approved_path)
+        except OSError:
+            await _release_reservation_and_discard(
+                ledger,
+                reservation_id,
+                output_dir=output_dir,
+                paths=(source_path, approved_path),
+            )
+            return _fallback("generation_failed")
 
-    intent = AssetIntentV1(
-        asset_id=asset_id,
-        source_path=approved_path,
-        story_ids=(target.story_id,),
-        captured_at=target.captured_at,
-        alt_text=target.alt_text,
-        source="Bali Zero editorial generator",
-        source_url=None,
-        rights_basis="generated",
-        rights_status="approved",
-        usage_status="approved",
-        dlp_status="passed",
-        sanitization_status="passed",
-        perceptual_dedup_status="unique",
-        approved_for_packet_id=packet_id,
-        source_sha256=fingerprint.sha256,
-        generated_for_packet_id=packet_id,
-        generated_for_story_version=target.story_version,
-        generated_for_target_role=target.target_role,
-        prompt_sha256=prompt_sha256,
-    )
-    return AssetResolutionResult(
-        manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
-        fallback_reason=None,
-        reservation_id=reservation_id,
-    )
+        intent = AssetIntentV1(
+            asset_id=asset_id,
+            source_path=approved_path,
+            story_ids=(target.story_id,),
+            captured_at=target.captured_at,
+            alt_text=target.alt_text,
+            source="Bali Zero editorial generator",
+            source_url=None,
+            rights_basis="generated",
+            rights_status="approved",
+            usage_status="approved",
+            dlp_status="passed",
+            sanitization_status="passed",
+            perceptual_dedup_status="unique",
+            approved_for_packet_id=packet_id,
+            source_sha256=fingerprint.sha256,
+            generated_for_packet_id=packet_id,
+            generated_for_story_version=target.story_version,
+            generated_for_target_role=target.target_role,
+            prompt_sha256=prompt_sha256,
+        )
+        return AssetResolutionResult(
+            manifest=AssetIntentManifestV1(schema_version="asset-intents.v1", intents=(intent,)),
+            fallback_reason=None,
+            reservation_id=reservation_id,
+        )
+
+    transaction = asyncio.create_task(reserve_and_promote())
+    try:
+        return await asyncio.shield(transaction)
+    except asyncio.CancelledError:
+        completed: AssetResolutionResult | None = None
+        try:
+            completed = await _finish_shielded_task(transaction)
+        except Exception:
+            logger.exception("Magazine asset reservation transaction failed during cancellation")
+        if completed is not None and completed.reservation_id is not None:
+            cleanup = asyncio.create_task(
+                _release_reservation_and_discard(
+                    ledger,
+                    completed.reservation_id,
+                    output_dir=output_dir,
+                    paths=(source_path, approved_path),
+                )
+            )
+        else:
+            cleanup = asyncio.create_task(
+                _discard_paths((source_path, approved_path), output_dir=output_dir)
+            )
+        await _finish_shielded_task(cleanup)
+        raise
 
 
 async def generated_manifest_is_intact(
@@ -597,6 +623,36 @@ def _fallback(reason: str | None) -> AssetResolutionResult:
     )
 
 
+async def _finish_shielded_task(task: asyncio.Task[Any]) -> Any:
+    """Wait for a critical child task even if the caller is cancelled again."""
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+    return task.result()
+
+
+async def _discard_paths(paths: tuple[Path, ...], *, output_dir: Path) -> None:
+    for path in paths:
+        await _discard(path, output_dir)
+
+
+async def _release_reservation_and_discard(
+    ledger: AssetFingerprintLedger,
+    reservation_id: str,
+    *,
+    output_dir: Path,
+    paths: tuple[Path, ...],
+) -> None:
+    try:
+        await ledger.release(reservation_id)
+    except (OSError, ValueError):
+        logger.exception("Magazine fingerprint reservation release failed")
+    await _discard_paths(paths, output_dir=output_dir)
+
+
 def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
     cli = flowkit_cli or Path(
         os.getenv(
@@ -632,29 +688,29 @@ def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
             env=child_env,
             start_new_session=True,
         )
-        try:
-            stdout, _stderr = await asyncio.wait_for(
-                process.communicate(), timeout=_GENERATION_TIMEOUT_S
-            )
-        except TimeoutError:
-            await _terminate_process_group(process)
-            raise RuntimeError("asset generation timed out") from None
-        except asyncio.CancelledError:
-            await asyncio.shield(_terminate_process_group(process))
-            raise
-        if process.returncode != 0:
-            raise RuntimeError("asset generation failed")
         process_group_id = getattr(process, "pid", 0)
-        if process_group_id > 0 and _process_group_is_alive(process_group_id):
-            await _terminate_process_group(process)
-            raise RuntimeError("asset generation left child processes running")
         try:
-            result = json.loads(stdout)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("asset generation returned invalid output") from exc
-        if not isinstance(result, dict) or result.get("ok") is not True:
-            raise RuntimeError("asset generation returned a failure")
-        return destination
+            try:
+                stdout, _stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=_GENERATION_TIMEOUT_S
+                )
+            except TimeoutError:
+                raise RuntimeError("asset generation timed out") from None
+            if process.returncode != 0:
+                raise RuntimeError("asset generation failed")
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                raise RuntimeError("asset generation left child processes running")
+            try:
+                result = json.loads(stdout)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("asset generation returned invalid output") from exc
+            if not isinstance(result, dict) or result.get("ok") is not True:
+                raise RuntimeError("asset generation returned a failure")
+            return destination
+        finally:
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                cleanup = asyncio.create_task(_terminate_process_group(process))
+                await _finish_shielded_task(cleanup)
 
     return generate
 
