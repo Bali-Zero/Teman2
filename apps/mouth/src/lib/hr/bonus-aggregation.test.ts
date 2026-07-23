@@ -441,17 +441,30 @@ describe("reconcileMonth", () => {
     expect(rec.ledgerAuthoritative).toBe(false);
   });
 
-  it("an unparseable amount is UNRESOLVED and does not silently become 0", () => {
+  it("an unparseable amount is UNRESOLVED, understates the total, and marks it unreliable", () => {
     const rec = reconcileMonth("2026-02", new Set([3]), 2_760_000, [
+      hist({ id: 1, employee_id: 3, total_amount_idr: 1_000_000 }),
       hist({
-        id: 1,
+        id: 2,
         employee_id: 3,
         total_amount_idr: "500,000" as unknown as number,
       }),
     ])!;
     expect(rec.unresolvedPaidRecords).toBe(1);
-    expect(rec.pdfTotal).toBe(0); // NOT counted as a real amount
+    expect(rec.pdfTotal).toBe(1_000_000); // the unreadable line is NOT added
+    expect(rec.pdfTotalReliable).toBe(false); // so the total is understated
     expect(rec.ledgerAuthoritative).toBe(false);
+  });
+
+  it("counts DISTINCT missing members, not PDF records", () => {
+    // Two PDF rows for the same absent member (id 99) = ONE missing member.
+    const rec = reconcileMonth("2026-02", new Set([3]), 2_760_000, [
+      hist({ id: 1, employee_id: 99, total_amount_idr: 1_000_000 }),
+      hist({ id: 2, employee_id: 99, total_amount_idr: 500_000 }),
+    ])!;
+    expect(rec.missingPaidMembers).toBe(1);
+    expect(rec.pdfTotal).toBe(1_500_000);
+    expect(rec.pdfTotalReliable).toBe(true);
   });
 
   it("dedupes source filenames and sums tasks", () => {

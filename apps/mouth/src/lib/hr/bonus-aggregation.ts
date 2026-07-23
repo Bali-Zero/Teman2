@@ -328,7 +328,11 @@ export interface HistoricalReconciliation {
   ledgerTotal: number;
   /** true → ledger wins, PDF is a historical snapshot; false → ledger is incomplete, PDF is authoritative. */
   ledgerAuthoritative: boolean;
-  /** Members the PDF paid (>0) that have zero ledger rows this month. */
+  /**
+   * DISTINCT members the PDF paid (>0) that have zero ledger rows this month.
+   * Counted by member id, not by record — two PDF rows for the same absent
+   * member are one missing member, not two.
+   */
   missingPaidMembers: number;
   /**
    * PDF paid lines that cannot be reconciled to a ledger member: a positive
@@ -337,6 +341,12 @@ export interface HistoricalReconciliation {
    * verdict — we cannot assert the ledger covers a payment we cannot attribute.
    */
   unresolvedPaidRecords: number;
+  /**
+   * false when at least one PDF amount was unparseable, so `pdfTotal` is an
+   * UNDERSTATEMENT. The UI must then NOT print "use the PDF total (Rp X)" — it
+   * would instruct a wrong (too-small) payment — and demand manual verification.
+   */
+  pdfTotalReliable: boolean;
 }
 
 const MONTH_NAMES = [
@@ -395,8 +405,9 @@ export function reconcileMonth(
 
   let pdfTotal = 0;
   let pdfTasks = 0;
-  let missingPaidMembers = 0;
   let unresolvedPaidRecords = 0;
+  let pdfTotalReliable = true;
+  const missingMemberIds = new Set<number>();
   const sources = new Set<string>();
 
   for (const r of historicalForMonth) {
@@ -407,8 +418,10 @@ export function reconcileMonth(
     if (r.source_pdf) sources.add(r.source_pdf);
 
     if (amt === null) {
-      // A paid line we cannot read — never treat as reconciled.
+      // A paid line we cannot read — pdfTotal now understates the true amount,
+      // and we can never call this reconciled.
       unresolvedPaidRecords += 1;
+      pdfTotalReliable = false;
       continue;
     }
     if (amt > 0) {
@@ -417,8 +430,9 @@ export function reconcileMonth(
         unresolvedPaidRecords += 1;
       } else if (!ledgerMemberIds.has(r.employee_id)) {
         // The ledger was not yet capturing this member's payment this month.
-        // A 0-IDR PDF line is NOT evidence of a missing payment.
-        missingPaidMembers += 1;
+        // A 0-IDR PDF line is NOT evidence of a missing payment. Counted by
+        // distinct id — repeat PDF rows for one member are still one member.
+        missingMemberIds.add(r.employee_id);
       }
     }
   }
@@ -431,9 +445,10 @@ export function reconcileMonth(
     sources: [...sources],
     ledgerTotal,
     ledgerAuthoritative:
-      missingPaidMembers === 0 && unresolvedPaidRecords === 0,
-    missingPaidMembers,
+      missingMemberIds.size === 0 && unresolvedPaidRecords === 0,
+    missingPaidMembers: missingMemberIds.size,
     unresolvedPaidRecords,
+    pdfTotalReliable,
   };
 }
 

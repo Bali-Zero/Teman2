@@ -95,6 +95,26 @@ export default function BonusesPage() {
     }
   };
 
+  /**
+   * The reconciliation verdict is a property of the WHOLE month, computed once
+   * from the UNFILTERED ledger + PDF. It must never be recomputed from a
+   * filtered slice: filtering to one member drops the very members whose
+   * absence defines the incompleteness, which would flip a PDF-authoritative
+   * month to "ledger authoritative" and headline the wrong (smaller) number.
+   * Filters below change only what is DISPLAYED, never this verdict.
+   */
+  const reconByMonth = useMemo(
+    () => buildMonthlyReconciliation(bonuses, historical),
+    [bonuses, historical],
+  );
+
+  /** WITA month keys that have at least one ledger row in the UNFILTERED data. */
+  const ledgerMonthKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of bonuses) set.add(witaMonthKey(b.awarded_at));
+    return set;
+  }, [bonuses]);
+
   // ─── Filter options (derived from the unfiltered payload) ───────────
 
   const years = useMemo(() => {
@@ -102,8 +122,11 @@ export default function BonusesPage() {
     for (const m of groupBonusesByMonth(bonuses)) {
       if (m.key !== UNDATED_KEY) set.add(m.key.slice(0, 4));
     }
+    // Include years that exist only in the PDF recap — otherwise a PDF-only
+    // month's year could show under "All years" yet not be selectable.
+    for (const key of reconByMonth.keys()) set.add(key.slice(0, 4));
     return [...set].sort().reverse();
-  }, [bonuses]);
+  }, [bonuses, reconByMonth]);
 
   const members = useMemo(
     () =>
@@ -140,34 +163,24 @@ export default function BonusesPage() {
     0,
   );
 
-  /**
-   * The reconciliation verdict is a property of the WHOLE month, computed once
-   * from the UNFILTERED ledger + PDF. It must never be recomputed from a
-   * filtered slice: filtering to one member drops the very members whose
-   * absence defines the incompleteness, which would flip a PDF-authoritative
-   * month to "ledger authoritative" and headline the wrong (smaller) number.
-   * Filters below change only what is DISPLAYED, never this verdict.
-   */
-  const reconByMonth = useMemo(
-    () => buildMonthlyReconciliation(bonuses, historical),
-    [bonuses, historical],
-  );
-
   const filtersNarrowView = status !== ALL || member !== ALL;
 
   /**
    * Months to render = the filtered ledger months UNION any month that has a
-   * PDF verdict but no ledger rows in the current view (a month the ledger has
-   * not captured yet). Without the union, a purely-PDF month — the clearest
-   * case of an incomplete ledger — would silently not render at all. Year is a
-   * legitimate scope; status/member are not allowed to hide a whole-month
-   * verdict.
+   * PDF verdict but NO ledger rows AT ALL (a month the ledger never captured).
+   * "No ledger rows at all" is judged against the UNFILTERED ledger
+   * (`ledgerMonthKeys`), never the filtered view — otherwise a real ledger
+   * month that a status/member filter emptied would be mislabeled "PDF recap
+   * only". A real ledger month with no rows in the current filter simply does
+   * not render (a narrow filter legitimately hides it); it is never relabeled.
+   * Year is a legitimate scope; status/member never hide a whole-month verdict.
    */
   const displayMonths = useMemo<MonthAggregate[]>(() => {
     const present = new Set(months.map((m) => m.key));
     const extras: MonthAggregate[] = [];
     for (const recon of reconByMonth.values()) {
       if (present.has(recon.monthKey)) continue;
+      if (ledgerMonthKeys.has(recon.monthKey)) continue; // real ledger month, just filtered out
       if (year !== ALL && !recon.monthKey.startsWith(year)) continue;
       extras.push({
         key: recon.monthKey,
@@ -185,7 +198,7 @@ export default function BonusesPage() {
       if (b.key === UNDATED_KEY) return -1;
       return b.key.localeCompare(a.key);
     });
-  }, [months, reconByMonth, year]);
+  }, [months, reconByMonth, ledgerMonthKeys, year]);
 
   // Newest month starts expanded, the rest collapsed — DERIVED, not set by an
   // effect: an effect would paint one frame with everything closed and only
@@ -397,7 +410,9 @@ export default function BonusesPage() {
                 openMonths[month.key] ?? month.key === newestMonthKey;
               // Global, filter-independent verdict for the whole month.
               const recon = reconByMonth.get(month.key) ?? null;
-              const pdfOnly = recon != null && month.members.length === 0;
+              // "PDF only" = the ledger never captured this month at all (judged
+              // on the UNFILTERED ledger), NOT merely "no rows in this filter".
+              const pdfOnly = recon != null && !ledgerMonthKeys.has(month.key);
               return (
                 <section
                   key={month.key || "undated"}
@@ -521,20 +536,41 @@ export default function BonusesPage() {
                                   manually.{" "}
                                 </>
                               )}
-                              The pre-system PDF list (
-                              <strong className="tabular-nums">
-                                {formatIDR(recon.pdfTotal)}
-                              </strong>
-                              , {recon.pdfTasks} tasks —{" "}
-                              {recon.sources.join(", ")}) is the{" "}
-                              <strong>authoritative record</strong>; the ledger
-                              (
-                              <span className="tabular-nums">
-                                {formatIDR(recon.ledgerTotal)}
-                              </span>
-                              ) is a partial backfill —{" "}
-                              <strong>use the PDF total for this month</strong>{" "}
-                              until the ledger is backfilled. Not summed.
+                              {recon.pdfTotalReliable ? (
+                                <>
+                                  The pre-system PDF list (
+                                  <strong className="tabular-nums">
+                                    {formatIDR(recon.pdfTotal)}
+                                  </strong>
+                                  , {recon.pdfTasks} tasks —{" "}
+                                  {recon.sources.join(", ")}) is the{" "}
+                                  <strong>authoritative record</strong>; the
+                                  ledger (
+                                  <span className="tabular-nums">
+                                    {formatIDR(recon.ledgerTotal)}
+                                  </span>
+                                  ) is a partial backfill —{" "}
+                                  <strong>
+                                    use the PDF total for this month
+                                  </strong>{" "}
+                                  until the ledger is backfilled. Not summed.
+                                </>
+                              ) : (
+                                <>
+                                  The pre-system PDF list (
+                                  {recon.sources.join(", ")}) is the{" "}
+                                  <strong>authoritative record</strong>, but at
+                                  least one PDF amount could not be read, so{" "}
+                                  <strong>
+                                    the PDF total shown is incomplete
+                                  </strong>{" "}
+                                  — do not pay from it;{" "}
+                                  <strong>
+                                    verify the source PDF manually
+                                  </strong>
+                                  .
+                                </>
+                              )}
                               {filtersNarrowView && (
                                 <>
                                   {" "}

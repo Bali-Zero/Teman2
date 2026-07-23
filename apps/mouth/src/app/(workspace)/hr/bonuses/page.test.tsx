@@ -336,6 +336,66 @@ describe("BonusesPage", () => {
     expect(strip).toHaveTextContent("Rp 2.000.000");
   });
 
+  it("does NOT relabel a real ledger month as 'PDF recap only' when a filter empties it", async () => {
+    // July HAS ledger rows and a PDF verdict. Filtering to a status with zero
+    // July rows must not turn the real month into a synthetic PDF-only card.
+    hrApiMock.listBonusHistorical.mockResolvedValue(julyPdfAuthoritative);
+    const user = userEvent.setup();
+    render(<BonusesPage />);
+    await screen.findByText(/pre-system PDF list/);
+    await user.selectOptions(
+      screen.getByLabelText("Filter by status"),
+      "rejected", // no July bonus is rejected → July has no rows in this view
+    );
+    // The filter empties the view — confirm it took effect, then confirm the
+    // real month was NOT resurrected as a fake "PDF recap only" card.
+    await screen.findByText(/No bonuses for this selection/);
+    expect(screen.queryByText(/PDF recap only/)).not.toBeInTheDocument();
+  });
+
+  it("refuses to issue a pay instruction when a PDF amount is unreadable", async () => {
+    hrApiMock.listBonusHistorical.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          employee_name: "SURYA",
+          employee_id: 3,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: 2_000_000,
+          task_count: 8,
+          source_pdf: "recap.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+        {
+          id: 2,
+          employee_name: "VINO",
+          employee_id: 99,
+          bonus_month: 7,
+          bonus_year: 2026,
+          total_amount_idr: "500,000" as unknown as number, // unreadable
+          task_count: 5,
+          source_pdf: "recap.pdf",
+          accounting_total_data: null,
+          accounting_not_paid: null,
+          accounting_paid: null,
+          imported_at: "2026-08-01T00:00:00.000Z",
+          notes: null,
+        },
+      ],
+      count: 2,
+    });
+    render(<BonusesPage />);
+    const strip = await screen.findByText(/pre-system PDF list/);
+    expect(strip).toHaveTextContent("PDF total shown is incomplete");
+    expect(strip).toHaveTextContent("verify the source PDF manually");
+    expect(strip).not.toHaveTextContent("use the PDF total for this month");
+  });
+
   it("hides the reconciliation strip when the endpoint rejects (non-admin)", async () => {
     hrApiMock.listBonusHistorical.mockRejectedValue(new Error("403"));
     render(<BonusesPage />);
