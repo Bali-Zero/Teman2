@@ -515,9 +515,9 @@ class KGEnhancedRetrieval:
             name="Investor KITAS or Retirement KITAS",
             description="Obtain long-term stay permit for investors or retirees in Indonesia",
             path=[
-                "Choose KITAS type: E28G (Investor) or E31E (Retirement/Lansia)",
+                "Choose KITAS type: E28G (Investor) or E33E/E33F (Retirement/Lansia)",
                 "For Investor: Establish PT PMA or invest in Indonesian company",
-                "For Retirement: Prove pension/passive income min USD 2,500/month",
+                "For Retirement: Prove pension/passive income min USD 3,000/month",
                 "Prepare documents: passport (18+ months validity), health certificate",
                 "Apply for E-Visa online via imigrasi.go.id",
                 "Enter Indonesia and convert to KITAS at immigration office",
