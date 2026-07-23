@@ -1355,6 +1355,62 @@ The event appears in quarantine/DLQ with an alert and remains auditable; it is
 not globally acknowledged as a stale skip. A best-effort event may expire only
 when its catalog explicitly allows that behavior.
 
+### Closed delivery contracts
+
+The following contracts are normative and supersede any shorter descriptive
+shorthand elsewhere in this specification:
+
+- Pre-merge production access has one narrow exception: a fixed, read-only
+  `nuzantara_readonly` aggregate relation-statistics query for migration lock
+  safety. It reads only allowlisted `pg_catalog` metadata plus exact `COUNT(*)`
+  aggregates without selecting an application column, emits no application row
+  or identifier, expires after seven days, and is joined by hash to an
+  at-or-above scale-clone concurrent-writer rehearsal. It is not behavioral
+  observation; every other live observation or mutation waits for protected
+  merge.
+- Every migration ownership annotation records the complete policy as of that
+  migration. The latest migration touching a table must equal the current
+  `table_ownership.json` policy. The checker reconstructs history in migration
+  order and rejects retroactively rewritten historical blocks, a stale latest
+  block, or two migrations that falsely carry the same later policy.
+- A workload configured for a runtime that does not hold its current ownership
+  grant is skipped with `not_current_owner`; API/RAG initialization and
+  readiness remain healthy and no pilot task is created. Malformed configuration
+  or duplicate active authority still fails initialization.
+- `SideEffectCapability` includes `unknown_blocks_cutover`,
+  `unknown_page_seconds`, and `unknown_resolution_seconds`. Every shipped
+  non-reconcilable provider effect sets them to `true`, `900`, and `14400`.
+  Unknown rows page by 15 minutes, require a terminal or audited manual-hold
+  decision by four hours, always block cutover until then, and are exempt from
+  retention deletion while unresolved.
+- Release-A receipt backfill maps consumed source rows to terminal
+  `legacy-confirmed`, pre-quarantined unconsumed rows to terminal `quarantined`
+  bound to the existing payload-free quarantine audit identity, and only
+  unconsumed/unquarantined rows to pending. Activation outstanding counts exclude
+  both terminal classes; no pre-quarantined row is replayed.
+- All automatic and manual WhatsApp transitions take locks in one total order:
+  ownership-grant row, thread advisory lock, domain source row, projection row,
+  begun effect-attempt row, then next-thread boundary. Manual resolution may
+  lock but need not own the grant, works while the workload is `off` or
+  `drained`, and must race cleanly against automatic finish/reconcile. Resending
+  the same held row/effect is unsupported and denied; a future resend is a
+  separately reviewed new business command and stable effect under a fresh
+  live claim.
+- The companion configuration is exactly one Fly `[vm]` with
+  `cpu_kind="shared"`, `cpus=1`, and `memory="1gb"`. The protected primary
+  workflow uploads canonical compatibility JSON as
+  `worker-plane-production-compatibility-${{ github.run_id }}` with
+  `actions/upload-artifact@v4`, 30-day retention, and missing-file failure.
+  Protected staging/production orchestration selects a successful protected-main
+  run and consumes it with `actions/download-artifact@v4` using explicit run,
+  name, repository, and token; corrupt, expired, mismatched, or non-protected
+  provenance fails closed.
+- `WORKER_ROUTE_CATALOG_HASH` is computed by the canonical route-manifest
+  function in a no-network invocation inside the exact immutable image, stored
+  in that digest-bound artifact, injected only by the protected workflow, and
+  recomputed in-image before mutation. Caller-supplied, host-checkout, stale, or
+  digest-mismatched values are rejected.
+
 ## 16. Risks and mitigations
 
 | Risk                                                | Consequence                        | Mitigation                                                                                                       |

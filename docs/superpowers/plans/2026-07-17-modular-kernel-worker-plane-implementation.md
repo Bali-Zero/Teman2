@@ -23,7 +23,7 @@
 - Release-A receipt backfill holds pruning through its recorded high watermark until completeness/reconciliation proof releases the interlock. Receipt activation, pre-fan-out reversal, and post-fan-out force-bridge are exact protected live-control commands; no environment toggle or prose-only operator action is authority.
 - A schedule run key is generation-independent: `(workload_name, scheduled_for)`. An effect key is derived from stable business identity and effect purpose, never a queue attempt or ownership generation.
 - Database guards remain disarmed until every live owner heartbeat satisfies the compatibility build floor. Static environment flags never override the PostgreSQL grant.
-- Before protected merge, every phase is code-only: repository tests, CI, deterministic simulations, and disposable PostgreSQL are allowed; live staging/production deployment, migration, secret or grant mutation, guard arm/disarm, ownership cutover, and observation are forbidden. Any phase-plan wording about a staging rehearsal is implemented pre-merge as a disposable/CI simulation only; the first live staging mutation occurs in rollout Task 2 from the protected-merged digest.
+- Before protected merge, every phase is code-only: repository tests, CI, deterministic simulations, and disposable PostgreSQL are allowed; live staging/production deployment, migration, secret or grant mutation, guard arm/disarm, ownership cutover, and behavioral observation are forbidden. The sole narrow exception is rollout Task 1's allowlisted, read-only aggregate relation-statistics capture for migration lock safety: it uses `nuzantara_readonly`, reads only `pg_class`/`pg_stat*` metadata and aggregate row estimates, emits no row values or client data, performs no mutation, and is valid for at most seven days. Any phase-plan wording about a staging rehearsal is implemented pre-merge as a disposable/CI simulation only; the first live staging mutation occurs in rollout Task 2 from the protected-merged digest.
 - Active goal/task `019f734c-8e0c-7562-a448-14e73ac2e43d`, which continues archived source task `019f6f94-4863-7f62-acc7-16bc5a706f74`, authorizes the in-scope implementation, protected Release-A compatibility and Release-B receipt-activation merges, live staging drills, receipt activation, ordered production cutovers, rollback-window observation, later deletion release, and protected evidence PRs in these plans. Every live mutation records the active immutable reference and fails closed on any change of workload scope, target environment/app, merged digest, subscriber/provider capability, destructive migration behavior, or rollback policy.
 - Run only one implementation worker at a time. The worker writes a review package; a fresh reviewer returns both spec-compliance and code-quality verdicts. Resolve every Blocking and Important finding before the next task.
 - After each phase, run independent reviews with the actual `claude-fable-5`, `Gemini 3.1 Pro (High)`, and `glm-5.2` model routes. Save prompts, raw model proof, verdicts, synthesis, fixes, and rerun evidence under `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-N/`.
@@ -214,6 +214,17 @@ Those captures must be no more than seven days old and their explicit
 indexes are a manifest-hashed nontransactional sidecar executed with autocommit
 and `CREATE INDEX CONCURRENTLY`; the transactional v2 source must not contain
 that statement.
+
+Rollout Task 1 owns the only production capture command:
+`apps/backend-rag/.venv/bin/python scripts/worker_plane/capture_migration_relation_stats.py --database-url-env WORKER_PLANE_LOCK_STATS_DATABASE_URL --relations public.events_outbox,public.event_quarantine_audit,public.worker_ownership_grants,public.worker_owner_heartbeats,public.worker_effects,public.worker_effect_attempts,public.notification_schedule_runs,public.event_subscription_receipts,public.event_subscription_backfill_state --output <absolute-external-json>`.
+The command requires the resolved database role to be exactly
+`nuzantara_readonly`, rejects SQL outside its fixed metadata query set, never
+selects a user-table column or sample row, and writes only qualified relation
+name, exact `COUNT(*)` aggregate, relation/index bytes, capture timestamp,
+source/query/result hashes, and `valid_until=captured_at+7d`. Its output is
+joined with the disposable scale-clone
+writer-stall result by the unchanged checker; missing, duplicate, stale, or
+scope-expanded evidence blocks the protected merge.
 
 - [ ] **Step 5: Freeze one content-addressed plan packet and run all three reviewers**
 

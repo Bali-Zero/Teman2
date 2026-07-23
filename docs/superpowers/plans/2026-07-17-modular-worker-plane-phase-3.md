@@ -21,6 +21,17 @@
 - Drain waits for the workload adapter's locked inventory to report no live old-generation claim lease, no unadopted/uncancelled pending run, no `prepared` intent, no retryable `failed` effect, no `attempting` effect, and no delivery-semantics-blocking `outcome_unknown`. Provider timeout plus clock margin must also elapse where applicable. Lease expiry alone never authorizes a retry or activation.
 - `effect_key` derives only from stable business identity and effect purpose. Queue row ID, attempt count, claim token, build, `runtime_owner`, and ownership generation are forbidden components. Ledger rows contain opaque references and sanitized error classes, never payloads, document text, client identity, provider response bodies, credentials, or OSINT.
 - Delivery semantics reuse canonical `DeliverySemantics` from `backend.architecture.catalogs.models`: `provider-idempotent` reuses the same provider-supported stable key; `reconcilable` queries the destination by stable reference and retries only after confirmed absence; `non-reconcilable` never retries an ambiguous dispatch automatically and enters `outcome_unknown` for audited operator resolution. No `ExternalEffectContract`, `external_contract` field, or parallel enum/registry is introduced.
+- Every `SideEffectCapability` also declares exact
+  `unknown_blocks_cutover`, `unknown_page_seconds`, and
+  `unknown_resolution_seconds`. Every non-reconcilable capability in this
+  release—including Telegram approval, NotebookLM publication, notification
+  email, and WA Graph send—sets `unknown_blocks_cutover=true`,
+  `unknown_page_seconds=900`, and `unknown_resolution_seconds=14400` unless a
+  separately reviewed stricter value is pinned. Stale unknowns page at 15
+  minutes, require an audited confirm or failed-no-retry/manual-hold decision by
+  four hours, remain cutover-blocking, and are never removed by retention.
+  Missing/zero/looser fields, an unpaged stale unknown, an overdue unresolved
+  unknown, or retention selecting unknown state fails CI and the live barrier.
 - Provider-secret and database-grant requirements are derived and validated one workload at a time from the canonical `WorkloadSpec.database_grant_profile` and the selected adapter's explicit injected dependencies, without adding a parallel metadata registry or applying them to a live environment. Legal requirements remain excluded from the workflow handoff. Actual staging grants/secrets and later removal are deferred to production-rollout Task 2 and its reverse-cutover window.
 - Existing legacy lifespan wiring, additive claim columns, Phase 1 triggers, migration 248 tables/functions, and legacy code paths remain present. The disposable reverse simulation and later live staging rollback both use a newer generation, never a static flag flip, manual row edit, or generation decrement.
 - Periodic schedule identity is generation-independent `(workload_name, scheduled_for)`. G12 uses an isolated schedule fixture even though workflow and legal are queue workloads. Pending runs are adopted or cancelled in the cutover transaction and audited; they are never cloned under a new generation key.
@@ -460,7 +471,9 @@ Migration 249 also extends the two existing Phase 1 bootstrap-table policies;
 it does not create replacement bindings. Both catalog rows add
 `backend/db/migrations_v2/249_worker_effect_ledger.sql` to their sorted
 `migration_sources`, and each migration annotation reproduces the complete
-post-extension binding:
+policy as of migration 249. Earlier migration blocks remain immutable historical
+snapshots; for each extended table the highest-numbered ownership source is the
+only block required to equal the current catalog:
 
 - `worker_workload_ownership` keeps static `worker-grant-admin`/`api` and adds
   operation `set-mode` with exactly

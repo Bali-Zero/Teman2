@@ -87,7 +87,9 @@ Documents under review:
 - Before that protected merge, are all gates limited to source review, CI,
   deterministic simulation, and disposable PostgreSQL, with no live staging
   deploy, migration, secret, grant, guard arm/disarm, ownership transition, or
-  observation? After merge, does one explicit rollout task perform every live
+  behavioral observation, except one fixed `nuzantara_readonly` aggregate
+  relation-statistics capture that selects no application rows and expires
+  within seven days? After merge, does one explicit rollout task perform every live
   staging mutation against the exact merged digest and stop at an independent
   post-staging release gate before production?
 - Does every design gate G1-G17 have a concrete test and evidence path before
@@ -122,6 +124,28 @@ Documents under review:
   atomically lock and validate grant/domain claim/effect state at attempt
   start, and block cutover on every live lease, pending run, prepared,
   retryable, attempting, or unresolved blocking effect?
+- Does every historical G16 migration block express policy as of that migration,
+  while the latest touching block equals the current catalog; and do guilt tests
+  reject retroactive annotation rewrites and a stale latest block?
+- When API/RAG is intentionally configured with a workload now owned by the
+  companion, does startup skip it as `not_current_owner` and stay ready with
+  zero pilot tasks rather than failing the whole process?
+- Are pre-quarantined Release-A rows terminal `quarantined`, excluded from
+  activation outstanding counts, and never replayed; and do compatibility
+  integer wrappers still surface quarantine/failure counts through structured
+  observation?
+- For non-reconcilable provider effects, are
+  `unknown_blocks_cutover=true`, `unknown_page_seconds=900`, and
+  `unknown_resolution_seconds=14400` explicit and enforced through retention,
+  alert, cutover, and manual-decision tests?
+- Do automatic and manual WhatsApp paths share the exact total lock order
+  grant -> advisory -> source -> projection -> begun attempt -> next boundary,
+  with manual resolution available while off/drained, a concurrency proof
+  against automatic finish/reconcile, and same-held-row/effect resend denied?
+- Does the protected digest artifact use the exact upload/download v4 mechanism,
+  bind one `shared`/1-CPU/1-GB VM tuple and an in-image-generated route catalog
+  hash to the immutable digest, and reject every caller/checkout/provenance or
+  resource mismatch before mutation?
 - Are forward and reverse transitions strictly drain -> lease/effect barrier ->
   atomic generation advance/activation, with no interval containing two active
   owners or late effects from two generations?
