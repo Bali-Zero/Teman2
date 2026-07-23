@@ -42,7 +42,7 @@ except ModuleNotFoundError:  # pragma: no cover - import path used by repository
 LAUNCHER_SCHEMA = "nuzantara.worker-plane-review-launcher-receipt/v2"
 PUBLICATION_MARKER_SCHEMA = "nuzantara.worker-plane-review-publication/v1"
 PUBLICATION_MARKER_NAME = "panel-complete.json"
-IDENTITY_POLICY_REVISION = "pro-clients-2026-07-18-v1"
+IDENTITY_POLICY_REVISION = "pro-clients-2026-07-23-v2"
 DEFAULT_WALL_TIMEOUT_SECONDS = 15 * 60.0
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 DEFAULT_MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -149,8 +149,8 @@ PRODUCTION_IDENTITIES = {
     ),
     "gemini": ExecutableIdentity(
         path=PRODUCTION_CLIENTS.gemini,
-        sha256="604c3fff9ce2f82f40f8049f0c0e311c1f51483e77e5e6b31cdfcc4aff2dbf37",
-        cdhash="53f8f9dc8643ecf7d1c20973205fd76f1ea7ba3c",
+        sha256="6509d6ca54a66e3eaf61dfe35308ba1dfa1e6b552ef5c4f5f861562c6811ecaf",
+        cdhash="d1ab6b43250ebdf79a8836804197495d39b9a5c1",
         team_identifier="EQHXZ8M8AV",
         designated_requirement=(
             "identifier cli and anchor apple generic and certificate "
@@ -1213,10 +1213,11 @@ def _process_group_exists(process_group: int) -> bool:
         os.killpg(process_group, 0)
     except ProcessLookupError:
         return False
-    except PermissionError as exc:
-        raise LauncherError(
-            f"cannot prove process group {process_group} ownership"
-        ) from exc
+    except PermissionError:
+        # EPERM still proves that the process group exists.  Sandboxed provider
+        # helpers can briefly become unsignalable while they are exiting, so
+        # keep polling until the group disappears instead of aborting cleanup.
+        return True
     return True
 
 
@@ -1232,6 +1233,10 @@ def _terminate_process_group(
         os.killpg(process_group, signal.SIGTERM)
     except ProcessLookupError:
         return
+    except PermissionError:
+        # The group may be in a transient sandbox teardown state.  We still
+        # require it to disappear within the bounded grace period below.
+        pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
         if not _process_group_exists(process_group):
@@ -1241,6 +1246,8 @@ def _terminate_process_group(
         os.killpg(process_group, signal.SIGKILL)
     except ProcessLookupError:
         return
+    except PermissionError:
+        pass
     deadline = time.monotonic() + grace_seconds
     while time.monotonic() < deadline:
         if not _process_group_exists(process_group):
@@ -1382,15 +1389,21 @@ def _run_popen_command(
 
         returncode = process.wait()
         descendants_remained = _process_group_exists(process.pid)
+        descendant_cleanup_error: LauncherError | None = None
         if descendants_remained:
-            _terminate_process_group(
-                process.pid,
-                grace_seconds=termination_grace_seconds,
-            )
+            try:
+                _terminate_process_group(
+                    process.pid,
+                    grace_seconds=termination_grace_seconds,
+                )
+            except LauncherError as exc:
+                descendant_cleanup_error = exc
         for thread in threads:
             thread.join(timeout=termination_grace_seconds)
             if thread.is_alive():
                 raise LauncherError(f"{label} stream cleanup did not finish")
+        if descendant_cleanup_error is not None:
+            raise descendant_cleanup_error
         if descendants_remained:
             print(f"Warning: {label} left descendant processes", file=sys.stderr)
         if overflow.is_set():
@@ -1674,15 +1687,21 @@ def _darwin_spawn_suspended(
             process_group = child_pid
             child_pid = None
             descendants_remained = _process_group_exists(process_group)
+            descendant_cleanup_error: LauncherError | None = None
             if descendants_remained:
-                _terminate_process_group(
-                    process_group,
-                    grace_seconds=termination_grace_seconds,
-                )
+                try:
+                    _terminate_process_group(
+                        process_group,
+                        grace_seconds=termination_grace_seconds,
+                    )
+                except LauncherError as exc:
+                    descendant_cleanup_error = exc
             for thread in threads:
                 thread.join(timeout=termination_grace_seconds)
                 if thread.is_alive():
                     raise LauncherError(f"{label} stream cleanup did not finish")
+            if descendant_cleanup_error is not None:
+                raise descendant_cleanup_error
             if descendants_remained:
                 print(f"Warning: {label} left descendant processes", file=sys.stderr)
             if overflow.is_set():

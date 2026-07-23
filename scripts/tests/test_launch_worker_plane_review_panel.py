@@ -45,6 +45,46 @@ def _git_blob_oid(payload: bytes) -> str:
     return hashlib.sha1(framed, usedforsecurity=False).hexdigest()
 
 
+def test_process_group_permission_error_still_proves_existence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def permission_denied(process_group: int, requested_signal: int) -> None:
+        assert process_group == 4242
+        assert requested_signal == 0
+        raise PermissionError
+
+    monkeypatch.setattr(launcher.os, "killpg", permission_denied)
+
+    assert launcher._process_group_exists(4242) is True
+
+
+def test_process_group_cleanup_waits_through_transient_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    outcomes: list[BaseException] = [
+        PermissionError(),
+        PermissionError(),
+        ProcessLookupError(),
+    ]
+    signals: list[int] = []
+
+    def transient_permission_error(
+        process_group: int,
+        requested_signal: int,
+    ) -> None:
+        assert process_group == 4242
+        signals.append(requested_signal)
+        outcome = outcomes.pop(0)
+        raise outcome
+
+    monkeypatch.setattr(launcher.os, "killpg", transient_permission_error)
+
+    launcher._terminate_process_group(4242, grace_seconds=0.1)
+
+    assert signals == [0, launcher.signal.SIGTERM, 0]
+    assert not outcomes
+
+
 def _frozen_review(
     tmp_path: Path,
     *,
