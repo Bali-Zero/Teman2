@@ -45,3 +45,34 @@ jobs:
         run: >-
           node --experimental-strip-types --test
           apps/bali-zero-magazine/tests/deployed-platform.test.mjs
+
+  python-lifecycle:
+    name: Magazine Python lifecycle contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: apps/zantara-media
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install focused test dependencies
+        run: >-
+          python -m pip install --quiet
+          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785
+      - name: Require zsh for real wrapper lifecycle tests
+        run: |
+          if ! command -v zsh >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes zsh
+          fi
+          command -v zsh
+      - name: Verify magazine asset lifecycle contracts
+        run: >-
+          python -m pytest -q
+          apps/zantara-media/tests/magazine/test_cli.py
+          apps/zantara-media/tests/magazine/test_media_resolver.py
+          apps/zantara-media/tests/magazine/test_source_projections.py
+          scripts/tests/test_flowkit_cli.py
+          scripts/tests/test_magazine_wrapper_lock.py
