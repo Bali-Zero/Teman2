@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { FolderKanban, RefreshCw, ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { FolderKanban, RefreshCw, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 export default function PracticeDetailError({
   error,
@@ -16,20 +16,26 @@ export default function PracticeDetailError({
   const router = useRouter();
 
   useEffect(() => {
-    logger.error('Portal practice detail page error', {}, error);
+    logger.error("Portal practice detail page error", {}, error);
   }, [error]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: 'rgba(244,63,94,0.1)' }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+        }}
       >
-        <FolderKanban className="h-8 w-8" style={{ color: 'var(--neon-rose)' }} />
+        <FolderKanban
+          className="h-8 w-8"
+          style={{ color: "var(--state-danger)" }}
+        />
       </div>
       <div className="space-y-2 max-w-sm">
         <h2 className="text-xl font-semibold">Practice unavailable</h2>
-        <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
+        <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
           We couldn&apos;t load this practice. Please try again.
         </p>
       </div>
