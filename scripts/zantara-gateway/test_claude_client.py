@@ -2,7 +2,9 @@
 """Tests for the Claude client backend selection (subprocess default | sdk pilot)."""
 
 import asyncio
+import os
 import sys
+import time
 import types
 
 import claude_client
@@ -627,6 +629,93 @@ def test_subprocess_streams_small_lines_unchanged(monkeypatch):
 
     assert lines[0] == 'data: {"type":"token","data":"PONG"}\n\n'
     assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_init_heartbeats_do_not_reset_attempt_deadline(
+    monkeypatch,
+):
+    """Repeated init lines must rotate at one monotonic per-seat deadline."""
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slow-seat")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "good-seat")
+    for slot in (3, 4, 5):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    emitter = (
+        "import json, os, time\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'slow-seat':\n"
+        "    while True:\n"
+        "        print(json.dumps({'type':'system','subtype':'init'}), flush=True)\n"
+        "        time.sleep(0.02)\n"
+        "elif token == 'good-seat':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'rotated-success'}]}}), flush=True)\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'rotated-success'}), flush=True)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    started = time.monotonic()
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi", timeout=2.0))
+    )
+    elapsed = time.monotonic() - started
+
+    assert any("rotated-success" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+    assert elapsed < 3.0
+
+
+def test_subprocess_timeout_kills_descendant_session(monkeypatch, tmp_path):
+    """A child ignoring TERM must not survive its Claude session leader."""
+    pid_file = tmp_path / "descendant.pid"
+    emitter = (
+        "import json, subprocess, sys, time\n"
+        f"pid_file = {str(pid_file)!r}\n"
+        "child = subprocess.Popen([sys.executable, '-c', "
+        "'import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'])\n"
+        "open(pid_file, 'w', encoding='utf-8').write(str(child.pid))\n"
+        "while True:\n"
+        "    print(json.dumps({'type':'system','subtype':'init'}), flush=True)\n"
+        "    time.sleep(0.02)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_token_chain",
+        lambda: [("keychain", "")],
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi", timeout=0.8))
+    )
+
+    assert lines == ["data: [DONE]\n\n"]
+    assert pid_file.exists()
+    pid = int(pid_file.read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError(f"gateway descendant pid {pid} survived cleanup")
 
 
 def test_subprocess_cmd_has_max_budget_not_max_turns(monkeypatch):
