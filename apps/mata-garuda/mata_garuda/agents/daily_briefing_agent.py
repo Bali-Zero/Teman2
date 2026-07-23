@@ -176,6 +176,7 @@ def _tldr_claude(title: str, content: str) -> str:
         "CLAUDE_CODE_OAUTH_TOKEN_1",
         "CLAUDE_CODE_OAUTH_TOKEN_2",
         "CLAUDE_CODE_OAUTH_TOKEN_3",
+        "CLAUDE_CODE_OAUTH_TOKEN_4",
         "CLAUDE_CODE_OAUTH_TOKEN",
     ]
     for var in token_vars:

@@ -211,7 +211,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
     # 3-token OAuth fallback chain
     local tokens=()
     local labels=()
-    for i in 1 2 3; do
+    for i in 1 2 3 4; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         if [[ -n "$tok" ]]; then
