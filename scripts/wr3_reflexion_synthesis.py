@@ -47,6 +47,7 @@ import importlib.util
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -100,6 +101,14 @@ _PROVIDER_ENV_PREFIXES = (
     "BEDROCK_",
     "VERTEX_",
     "FOUNDRY_",
+    "OPENAI_",
+    "DEEPSEEK_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "TOGETHER_",
+    "GROQ_",
+    "MISTRAL_",
+    "COHERE_",
 )
 _PROVIDER_ENV_NAMES = frozenset(
     {
@@ -127,6 +136,33 @@ _AUTH_RE = re.compile(
 _SECRET_DIAGNOSTIC_RE = re.compile(
     r"(?i)\b(?:bearer|oauth[_ -]?token|access[_ -]?token)\b"
     r"(\s*[:=]\s*|\s+)\S+"
+)
+_PROCESS_TERM_GRACE_S = 0.25
+_PROCESS_KILL_REAP_S = 0.75
+_PROCESS_POLL_S = 0.01
+_GEMINI_ENV_ALLOWLIST = frozenset(
+    {
+        "HOME",
+        "PATH",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TERM",
+        "SHELL",
+        "USER",
+        "LOGNAME",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "ALL_PROXY",
+    }
 )
 
 # Episode artifacts to harvest as reflexion signal (filename -> short label)
@@ -326,19 +362,12 @@ def _build_claude_env(
 def _build_gemini_env(
     source: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Keep Gemini OAuth state while removing Claude/provider credentials."""
+    """Build a minimal OAuth-CLI environment without any provider credential."""
     values = os.environ if source is None else source
     return {
         key: value
         for key, value in values.items()
-        if not key.startswith(("ANTHROPIC" + "_", _OAUTH_TOKEN_ENV))
-        and key
-        not in {
-            "CLAUDE_CODE_USE_BEDROCK",
-            "CLAUDE_CODE_USE_VERTEX",
-            "CLAUDE_CODE_USE_FOUNDRY",
-        }
-        and not key.startswith(("AWS_", "BEDROCK_", "FOUNDRY_"))
+        if key in _GEMINI_ENV_ALLOWLIST or key.startswith("LC_")
     }
 
 
@@ -370,6 +399,11 @@ def _retry_reason(
     returncode: int,
     valid_success: bool,
 ) -> str | None:
+    """Rotate on transport-empty output, not on a valid zero-lessons payload.
+
+    ``{"week": ..., "lessons": []}`` is an honest synthesis and succeeds.
+    Whitespace/no stdout contains no schema at all and must try the next seat.
+    """
     if valid_success:
         return None
     combined = f"{stdout}\n{stderr}"
@@ -384,13 +418,59 @@ def _retry_reason(
     return None
 
 
+def _process_group_exists(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _signal_process_group(proc: subprocess.Popen[str], sig: signal.Signals) -> None:
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        try:
+            proc.send_signal(sig)
+        except ProcessLookupError:
+            return
+
+
+def _wait_process_group_exit(pgid: int, *, deadline: float) -> bool:
+    while _process_group_exists(pgid):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(_PROCESS_POLL_S, remaining))
+    return True
+
+
+def _timeout_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value
+
+
 def _invoke_process(
     cmd: list[str],
     prompt: str,
     timeout_s: float,
     env: dict[str, str],
 ) -> tuple[int, str, str, bool]:
-    """Run one CLI attempt; an expired child is killed and reaped."""
+    """Run one CLI attempt within a deadline that includes tree cleanup."""
+    total_budget_s = max(float(timeout_s), 0.001)
+    deadline = time.monotonic() + total_budget_s
+    cleanup_reserve_s = min(
+        _PROCESS_TERM_GRACE_S + _PROCESS_KILL_REAP_S,
+        total_budget_s / 2,
+    )
+    run_budget_s = max(0.001, total_budget_s - cleanup_reserve_s)
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -398,19 +478,61 @@ def _invoke_process(
         stderr=subprocess.PIPE,
         text=True,
         env=env,
+        start_new_session=True,
     )
     try:
-        stdout, stderr = proc.communicate(input=prompt, timeout=timeout_s)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        stdout, stderr = proc.communicate()
-        return (
-            proc.returncode if proc.returncode is not None else -9,
-            stdout,
-            stderr,
-            True,
-        )
-    return proc.returncode or 0, stdout, stderr, False
+        stdout, stderr = proc.communicate(input=prompt, timeout=run_budget_s)
+        return proc.returncode or 0, stdout, stderr, False
+    except subprocess.TimeoutExpired as first_timeout:
+        stdout = _timeout_text(first_timeout.output)
+        stderr = _timeout_text(first_timeout.stderr)
+
+    _signal_process_group(proc, signal.SIGTERM)
+    term_deadline = min(deadline, time.monotonic() + _PROCESS_TERM_GRACE_S)
+    communication_done = False
+    remaining = term_deadline - time.monotonic()
+    if remaining > 0:
+        try:
+            stdout, stderr = proc.communicate(timeout=remaining)
+            communication_done = True
+        except subprocess.TimeoutExpired as term_timeout:
+            stdout = _timeout_text(term_timeout.output)
+            stderr = _timeout_text(term_timeout.stderr)
+    _wait_process_group_exit(proc.pid, deadline=term_deadline)
+
+    if _process_group_exists(proc.pid):
+        _signal_process_group(proc, signal.SIGKILL)
+    kill_deadline = min(deadline, time.monotonic() + _PROCESS_KILL_REAP_S)
+    if not communication_done:
+        remaining = kill_deadline - time.monotonic()
+        if remaining > 0:
+            try:
+                stdout, stderr = proc.communicate(timeout=remaining)
+                communication_done = True
+            except subprocess.TimeoutExpired as kill_timeout:
+                stdout = _timeout_text(kill_timeout.output)
+                stderr = _timeout_text(kill_timeout.stderr)
+    _wait_process_group_exit(proc.pid, deadline=kill_deadline)
+
+    if not communication_done:
+        # The in-session tree has received KILL. Close inherited pipe readers
+        # so an escaped descendant cannot extend the caller's wall deadline.
+        for stream in (proc.stdin, proc.stdout, proc.stderr):
+            if stream is not None:
+                stream.close()
+        remaining = deadline - time.monotonic()
+        if proc.returncode is None and remaining > 0:
+            try:
+                proc.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                pass
+
+    return (
+        proc.returncode if proc.returncode is not None else -signal.SIGKILL,
+        stdout,
+        stderr,
+        True,
+    )
 
 
 def call_llm_synthesis(prompt: str) -> dict | None:

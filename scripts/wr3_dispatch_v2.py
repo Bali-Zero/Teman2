@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import re
+import signal
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
@@ -42,7 +43,6 @@ from wr3_dispatch_agent import (  # noqa: E402
     DispatchResult,
     HardHaltException,
     WR3DispatchError,
-    _dispatch_gemini_cli,
     telegram_p0,
 )
 from wr3_contracts import AgentContract, WR3Contracts
@@ -98,6 +98,14 @@ _PROVIDER_ENV_PREFIXES = (
     "BEDROCK_",
     "VERTEX_",
     "FOUNDRY_",
+    "OPENAI_",
+    "DEEPSEEK_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "TOGETHER_",
+    "GROQ_",
+    "MISTRAL_",
+    "COHERE_",
 )
 _PROVIDER_ENV_NAMES = frozenset(
     {
@@ -125,6 +133,33 @@ _AUTH_RE = re.compile(
 _SECRET_DIAGNOSTIC_RE = re.compile(
     r"(?i)\b(?:bearer|oauth[_ -]?token|access[_ -]?token)\b"
     r"(\s*[:=]\s*|\s+)\S+"
+)
+_PROCESS_TERM_GRACE_S = 0.25
+_PROCESS_KILL_REAP_S = 0.75
+_PROCESS_POLL_S = 0.01
+_GEMINI_ENV_ALLOWLIST = frozenset(
+    {
+        "HOME",
+        "PATH",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TERM",
+        "SHELL",
+        "USER",
+        "LOGNAME",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "ALL_PROXY",
+    }
 )
 
 
@@ -172,6 +207,18 @@ def _build_claude_env(
     return env
 
 
+def _build_gemini_env(
+    source: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Build a minimal OAuth-CLI environment without any provider credential."""
+    values = os.environ if source is None else source
+    return {
+        key: value
+        for key, value in values.items()
+        if key in _GEMINI_ENV_ALLOWLIST or key.startswith("LC_")
+    }
+
+
 def _sanitize_diagnostic(text: str, secrets: list[str]) -> str:
     safe = text
     for secret in secrets:
@@ -179,6 +226,90 @@ def _sanitize_diagnostic(text: str, secrets: list[str]) -> str:
             safe = safe.replace(secret, "[redacted]")
     safe = _SECRET_DIAGNOSTIC_RE.sub("credential=[redacted]", safe)
     return " ".join(safe.split())[:300]
+
+
+def _process_group_exists(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _child_run_budget(total_budget_s: float) -> float:
+    cleanup_reserve_s = min(
+        _PROCESS_TERM_GRACE_S + _PROCESS_KILL_REAP_S,
+        total_budget_s / 2,
+    )
+    return max(0.001, total_budget_s - cleanup_reserve_s)
+
+
+def _signal_process_group(
+    proc: asyncio.subprocess.Process,
+    sig: signal.Signals,
+) -> None:
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        with contextlib.suppress(ProcessLookupError):
+            proc.send_signal(sig)
+
+
+async def _wait_process_tree(
+    proc: asyncio.subprocess.Process,
+    communicate_task: asyncio.Task[tuple[bytes, bytes]],
+    *,
+    deadline: float,
+) -> bool:
+    """Wait until both the direct child pipes and its process group are gone."""
+    loop = asyncio.get_running_loop()
+    while True:
+        if communicate_task.done() and not _process_group_exists(proc.pid):
+            return True
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return False
+        await asyncio.sleep(min(_PROCESS_POLL_S, remaining))
+
+
+async def _terminate_process_tree(
+    proc: asyncio.subprocess.Process,
+    communicate_task: asyncio.Task[tuple[bytes, bytes]],
+    *,
+    global_deadline: float,
+) -> None:
+    """TERM then KILL one subprocess session without crossing its deadline."""
+    loop = asyncio.get_running_loop()
+    _signal_process_group(proc, signal.SIGTERM)
+    term_deadline = min(global_deadline, loop.time() + _PROCESS_TERM_GRACE_S)
+    await _wait_process_tree(proc, communicate_task, deadline=term_deadline)
+
+    if _process_group_exists(proc.pid):
+        _signal_process_group(proc, signal.SIGKILL)
+    kill_deadline = min(global_deadline, loop.time() + _PROCESS_KILL_REAP_S)
+    await _wait_process_tree(proc, communicate_task, deadline=kill_deadline)
+
+    if not communicate_task.done():
+        # A descendant that escaped the session can keep inherited pipe FDs
+        # open. Closing our read transports prevents it extending the caller's
+        # wall-clock deadline; the in-session tree has already received KILL.
+        for stream in (proc.stdout, proc.stderr):
+            transport = getattr(stream, "_transport", None)
+            if transport is not None:
+                transport.close()
+        communicate_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await communicate_task
+
+    if proc.returncode is None:
+        remaining = global_deadline - loop.time()
+        if remaining > 0:
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(proc.wait(), timeout=remaining)
 
 
 def _retry_reason(
@@ -189,6 +320,12 @@ def _retry_reason(
     valid_success: bool,
     effective_output: str,
 ) -> str | None:
+    """Classify retryable transport failures.
+
+    Whitespace/no stdout and a valid Claude JSON envelope whose ``result`` is
+    empty are transport-empty and rotate the seat. Domain-level empty data must
+    still be represented by a non-empty, schema-valid payload.
+    """
     if valid_success:
         return None
     combined = f"{stdout}\n{stderr}"
@@ -260,6 +397,7 @@ async def dispatch_claude_print(
             break
         seats_left = len(seats) - index
         seat_budget_s = max(0.001, remaining / seats_left)
+        attempt_deadline = min(deadline, loop.time() + seat_budget_s)
         proc = None
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -268,22 +406,26 @@ async def dispatch_claude_print(
                 env=_build_claude_env(token),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                start_new_session=True,
             )
         except FileNotFoundError as exc:
             raise WR3DispatchError(
                 "`claude` CLI not on PATH. Install: https://claude.ai/code"
             ) from exc
 
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=seat_budget_s,
+        communicate_task = asyncio.create_task(proc.communicate())
+        done, _ = await asyncio.wait(
+            {communicate_task},
+            timeout=_child_run_budget(
+                max(0.001, attempt_deadline - loop.time()),
+            ),
+        )
+        if communicate_task not in done:
+            await _terminate_process_tree(
+                proc,
+                communicate_task,
+                global_deadline=attempt_deadline,
             )
-        except asyncio.TimeoutError:
-            if proc.returncode is None:
-                proc.kill()
-            with contextlib.suppress(Exception):
-                await proc.wait()
             failures.append(f"{label}:timeout")
             logger.warning(
                 "%s: Claude OAuth %s timed out; trying next seat",
@@ -291,6 +433,7 @@ async def dispatch_claude_print(
                 label,
             )
             continue
+        stdout_bytes, stderr_bytes = communicate_task.result()
 
         stdout = stdout_bytes.decode("utf-8", "replace")
         stderr = stderr_bytes.decode("utf-8", "replace")
@@ -381,6 +524,81 @@ async def dispatch_claude_print(
     summary = ", ".join(failures) or "no seats available"
     raise ClaudeFleetExhaustedError(
         f"{contract.name}: Claude OAuth fleet exhausted ({summary})"
+    )
+
+
+async def _dispatch_gemini_cli(
+    contract: AgentContract,
+    prompt: str,
+    *,
+    timeout_s: int = 300,
+) -> DispatchResult:
+    """Run the existing Gemini OAuth fallback in an isolated child session."""
+    agy = shutil.which("agy")
+    if agy:
+        cmd = [agy, "-p", "--print-timeout", f"{timeout_s}s"]
+        stdin_payload = prompt.encode()
+    else:
+        legacy = shutil.which("gemini")
+        if legacy is None:
+            raise WR3DispatchError(
+                "Neither `agy` nor `gemini` CLI on PATH for cascade Tier 2"
+            )
+        cmd = [legacy, "-m", "gemini-3.1-pro-preview", "-p", prompt]
+        stdin_payload = None
+
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    deadline = started + max(float(timeout_s), 0.001)
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdin=asyncio.subprocess.PIPE if stdin_payload else None,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env=_build_gemini_env(),
+        start_new_session=True,
+    )
+    communicate_task = asyncio.create_task(proc.communicate(input=stdin_payload))
+    done, _ = await asyncio.wait(
+        {communicate_task},
+        timeout=_child_run_budget(max(0.001, deadline - loop.time())),
+    )
+    if communicate_task not in done:
+        await _terminate_process_tree(
+            proc,
+            communicate_task,
+            global_deadline=deadline,
+        )
+        raise CascadeExhaustedError(
+            f"{contract.name}: Gemini cascade timeout {timeout_s}s"
+        )
+
+    stdout, stderr = communicate_task.result()
+    duration_ms = int((loop.time() - started) * 1000)
+    stdout_text = stdout.decode("utf-8", "replace")
+    stderr_text = stderr.decode("utf-8", "replace")
+    if proc.returncode != 0:
+        if _QUOTA_RE.search(f"{stdout_text}\n{stderr_text}"):
+            raise CascadeExhaustedError(
+                f"{contract.name}: Gemini quota exhausted"
+            )
+        diagnostic = _sanitize_diagnostic(stderr_text or stdout_text, [])
+        raise WR3DispatchError(
+            f"{contract.name}: Gemini exit {proc.returncode}"
+            + (f" diagnostic={diagnostic}" if diagnostic else "")
+        )
+    if not stdout_text.strip():
+        raise CascadeExhaustedError(
+            f"{contract.name}: Gemini returned empty output"
+        )
+
+    return DispatchResult(
+        agent=contract.name,
+        cost_usd_estimated=0.0,
+        duration_ms=duration_ms,
+        cascade_tier=2,
+        raw_output=stdout_text,
+        cascade_reason="claude_budget_exceeded",
     )
 
 

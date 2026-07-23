@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -31,6 +32,10 @@ _PROVIDER_KEYS = {
     "CLOUD_ML_REGION",
     "CLAUDE_CODE_USE_FOUNDRY",
     "FOUNDRY_API_KEY",
+    "OPENAI_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "OPENROUTER_API_KEY",
+    "GEMINI_API_KEY",
 }
 
 
@@ -112,45 +117,72 @@ def test_token_chain_is_deduplicated_and_keychain_is_last(
     ]
 
 
-def test_invoke_process_timeout_kills_and_reaps(
-    monkeypatch: pytest.MonkeyPatch,
+def _pid_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    status = subprocess.run(
+        ["ps", "-o", "stat=", "-p", str(pid)],
+        check=False,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return bool(status) and not status.startswith("Z")
+
+
+def test_real_process_tree_timeout_kills_descendant_and_respects_deadline(
+    tmp_path: Path,
 ) -> None:
-    class _FakePopen:
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            self.returncode: int | None = None
-            self.killed = False
-            self.communicate_calls = 0
+    child_pid_path = tmp_path / "descendant.pid"
+    runner = tmp_path / "tree_runner.py"
+    runner.write_text(
+        """import os
+import signal
+import subprocess
+import sys
+import time
 
-        def communicate(
-            self,
-            input: str | None = None,
-            timeout: float | None = None,
-        ) -> tuple[str, str]:
-            self.communicate_calls += 1
-            if self.communicate_calls == 1:
-                raise subprocess.TimeoutExpired(cmd="claude", timeout=timeout or 0)
-            return "", ""
-
-        def kill(self) -> None:
-            self.killed = True
-            self.returncode = -9
-
-    fake = _FakePopen()
-    monkeypatch.setattr(reflexion.subprocess, "Popen", lambda *a, **k: fake)
-
-    returncode, stdout, stderr, timed_out = reflexion._invoke_process(
-        ["claude"],
-        "safe prompt",
-        0.01,
-        {},
+child_code = (
+    "import os,signal,time;"
+    "signal.signal(signal.SIGTERM, signal.SIG_IGN);"
+    "open(os.environ['WR3_TEST_DESCENDANT_PID'],'w').write(str(os.getpid()));"
+    "time.sleep(30)"
+)
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+subprocess.Popen(
+    [sys.executable, "-c", child_code],
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+    env=os.environ,
+)
+time.sleep(30)
+""",
+        encoding="utf-8",
     )
+    env = dict(os.environ)
+    env["WR3_TEST_DESCENDANT_PID"] = str(child_pid_path)
+
+    started = time.monotonic()
+    returncode, stdout, stderr, timed_out = reflexion._invoke_process(
+        [sys.executable, str(runner)],
+        "safe prompt",
+        1.0,
+        env,
+    )
+    elapsed = time.monotonic() - started
 
     assert timed_out
     assert returncode == -9
     assert stdout == ""
     assert stderr == ""
-    assert fake.killed
-    assert fake.communicate_calls == 2
+    assert elapsed < 1.1
+    assert child_pid_path.exists()
+    child_pid = int(child_pid_path.read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 1.0
+    while _pid_is_running(child_pid) and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not _pid_is_running(child_pid)
 
 
 def test_unknown_diagnostic_never_logs_oauth_secret(
@@ -198,6 +230,24 @@ def test_exit_zero_invalid_schema_rotates_to_next_seat(
     output = reflexion._run_claude_fleet("safe prompt")
 
     assert json.loads(output or "")["synthesis_notes"] == "slot-five-success"
+
+
+def test_empty_transport_retries_but_honest_zero_lessons_is_valid() -> None:
+    honest_empty = _synthesis("no reliable lesson this week")
+
+    assert reflexion._retry_reason(
+        stdout="  ",
+        stderr="",
+        returncode=0,
+        valid_success=False,
+    ) == "empty-output"
+    assert reflexion._valid_synthesis_json(honest_empty)
+    assert reflexion._retry_reason(
+        stdout=honest_empty,
+        stderr="",
+        returncode=0,
+        valid_success=True,
+    ) is None
 
 
 def test_portable_reflexion_contract_keeps_gemini_fallback(
