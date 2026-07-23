@@ -120,6 +120,12 @@ describe("GateScreen — Deadlines section", () => {
     expect(await screen.findByText("Alert a-overdue")).toBeInTheDocument();
     expect(screen.getByText("Alert a-soon")).toBeInTheDocument();
     expect(screen.getByText("Alert a-sent")).toBeInTheDocument();
+    expect(screen.getByText("overdue 2d")).toHaveStyle({
+      background: "var(--state-danger)",
+    });
+    expect(screen.getByText("3d left")).toHaveStyle({
+      background: "var(--state-warning)",
+    });
     // The old dead-end deep-link is gone.
     expect(
       screen.queryByRole("button", { name: /review deadlines/i }),

@@ -186,8 +186,8 @@ function GateDeadlinesList({
                   style={{
                     background:
                       alert.severity === "critical" || overdue
-                        ? "var(--bz-error, #b0433a)"
-                        : "var(--bz-warning, #b58a2a)",
+                        ? "var(--state-danger)"
+                        : "var(--state-warning)",
                     color: "var(--bz-base)",
                   }}
                 >
