@@ -1,7 +1,7 @@
 ---
 date: 2026-07-23
 subject: modular-worker-plane-current-system-refresh
-evidence_base: origin/main@8e826f0940c483f1050b81e74502fbe57aef2479
+evidence_base: origin/main@f3bf426de3805a5085b0cb67601181a0382a6630
 client_data: none
 authorization: false
 ---
@@ -9,7 +9,7 @@ authorization: false
 # Current-system refresh for the modular worker-plane review
 
 This PII-free memo records repository drift verified against
-`origin/main@8e826f0940c483f1050b81e74502fbe57aef2479`. It is covered review evidence,
+`origin/main@f3bf426de3805a5085b0cb67601181a0382a6630`. It is covered review evidence,
 not an amendment to the implementation plan and not authorization to implement,
 merge, migrate, deploy, arm, or mutate any environment. Any accepted correction
 must change the canonical plan/spec bytes and trigger a completely new
@@ -72,7 +72,43 @@ hash-bound panel.
    upload/download-artifact v4 contract therefore cannot be treated as a
    repository-wide truth; it must bind the exact current pins of each protected
    producer/consumer workflow.
-9. **The latest complete panel is historical only.** Its source
+9. **The latest upstream change does not close the worker-plane gaps.**
+   `origin/main` advanced from `8e826f0940c483f1050b81e74502fbe57aef2479`
+   to `f3bf426de3805a5085b0cb67601181a0382a6630` through PR `#3015`. The
+   two-commit delta changes only
+   `apps/backend-rag/backend/llm/claude_oauth_client.py` and its unit tests. It
+   adds a fourth OAuth fallback seat, a total fallback deadline, stricter
+   provider-environment stripping, bounded diagnostic classification, and
+   explicit timed-out-child reaping. It does not change the migration,
+   startup/shutdown, legal, notification, Fly workflow, or Action-pin surfaces
+   above, so none of their blockers is resolved. It does reinforce that
+   subprocess ownership, deadline, cancellation, and reaping behavior must be
+   explicit whenever a workload crosses into the worker plane.
+10. **The OAuth client consumer comment is not an ownership inventory.** Its
+    module docstring still claims three consumers and names article composer,
+    but article composer now routes through a compatibility wrapper backed by
+    another provider. The source graph exposes at least five distinct consuming
+    surfaces: the multi-AI adapter, LangChain wrapper, cost-advisor CLI,
+    knowledge-graph coreference service, and request-path surface router. Phase
+    0 must derive this inventory from imports and call sites, not prose, and
+    classify request-path, launchd/CLI, and wrapper ownership separately so two
+    layers cannot both own fallback, cancellation, or retry.
+11. **External cancellation can bypass OAuth subprocess cleanup.**
+    `complete_async(...)` kills and reaps its child when its own
+    `asyncio.wait_for(proc.communicate(), ...)` expires, but the surface router
+    wraps that coroutine in a separate three-second `asyncio.wait_for`. An outer
+    cancellation can therefore interrupt the coroutine outside its internal
+    `TimeoutError` handler and skip child reaping plus later span/recorder
+    closure. The child is not started in a dedicated session/process group, so
+    the helper kills only the direct process and does not prove descendant
+    absence. The worker-plane plan needs one cancellation-safe deadline owner,
+    a dedicated process group, whole-tree termination and join in `finally`,
+    and deterministic caller-cancellation plus shutdown tests. OAuth/keychain
+    seats must be explicitly admitted capabilities rather than inherited
+    host-global state. The new fourth token is also not a guaranteed attempt:
+    the per-seat budget is 120 seconds while the whole fallback chain is capped
+    at 300 seconds.
+12. **The latest complete panel is historical only.** Its source
    `80a05a10…` and packet `7ad5a150…` predate this refreshed source and reviewed
    evidence, and its roster predates the permanent Gemini + Codex + Kimi
    external phase followed by the sequential Fable gate. It cannot authorize
