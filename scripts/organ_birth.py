@@ -137,6 +137,19 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
+# The canonical cascade owns provider process groups. Its deadline stays two
+# minutes inside this wrapper watchdog so cleanup/reaping completes first.
+# Long organ turns keep a large attempt budget; dead seats fail fast.
+CLAUDE_CASCADE_DEADLINE_SEC="${{{var}_CLAUDE_CASCADE_DEADLINE_SEC:-$((MAX_WALL_S - 120))}}"
+CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="${{{var}_CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}}"
+if [ "$MAX_WALL_S" -le 180 ] \\
+    || [ "$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S" ] \\
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -le 0 ] \\
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -gt "$CLAUDE_CASCADE_DEADLINE_SEC" ]; then
+    echo "invalid organ/cascade timeout relationship" >&2
+    exit 2
+fi
+export CLAUDE_CASCADE_DEADLINE_SEC CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC
 # Claude-specific organs retry every isolated OAuth seat through the canonical
 # cascade, but never cross to another provider because agent/tool contracts may
 # be Claude-only. Per-organ override wins; repo canon is the final fallback.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -32,6 +33,7 @@ def _write_executable(path: Path, body: str) -> None:
 def _fake_fleet(
     tmp_path: Path,
     seat_bodies: dict[str, str],
+    provider_bodies: dict[str, str] | None = None,
 ) -> tuple[Path, Path, dict[str, str]]:
     """Build one fake Claude binary that identifies only its selected token."""
     home = tmp_path / "home"
@@ -64,10 +66,18 @@ def _fake_fleet(
             'case "$token" in\n'
             f"{cases}\n"
             "esac\n"
-            'for forbidden in ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN '
+            'for forbidden in CLAUDE_CODE_OAUTH_TOKEN_1 '
+            "CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 "
+            "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 "
+            "ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN "
             "ANTHROPIC_BASE_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY "
             "VERTEX_AI_PROJECT GOOGLE_APPLICATION_CREDENTIALS "
-            "CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX; do\n"
+            "CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX OPENAI_API_KEY "
+            "OPENROUTER_API_KEY GEMINI_API_KEY GOOGLE_API_KEY DEEPSEEK_API_KEY "
+            "TOGETHER_API_KEY FIREWORKS_API_KEY MISTRAL_API_KEY COHERE_API_KEY "
+            "GROQ_API_KEY XAI_API_KEY PERPLEXITY_API_KEY KIMI_API_KEY "
+            "MOONSHOT_API_KEY OPENAI_ORG_ID GEMINI_ACCESS_TOKEN "
+            "GOOGLE_OAUTH_ACCESS_TOKEN; do\n"
             '  eval "value=\\${$forbidden:-}"\n'
             '  [ -n "$value" ] && printf "LEAK:%s\\n" "$forbidden" >> "$CALL_LOG"\n'
             "done\n"
@@ -87,15 +97,40 @@ def _fake_fleet(
             f"{seat_bodies.get('team-wrapper', 'exit 1')}"
         ),
     )
+    provider_bodies = provider_bodies or {}
+    credential_probe = (
+        'for forbidden in CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN_1 '
+        "CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 "
+        "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 "
+        "ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL "
+        "AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY VERTEX_AI_PROJECT "
+        "GOOGLE_APPLICATION_CREDENTIALS CLAUDE_CODE_USE_BEDROCK "
+        "CLAUDE_CODE_USE_VERTEX OPENAI_API_KEY OPENROUTER_API_KEY "
+        "GEMINI_API_KEY GOOGLE_API_KEY DEEPSEEK_API_KEY TOGETHER_API_KEY "
+        "FIREWORKS_API_KEY MISTRAL_API_KEY COHERE_API_KEY GROQ_API_KEY "
+        "XAI_API_KEY PERPLEXITY_API_KEY KIMI_API_KEY MOONSHOT_API_KEY "
+        "OPENAI_ORG_ID GEMINI_ACCESS_TOKEN GOOGLE_OAUTH_ACCESS_TOKEN; do\n"
+        '  eval "value=\\${$forbidden:-}"\n'
+        '  [ -n "$value" ] && printf "LEAK:%s:%s\\n" "$label" "$forbidden" '
+        '>> "$CALL_LOG"\n'
+        "done\n"
+    )
     for label, path in {
         "agy": home / ".local/bin/agy",
         "kimi": home / ".kimi-code/bin/kimi",
         "codex": home / ".local/bin/codex",
+        "ollama": home / ".local/bin/ollama",
     }.items():
+        provider_body = provider_bodies.get(
+            label,
+            f'printf "unexpected-{label}\\n"',
+        )
         _write_executable(
             path,
+            f'label="{label}"\n'
+            f"{credential_probe}"
             f'printf "nonclaude-{label}\\n" >> "$CALL_LOG"\n'
-            f'printf "unexpected-{label}\\n"',
+            f"{provider_body}",
         )
 
     env = {
@@ -109,6 +144,7 @@ def _fake_fleet(
         "CLAUDE_CODE_OAUTH_TOKEN_4": TOKEN_VALUES["token4"],
         "CLAUDE_CODE_OAUTH_TOKEN_5": TOKEN_VALUES["token5"],
         "CLAUDE_CODE_OAUTH_TOKEN": TOKEN_VALUES["legacy"],
+        "CLAUDE_CASCADE_OLLAMA_BIN": str(home / ".local/bin/ollama"),
     }
     return call_log, temp_dir, env
 
@@ -176,6 +212,76 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     assert _labels(call_log) == ["token1", "token2", "token3", "token4"]
     assert "used: claude-token-4-env" in result.stderr
     assert list(temp_dir.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "diagnostic",
+    (
+        "401 Unauthorized",
+        "token_revoked",
+        "Error: refresh_token",
+        '{"error":{"type":"refresh_token_reused","message":"login again"}}',
+    ),
+)
+def test_exit_zero_stdout_error_envelopes_rotate(
+    tmp_path: Path,
+    diagnostic: str,
+) -> None:
+    bodies = _default_bodies()
+    bodies.update(
+        {
+            "token1": f"printf '%s\\n' '{diagnostic}'\nexit 0",
+            "token2": 'printf "seat-two-success\\n"\nexit 0',
+        }
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "seat-two-success\n"
+    assert _labels(call_log) == ["token1", "token2"]
+
+
+def test_exit_zero_innocent_stdout_may_discuss_auth_and_quota(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'printf "Guide: a 401 unauthorized response or quota exceeded message '
+        'should trigger operator review.\\n"\n'
+        "exit 0"
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("Guide:")
+    assert _labels(call_log) == ["token1"]
+    assert "used: claude-token-1-env" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "answer",
+    (
+        "Unauthorized access is a topic in this security guide.",
+        "Quota exceeded is the condition this runbook explains.",
+    ),
+)
+def test_exit_zero_innocent_stdout_may_begin_with_failure_term(
+    tmp_path: Path,
+    answer: str,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = f"printf '%s\\n' '{answer}'\nexit 0"
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{answer}\n"
+    assert _labels(call_log) == ["token1"]
 
 
 def test_explicit_order_reaches_team_then_legacy_then_keychain(
@@ -249,17 +355,35 @@ def test_named_agent_fails_closed_before_cross_family_fallback(
     assert "cannot be preserved cross-family" in result.stderr
 
 
+def test_claude_specific_extra_args_fail_closed_before_cross_family(
+    tmp_path: Path,
+) -> None:
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies())
+
+    result = _run_cascade(
+        env,
+        "hermetic prompt",
+        "--",
+        "--dangerously-skip-permissions",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert not any(label.startswith("nonclaude-") for label in _labels(call_log))
+    assert "arguments cannot be preserved cross-family" in result.stderr
+
+
 def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
     bodies = _default_bodies()
     bodies.update(
         {
-            "token1": "sleep 3\nexit 0",
+            "token1": "sleep 5\nexit 0",
             "token2": 'printf "after-timeout-success\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "1"
-    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "5"
+    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "2"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "8"
 
     started = time.monotonic()
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
@@ -268,15 +392,48 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert result.stdout == "after-timeout-success\n"
     assert _labels(call_log) == ["token1", "token2"]
-    assert elapsed < 4
+    assert elapsed < 6
+
+
+def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
+    survivor_file = tmp_path / "survivor.pid"
+    bodies = _default_bodies()
+    bodies.update(
+        {
+            "token1": (
+                "(trap '' TERM; while :; do sleep 1; done) &\n"
+                f'printf "%s\\n" "$!" > "{survivor_file}"\n'
+                "wait"
+            ),
+            "token2": 'printf "after-group-kill\\n"\nexit 0',
+        }
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "2"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "8"
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "after-group-kill\n"
+    assert _labels(call_log) == ["token1", "token2"]
+    survivor_pid = int(survivor_file.read_text(encoding="utf-8").strip())
+    for _ in range(20):
+        try:
+            os.kill(survivor_pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        pytest.fail(f"timed-out provider descendant survived: pid={survivor_pid}")
 
 
 def test_global_deadline_prevents_later_seats_from_starting(tmp_path: Path) -> None:
     bodies = _default_bodies()
-    bodies["token1"] = "sleep 3\nexit 0"
+    bodies["token1"] = "sleep 5\nexit 0"
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
     env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "5"
-    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "1"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "2"
 
     started = time.monotonic()
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
@@ -285,7 +442,7 @@ def test_global_deadline_prevents_later_seats_from_starting(tmp_path: Path) -> N
     assert result.returncode == 1
     assert result.stdout == ""
     assert _labels(call_log) == ["token1"]
-    assert elapsed < 4
+    assert elapsed < 6
     assert list(temp_dir.iterdir()) == []
 
 
@@ -306,6 +463,23 @@ def test_paid_anthropic_bedrock_and_vertex_environment_is_scrubbed(
             "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/vertex.json",
             "CLAUDE_CODE_USE_BEDROCK": "1",
             "CLAUDE_CODE_USE_VERTEX": "1",
+            "OPENAI_API_KEY": "openai-paid",
+            "OPENROUTER_API_KEY": "openrouter-paid",
+            "GEMINI_API_KEY": "gemini-paid",
+            "GOOGLE_API_KEY": "google-paid",
+            "DEEPSEEK_API_KEY": "deepseek-paid",
+            "TOGETHER_API_KEY": "together-paid",
+            "FIREWORKS_API_KEY": "fireworks-paid",
+            "MISTRAL_API_KEY": "mistral-paid",
+            "COHERE_API_KEY": "cohere-paid",
+            "GROQ_API_KEY": "groq-paid",
+            "XAI_API_KEY": "xai-paid",
+            "PERPLEXITY_API_KEY": "perplexity-paid",
+            "KIMI_API_KEY": "kimi-paid",
+            "MOONSHOT_API_KEY": "moonshot-paid",
+            "OPENAI_ORG_ID": "openai-org",
+            "GEMINI_ACCESS_TOKEN": "gemini-access",
+            "GOOGLE_OAUTH_ACCESS_TOKEN": "google-oauth",
         }
     )
 
@@ -320,6 +494,63 @@ def test_paid_anthropic_bedrock_and_vertex_environment_is_scrubbed(
     for value in env.values():
         if "secret" in value or value.startswith("https://paid"):
             assert value not in result.stderr
+
+
+@pytest.mark.parametrize("successful_provider", ("agy", "kimi", "codex", "ollama"))
+def test_cross_family_provider_environments_are_hermetic(
+    tmp_path: Path,
+    successful_provider: str,
+) -> None:
+    provider_order = ("agy", "kimi", "codex", "ollama")
+    provider_bodies = {
+        label: (
+            f'printf "provider-{label}-success\\n"\nexit 0'
+            if label == successful_provider
+            else "exit 1"
+        )
+        for label in provider_order
+    }
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies=provider_bodies,
+    )
+    env.update(
+        {
+            "ANTHROPIC_API_KEY": "anthropic-paid",
+            "ANTHROPIC_AUTH_TOKEN": "anthropic-oauth-ambient",
+            "OPENAI_API_KEY": "openai-paid",
+            "OPENROUTER_API_KEY": "openrouter-paid",
+            "GEMINI_API_KEY": "gemini-paid",
+            "GOOGLE_API_KEY": "google-paid",
+            "DEEPSEEK_API_KEY": "deepseek-paid",
+            "TOGETHER_API_KEY": "together-paid",
+            "FIREWORKS_API_KEY": "fireworks-paid",
+            "MISTRAL_API_KEY": "mistral-paid",
+            "COHERE_API_KEY": "cohere-paid",
+            "GROQ_API_KEY": "groq-paid",
+            "XAI_API_KEY": "xai-paid",
+            "PERPLEXITY_API_KEY": "perplexity-paid",
+            "KIMI_API_KEY": "kimi-paid",
+            "MOONSHOT_API_KEY": "moonshot-paid",
+            "OPENAI_ORG_ID": "openai-org",
+            "GEMINI_ACCESS_TOKEN": "gemini-access",
+            "GOOGLE_OAUTH_ACCESS_TOKEN": "google-oauth",
+        }
+    )
+
+    result = _run_cascade(env, "hermetic prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"provider-{successful_provider}-success\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert not any(line.startswith("LEAK:") for line in lines), lines
+    expected_attempts = list(provider_order[: provider_order.index(successful_provider) + 1])
+    assert [
+        line.removeprefix("nonclaude-")
+        for line in lines
+        if line.startswith("nonclaude-")
+    ] == expected_attempts
 
 
 def test_cli_compat_shim_preserves_json_only_stdout(tmp_path: Path) -> None:
@@ -404,6 +635,41 @@ def test_docs_guardian_traps_temporary_shim_cleanup() -> None:
     assert "trap cleanup_docs_guardian_temp EXIT" in source
     assert 'rm -f -- "$L25_SHIM_DIR/claude"' in source
     assert 'rmdir -- "$L25_SHIM_DIR"' in source
+    assert 'DOCS_GUARDIAN_CALL_TIMEOUT_SEC:-60' in source
+    assert 'DOCS_GUARDIAN_CASCADE_DEADLINE_SEC:-50' in source
+    assert 'DOCS_GUARDIAN_CASCADE_ATTEMPT_TIMEOUT_SEC:-7' in source
+    assert '--timeout "$L25_CALL_TIMEOUT_SEC"' in source
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "deadline_override", "attempt_override"),
+    (
+        (
+            "infra/healer/healer-run.sh",
+            "HEALER_CASCADE_DEADLINE_SEC",
+            "HEALER_CASCADE_ATTEMPT_TIMEOUT_SEC",
+        ),
+        (
+            "infra/launchagents/wrappers/pro-healer.sh",
+            "PRO_HEALER_CASCADE_DEADLINE_SEC",
+            "PRO_HEALER_CASCADE_ATTEMPT_TIMEOUT_SEC",
+        ),
+    ),
+)
+def test_healer_cascade_deadline_precedes_outer_watchdog(
+    relative_path: str,
+    deadline_override: str,
+    attempt_override: str,
+) -> None:
+    source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+    assert f"${{{deadline_override}:-$((MAX_WALL_S - 120))}}" in source
+    assert (
+        f"${{{attempt_override}:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}}"
+        in source
+    )
+    assert '"$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S"' in source
+    assert "sleep \"$MAX_WALL_S\"" in source
 
 
 def test_organ_birth_imprints_claude_only_cascade() -> None:
@@ -429,3 +695,12 @@ def test_organ_birth_imprints_claude_only_cascade() -> None:
     assert '"$CASCADE_BIN" "TODO: your standing mandate here"' in wrapper
     assert "--claude-only --model" in wrapper
     assert '"$CLAUDE_BIN" -p' not in wrapper
+    assert (
+        'CLAUDE_CASCADE_DEADLINE_SEC="${MINI_FIXTURE_CLAUDE_CASCADE_DEADLINE_SEC:-'
+        '$((MAX_WALL_S - 120))}"'
+    ) in wrapper
+    assert (
+        'CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="${MINI_FIXTURE_CLAUDE_CASCADE_'
+        'ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}"'
+    ) in wrapper
+    assert '"$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S"' in wrapper

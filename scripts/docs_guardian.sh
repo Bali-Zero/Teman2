@@ -210,9 +210,22 @@ if [[ "$BROKEN" != "0" ]]; then
     # canonical all-seat cascade in Claude-only CLI-compat mode.
     L25_SHIM_DIR=$(mktemp -d -t docs-guardian-claude-shim.XXXXXX)
     ln -s "$L25_CASCADE_BIN" "$L25_SHIM_DIR/claude"
+    # docs_link_fixer allows 60s per decision. Seven 7s seat attempts fit
+    # inside a 50s cascade deadline, leaving 10s for process-group cleanup and
+    # JSON parsing before Python's outer timeout can kill the wrapper.
+    L25_CALL_TIMEOUT_SEC="${DOCS_GUARDIAN_CALL_TIMEOUT_SEC:-60}"
+    L25_CASCADE_DEADLINE_SEC="${DOCS_GUARDIAN_CASCADE_DEADLINE_SEC:-50}"
+    L25_CASCADE_ATTEMPT_TIMEOUT_SEC="${DOCS_GUARDIAN_CASCADE_ATTEMPT_TIMEOUT_SEC:-7}"
+    if [[ "$L25_CASCADE_DEADLINE_SEC" -ge "$L25_CALL_TIMEOUT_SEC" ]]; then
+      echo "docs-guardian: cascade deadline must be below call timeout" >&2
+      exit 2
+    fi
     L25_RESULT=$(PATH="$L25_SHIM_DIR:$PATH" \
       CLAUDE_CASCADE_MODE=claude-only CLAUDE_CASCADE_CLI_COMPAT=1 \
-      python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" --repo . 2>/dev/null || echo '{}')
+      CLAUDE_CASCADE_DEADLINE_SEC="$L25_CASCADE_DEADLINE_SEC" \
+      CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="$L25_CASCADE_ATTEMPT_TIMEOUT_SEC" \
+      python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" \
+      --repo . --timeout "$L25_CALL_TIMEOUT_SEC" 2>/dev/null || echo '{}')
     rm -f "$L25_SHIM_DIR/claude"
     rmdir "$L25_SHIM_DIR"
     L25_SHIM_DIR=""

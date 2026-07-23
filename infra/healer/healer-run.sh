@@ -34,6 +34,20 @@ SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
 MANDATE="$HOME/scripts/HEALER-MANDATE.md"
 MAX_WALL_S="${HEALER_MAX_WALL_S:-3300}"   # 55 min hard cap for the LLM session
+# The cascade must finish before this wrapper's watchdog so its EXIT trap can
+# reap the active provider group and remove temp files. A healer turn may
+# legitimately need ~50 minutes; quota/auth failures return immediately, so a
+# long per-attempt budget preserves useful work while still rotating dead seats.
+CLAUDE_CASCADE_DEADLINE_SEC="${HEALER_CASCADE_DEADLINE_SEC:-$((MAX_WALL_S - 120))}"
+CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="${HEALER_CASCADE_ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}"
+if [ "$MAX_WALL_S" -le 180 ] \
+    || [ "$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S" ] \
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -le 0 ] \
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -gt "$CLAUDE_CASCADE_DEADLINE_SEC" ]; then
+    echo "invalid healer/cascade timeout relationship" >&2
+    exit 2
+fi
+export CLAUDE_CASCADE_DEADLINE_SEC CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC
 # Canonical Claude-only cascade retries every isolated OAuth seat without
 # crossing the provider boundary (the healer requires Claude agent semantics).
 CASCADE_BIN="${HEALER_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"

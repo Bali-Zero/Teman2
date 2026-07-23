@@ -70,6 +70,19 @@ telegram() { # $1 text — best-effort, never blocks the run
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/nuzantara"
 MAX_WALL_S="${PRO_HEALER_MAX_WALL_S:-3300}"
+# Leave two minutes for the cascade trap and outer-wrapper bookkeeping. Healer
+# turns are long-running by design; exhausted/auth-dead seats fail immediately,
+# while a healthy seat keeps enough budget to complete a substantive repair.
+CLAUDE_CASCADE_DEADLINE_SEC="${PRO_HEALER_CASCADE_DEADLINE_SEC:-$((MAX_WALL_S - 120))}"
+CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="${PRO_HEALER_CASCADE_ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}"
+if [ "$MAX_WALL_S" -le 180 ] \
+    || [ "$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S" ] \
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -le 0 ] \
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -gt "$CLAUDE_CASCADE_DEADLINE_SEC" ]; then
+    echo "invalid pro-healer/cascade timeout relationship" >&2
+    exit 2
+fi
+export CLAUDE_CASCADE_DEADLINE_SEC CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC
 # Canonical Claude-only cascade retries every isolated OAuth seat without
 # crossing the provider boundary (the healer requires Claude agent semantics).
 CASCADE_BIN="${PRO_HEALER_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"

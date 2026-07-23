@@ -42,15 +42,27 @@ typeset -a CASCADE_TEMP_FILES
 CASCADE_TEMP_FILES=()
 ACTIVE_CHILD_PID=""
 ACTIVE_WATCHER_PID=""
+ACTIVE_GROUP_PID=""
+
+terminate_attempt_group() {
+    local group_pid="${1:-}"
+    local grace_sec="${2:-1}"
+    [ -z "$group_pid" ] && return 0
+
+    kill -TERM -- -"$group_pid" 2>/dev/null || true
+    sleep "$grace_sec"
+    kill -KILL -- -"$group_pid" 2>/dev/null || true
+}
 
 cleanup_cascade() {
     if [ -n "${ACTIVE_WATCHER_PID:-}" ]; then
         kill "$ACTIVE_WATCHER_PID" 2>/dev/null || true
         wait "$ACTIVE_WATCHER_PID" 2>/dev/null || true
     fi
+    if [ -n "${ACTIVE_GROUP_PID:-}" ]; then
+        terminate_attempt_group "$ACTIVE_GROUP_PID" 1
+    fi
     if [ -n "${ACTIVE_CHILD_PID:-}" ]; then
-        /usr/bin/pkill -TERM -P "$ACTIVE_CHILD_PID" 2>/dev/null || true
-        kill "$ACTIVE_CHILD_PID" 2>/dev/null || true
         wait "$ACTIVE_CHILD_PID" 2>/dev/null || true
     fi
     local temp_path
@@ -155,24 +167,95 @@ if [ -z "$PROMPT" ]; then
 fi
 
 QUOTA_PATTERN="out of extra usage|usage limit|weekly limit|quota exceeded|rate.limit|429|exhausted|please try again later"
-AUTH_PATTERN="authentication required|not logged in|please log in|unauthorized|invalid (oauth )?token|oauth token.*(expired|invalid|revoked)|refresh_token_reused"
+AUTH_PATTERN="authentication required|not logged in|please log in|unauthorized|invalid (oauth )?token|oauth token.*(expired|invalid|revoked)|401[[:space:]:_-]+(unauthorized|authentication|invalid)|token_revoked|refresh_token(_reused)?"
 RETRYABLE_PATTERN="$QUOTA_PATTERN|$AUTH_PATTERN"
+RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|not logged in|please log in|401[[:space:]:_-]+(unauthorized|authentication required|invalid token)|token_revoked|refresh_token(_reused)?|invalid (oauth )?token|oauth token (expired|invalid|revoked)"
 
 new_temp_file
 PROMPT_FILE="$REPLY"
 printf '%s' "$PROMPT" >"$PROMPT_FILE"
 
+stdout_is_retryable_envelope() {
+    local output_file="$1"
+    local pattern="$2"
+    local compact
+    [ -s "$output_file" ] || return 1
+    [ "$(wc -c <"$output_file" | tr -d ' ')" -le 8192 ] || return 1
+
+    compact="$(tr '\n\r\t' '   ' <"$output_file" | tr -s ' ')"
+    # A successful answer may discuss "401", quota, or token failures. Only
+    # classify stdout when the entire payload is a known diagnostic shape:
+    # a raw diagnostic beginning with the failure, an explicitly framed error,
+    # or a JSON error envelope.
+    if printf '%s\n' "$compact" | grep -qiE \
+        "^[[:space:]]*($RAW_RETRYABLE_PATTERN)[[:space:].!]*$"; then
+        return 0
+    fi
+    if printf '%s\n' "$compact" | grep -qiE \
+        '^[[:space:]]*(error|fatal|authentication error|authorization error|quota error|api error|http error|request failed|status)[[:space:]:_-]+' \
+        && printf '%s\n' "$compact" | grep -qiE "$pattern"; then
+        return 0
+    fi
+    if printf '%s\n' "$compact" | grep -qiE \
+        '^[[:space:]]*\{.*"(error|errors)"[[:space:]]*:' \
+        && printf '%s\n' "$compact" | grep -qiE "$pattern" \
+        && printf '%s\n' "$compact" | grep -qE '\}[[:space:]]*$'; then
+        return 0
+    fi
+    return 1
+}
+
+retryable_failure_detected() {
+    local output_file="$1"
+    local error_file="$2"
+    local exit_code="$3"
+    local extra_pattern="${4:-}"
+    local pattern="$RETRYABLE_PATTERN"
+    [ -n "$extra_pattern" ] && pattern="$pattern|$extra_pattern"
+
+    # stderr is a diagnostic channel, so a matching failure is authoritative.
+    grep -qiE "$pattern" "$error_file" && return 0
+    # stdout is user content on success. It is retryable only when the whole
+    # exit-zero payload is a recognized error envelope.
+    [ "$exit_code" -eq 0 ] \
+        && stdout_is_retryable_envelope "$output_file" "$pattern"
+}
+
+# Every cloud provider in this cascade uses subscription OAuth/config auth.
+# Never let an ambient metered API credential choose a different billing path,
+# and never expose one provider's credential to another provider's process.
+typeset -a ISOLATED_PROVIDER_ENV
+build_isolated_provider_env() {
+    local name
+    ISOLATED_PROVIDER_ENV=(env)
+    for name in ${(k)parameters}; do
+        case "$name" in
+            CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN_*|\
+            ANTHROPIC_*|\
+            AWS_*|VERTEX_AI_*|GOOGLE_APPLICATION_CREDENTIALS|GOOGLE_CLOUD_*|\
+            CLOUD_ML_*|CLAUDE_CODE_USE_BEDROCK|CLAUDE_CODE_USE_VERTEX|\
+            CLAUDE_CODE_USE_FOUNDRY|OPENAI_*|OPENROUTER_*|GEMINI_*|\
+            GOOGLE_API_KEY|GOOGLE_OAUTH_*|DEEPSEEK_*|TOGETHER_*|\
+            FIREWORKS_*|MISTRAL_*|COHERE_*|GROQ_*|XAI_*|PERPLEXITY_*|\
+            KIMI_*|MOONSHOT_*)
+                ISOLATED_PROVIDER_ENV+=(-u "$name")
+                ;;
+        esac
+    done
+}
+
 # Run one provider attempt under both a per-attempt timeout and a global
 # cascade deadline. macOS has no guaranteed timeout(1), so a local watchdog
-# owns the exact child PID. Timeout is a retryable failure; a spent global
-# deadline makes every later attempt fail immediately.
+# owns a dedicated process group (PGID == child PID). TERM/grace/KILL always
+# targets the whole group, so a provider grandchild cannot survive a timeout.
+# Timeout is retryable; a spent global deadline fails later attempts at once.
 run_bounded() {
     local tmpout="$1"
     local tmperr="$2"
     local label="$3"
     shift 3
 
-    local now remaining allowed timeout_marker exit_code child_pid
+    local now remaining allowed timeout_marker exit_code child_pid python_bin
     now="$(date +%s)"
     remaining=$(( CASCADE_DEADLINE_AT - now ))
     if [ "$remaining" -le 0 ]; then
@@ -186,18 +269,22 @@ run_bounded() {
     CASCADE_TEMP_FILES+=("$timeout_marker")
     rm -f -- "$timeout_marker"
 
-    "$@" <"$PROMPT_FILE" >"$tmpout" 2>"$tmperr" &
+    python_bin="$(command -v python3 2>/dev/null || true)"
+    if [ -z "$python_bin" ]; then
+        echo "python3 is required to isolate provider process groups" >"$tmperr"
+        return 127
+    fi
+    "$python_bin" -c \
+        'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' \
+        "$@" <"$PROMPT_FILE" >"$tmpout" 2>"$tmperr" &
     ACTIVE_CHILD_PID=$!
     child_pid="$ACTIVE_CHILD_PID"
+    ACTIVE_GROUP_PID="$child_pid"
     (
         sleep "$allowed"
         if kill -0 "$child_pid" 2>/dev/null; then
             : >"$timeout_marker"
-            /usr/bin/pkill -TERM -P "$child_pid" 2>/dev/null || true
-            kill -TERM "$child_pid" 2>/dev/null || true
-            sleep 1
-            /usr/bin/pkill -KILL -P "$child_pid" 2>/dev/null || true
-            kill -KILL "$child_pid" 2>/dev/null || true
+            terminate_attempt_group "$child_pid" 1
         fi
     ) </dev/null >/dev/null 2>&1 &
     ACTIVE_WATCHER_PID=$!
@@ -206,11 +293,13 @@ run_bounded() {
     exit_code=$?
     kill "$ACTIVE_WATCHER_PID" 2>/dev/null || true
     wait "$ACTIVE_WATCHER_PID" 2>/dev/null || true
+    # A provider that returned should not leave detached work behind.
+    kill -KILL -- -"$child_pid" 2>/dev/null || true
     ACTIVE_CHILD_PID=""
     ACTIVE_WATCHER_PID=""
+    ACTIVE_GROUP_PID=""
 
     if [ -e "$timeout_marker" ]; then
-        /usr/bin/pkill -KILL -P "$child_pid" 2>/dev/null || true
         echo "attempt timed out after ${allowed}s" >"$tmperr"
         return 124
     fi
@@ -239,26 +328,17 @@ try_claude() {
     new_temp_file
     tmperr="$REPLY"
     build_claude_args
-    local -a clean_env
-    clean_env=(
-        env
-        -u CLAUDE_CODE_OAUTH_TOKEN
-        -u CLAUDE_CODE_OAUTH_TOKEN_1
-        -u CLAUDE_CODE_OAUTH_TOKEN_2
-        -u CLAUDE_CODE_OAUTH_TOKEN_3
-        -u CLAUDE_CODE_OAUTH_TOKEN_4
-        -u CLAUDE_CODE_OAUTH_TOKEN_5
-    )
+    build_isolated_provider_env
 
     echo "  [try] $label ($bin)" >&2
     if [ -n "$oauth_token" ]; then
-        run_bounded "$tmpout" "$tmperr" "$label" "${clean_env[@]}" \
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
             CLAUDE_CONFIG_DIR="$config_dir" \
             CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" \
             "$bin" "${CLAUDE_ARGS[@]}"
         exit_code=$?
     else
-        run_bounded "$tmpout" "$tmperr" "$label" "${clean_env[@]}" \
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
             CLAUDE_CONFIG_DIR="$config_dir" \
             "$bin" "${CLAUDE_ARGS[@]}"
         exit_code=$?
@@ -266,7 +346,7 @@ try_claude() {
 
     # Some Claude CLI auth/quota failures incorrectly return exit 0. Content
     # classification therefore precedes the exit-code success check.
-    if grep -qiE "$RETRYABLE_PATTERN" "$tmpout" "$tmperr"; then
+    if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
         echo "  [retry] $label quota/auth failure" >&2
         rm -f "$tmpout" "$tmperr"
         return 98
@@ -313,16 +393,19 @@ try_gemini() {
     new_temp_file
     tmperr="$REPLY"
     echo "  [try] Gemini $label" >&2
+    build_isolated_provider_env
     if [ "$bin" = "$agy_bin" ]; then
         run_bounded "$tmpout" "$tmperr" "$label" \
-            "$bin" -p --print-timeout 5m
+            "${ISOLATED_PROVIDER_ENV[@]}" "$bin" -p --print-timeout 5m
         exit_code=$?
     else
         run_bounded "$tmpout" "$tmperr" "$label" \
+            "${ISOLATED_PROVIDER_ENV[@]}" \
             "$bin" -m gemini-3.1-pro-preview -p "$PROMPT"
         exit_code=$?
     fi
-    if grep -qiE "$QUOTA_PATTERN|TerminalQuotaError" "$tmpout" "$tmperr"; then
+    if retryable_failure_detected \
+        "$tmpout" "$tmperr" "$exit_code" "TerminalQuotaError"; then
         echo "  [exhausted] $label quota" >&2
         rm -f "$tmpout" "$tmperr"
         return 98
@@ -358,10 +441,11 @@ try_kimi() {
     echo "  [try] Kimi Code K3" >&2
     # Fleet config pins default_model to kimi-code/k3. Invoking the configured
     # default is more reliable than repeating the alias on every call.
+    build_isolated_provider_env
     run_bounded "$tmpout" "$tmperr" "Kimi Code K3" \
-        "$kimi_bin" --prompt "$PROMPT"
+        "${ISOLATED_PROVIDER_ENV[@]}" "$kimi_bin" --prompt "$PROMPT"
     exit_code=$?
-    if grep -qiE "$QUOTA_PATTERN" "$tmpout" "$tmperr"; then
+    if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
         echo "  [exhausted] Kimi K3 quota" >&2
         rm -f "$tmpout" "$tmperr"
         return 98
@@ -396,10 +480,12 @@ try_codex() {
     new_temp_file
     tmperr="$REPLY"
     echo "  [try] tier4 codex" >&2
+    build_isolated_provider_env
     run_bounded "$tmpout" "$tmperr" "tier4 codex" \
+        "${ISOLATED_PROVIDER_ENV[@]}" \
         "$codex_bin" exec --sandbox read-only --skip-git-repo-check "$PROMPT"
     exit_code=$?
-    if grep -qiE "$QUOTA_PATTERN" "$tmpout" "$tmperr"; then
+    if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
         echo "  [exhausted] codex quota" >&2
         rm -f "$tmpout" "$tmperr"
         return 98
@@ -421,7 +507,8 @@ try_codex() {
 }
 
 try_ollama() {
-    [ ! -x /opt/homebrew/bin/ollama ] && { echo "  [skip] ollama not installed" >&2; return 99; }
+    local ollama_bin="${CLAUDE_CASCADE_OLLAMA_BIN:-/opt/homebrew/bin/ollama}"
+    [ ! -x "$ollama_bin" ] && { echo "  [skip] ollama not installed" >&2; return 99; }
     if [ -n "$AGENT" ]; then
         echo "  [skip] tier5 ollama — --agent=$AGENT requires Claude tier" >&2
         return 99
@@ -432,8 +519,10 @@ try_ollama() {
     new_temp_file
     tmperr="$REPLY"
     echo "  [try] tier5 ollama qwen3.5:9b local" >&2
+    build_isolated_provider_env
     run_bounded "$tmpout" "$tmperr" "tier5 ollama" \
-        /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT"
+        "${ISOLATED_PROVIDER_ENV[@]}" \
+        "$ollama_bin" run qwen3.5:9b "$PROMPT"
     exit_code=$?
     if [ "$exit_code" -ne 0 ]; then
         echo "  [error] ollama exit=$exit_code" >&2
@@ -540,9 +629,13 @@ rc=$?
 # Named Claude agents are provider-specific executable contracts. If every
 # Claude seat fails, crossing model families would silently drop the agent
 # definition/tool policy. Fail closed instead.
-if [ "$CLAUDE_ONLY" -eq 1 ] || [ -n "$AGENT" ]; then
+if [ "$CLAUDE_ONLY" -eq 1 ] || [ -n "$AGENT" ] \
+    || [ "${#EXTRA_ARGS[@]}" -gt 0 ]; then
     if [ -n "$AGENT" ]; then
         echo "[claude-cascade] agent '$AGENT' cannot be preserved cross-family" >&2
+    fi
+    if [ "${#EXTRA_ARGS[@]}" -gt 0 ]; then
+        echo "[claude-cascade] Claude CLI arguments cannot be preserved cross-family" >&2
     fi
     echo "[claude-cascade] ALL CLAUDE SEATS FAILED" >&2
     exit 1
