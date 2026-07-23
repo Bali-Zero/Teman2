@@ -1,4 +1,4 @@
--- Migration 256: permit explicit acknowledgement outcomes for compliance alerts.
+-- Migration 257: permit explicit acknowledgement outcomes for compliance alerts.
 --
 -- The compliance-alert status constraint has accepted `acknowledged` since
 -- migration 114, but migration 115's outcome audit constraint only accepts
@@ -22,7 +22,7 @@ ALTER TABLE alert_outcomes
 
 -- === ROLLBACK ===
 -- The old schema cannot represent the explicit acknowledgement. Preserve the
--- audit row and map only that new value to its closest pre-256 state before
+-- audit row and map only that new value to its closest pre-257 state before
 -- restoring the original constraint; acted/dismissed/expired rows are untouched.
 UPDATE alert_outcomes
    SET outcome = 'dismissed'

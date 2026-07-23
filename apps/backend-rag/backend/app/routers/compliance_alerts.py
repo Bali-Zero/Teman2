@@ -146,6 +146,7 @@ async def list_alerts(
     severity: str | None = Query(None),
     status_filter: str | None = Query(None, alias="status"),
     deadline_within_days: int | None = Query(None, ge=0, le=3650),
+    active_only: bool = Query(False),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: dict[str, Any] = Depends(get_current_user),
@@ -162,6 +163,7 @@ async def list_alerts(
         severity: Filter by severity level.
         status_filter: Filter by alert status.
         deadline_within_days: Include deadlines through today plus this many days.
+        active_only: Return open alerts ordered by the nearest deadline.
         limit: Max rows to return (1–500).
         offset: Pagination offset.
         user: Authenticated user dict.
@@ -195,8 +197,11 @@ async def list_alerts(
     if deadline_within_days is not None:
         clauses.append(f"deadline <= CURRENT_DATE + ${len(params) + 1}::integer")
         params.append(deadline_within_days)
+    if active_only and not status_filter:
+        clauses.append("status IN ('pending','sent','acknowledged')")
 
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    order_by = "deadline ASC, created_at DESC" if active_only else "created_at DESC"
     limit_idx = len(params) + 1
     offset_idx = len(params) + 2
     params.extend([limit, offset])
@@ -204,7 +209,7 @@ async def list_alerts(
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             f"SELECT * FROM compliance_alerts {where} "
-            f"ORDER BY created_at DESC "
+            f"ORDER BY {order_by} "
             f"LIMIT ${limit_idx} OFFSET ${offset_idx}",
             *params,
         )

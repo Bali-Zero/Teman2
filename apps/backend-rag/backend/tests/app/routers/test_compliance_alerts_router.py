@@ -258,6 +258,7 @@ async def test_get_alerts_team_owner_casefold_and_deadline_horizon(
         assigned_to="Team@BaliZero.com",
     )
     overdue = await _insert_alert(db_pool, client["id"], deadline_days=-2)
+    on_boundary = await _insert_alert(db_pool, client["id"], deadline_days=7)
     far_future = await _insert_alert(db_pool, client["id"], deadline_days=30)
     try:
         app = make_app(_TEAM_USER, db_pool)
@@ -277,11 +278,13 @@ async def test_get_alerts_team_owner_casefold_and_deadline_horizon(
         body = r.json()
         alert_ids = {alert["alert_id"] for alert in body["items"]}
         assert overdue["alert_id"] in alert_ids
+        assert on_boundary["alert_id"] in alert_ids  # deadline == today + N is inclusive
         assert far_future["alert_id"] not in alert_ids
         assert body["limit"] == 500
         assert body["offset"] == 0
     finally:
         await _delete_alert(db_pool, overdue["alert_id"])
+        await _delete_alert(db_pool, on_boundary["alert_id"])
         await _delete_alert(db_pool, far_future["alert_id"])
         await _delete_client(db_pool, client["id"])
 

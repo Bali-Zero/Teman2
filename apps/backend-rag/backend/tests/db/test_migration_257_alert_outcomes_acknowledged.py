@@ -1,4 +1,4 @@
-"""Contract checks for migration 256's compliance outcome alignment."""
+"""Contract checks for migration 257's compliance outcome alignment."""
 
 from pathlib import Path
 
@@ -6,11 +6,11 @@ _MIGRATION = (
     Path(__file__).parents[2]
     / "db"
     / "migrations_v2"
-    / "256_alert_outcomes_acknowledged.sql"
+    / "257_alert_outcomes_acknowledged.sql"
 )
 
 
-def test_migration_256_aligns_outcome_and_status_contracts() -> None:
+def test_migration_257_aligns_outcome_and_status_contracts() -> None:
     sql = _MIGRATION.read_text(encoding="utf-8")
     forward, rollback = sql.split("-- === ROLLBACK ===", maxsplit=1)
 
