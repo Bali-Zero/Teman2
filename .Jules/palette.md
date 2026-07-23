@@ -87,8 +87,3 @@
 
 **Learning:** Sidebars that are visually animated off-screen using CSS transitions (e.g., `transform: translateX`) remain in the active document flow unless hidden or made inert. This allows screen readers and keyboard users (via the Tab key) to focus hidden elements inside the sidebar, creating a confusing and unexpected keyboard experience. Applying the standard HTML `inert` attribute (natively supported in React 19) when the sidebar is closed ensures all interactive children are completely removed from the tab order.
 **Action:** Always apply `inert={!isOpen ? true : undefined}` (or similar) to sliding or off-screen panels/drawers to keep the keyboard navigation and tab flow clean and expected.
-
-## 2026-07-25 - [Dynamic Contextual Alt Text for User Avatars]
-
-**Learning:** Reusable avatar components must have dynamic and contextual alt text. Hardcoding generic placeholders like "User avatar" or "User" is insufficient when the interface renders multiple distinct users, as it obscures who each avatar represents. Constructing the descriptive alt attribute using the specific user name (e.g., `alt={userName ? "Avatar for " + userName : "User avatar"}`) gives screen readers clear, context-aware information.
-**Action:** Always construct avatar `alt` attributes using the associated user's name when available, falling back safely to a generic descriptor if not.

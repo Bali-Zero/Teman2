@@ -1,15 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { UserAvatar } from "./UserAvatar";
-
-// Mock next/image to render standard HTML img tag for testing
-vi.mock("next/image", () => ({
-  __esModule: true,
-  default: (props: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img {...props} />;
-  },
-}));
 
 describe("UserAvatar", () => {
   it("renders standard fallback initials from the user name when userAvatar is not provided", () => {
@@ -39,5 +30,18 @@ describe("UserAvatar", () => {
     const img = screen.getByRole("img");
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute("alt", "User avatar");
+  });
+
+  it("applies the large size classes and a custom className", () => {
+    const { container } = render(
+      <UserAvatar
+        userName="Zantara"
+        userAvatar={null}
+        size="lg"
+        className="custom-class"
+      />,
+    );
+
+    expect(container.firstChild).toHaveClass("w-12", "h-12", "custom-class");
   });
 });
