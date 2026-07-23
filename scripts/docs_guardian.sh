@@ -169,8 +169,9 @@ Co-Authored-By: docs-guardian <noreply@balizero.com>"
 fi
 
 # --- L2.5 — Claude-assisted broken-link auto-fix ---
-# Runs only if there are broken links AND a Claude OAuth token is available.
-# Loads tokens from ~/.nuzantara-secrets.env (same pattern as cron-agent.sh).
+# Runs only if there are broken links AND the canonical Claude cascade exists.
+# This task needs strict Claude JSON decisions, so it retries every OAuth seat
+# but deliberately never crosses to a different LLM provider.
 if [[ "$BROKEN" != "0" ]]; then
   SECRETS_FILE="$HOME/.nuzantara-secrets.env"
   if [[ -f "$SECRETS_FILE" ]]; then
@@ -180,17 +181,24 @@ if [[ "$BROKEN" != "0" ]]; then
     set +a
   fi
 
-  # Pick the first available token; export as the var `claude` CLI reads
-  L25_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN:-}}"
+  L25_CASCADE_BIN="${DOCS_GUARDIAN_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+  [[ -x "$L25_CASCADE_BIN" ]] || L25_CASCADE_BIN="$(pwd)/infra/launchagents/wrappers/claude-cascade.sh"
 
-  if [[ -n "$L25_TOKEN" ]] && command -v claude >/dev/null 2>&1; then
+  if [[ -x "$L25_CASCADE_BIN" ]]; then
     # Fresh audit JSON snapshot (post-L1 state)
     L25_AUDIT_JSON=$(mktemp -t docs-audit-XXXXXX.json)
     python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" >"$L25_AUDIT_JSON" 2>/dev/null || true
 
-    # Invoke link_fixer with OAuth token in env; capture summary
-    L25_RESULT=$(CLAUDE_CODE_OAUTH_TOKEN="$L25_TOKEN" \
+    # docs_link_fixer invokes a binary named `claude`. A temporary symlink keeps
+    # its stable subprocess contract while routing each decision through the
+    # canonical all-seat cascade in Claude-only CLI-compat mode.
+    L25_SHIM_DIR=$(mktemp -d -t docs-guardian-claude-shim.XXXXXX)
+    ln -s "$L25_CASCADE_BIN" "$L25_SHIM_DIR/claude"
+    L25_RESULT=$(PATH="$L25_SHIM_DIR:$PATH" \
+      CLAUDE_CASCADE_MODE=claude-only CLAUDE_CASCADE_CLI_COMPAT=1 \
       python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" --repo . 2>/dev/null || echo '{}')
+    rm -f "$L25_SHIM_DIR/claude"
+    rmdir "$L25_SHIM_DIR"
     L25_APPLIED=$(echo "$L25_RESULT" | python -c "
 import json, sys
 try:

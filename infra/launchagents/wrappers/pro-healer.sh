@@ -70,16 +70,10 @@ telegram() { # $1 text — best-effort, never blocks the run
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/nuzantara"
 MAX_WALL_S="${PRO_HEALER_MAX_WALL_S:-3300}"
-# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
-# Pro: ~/.local/bin only — first live tick died exit=127 on the homebrew default).
-# Env override wins; otherwise probe known locations, then PATH.
-CLAUDE_BIN="${PRO_HEALER_CLAUDE_BIN:-}"
-if [ -z "$CLAUDE_BIN" ]; then
-    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
-        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
-    done
-fi
-[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+# Canonical Claude-only cascade retries every isolated OAuth seat without
+# crossing the provider boundary (the healer requires Claude agent semantics).
+CASCADE_BIN="${PRO_HEALER_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$HOME/nuzantara/infra/launchagents/wrappers/claude-cascade.sh"
 MODEL="${PRO_HEALER_MODEL:-claude-sonnet-5}"
 
 if [ -z "${PRO_HEALER_TRAMPOLINED:-}" ] && [ -z "${SSH_CONNECTION:-}" ]; then
@@ -97,9 +91,6 @@ fi
 cd "$REPO" || { heartbeat "error" "repo missing"; exit 1; }
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
-if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
-fi
 
 # ---- deterministic pre-check (zero LLM cost when Pro's runtime is healthy) --
 # Receptors are PRO-scoped; the PENDING-ARMS ledger receptor stays MINI-ONLY
@@ -193,19 +184,23 @@ if [ ! -f "$MANDATE" ]; then
     heartbeat "error" "mandate missing"
     exit 1
 fi
-if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
-    log "FATAL: no claude binary (env PRO_HEALER_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
-    heartbeat "error" "no claude binary"
+if [ -n "${PRO_HEALER_CLAUDE_BIN:-}" ]; then
+    export CLAUDE_CASCADE_DEFAULT_BIN="$PRO_HEALER_CLAUDE_BIN"
+fi
+if [ ! -x "$CASCADE_BIN" ]; then
+    log "FATAL: canonical Claude cascade missing (env PRO_HEALER_CASCADE_BIN, ~/scripts, repo canon)"
+    heartbeat "error" "claude cascade missing"
     exit 1
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
 export HEALER_RUN=1
-"$CLAUDE_BIN" -p "$(cat "$MANDATE")
+"$CASCADE_BIN" "$(cat "$MANDATE")
 
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
-    --model "$MODEL" --dangerously-skip-permissions \
-    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --claude-only --model "$MODEL" -- \
+    --dangerously-skip-permissions --strict-mcp-config \
+    --mcp-config '{"mcpServers":{}}' \
     --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!

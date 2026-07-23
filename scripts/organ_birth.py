@@ -14,7 +14,7 @@ Genes imprinted in the emitted artifacts:
   G4_node_guard      — hostname != assigned node -> heartbeat status=disabled + exit 0
                        (VISIBLE graceful exit — panel 2026-07-06: never a silent skip)
   G5_kill_switch     — <ID>_ENABLED=false honored, final heartbeat status=disabled
-  G6_spawn_hardened  — (--kind llm-cron) claude -p with the 4 headless gotchas cured:
+  G6_spawn_hardened  — (--kind llm-cron) Claude-only cascade with the 4 headless gotchas cured:
                        W84 ssh-localhost trampoline, --strict-mcp-config + empty MCP,
                        </dev/null stdin, wall-clock watchdog
   G7_ledger          — PENDING-ARMS line printed for .claude/skills/modus/PENDING-ARMS.md
@@ -137,16 +137,11 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
-# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
-# Pro: ~/.local/bin only — healer-pro first tick died exit=127 on a hardcoded
-# homebrew default). Env override wins; otherwise probe, then PATH.
-CLAUDE_BIN="${{{var}_CLAUDE_BIN:-}}"
-if [ -z "$CLAUDE_BIN" ]; then
-    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
-        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
-    done
-fi
-[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+# Claude-specific organs retry every isolated OAuth seat through the canonical
+# cascade, but never cross to another provider because agent/tool contracts may
+# be Claude-only. Per-organ override wins; repo canon is the final fallback.
+CASCADE_BIN="${{{var}_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$REPO/infra/launchagents/wrappers/claude-cascade.sh"
 MODEL="${{{var}_MODEL:-claude-sonnet-5}}"
 
 if [ -z "${{{var}_TRAMPOLINED:-}}" ] && [ -z "${{SSH_CONNECTION:-}}" ]; then
@@ -164,19 +159,20 @@ fi
 cd "$REPO" || {{ heartbeat "error" "repo missing"; exit 1; }}
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
-if [ -z "${{CLAUDE_CODE_OAUTH_TOKEN:-}}" ] && [ -n "${{CLAUDE_CODE_OAUTH_TOKEN_1:-}}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+if [ -n "${{{var}_CLAUDE_BIN:-}}" ]; then
+    export CLAUDE_CASCADE_DEFAULT_BIN="${{{var}_CLAUDE_BIN}}"
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
-if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
-    log "FATAL: no claude binary (env {var}_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
-    heartbeat "error" "no claude binary"
+if [ ! -x "$CASCADE_BIN" ]; then
+    log "FATAL: canonical Claude cascade missing (env {var}_CLAUDE_CASCADE_BIN, ~/scripts, repo canon)"
+    heartbeat "error" "claude cascade missing"
     exit 1
 fi
-"$CLAUDE_BIN" -p "TODO: your standing mandate here" \\
-    --model "$MODEL" --dangerously-skip-permissions \\
-    --strict-mcp-config --mcp-config '{{"mcpServers":{{}}}}' \\
+"$CASCADE_BIN" "TODO: your standing mandate here" \\
+    --claude-only --model "$MODEL" -- \\
+    --dangerously-skip-permissions --strict-mcp-config \\
+    --mcp-config '{{"mcpServers":{{}}}}' \\
     --max-budget-usd "${{{var}_MAX_BUDGET_USD:-5}}" \\
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!

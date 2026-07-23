@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SLOT4_CONSUMERS = (
     (
         "infra/launchagents/wrappers/claude-cascade.sh",
-        "claude-acct4:tier2c-claude-acct4",
+        'token="${CLAUDE_CODE_OAUTH_TOKEN_4:-}"',
     ),
     ("infra/launchagents/wrappers/cron-agent.sh", "for i in 1 2 3 4; do"),
     (

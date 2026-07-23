@@ -10,7 +10,12 @@
 #
 # Usage:
 #   claude-cascade.sh "<prompt text>" [--model MODEL] [--agent AGENT_NAME]
+#   claude-cascade.sh "<prompt text>" --claude-only [--model MODEL]
 #   echo "prompt" | claude-cascade.sh --stdin [--agent AGENT_NAME]
+#
+# --claude-only tries every Claude OAuth seat, then exits without crossing the
+# provider boundary to Gemini/Kimi/Codex/Ollama. This is load-bearing for jobs
+# that require Claude-specific agents, tool permissions, or output contracts.
 #
 # Output: stdout = LLM response. Stderr = which tier was used + which tiers were skipped.
 # Exit codes: 0 = success on any tier. 1 = ALL tiers failed. 2 = bad usage.
@@ -50,14 +55,28 @@ PROMPT=""
 MODEL=""
 AGENT=""
 USE_STDIN=0
+CLAUDE_ONLY=0
+CLAUDE_CLI_COMPAT="${CLAUDE_CASCADE_CLI_COMPAT:-0}"
 EXTRA_ARGS=()
+
+[ "${CLAUDE_CASCADE_MODE:-}" = "claude-only" ] && CLAUDE_ONLY=1
 
 # parse args
 while [ $# -gt 0 ]; do
     case "$1" in
         --model) MODEL="$2"; shift 2 ;;
         --agent) AGENT="$2"; shift 2 ;;
+        --claude-only) CLAUDE_ONLY=1; shift ;;
         --stdin) USE_STDIN=1; shift ;;
+        -p|--print)
+            if [ "$CLAUDE_CLI_COMPAT" = "1" ] && [ $# -gt 1 ]; then
+                PROMPT="$2"
+                shift 2
+            else
+                EXTRA_ARGS+=("$1")
+                shift
+            fi
+            ;;
         --) shift; EXTRA_ARGS+=("$@"); break ;;
         -*) EXTRA_ARGS+=("$1"); shift ;;
         *) PROMPT="$1"; shift ;;
@@ -69,7 +88,7 @@ if [ "$USE_STDIN" -eq 1 ]; then
 fi
 
 if [ -z "$PROMPT" ]; then
-    echo "usage: $0 \"<prompt>\" [--model M] [--agent A]" >&2
+    echo "usage: $0 \"<prompt>\" [--model M] [--agent A] [--claude-only]" >&2
     exit 2
 fi
 
@@ -87,34 +106,56 @@ build_claude_args() {
 try_claude() {
     local bin="$1"
     local label="$2"
-    [ ! -x "$bin" ] && [ ! -L "$bin" ] && { echo "  [skip] $label not installed at $bin" >&2; return 99; }
+    local oauth_token="${3:-}"
+    local config_dir="${4:-}"
+    [ ! -x "$bin" ] && { echo "  [skip] $label not installed at $bin" >&2; return 99; }
 
     local tmpout=$(mktemp)
+    local tmperr=$(mktemp)
     local args=$(build_claude_args)
 
     echo "  [try] $label ($bin)" >&2
-    echo "$PROMPT" | $bin ${=args} >"$tmpout" 2>&1
+    if [ -n "$oauth_token" ]; then
+        # Wrapper-less fleet nodes still carry indexed OAuth tokens. Inject the
+        # selected credential into an isolated config dir without ever logging
+        # its value. This keeps every subscription seat reachable on Air/Pro/Mini.
+        printf '%s' "$PROMPT" | env -u CLAUDE_CODE_OAUTH_TOKEN \
+            CLAUDE_CONFIG_DIR="$config_dir" \
+            CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" \
+            "$bin" ${=args} >"$tmpout" 2>"$tmperr"
+    elif [ "$label" = "tier1-claude-default" ]; then
+        printf '%s' "$PROMPT" | "$bin" ${=args} >"$tmpout" 2>"$tmperr"
+    else
+        # A bare token selects one OAuth seat regardless of CLAUDE_CONFIG_DIR.
+        # Remove it before invoking account wrappers so acct2/acct3/acct4 and
+        # zero-team can load their own isolated credential instead of silently
+        # retrying the default seat.
+        printf '%s' "$PROMPT" | env -u CLAUDE_CODE_OAUTH_TOKEN "$bin" ${=args} >"$tmpout" 2>"$tmperr"
+    fi
     local exit=$?
 
-    if grep -qiE "$QUOTA_PATTERN" "$tmpout"; then
+    if grep -qiE "$QUOTA_PATTERN" "$tmpout" "$tmperr"; then
         echo "  [exhausted] $label quota" >&2
-        rm -f "$tmpout"
+        rm -f "$tmpout" "$tmperr"
         return 98
     fi
     if [ $exit -ne 0 ]; then
         echo "  [error] $label exit=$exit" >&2
         cat "$tmpout" >&2
-        rm -f "$tmpout"
+        cat "$tmperr" >&2
+        rm -f "$tmpout" "$tmperr"
         return $exit
     fi
     if [ ! -s "$tmpout" ]; then
         echo "  [error] $label returned empty output" >&2
-        rm -f "$tmpout"
+        cat "$tmperr" >&2
+        rm -f "$tmpout" "$tmperr"
         return 97
     fi
 
     cat "$tmpout"
-    rm -f "$tmpout"
+    cat "$tmperr" >&2
+    rm -f "$tmpout" "$tmperr"
     echo "[claude-cascade] used: $label" >&2
     return 0
 }
@@ -268,25 +309,68 @@ try_ollama() {
 echo "[claude-cascade] starting (prompt ${#PROMPT} chars, agent='$AGENT', model='$MODEL')" >&2
 
 # Claude OAuth seats (if configured)
-DEFAULT_CLAUDE_BIN="$HOME/.local/share/mise/shims/claude"
+DEFAULT_CLAUDE_BIN="${CLAUDE_CASCADE_DEFAULT_BIN:-$HOME/.local/share/mise/shims/claude}"
 [ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="$HOME/.local/bin/claude"
 [ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/Claude"
 [ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/claude"
 
-for slot in "${DEFAULT_CLAUDE_BIN}:tier1-claude-default" \
-            "$HOME/.local/bin/claude-acct2:tier2-claude-acct2" \
-            "$HOME/.local/bin/claude-acct3:tier2b-claude-acct3" \
-            "$HOME/.local/bin/claude-acct4:tier2c-claude-acct4" \
-            "$HOME/.local/bin/claude-zero-team:tier2d-claude-zero-team"; do
-    bin="${slot%:*}"
-    label="${slot#*:}"
+# Default login/config first.
+try_claude "$DEFAULT_CLAUDE_BIN" "tier1-claude-default"
+rc=$?
+[ $rc -eq 0 ] && exit 0
+
+# In sshd/launchd contexts the default Keychain can be locked. Retry the first
+# indexed seat explicitly unless the caller already injected that same token.
+TOKEN1="${CLAUDE_CODE_OAUTH_TOKEN_1:-}"
+if [ -n "$TOKEN1" ] && [ "${CLAUDE_CODE_OAUTH_TOKEN:-}" != "$TOKEN1" ]; then
+    try_claude "$DEFAULT_CLAUDE_BIN" "tier1b-claude-token1-env" \
+        "$TOKEN1" "$HOME/.claude"
+    rc=$?
+    [ $rc -eq 0 ] && exit 0
+fi
+
+# Account wrappers preserve their own config. When a fleet node lacks a
+# wrapper, the corresponding indexed env token reaches the same isolated
+# config directory through the default Claude binary.
+for index in 2 3 4; do
+    case "$index" in
+        2)
+            bin="$HOME/.local/bin/claude-acct2"
+            label="tier2-claude-acct2"
+            token="${CLAUDE_CODE_OAUTH_TOKEN_2:-}"
+            ;;
+        3)
+            bin="$HOME/.local/bin/claude-acct3"
+            label="tier2b-claude-acct3"
+            token="${CLAUDE_CODE_OAUTH_TOKEN_3:-}"
+            ;;
+        4)
+            bin="$HOME/.local/bin/claude-acct4"
+            label="tier2c-claude-acct4"
+            token="${CLAUDE_CODE_OAUTH_TOKEN_4:-}"
+            ;;
+    esac
+
     try_claude "$bin" "$label"
     rc=$?
     [ $rc -eq 0 ] && exit 0
-    [ $rc -eq 99 ] && continue  # not installed
-    [ $rc -eq 98 ] && continue  # quota exhausted, try next
-    # other errors: try next tier (could be transient; cascade is permissive)
+    if [ $rc -eq 99 ] && [ -n "$token" ]; then
+        try_claude "$DEFAULT_CLAUDE_BIN" "${label}-env" \
+            "$token" "$HOME/.claude-acct${index}"
+        rc=$?
+        [ $rc -eq 0 ] && exit 0
+    fi
 done
+
+# Team seat has its own protected-token wrapper and config directory.
+try_claude "$HOME/.local/bin/claude-zero-team" "tier2d-claude-zero-team"
+rc=$?
+[ $rc -eq 0 ] && exit 0
+
+if [ "$CLAUDE_ONLY" -eq 1 ]; then
+    echo "[claude-cascade] ALL CLAUDE SEATS FAILED" >&2
+    exit 1
+fi
 
 # Gemini
 try_gemini && exit 0

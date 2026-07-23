@@ -34,15 +34,10 @@ SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
 MANDATE="$HOME/scripts/HEALER-MANDATE.md"
 MAX_WALL_S="${HEALER_MAX_WALL_S:-3300}"   # 55 min hard cap for the LLM session
-# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
-# Pro: ~/.local/bin only). Env override wins; otherwise probe, then PATH.
-CLAUDE_BIN="${HEALER_CLAUDE_BIN:-}"
-if [ -z "$CLAUDE_BIN" ]; then
-    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
-        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
-    done
-fi
-[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+# Canonical Claude-only cascade retries every isolated OAuth seat without
+# crossing the provider boundary (the healer requires Claude agent semantics).
+CASCADE_BIN="${HEALER_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$HOME/nuzantara/infra/launchagents/wrappers/claude-cascade.sh"
 MODEL="${HEALER_MODEL:-claude-sonnet-5}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
@@ -243,23 +238,24 @@ export HEALER_RUN=1
 # (armed on Mini 2026-07-06); (b) untrusted cwd triggers the folder-trust
 # dialog, same invisible hang (tests from $HOME hung; from the repo they
 # PONG) — the cd "$REPO" above is load-bearing, keep it before this spawn.
-# Belt-and-suspenders: MAX env token when available (Keychain reads can
-# block under launchd/sshd, W84 family), closed stdin, and a zeroed MCP set
-# (the healer's perimeter is git/bash/file work; every configured MCP server
-# is a synchronous-init hang risk in -p mode).
-if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+# Belt-and-suspenders: closed stdin and a zeroed MCP set (the healer's
+# perimeter is git/bash/file work; every configured MCP server is a
+# synchronous-init hang risk in -p mode). HEALER_CLAUDE_BIN remains a
+# compatibility override for the cascade's default seat only.
+if [ -n "${HEALER_CLAUDE_BIN:-}" ]; then
+    export CLAUDE_CASCADE_DEFAULT_BIN="$HEALER_CLAUDE_BIN"
 fi
-if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
-    log "FATAL: no claude binary (env HEALER_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
-    heartbeat "error" "no claude binary"
+if [ ! -x "$CASCADE_BIN" ]; then
+    log "FATAL: canonical Claude cascade missing (env HEALER_CASCADE_BIN, ~/scripts, repo canon)"
+    heartbeat "error" "claude cascade missing"
     exit 1
 fi
-"$CLAUDE_BIN" -p "$(cat "$MANDATE")
+"$CASCADE_BIN" "$(cat "$MANDATE")
 
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
-    --model "$MODEL" --dangerously-skip-permissions \
-    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --claude-only --model "$MODEL" -- \
+    --dangerously-skip-permissions --strict-mcp-config \
+    --mcp-config '{"mcpServers":{}}' \
     --max-budget-usd "${HEALER_MAX_BUDGET_USD:-10}" \
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
@@ -287,10 +283,10 @@ else
     FAILURE_CLASS=$(printf '%s' "$TAIL" | python3 scripts/healer_run_checks.py classify-session-tail 2>/dev/null || echo session_error)
     if [ "$FAILURE_CLASS" = "rate_or_quota_limit" ]; then
         heartbeat "degraded" "claude quota/rate limit: ${REASONS}"
-        telegram "⚠️ HEALER (Mini): Claude quota/rate limit su ${REASONS}. Nessuna cascade debole per policy; log: $SESSION_LOG"
+        telegram "⚠️ HEALER (Mini): tutti i seat Claude esauriti su ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
     elif [ "$FAILURE_CLASS" = "auth_required" ]; then
         heartbeat "degraded" "claude auth required: ${REASONS}"
-        telegram "⚠️ HEALER (Mini): Claude auth richiesta su ${REASONS}. Nessuna cascade debole per policy; log: $SESSION_LOG"
+        telegram "⚠️ HEALER (Mini): autenticazione fallita su tutti i seat Claude per ${REASONS}. Nessuna cascade cross-provider per policy; log: $SESSION_LOG"
     else
         heartbeat "degraded" "session exit=$CEXIT"
         telegram "⚠️ HEALER (Mini): sessione uscita $CEXIT su ${REASONS}. Log: $SESSION_LOG"
