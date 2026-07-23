@@ -251,6 +251,11 @@ export default function VisaMatchPage() {
   const onComplete = async (values: Record<string, unknown>) => {
     setSubmitError(null);
     tracker.formSubmitted(Object.keys(values));
+    // HTTP status captured OUTSIDE the catch so the failure telemetry can
+    // report it — the swallowed `setSubmitError` below was the v1 funnel's
+    // silent-death hole (3 months unmeasured). Law 2: the failure event
+    // carries endpoint + status only, never the form values.
+    let status: number | null = null;
     try {
       const res = await fetch("/api/visa/match", {
         method: "POST",
@@ -262,10 +267,16 @@ export default function VisaMatchPage() {
           budget_band: String(values.budget ?? ""),
         }),
       });
-      if (!res.ok) throw new Error(`${res.status}`);
+      // Status recorded for ANY completed response — a 2xx whose JSON
+      // parse fails must not be misreported as a network failure (null).
+      status = res.status;
+      if (!res.ok) {
+        throw new Error(`${res.status}`);
+      }
       const { hash } = (await res.json()) as { hash: string };
       router.push(`/visa/match/${hash}`);
     } catch {
+      tracker.formSubmitFailed("/api/visa/match", status);
       setSubmitError(
         <>
           We could not compute a recommendation. Please try again or{" "}

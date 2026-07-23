@@ -260,6 +260,24 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "POST", "/api/v1/kbli-notebook/chat",
         "KBLI Explorer — public business-classification chat, no PII.",
     ),
+    # ── Visa Check v1 funnel (routers/visa_check.py): anonymous wizard,
+    #    restored public 2026-07-23 (funnel dead since PR #108 — routes were
+    #    mounted but never registered in PUBLIC_ENDPOINTS). The result-page
+    #    hash IS the access token; per-IP rate-limited via the /api/ bucket. ──
+    IntentionalPublicMutation(
+        "POST", "/api/visa/check/start",
+        "Branch selector — pure yes/no routing, nothing persisted.",
+    ),
+    IntentionalPublicMutation(
+        "POST", "/api/visa/clock",
+        "Clock submission — anonymous overstay-timeline insert "
+        "(visa_type/entry_date/client_fingerprint only, no PII).",
+    ),
+    IntentionalPublicMutation(
+        "POST", "/api/visa/match",
+        "Match submission — anonymous visa-recommendation insert "
+        "(nationality/purpose/duration/budget only, no PII).",
+    ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
         "POST", "/api/blog/ask",
