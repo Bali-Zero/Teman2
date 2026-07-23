@@ -14,6 +14,7 @@ import {
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { getComplianceAlerts, getSystemPulse } from "../_lib/opsAdapters";
 import { logger } from "@/lib/logger";
+import { api } from "@/lib/api";
 
 // Mock dependencies
 vi.mock("@/lib/api/dashboard/dashboard.api", () => ({
@@ -168,18 +169,22 @@ vi.mock("@/components/dashboard", () => ({
 }));
 
 // Create a wrapper with QueryClientProvider for tests
-const createWrapper = () => {
-  const queryClient = new QueryClient({
+const createTestQueryClient = () =>
+  new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   });
+
+const wrapperFor = (queryClient: QueryClient) => {
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
+
+const createWrapper = () => wrapperFor(createTestQueryClient());
 
 describe("DashboardPage - Unit Tests", () => {
   const mockDashboardData: DashboardData = {
@@ -248,6 +253,12 @@ describe("DashboardPage - Unit Tests", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(api, "getUserProfile").mockReturnValue({
+      id: "team-user",
+      email: "test@example.com",
+      name: "Team User",
+      role: "team",
+    });
     vi.mocked(useDashboardData).mockReturnValue(mockUseDashboardData());
     // Ops panel adapters (WS2 slice 2) — default to live, healthy data
     vi.mocked(getSystemPulse).mockResolvedValue([
@@ -344,6 +355,22 @@ describe("DashboardPage - Unit Tests", () => {
   });
 
   it("renders the ops panels with live adapter data (WS2 slice 2)", async () => {
+    vi.mocked(api.getUserProfile).mockReturnValue({
+      id: "admin-user",
+      email: "admin@example.test",
+      name: "Admin User",
+      role: "admin",
+    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "admin@example.test",
+          role: "admin",
+          is_admin: true,
+        },
+      }),
+    );
+
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
@@ -366,6 +393,21 @@ describe("DashboardPage - Unit Tests", () => {
   });
 
   it("renders honest fallbacks when probes fail (idle services, empty radar)", async () => {
+    vi.mocked(api.getUserProfile).mockReturnValue({
+      id: "admin-user",
+      email: "admin@example.test",
+      name: "Admin User",
+      role: "admin",
+    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "admin@example.test",
+          role: "admin",
+          is_admin: true,
+        },
+      }),
+    );
     vi.mocked(getSystemPulse).mockResolvedValue([
       {
         id: "postgres",
@@ -385,5 +427,107 @@ describe("DashboardPage - Unit Tests", () => {
     expect(screen.getByText("IDLE")).toBeInTheDocument();
     expect(screen.getByText("System Pulse")).toBeInTheDocument();
     expect(screen.getByText("Compliance Radar")).toBeInTheDocument();
+  });
+
+  it("isolates ops queries by identity and never exposes SystemPulse to non-admins", async () => {
+    const queryClient = createTestQueryClient();
+    const wrapper = wrapperFor(queryClient);
+
+    vi.mocked(api.getUserProfile).mockReturnValue({
+      id: "admin-user",
+      email: "admin@example.test",
+      name: "Admin User",
+      role: "admin",
+    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "admin@example.test",
+          role: "admin",
+          is_admin: true,
+        },
+      }),
+    );
+    vi.mocked(getComplianceAlerts)
+      .mockResolvedValueOnce([
+        {
+          id: "admin-alert",
+          title: "Admin-only deadline",
+          severity: "critical",
+          timeLeft: "2d",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "member-alert",
+          title: "Member deadline",
+          severity: "warning",
+          timeLeft: "8d",
+        },
+      ]);
+
+    const firstSession = render(<DashboardPage />, { wrapper });
+    await screen.findByText("Admin-only deadline");
+    expect(screen.getByText("System Pulse")).toBeInTheDocument();
+    expect(
+      queryClient.getQueryData(["compliance-radar", "admin@example.test"]),
+    ).toBeDefined();
+    firstSession.unmount();
+
+    vi.mocked(api.getUserProfile).mockReturnValue({
+      id: "member-user",
+      email: "member@example.test",
+      name: "Member User",
+      role: "team",
+    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "member@example.test",
+          role: "team",
+          is_admin: false,
+        },
+      }),
+    );
+
+    render(<DashboardPage />, { wrapper });
+    await screen.findByText("Member deadline");
+
+    expect(screen.queryByText("Admin-only deadline")).not.toBeInTheDocument();
+    expect(screen.queryByText("System Pulse")).not.toBeInTheDocument();
+    expect(getSystemPulse).toHaveBeenCalledTimes(1);
+    expect(getComplianceAlerts).toHaveBeenCalledTimes(2);
+    expect(
+      queryClient.getQueryData(["compliance-radar", "member@example.test"]),
+    ).toBeDefined();
+    expect(useDashboardData).toHaveBeenLastCalledWith("member@example.test");
+  });
+
+  it("renders no ops data while a new session still has a stale dashboard identity", () => {
+    vi.mocked(api.getUserProfile).mockReturnValue({
+      id: "member-user",
+      email: "member@example.test",
+      name: "Member User",
+      role: "team",
+    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "admin@example.test",
+          role: "admin",
+          is_admin: true,
+        },
+      }),
+    );
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    expect(screen.queryByText("System Pulse")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("KITAS expiry < 30 days"),
+    ).not.toBeInTheDocument();
+    expect(getSystemPulse).not.toHaveBeenCalled();
+    expect(getComplianceAlerts).not.toHaveBeenCalled();
+    expect(useDashboardData).toHaveBeenCalledWith("member@example.test");
   });
 });

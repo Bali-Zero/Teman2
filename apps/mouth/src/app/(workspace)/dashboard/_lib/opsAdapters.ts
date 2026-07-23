@@ -12,7 +12,7 @@
  *
  * Endpoints (verified in apps/backend-rag):
  *  - GET /api/admin/system-health  (routers/system_observability.py — admin
- *    only; non-admin users get 403 → all-idle fallback renders)
+ *    only; the dashboard does not invoke this adapter for non-admin users)
  *  - GET /api/compliance/alerts    (routers/compliance_alerts.py — RBAC
  *    scopes team members to their assigned clients, same as the pipeline)
  */
@@ -145,13 +145,31 @@ const VALID_SEVERITIES: ReadonlySet<string> = new Set([
   "info",
 ]);
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function formatTimeLeft(
+  deadline: string,
+  now = new Date(),
+): string | undefined {
+  const deadlineMs = Date.parse(`${deadline}T00:00:00Z`);
+  if (Number.isNaN(deadlineMs)) return undefined;
+
+  const todayMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  const days = Math.round((deadlineMs - todayMs) / MS_PER_DAY);
+  return days < 0 ? "overdue" : `${days}d`;
+}
+
 export async function getComplianceAlerts(
   limit = 6,
 ): Promise<ComplianceAlert[]> {
   let res: ComplianceAlertsResponse;
   try {
     res = await api.get<ComplianceAlertsResponse>(
-      "/api/compliance/alerts?limit=50",
+      `/api/compliance/alerts?active_only=true&limit=${limit}`,
     );
   } catch {
     // Total failure → empty radar (defined empty element), never throws.
@@ -161,9 +179,9 @@ export async function getComplianceAlerts(
   return (
     (res.items ?? [])
       .filter((row) => ACTIVE_STATUSES.has(row.status))
-      // Soonest deadline first; the component then applies its stable severity
-      // sort on top, yielding severity rank with days-ascending inside ties.
-      .sort((a, b) => a.days_until - b.days_until)
+      // Backend applies this order before LIMIT; keep it defensively stable if
+      // a mock or older server returns an unsorted response.
+      .sort((a, b) => a.deadline.localeCompare(b.deadline))
       .slice(0, limit)
       .map((row) => ({
         id: row.alert_id,
@@ -172,9 +190,9 @@ export async function getComplianceAlerts(
         severity: (VALID_SEVERITIES.has(row.severity)
           ? row.severity
           : "info") as ComplianceAlert["severity"],
-        // days_until is real DB data; negative means the deadline has passed
-        // (DeadlineBadge precedent renders "overdue" for that case).
-        timeLeft: row.days_until < 0 ? "overdue" : `${row.days_until}d`,
+        // days_until is a creation-time snapshot. Derive the live countdown
+        // from the canonical deadline so the UI cannot freeze at a stale value.
+        timeLeft: formatTimeLeft(row.deadline),
       }))
   );
 }

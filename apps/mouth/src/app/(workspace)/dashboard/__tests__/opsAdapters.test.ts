@@ -4,7 +4,7 @@
  * degradation to idle/empty — never fabrication — on any failure.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getSystemPulse, getComplianceAlerts } from "../_lib/opsAdapters";
 import { api } from "@/lib/api";
 
@@ -34,6 +34,12 @@ function checkDto(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-07-23T12:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("getSystemPulse", () => {
@@ -109,19 +115,25 @@ describe("getComplianceAlerts", () => {
     days: number,
     status = "pending",
     over: Record<string, unknown> = {},
-  ) => ({
-    alert_id: id,
-    client_id: 2207,
-    category: "visa_expiry",
-    severity,
-    status,
-    deadline: "2026-08-01",
-    days_until: days,
-    message_en: `Alert ${id}`,
-    message_it: null,
-    suggested_action: null,
-    ...over,
-  });
+  ) => {
+    const deadline = new Date(Date.UTC(2026, 6, 23 + days))
+      .toISOString()
+      .slice(0, 10);
+    return {
+      alert_id: id,
+      client_id: 2207,
+      category: "visa_expiry",
+      severity,
+      status,
+      deadline,
+      // Deliberately stale: the adapter must derive time-left from deadline.
+      days_until: 999,
+      message_en: `Alert ${id}`,
+      message_it: null,
+      suggested_action: null,
+      ...over,
+    };
+  };
 
   it("maps rows to radar props, soonest deadline first, capped at limit", async () => {
     mockedGet.mockResolvedValue({
@@ -134,6 +146,9 @@ describe("getComplianceAlerts", () => {
       offset: 0,
     });
     const alerts = await getComplianceAlerts(6);
+    expect(mockedGet).toHaveBeenCalledWith(
+      "/api/compliance/alerts?active_only=true&limit=6",
+    );
     expect(alerts.map((a) => a.id)).toEqual(["a2", "a3", "a1"]);
     expect(alerts[0]).toMatchObject({
       title: "Alert a2",
@@ -158,7 +173,7 @@ describe("getComplianceAlerts", () => {
     expect(alerts.map((a) => a.id)).toEqual(["a3", "a4"]);
   });
 
-  it("renders negative days_until as 'overdue' and unknown severity as info", async () => {
+  it("derives overdue from deadline, ignoring stale days_until", async () => {
     mockedGet.mockResolvedValue({
       items: [row("a1", "purple", -3)],
       limit: 50,
