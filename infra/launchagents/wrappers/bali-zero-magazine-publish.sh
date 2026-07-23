@@ -40,6 +40,7 @@ LOG="$LOG_DIR/bali-zero-magazine-${MODE}.log"
 LOCKFILE="$STATE_DIR/${MODE}.flock"
 TIMEOUT_SECONDS="${MAGAZINE_TIMEOUT_SECONDS:-840}"
 KILL_GRACE_SECONDS="${MAGAZINE_KILL_GRACE_SECONDS:-2}"
+POST_KILL_WAIT_SECONDS="${MAGAZINE_POST_KILL_WAIT_SECONDS:-5}"
 PUBLISH_ENABLED="${MAGAZINE_PUBLISH_ENABLED:-true}"
 export MAGAZINE_AUTO_ASSETS="${MAGAZINE_AUTO_ASSETS:-false}"
 export MAGAZINE_ASSET_STATE_DIR="${MAGAZINE_ASSET_STATE_DIR:-$STATE_DIR/assets}"
@@ -157,21 +158,38 @@ terminate_process_group() {
     if process_group_is_alive "$process_group_id"; then
         kill -KILL -- -"$process_group_id" 2>/dev/null || true
     fi
+    waited=0
+    while process_group_is_alive "$process_group_id" && [ "$waited" -lt "$POST_KILL_WAIT_SECONDS" ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    wait "$process_group_id" 2>/dev/null || true
+    waited=0
+    while process_group_is_alive "$process_group_id" && [ "$waited" -lt "$POST_KILL_WAIT_SECONDS" ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    if process_group_is_alive "$process_group_id"; then
+        log "fatal mode=$MODE process_group_survived_kill process_group=$process_group_id"
+        return 1
+    fi
+    return 0
 }
 
 interrupt_active_run() {
     local signal_name="$1"
+    local exit_code="$2"
     log "interrupted mode=$MODE signal=$signal_name process_group=${ACTIVE_PROCESS_GROUP:-none}"
     if [ -n "$ACTIVE_PROCESS_GROUP" ]; then
-        terminate_process_group "$ACTIVE_PROCESS_GROUP"
+        terminate_process_group "$ACTIVE_PROCESS_GROUP" || true
         ACTIVE_PROCESS_GROUP=""
     fi
-    exit 143
+    exit "$exit_code"
 }
 
-trap 'interrupt_active_run TERM' TERM
-trap 'interrupt_active_run INT' INT
-trap 'interrupt_active_run HUP' HUP
+trap 'interrupt_active_run TERM 143' TERM
+trap 'interrupt_active_run INT 130' INT
+trap 'interrupt_active_run HUP 129' HUP
 
 run_with_timeout() {
     "$PROCESS_LAUNCHER_PYTHON" -c \
@@ -184,7 +202,6 @@ run_with_timeout() {
         if [ "$SECONDS" -ge "$deadline" ]; then
             log "timeout mode=$MODE process_group=$pid seconds=$TIMEOUT_SECONDS"
             terminate_process_group "$pid"
-            wait "$pid" 2>/dev/null || true
             ACTIVE_PROCESS_GROUP=""
             return 124
         fi

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -74,6 +75,7 @@ def _wrapper_environment(
         "MAGAZINE_KILL_GRACE_SECONDS": "1",
         "MAGAZINE_LOG_DIR": str(tmp_path / "logs"),
         "MAGAZINE_OUTPUT_DIR": str(tmp_path / "packets"),
+        "MAGAZINE_POST_KILL_WAIT_SECONDS": "1",
         "MAGAZINE_PROCESS_LAUNCHER_PYTHON": sys.executable,
         "MAGAZINE_PUBLISH_ENABLED": "false",
         "MAGAZINE_PYTHON": str(fake_python),
@@ -96,6 +98,16 @@ def _assert_processes_exit(pids: list[int]) -> None:
             return
         time.sleep(0.05)
     raise AssertionError(f"processes survived termination: {sorted(remaining)}")
+
+
+def _wait_for_tree_pids(path: Path) -> list[int]:
+    for _ in range(100):
+        if path.is_file():
+            pids = [int(item) for item in path.read_text(encoding="utf-8").splitlines()]
+            if len(pids) == 3:
+                return pids
+        time.sleep(0.05)
+    raise AssertionError("process tree did not start")
 
 
 def test_magazine_wrapper_uses_process_held_advisory_lock() -> None:
@@ -180,6 +192,46 @@ def test_wrapper_timeout_kills_parent_child_and_grandchild(tmp_path: Path) -> No
     pids = [int(item) for item in pid_file.read_text(encoding="utf-8").splitlines()]
     assert len(pids) == 3
     _assert_processes_exit(pids)
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="zsh is unavailable")
+@pytest.mark.parametrize(
+    ("sent_signal", "expected_returncode"),
+    [
+        (signal.SIGTERM, 143),
+        (signal.SIGINT, 130),
+        (signal.SIGHUP, 129),
+    ],
+)
+def test_wrapper_signal_kills_reaps_tree_and_releases_lock(
+    tmp_path: Path,
+    sent_signal: signal.Signals,
+    expected_returncode: int,
+) -> None:
+    fake_python = tmp_path / "fake-magazine-python"
+    _write_fake_magazine_python(fake_python)
+    input_path = tmp_path / "breaking.json"
+    input_path.write_text("{}", encoding="utf-8")
+    env = _wrapper_environment(
+        tmp_path,
+        fake_python=fake_python,
+        input_path=input_path,
+    )
+    process = subprocess.Popen(
+        ["zsh", str(WRAPPER), "breaking"],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    pids = _wait_for_tree_pids(Path(env["MAGAZINE_TREE_PID_FILE"]))
+
+    process.send_signal(sent_signal)
+    assert process.wait(timeout=10) == expected_returncode
+    _assert_processes_exit(pids)
+
+    lock_file = Path(env["MAGAZINE_STATE_DIR"]) / "breaking.flock"
+    with lock_file.open("r+", encoding="utf-8") as reacquired:
+        fcntl.lockf(reacquired.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="zsh is unavailable")
