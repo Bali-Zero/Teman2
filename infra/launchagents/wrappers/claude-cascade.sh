@@ -171,7 +171,10 @@ AUTH_PATTERN="authentication required|authentication[_ ]error|not logged in|plea
 RETRYABLE_PATTERN="$QUOTA_PATTERN|$AUTH_PATTERN"
 RAW_RETRYABLE_PATTERN="out of extra usage|usage limit( reached)?|weekly limit( reached)?|quota exceeded|rate[._ ]?limit( reached)?|429([[:space:]:_-]+(too many requests|quota exceeded))?|exhausted|please try again later|authentication required|authentication[_ ]error|not logged in|please (log in|run /login)|401[[:space:]:_-]+(unauthorized|authentication required|invalid (api key|token))|http[[:space:]]+401([[:space:]:_-]+(unauthorized|authentication|invalid))?|token_revoked|refresh_token(_reused)?|invalid (api key|(oauth )?token)|oauth token (expired|invalid|revoked)"
 CLI_LOGIN_BANNER_PATTERN="(not logged in|invalid api key)[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(please (log in|run /login)|run /login)[[:space:][:punct:]]*"
-CLI_USAGE_BANNER_PATTERN="((you('re| are| have)[[:space:]]+)?out of extra usage[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(your[[:space:]]+)?(usage|limit)[[:space:]]+(will[[:space:]]+)?(reset|renew|be available)([[:space:]]+(soon|at|in|on).{0,60})?[[:space:][:punct:]]*|you('ve| have)[[:space:]]+hit your[[:space:]]+(session[[:space:]]+|weekly[[:space:]]+)?limit[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*resets?([[:space:]].{0,80})?)"
+RESET_TIME_PATTERN="[0-9]{1,2}(:[0-9]{2})?(am|pm)"
+RESET_ZONE_PATTERN="([[:space:]]+\([[:alnum:]_+.-]+/[[:alnum:]_+.-]+\))?"
+RESET_HINT_PATTERN="soon|at[[:space:]]+$RESET_TIME_PATTERN$RESET_ZONE_PATTERN|in[[:space:]]+[0-9]+[[:space:]]+(minutes?|hours?|days?)|on[[:space:]]+[[:alpha:]]{3,9}[[:space:]]+[0-9]{1,2}(,[[:space:]]+[0-9]{4})?|$RESET_TIME_PATTERN$RESET_ZONE_PATTERN|[[:alpha:]]{3}[[:space:]]+[0-9]{1,2}[[:space:]]+at[[:space:]]+$RESET_TIME_PATTERN$RESET_ZONE_PATTERN"
+CLI_USAGE_BANNER_PATTERN="((you('re| are| have)[[:space:]]+)?out of extra usage[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*(your[[:space:]]+)?(usage|limit)[[:space:]]+(will[[:space:]]+)?(reset|renew|be available)([[:space:]]+($RESET_HINT_PATTERN))?[[:space:][:punct:]]*|you('ve| have)[[:space:]]+hit your[[:space:]]+(session[[:space:]]+|weekly[[:space:]]+)?limit[[:space:]]*[^[:alnum:][:space:]]+[[:space:]]*resets?[[:space:]]+($RESET_HINT_PATTERN)[[:space:][:punct:]]*)"
 
 new_temp_file
 PROMPT_FILE="$REPLY"

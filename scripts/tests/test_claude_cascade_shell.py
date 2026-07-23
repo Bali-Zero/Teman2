@@ -303,6 +303,10 @@ def test_exit_zero_weekly_limit_prose_is_not_a_false_positive(
         "Invalid API key · Please run /login is the example this guide explains.",
         "Not logged in is a user-interface state covered by this runbook.",
         "You are out of extra usage is the banner this test describes.",
+        (
+            "You have hit your session limit · resets 11:20pm "
+            "(Asia/Makassar) is the banner this guide explains."
+        ),
     ),
 )
 def test_exit_zero_cli_banner_prefix_prose_is_not_a_false_positive(
