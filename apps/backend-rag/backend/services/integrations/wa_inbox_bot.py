@@ -42,7 +42,6 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
-from backend.services.whatsapp_identity import resolve_sender_identity
 
 logger = logging.getLogger("zantara.backend")
 
@@ -148,29 +147,6 @@ async def close_rag_client() -> None:
         _rag_client = None
 
 
-def _profile_from_identity(identity: dict[str, Any]) -> dict[str, Any] | None:
-    """Map a resolved sender identity to the RAG request's ``profile`` field.
-
-    Only ``owner``/``team`` produce a profile — ``client``/``unknown`` (and
-    any identity resolution fail-safe fallback, which also lands on
-    ``unknown``) return ``None`` so the caller omits the ``profile`` key
-    entirely. That is the innocence contract for this feature: a client or
-    an unrecognized sender's RAG payload must stay byte-identical to the
-    pre-identity-wiring shape.
-    """
-    role = identity.get("role")
-    if role == "owner":
-        return {"role": "creator"}
-    if role == "team":
-        profile: dict[str, Any] = {"role": "team"}
-        if identity.get("team_member"):
-            profile["name"] = identity["team_member"]
-        if identity.get("team_member_email"):
-            profile["email"] = identity["team_member_email"]
-        return profile
-    return None
-
-
 async def _load_thread_context(
     pool: asyncpg.Pool, thread_id: int
 ) -> tuple[str, list[dict[str, str]]]:
@@ -241,13 +217,14 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     if not query:
         raise RuntimeError(f"wa-inbox bot: no customer message in thread {thread_id}")
 
-    # Team-assistant V1 (identity-gated, additive): resolve_sender_identity
-    # is fail-safe by design (any error → {"role": "unknown"}), so this can
-    # never raise and never changes behavior for client/unknown senders —
-    # see _profile_from_identity docstring for the innocence contract.
-    identity = await resolve_sender_identity(phone, pool)
-    profile = _profile_from_identity(identity)
-
+    # Team-assistant V1 (2026-07-19) used to resolve the sender's identity
+    # HERE and forward it as a `profile` request field. P0-ID containment
+    # (2026-07-24) moved that same `resolve_sender_identity` lookup
+    # server-side (`agentic_rag.py::_resolve_trusted_wa_profile`) — the
+    # server no longer trusts a client-declared profile at all, so doing
+    # the lookup here too would be a redundant DB round-trip on this
+    # latency-critical path (research/operations/2026-07-20-wa-bot-latency.md)
+    # for a value nobody reads anymore.
     payload: dict[str, Any] = {
         "query": query,
         "user_id": f"whatsapp_{phone}",
@@ -266,8 +243,6 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         # ReAct step) is untouched — the answer-quality safety net stays.
         "max_steps": 2,
     }
-    if profile is not None:
-        payload["profile"] = profile
 
     # P9 admission gate — bound in-flight RAG calls from this api process
     # (see _get_bot_generation_semaphore docstring). Scoped tightly around
