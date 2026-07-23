@@ -22,6 +22,33 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-07-22 — keep current)
 
+- **🩸 TAC 2026-07-24 (Fable, M5) — full consultant+team audit → SPEC for Opus 4.8** in
+  `research/operations/2026-07-24-zantara-bot-consultant-assistant-spec.md` (12-lane workflow +
+  3-seat cross-family council + disk re-verification). Headline findings that CORRECT this corner:
+  - **🔴 P0-MEM (NEW, disk-confirmed, possibly live): cross-client memory bleed.** Path B auth via
+    `X-Internal-Key` → `hybrid_auth.py:380-385` returns a FIXED pseudo-identity
+    (`wa-mirror-internal@balizero.com` / `wa-mirror-internal`) for EVERY sender; `agentic_rag.py:398-405`
+    discards `whatsapp_{phone}` and substitutes it as `user_id` (`:475`); `memory_handler` skips only
+    `user_id=="anonymous"` (`:138`) → long-term client FACTS stored/read under ONE shared key across all
+    clients. In-thread history (keyed `wa_session_{phone}`) is fine; the FACT layer is the leak. UU PDP.
+    Cure = W-1 CONTAINMENT in the spec (per-phone pseudonymous subject). Recommend contain now (disable
+    Path B long-term memory) — autoreply is ON. See memory `discovery_zantara_bot_memory_tenancy_bleed_2026_07_24`.
+  - **🔴 P0-ID / P0-ARG: forgeable persona-override + reserved-arg.** `_is_trusted_wa_profile_caller`
+    (`agentic_rag.py:298-322`) gates a `profile` override on shared-key `role=internal` + CLIENT-SUPPLIED
+    `channel=whatsapp`; `tool_executor.py:346-349` lets an LLM-injected `_caller_profile` survive when the
+    server value is falsy. ⇒ **T4 (real per-request identity) MUST precede T1 (arming team CRM tools).**
+  - **CORRECTIONS to prior corner claims:** (a) #2872 (team-assistant V1) + #2890 (Phase-2 CRM read tools)
+    are **MERGED** (2026-07-20), not in-flight/parked. (b) `WA_TEAM_CRM_TOOLS_ENABLED` is **UNSET in prod
+    (default false)** → the 4 read tools are merged-but-NOT-ARMED. (c) **WA team check-in (`timesheet`) +
+    `team_knowledge` are DEAD on WA**: `agent_role` is never set on the WA path, so the #2962 SENSITIVE_TOOLS
+    deny fires — a silent regression, previously undocumented. (d) **Langfuse tracing is ENABLED in prod**
+    (`observability.py:53` default `"true"`, keys deployed, no `LANGFUSE_ENABLED=false` secret live) — the
+    "kill-switch active" framing is STALE; verify whether re-enable was intentional. (e) wa-tester LID
+    under-match (task #26) is **FIXED** (#2903). (f) `CURATED_QA_INJECTION_ENABLED` default `"true"` → curated
+    grounding IS on even though the prod env var is unset.
+  - Spec is a PLAN for Opus 4.8 (executing architect); nothing here is shipped as code yet. Sequence:
+    W-1 CONTAINMENT (P0s) → W0 safety → W1 reconnect-the-nerves → W2 arm-team (T4 first) → W3 observ → W4 gate.
+
 - **GEMINI PREPAY DEPLETION P0 (2026-07-22) — RESOLVED via top-up + verifier revival PROVEN LIVE**:
   while carrying the RAG verifier revival to prove-live, live prod logs revealed the WHOLE bot was
   degraded — NOT by the verifier but by `429 RESOURCE_EXHAUSTED "prepayment credits are depleted"`
