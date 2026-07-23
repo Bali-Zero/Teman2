@@ -81,6 +81,46 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_SIMILARITY_THRESHOLD = 0.35
 EMBEDDING_BORDERLINE_LOW = 0.30
 EMBEDDING_BORDERLINE_HIGH = 0.40
+_CLAUDE_RETRYABLE_RE = re.compile(
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|capacity|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_OAUTH_SCRUB_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _oauth_cli_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 # ---------------------------------------------------------------------------
@@ -307,9 +347,9 @@ class T4RelevanceFilter:
         )
 
         # Build a real account chain. Promoting only the first numbered token
-        # made TOKEN_2..4 unreachable whenever TOKEN_1 was expired or capped.
+        # made TOKEN_2..5 unreachable whenever TOKEN_1 was expired or capped.
         token_chain: list[tuple[str, str]] = []
-        for index in (1, 2, 3, 4):
+        for index in (1, 2, 3, 4, 5):
             token = os.environ.get(
                 f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
             ).strip()
@@ -320,25 +360,16 @@ class T4RelevanceFilter:
             token_chain.append(("token_legacy", legacy))
         token_chain.append(("keychain", ""))
 
-        retryable = re.compile(
-            r"rate.?limit|too many requests|429|exhausted|quota|usage limit|"
-            r"weekly limit|capacity|overloaded|authentication (?:failed|required|expired)|"
-            r"auth required|login required|please (?:log in|login)|not logged in|"
-            r"not authenticated|invalid[_ ](?:grant|token)|token[_ ]revoked|"
-            r"refresh_token|unauthori[sz]ed|(?:error\D*)?401",
-            re.IGNORECASE,
-        )
+        deadline = asyncio.get_running_loop().time() + 30
 
-        for label, token in token_chain:
-            env = {
-                key: value
-                for key, value in os.environ.items()
-                if key != "ANTHROPIC_API_KEY"
-            }
-            if token:
-                env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-            else:
-                env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        for position, (label, token) in enumerate(token_chain):
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                break
+            attempt_timeout = max(
+                0.1,
+                remaining / (len(token_chain) - position),
+            )
 
             proc = await asyncio.create_subprocess_exec(
                 "claude",
@@ -348,36 +379,37 @@ class T4RelevanceFilter:
                 "claude-haiku-4-5-20251001",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env,
+                env=_oauth_cli_env(token),
             )
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=30
+                    proc.communicate(), timeout=attempt_timeout
                 )
             except asyncio.TimeoutError:
                 with contextlib.suppress(ProcessLookupError):
                     proc.kill()
+                with contextlib.suppress(ProcessLookupError):
+                    await proc.wait()
                 logger.warning(
                     "Haiku via OAuth CLI %s timed out — classifier unavailable",
                     label,
                 )
-                return None
+                continue
 
             raw = stdout.decode("utf-8", errors="replace").strip()
             error = stderr.decode("utf-8", errors="replace").strip()
             combined = f"{raw}\n{error}"
-            if proc.returncode != 0:
-                if retryable.search(combined):
-                    logger.warning(
-                        "claude CLI %s unavailable (exit=%s) — trying next account",
-                        label,
-                        proc.returncode,
-                    )
-                    continue
+            if _CLAUDE_RETRYABLE_RE.search(combined):
                 logger.warning(
-                    "claude CLI exit=%s stderr=%r — classifier unavailable",
+                    "claude CLI %s unavailable (exit=%s) — trying next account",
+                    label,
                     proc.returncode,
-                    error[:200],
+                )
+                continue
+            if proc.returncode != 0:
+                logger.warning(
+                    "claude CLI exit=%s — classifier unavailable",
+                    proc.returncode,
                 )
                 return None
 
@@ -395,9 +427,7 @@ class T4RelevanceFilter:
                 match = re.search(r"^\d+(?:\.\d+)?", raw)
                 if match:
                     return float(match.group())
-                logger.warning(
-                    "CLI returned non-float: %r — classifier unavailable", raw
-                )
+                logger.warning("CLI returned non-float — classifier unavailable")
                 return None
 
         logger.warning("All Claude OAuth accounts unavailable — classifier unavailable")

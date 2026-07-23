@@ -41,6 +41,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -149,7 +150,11 @@ def run_dispatch(command: str, *args: str, timeout: int = 300) -> str:
             cwd=str(PROJECT_ROOT),
         )
         if result.returncode != 0:
-            logger.warning("ai-dispatch %s failed (rc=%d): %s", command, result.returncode, result.stderr[:200])
+            logger.warning(
+                "ai-dispatch %s failed (rc=%d)",
+                command,
+                result.returncode,
+            )
             return ""
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -255,7 +260,7 @@ def step_deepseek_reasoning(
 
 
 _GEN_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
     r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
     r"capacity|overloaded",
     re.IGNORECASE,
@@ -264,15 +269,48 @@ _GEN_AUTH_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
     r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
-    r"unauthori[sz]ed|(?:error\D*)?401",
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
 _GEN_EXHAUSTED: dict[str, str] = {}
+_OAUTH_SCRUB_KEYS = frozenset(
+    {
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "CLOUD_ML_REGION",
+    }
+)
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _gen_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _gen_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -293,7 +331,7 @@ def generate_document(
     existing_text: str | None = None,
 ) -> str:
     """Step 6: Generate T2 document via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→4→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
     claims_summary = build_claims_summary(claims_db)
 
     research_ctx = (research_context[:2000] if research_context else "Not available — proceed from claims_db only")
@@ -319,25 +357,24 @@ def generate_document(
             claims_summary=claims_summary,
         )
 
-    for label, token in _gen_token_chain():
+    deadline = time.monotonic() + 300
+    chain = _gen_token_chain()
+    for position, (label, token) in enumerate(chain):
         if label in _GEN_EXHAUSTED:
             continue
 
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if key != "ANTHROPIC_API_KEY"
-        }
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
+        env = _gen_oauth_env(token)
 
         try:
             result = subprocess.run(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "3"],
-                input=prompt, capture_output=True, text=True, timeout=300, env=env,
+                input=prompt, capture_output=True, text=True,
+                timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:
             logger.warning("generate_document: %s timed out", label)
@@ -345,17 +382,16 @@ def generate_document(
             continue
 
         combined = (result.stdout or "") + (result.stderr or "")
+        if _GEN_RATE_LIMIT_RE.search(combined):
+            logger.warning("generate_document: %s rate-limited", label)
+            _GEN_EXHAUSTED[label] = "rate_limit"
+            continue
+        if _GEN_AUTH_RE.search(combined):
+            logger.warning("generate_document: %s auth failed", label)
+            _GEN_EXHAUSTED[label] = "auth"
+            continue
         if result.returncode != 0:
-            if _GEN_RATE_LIMIT_RE.search(combined):
-                logger.warning("generate_document: %s rate-limited", label)
-                _GEN_EXHAUSTED[label] = "rate_limit"
-                continue
-            if _GEN_AUTH_RE.search(combined):
-                logger.warning("generate_document: %s auth failed", label)
-                _GEN_EXHAUSTED[label] = "auth"
-                continue
-
-            logger.error("claude CLI error (%s): %s", label, result.stderr[:500])
+            logger.error("claude CLI error via %s (exit=%s)", label, result.returncode)
             sys.exit(1)
 
         output = result.stdout.strip()

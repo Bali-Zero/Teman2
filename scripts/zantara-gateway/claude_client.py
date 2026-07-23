@@ -4,7 +4,7 @@ Claude CLI client for the gateway — spawns claude -p per request.
 
 Used for admin (Zero) who wants Sonnet 4.6 instead of Gemini.
 Claude CLI has native MCP support via --mcp-config.
-Multi-account fallback: TOKEN_1→2→3→4→legacy→keychain.
+Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain.
 
 Backend selection (``ZANTARA_CLAUDE_BACKEND``, default ``subprocess``):
   - ``subprocess`` (default): spawns the ``claude`` CLI directly (unchanged
@@ -30,7 +30,7 @@ from typing import Any
 logger = logging.getLogger("zantara-gateway.claude")
 
 _RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
     r"usage limit|weekly limit|capacity|overloaded",
     re.IGNORECASE,
 )
@@ -38,9 +38,40 @@ _AUTH_FAILURE_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
     r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
-    r"unauthori[sz]ed|(?:error\D*)?401",
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
+_OAUTH_SCRUB_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _oauth_cli_env(token: str = "") -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 # Log the "package not installed" fallback once, not on every request.
 _sdk_import_warned = False
@@ -49,7 +80,7 @@ _sdk_import_warned = False
 def _token_chain() -> list[tuple[str, str]]:
     """Build ordered list of (label, token_or_empty) for fallback."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -102,7 +133,7 @@ def _build_sdk_env() -> dict[str, str]:
     SDK's underlying CLI silently pick up a pay-as-you-go key).
 
     Seeds ``CLAUDE_CODE_OAUTH_TOKEN`` from the first non-empty entry of
-    ``_token_chain()`` (TOKEN_1→2→3→4→legacy). Without this, a deployment
+    ``_token_chain()`` (TOKEN_1→2→3→4→5→legacy). Without this, a deployment
     that only sets the indexed ``CLAUDE_CODE_OAUTH_TOKEN_N`` vars (no
     legacy ``CLAUDE_CODE_OAUTH_TOKEN``) left the SDK-spawned CLI with no
     token at all — it fell through to keychain (or failed outright)
@@ -115,7 +146,7 @@ def _build_sdk_env() -> dict[str, str]:
     ``_stream_via_subprocess``, which walks the full chain itself
     (rotation-by-fallback, by design).
     """
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = _oauth_cli_env()
     _, token = _token_chain()[0]
     if token:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
@@ -431,15 +462,15 @@ async def _stream_via_sdk(
         text = str(e)
         if yielded_any:
             logger.warning(
-                "Claude SDK error after streaming — emitting error event, no replay: %s", text
+                "Claude SDK error after streaming — emitting error event, no replay"
             )
-            yield f'data: {json.dumps({"type": "error", "data": text}, separators=(",", ":"))}\n\n'
+            yield f'data: {json.dumps({"type": "error", "data": "Claude SDK error"}, separators=(",", ":"))}\n\n'
             yield "data: [DONE]\n\n"
             return
         if _RATE_LIMIT_RE.search(text):
-            logger.warning("Claude SDK rate-limited — falling back to subprocess: %s", text)
+            logger.warning("Claude SDK rate-limited — falling back to subprocess")
         else:
-            logger.warning("Claude SDK error — falling back to subprocess: %s", text)
+            logger.warning("Claude SDK error — falling back to subprocess")
         async for line in _stream_via_subprocess(
             query,
             model=model,
@@ -467,20 +498,20 @@ async def _stream_via_subprocess(
       {"type":"result","subtype":"success","result":"..."}
     """
     cmd = _build_subprocess_cmd(query, model, mcp_config, system_prompt)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
 
     # Try each token in the chain
     chain = _token_chain()
     lines_to_process: list[bytes] = []
-    for label, token in chain:
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if key != "ANTHROPIC_API_KEY"
-        }
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    for position, (label, token) in enumerate(chain):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(
+            0.1,
+            remaining / (len(chain) - position),
+        )
 
         logger.info("Spawning Claude CLI: model=%s, token=%s", model, label)
 
@@ -496,7 +527,7 @@ async def _stream_via_subprocess(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=env,
+            env=_oauth_cli_env(token),
             cwd=cwd or None,
             limit=1024 * 1024,
         )
@@ -508,14 +539,24 @@ async def _stream_via_subprocess(
         retry_reason = ""
         while True:
             try:
-                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    retry_reason = "global deadline exceeded"
+                    break
+                raw = await asyncio.wait_for(
+                    proc.stdout.readline(),
+                    timeout=min(15, attempt_timeout),
+                )
             except asyncio.TimeoutError:
                 retry_reason = "no content in 15s"
                 break
 
             if not raw:
                 try:
-                    await asyncio.wait_for(proc.wait(), timeout=5)
+                    await asyncio.wait_for(
+                        proc.wait(),
+                        timeout=min(5, max(0.1, deadline - loop.time())),
+                    )
                 except asyncio.TimeoutError:
                     with contextlib.suppress(ProcessLookupError):
                         proc.kill()
@@ -523,7 +564,8 @@ async def _stream_via_subprocess(
                 if proc.stderr:
                     with contextlib.suppress(asyncio.TimeoutError):
                         stderr_data = await asyncio.wait_for(
-                            proc.stderr.read(500), timeout=1
+                            proc.stderr.read(500),
+                            timeout=min(1, max(0.1, deadline - loop.time())),
                         )
                 terminal_text = stderr_data.decode("utf-8", errors="replace")
                 if _RATE_LIMIT_RE.search(terminal_text):
@@ -535,22 +577,30 @@ async def _stream_via_subprocess(
                 break
 
             decoded = raw.decode("utf-8", errors="replace").strip()
-            if _RATE_LIMIT_RE.search(decoded):
-                retry_reason = "rate-limited"
-                break
-            if _AUTH_FAILURE_RE.search(decoded):
-                retry_reason = "authentication failed"
-                break
-
             attempt_lines.append(raw)
             try:
                 obj = json.loads(decoded)
             except json.JSONDecodeError:
+                if _RATE_LIMIT_RE.search(decoded):
+                    retry_reason = "rate-limited"
+                    break
+                if _AUTH_FAILURE_RE.search(decoded):
+                    retry_reason = "authentication failed"
+                    break
                 continue
             if not isinstance(obj, dict):
                 continue
 
             msg_type = obj.get("type", "")
+            if msg_type == "result" and (
+                obj.get("is_error") or obj.get("subtype") not in (None, "success")
+            ):
+                if _RATE_LIMIT_RE.search(decoded):
+                    retry_reason = "rate-limited"
+                    break
+                if _AUTH_FAILURE_RE.search(decoded):
+                    retry_reason = "authentication failed"
+                    break
             if msg_type == "assistant":
                 blocks = obj.get("message", {}).get("content", [])
                 has_content = any(
@@ -589,7 +639,10 @@ async def _stream_via_subprocess(
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
         try:
-            await asyncio.wait_for(proc.wait(), timeout=5)
+            await asyncio.wait_for(
+                proc.wait(),
+                timeout=min(5, max(0.1, deadline - loop.time())),
+            )
         except asyncio.TimeoutError:
             pass
         continue
@@ -605,7 +658,13 @@ async def _stream_via_subprocess(
             if lines_to_process:
                 raw = lines_to_process.pop(0)
             else:
-                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=timeout)
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                raw = await asyncio.wait_for(
+                    proc.stdout.readline(),
+                    timeout=max(0.1, remaining),
+                )
             if not raw:
                 break
             line = raw.decode("utf-8", errors="replace").strip()
@@ -648,7 +707,7 @@ async def _stream_via_subprocess(
                 return
 
     except asyncio.TimeoutError:
-        logger.warning("Claude CLI timeout after %ds", timeout)
+        logger.warning("Claude CLI global deadline exceeded")
         yield "data: [DONE]\n\n"
     except asyncio.CancelledError:
         raise
@@ -657,6 +716,9 @@ async def _stream_via_subprocess(
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
             try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
+                await asyncio.wait_for(
+                    proc.wait(),
+                    timeout=min(5, max(0.1, deadline - loop.time())),
+                )
             except asyncio.TimeoutError:
                 pass

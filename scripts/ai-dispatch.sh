@@ -431,12 +431,31 @@ run_claude() {
     check_safety "$prompt"
 
     # Multi-account fallback: numbered seats, legacy token, then keychain.
-    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4" "CLAUDE_CODE_OAUTH_TOKEN")
+    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4" "CLAUDE_CODE_OAUTH_TOKEN_5" "CLAUDE_CODE_OAUTH_TOKEN")
     local tried=0
     local claude_bin
     claude_bin="$(command -v claude)"
+    local deadline=$(( $(date +%s) + timeout ))
+    local retryable_re='rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)'
+    local oauth_env=(
+        env
+        -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
+        -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY
+        -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUD_ML_REGION
+        -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN
+        -u AWS_PROFILE -u AWS_REGION -u AWS_DEFAULT_REGION -u AWS_BEARER_TOKEN_BEDROCK
+        -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
+        -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
+    )
+    local active_vars=()
+    local candidate
+    for candidate in "${token_vars[@]}"; do
+        [ -n "${!candidate:-}" ] && active_vars+=("$candidate")
+    done
+    active_vars+=("keychain")
 
-    for tv in "${token_vars[@]}" "keychain"; do
+    local position=0
+    for tv in "${active_vars[@]}"; do
         local token_val=""
         local label="$tv"
         if [ "$tv" != "keychain" ]; then
@@ -447,25 +466,37 @@ run_claude() {
             [ -z "$token_val" ] && continue
         fi
         tried=$((tried + 1))
+        local remaining=$(( deadline - $(date +%s) ))
+        [ "$remaining" -le 0 ] && break
+        local attempts_left=$(( ${#active_vars[@]} - position ))
+        local attempt_timeout=$(( remaining / attempts_left ))
+        [ "$attempt_timeout" -lt 1 ] && attempt_timeout=1
+        position=$((position + 1))
 
         log "Claude Code (Opus 4.6) → $mode [token=$label, tools=$allowed_tools]"
 
         local start_time exit_code output
         start_time=$(date +%s)
         if [ -n "$token_val" ]; then
-            output=$(run_with_timeout "$timeout" env -u ANTHROPIC_API_KEY \
+            output=$(run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
                 CLAUDE_CODE_OAUTH_TOKEN="$token_val" "$claude_bin" -p "$prompt" \
                 --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
         else
-            output=$(run_with_timeout "$timeout" env -u ANTHROPIC_API_KEY \
+            output=$(run_with_timeout "$attempt_timeout" "${oauth_env[@]}" \
                 -u CLAUDE_CODE_OAUTH_TOKEN "$claude_bin" -p "$prompt" \
                 --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
         fi
         local duration=$(( $(date +%s) - start_time ))
 
-        save_output "claude-$mode" "$output" "$duration"
+        # Account-local quota/auth diagnostics can exit 0. Classify before
+        # accepting output and never persist raw diagnostic stderr.
+        if echo "$output" | grep -qiE "$retryable_re"; then
+            warn "$label unavailable — trying next token"
+            continue
+        fi
 
         if [ "$exit_code" -eq 0 ] && [ -n "${output//[[:space:]]/}" ]; then
+            save_output "claude-$mode" "$output" "$duration"
             echo "$output"
             return 0
         fi
@@ -475,20 +506,13 @@ run_claude() {
             continue
         fi
 
-        # Account-local quota/auth failures rotate to the next subscription.
-        if echo "$output" | grep -qiE "rate.?limit|too many requests|429|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9])401([^0-9]|$)"; then
-            warn "$label unavailable — trying next token"
-            continue
-        fi
-
         if [ "$exit_code" -eq 124 ]; then
-            warn "$label timed out after ${timeout}s — trying next token"
+            warn "$label timed out — trying next token"
             continue
         fi
 
         # Non-rate-limit error — stop trying
         err "Claude failed ($label, exit $exit_code) after ${duration}s"
-        echo "$output"
         return 1
     done
 

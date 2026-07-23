@@ -349,8 +349,8 @@ def test_sdk_options_omit_effort_for_long_query(monkeypatch):
 # ── env hygiene ──
 
 
-def test_token_chain_reaches_slot_four_in_order(monkeypatch):
-    for slot in range(1, 5):
+def test_token_chain_reaches_slot_five_in_order(monkeypatch):
+    for slot in range(1, 6):
         monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"tok{slot}")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
@@ -359,6 +359,7 @@ def test_token_chain_reaches_slot_four_in_order(monkeypatch):
         ("token_2", "tok2"),
         ("token_3", "tok3"),
         ("token_4", "tok4"),
+        ("token_5", "tok5"),
         ("keychain", ""),
     ]
 
@@ -373,6 +374,7 @@ def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
 
@@ -400,6 +402,7 @@ def test_sdk_env_seeds_oauth_token_from_indexed_chain(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
 
@@ -428,6 +431,7 @@ def test_sdk_env_no_chain_token_leaves_var_absent(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
 
     captured: list = []
     fake_module = _make_fake_sdk_module(
@@ -468,8 +472,8 @@ def _run_subprocess_with_emitter(monkeypatch, emitter_code: str):
     )
 
 
-def test_subprocess_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
-    for slot in range(1, 5):
+def test_subprocess_rotates_auth_quota_and_empty_to_slot_five(monkeypatch):
+    for slot in range(1, 6):
         monkeypatch.setenv(
             f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
         )
@@ -486,9 +490,11 @@ def test_subprocess_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
         "elif token == 'sentinel-3':\n"
         "    pass\n"
         "elif token == 'sentinel-4':\n"
+        "    print('quota exhausted')\n"
+        "elif token == 'sentinel-5':\n"
         "    assert 'ANTHROPIC_API_KEY' not in os.environ\n"
-        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-four-success'}]}}))\n"
-        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-four-success'}))\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-five-success'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-five-success'}))\n"
         "else:\n"
         "    print('unexpected account', file=sys.stderr)\n"
         "    raise SystemExit(7)\n"
@@ -507,7 +513,7 @@ def test_subprocess_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
         _collect(claude_client._stream_via_subprocess("hi"))
     )
 
-    assert any("slot-four-success" in line for line in lines)
+    assert any("slot-five-success" in line for line in lines)
     assert lines[-1] == "data: [DONE]\n\n"
 
 
@@ -516,6 +522,7 @@ def test_subprocess_rotates_init_then_weekly_limit_to_slot_two(monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
 
@@ -554,6 +561,7 @@ def test_subprocess_does_not_rotate_limit_after_content(monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
     emitter = (

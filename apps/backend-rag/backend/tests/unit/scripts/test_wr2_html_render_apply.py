@@ -322,12 +322,12 @@ def test_run_claude_json_tries_numbered_slot_before_existing_bare_token(monkeypa
     assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-one-token"
 
 
-def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
+def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_five(monkeypatch):
     import json as _json
 
     from wr2_html_renderer import claude_vision
 
-    for slot in range(1, 5):
+    for slot in range(1, 6):
         monkeypatch.setenv(
             f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
         )
@@ -338,6 +338,7 @@ def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
         _fake_proc(returncode=1, stderr="401 unauthorized"),
         _fake_proc(returncode=1, stderr="weekly usage limit"),
         _fake_proc(returncode=0, stdout=" \n"),
+        _fake_proc(returncode=1, stderr="quota exhausted"),
         _fake_proc(
             returncode=0,
             stdout=_json.dumps({"structured_output": {"passes": True}}),
@@ -356,7 +357,7 @@ def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_four(monkeypatch):
     result = claude_vision._run_claude_json("p", {"type": "object"})
 
     assert result == {"passes": True}
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
 @pytest.mark.parametrize(
@@ -376,7 +377,7 @@ def test_run_claude_json_rotates_extended_limit_text_to_next_account(
     from wr2_html_renderer import claude_vision
 
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
-    for slot in range(1, 5):
+    for slot in range(1, 6):
         monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
@@ -452,12 +453,12 @@ def test_run_claude_json_timeout_budget_from_env(monkeypatch):
     monkeypatch.delenv("WR2_VISION_TIMEOUT_S", raising=False)
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == 180
+    assert captured["timeout"] == pytest.approx(180, abs=0.1)
 
     monkeypatch.setenv("WR2_VISION_TIMEOUT_S", "300")
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == 300
+    assert captured["timeout"] == pytest.approx(300, abs=0.1)
 
 
 def test_run_claude_json_pins_vision_model(monkeypatch):

@@ -280,7 +280,7 @@ def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> No
 # ── Claude CLI token chain (multi-account fallback) ──────────────────────────
 
 _RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
     r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
     r"capacity|overloaded",
     re.IGNORECASE,
@@ -289,16 +289,52 @@ _AUTH_FAILURE_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
     r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
-    r"unauthori[sz]ed|(?:error\D*)?401",
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
 _EXHAUSTED_TOKENS: dict[str, str] = {}  # label → reason (per-process latch)
+_OAUTH_SCRUB_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _claude_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    env["PATH"] = (
+        f"{os.path.expanduser('~/.local/bin')}:"
+        f"{os.path.expanduser('~/.claude/local')}:"
+        "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    )
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _load_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) to try."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -315,7 +351,7 @@ def claude_reason(entry: dict) -> dict | None:
     """
     Ask Claude CLI to reason about a DLQ entry.
     Returns {fix_type, fix_instruction, confidence, needs_code_change} or None.
-    Multi-account fallback: tries TOKEN_1→2→3→4→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→5→legacy→keychain.
     Latches exhausted tokens per-process to avoid repeated timeouts.
     """
     job = entry["job"]
@@ -345,39 +381,27 @@ Rules:
 - Do not fabricate fixes for empty errors"""
 
     chain = _load_token_chain()
+    deadline = time.monotonic() + REASONING_TIMEOUT_S
 
-    for label, token in chain:
+    for position, (label, token) in enumerate(chain):
         if label in _EXHAUSTED_TOKENS:
             logger.info(f"{job}: skip {label} (exhausted: {_EXHAUSTED_TOKENS[label]})")
             continue
-
-        env = {
-            **{
-                key: value
-                for key, value in os.environ.items()
-                if key != "ANTHROPIC_API_KEY"
-            },
-            "PATH": (
-                f"{os.path.expanduser('~/.local/bin')}:"
-                f"{os.path.expanduser('~/.claude/local')}:"
-                "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-            ),
-        }
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
 
         try:
             result = subprocess.run(
                 ["claude", "--print", prompt],
                 capture_output=True,
                 text=True,
-                timeout=REASONING_TIMEOUT_S,
-                env=env,
+                timeout=attempt_timeout,
+                env=_claude_oauth_env(token),
             )
         except subprocess.TimeoutExpired:
-            logger.warning(f"{job}: {label} timed out after {REASONING_TIMEOUT_S}s")
+            logger.warning(f"{job}: {label} timed out")
             _EXHAUSTED_TOKENS[label] = "timeout"
             continue
         except FileNotFoundError:
@@ -385,16 +409,15 @@ Rules:
             return None
 
         combined = (result.stdout or "") + (result.stderr or "")
+        if _RATE_LIMIT_RE.search(combined):
+            logger.warning(f"{job}: {label} rate-limited — trying next token")
+            _EXHAUSTED_TOKENS[label] = "rate_limit"
+            continue
+        if _AUTH_FAILURE_RE.search(combined):
+            logger.warning(f"{job}: {label} auth failed — trying next token")
+            _EXHAUSTED_TOKENS[label] = "auth"
+            continue
         if result.returncode != 0:
-            if _RATE_LIMIT_RE.search(combined):
-                logger.warning(f"{job}: {label} rate-limited — trying next token")
-                _EXHAUSTED_TOKENS[label] = "rate_limit"
-                continue
-            if _AUTH_FAILURE_RE.search(combined):
-                logger.warning(f"{job}: {label} auth failed — trying next token")
-                _EXHAUSTED_TOKENS[label] = "auth"
-                continue
-
             logger.warning(f"{job}: {label} exit {result.returncode}")
             return None
 

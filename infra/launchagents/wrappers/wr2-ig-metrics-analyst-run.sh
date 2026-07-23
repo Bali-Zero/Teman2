@@ -147,8 +147,8 @@ cd "${HOME}/nuzantara"
 CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
 
 CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-/Users/nuzantara/.local/bin/claude}"
-RETRYABLE_RE='rate.?limit|too many requests|429|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9])401([^0-9]|$)'
-MAX_CLAUDE_ATTEMPTS=6
+RETRYABLE_RE='rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)'
+MAX_CLAUDE_ATTEMPTS=7
 DEFAULT_ACCOUNT_TIMEOUT_SECS=$((TIMEOUT_SECS / MAX_CLAUDE_ATTEMPTS))
 if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
   DEFAULT_ACCOUNT_TIMEOUT_SECS=1
@@ -158,24 +158,43 @@ if [ "$ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
   ACCOUNT_TIMEOUT_SECS=1
 fi
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] cascade budget: total=${TIMEOUT_SECS}s max_attempts=${MAX_CLAUDE_ATTEMPTS} account_timeout=${ACCOUNT_TIMEOUT_SECS}s" >> "$LOG"
+CASCADE_DEADLINE=$(( $(date +%s) + TIMEOUT_SECS ))
 
 run_claude_account() {
   local label="$1"
   local token="$2"
   local attempt_out attempt_err elapsed last_heartbeat sleep_step timed_out claude_pid
+  local remaining=$(( CASCADE_DEADLINE - $(date +%s) ))
+  if [ "$remaining" -le 0 ]; then
+    return 124
+  fi
+  local attempt_budget="$ACCOUNT_TIMEOUT_SECS"
+  if [ "$remaining" -lt "$attempt_budget" ]; then
+    attempt_budget="$remaining"
+  fi
   attempt_out="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-claude-out.XXXXXX")"
   attempt_err="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-claude-err.XXXXXX")"
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] trying ${label}" >> "$LOG"
+  local oauth_env=(
+    env
+    -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
+    -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY
+    -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUD_ML_REGION
+    -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN
+    -u AWS_PROFILE -u AWS_REGION -u AWS_DEFAULT_REGION -u AWS_BEARER_TOKEN_BEDROCK
+    -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
+    -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
+  )
   if [ -n "$token" ]; then
-    env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$token" \
+    "${oauth_env[@]}" CLAUDE_CODE_OAUTH_TOKEN="$token" \
       "$CLAUDE_BIN" -p \
       --model claude-sonnet-5 \
       --permission-mode bypassPermissions \
       --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
       "$CLAUDE_PROMPT" > "$attempt_out" 2> "$attempt_err" &
   else
-    env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_OAUTH_TOKEN \
+    "${oauth_env[@]}" -u CLAUDE_CODE_OAUTH_TOKEN \
       "$CLAUDE_BIN" -p \
       --model claude-sonnet-5 \
       --permission-mode bypassPermissions \
@@ -188,8 +207,8 @@ run_claude_account() {
   last_heartbeat=0
   timed_out=0
   while kill -0 "$claude_pid" 2>/dev/null; do
-    if [ "$elapsed" -ge "$ACCOUNT_TIMEOUT_SECS" ]; then
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} TIMEOUT after ${ACCOUNT_TIMEOUT_SECS}s — sending SIGTERM to pid $claude_pid" >> "$LOG"
+    if [ "$elapsed" -ge "$attempt_budget" ]; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} TIMEOUT after ${attempt_budget}s — sending SIGTERM to pid $claude_pid" >> "$LOG"
       kill -TERM "$claude_pid" 2>/dev/null || true
       sleep "$KILL_GRACE_SECS"
       if kill -0 "$claude_pid" 2>/dev/null; then
@@ -199,8 +218,8 @@ run_claude_account() {
       break
     fi
     sleep_step="$POLL_SECS"
-    if [ $((elapsed + sleep_step)) -gt "$ACCOUNT_TIMEOUT_SECS" ]; then
-      sleep_step=$((ACCOUNT_TIMEOUT_SECS - elapsed))
+    if [ $((elapsed + sleep_step)) -gt "$attempt_budget" ]; then
+      sleep_step=$((attempt_budget - elapsed))
     fi
     sleep "$sleep_step"
     elapsed=$((elapsed + sleep_step))
@@ -217,19 +236,18 @@ run_claude_account() {
     CLAUDE_EXIT=124
   fi
 
-  cat "$attempt_out" >> "$LOG"
-  cat "$attempt_err" >> "$ERR"
-  if [ "$CLAUDE_EXIT" -eq 0 ] && grep -q '[^[:space:]]' "$attempt_out"; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: ${label} claude-sonnet-5 (exit=0)" >> "$LOG"
-    rm -f "$attempt_out" "$attempt_err"
-    return 0
-  fi
   if [ "$CLAUDE_EXIT" -eq 124 ] || \
      { [ "$CLAUDE_EXIT" -eq 0 ] && ! grep -q '[^[:space:]]' "$attempt_out"; } || \
      grep -qiE "$RETRYABLE_RE" "$attempt_out" "$attempt_err"; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} unavailable (exit=${CLAUDE_EXIT}) — trying next account" >> "$ERR"
     rm -f "$attempt_out" "$attempt_err"
     return 98
+  fi
+  if [ "$CLAUDE_EXIT" -eq 0 ]; then
+    cat "$attempt_out" >> "$LOG"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: ${label} claude-sonnet-5 (exit=0)" >> "$LOG"
+    rm -f "$attempt_out" "$attempt_err"
+    return 0
   fi
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} failed (exit=${CLAUDE_EXIT})" >> "$ERR"
@@ -238,7 +256,7 @@ run_claude_account() {
 }
 
 CLAUDE_EXIT=98
-for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4; do
+for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5; do
   token_value="${!token_var:-}"
   [ -z "$token_value" ] && continue
   if run_claude_account "$token_var" "$token_value"; then

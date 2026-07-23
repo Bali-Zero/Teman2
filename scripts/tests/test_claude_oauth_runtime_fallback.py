@@ -1,4 +1,4 @@
-"""Behavior tests for four-seat Claude OAuth rotation outside backend runtime."""
+"""Behavior tests for five-seat Claude OAuth rotation outside backend runtime."""
 
 from __future__ import annotations
 
@@ -24,22 +24,28 @@ def _load_module(relative_path: str, name: str) -> ModuleType:
     return module
 
 
-def _install_four_slots(monkeypatch: Any) -> None:
-    for slot in range(1, 5):
+def _install_five_slots(monkeypatch: Any) -> None:
+    for slot in range(1, 6):
         monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "must-not-leak")
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://must-not-leak.invalid")
+    monkeypatch.setenv("CLAUDE_CODE_USE_BEDROCK", "1")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "must-not-leak")
+    monkeypatch.setenv("VERTEX_AI_PROJECT", "must-not-leak")
 
 
-def _four_outcome_runner(
+def _five_outcome_runner(
     monkeypatch: Any,
     module: ModuleType,
     success_stdout: str,
 ) -> list[str]:
     outcomes = (
-        SimpleNamespace(returncode=1, stdout="", stderr="401 unauthorized"),
-        SimpleNamespace(returncode=1, stdout="", stderr="weekly limit reached"),
+        SimpleNamespace(returncode=0, stdout="401 unauthorized", stderr=""),
+        SimpleNamespace(returncode=0, stdout="weekly limit reached", stderr=""),
         SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
+        "timeout",
         SimpleNamespace(returncode=0, stdout=success_stdout, stderr=""),
     )
     seen_tokens: list[str] = []
@@ -47,22 +53,33 @@ def _four_outcome_runner(
     def _run(*args: Any, **kwargs: Any) -> SimpleNamespace:
         env = kwargs["env"]
         seen_tokens.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
-        assert "ANTHROPIC_API_KEY" not in env
-        return outcomes[len(seen_tokens) - 1]
+        for key in (
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "CLAUDE_CODE_USE_BEDROCK",
+            "AWS_ACCESS_KEY_ID",
+            "VERTEX_AI_PROJECT",
+        ):
+            assert key not in env
+        outcome = outcomes[len(seen_tokens) - 1]
+        if outcome == "timeout":
+            raise subprocess.TimeoutExpired(args[0] if args else "claude", timeout=1)
+        return outcome
 
     monkeypatch.setattr(module.subprocess, "run", _run)
     return seen_tokens
 
 
-def test_auto_verifier_reaches_slot_four_after_auth_quota_and_empty(
+def test_auto_verifier_reaches_slot_five_after_auth_quota_and_empty(
     monkeypatch: Any,
 ) -> None:
     module = _load_module(
         "apps/backend-rag/scripts/auto_verifier.py", "oauth_auto_verifier"
     )
-    _install_four_slots(monkeypatch)
+    _install_five_slots(monkeypatch)
     module._VERIFIER_EXHAUSTED.clear()
-    seen = _four_outcome_runner(
+    seen = _five_outcome_runner(
         monkeypatch,
         module,
         "VERDICT: FAITHFUL\nREASON: Grounded in the cited excerpt.",
@@ -71,18 +88,18 @@ def test_auto_verifier_reaches_slot_four_after_auth_quota_and_empty(
     result = module.call_claude_verifier("IM-001", "claim", "source")
 
     assert result.verdict == "FAITHFUL"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
-def test_verified_generator_reaches_slot_four_after_auth_quota_and_empty(
+def test_verified_generator_reaches_slot_five_after_auth_quota_and_empty(
     monkeypatch: Any,
 ) -> None:
     module = _load_module(
         "apps/backend-rag/scripts/verified_generator.py", "oauth_verified_generator"
     )
-    _install_four_slots(monkeypatch)
+    _install_five_slots(monkeypatch)
     module._GEN_EXHAUSTED.clear()
-    seen = _four_outcome_runner(
+    seen = _five_outcome_runner(
         monkeypatch,
         module,
         "Complete grounded guide [IM-001]",
@@ -98,31 +115,31 @@ def test_verified_generator_reaches_slot_four_after_auth_quota_and_empty(
     )
 
     assert output == "Complete grounded guide [IM-001]"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
-def test_image_style_reaches_slot_four_after_auth_quota_and_empty(
+def test_image_style_reaches_slot_five_after_auth_quota_and_empty(
     monkeypatch: Any,
 ) -> None:
     module = _load_module(
         "apps/bali-intel-scraper/scripts/bz_image_style.py", "oauth_bz_image_style"
     )
-    _install_four_slots(monkeypatch)
+    _install_five_slots(monkeypatch)
     module._IMG_EXHAUSTED_TOKENS.clear()
     expected = "A cinematic grounded visual concept with enough detail for rendering."
-    seen = _four_outcome_runner(monkeypatch, module, expected)
+    seen = _five_outcome_runner(monkeypatch, module, expected)
 
     output = module._prompt_via_claude("Title", "visa", "Summary", "crisis")
 
     assert output == expected
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
-def test_dlq_reasoner_reaches_slot_four_after_auth_quota_and_empty(
+def test_dlq_reasoner_reaches_slot_five_after_auth_quota_and_empty(
     monkeypatch: Any,
 ) -> None:
     module = _load_module("scripts/dlq_autopilot.py", "oauth_dlq_autopilot")
-    _install_four_slots(monkeypatch)
+    _install_five_slots(monkeypatch)
     module._EXHAUSTED_TOKENS.clear()
     success = json.dumps(
         {
@@ -132,7 +149,7 @@ def test_dlq_reasoner_reaches_slot_four_after_auth_quota_and_empty(
             "needs_code_change": False,
         }
     )
-    seen = _four_outcome_runner(monkeypatch, module, success)
+    seen = _five_outcome_runner(monkeypatch, module, success)
 
     result = module.claude_reason(
         {
@@ -144,35 +161,40 @@ def test_dlq_reasoner_reaches_slot_four_after_auth_quota_and_empty(
     )
 
     assert result is not None
-    assert result["_token_used"] == "token_4"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert result["_token_used"] == "token_5"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
-def test_mata_runtime_reaches_slot_four_after_auth_quota_and_empty(
+def test_mata_runtime_reaches_slot_five_after_auth_quota_and_empty(
     monkeypatch: Any,
 ) -> None:
     module = _load_module(
         "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
         "oauth_mata_cli_runtime",
     )
-    _install_four_slots(monkeypatch)
+    _install_five_slots(monkeypatch)
     module.reset_exhausted_tokens()
     outcomes = (
-        SimpleNamespace(returncode=1, stdout="", stderr="401 unauthorized"),
-        SimpleNamespace(returncode=1, stdout="", stderr="weekly limit reached"),
+        SimpleNamespace(returncode=0, stdout="401 unauthorized", stderr=""),
+        SimpleNamespace(returncode=0, stdout="weekly limit reached", stderr=""),
         SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
-        SimpleNamespace(returncode=0, stdout="slot-four-success", stderr=""),
+        "timeout",
+        SimpleNamespace(returncode=0, stdout="slot-five-success", stderr=""),
     )
     seen: list[str] = []
 
     def _run_subprocess(
         cmd: list[str],
         env: dict[str, str] | None = None,
+        timeout: float | None = None,
     ) -> SimpleNamespace:
         assert env is not None
         assert "ANTHROPIC_API_KEY" not in env
         seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
-        return outcomes[len(seen) - 1]
+        outcome = outcomes[len(seen) - 1]
+        if outcome == "timeout":
+            raise subprocess.TimeoutExpired(cmd, timeout=timeout)
+        return outcome
 
     runtime = module.CLIRuntime(model="claude")
     monkeypatch.setattr(runtime, "_run_subprocess", _run_subprocess)
@@ -180,9 +202,97 @@ def test_mata_runtime_reaches_slot_four_after_auth_quota_and_empty(
     result = runtime.invoke("safe test prompt")
 
     assert result.success
-    assert result.output == "slot-four-success"
-    assert result.token_used == "CLAUDE_CODE_OAUTH_TOKEN_4"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 5)]
+    assert result.output == "slot-five-success"
+    assert result.token_used == "CLAUDE_CODE_OAUTH_TOKEN_5"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+
+
+def test_daily_briefing_reaches_slot_five(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
+    module = _load_module(
+        "apps/mata-garuda/mata_garuda/agents/daily_briefing_agent.py",
+        "oauth_daily_briefing",
+    )
+    _install_five_slots(monkeypatch)
+    seen = _five_outcome_runner(monkeypatch, module, "two-line summary")
+
+    output = module._tldr_claude("Title", "Body")
+
+    assert output == "two-line summary"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+
+
+def test_weekly_digest_reaches_slot_five(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
+    module = _load_module(
+        "apps/mata-garuda/mata_garuda/agents/weekly_digest_agent.py",
+        "oauth_weekly_digest",
+    )
+    _install_five_slots(monkeypatch)
+    seen = _five_outcome_runner(monkeypatch, module, "weekly analysis")
+
+    output = module.call_claude("safe prompt")
+
+    assert output == "weekly analysis"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+
+
+def test_ai_digest_reaches_slot_five(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
+    module = _load_module(
+        "apps/mata-garuda/scripts/run_ai_digest.py",
+        "oauth_ai_digest",
+    )
+    _install_five_slots(monkeypatch)
+    seen = _five_outcome_runner(monkeypatch, module, "AI digest")
+
+    output = module.call_claude_synthesis("safe prompt")
+
+    assert output == "AI digest"
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+
+
+def test_mata_keychain_fallbacks_strip_paid_api_key(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
+    for slot in range(1, 6):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+    seen_envs: list[dict[str, str]] = []
+
+    def _run(*args: Any, **kwargs: Any) -> SimpleNamespace:
+        env = kwargs["env"]
+        assert "ANTHROPIC_API_KEY" not in env
+        assert "CLAUDE_CODE_OAUTH_TOKEN" not in env
+        seen_envs.append(env)
+        return SimpleNamespace(returncode=0, stdout="keychain-success", stderr="")
+
+    daily = _load_module(
+        "apps/mata-garuda/mata_garuda/agents/daily_briefing_agent.py",
+        "oauth_daily_briefing_keychain",
+    )
+    weekly = _load_module(
+        "apps/mata-garuda/mata_garuda/agents/weekly_digest_agent.py",
+        "oauth_weekly_digest_keychain",
+    )
+    digest = _load_module(
+        "apps/mata-garuda/scripts/run_ai_digest.py",
+        "oauth_ai_digest_keychain",
+    )
+    monkeypatch.setattr(subprocess, "run", _run)
+
+    assert daily._tldr_claude("Title", "Body") == "keychain-success"
+    assert weekly.call_claude("safe prompt") == "keychain-success"
+    assert digest.call_claude_synthesis("safe prompt") == "keychain-success"
+    assert len(seen_envs) == 3
 
 
 def _write_fake_claude(path: Path) -> None:
@@ -193,9 +303,10 @@ case "${CLAUDE_CODE_OAUTH_TOKEN:-keychain}" in
   sentinel-1) echo "401 unauthorized" >&2; exit 1 ;;
   sentinel-2) echo "weekly limit reached" >&2; exit 1 ;;
   sentinel-3) exit 0 ;;
-  sentinel-4)
+  sentinel-4) echo "quota exhausted" >&2; exit 1 ;;
+  sentinel-5)
     [ -z "${ANTHROPIC_API_KEY:-}" ] || exit 9
-    echo "slot-four-success"
+    echo "slot-five-success"
     exit 0
     ;;
   *) echo "unexpected account" >&2; exit 7 ;;
@@ -214,7 +325,7 @@ set -u
 token="${CLAUDE_CODE_OAUTH_TOKEN:-keychain}"
 echo "$token" >> "$OAUTH_TRACE_FILE"
 case "$token" in
-  sentinel-1|sentinel-2|sentinel-3|sentinel-4)
+  sentinel-1|sentinel-2|sentinel-3|sentinel-4|sentinel-5)
     echo "weekly limit reached" >&2
     exit 1
     ;;
@@ -230,7 +341,7 @@ esac
     path.chmod(0o700)
 
 
-def test_ai_dispatch_shell_reaches_slot_four(
+def test_ai_dispatch_shell_reaches_slot_five(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
     fake_bin = tmp_path / "bin"
@@ -245,6 +356,7 @@ def test_ai_dispatch_shell_reaches_slot_four(
             "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
             "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
             "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "ANTHROPIC_API_KEY": "must-not-leak",
         }
     )
@@ -265,7 +377,7 @@ def test_ai_dispatch_shell_reaches_slot_four(
     )
 
     assert result.returncode == 0, result.stderr
-    assert "slot-four-success" in result.stdout
+    assert "slot-five-success" in result.stdout
 
 
 def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
@@ -282,6 +394,7 @@ def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
             "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
             "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
             "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "CLAUDE_CODE_OAUTH_TOKEN": "legacy-sentinel",
             "ANTHROPIC_API_KEY": "must-not-leak",
             "OAUTH_TRACE_FILE": str(trace_file),
@@ -309,6 +422,7 @@ def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
         "sentinel-2",
         "sentinel-3",
         "sentinel-4",
+        "sentinel-5",
         "legacy-sentinel",
     ]
 
@@ -322,13 +436,14 @@ def test_wr2_metrics_wrapper_declares_real_account_rotation() -> None:
     assert "run_claude_account" in source
     assert (
         "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 "
-        "CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4"
+        "CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 "
+        "CLAUDE_CODE_OAUTH_TOKEN_5"
     ) in source
     assert "returned empty output" not in source or "grep -q '[^[:space:]]'" in source
     assert "ANTHROPIC_API_KEY" in source
 
 
-def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
+def test_wr2_metrics_wrapper_reaches_slot_five(tmp_path: Path) -> None:
     fake_claude = tmp_path / "claude"
     _write_fake_claude(fake_claude)
     fake_home = tmp_path / "home"
@@ -353,12 +468,13 @@ def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
         {
             "HOME": str(fake_home),
             "WR2_IG_CLAUDE_BIN": str(fake_claude),
-            "WR2_IG_METRICS_TIMEOUT_SECS": "300",
+            "WR2_IG_METRICS_TIMEOUT_SECS": "350",
             "WR2_IG_METRICS_POLL_SECS": "1",
             "CLAUDE_CODE_OAUTH_TOKEN_1": "sentinel-1",
             "CLAUDE_CODE_OAUTH_TOKEN_2": "sentinel-2",
             "CLAUDE_CODE_OAUTH_TOKEN_3": "sentinel-3",
             "CLAUDE_CODE_OAUTH_TOKEN_4": "sentinel-4",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "sentinel-5",
             "ANTHROPIC_API_KEY": "must-not-leak",
         }
     )
@@ -382,5 +498,5 @@ def test_wr2_metrics_wrapper_reaches_slot_four(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert result.returncode == 0, result.stderr
-    assert "used: CLAUDE_CODE_OAUTH_TOKEN_4" in log
-    assert "total=300s max_attempts=6 account_timeout=50s" in log
+    assert "used: CLAUDE_CODE_OAUTH_TOKEN_5" in log
+    assert "total=350s max_attempts=7 account_timeout=50s" in log

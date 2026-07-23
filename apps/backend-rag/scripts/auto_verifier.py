@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -83,7 +84,7 @@ REASON: <one sentence>"""
 
 
 _VERIFIER_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
     r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
     r"capacity|overloaded",
     re.IGNORECASE,
@@ -92,15 +93,48 @@ _VERIFIER_AUTH_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
     r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
-    r"unauthori[sz]ed|(?:error\D*)?401",
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
 _VERIFIER_EXHAUSTED: dict[str, str] = {}
+_OAUTH_SCRUB_KEYS = frozenset(
+    {
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "CLOUD_ML_REGION",
+    }
+)
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _verifier_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _verifier_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok:
             chain.append((f"token_{i}", tok))
@@ -115,41 +149,40 @@ def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
     """Verify a single claim via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→4→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
     prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
+    deadline = time.monotonic() + 60
+    chain = _verifier_token_chain()
 
-    for label, token in _verifier_token_chain():
+    for position, (label, token) in enumerate(chain):
         if label in _VERIFIER_EXHAUSTED:
             continue
 
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if key != "ANTHROPIC_API_KEY"
-        }
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
+        env = _verifier_oauth_env(token)
 
         try:
             result = subprocess.run(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "1"],
-                input=prompt, capture_output=True, text=True, timeout=60, env=env,
+                input=prompt, capture_output=True, text=True,
+                timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:
             _VERIFIER_EXHAUSTED[label] = "timeout"
             continue
 
         combined = (result.stdout or "") + (result.stderr or "")
+        if _VERIFIER_RATE_LIMIT_RE.search(combined):
+            _VERIFIER_EXHAUSTED[label] = "rate_limit"
+            continue
+        if _VERIFIER_AUTH_RE.search(combined):
+            _VERIFIER_EXHAUSTED[label] = "auth"
+            continue
         if result.returncode != 0:
-            if _VERIFIER_RATE_LIMIT_RE.search(combined):
-                _VERIFIER_EXHAUSTED[label] = "rate_limit"
-                continue
-            if _VERIFIER_AUTH_RE.search(combined):
-                _VERIFIER_EXHAUSTED[label] = "auth"
-                continue
             return ClaimVerificationResult(
                 claim_id=claim_id,
                 verdict="UNCERTAIN",

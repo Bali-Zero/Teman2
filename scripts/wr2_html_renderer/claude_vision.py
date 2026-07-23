@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -69,9 +70,40 @@ _AUTH_FAILURE_RE = re.compile(
     r"authentication (?:failed|required|expired)|auth required|login required|"
     r"please (?:log in|login)|not logged in|not authenticated|"
     r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
-    r"unauthori[sz]ed|(?:error\D*)?401",
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.IGNORECASE,
 )
+_OAUTH_SCRUB_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "AWS_",
+    "VERTEX_AI_",
+    "ANTHROPIC_VERTEX_",
+    "ANTHROPIC_BEDROCK_",
+    "ANTHROPIC_FOUNDRY_",
+)
+
+
+def _oauth_cli_env(source: dict[str, str], token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in source.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, returncode: int) -> bool:
@@ -80,8 +112,9 @@ def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, retu
             return True
         if envelope.get("is_error") and _RATE_LIMIT_RE.search(str(envelope.get("result", ""))):
             return True
-    # only trust the loose text match when the call actually failed
-    if returncode != 0 and _RATE_LIMIT_RE.search(combined_text):
+    # A CLI diagnostic may exit 0. Only trust free text when no success
+    # envelope exists, preventing normal structured content from rotating.
+    if envelope is None and _RATE_LIMIT_RE.search(combined_text):
         return True
     return False
 
@@ -199,11 +232,11 @@ _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 def _vision_token_chain(env: dict[str, str]) -> list[tuple[str, str]]:
     """Return OAuth seats in a stable order without duplicating credentials.
 
-    The universal fleet order is numbered seats 1→2→3→4, then the legacy bare
-    token for backward compatibility, followed by the CLI keychain login.
+    The universal fleet order is numbered seats 1→2→3→4→5, then the legacy
+    bare token for backward compatibility, followed by the CLI keychain login.
     """
     chain: list[tuple[str, str]] = []
-    for index in (1, 2, 3, 4):
+    for index in (1, 2, 3, 4, 5):
         token = env.get(f"CLAUDE_CODE_OAUTH_TOKEN_{index}", "").strip()
         if token and not any(existing == token for _, existing in chain):
             chain.append((f"token_{index}", token))
@@ -225,11 +258,7 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     """
     if timeout_s is None:
         timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
-    base_env = {
-        key: value
-        for key, value in os.environ.items()
-        if key != "ANTHROPIC_API_KEY"
-    }
+    base_env = dict(os.environ)
     # Pin the vision model (default sonnet: vision-capable + solid editorial
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
     # window nor trips the 120s timeout). Configurable without a code change.
@@ -242,32 +271,31 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         prompt,
     ]
     saw_rate_limit = False
-    last_rate_detail = ""
+    saw_timeout = False
+    deadline = time.monotonic() + timeout_s
 
-    for label, token in _vision_token_chain(base_env):
-        env = dict(base_env)
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    chain = _vision_token_chain(base_env)
+    for position, (label, token) in enumerate(chain):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
 
         try:
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                env=env,
-                timeout=timeout_s,
+                env=_oauth_cli_env(base_env, token),
+                timeout=attempt_timeout,
             )
         except subprocess.TimeoutExpired:
             logger.warning(
-                "claude vision %s timed out after %ss — transient",
+                "claude vision %s timed out — trying next account",
                 label,
-                timeout_s,
             )
-            raise VisionTimeout(
-                f"vision call timed out after {timeout_s}s"
-            ) from None
+            saw_timeout = True
+            continue
 
         # Parse the stdout envelope up front so a 429 can be told apart from a
         # real failure even when the CLI exits rc!=0.
@@ -283,16 +311,14 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         combined = (proc.stdout or "") + (proc.stderr or "")
         if _detect_rate_limit(envelope, combined, proc.returncode):
             saw_rate_limit = True
-            last_rate_detail = (
-                str(envelope.get("result", ""))[:160]
-                if envelope
-                else proc.stderr[:160]
-            )
             logger.warning(
                 "claude vision %s rate-limited — trying next account", label
             )
             continue
-        if proc.returncode != 0 and _AUTH_FAILURE_RE.search(combined):
+        if (
+            (envelope is None or envelope.get("is_error"))
+            and _AUTH_FAILURE_RE.search(combined)
+        ):
             logger.warning(
                 "claude vision %s authentication failed — trying next account",
                 label,
@@ -300,9 +326,8 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
             continue
         if proc.returncode != 0:
             logger.warning(
-                "claude vision call failed rc=%s err=%s",
+                "claude vision call failed rc=%s",
                 proc.returncode,
-                proc.stderr[:300],
             )
             return None
         if not out:
@@ -335,9 +360,9 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         return None
 
     if saw_rate_limit:
-        raise VisionRateLimited(
-            f"claude vision rate-limited across all OAuth accounts: {last_rate_detail}"
-        )
+        raise VisionRateLimited("claude vision rate-limited across all OAuth accounts")
+    if saw_timeout:
+        raise VisionTimeout(f"vision call exceeded its {timeout_s}s global budget")
     return None
 
 

@@ -10,8 +10,8 @@ Layer 4 Analista. Autonomy L1.
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +21,12 @@ from mata_garuda.config import RELEVANCE_WEIGHTS, STREAM_DIGEST, STREAM_ENRICHED
 from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
+from mata_garuda.runtime.cli_runtime import (
+    _get_token_chain,
+    _is_auth_failed,
+    _is_rate_limited,
+    _oauth_cli_env,
+)
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
@@ -110,33 +116,35 @@ def build_analysis_prompt(rows: list[dict[str, str]], now: datetime | None = Non
 
 
 def call_claude(prompt: str, timeout: int = 120) -> str:
-    token_vars = [
-        "CLAUDE_CODE_OAUTH_TOKEN_1",
-        "CLAUDE_CODE_OAUTH_TOKEN_2",
-        "CLAUDE_CODE_OAUTH_TOKEN_3",
-        "CLAUDE_CODE_OAUTH_TOKEN_4",
-        "CLAUDE_CODE_OAUTH_TOKEN",
-    ]
-    for var in token_vars:
-        token = os.environ.get(var)
-        if not token:
-            continue
-        env = os.environ.copy()
-        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    deadline = time.monotonic() + timeout
+    chain = _get_token_chain()
+    for position, (_label, token) in enumerate(chain):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
             result = subprocess.run(
                 ["claude", "--print", "-p", prompt],
-                capture_output=True, text=True, timeout=timeout, env=env,
+                capture_output=True,
+                text=True,
+                timeout=attempt_timeout,
+                env=_oauth_cli_env(token),
             )
-            out = (result.stdout or "").strip()
-            if result.returncode == 0 and out:
-                if out.startswith("[Pro]") or out.startswith("[Air]"):
-                    out = out.split("\n", 1)[-1].strip()
-                return out
-            if "hit your limit" in (result.stderr + result.stdout).lower():
-                continue
-        except Exception:
+        except (subprocess.TimeoutExpired, OSError):
             continue
+
+        if _is_rate_limited(result.stdout, result.stderr) or _is_auth_failed(
+            result.stdout, result.stderr
+        ):
+            continue
+        out = (result.stdout or "").strip()
+        if result.returncode == 0 and out:
+            if out.startswith("[Pro]") or out.startswith("[Air]"):
+                out = out.split("\n", 1)[-1].strip()
+            return out
+        if result.returncode != 0:
+            return ""
     return ""
 
 

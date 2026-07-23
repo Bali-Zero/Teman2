@@ -3,11 +3,11 @@
 #
 # Usage:
 #   cron-agent.sh exec  <job-name> <script> [args...]   # Tier 0: run script, alert on failure
-#   cron-agent.sh agent <job-name> <prompt-file>         # Tier 2: claude -p with 3-token fallback
+#   cron-agent.sh agent <job-name> <prompt-file>         # Tier 2: claude -p with account fallback
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - 4-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3 → TOKEN_4)
+#   - Claude OAuth fallback (TOKEN_1 → ... → TOKEN_5 → legacy → keychain)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,7 +15,7 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4} — 4 Claude subscription accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5} — Claude subscription accounts for agent tier
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -208,10 +208,10 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         return 0
     fi
 
-    # 4-token OAuth fallback chain
+    # Five numbered seats, then legacy and keychain fallback.
     local tokens=()
     local labels=()
-    for i in 1 2 3 4; do
+    for i in 1 2 3 4 5; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         if [[ -n "$tok" ]]; then
@@ -234,21 +234,39 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
     tokens+=("")
     labels+=("keychain")
 
-    local RATE_LIMIT_PATTERN="rate.limit\|too many requests\|429\|exhausted\|quota\|hit your limit\|capacity\|overloaded"
+    local RATE_LIMIT_PATTERN="rate.limit\|too many requests\|\\(^\\|[^0-9/]\\)429\\([^0-9/]\\|$\\)\|exhausted\|quota\|usage limit\|weekly limit\|hit your limit\|capacity\|overloaded\|authentication failed\|auth required\|login required\|not logged in\|unauthorized\|\\(^\\|[^0-9/]\\)401\\([^0-9/]\\|$\\)"
     local output="" exit_code=1
     local tried=()
+    local deadline=$(( start_ts + TIMEOUT ))
 
     for idx in "${!tokens[@]}"; do
         local token="${tokens[$idx]}"
         local label="${labels[$idx]}"
         log "Trying $label..."
         tried+=("$label")
+        local remaining=$(( deadline - $(date +%s) ))
+        if [[ $remaining -le 0 ]]; then
+            exit_code=124
+            break
+        fi
+        local attempts_left=$(( ${#tokens[@]} - idx ))
+        local attempt_timeout=$(( remaining / attempts_left ))
+        [[ $attempt_timeout -lt 1 ]] && attempt_timeout=1
 
-        local env_args=()
+        local env_args=(
+            env
+            -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
+            -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX -u CLAUDE_CODE_USE_FOUNDRY
+            -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUD_ML_REGION
+            -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN
+            -u AWS_PROFILE -u AWS_REGION -u AWS_DEFAULT_REGION -u AWS_BEARER_TOKEN_BEDROCK
+            -u VERTEX_AI_PROJECT -u VERTEX_AI_LOCATION
+            -u ANTHROPIC_VERTEX_PROJECT_ID -u ANTHROPIC_BEDROCK_BASE_URL
+        )
         if [[ -n "$token" ]]; then
-            env_args=(env "CLAUDE_CODE_OAUTH_TOKEN=$token")
+            env_args+=("CLAUDE_CODE_OAUTH_TOKEN=$token")
         else
-            env_args=(env -u CLAUDE_CODE_OAUTH_TOKEN)
+            env_args+=(-u CLAUDE_CODE_OAUTH_TOKEN)
         fi
 
         # --permission-mode bypassPermissions: no approval waits.
@@ -257,11 +275,12 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # libera quota Opus per sessioni interattive. Override via CLAUDE_CRON_MODEL env var.
         # Data-driven decision: cron = 82% sessions but 0.6% output value (empirical analysis 2026-04-22).
         local cron_model="${CLAUDE_CRON_MODEL:-claude-haiku-4-5-20251001}"
-        output=$("${env_args[@]}" timeout "$TIMEOUT" claude -p --model "$cron_model" --permission-mode bypassPermissions --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" 2>&1) && exit_code=0 || exit_code=$?
+        output=$("${env_args[@]}" timeout "$attempt_timeout" claude -p --model "$cron_model" --permission-mode bypassPermissions --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" 2>&1) && exit_code=0 || exit_code=$?
 
-        # Check if rate limited (explicit error message)
-        if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "$RATE_LIMIT_PATTERN"; then
-            log "$label: rate limited (explicit), trying next"
+        # OAuth quota/auth diagnostics can exit 0: classify before success.
+        if echo "$output" | grep -qi "$RATE_LIMIT_PATTERN"; then
+            log "$label: OAuth account unavailable, trying next"
+            output=""
             continue
         fi
 
@@ -286,7 +305,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
     if [[ $exit_code -eq 0 ]]; then
         log "OK duration=${duration}s label=${labels[$idx]}"
         # Explicit tier-provenance line (W89 class-audit, 2026-07-11): which of the
-        # 4 fallback slots (token_1/2/3/legacy/keychain) actually answered.
+        # numbered/legacy/keychain fallback slots actually answered.
         log "[cron-agent] used: tier2-claude-${labels[$idx]} (exit=0)"
         save_state "ok" 0 "$duration"
     elif [[ $exit_code -eq 124 ]]; then

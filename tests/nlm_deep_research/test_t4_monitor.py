@@ -377,30 +377,46 @@ class TestHaikuClassifyHonesty:
         assert score == 0.0
 
     @pytest.mark.asyncio
-    async def test_retries_auth_quota_and_empty_before_slot_four(
+    async def test_retries_auth_quota_and_empty_before_slot_five(
         self, monkeypatch
     ):
         filt = T4RelevanceFilter()
-        for slot in range(1, 5):
+        for slot in range(1, 6):
             monkeypatch.setenv(
                 f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
             )
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+        monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "must-not-leak")
+        monkeypatch.setenv("CLAUDE_CODE_USE_BEDROCK", "1")
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "must-not-leak")
 
         outcomes = (
-            (1, b"", b"401 unauthorized"),
-            (1, b"", b"weekly limit reached"),
+            (0, b"401 unauthorized", b""),
+            (0, b"weekly limit reached", b""),
             (0, b"  \n", b""),
+            "timeout",
             (0, b"0.91\n", b""),
         )
         seen_tokens: list[str] = []
 
         async def _spawn(*args, **kwargs):
-            returncode, stdout, stderr = outcomes[len(seen_tokens)]
             seen_tokens.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
-            assert "ANTHROPIC_API_KEY" not in kwargs["env"]
+            for key in (
+                "ANTHROPIC_API_KEY",
+                "ANTHROPIC_AUTH_TOKEN",
+                "CLAUDE_CODE_USE_BEDROCK",
+                "AWS_ACCESS_KEY_ID",
+            ):
+                assert key not in kwargs["env"]
             proc = AsyncMock()
+            outcome = outcomes[len(seen_tokens) - 1]
+            if outcome == "timeout":
+                proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+                proc.kill = MagicMock()
+                proc.wait = AsyncMock(return_value=0)
+                return proc
+            returncode, stdout, stderr = outcome
             proc.returncode = returncode
             proc.communicate = AsyncMock(return_value=(stdout, stderr))
             return proc
@@ -414,6 +430,7 @@ class TestHaikuClassifyHonesty:
             "sentinel-2",
             "sentinel-3",
             "sentinel-4",
+            "sentinel-5",
         ]
 
 
