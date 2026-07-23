@@ -25,6 +25,7 @@ on:
       - ".github/workflows/token-lint.yml"
       - "scripts/token_lint.py"
       - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
 
 concurrency:
   group: verify-the-verifiers-${{ github.ref }}

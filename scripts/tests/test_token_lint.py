@@ -357,6 +357,20 @@ def test_workflow_scan_step_runs_before_proof_suite() -> None:
     )
 
 
+def test_meta_verifier_push_trigger_covers_conftest_sentinel() -> None:
+    """A main-only conftest change must wake the same meta-verifier whose
+    PR relevance regex already treats conftest as load-bearing."""
+    workflow = (
+        REPO_ROOT / ".github" / "workflows" / "verify-the-verifiers.yml"
+    ).read_text(encoding="utf-8")
+    push_block = workflow.split("  push:", 1)[1].split("\nconcurrency:", 1)[0]
+    relevant_step = workflow.split("- name: Did relevant paths change?", 1)[1].split(
+        "- uses: actions/setup-python", 1
+    )[0]
+    assert '- "scripts/tests/conftest.py"' in push_block
+    assert r"scripts/tests/conftest\.py" in relevant_step
+
+
 def test_innocence_inline_comment_fully_closed() -> None:
     """INNOCENCE (finding 2 counterpart): when the closer ends the line (or
     never comes), nothing judgeable remains."""
