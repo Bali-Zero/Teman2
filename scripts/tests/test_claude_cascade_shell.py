@@ -222,11 +222,19 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
         "token_revoked",
         "Error: refresh_token",
         "Invalid API key",
+        "Invalid API key · Please run /login",
+        "Not logged in · Please run /login",
         "Please run /login",
+        "You are out of extra usage. Your limit will reset soon.",
+        "Error: 401",
         '{"error":{"type":"refresh_token_reused","message":"login again"}}',
         (
             '{"type":"error","error":{"type":"authentication_error",'
             '"message":"Invalid authentication credentials"}}'
+        ),
+        (
+            'API Error: 401 {"type":"error","error":'
+            '{"type":"authentication_error"}}'
         ),
     ),
 )
@@ -267,6 +275,24 @@ def test_exit_zero_innocent_stdout_may_discuss_auth_and_quota(
     assert result.stdout.startswith("Guide:")
     assert _labels(call_log) == ["token1"]
     assert "used: claude-token-1-env" in result.stderr
+
+
+def test_exit_zero_weekly_limit_prose_is_not_a_false_positive(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'printf "Weekly limit reached for seat 2 on Sunday; operators should '
+        'rotate usage manually.\\n"\n'
+        "exit 0"
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("Weekly limit reached for seat 2")
+    assert _labels(call_log) == ["token1"]
 
 
 @pytest.mark.parametrize(
