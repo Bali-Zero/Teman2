@@ -177,6 +177,8 @@ def _parse_props(block: str | None) -> dict[str, str]:
 # not a generic status/label badge; it marks verifiable facts only).
 _USEWHEN_OVERRIDES: dict[str, list[str]] = {
     "FactBadge": ["facts", "citation", "regulation code", "kbli code"],
+    "SystemPulse": ["system health", "services", "latency"],
+    "ComplianceRadar": ["compliance", "alerts", "deadlines"],
 }
 
 
