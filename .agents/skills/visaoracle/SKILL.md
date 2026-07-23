@@ -302,6 +302,24 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   with FASE-2 coupling / D3 adopt with tiers (E-a/E-e/E-g blocking; E-b/E-f fast-follow).
   Conflict adjudicated: Gemini's deadlock claim WRONG (evaluate endpoint ≠ UI launch),
   Codex/design/orchestrator RIGHT. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-24 (M5, Kimi orchestrator): **WAVE 0 + W1a LANDED on main.** Merged: #3032
+  (`8875b95ad35b`, `/api/visa/*` public — **v1 funnel resurrected**, live smoke 201 + row 29
+  in `visa_checks` after 3 months dead), #3033 (`0185dc5c9c24`, disclaimer all-5-states +
+  PII-free `app_form_submit_failed`), #3038 (`6e88b24b6773`, next-steps gated on
+  SUPPORTED_CANDIDATES — Fable MEDIUM, owner call "fai tu"), #3046 (`7f99e570147d`,
+  migration 256 `traffic_source` + collector G-a-vol/G-a-breadth split). All Fable-gated
+  SHIP, all merged by the **delegated Opus verifier** (new pattern per Zero: "io non faccio
+  review, chiedi a opus" — build=agents, gate=Fable, merge=Opus seat `claude-zero-team`;
+  note the seat caps ~4:20 WITA reset and acct2/3/4 are NOT logged in). **Codex CLI auth
+  DEAD on M5** (401, operator re-login needed — graders fall back to Opus per Zero).
+  **W1b in flight** (evaluate read-path API, agent lane `visa-evaluate-endpoint`).
+  #3034 (G-b) still open on the docsync treadmill (3rd regen pushed; content SHIP-verified
+  twice). #3028 (this corpus) R1-green but blocked by a **main-side npm-audit failure**
+  (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
+  R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
+  (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
+file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
