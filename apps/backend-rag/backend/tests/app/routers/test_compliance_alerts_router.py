@@ -138,7 +138,14 @@ async def _delete_client(pool: asyncpg.Pool, client_id: int) -> None:
         await conn.execute("DELETE FROM clients WHERE id = $1", client_id)
 
 
-async def _insert_alert(pool: asyncpg.Pool, client_id: int, category: str = "visa_expiry") -> dict:
+async def _insert_alert(
+    pool: asyncpg.Pool,
+    client_id: int,
+    category: str = "visa_expiry",
+    *,
+    status: str = "pending",
+    deadline_days: int = 7,
+) -> dict:
     """Insert a compliance_alerts row with real commit."""
     aid = f"t_{uuid4().hex[:8]}"
     async with pool.acquire() as conn:
@@ -147,15 +154,23 @@ async def _insert_alert(pool: asyncpg.Pool, client_id: int, category: str = "vis
             INSERT INTO compliance_alerts (
               alert_id, client_id, category, severity, status,
               deadline, days_until, dedup_key
-            ) VALUES ($1,$2,$3,'urgent','pending',$4,7,$5)
+            ) VALUES ($1,$2,$3,'urgent',$4,$5,$6,$7)
             """,
             aid,
             client_id,
             category,
-            date.today() + timedelta(days=7),
+            status,
+            date.today() + timedelta(days=deadline_days),
+            deadline_days,
             f"{category}:{client_id}:{aid}",
         )
-    return {"alert_id": aid, "client_id": client_id, "category": category}
+    return {
+        "alert_id": aid,
+        "client_id": client_id,
+        "category": category,
+        "status": status,
+        "deadline_days": deadline_days,
+    }
 
 
 async def _delete_alert(pool: asyncpg.Pool, alert_id: str) -> None:
@@ -228,6 +243,46 @@ async def test_get_alerts_rbac_team_sees_own(db_pool: asyncpg.Pool) -> None:
         assert alert["alert_id"] in alert_ids
     finally:
         await _delete_alert(db_pool, alert["alert_id"])
+        await _delete_client(db_pool, client["id"])
+
+
+@pytest.mark.asyncio
+async def test_get_alerts_team_owner_casefold_and_deadline_horizon(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """List RBAC matches owner case-insensitively and filters before LIMIT."""
+    email = f"team-horizon-{uuid4().hex[:8]}@example.com"
+    client = await _insert_client(
+        db_pool,
+        email,
+        assigned_to="Team@BaliZero.com",
+    )
+    overdue = await _insert_alert(db_pool, client["id"], deadline_days=-2)
+    far_future = await _insert_alert(db_pool, client["id"], deadline_days=30)
+    try:
+        app = make_app(_TEAM_USER, db_pool)
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            r = await ac.get(
+                "/api/compliance/alerts",
+                params={
+                    "status": "pending",
+                    "deadline_within_days": 7,
+                    "limit": 500,
+                },
+            )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        alert_ids = {alert["alert_id"] for alert in body["items"]}
+        assert overdue["alert_id"] in alert_ids
+        assert far_future["alert_id"] not in alert_ids
+        assert body["limit"] == 500
+        assert body["offset"] == 0
+    finally:
+        await _delete_alert(db_pool, overdue["alert_id"])
+        await _delete_alert(db_pool, far_future["alert_id"])
         await _delete_client(db_pool, client["id"])
 
 

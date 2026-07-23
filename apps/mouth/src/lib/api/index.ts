@@ -13,6 +13,8 @@
 import { ApiClient } from "./api-client";
 import type {
   ComplianceAlertItem,
+  ComplianceAlertOutcome,
+  ComplianceAlertPage,
   GateStatus,
   GateSection,
 } from "./api-client";
@@ -76,6 +78,8 @@ export type {
   GateStatus,
   GateSection,
   ComplianceAlertItem,
+  ComplianceAlertOutcome,
+  ComplianceAlertPage,
 };
 
 export { TierLevel };

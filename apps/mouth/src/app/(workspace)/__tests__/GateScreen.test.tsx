@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import GateScreen from "../GateScreen";
 import { api } from "@/lib/api";
@@ -99,49 +105,57 @@ describe("GateScreen — Deadlines section", () => {
     listMock.mockImplementation(async ({ status } = {}) => ({
       items:
         status === "pending"
-          ? [
-              makeAlert("a-overdue", -2),
-              makeAlert("a-soon", 3),
-              makeAlert("a-far", 10),
-            ]
-          : [],
+          ? [makeAlert("a-overdue", -2), makeAlert("a-soon", 3)]
+          : status === "sent"
+            ? [makeAlert("a-sent", 5, { status: "sent" })]
+            : [],
+      limit: 500,
+      offset: 0,
     }));
   });
 
-  it("lists only in-horizon alerts inline (overdue included, far-future excluded)", async () => {
+  it("requests the server-side horizon and renders pending plus sent alerts", async () => {
     renderGate(makeStatus(3));
 
-    // In-horizon items appear…
     expect(await screen.findByText("Alert a-overdue")).toBeInTheDocument();
     expect(screen.getByText("Alert a-soon")).toBeInTheDocument();
-    // …the out-of-horizon one does not.
-    expect(screen.queryByText("Alert a-far")).not.toBeInTheDocument();
+    expect(screen.getByText("Alert a-sent")).toBeInTheDocument();
     // The old dead-end deep-link is gone.
     expect(
       screen.queryByRole("button", { name: /review deadlines/i }),
     ).not.toBeInTheDocument();
     // Fetched as pending + sent (the two gate-blocking statuses).
-    expect(listMock).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "pending" }),
-    );
-    expect(listMock).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "sent" }),
-    );
+    expect(listMock).toHaveBeenCalledWith({
+      status: "pending",
+      deadlineWithinDays: 7,
+      limit: 500,
+    });
+    expect(listMock).toHaveBeenCalledWith({
+      status: "sent",
+      deadlineWithinDays: 7,
+      limit: 500,
+    });
   });
 
-  it("acknowledges an alert inline, removes it and re-probes the gate", async () => {
+  it("acknowledges a sent alert inline, removes it and re-probes the gate", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
-    ackMock.mockResolvedValue({ status: "acknowledged" });
-    renderGate(makeStatus(2), onRefresh);
-
-    const buttons = await screen.findAllByRole("button", {
-      name: /^acknowledge$/i,
+    ackMock.mockResolvedValue({
+      alert_id: "a-sent",
+      outcome: "acknowledged",
+      status: "acknowledged",
     });
-    fireEvent.click(buttons[0]);
+    renderGate(makeStatus(3), onRefresh);
 
-    await waitFor(() => expect(ackMock).toHaveBeenCalledWith("a-overdue"));
+    const sentMessage = await screen.findByText("Alert a-sent");
+    const sentItem = sentMessage.closest("li");
+    expect(sentItem).not.toBeNull();
+    fireEvent.click(
+      within(sentItem!).getByRole("button", { name: /^acknowledge$/i }),
+    );
+
+    await waitFor(() => expect(ackMock).toHaveBeenCalledWith("a-sent"));
     await waitFor(() =>
-      expect(screen.queryByText("Alert a-overdue")).not.toBeInTheDocument(),
+      expect(screen.queryByText("Alert a-sent")).not.toBeInTheDocument(),
     );
     expect(onRefresh).toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalled();

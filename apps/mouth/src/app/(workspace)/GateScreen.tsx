@@ -47,9 +47,9 @@ const DEADLINE_HORIZON_DAYS = 7;
 /**
  * Inline clearable list for the Deadlines section. Fetches the user's
  * pending/sent compliance alerts (auto-scoped server-side to their assigned
- * clients), keeps only those inside the gate horizon, and acknowledges them
- * one by one via POST /api/compliance/alerts/{id}/outcome — the route is on
- * the gate-enforcement allowlist, so it works while blocked.
+ * clients) with the gate horizon applied before backend pagination, and
+ * acknowledges them one by one via POST /api/compliance/alerts/{id}/outcome
+ * — the route is on the gate-enforcement allowlist, so it works while blocked.
  */
 function GateDeadlinesList({
   count,
@@ -72,13 +72,19 @@ function GateDeadlinesList({
     if (count <= 0) return;
     let cancelled = false;
     setLoadFailed(false);
-    const horizon = new Date();
-    horizon.setDate(horizon.getDate() + DEADLINE_HORIZON_DAYS);
     (async () => {
       try {
         const [pending, sent] = await Promise.all([
-          api.listMyComplianceAlerts({ status: "pending" }),
-          api.listMyComplianceAlerts({ status: "sent" }),
+          api.listMyComplianceAlerts({
+            status: "pending",
+            deadlineWithinDays: DEADLINE_HORIZON_DAYS,
+            limit: 500,
+          }),
+          api.listMyComplianceAlerts({
+            status: "sent",
+            deadlineWithinDays: DEADLINE_HORIZON_DAYS,
+            limit: 500,
+          }),
         ]);
         if (cancelled) return;
         const seen = new Set<string>();
@@ -86,8 +92,7 @@ function GateDeadlinesList({
           .filter((a) => {
             if (seen.has(a.alert_id)) return false;
             seen.add(a.alert_id);
-            // Mirror the gate: deadline <= today + horizon (overdue included).
-            return new Date(a.deadline) <= horizon;
+            return true;
           })
           .sort((a, b) => a.deadline.localeCompare(b.deadline));
         setAlerts(items);

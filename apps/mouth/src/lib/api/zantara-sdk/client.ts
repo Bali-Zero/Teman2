@@ -256,26 +256,38 @@ export class ZantaraSDK {
   async getComplianceAlerts(
     clientId?: string,
     status?: string,
+    limit = 50,
+    offset = 0,
   ): Promise<ComplianceAlert[]> {
     const params = new URLSearchParams();
     if (clientId) params.set("client_id", clientId);
     if (status) params.set("status", status);
+    params.set("limit", limit.toString());
+    params.set("offset", offset.toString());
 
-    return this.request<ComplianceAlert[]>(
-      `/api/compliance/alerts?${params.toString()}`,
-    );
+    const page = await this.request<{
+      items: ComplianceAlert[];
+      limit: number;
+      offset: number;
+    }>(`/api/compliance/alerts?${params.toString()}`);
+    return page.items;
   }
 
-  async acknowledgeAlert(alertId: string): Promise<{ success: boolean }> {
+  async acknowledgeAlert(alertId: string): Promise<{
+    alert_id: string;
+    outcome: "acknowledged";
+    status: "acknowledged";
+  }> {
     // Backend exposes POST /api/compliance/alerts/{id}/outcome (there is no
     // /acknowledge route — the old path 404'd).
-    return this.request<{ success: boolean }>(
-      `/api/compliance/alerts/${alertId}/outcome`,
-      {
-        method: "POST",
-        body: JSON.stringify({ outcome: "acknowledged" }),
-      },
-    );
+    return this.request<{
+      alert_id: string;
+      outcome: "acknowledged";
+      status: "acknowledged";
+    }>(`/api/compliance/alerts/${alertId}/outcome`, {
+      method: "POST",
+      body: JSON.stringify({ outcome: "acknowledged" }),
+    });
   }
 
   // ============================================================================

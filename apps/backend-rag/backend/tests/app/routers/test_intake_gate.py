@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import date, timedelta
 from typing import Any
 
 import asyncpg
@@ -46,6 +47,7 @@ _DB_URL = os.environ.get(
 _REQUIRED_TABLES = (
     "clients",
     "compliance_alerts",
+    "alert_outcomes",
     "attendance_late_incidents",
     "intake_queue",
     "document_routing_proposal",
@@ -132,7 +134,11 @@ async def _mk_late(pool: asyncpg.Pool, email: str, state: str, days_ago: int = 0
             VALUES ($1, $2, 'Gate Test', CURRENT_DATE - ($3 || ' days')::interval,
                     NOW(), $4, $5, NOW(), NOW())
             """,
-            rid, email, str(days_ago), state, str(uuid.uuid4()),
+            rid,
+            email,
+            str(days_ago),
+            state,
+            str(uuid.uuid4()),
         )
     return rid
 
@@ -141,9 +147,53 @@ async def _cleanup_late(pool: asyncpg.Pool, ids: list[str]) -> None:
     if not ids:
         return
     async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM attendance_late_incidents WHERE id = ANY($1::uuid[])", ids
-        )
+        await conn.execute("DELETE FROM attendance_late_incidents WHERE id = ANY($1::uuid[])", ids)
+
+
+async def _mk_deadline(
+    pool: asyncpg.Pool,
+    email: str,
+    status: str,
+) -> tuple[int, str]:
+    """Insert an assigned client plus one gate-blocking compliance alert."""
+    alert_id = f"gate_{uuid.uuid4().hex[:8]}"
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            client_id = await conn.fetchval(
+                """
+                INSERT INTO clients
+                    (full_name, email, assigned_to, created_at, updated_at)
+                VALUES ('Gate Deadline Client', $1, $2, NOW(), NOW())
+                RETURNING id
+                """,
+                f"client-{uuid.uuid4().hex[:8]}@example.com",
+                email,
+            )
+            await conn.execute(
+                """
+                INSERT INTO compliance_alerts
+                    (alert_id, client_id, category, severity, status, deadline,
+                     days_until, dedup_key)
+                VALUES ($1, $2, 'visa_expiry', 'urgent', $3, $4, 3, $5)
+                """,
+                alert_id,
+                client_id,
+                status,
+                date.today() + timedelta(days=3),
+                f"gate-test:{client_id}:{alert_id}",
+            )
+    return int(client_id), alert_id
+
+
+async def _cleanup_deadline(
+    pool: asyncpg.Pool,
+    client_id: int,
+    alert_id: str,
+) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM alert_outcomes WHERE alert_id = $1", alert_id)
+        await conn.execute("DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id)
+        await conn.execute("DELETE FROM clients WHERE id = $1", client_id)
 
 
 # ── Evaluator: empty-state = not blocked ───────────────────────────────────
@@ -218,9 +268,7 @@ async def test_my_late_incident_resolve_transitions_and_clears(pool):
             assert r.json()["state"] == "RESOLVED"  # AWAITING_REPLY → RESOLVED
 
             # Idempotent: nothing pending now → clear.
-            r2 = await ac.post(
-                "/api/hr/my-late-incident/resolve", json={"reason": "again"}
-            )
+            r2 = await ac.post("/api/hr/my-late-incident/resolve", json={"reason": "again"})
             assert r2.status_code == 200
             assert r2.json()["state"] == "clear"
 
@@ -240,13 +288,52 @@ async def test_my_late_incident_reminder_sent_goes_resolved_late(pool):
         app = make_app({"email": email, "role": "member"}, pool)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://t") as ac:
-            r = await ac.post(
-                "/api/hr/my-late-incident/resolve", json={"reason": "ban kempes"}
-            )
+            r = await ac.post("/api/hr/my-late-incident/resolve", json={"reason": "ban kempes"})
         assert r.status_code == 200
         assert r.json()["state"] == "RESOLVED_LATE"  # REMINDER_SENT → RESOLVED_LATE
     finally:
         await _cleanup_late(pool, ids)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("initial_status", ["pending", "sent"])
+async def test_acknowledged_deadline_clears_gate(pool, initial_status):
+    """A pending or sent alert clears only after its persisted acknowledgement."""
+    email = f"deadline-{uuid.uuid4().hex[:8]}@balizero.com"
+    client_id, alert_id = await _mk_deadline(pool, email, initial_status)
+    try:
+        before = await evaluate_gate_status(
+            pool,
+            user_email=email,
+            is_admin=False,
+        )
+        assert before["blocked"] is True
+        assert before["sections"]["deadlines"]["count"] == 1
+
+        app = make_app({"email": email, "role": "member"}, pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as ac:
+            response = await ac.post(
+                f"/api/compliance/alerts/{alert_id}/outcome",
+                json={"outcome": "acknowledged"},
+            )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "alert_id": alert_id,
+            "outcome": "acknowledged",
+            "status": "acknowledged",
+        }
+
+        after = await evaluate_gate_status(
+            pool,
+            user_email=email,
+            is_admin=False,
+        )
+        assert after["sections"]["deadlines"]["count"] == 0
+        assert after["blocked"] is False
+    finally:
+        await _cleanup_deadline(pool, client_id, alert_id)
 
 
 # ── #10 require_gate_cleared dependency ─────────────────────────────────────
@@ -290,9 +377,7 @@ async def test_clearing_endpoint_not_gated_even_when_blocked(pool):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://t") as ac:
             # Even though blocked, the clearing endpoint resolves (not 423).
-            r = await ac.post(
-                "/api/hr/my-late-incident/resolve", json={"reason": "clearing"}
-            )
+            r = await ac.post("/api/hr/my-late-incident/resolve", json={"reason": "clearing"})
         assert r.status_code == 200
         assert r.json()["state"] == "RESOLVED"
     finally:

@@ -82,6 +82,18 @@ export interface ComplianceAlertItem {
   estimated_cost_idr?: number | null;
 }
 
+export interface ComplianceAlertPage {
+  items: ComplianceAlertItem[];
+  limit: number;
+  offset: number;
+}
+
+export interface ComplianceAlertOutcome {
+  alert_id: string;
+  outcome: "acknowledged";
+  status: "acknowledged";
+}
+
 /**
  * Unified API Client that composes all domain-specific API modules.
  * This maintains backward compatibility with the original ApiClient interface.
@@ -217,8 +229,8 @@ export class ApiClient extends ApiClientBase {
   async acknowledgeComplianceAlert(
     alertId: string,
     note?: string,
-  ): Promise<{ success?: boolean; status?: string }> {
-    return this.post<{ success?: boolean; status?: string }>(
+  ): Promise<ComplianceAlertOutcome> {
+    return this.post<ComplianceAlertOutcome>(
       `/api/compliance/alerts/${alertId}/outcome`,
       { outcome: "acknowledged", note },
     );
@@ -231,13 +243,19 @@ export class ApiClient extends ApiClientBase {
    * `status` filter is single-valued — call once per status and merge.
    */
   async listMyComplianceAlerts(options?: {
-    status?: string;
+    status?: ComplianceAlertItem["status"];
+    deadlineWithinDays?: number;
     limit?: number;
-  }): Promise<{ items: ComplianceAlertItem[] }> {
+    offset?: number;
+  }): Promise<ComplianceAlertPage> {
     const params = new URLSearchParams();
     if (options?.status) params.set("status", options.status);
+    if (options?.deadlineWithinDays !== undefined) {
+      params.set("deadline_within_days", String(options.deadlineWithinDays));
+    }
     params.set("limit", String(options?.limit ?? 500));
-    return this.get<{ items: ComplianceAlertItem[] }>(
+    params.set("offset", String(options?.offset ?? 0));
+    return this.get<ComplianceAlertPage>(
       `/api/compliance/alerts?${params.toString()}`,
     );
   }

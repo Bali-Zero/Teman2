@@ -81,6 +81,43 @@ describe("ZantaraSDK", () => {
     );
   });
 
+  it("unwraps paginated compliance alerts and serializes pagination", async () => {
+    const alert = { alert_id: "alert-1", status: "sent" };
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ items: [alert], limit: 25, offset: 50 }),
+    );
+
+    const sdk = new ZantaraSDK({ baseUrl: "https://api.example.com" });
+
+    await expect(
+      sdk.getComplianceAlerts("42", "sent", 25, 50),
+    ).resolves.toEqual([alert]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.com/api/compliance/alerts?client_id=42&status=sent&limit=25&offset=50",
+      expect.any(Object),
+    );
+  });
+
+  it("returns the backend acknowledgement outcome contract", async () => {
+    const outcome = {
+      alert_id: "alert-1",
+      outcome: "acknowledged",
+      status: "acknowledged",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(outcome));
+
+    const sdk = new ZantaraSDK({ baseUrl: "https://api.example.com" });
+
+    await expect(sdk.acknowledgeAlert("alert-1")).resolves.toEqual(outcome);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.com/api/compliance/alerts/alert-1/outcome",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ outcome: "acknowledged" }),
+      }),
+    );
+  });
+
   it("throws API errors returned as JSON", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(

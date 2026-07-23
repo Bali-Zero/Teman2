@@ -410,6 +410,57 @@ describe("ApiClient Unit Tests", () => {
     });
   });
 
+  describe("INTAKE Deadline Gate API", () => {
+    it("serializes the server-side deadline horizon and pagination", async () => {
+      const page = { items: [], limit: 500, offset: 25 };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => page,
+      });
+
+      await expect(
+        api.listMyComplianceAlerts({
+          status: "sent",
+          deadlineWithinDays: 7,
+          limit: 500,
+          offset: 25,
+        }),
+      ).resolves.toEqual(page);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.test.com/api/compliance/alerts?status=sent&deadline_within_days=7&limit=500&offset=25",
+        expect.any(Object),
+      );
+    });
+
+    it("returns the persisted acknowledgement outcome", async () => {
+      const outcome = {
+        alert_id: "alert-1",
+        outcome: "acknowledged",
+        status: "acknowledged",
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => outcome,
+      });
+
+      await expect(api.acknowledgeComplianceAlert("alert-1")).resolves.toEqual(
+        outcome,
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.test.com/api/compliance/alerts/alert-1/outcome",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ outcome: "acknowledged" }),
+        }),
+      );
+    });
+  });
+
   describe("Media API Edge Cases", () => {
     beforeEach(() => {
       api.setToken("test-token");
