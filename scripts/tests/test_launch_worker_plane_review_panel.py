@@ -888,6 +888,87 @@ sys.stdout.write("unauthenticated review")
     assert swapped is True
 
 
+def test_darwin_canonical_policy_attests_loaded_image_without_private_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canonical_path = _write_executable(
+        tmp_path / "canonical-client",
+        f"""#!{sys.executable}
+print("canonical")
+""",
+    )
+    private_path = _write_executable(
+        tmp_path / "private-client",
+        f"""#!{sys.executable}
+print("private")
+""",
+    )
+    canonical = launcher._authenticate_file(
+        canonical_path,
+        "canonical test client",
+        require_executable=True,
+    )
+    private_copy = launcher._authenticate_file(
+        private_path,
+        "private test client",
+        require_executable=True,
+    )
+    identity = launcher.ExecutableIdentity(
+        path=canonical.path,
+        sha256=canonical.sha256,
+        cdhash="ab" * 20,
+        team_identifier="TESTTEAM",
+        designated_requirement="synthetic test requirement",
+        darwin_spawn_canonical=True,
+    )
+    prepared = launcher.PreparedExecutable(
+        canonical=canonical,
+        private_copy=private_copy,
+        identity=identity,
+    )
+    attested: list[tuple[launcher.AuthenticatedFile, launcher.ExecutableIdentity]] = []
+    observed: dict[str, Any] = {}
+
+    def attest(
+        authenticated: launcher.AuthenticatedFile,
+        expected: launcher.ExecutableIdentity,
+        label: str,
+    ) -> None:
+        assert label == "canonical policy"
+        attested.append((authenticated, expected))
+
+    def spawn(**kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        observed.update(kwargs)
+        return subprocess.CompletedProcess(
+            args=list(kwargs["argv"]),
+            returncode=0,
+            stdout=b"review",
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(launcher.sys, "platform", "darwin")
+    monkeypatch.setattr(launcher, "_attest_executable_identity", attest)
+    monkeypatch.setattr(launcher, "_darwin_spawn_suspended", spawn)
+
+    result = launcher._run_bound_command(
+        executable=prepared,
+        argv=(str(canonical.path), "--review"),
+        input_bytes=b"packet",
+        cwd=tmp_path,
+        environment={},
+        label="canonical policy",
+        wall_timeout_seconds=30,
+        termination_grace_seconds=1,
+        max_output_bytes=1024,
+    )
+
+    assert result.stdout == b"review"
+    assert attested == [(canonical, identity)]
+    assert observed["executable_path"] == canonical.path
+    assert observed["expected_cdhash"] == bytes.fromhex(identity.cdhash)
+
+
 @pytest.mark.skipif(sys.platform != "darwin", reason="Darwin vnode race proof")
 def test_private_copy_replacement_after_last_check_never_executes_replacement(
     tmp_path: Path,

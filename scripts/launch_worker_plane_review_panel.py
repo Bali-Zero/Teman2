@@ -132,6 +132,7 @@ class ExecutableIdentity:
     cdhash: str
     team_identifier: str
     designated_requirement: str
+    darwin_spawn_canonical: bool = False
 
 
 PRODUCTION_IDENTITIES = {
@@ -158,6 +159,10 @@ PRODUCTION_IDENTITIES = {
             "leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
             "certificate leaf[subject.OU] = EQHXZ8M8AV"
         ),
+        # AgY locates signed companion resources relative to its installed
+        # image. A byte-for-byte private copy hangs while bootstrapping those
+        # resources, so bind the installed vnode and attest the loaded CDHash.
+        darwin_spawn_canonical=True,
     ),
     "security": ExecutableIdentity(
         path=PRODUCTION_CLIENTS.security,
@@ -1791,6 +1796,28 @@ def _run_bound_command(
             termination_grace_seconds=termination_grace_seconds,
             max_output_bytes=max_output_bytes,
         )
+
+    identity = executable.identity
+    if (
+        sys.platform == "darwin"
+        and identity is not None
+        and identity.darwin_spawn_canonical
+    ):
+        _attest_executable_identity(executable.canonical, identity, label)
+        result = _darwin_spawn_suspended(
+            executable_path=executable.canonical.path,
+            expected_cdhash=bytes.fromhex(identity.cdhash),
+            argv=argv,
+            input_bytes=input_bytes,
+            cwd=cwd,
+            environment=environment,
+            label=label,
+            wall_timeout_seconds=wall_timeout_seconds,
+            termination_grace_seconds=termination_grace_seconds,
+            max_output_bytes=max_output_bytes,
+        )
+        _assert_prepared_executable_unchanged(executable, label)
+        return result
 
     descriptor, payload = _open_authenticated_executable_descriptor(
         executable.private_copy,
