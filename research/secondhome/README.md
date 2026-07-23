@@ -45,14 +45,33 @@ Pasal 33(10)(d) still reads **60** — operate on 55, disclose the ambiguity
 
 ## Owner-decision list (Zero)
 
-1. **Fit Memo** — free vs paid for the E33 fit assessment.
-2. **Dependent pricing** — how dependent (E31B etc.) processing is priced
+**DECIDED 2026-07-23:**
+
+- **Fit Memo** → **FREE** (the E33 fit assessment is free; no paid Fit Memo).
+- **Pricing** → **IDR 39,000,000 all-inclusive** for the base E33 (5y). Never
+  decompose into PNBP + service fee in any client-facing material (org rule:
+  single all-inclusive price; Fable-5 gate item 4.5).
+- **Branch merge** → the content-freeze and fact-registry branches are
+  approved for Claude-session review & merge (master list item 0.1).
+
+**STILL OPEN:**
+
+1. **Dependent pricing** — how dependent (E31B etc.) processing is priced
    alongside the main E33 application.
-3. **StayGuard** — whether/how the deposit-monitoring product is offered to
-   E33 clients.
-4. **BSI conditional** — whether to build a conditional BSI offering ahead of
+2. **StayGuard** — whether/how the deposit-monitoring product is offered to
+   E33 clients (research band: USD 900–2,500/yr).
+3. **BSI conditional** — whether to build a conditional BSI offering ahead of
    the letter-005 reply.
+4. **Split-deposit planning** — whether to ever offer it (subject to letter
+   006 Q4; Gemini seat advises never asking/planning it).
 5. **ITAP marketing** — whether ITAP-after-3y may be mentioned in marketing
    once letter 006 Q7 is answered.
 6. **Property-route module** — whether to build the USD 1M property-route
    product module (blocked on `property_validation_standard`).
+7. **Age 55–59 handling** — `BERSYARAT` (conditional with disclosure) vs
+   hard-block until Immigration confirms (addendum 007 Q1).
+8. **noIndex articles disposition** — the 16 contradictory articles are
+   noIndexed but still reachable: accept reachable / add a `getAllArticles()`
+   noIndex filter / delete (master list item 0.5).
+9. **Engine scope** — FactPath/products for bank-route only (E33/E33E/E33F,
+   Codex recommendation) vs full E33A–F coverage (master list item 2.2).
