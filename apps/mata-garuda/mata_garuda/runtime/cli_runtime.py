@@ -41,7 +41,7 @@ CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_3",  # sianoantonello@gmail.com
-    "CLAUDE_CODE_OAUTH_TOKEN_4",  # zero@balizero.com (Team premium seat, added 2026-07-23)
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # fourth automation account
 ]
 
 # Rate limit detection patterns in stderr/stdout
