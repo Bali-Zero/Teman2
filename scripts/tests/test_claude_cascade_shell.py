@@ -395,6 +395,31 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
     assert elapsed < 6
 
 
+def test_fast_success_reaps_watchdog_without_orphaned_sleep(tmp_path: Path) -> None:
+    sleep_pids = tmp_path / "sleep-pids.log"
+    fake_bin = tmp_path / "fake-bin"
+    _write_executable(
+        fake_bin / "sleep",
+        (
+            f'printf "%s\\n" "$$" >> "{sleep_pids}"\n'
+            'exec /bin/sleep "$@"'
+        ),
+    )
+    bodies = _default_bodies()
+    bodies["token1"] = '/bin/sleep 0.2\nprintf "fast-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["PATH"] = f"{fake_bin}:{env['PATH']}"
+    env["CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC"] = "30"
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "35"
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "fast-success\n"
+    assert _labels(call_log) == ["token1"]
+    assert not sleep_pids.exists(), "watchdog spawned an orphanable sleep process"
+
+
 def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
     survivor_file = tmp_path / "survivor.pid"
     bodies = _default_bodies()

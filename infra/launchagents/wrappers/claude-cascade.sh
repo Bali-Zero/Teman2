@@ -280,13 +280,31 @@ run_bounded() {
     ACTIVE_CHILD_PID=$!
     child_pid="$ACTIVE_CHILD_PID"
     ACTIVE_GROUP_PID="$child_pid"
-    (
-        sleep "$allowed"
-        if kill -0 "$child_pid" 2>/dev/null; then
-            : >"$timeout_marker"
-            terminate_attempt_group "$child_pid" 1
-        fi
-    ) </dev/null >/dev/null 2>&1 &
+    # Keep the watchdog single-process. A background shell running a sleep
+    # subprocess leaves it reparented to PID 1 when the shell is cancelled after a
+    # fast provider success. Python sleeps in-process, so kill+wait below reaps
+    # the complete watchdog while the provider remains isolated in its own
+    # session/process group.
+    "$python_bin" -c \
+        'import os, signal, sys, time
+group_pid = int(sys.argv[1])
+time.sleep(float(sys.argv[2]))
+try:
+    os.killpg(group_pid, 0)
+except ProcessLookupError:
+    raise SystemExit(0)
+open(sys.argv[3], "a", encoding="utf-8").close()
+try:
+    os.killpg(group_pid, signal.SIGTERM)
+except ProcessLookupError:
+    raise SystemExit(0)
+time.sleep(1)
+try:
+    os.killpg(group_pid, signal.SIGKILL)
+except ProcessLookupError:
+    pass' \
+        "$child_pid" "$allowed" "$timeout_marker" \
+        </dev/null >/dev/null 2>&1 &
     ACTIVE_WATCHER_PID=$!
 
     wait "$ACTIVE_CHILD_PID"
