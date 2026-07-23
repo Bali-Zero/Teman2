@@ -506,7 +506,10 @@ def test_mata_provider_environments_retain_only_selected_provider_credentials(
         module.provider_cli_env("codex"),
         keys,
     )
-    assert codex_child["OPENAI_API_KEY"] == "must-not-leak"
+    # codex CLI authenticates via ChatGPT Pro OAuth (CODEX_HOME), never a
+    # per-token key — OPENAI_API_KEY must never reach its child env either,
+    # mirroring the ANTHROPIC_API_KEY ban for "claude" above (Mata Garuda
+    # CLAUDE.md: "MAI fare chiamate HTTP a Anthropic/Google/OpenAI").
     assert all(
         codex_child[key] is None
         for key in (
@@ -517,6 +520,7 @@ def test_mata_provider_environments_retain_only_selected_provider_credentials(
             "CLOUD_ML_REGION",
             "GOOGLE_API_KEY",
             "GEMINI_API_KEY",
+            "OPENAI_API_KEY",
             "DEEPSEEK_API_KEY",
         )
     )

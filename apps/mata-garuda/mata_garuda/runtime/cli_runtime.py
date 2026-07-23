@@ -114,8 +114,12 @@ def provider_cli_env(provider: str, token: str = "") -> dict[str, str]:
             if key.startswith("GEMINI_"):
                 env[key] = value
     elif provider == "codex":
+        # codex CLI authenticates via ChatGPT Pro OAuth (CODEX_HOME), never
+        # a per-token key — OPENAI_API_KEY is scrubbed defense-in-depth even
+        # if a caller's environment happens to carry one (mirrors the
+        # ANTHROPIC_API_KEY strip for the "claude" branch above).
         for key, value in source.items():
-            if key.startswith("OPENAI_"):
+            if key.startswith("OPENAI_") and key != "OPENAI_API_KEY":
                 env[key] = value
     return env
 
