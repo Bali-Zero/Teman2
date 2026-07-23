@@ -2522,6 +2522,11 @@ def _gemini_review_prompt(input_path: Path, review_input_bytes: bytes) -> str:
         "Use read-only terminal/file tools and bounded sequential chunks until "
         "you have consumed the complete file. Do not inspect any other path. "
         "Follow the sole role=instructions document inside that input exactly. "
+        "In # Blocking findings and # Important findings, start every "
+        "unindented paragraph or list item with [GEMINI-PLAN-NNN]. Indent any "
+        "supporting Evidence, Impact, Amendment, or Test bullet by at least two "
+        "spaces beneath that finding ID; never emit an unindented support "
+        "bullet without its own finding ID. "
         "Do not modify any file. Return only the required Markdown review, "
         "starting with # Verdict and with no preamble."
     )
