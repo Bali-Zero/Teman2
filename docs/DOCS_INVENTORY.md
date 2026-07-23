@@ -19,7 +19,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | File | Status | mtime_days | last_touched_date | orphan_eligible_on | orphan_flipped_on | refs_in | broken | drift | cluster | action |
 |------|--------|-----------:|--------------------|---------------------|--------------------|--------:|-------:|-------|---------|--------|
 | docs/AI_DISPATCH_REFERENCE.md | LIVE | 60 | 2026-05-22 | 2026-08-20 | — | 2 | 0 | no | — | — |
-| docs/AI_ONBOARDING.md | LIVE | 0 | 2026-07-21 | 2026-10-19 | — | 21 | 0 | no | — | — |
+| docs/AI_ONBOARDING.md | LIVE | 0 | 2026-07-22 | 2026-10-20 | — | 21 | 0 | no | — | — |
 | docs/ANTHROPIC_API_REFERENCE.md | LIVE | 60 | 2026-05-22 | 2026-08-20 | — | 1 | 0 | no | — | — |
 | docs/API_REFERENCE.md | LIVE | 145 | 2026-02-26 | 2026-05-27 | — | 4 | 0 | no | — | whitelist |
 | docs/APPLICAZIONE_COMPONENTI_UTILITY.md | LIVE | 88 | 2026-04-24 | 2026-07-23 | — | 0 | 0 | no | — | — |
@@ -598,7 +598,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/auth-sentinel.md | LIVE | 9 | 2026-07-12 | 2026-10-10 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-agents-decision-sheet.md | LIVE | 16 | 2026-07-05 | 2026-10-03 | — | 1 | 0 | no | — | — |
 | docs/runbooks/autonomous-lab-runtime-placement.md | LIVE | 5 | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
-| docs/runbooks/bali-zero-magazine.md | LIVE | 0 | 2026-07-21 | 2026-10-19 | — | 2 | 0 | no | — | — |
+| docs/runbooks/bali-zero-magazine.md | LIVE | 0 | 2026-07-23 | 2026-10-21 | — | 2 | 0 | no | — | — |
 | docs/runbooks/codex-nuzantara-profiles.md | LIVE | 5 | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/runbooks/competitor-scrape-manual.md | LIVE | 88 | 2026-04-24 | 2026-07-23 | — | 6 | 0 | no | — | — |
 | docs/runbooks/dropbox-intake.md | LIVE | 40 | 2026-06-11 | 2026-09-09 | — | 1 | 0 | no | — | — |
