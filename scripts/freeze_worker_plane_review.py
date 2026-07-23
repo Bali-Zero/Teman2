@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Freeze and verify an immutable, Git-object-backed worker-plane review packet.
 
-The packet binds exactly nine covered design documents and one instruction
+The packet binds exactly ten covered design documents and one instruction
 brief.  Review identity is the SHA-256 of the canonical input manifest; commit,
 generator, route, and filesystem evidence belongs only in the external freeze
 receipt.  Length framing makes every input byte unambiguous, including NULs and
@@ -27,15 +27,27 @@ from typing import Any, Sequence
 
 PACKET_MAGIC = b"NUZANTARA-REVIEW-PACKET-V1\n"
 PACKET_END = b"END\n"
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "3.0.0"
 DEFAULT_GENERATOR_PATH = "scripts/freeze_worker_plane_review.py"
 DEFAULT_LAUNCHER_PATH = "scripts/launch_worker_plane_review_panel.py"
 DEFAULT_VALIDATOR_PATH = "scripts/check_worker_plane_review.py"
-DEFAULT_ROUTE_CONFIG_PATH = "scripts/review_routes/glm-5.2-v1.json"
+DEFAULT_ROUTE_CONFIG_PATH = "scripts/review_routes/worker-plane-council-v3.json"
+LEGACY_ROUTE_CONFIG_PATH = "scripts/review_routes/glm-5.2-v1.json"
 EXPECTED_GLM_ROUTE_CONFIG = (
     b'{"api_timeout_ms":"3000000","base_url":"https://api.z.ai/api/anthropic",'
     b'"model_map":{"haiku":"glm-4.7","opus":"glm-5.2","sonnet":"glm-5.2"},'
     b'"schema_version":1}\n'
+)
+EXPECTED_COUNCIL_ROUTE_CONFIG = (
+    b'{"final_gate":{"client":"claude","input_transport":"stdin",'
+    b'"model":"claude-fable-5","phase":"sequential-after-disposition",'
+    b'"role":"final-gate","seat":"fable"},'
+    b'"parallel_reviewers":[{"client":"agy","input_transport":"stdin",'
+    b'"model":"Gemini 3.1 Pro (High)","role":"constructive","seat":"gemini"},'
+    b'{"client":"codex","input_transport":"stdin","model":"account-default",'
+    b'"role":"red-team","seat":"codex"},{"client":"kimi",'
+    b'"input_transport":"file","model":"kimi-code/k3","role":"refuter",'
+    b'"seat":"kimi"}],"retired_routes":["deepseek","glm"],"schema_version":3}\n'
 )
 COVERED_SET_PRESETS: dict[str, tuple[str, ...]] = {
     "implementation-plan": (
@@ -48,6 +60,11 @@ COVERED_SET_PRESETS: dict[str, tuple[str, ...]] = {
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-4.md",
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-5.md",
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-production-rollout.md",
+        (
+            "docs/superpowers/reviews/"
+            "2026-07-17-modular-worker-plane-implementation-plan/"
+            "2026-07-23-current-system-refresh.md"
+        ),
     ),
 }
 PRESET_INSTRUCTION_PATHS: dict[str, str] = {
@@ -381,8 +398,19 @@ def _build_from_git_objects(
         role="route-config",
         path=route_config_path,
     )
-    if route_config.content != EXPECTED_GLM_ROUTE_CONFIG:
-        raise PacketError("GLM route config bytes are not canonical")
+    expected_route_config = {
+        DEFAULT_ROUTE_CONFIG_PATH: EXPECTED_COUNCIL_ROUTE_CONFIG,
+        LEGACY_ROUTE_CONFIG_PATH: EXPECTED_GLM_ROUTE_CONFIG,
+    }.get(route_config_path)
+    if expected_route_config is None:
+        raise PacketError("review route config path is not supported")
+    if route_config.content != expected_route_config:
+        route_label = (
+            "council"
+            if route_config_path == DEFAULT_ROUTE_CONFIG_PATH
+            else "GLM"
+        )
+        raise PacketError(f"{route_label} route config bytes are not canonical")
 
     status = _tracked_status(repo_root)
     if require_clean_tracked_status and status:
@@ -456,6 +484,7 @@ def build_projection_from_git(
     repo_root: Path,
     source_ref: str,
     inputs: Sequence[InputSpec],
+    route_config_path: str = DEFAULT_ROUTE_CONFIG_PATH,
 ) -> BuiltPacket:
     """Build a historical projection for comparison, without claiming a freeze."""
     return _build_from_git_objects(
@@ -464,6 +493,7 @@ def build_projection_from_git(
         base_ref=source_ref,
         upstream_ref=source_ref,
         inputs=inputs,
+        route_config_path=route_config_path,
         require_clean_tracked_status=False,
         require_source_is_head=False,
     )

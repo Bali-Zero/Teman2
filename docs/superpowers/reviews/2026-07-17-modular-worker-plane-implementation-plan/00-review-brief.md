@@ -9,14 +9,21 @@ client_data: none
 
 # Independent implementation-plan review brief
 
-Review the design specification and all eight implementation documents from the
-single immutable content-addressed packet supplied over stdin by the launcher.
-Stdin begins with the deterministic `NUZANTARA-REVIEW-INPUT-V1` attestation
-header: schema `nuzantara.worker-plane-review-input/v1`, the freezer-attested
+Review the design specification, all eight implementation documents, and the
+current-system refresh memo from one immutable content-addressed packet supplied
+through each reviewer's attested read-only input route. Phase 1 sends the
+byte-exact packet independently to Gemini, Codex, and Kimi. Only after those
+three findings-only reviews exist and the orchestrator has dispositioned every
+finding does Phase 2 send Fable the same packet plus all three reviews and the
+disposition for the sequential final on-disk gate.
+
+Each Phase-1 review input begins with the deterministic
+`NUZANTARA-REVIEW-INPUT-V1` attestation header: schema
+`nuzantara.worker-plane-review-input/v1`, the freezer-attested
 `input_manifest_sha256`, and the exact decimal `packet_bytes`, followed by one
 blank line and then the byte-exact packet. The packet contains one canonical
 non-circular input manifest, this brief as its only `role=instructions` entry,
-and the nine documents below as `role=covered` entries. Verify the declared
+and the ten documents below as `role=covered` entries. Verify the declared
 packet length against the supplied content, then start the verdict by repeating
 the header's `input_manifest_sha256`; you are not expected to calculate
 SHA-256. Do **not** repeat or guess `packet_sha256`: that transport hash exists
@@ -24,21 +31,28 @@ only in the launcher's external receipt. If the header, embedded length, role,
 path, Git blob OID, size, or content hash is missing or inconsistent, return
 `NO-GO` without substituting other bytes.
 
-You have no filesystem, shell, MCP, Read, Glob, or Grep tools and no checkout
-access. Treat only the supplied packet bytes as evidence. Optional repository
+Phase-1 seats must use only the supplied packet bytes as evidence. The launcher
+does not provide a checkout path, starts each client from an isolated temporary
+working directory, and records the exact client and sandbox controls; those
+controls must not be described as universal tool denial. Optional repository
 corroboration is admissible only when the launcher has added the exact selected
 bytes from a read-only archive of the recorded source commit to a newly hashed
-covered projection; never request or infer mutable worktree content. This is a
-read-only review: do not edit files, contact external services, inspect client
-records, or expose secrets. Do not infer the other reviewers' opinions and do
-not optimize for consensus.
+covered projection; never request or infer mutable worktree content. Fable is
+the only on-disk gate: in Phase 2 it receives read-only access to the immutable
+packet, all three bound review artifacts, and the orchestrator disposition,
+never to mutable candidate bytes. Every phase is non-mutating: do not edit
+files, invoke any additional external service, inspect client records, or
+expose secrets. Do not infer another reviewer's opinion and do not optimize for
+consensus.
 
 Raw responses, normalized reviews, invocation receipts, dispositions, packet
 objects, and attestation manifests are excluded outputs. Adding or correcting
 only those outputs does not invalidate a review when a post-commit check proves
 the canonical covered projection is unchanged. Any change to a covered or
-instructions role/path/byte requires one new manifest and packet plus all three
-new reviews.
+instructions role/path/byte requires one new manifest and packet, all three new
+independent external reviews, a new disposition, and a new sequential Fable
+final gate. The historical packet and panel predating the 2026-07-23 refresh are
+non-authoritative for the current candidate bytes.
 
 Documents under review:
 
@@ -51,6 +65,39 @@ Documents under review:
 7. `docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-4.md`
 8. `docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-5.md`
 9. `docs/superpowers/plans/2026-07-17-modular-worker-plane-production-rollout.md`
+10. `docs/superpowers/reviews/2026-07-17-modular-worker-plane-implementation-plan/2026-07-23-current-system-refresh.md`
+
+## 2026-07-23 live-refresh questions
+
+Treat the covered refresh memo as current evidence to reconcile against the
+older design and plans, not as permission to implement, merge, migrate, deploy,
+or mutate any environment.
+
+- Since `origin/main@8e826f0940c483f1050b81e74502fbe57aef2479` now reaches
+  migration 255, does the plan reject its colliding `247`–`251` allocation and
+  fail closed until a formally leased collision-free block is recorded?
+- Is candidate range `256`–`260` treated only as an unleased proposal, with
+  every covered migration reference, test, receipt, and rollback statement
+  amended together before implementation?
+- Does the 67-router direct-`asyncpg` inventory remain an explicit bounded
+  migration input, with its supplied count/hash revalidated rather than assumed?
+- Does Phase 0 close the `main_api.py` background-init shutdown race by
+  cancelling and joining `_init_task` before stopping schedulers or closing the
+  pool?
+- Does the legal RED/GREEN contract recognize that `document_id` already
+  exists and isolate the actually missing `persist_source_to_drive` behavior?
+- Does the notification ownership/effect inventory include
+  `backend/app/modules/notifications/test_endpoint.py` and its `force_send`
+  path?
+- Does the single-mutation-route claim cover every current Fly mutator,
+  including recovery, organism, cell, remediator, preflight, MCP, CLI, and
+  legacy script paths, while preserving only a narrowly constrained,
+  non-deploying auto-heal lane?
+- Do workflow artifact contracts use the major versions actually pinned in
+  the target current workflows rather than carrying forward the plan's stale
+  generic v4 assumption?
+- Does the panel explicitly refuse to inherit authority from the latest
+  complete historical panel, whose source and packet predate this refresh?
 
 ## Shared review questions
 
@@ -63,11 +110,10 @@ Documents under review:
 - Are cross-phase dependencies consistent, especially migration numbers,
   catalog symbols, SQL function signatures, ownership table names, claim
   columns, build-floor arming, effect contracts, and reverse cutover?
-- Does the plan fail closed until intake-v2-entry PR #2669's authoritative
-  `246_clients_wa_intake_autocreate.sql` exists on the rebased `origin/main`,
-  with one collision-free leased worker-plane block `247`–`251`; and does any
-  absent, renumbered, or conflicting `246` force reallocation, covered-byte
-  amendment, and a complete new panel before migration implementation?
+- Does the plan fail closed because the authoritative migration namespace on
+  refreshed `origin/main` already occupies its planned `247`–`251` range, then
+  require a collision-free formal lease, covered-byte amendment, and complete
+  new four-seat, two-phase panel before any migration implementation?
 - Is business/data ownership represented consistently by
   `BusinessContext`/`business_context`, and runtime execution by
   `RuntimeOwner`/`runtime_owner`, without an ambiguous `OwnerContext` crossing
@@ -142,10 +188,13 @@ Documents under review:
   grant -> advisory -> source -> projection -> begun attempt -> next boundary,
   with manual resolution available while off/drained, a concurrency proof
   against automatic finish/reconcile, and same-held-row/effect resend denied?
-- Does the protected digest artifact use the exact upload/download v4 mechanism,
-  bind one `shared`/1-CPU/1-GB VM tuple and an in-image-generated route catalog
-  hash to the immutable digest, and reject every caller/checkout/provenance or
-  resource mismatch before mutation?
+- Does the protected digest artifact use explicitly pinned, repository-current
+  action majors for each target workflow (the current protected
+  `.github/workflows/fly-deploy.yml` uses `actions/setup-python@v7` and
+  `actions/upload-artifact@v7`, while `.github/workflows/tests.yml` also uses
+  `actions/download-artifact@v8`), bind one `shared`/1-CPU/1-GB VM tuple and an
+  in-image-generated route catalog hash to the immutable digest, and reject
+  every caller/checkout/provenance or resource mismatch before mutation?
 - Are forward and reverse transitions strictly drain -> lease/effect barrier ->
   atomic generation advance/activation, with no interval containing two active
   owners or late effects from two generations?
@@ -154,11 +203,13 @@ Documents under review:
   OpenAPI plus Mouth types/routes and MCP consumers, rather than only naming
   those adapters? Does G9 retain Phase 0 only as a pre-merge code-regression
   gate, capture inert production-local and staging-local baselines after the
-  complete authoritative 247–251 migration chain, and compare all four API/RAG
+  complete newly leased authoritative compatibility migration chain, and
+  compare all four API/RAG
   metrics after every workload forward, reverse, and final re-cutover only
-  against the matching environment-local baseline while keeping worker
-  absolute budgets separate? Does G10 reject prohibited raw PII before both job and
-  event publication and prove logs, receipts, quarantine, and DLQ captures are
+  against the matching environment-local baseline captured after the newly
+  leased compatibility migration chain, while keeping worker absolute budgets
+  separate? Does G10 reject prohibited raw PII before both job and event
+  publication and prove logs, receipts, quarantine, and DLQ captures are
   redacted or opaque?
 - Does the later deletion release prove the four old/new primary-worker binary
   combinations, deploy primary first, update the existing worker to the exact
@@ -170,6 +221,14 @@ Documents under review:
   or unbounded destructive production test?
 
 ## Shared output contract
+
+Seats A-C run independently in Phase 1 and return findings only; none can
+authorize implementation. The orchestrator must bind and disposition every
+Blocking and Important finding before Seat D runs. Seat D is the Phase-2 Fable
+gate and must invalidate the panel on its own `NO-GO`, any unresolved finding,
+any missing/duplicated/identity-ambiguous Phase-1 route, or any mismatch between
+the packet, reviews, and disposition. Fable is never counted among or launched
+concurrently with the three Phase-1 seats.
 
 Return Markdown with exactly these top-level sections:
 
@@ -184,7 +243,7 @@ Under `# Verdict`, the first two nonblank lines must be exactly:
 
 ```text
 GO-WITH-CHANGES — confidence 84
-input_manifest_sha256: <the exact 64-hex value from the stdin header>
+input_manifest_sha256: <the exact 64-hex value from the review-input header>
 ```
 
 Substitute the actual verdict and an integer confidence from 0 through 100.
@@ -195,30 +254,51 @@ must cite a packet document section/path and, when
 based on repository state, the repository path. Separate verified facts from
 inference. A blocking finding must identify a concrete failure mode and a
 falsifiable correction. Prefix every non-`None` Blocking or Important finding
-with a stable reviewer-specific ID such as `[FABLE-PLAN-001]`. If there are no
+with a stable reviewer-specific ID such as `[GEMINI-PLAN-001]`,
+`[CODEX-PLAN-001]`, `[KIMI-PLAN-001]`, or `[FABLE-PLAN-001]`. If there are no
 findings at a severity, write `None` under that heading. Keep the response below
 1,800 words.
 
-## Seat A — Fable 5: execution architecture judge
+## Seat A — Gemini 3.1 Pro High: constructive delivery reviewer
 
-Judge whether the amended design and plan form a coherent architecture with the
-smallest reversible sequence. Attack hidden irreversibility, dual ownership,
-false-green gates, oversized tasks, inconsistent contracts, and deletion
-before rollback evidence. Prefer a smaller executable plan when it proves the
-same invariants.
+Assume the direction should ship, while withholding authorization. Make the
+plan operationally complete. Focus on exact repository integration points, TDD
+order, migration and compatibility release sequencing, Fly/GitHub Actions
+coordination, private health, resource budgets, observability, production
+evidence, and commands a fresh agent can actually run.
 
-## Seat B — Gemini 3.1 Pro High: constructive delivery reviewer
+## Seat B — Codex GPT-5.6: red-team and empirical-contract reviewer
 
-Assume the direction should ship. Make the plan operationally complete. Focus
-on exact repository integration points, TDD order, migration and compatibility
-release sequencing, Fly/GitHub Actions coordination, private health, resource
-budgets, observability, production evidence, and commands a fresh agent can
-actually run.
+Default to defective. Attack false-green tests, mismatches between the plan and
+current repository contracts, unsafe mutation surfaces, migration/reversal
+errors, race conditions, and assumptions that only executable evidence can
+settle. Identify the smallest falsifiable correction for each finding. Do not
+implement changes from the review seat.
 
-## Seat C — GLM 5.2: adversarial refuter
+## Seat C — Kimi K3: independent adversarial refuter
 
 Assume the plan will produce a green but unsafe release. Find the strongest
 specific path to lost work, duplicate irreversible effects, stale-owner
 execution, incorrect rollback, subscriber acknowledgment loss, sovereignty
 failure, migration collision, public worker exposure, or unbounded production
 blast radius. State the minimum amendment and test that defeats each attack.
+Kimi is the permanent cross-family refuter; it is not replaced by Codex and is
+never the final gate. GLM and DeepSeek are retired and are not admissible
+review routes or fallbacks.
+
+## Seat D — Fable 5: sequential Phase-2 final on-disk gate
+
+Run only after Seats A-C have completed and the orchestrator has produced one
+hash-bound disposition. Read the immutable packet, all three review artifacts,
+and that disposition on disk. Re-verify what the external reviewers attacked
+and what they blessed; check that every Blocking and Important finding has a
+specific accepted correction or an evidence-backed rejection. Judge whether
+the resulting design and plan form a coherent architecture with the smallest
+reversible sequence. Attack hidden irreversibility, dual ownership,
+false-green gates, oversized tasks, inconsistent contracts, and deletion
+before rollback evidence.
+
+Return `NO-GO` if any mandatory review is missing, duplicated through another
+model route, identity-ambiguous, bound to different bytes, or incompletely
+dispositioned. A Fable `NO-GO` or any new unresolved finding invalidates the
+panel; Fable unavailability suspends the gate and must never be substituted.

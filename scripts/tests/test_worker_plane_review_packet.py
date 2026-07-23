@@ -62,9 +62,9 @@ def review_repo(tmp_path: Path) -> Path:
     launcher.write_bytes(b"launcher-v1\n")
     validator = repo / "scripts" / "check_worker_plane_review.py"
     validator.write_bytes(b"validator-v1\n")
-    route_config = repo / "scripts" / "review_routes" / "glm-5.2-v1.json"
+    route_config = repo / packet.DEFAULT_ROUTE_CONFIG_PATH
     route_config.parent.mkdir(parents=True, exist_ok=True)
-    route_config.write_bytes(packet.EXPECTED_GLM_ROUTE_CONFIG)
+    route_config.write_bytes(packet.EXPECTED_COUNCIL_ROUTE_CONFIG)
     _commit(repo, "initial review inputs")
     return repo
 
@@ -146,7 +146,7 @@ def test_general_engine_accepts_one_covered_and_one_instruction(
     assert len(parsed.documents) == 2
 
 
-def test_initial_plan_preset_is_exactly_the_nine_normative_documents() -> None:
+def test_initial_plan_preset_is_exactly_the_ten_normative_documents() -> None:
     assert packet.COVERED_SET_PRESETS["implementation-plan"] == (
         "docs/superpowers/specs/2026-07-17-backend-modular-kernel-worker-plane-design.md",
         "docs/superpowers/plans/2026-07-17-modular-kernel-worker-plane-implementation.md",
@@ -157,11 +157,35 @@ def test_initial_plan_preset_is_exactly_the_nine_normative_documents() -> None:
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-4.md",
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-5.md",
         "docs/superpowers/plans/2026-07-17-modular-worker-plane-production-rollout.md",
+        (
+            "docs/superpowers/reviews/"
+            "2026-07-17-modular-worker-plane-implementation-plan/"
+            "2026-07-23-current-system-refresh.md"
+        ),
     )
     assert packet.PRESET_INSTRUCTION_PATHS["implementation-plan"] == (
         "docs/superpowers/reviews/"
         "2026-07-17-modular-worker-plane-implementation-plan/00-review-brief.md"
     )
+
+
+def test_council_v3_route_is_canonical_and_makes_kimi_a_permanent_seat() -> None:
+    route = json.loads(packet.EXPECTED_COUNCIL_ROUTE_CONFIG)
+
+    assert packet.canonical_json_bytes(route) + b"\n" == (
+        packet.EXPECTED_COUNCIL_ROUTE_CONFIG
+    )
+    assert [
+        (seat["seat"], seat["role"], seat["model"])
+        for seat in route["parallel_reviewers"]
+    ] == [
+        ("gemini", "constructive", "Gemini 3.1 Pro (High)"),
+        ("codex", "red-team", "account-default"),
+        ("kimi", "refuter", "kimi-code/k3"),
+    ]
+    assert route["parallel_reviewers"][2]["input_transport"] == "file"
+    assert route["retired_routes"] == ["deepseek", "glm"]
+    assert route["final_gate"]["phase"] == "sequential-after-disposition"
 
 
 def test_implementation_plan_preset_rejects_any_other_instruction(
@@ -202,7 +226,7 @@ def test_named_covered_set_loads_sorted_committed_paths(review_repo: Path) -> No
     assert packet._covered_paths_for_name(review_repo, source, "phase-test") == expected
 
 
-def test_manifest_has_nine_covered_inputs_and_bound_instruction_brief(
+def test_manifest_has_nine_generic_covered_inputs_and_bound_instruction_brief(
     review_repo: Path,
 ) -> None:
     built = _build(review_repo)
@@ -473,7 +497,10 @@ def test_write_artifacts_is_content_addressed_read_only_and_receipted(
     assert artifact.packet_path.read_bytes() == built.packet_bytes
     assert stat.S_IMODE(artifact.packet_path.stat().st_mode) == 0o444
     assert artifact.manifest_path.read_bytes() == built.manifest_bytes
-    assert artifact.route_config_path.read_bytes() == packet.EXPECTED_GLM_ROUTE_CONFIG
+    assert (
+        artifact.route_config_path.read_bytes()
+        == packet.EXPECTED_COUNCIL_ROUTE_CONFIG
+    )
 
     receipt = json.loads(artifact.receipt_path.read_text(encoding="utf-8"))
     assert receipt["packet_sha256"] == built.packet_sha256
@@ -493,7 +520,7 @@ def test_write_artifacts_is_content_addressed_read_only_and_receipted(
         "packet.bin",
         "input-manifest.json",
         "freeze-receipt.json",
-        "glm-5.2-v1.json",
+        "worker-plane-council-v3.json",
     }
 
 
@@ -591,13 +618,15 @@ def test_builder_rejects_any_dirty_tracked_file(review_repo: Path) -> None:
         _build(review_repo)
 
 
-def test_builder_rejects_noncanonical_glm_route_config(review_repo: Path) -> None:
-    route_config = review_repo / "scripts" / "review_routes" / "glm-5.2-v1.json"
+def test_builder_rejects_noncanonical_council_route_config(
+    review_repo: Path,
+) -> None:
+    route_config = review_repo / packet.DEFAULT_ROUTE_CONFIG_PATH
     route_config.write_bytes(b'{"base_url":"wrong"}\n')
     _commit(review_repo, "break route config")
 
     with pytest.raises(
-        packet.PacketError, match="GLM route config bytes are not canonical"
+        packet.PacketError, match="council route config bytes are not canonical"
     ):
         _build(review_repo)
 

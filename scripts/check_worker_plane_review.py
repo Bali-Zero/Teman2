@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Deterministically validate one immutable three-seat worker-plane review.
+"""Deterministically validate immutable worker-plane review evidence.
 
-The validator is deliberately read-only.  It consumes the materialized packet,
-its canonical manifest and freeze receipt, three normalized reviews with their
-raw/invocation companions, and the final finding disposition.  It regenerates
-both projections from committed Git objects; it never invokes a shell or a
-provider and never reads a covered input from the mutable worktree.
+The historical v2 validator remains read-only for already frozen evidence.  A
+v3 council receipt is rejected explicitly until the sequential Fable 5 final
+gate is implemented and bound to all reviewer outputs plus the disposition.
+This prevents three parallel reviewer reports from being mistaken for execution
+authorization.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ try:
         DEFAULT_LAUNCHER_PATH,
         DEFAULT_ROUTE_CONFIG_PATH,
         DEFAULT_VALIDATOR_PATH,
+        LEGACY_ROUTE_CONFIG_PATH,
         InputSpec,
         PacketError,
         _git,
@@ -45,6 +46,7 @@ except ModuleNotFoundError:  # pragma: no cover - repository import path
         DEFAULT_LAUNCHER_PATH,
         DEFAULT_ROUTE_CONFIG_PATH,
         DEFAULT_VALIDATOR_PATH,
+        LEGACY_ROUTE_CONFIG_PATH,
         InputSpec,
         PacketError,
         _git,
@@ -67,6 +69,11 @@ EXPECTED_HEADINGS = (
     "# What survives review",
     "# Required amendments",
     "# Falsification test",
+)
+V3_FINAL_GATE_READY = False
+V3_FINAL_GATE_BLOCKER = (
+    "worker-plane council v3 final Fable gate is not implemented; "
+    "reviewer evidence cannot authorize execution"
 )
 EXPECTED_ROUTES = frozenset({"claude-fable-5", "Gemini 3.1 Pro (High)", "glm-5.2"})
 FREEZE_RECEIPT_SCHEMA = "nuzantara.worker-plane-review-freeze-receipt/v1"
@@ -481,7 +488,7 @@ def _validate_freeze_receipt(
         repo_root=repo_root,
         h0_head=h0_head,
         prefix="route_config",
-        expected_path=DEFAULT_ROUTE_CONFIG_PATH,
+        expected_path=LEGACY_ROUTE_CONFIG_PATH,
     )
     _validate_receipt_blob(
         receipt,
@@ -561,11 +568,13 @@ def _validate_packet_projection(
             repo_root=repo_root,
             source_ref=h0_head,
             inputs=h0_inputs,
+            route_config_path=str(receipt.get("route_config_path", "")),
         )
         h1_built = build_projection_from_git(
             repo_root=repo_root,
             source_ref=h1_head,
             inputs=h1_inputs,
+            route_config_path=str(receipt.get("route_config_path", "")),
         )
     except PacketError as exc:
         raise ReviewValidationError(
@@ -1478,6 +1487,17 @@ def validate_review_panel(
         repo_root=resolved_repo,
         h1_head=bound_h1_head,
     )
+    freeze_preview, _ = _load_canonical_json(
+        freeze_receipt_path,
+        "freeze receipt",
+        newline=True,
+    )
+    if (
+        freeze_preview.get("route_config_path") == DEFAULT_ROUTE_CONFIG_PATH
+        and not V3_FINAL_GATE_READY
+    ):
+        raise ReviewValidationError(V3_FINAL_GATE_BLOCKER)
+
     manifest_sha256, packet_sha256, freeze_receipt, h1_head = (
         _validate_packet_projection(
             repo_root=resolved_repo,

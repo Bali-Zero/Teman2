@@ -23,9 +23,9 @@ from scripts.check_worker_plane_review import (
 )
 from scripts.freeze_worker_plane_review import (
     DEFAULT_GENERATOR_PATH,
-    DEFAULT_ROUTE_CONFIG_PATH,
     EXPECTED_GLM_ROUTE_CONFIG,
     InputSpec,
+    LEGACY_ROUTE_CONFIG_PATH,
     ReviewDocument,
     _entry,
     _render_packet,
@@ -237,7 +237,7 @@ def make_bundle(tmp_path: Path) -> Bundle:
         VALIDATOR_REPO_PATH,
     ):
         _repo_file(repo, relative, (source_root / relative).read_bytes())
-    _repo_file(repo, DEFAULT_ROUTE_CONFIG_PATH, EXPECTED_GLM_ROUTE_CONFIG)
+    _repo_file(repo, LEGACY_ROUTE_CONFIG_PATH, EXPECTED_GLM_ROUTE_CONFIG)
     evidence_payload = b"readiness probe passed\n"
     _repo_file(
         repo,
@@ -255,6 +255,7 @@ def make_bundle(tmp_path: Path) -> Bundle:
         source_ref=h0,
         base_ref=h0,
         inputs=inputs,
+        route_config_path=LEGACY_ROUTE_CONFIG_PATH,
     )
     packet_bytes = built.packet_bytes
     manifest_bytes = built.manifest_bytes
@@ -281,7 +282,7 @@ def make_bundle(tmp_path: Path) -> Bundle:
     manifest_path.write_bytes(manifest_bytes)
     packet_stat = packet_path.stat()
     generator_oid, generator_sha = _blob_proof(repo, h0, DEFAULT_GENERATOR_PATH)
-    route_oid, route_sha = _blob_proof(repo, h0, DEFAULT_ROUTE_CONFIG_PATH)
+    route_oid, route_sha = _blob_proof(repo, h0, LEGACY_ROUTE_CONFIG_PATH)
     launcher_oid, launcher_sha = _blob_proof(repo, h0, LAUNCHER_REPO_PATH)
     validator_oid, validator_sha = _blob_proof(repo, h0, VALIDATOR_REPO_PATH)
     freeze_receipt = {
@@ -301,7 +302,7 @@ def make_bundle(tmp_path: Path) -> Bundle:
         "packet_inode": packet_stat.st_ino,
         "packet_sha256": packet_sha256,
         "route_config_git_blob_oid": route_oid,
-        "route_config_path": DEFAULT_ROUTE_CONFIG_PATH,
+        "route_config_path": LEGACY_ROUTE_CONFIG_PATH,
         "route_config_sha256": route_sha,
         "schema": "nuzantara.worker-plane-review-freeze-receipt/v1",
         "source_head": h0,
@@ -594,6 +595,46 @@ def test_valid_review_panel_passes_and_cli_emits_canonical_summary(
     )
     assert exit_code == 0
     assert json.loads(capsys.readouterr().out) == result
+
+
+def test_v3_reviewer_evidence_cannot_authorize_without_fable_final_gate(
+    tmp_path: Path,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    receipt = json.loads(bundle.receipt.read_text(encoding="utf-8"))
+    receipt["route_config_path"] = (
+        "scripts/review_routes/worker-plane-council-v3.json"
+    )
+    _canonical_file(bundle.receipt, receipt)
+    h1 = _commit(bundle.repo, "mark evidence as council v3")
+    v3_bundle = replace(bundle, h1=h1)
+
+    with pytest.raises(
+        ReviewValidationError,
+        match="final Fable gate is not implemented",
+    ):
+        _validate(v3_bundle)
+
+
+@pytest.mark.parametrize("generator_version", ("1.0.0", "3.0.0", "forged"))
+def test_v3_final_gate_blocker_does_not_trust_declared_generator_version(
+    tmp_path: Path,
+    generator_version: str,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    receipt = json.loads(bundle.receipt.read_text(encoding="utf-8"))
+    receipt["route_config_path"] = (
+        "scripts/review_routes/worker-plane-council-v3.json"
+    )
+    receipt["generator_version"] = generator_version
+    _canonical_file(bundle.receipt, receipt)
+    h1 = _commit(bundle.repo, "forge the declared generator version")
+
+    with pytest.raises(
+        ReviewValidationError,
+        match="final Fable gate is not implemented",
+    ):
+        _validate(replace(bundle, h1=h1))
 
 
 def test_rejects_external_only_review_artifacts(tmp_path: Path) -> None:

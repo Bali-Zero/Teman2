@@ -10,6 +10,7 @@ import subprocess
 import sys
 import textwrap
 import threading
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -133,21 +134,21 @@ def _frozen_review(
     review_dir.mkdir(parents=True)
     packet_path = review_dir / "packet.bin"
     manifest_path = review_dir / "input-manifest.json"
-    config_path = review_dir / "glm-5.2-v1.json"
+    config_path = review_dir / "worker-plane-council-v3.json"
     receipt_path = review_dir / "freeze-receipt.json"
     packet_path.write_bytes(packet_bytes)
     manifest_path.write_bytes(manifest_bytes)
-    config_path.write_bytes(freezer.EXPECTED_GLM_ROUTE_CONFIG)
+    config_path.write_bytes(freezer.EXPECTED_COUNCIL_ROUTE_CONFIG)
     packet_stat = packet_path.stat()
     launcher_bytes = MODULE_PATH.read_bytes()
-    route_config_sha256 = _sha256(freezer.EXPECTED_GLM_ROUTE_CONFIG)
+    route_config_sha256 = _sha256(freezer.EXPECTED_COUNCIL_ROUTE_CONFIG)
     receipt = {
         "base_commit": "1" * 40,
         "built_at_utc": "2026-07-18T00:00:00+00:00",
         "generator_git_blob_oid": "2" * 40,
         "generator_path": "scripts/freeze_worker_plane_review.py",
         "generator_sha256": "3" * 64,
-        "generator_version": "1.0.0",
+        "generator_version": "3.0.0",
         "git_object_validation": "pass",
         "input_manifest_sha256": parsed.manifest_sha256,
         "launcher_git_blob_oid": (
@@ -159,8 +160,12 @@ def _frozen_review(
         "packet_device": packet_stat.st_dev,
         "packet_inode": packet_stat.st_ino,
         "packet_sha256": parsed.packet_sha256,
-        "route_config_git_blob_oid": _git_blob_oid(freezer.EXPECTED_GLM_ROUTE_CONFIG),
-        "route_config_path": "scripts/review_routes/glm-5.2-v1.json",
+        "route_config_git_blob_oid": _git_blob_oid(
+            freezer.EXPECTED_COUNCIL_ROUTE_CONFIG
+        ),
+        "route_config_path": (
+            "scripts/review_routes/worker-plane-council-v3.json"
+        ),
         "route_config_sha256": route_config_sha256,
         "schema": "nuzantara.worker-plane-review-freeze-receipt/v1",
         "source_head": "4" * 40,
@@ -191,6 +196,7 @@ def _fake_clients(
     *,
     agy_version: str = "1.1.3",
     fail_model: str | None = None,
+    fail_status: int = 7,
     fail_once_model: str | None = None,
     emit_claude_metadata: bool = False,
     mutate_packet: Path | None = None,
@@ -200,23 +206,33 @@ def _fake_clients(
     sync_dir.mkdir()
     common = f"""
         #!{sys.executable}
-        import hashlib
         import json
         import os
         import pathlib
+        import re
         import stat
         import sys
         import time
 
         argv = sys.argv[1:]
+        if CLIENT == 'codex' and argv and argv[0].endswith('codex-wrapper.js'):
+            argv = argv[1:]
         if '--version' in argv:
             print(VERSION)
             raise SystemExit(0)
-        if '--model' in argv:
-            seat = argv[argv.index('--model') + 1]
+        seat = {{
+            'gemini': 'Gemini 3.1 Pro (High)',
+            'codex': 'account-default',
+            'kimi': 'kimi-code/k3',
+        }}[CLIENT]
+        if CLIENT == 'kimi':
+            prompt = argv[argv.index('--prompt') + 1]
+            match = re.search(r'@(\\S+)', prompt)
+            if match is None:
+                raise SystemExit(12)
+            data = pathlib.Path(match.group(1)).read_bytes()
         else:
-            seat = 'gemini'
-        data = sys.stdin.buffer.read()
+            data = sys.stdin.buffer.read()
         sync_dir = pathlib.Path({str(sync_dir)!r})
         (sync_dir / seat.replace('/', '_').replace(' ', '_')).write_text('ready')
         deadline = time.monotonic() + 5
@@ -237,34 +253,47 @@ def _fake_clients(
             'anthropic_api_key_present': 'ANTHROPIC_API_KEY' in os.environ,
             'claude_oauth_present': 'CLAUDE_CODE_OAUTH_TOKEN' in os.environ,
             'unrelated_secret_present': 'UNRELATED_SECRET' in os.environ,
-            'glm_token_ok': os.environ.get('ANTHROPIC_AUTH_TOKEN') == 'ephemeral-test-token',
-            'glm_route': {{
-                key: os.environ.get(key)
-                for key in (
-                    'API_TIMEOUT_MS', 'ANTHROPIC_BASE_URL',
-                    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-                    'ANTHROPIC_DEFAULT_OPUS_MODEL',
-                    'ANTHROPIC_DEFAULT_SONNET_MODEL',
-                )
-            }},
+            'client': CLIENT,
         }}
-        if {emit_claude_metadata!r} and seat != 'Gemini 3.1 Pro (High)':
+        if {emit_claude_metadata!r}:
             payload['session_id'] = 'session-' + seat
             payload['modelUsage'] = {{seat: {{'inputTokens': 1}}}}
         review_body = {review_body!r}
-        if seat == 'Gemini 3.1 Pro (High)' and review_body is not None:
-            output = review_body.encode('utf-8')
+        body = review_body or json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        if CLIENT == 'gemini':
+            output = body.encode('utf-8')
+        elif CLIENT == 'codex':
+            output = (
+                json.dumps(
+                    {{
+                        'type': 'item.completed',
+                        'item': {{'type': 'agent_message', 'text': body}},
+                    }},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ) + '\\n'
+            ).encode('utf-8')
         else:
-            payload['result'] = review_body or ('review-body-' + seat)
-            output = json.dumps(
-                payload,
-                ensure_ascii=False,
-                sort_keys=True,
+            output = (
+                json.dumps(
+                    {{'role': 'assistant', 'content': body}},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ) + '\\n' +
+                json.dumps(
+                    {{'role': 'meta', 'type': 'session.resume_hint'}},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ) + '\\n'
             ).encode('utf-8')
         sys.stdout.buffer.write(output)
         sys.stderr.buffer.write(('stderr-' + seat + '\\n').encode())
         if {fail_model!r} == seat:
-            raise SystemExit(7)
+            raise SystemExit({fail_status!r})
         fail_once_marker = sync_dir / ('failed-once-' + seat.replace('/', '_').replace(' ', '_'))
         if {fail_once_model!r} == seat and not fail_once_marker.exists():
             fail_once_marker.write_text('failed')
@@ -272,31 +301,89 @@ def _fake_clients(
     """
     common_source = textwrap.dedent(common).lstrip()
     shebang, body = common_source.split("\n", 1)
-    claude = _write_executable(
-        tmp_path / "fake-claude",
-        f"{shebang}\nVERSION = '2.0.0'\n{body}",
-    )
     agy = _write_executable(
         tmp_path / "fake-agy",
-        f"{shebang}\nVERSION = {agy_version!r}\n{body}",
+        f"{shebang}\nCLIENT = 'gemini'\nVERSION = {agy_version!r}\n{body}",
+    )
+    codex_node = _write_executable(
+        tmp_path / "fake-node",
+        f"{shebang}\nCLIENT = 'codex'\nVERSION = 'codex-cli 0.145.0'\n{body}",
+    )
+    kimi = _write_executable(
+        tmp_path / "fake-kimi",
+        f"{shebang}\nCLIENT = 'kimi'\nVERSION = 'kimi 0.29.0'\n{body}",
+    )
+    fable = _write_executable(
+        tmp_path / "fake-fable",
+        f"{shebang}\nCLIENT = 'gemini'\nVERSION = '2.1.216'\n{body}",
+    )
+    codex_wrapper = tmp_path / "codex-wrapper.js"
+    codex_wrapper.write_text("// immutable wrapper\n", encoding="utf-8")
+    codex_package = tmp_path / "codex-package.json"
+    codex_package.write_text('{"version":"0.145.0"}\n', encoding="utf-8")
+    codex_native = _write_executable(
+        tmp_path / "codex-native",
+        f"#!{sys.executable}\nraise SystemExit(0)\n",
     )
     mutation = ""
     if mutate_packet is not None:
-        mutation = f"path = pathlib.Path({str(mutate_packet)!r}); path.chmod(0o644); path.write_bytes(path.read_bytes()[:-1] + b'X')\n"
-    security = _write_executable(
-        tmp_path / "fake-security",
+        mutation = (
+            f"path = pathlib.Path({str(mutate_packet)!r}); "
+            "path.chmod(0o644); "
+            "path.write_bytes(path.read_bytes()[:-1] + b'X')\n"
+        )
+    sandbox_exec = _write_executable(
+        tmp_path / "fake-sandbox-exec",
         f"""#!{sys.executable}
+import os
 import pathlib
+import subprocess
 import sys
-{mutation}sys.stdout.write('ephemeral-test-token\\n')
+
+argv = sys.argv[1:]
+if argv[:1] == ['-f']:
+    argv = argv[2:]
+if argv and argv[0] == '/usr/bin/touch':
+    {mutation or "pass"}
+    raise SystemExit(1)
+result = subprocess.run(
+    argv,
+    input=sys.stdin.buffer.read(),
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    cwd=os.getcwd(),
+    env=os.environ,
+    check=False,
+)
+sys.stdout.buffer.write(result.stdout)
+sys.stderr.buffer.write(result.stderr)
+raise SystemExit(result.returncode)
 """,
     )
-    return launcher.ClientPaths(claude=claude, gemini=agy, security=security)
+    return launcher.ClientPaths(
+        fable=fable,
+        gemini=agy,
+        codex_node=codex_node,
+        codex_wrapper=codex_wrapper.resolve(),
+        codex_package=codex_package.resolve(),
+        codex_native=codex_native,
+        kimi=kimi,
+        sandbox_exec=sandbox_exec,
+    )
 
 
-def _raw_payload(path: Path) -> tuple[dict[str, Any], bytes]:
+def _raw_payload(
+    path: Path,
+    seat: launcher.Seat,
+) -> tuple[dict[str, Any], bytes]:
     raw = path.read_bytes()
-    return json.loads(raw), raw
+    if seat.client == "gemini":
+        body = raw.decode("utf-8")
+    elif seat.client == "codex":
+        body = json.loads(raw.decode("utf-8").splitlines()[-1])["item"]["text"]
+    else:
+        body = json.loads(raw.decode("utf-8").splitlines()[0])["content"]
+    return json.loads(body), raw
 
 
 def _launch_test_panel(**kwargs: Any) -> Any:
@@ -376,7 +463,7 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
     raw_by_seat: dict[str, bytes] = {}
     receipt_by_seat: dict[str, dict[str, Any]] = {}
     for seat in launcher.SEATS:
-        payload, raw = _raw_payload(output_dir / seat.raw_name)
+        payload, raw = _raw_payload(output_dir / seat.raw_name, seat)
         observed[seat.name] = payload
         raw_by_seat[seat.name] = raw
         receipt_path = output_dir / seat.receipt_name
@@ -397,13 +484,28 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
             freezer.canonical_json_bytes(receipt["argv"])
         )
         assert receipt["provider_session_id"] is None
-        assert receipt["reported_model"] is None
+        assert receipt["reported_model"] == {
+            "gemini": None,
+            "codex": None,
+            "kimi": None,
+        }[seat.name]
         assert receipt["shell"] is False
-        assert receipt["tools_denied"] is True
+        assert receipt["tools_denied"] is False
         assert receipt["cwd_initial_entries"] == []
         assert receipt["cwd_mode"] == "0700"
         assert receipt["cwd_removed_after_run"] is True
         assert receipt["packet_sha256"] == _sha256(packet_bytes)
+        assert receipt["review_role"] == seat.role
+        assert receipt["input_transport"] == seat.input_transport
+        assert receipt["route_config_sha256"] == _sha256(
+            freezer.EXPECTED_COUNCIL_ROUTE_CONFIG
+        )
+        if seat.name == "kimi":
+            assert receipt["sandbox_enforced"] is True
+            assert receipt["canary_write_denied"] is True
+            assert receipt["canary_sha256_before"] == receipt["canary_sha256_after"]
+        else:
+            assert receipt["sandbox_enforced"] is False
 
     assert (
         len(
@@ -426,43 +528,44 @@ def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
         assert receipt["review_input_bytes"] == len(expected_review_input)
         assert receipt["review_input_sha256"] == _sha256(expected_review_input)
     assert {value["cwd"] for value in observed.values()} == {
-        receipt_by_seat["fable"]["cwd_path"]
+        receipt["cwd_path"] for receipt in receipt_by_seat.values()
     }
+    assert len({value["cwd"] for value in observed.values()}) == 3
     assert all(value["cwd_mode"] == 0o700 for value in observed.values())
-    assert all(value["cwd_entries"] == [] for value in observed.values())
+    assert observed["gemini"]["cwd_entries"] == []
+    assert observed["codex"]["cwd_entries"] == []
+    assert observed["kimi"]["cwd_entries"] == [
+        "00-review-input.bin",
+        "kimi-read-only.sb",
+        "write-denied.canary",
+    ]
     assert all(value["visible_outputs"] == [] for value in observed.values())
 
-    fable = observed["fable"]
-    glm = observed["glm"]
     gemini = observed["gemini"]
-    assert fable["argv"] == list(launcher.FABLE_ARGV_SUFFIX)
-    assert glm["argv"] == list(launcher.GLM_ARGV_SUFFIX)
+    codex = observed["codex"]
+    kimi = observed["kimi"]
     assert gemini["argv"] == list(launcher.GEMINI_ARGV_SUFFIX)
+    assert codex["argv"] == list(launcher.CODEX_ARGV_SUFFIX)
+    assert kimi["argv"][: len(launcher.KIMI_ARGV_SUFFIX)] == list(
+        launcher.KIMI_ARGV_SUFFIX
+    )
+    assert kimi["argv"][-2] == "--prompt"
+    assert "@/" in kimi["argv"][-1]
     for payload in observed.values():
         assert "--session-id" not in payload["argv"]
         assert packet_bytes not in [arg.encode() for arg in payload["argv"]]
         assert payload["anthropic_api_key_present"] is False
         assert payload["unrelated_secret_present"] is False
     assert "-p" not in gemini["argv"] and "-p -" not in gemini["argv"]
-    assert glm["glm_token_ok"] is True
-    assert glm["claude_oauth_present"] is False
-    assert glm["glm_route"] == {
-        "API_TIMEOUT_MS": "3000000",
-        "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7",
-        "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2",
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
-    }
+    assert all(payload["claude_oauth_present"] is False for payload in observed.values())
     assert "ephemeral-test-token" not in "".join(
         path.read_text(encoding="utf-8", errors="replace")
         for path in output_dir.iterdir()
         if path.is_file()
     )
-    assert receipt_by_seat["fable"]["route_config_sha256"] is None
-    assert receipt_by_seat["gemini"]["route_config_sha256"] is None
-    assert receipt_by_seat["glm"]["route_config_sha256"] == _sha256(
-        freezer.EXPECTED_GLM_ROUTE_CONFIG
-    )
+    assert {
+        receipt["requested_route"] for receipt in receipt_by_seat.values()
+    } == {"Gemini 3.1 Pro (High)", "account-default", "kimi-code/k3"}
 
     # Production dispatch uses the authenticated descriptor/spawn seam rather
     # than subprocess.run(input=...), so the three provider payloads are
@@ -496,9 +599,9 @@ def test_launch_panel_fails_closed_on_nonzero_seat_without_publishing_outputs(
 ) -> None:
     frozen_review, _, _, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    clients = _fake_clients(tmp_path, output_dir, fail_model="glm-5.2")
+    clients = _fake_clients(tmp_path, output_dir, fail_model="kimi-code/k3")
 
-    with pytest.raises(launcher.LauncherError, match="glm exited with status 7"):
+    with pytest.raises(launcher.LauncherError, match="kimi exited with status 7"):
         _launch_test_panel(
             frozen_review=frozen_review,
             output_dir=output_dir,
@@ -585,7 +688,7 @@ def test_launch_panel_authenticates_launcher_from_freeze_receipt_before_spawn(
     assert not output_dir.exists() or not list(output_dir.iterdir())
 
 
-def test_launch_panel_records_only_provider_emitted_claude_metadata(
+def test_launch_panel_records_protocol_defined_reviewer_metadata(
     tmp_path: Path,
 ) -> None:
     frozen_review, _, _, _ = _frozen_review(tmp_path)
@@ -602,12 +705,12 @@ def test_launch_panel_records_only_provider_emitted_claude_metadata(
         seat.name: json.loads((output_dir / seat.receipt_name).read_bytes())
         for seat in launcher.SEATS
     }
-    assert receipts["fable"]["provider_session_id"] == "session-claude-fable-5"
-    assert receipts["fable"]["reported_model"] == "claude-fable-5"
-    assert receipts["glm"]["provider_session_id"] == "session-glm-5.2"
-    assert receipts["glm"]["reported_model"] == "glm-5.2"
     assert receipts["gemini"]["provider_session_id"] is None
     assert receipts["gemini"]["reported_model"] is None
+    assert receipts["codex"]["provider_session_id"] is None
+    assert receipts["codex"]["reported_model"] is None
+    assert receipts["kimi"]["provider_session_id"] is None
+    assert receipts["kimi"]["reported_model"] is None
 
 
 def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
@@ -653,7 +756,7 @@ def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
     )
     assert set(publication_groups[1]) == {
         *expected_review_group,
-        launcher.PUBLICATION_MARKER_NAME,
+        launcher.REVIEWERS_MARKER_NAME,
     }
     assert len(publication_groups) == 2
 
@@ -677,13 +780,21 @@ def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
         assert normalized[frontmatter_end + 4 :] == body.encode("utf-8")
 
         raw = (output_dir / seat.raw_name).read_bytes()
-        if seat.client == "claude":
-            assert json.loads(raw)["result"] == body
-        else:
+        if seat.client == "gemini":
             assert raw == body.encode("utf-8")
+        elif seat.client == "codex":
+            event = json.loads(raw.decode("utf-8").splitlines()[-1])
+            assert event["item"]["text"] == body
+        else:
+            events = [
+                json.loads(line) for line in raw.decode("utf-8").splitlines()
+            ]
+            assert events[0]["content"] == body
+            assert events[1]["type"] == "session.resume_hint"
         receipt_bytes = (output_dir / seat.receipt_name).read_bytes()
         assert frontmatter["launcher_proof_sha256"] == _sha256(receipt_bytes)
         assert frontmatter["raw_response_sha256"] == _sha256(raw)
+    assert not (output_dir / launcher.FINAL_GATE_MARKER_NAME).exists()
 
 
 def test_failed_launch_cleans_own_validator_inputs_and_can_retry_same_directory(
@@ -691,9 +802,9 @@ def test_failed_launch_cleans_own_validator_inputs_and_can_retry_same_directory(
 ) -> None:
     frozen_review, _, _, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
-    clients = _fake_clients(tmp_path, output_dir, fail_once_model="glm-5.2")
+    clients = _fake_clients(tmp_path, output_dir, fail_once_model="kimi-code/k3")
 
-    with pytest.raises(launcher.LauncherError, match="glm exited with status 7"):
+    with pytest.raises(launcher.LauncherError, match="kimi exited with status 7"):
         _launch_test_panel(
             frozen_review=frozen_review,
             output_dir=output_dir,
@@ -782,13 +893,9 @@ def test_launch_panel_rejects_symlinked_client_without_spawning(
     frozen_review, _, _, _ = _frozen_review(tmp_path)
     output_dir = tmp_path / "reviews"
     clients = _fake_clients(tmp_path, output_dir)
-    linked_claude = tmp_path / "linked-claude"
-    linked_claude.symlink_to(clients.claude)
-    clients = launcher.ClientPaths(
-        claude=linked_claude.absolute(),
-        gemini=clients.gemini,
-        security=clients.security,
-    )
+    linked_kimi = tmp_path / "linked-kimi"
+    linked_kimi.symlink_to(clients.kimi)
+    clients = replace(clients, kimi=linked_kimi.absolute())
     spawn_count = 0
 
     def forbidden_spawn(*args: Any, **kwargs: Any) -> Any:
@@ -1101,7 +1208,7 @@ def test_darwin_bound_runner_executes_authenticated_signed_image(
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="macOS system binary contract")
-def test_macos_security_uses_authenticated_read_only_system_image(
+def test_macos_sandbox_exec_uses_authenticated_read_only_system_image(
     tmp_path: Path,
 ) -> None:
     executable_sandbox, _ = launcher._sandbox(
@@ -1109,14 +1216,19 @@ def test_macos_security_uses_authenticated_read_only_system_image(
     )
     try:
         prepared = launcher._validate_executable(
-            launcher.PRODUCTION_CLIENTS.security,
-            "security",
+            launcher.PRODUCTION_CLIENTS.sandbox_exec,
+            "sandbox-exec",
             executable_sandbox,
             allow_read_only_canonical=True,
         )
-        assert prepared.private_copy.path == launcher.PRODUCTION_CLIENTS.security
+        assert prepared.private_copy.path == launcher.PRODUCTION_CLIENTS.sandbox_exec
         result = subprocess.run(
-            [str(prepared.canonical.path), "help"],
+            [
+                str(prepared.canonical.path),
+                "-p",
+                "(version 1)(allow default)",
+                "/usr/bin/true",
+            ],
             executable=str(prepared.private_copy.path),
             input=b"",
             shell=False,
@@ -1135,8 +1247,83 @@ def test_cli_pins_production_absolute_routes() -> None:
     )
 
     assert args.clients == launcher.PRODUCTION_CLIENTS
-    assert launcher.PRODUCTION_CLIENTS.claude == Path(
-        "/Users/nuzantara/.local/share/claude/versions/2.1.214"
+    assert launcher.PRODUCTION_CLIENTS.fable == Path(
+        "/Users/nuzantara/.local/share/claude/versions/2.1.216"
     )
     assert launcher.PRODUCTION_CLIENTS.gemini == Path("/Users/nuzantara/.local/bin/agy")
-    assert launcher.PRODUCTION_CLIENTS.security == Path("/usr/bin/security")
+    assert launcher.PRODUCTION_CLIENTS.codex_node == Path(
+        "/opt/homebrew/Cellar/node/26.5.0/bin/node"
+    )
+    assert launcher.PRODUCTION_CLIENTS.kimi == Path(
+        "/Users/nuzantara/.kimi-code/bin/kimi"
+    )
+    assert launcher.PRODUCTION_CLIENTS.sandbox_exec == Path(
+        "/usr/bin/sandbox-exec"
+    )
+
+
+def test_kimi_timeout_124_marks_seat_unavailable_and_publishes_nothing(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        fail_model="kimi-code/k3",
+        fail_status=124,
+    )
+
+    with pytest.raises(
+        launcher.LauncherError,
+        match=r"Kimi seat unavailable \(timeout exit 124\)",
+    ):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.glob("*.raw.*"))
+    assert not list(output_dir.glob("*.invocation.json"))
+
+
+def test_production_kimi_and_codex_identity_chain_is_fully_pinned() -> None:
+    kimi = launcher.PRODUCTION_IDENTITIES["kimi"]
+    codex_node = launcher.PRODUCTION_IDENTITIES["codex_node"]
+    codex_native = launcher.PRODUCTION_IDENTITIES["codex_native"]
+
+    assert launcher.REQUIRED_KIMI_VERSION == (0, 29, 0)
+    assert kimi.sha256 == (
+        "5cccf53604f20c5499ea10c3094298f49a1ad59fa90cddd9fd7e0ba44815fdd3"
+    )
+    assert kimi.cdhash == "160e1dd4f3a46bc6f5179f58785f53e20ad9f4ea"
+    assert kimi.team_identifier == "2J9472RW75"
+    assert launcher.REQUIRED_CODEX_VERSION == (0, 145, 0)
+    assert codex_node.sha256 == (
+        "70851490e028b3d699a8d6d4e1de909af2a989359ae807974c92af9c6580a8e8"
+    )
+    assert codex_native.sha256 == (
+        "1da3f4e0e96028b8a771814293c3033dafd1971f943f6c7e79b0897fe705f590"
+    )
+    assert launcher.PRODUCTION_ARTIFACT_SHA256 == {
+        "codex_wrapper": (
+            "134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477"
+        ),
+        "codex_package": (
+            "ff896fd5e5444cfc645890b21273ad1c6b3e26e4e4ab0934de597a0f8db5aafb"
+        ),
+    }
+
+
+def test_sequential_fable_gate_is_explicitly_fail_closed(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        launcher.LauncherError,
+        match="sequential Fable final gate is not implemented",
+    ):
+        launcher.launch_final_gate(
+            reviewer_output_dir=tmp_path / "reviews",
+            disposition_path=tmp_path / "99-disposition.md",
+        )
