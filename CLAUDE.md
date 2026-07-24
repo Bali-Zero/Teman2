@@ -183,7 +183,16 @@ git diff --name-only HEAD -- apps/backend-rag/backend/
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
 PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
-fly deploy --strategy rolling
+```
+
+**Deploy** — run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:
+the Dockerfile's `COPY` paths are repo-root-relative — `apps/backend-rag/backend`, `packages/cell-core`,
+`apps/crm-cell/crm_cell` — so a build invoked with cwd=`apps/backend-rag` fails with `"apps/backend-rag/backend": not found`.
+The local `fly` shell-function wrapper on Pro/Mini also hardcodes that wrong cwd regardless of caller
+location — bypass it with a direct `ssh pro`/`ssh mini` call when deploying):
+```bash
+cd ~/Desktop/nuzantara  # repo root, NOT apps/backend-rag
+fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile --strategy rolling -a nuzantara-rag
 ```
 
 **Migration PRs** touching `migrations_v2/*.sql` auto-run Squawk lint (PR #306). Bypass: `-- squawk-ignore: <rule>`.

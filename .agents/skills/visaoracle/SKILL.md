@@ -268,6 +268,58 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   collector, CLI, and legacy fail-closed coverage; `duplicate_evaluations` now counts only
   repeated valid 32-byte fingerprints. The focused local-test-DB suite is green (57 tests;
   SHADOW evidence module 85.30% branch coverage). **L3/L4 remain deferred; ENFORCE remains OFF.**
+- 2026-07-23 (M5, Kimi architect session): full state-analysis + 4-seat adversarial panel
+  (gemini/codex/design-house/web-grounded — GLM seat degraded, Keychain token absent via SSH)
+  synthesized into the definitive correction+completion plan:
+  `research/visa/2026-07-23-architect-review-synthesis.md` (analysis + 4 lane files alongside).
+  Verified discoveries: (1) **v1 funnel dead since 2026-04-25** — the auth floor (PR #108)
+  never registered `/api/visa/*` in `public_endpoints.py`; POST 401s through the catch-all
+  proxy; 28 `visa_checks` rows total, all ≤2026-04-21; sibling endpoints clock/match-hash
+  equally dead. (2) **SHADOW-on-v1 feeds only 3/35 FactPaths** — weak gate evidence; plan
+  moves SHADOW to a new full-fact evaluate read-path API (gate-blocking, Track A). (3) Gate
+  "7 categories" matches no vocabulary (255 enum=8 incl. `other`; v2 interview=10; business/
+  diaspora uninstrumented). (4) Kepmen M.IP-08.GR.01.01/2025 **effective 2025-06-01** (dictum
+  KELIMA, primary source; B211\* death = dictum KEEMPAT); "Permenkumham 10/2026 Second Home"
+  REFUTED (notary PMPJ — the parked round-4 recheck note must be corrected before re-landing);
+  BVK = 19 states/SARs + 1 entity (Permen Imipas 10/2026, effective 2026-07-09). Plan forks on
+  **owner decisions D1 (G-a semantics/threshold vs ~7/day organic traffic) / D2 (110-code pack
+  for ENFORCE) / D3 (adopt 9 E-gates)**. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-23: correction+completion plan lands as PR (research/docs-only, no automerge);
+  next executable items: P0-1 registry fix `/api/visa/*` + telemetry, P0-3 read-path API,
+  P0-4 RulePack first slice (E28/E33/BVK/Bridging mandated), P1-1 G-b independent replay.
+- 2026-07-23 (late): **FABLE 5 FINAL GATE on the plan** (seat `zero@balizero.com`, requested
+  by Zero) — verdict **FIX-FIRST**: plan adopted with **7 deltas** (full report
+  `research/visa/2026-07-23-architect-review-fable5.md`, addendum in the synthesis). Headline
+  blind spot: under D1(c) as written **G-a and G-b collapse into the same test** (facts
+  collectible for only 3/10 interview categories + no synthetic marker → breadth could only
+  come from the same corpus G-b replays). Deltas adopted: migration 256 `is_synthetic`/
+  `traffic_source` column; G-a split into `G-a-vol` (real, owner-set) + `G-a-breadth`
+  (corpus, labeled); P0-3 must emit `request_category` + 10-tile→8-enum mapping + explicit
+  business/diaspora ruling; DAG names the window's traffic source; D2 coupled with Track B
+  FASE 2 (110 codes AND behavioral trees per launched category); NEEDS_INPUT disclaimer fix
+  (`OutcomeSheet.tsx:455`, Law-2-adjacent) promoted into the P0-1 batch; DB/Fly facts marked
+  receipt-owed for the D1 threshold decision. Fable D-recs: D1(c) split as above / D2 adopt
+  with FASE-2 coupling / D3 adopt with tiers (E-a/E-e/E-g blocking; E-b/E-f fast-follow).
+  Conflict adjudicated: Gemini's deadlock claim WRONG (evaluate endpoint ≠ UI launch),
+  Codex/design/orchestrator RIGHT. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-24 (M5, Kimi orchestrator): **WAVE 0 + W1a LANDED on main.** Merged: #3032
+  (`8875b95ad35b`, `/api/visa/*` public — **v1 funnel resurrected**, live smoke 201 + row 29
+  in `visa_checks` after 3 months dead), #3033 (`0185dc5c9c24`, disclaimer all-5-states +
+  PII-free `app_form_submit_failed`), #3038 (`6e88b24b6773`, next-steps gated on
+  SUPPORTED_CANDIDATES — Fable MEDIUM, owner call "fai tu"), #3046 (`7f99e570147d`,
+  migration 256 `traffic_source` + collector G-a-vol/G-a-breadth split). All Fable-gated
+  SHIP, all merged by the **delegated Opus verifier** (new pattern per Zero: "io non faccio
+  review, chiedi a opus" — build=agents, gate=Fable, merge=Opus seat `claude-zero-team`;
+  note the seat caps ~4:20 WITA reset and acct2/3/4 are NOT logged in). **Codex CLI auth
+  DEAD on M5** (401, operator re-login needed — graders fall back to Opus per Zero).
+  **W1b in flight** (evaluate read-path API, agent lane `visa-evaluate-endpoint`).
+  #3034 (G-b) still open on the docsync treadmill (3rd regen pushed; content SHIP-verified
+  twice). #3028 (this corpus) R1-green but blocked by a **main-side npm-audit failure**
+  (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
+  R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
+  (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

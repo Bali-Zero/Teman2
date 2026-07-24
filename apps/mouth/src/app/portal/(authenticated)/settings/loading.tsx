@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PortalSettingsLoading() {
   return (
@@ -14,7 +14,10 @@ export default function PortalSettingsLoading() {
         <div
           key={i}
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <Skeleton variant="text" width={160} height={20} />
           <div className="space-y-3">

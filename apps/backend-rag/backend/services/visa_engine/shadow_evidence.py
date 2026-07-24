@@ -18,6 +18,16 @@ the same fail-closed philosophy as migration 255's nullable correlators.
 G-c is intentionally NOT split: grounding quality is a property of the
 engine's output and applies to every audited row regardless of provenance.
 
+W1 Fable delta 3 (binding, 2026-07-23; migration 257): ``request_category``
+now admits 10 values -- the 7 legacy substantive categories, ``other``, and
+the two v2-interview tiles ``business``/``diaspora``.  The 7 legacy
+categories stay REQUIRED for the G-a gates; ``business``/``diaspora`` rows
+are REPORTED (counted in ``category_counts``, honestly labeled via
+``reported_only_categories``) but NEVER required for gate-green, because
+their behavioral trees do not exist yet (Track B FASE 2 order: they are
+lanes 2 and 6) -- demanding them today would require evidence no honest
+evaluation can produce.
+
 No applicant facts, Match tokens, decision IDs, or request fingerprints are
 returned.  The collector reads the PII-free audit projection and emits only
 counts, dates, categories, and product codes.
@@ -56,7 +66,17 @@ REAL_TRAFFIC_SOURCE = "real"
 #: honestly-labeled G-a-breadth gate, never G-a-vol.
 SYNTHETIC_TRAFFIC_SOURCES = frozenset({"synthetic_gold", "synthetic_driver"})
 
-_VALID_CATEGORIES = frozenset(purpose.value for purpose in Purpose)
+#: ``request_category`` values (migration 257 CHECK) that are REPORTED but
+#: NOT required for G-a gate-green: the v2 interview's ``business`` and
+#: ``diaspora`` tiles.  Their behavioral trees do not exist yet (Track B
+#: FASE 2 lanes 2 and 6), so a green gate can never honestly demand traffic
+#: in them -- but rows carrying them are real demand and must be counted and
+#: labeled, not silently folded into ``other`` (Fable delta 3).
+REPORTED_ONLY_INTERVIEW_CATEGORIES = frozenset({"business", "diaspora"})
+
+_VALID_CATEGORIES = (
+    frozenset(purpose.value for purpose in Purpose) | REPORTED_ONLY_INTERVIEW_CATEGORIES
+)
 _CITATIONLESS_ABSTENTION_STATES = frozenset({DecisionState.NEEDS_INPUT.value})
 
 
@@ -174,6 +194,7 @@ def _gate_a_report(
         category_counts=dict(sorted(accumulator.categories.items())),
         missing_required_categories=missing_categories,
         required_categories=sorted(REQUIRED_INTERVIEW_CATEGORIES),
+        reported_only_categories=sorted(REPORTED_ONLY_INTERVIEW_CATEGORIES),
         distinct_visa_codes=len(accumulator.candidate_codes),
         minimum_distinct_visa_codes=MIN_DISTINCT_VISA_CODES,
         visa_codes=sorted(accumulator.candidate_codes),
@@ -438,7 +459,7 @@ def evaluate_shadow_evidence(
     )
 
     return {
-        "schema_version": "visa-shadow-evidence/1.1.0",
+        "schema_version": "visa-shadow-evidence/1.2.0",
         "window": {
             "start": window_start.astimezone(timezone.utc).isoformat(),
             "end_exclusive": window_end.astimezone(timezone.utc).isoformat(),
@@ -567,6 +588,7 @@ __all__ = [
     "MIN_DISTINCT_REQUESTS",
     "MIN_DISTINCT_VISA_CODES",
     "REAL_TRAFFIC_SOURCE",
+    "REPORTED_ONLY_INTERVIEW_CATEGORIES",
     "REQUIRED_INTERVIEW_CATEGORIES",
     "SYNTHETIC_TRAFFIC_SOURCES",
     "collect_shadow_evidence",

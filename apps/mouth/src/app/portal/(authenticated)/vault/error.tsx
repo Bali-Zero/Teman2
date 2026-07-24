@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { FolderOpen, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { FolderOpen, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function VaultError({
   error,
@@ -13,20 +13,26 @@ export default function VaultError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Portal vault page error', {}, error);
+    logger.error("Portal vault page error", {}, error);
   }, [error]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: 'rgba(244,63,94,0.1)' }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+        }}
       >
-        <FolderOpen className="h-8 w-8" style={{ color: 'var(--neon-rose)' }} />
+        <FolderOpen
+          className="h-8 w-8"
+          style={{ color: "var(--state-danger)" }}
+        />
       </div>
       <div className="space-y-2 max-w-sm">
         <h2 className="text-xl font-semibold">Documents unavailable</h2>
-        <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
+        <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
           We couldn&apos;t load your documents. Please try again.
         </p>
       </div>
