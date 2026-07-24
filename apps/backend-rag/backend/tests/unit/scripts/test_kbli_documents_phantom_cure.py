@@ -43,9 +43,17 @@ from backend.scripts.kbli_documents_phantom_cure import (
     find_successors,
     phantom_codes,
     plan_phantom_cure,
+    plan_phantom_kg_cure,
     same_group_codes,
     validate_dataset,
 )
+
+KG_ROW_82920 = {
+    "name": "KBLI 82920",
+    "description": "AKTIVITAS PENGEMASAN",
+    "properties": {"licensing_status": "REGULATED", "pma_status": "TERBUKA", "uraian": "..."},
+}
+KG_REQUIRES_82920 = ["perizinan:nib", "perizinan:izin", "license:iso9001"]
 
 # --- fixtures: a miniature canonical catalogue -----------------------------
 # 82921/82922 declare 82920 as their KBLI 2020 ancestor (the real crosswalk
@@ -437,3 +445,63 @@ def test_a_well_formed_catalogue_passes():
     assert validate_dataset(big) is None
     # And the accepted catalogue still yields a working phantom census.
     assert phantom_codes(big, ["10000", "99999"]) == ["99999"]
+
+
+# --- KG arm ----------------------------------------------------------------
+
+
+def test_kg_arm_refuses_a_canonical_code():
+    """INNOCENCE, same shape as the table arm: detaching REQUIRES from a live
+    2025 node would destroy real licensing edges."""
+    plan = plan_phantom_kg_cure("82921", CANONICAL, _canon(), KG_ROW_82920, KG_REQUIRES_82920)
+    assert plan.update_node is False
+    assert plan.delete_requires is False
+    assert plan.new_properties is None
+    assert "IS in the canonical" in (plan.skip_reason or "")
+
+
+def test_kg_arm_detaches_requires_and_marks_the_node():
+    plan = plan_phantom_kg_cure("82920", CANONICAL, _canon(), KG_ROW_82920, KG_REQUIRES_82920)
+    assert plan.delete_requires is True
+    assert plan.update_node is True
+    props = plan.new_properties
+    assert props["licensing_status"] == LICENSING_STATUS
+    assert props["pma_status"] == ROUTER_PMA_FALLBACK
+    assert props["kbli_2025_status"] == KBLI_2025_STATUS
+    # The detached edges are archived on the node, never silent-deleted.
+    assert props["_superseded_kbli2020"]["requires"] == sorted(KG_REQUIRES_82920)
+    assert props["_superseded_kbli2020"]["pma_status"] == "TERBUKA"
+    assert props["_superseded_kbli2020"]["licensing_status"] == "REGULATED"
+
+
+def test_kg_arm_description_states_absence_without_restating_licensing():
+    plan = plan_phantom_kg_cure("82920", CANONICAL, _canon(), KG_ROW_82920, KG_REQUIRES_82920)
+    desc = plan.new_description
+    assert "TIDAK terdapat dalam katalog KBLI 2025" in desc
+    assert "oss.go.id" in desc
+    for banned in ("TERBUKA", "REGULATED", "Menengah", "NIB dan Izin"):
+        assert banned not in desc
+
+
+def test_kg_arm_rerun_preserves_the_original_archive():
+    """Second pass: the live properties are already the cure's sentinels, so
+    re-capturing them would erase the genuine 2020 payload."""
+    first = plan_phantom_kg_cure("82920", CANONICAL, _canon(), KG_ROW_82920, KG_REQUIRES_82920)
+    cured = {
+        "name": KG_ROW_82920["name"],
+        "description": first.new_description,
+        "properties": first.new_properties,
+    }
+    second = plan_phantom_kg_cure("82920", CANONICAL, _canon(), cured, [])
+    assert second.new_properties is None or (
+        second.new_properties["_superseded_kbli2020"]["pma_status"] == "TERBUKA"
+    )
+    # Nothing left to do once edges are gone and properties match.
+    assert second.update_node is False
+    assert second.delete_requires is False
+
+
+def test_kg_arm_skips_a_code_absent_from_the_graph():
+    plan = plan_phantom_kg_cure("99999", CANONICAL, _canon(), None, [])
+    assert plan.update_node is False
+    assert plan.skip_reason == "not in KG (kg_nodes)"

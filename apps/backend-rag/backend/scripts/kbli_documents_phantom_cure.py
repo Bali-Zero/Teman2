@@ -70,6 +70,21 @@ certified successors, and is fenced as an explicitly NON-certified navigation
 aid. It is there because the alternative — telling the model nothing — invites
 it to supply successors from its own training data, which is strictly worse.
 
+TWO ARMS, because the phantom class is invisible to EVERY existing cure tool.
+`kbli_documents_cure.py` skips on "no per_skala_disputed_* marker" and
+`kg_kbli_license_fix.py` skips on "not in canonical dataset" — both key off
+"a canonical record exists", which is exactly what a phantom code lacks. So a
+code living only downstream is unreachable by the whole fleet, which is how
+these 4 kept serving 2020 licensing long after both cures shipped.
+  - default arm: `kbli_documents` (consumed by `chat_kbli`)
+  - `--kg` arm: `kg_nodes` + `kg_edges` (consumed by `inspect_kbli`, which
+    turns REQUIRES edges into `licenses` and, via `_resolve_risk_profile`,
+    into the rendered risk label). Only REQUIRES is detached; BELONGS_TO /
+    SAME_AS / REFERENCES / APPLIES_TO / RELATED_TO / PENALTY_FOR are
+    classification and lineage, not licensing assertions.
+Qdrant was censused on 2026-07-24 and holds NO phantom points — nothing to do
+there, recorded here so the next session does not re-derive it.
+
 SCOPE DISCIPLINE: `--only` is MANDATORY for any cure. There is no sweep flag.
 `--census` reports the phantom set (canonical-vs-table difference) and writes
 nothing, so the scope is always something a human read before it was typed.
@@ -173,6 +188,125 @@ class Successor:
     judul: str
     via: str  # "kbli_2020_source" | "pp28_sources" — which canonical field carried the link
     mapping_note: str = ""  # canonical `mapping_note` verbatim — the link's own provenance
+
+
+@dataclass
+class PhantomKgPlan:
+    code: str
+    in_canonical: bool
+    in_kg: bool
+    requires_targets: list[str] = field(default_factory=list)
+    new_description: str | None = None
+    new_properties: dict | None = None
+    delete_requires: bool = False
+    update_node: bool = False
+    skip_reason: str | None = None
+
+
+def build_kg_description(code: str, name: str, successors: list[Successor]) -> str:
+    """Short absence notice for `kg_nodes.description` — surfaced by
+    `inspect_kbli` as the code's `description`. Deliberately terse: the long
+    form lives in `kbli_documents.content`, and duplicating it here would
+    diverge the two the first time either is edited."""
+    base = (name or f"KBLI {code}").strip()
+    txt = (
+        f"{base} — kode KBLI 2020. Kode {code} TIDAK terdapat dalam katalog KBLI 2025 "
+        f"yang kami layani (sumber: {CATALOGUE_PROVENANCE}). Tidak ada data perizinan, "
+        "kategori risiko, atau status PMA KBLI 2025 untuk kode ini."
+    )
+    if successors:
+        txt += (
+            " Kode 2025 yang tertaut pada crosswalk dataset kami (urut nomor, BUKAN "
+            "relevansi, dan BUKAN rekomendasi): "
+            + ", ".join(s.code for s in successors)
+            + "."
+        )
+    else:
+        txt += " Dataset kami tidak mencatat kode 2025 yang tertaut."
+    return txt + " Pastikan status terkini di oss.go.id."
+
+
+def plan_phantom_kg_cure(
+    code: str,
+    dataset: list[dict],
+    canon: set[str],
+    kg_row: dict | None,
+    current_requires_targets: list[str] | None = None,
+    dataset_provenance: str | None = None,
+) -> PhantomKgPlan:
+    """Pure decision function for the KG arm — no I/O.
+
+    Same guard order as the table arm: a code that IS canonical is refused
+    before anything is computed. `kg_kbli_license_fix.py` cannot reach these
+    nodes at all — it skips on `record is None` ("not in canonical dataset"),
+    which is the defining property of a phantom. Every cure tool in the fleet
+    keys off "a canonical record exists", so a code living ONLY downstream is
+    invisible to all of them; that blind spot is why these 4 nodes still served
+    2020 licensing through `inspect_kbli` long after the table cure existed.
+
+    Only REQUIRES edges are detached — they are what `inspect_kbli` turns into
+    `licenses` and, via `_resolve_risk_profile`, into the rendered risk label.
+    BELONGS_TO / SAME_AS / REFERENCES / APPLIES_TO / RELATED_TO / PENALTY_FOR
+    are classification and lineage, not licensing assertions; SAME_AS in
+    particular can point at the 2025 successor and is worth keeping."""
+    targets = list(current_requires_targets or [])
+
+    if code in canon:
+        return PhantomKgPlan(
+            code=code,
+            in_canonical=True,
+            in_kg=kg_row is not None,
+            skip_reason="code IS in the canonical KBLI 2025 catalogue — not phantom; "
+            "use kg_kbli_license_fix.py for canonical codes",
+        )
+    if kg_row is None:
+        return PhantomKgPlan(
+            code=code, in_canonical=False, in_kg=False, skip_reason="not in KG (kg_nodes)"
+        )
+
+    successors = find_successors(dataset, code)
+    old_props = dict(kg_row.get("properties") or {})
+    new_props = dict(old_props)
+
+    # FIRST CURE WINS: on a re-run the live values are already the cure's own
+    # sentinels, and re-capturing them would erase the genuine 2020 payload.
+    if "_superseded_kbli2020" not in old_props:
+        superseded: dict = {}
+        if old_props.get("licensing_status"):
+            superseded["licensing_status"] = old_props["licensing_status"]
+        if old_props.get("pma_status"):
+            superseded["pma_status"] = old_props["pma_status"]
+        if targets:
+            superseded["requires"] = sorted(targets)
+        if superseded:
+            new_props["_superseded_kbli2020"] = superseded
+
+    new_props["licensing_status"] = LICENSING_STATUS
+    new_props["pma_status"] = ROUTER_PMA_FALLBACK
+    new_props["kbli_2025_status"] = KBLI_2025_STATUS
+    new_props["_data_note"] = (
+        f"2026-07-24 phantom-node cure: {code} is a KBLI 2020 code absent from the "
+        f"KBLI 2025 catalogue we serve ({CATALOGUE_PROVENANCE}). REQUIRES edges were "
+        "detached (archived under _superseded_kbli2020.requires) because inspect_kbli "
+        "renders them as current licensing. This records our catalogue's contents, not "
+        "a regulatory determination."
+        + (f" Catalogue used: {dataset_provenance}." if dataset_provenance else "")
+    )
+
+    new_description = build_kg_description(code, kg_row.get("name") or "", successors)
+    update_node = new_props != old_props or new_description != kg_row.get("description")
+
+    return PhantomKgPlan(
+        code=code,
+        in_canonical=False,
+        in_kg=True,
+        requires_targets=targets,
+        new_description=new_description if update_node else None,
+        new_properties=new_props if update_node else None,
+        delete_requires=bool(targets),
+        update_node=update_node,
+        skip_reason=None if (update_node or targets) else "already cured (properties/description match, no REQUIRES left)",
+    )
 
 
 @dataclass
@@ -566,6 +700,86 @@ async def load_dataset(source: str) -> tuple[list[dict], str]:
     return data, f"{source} (sha256:{digest[:16]})"
 
 
+async def _run_kg_arm(
+    conn,
+    codes: list[str],
+    dataset: list[dict],
+    canon: set[str],
+    dataset_provenance: str,
+    apply: bool,
+) -> None:
+    """KG arm: detach REQUIRES + mark the node. Mirrors the write semantics of
+    `kg_kbli_license_fix.py` (which cannot reach phantom nodes at all)."""
+    entity_ids = [f"kbli:{c}" for c in codes]
+    node_rows = {
+        r["entity_id"]: r
+        for r in await conn.fetch(
+            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = ANY($1)",
+            entity_ids,
+        )
+    }
+    edges_by_code: dict[str, list[str]] = {}
+    for row in await conn.fetch(
+        "SELECT source_entity_id, target_entity_id FROM kg_edges "
+        "WHERE source_entity_id = ANY($1) AND relationship_type = 'REQUIRES'",
+        entity_ids,
+    ):
+        edges_by_code.setdefault(row["source_entity_id"], []).append(row["target_entity_id"])
+
+    acted = 0
+    skipped = 0
+    for code in codes:
+        row = node_rows.get(f"kbli:{code}")
+        kg_row = None
+        if row is not None:
+            props = (
+                json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+            )
+            kg_row = {
+                "name": row["name"],
+                "description": row["description"],
+                "properties": props or {},
+            }
+        plan = plan_phantom_kg_cure(
+            code, dataset, canon, kg_row, edges_by_code.get(f"kbli:{code}", []), dataset_provenance
+        )
+        if not plan.update_node and not plan.delete_requires:
+            logger.info("SKIP %s: %s", code, plan.skip_reason)
+            skipped += 1
+            continue
+
+        acted += 1
+        logger.info(
+            "  %s: would detach %d REQUIRES edge(s)%s",
+            code,
+            len(plan.requires_targets),
+            " + update node properties/description" if plan.update_node else "",
+        )
+        if apply:
+            # Atomic per code: the node properties are where the detached edges
+            # get archived, so the archive and the delete must not be separable.
+            async with conn.transaction():
+                if plan.update_node:
+                    await conn.execute(
+                        "UPDATE kg_nodes SET description = $2, properties = $3::text::jsonb, "
+                        "updated_at = now() WHERE entity_id = $1",
+                        f"kbli:{code}",
+                        plan.new_description,
+                        json.dumps(plan.new_properties, ensure_ascii=False),
+                    )
+                if plan.delete_requires:
+                    await conn.execute(
+                        "DELETE FROM kg_edges WHERE source_entity_id = $1 "
+                        "AND relationship_type = 'REQUIRES'",
+                        f"kbli:{code}",
+                    )
+    logger.info(
+        "%s (KG arm): %d node(s) cured | %d skipped", "APPLIED" if apply else "DRY-RUN", acted, skipped
+    )
+    if not apply and acted:
+        logger.info("dry-run complete — rerun with --apply to write")
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
@@ -573,6 +787,13 @@ async def main() -> None:
         "--only",
         default=None,
         help="comma-separated 5-digit codes to cure (MANDATORY — there is no sweep flag)",
+    )
+    ap.add_argument(
+        "--kg",
+        action="store_true",
+        help="cure the KNOWLEDGE-GRAPH arm instead of kbli_documents: detach REQUIRES "
+        "edges (archived on the node) and mark kg_nodes properties, so inspect_kbli "
+        "stops rendering 2020 licensing for a phantom code",
     )
     ap.add_argument(
         "--census",
@@ -641,6 +862,10 @@ async def main() -> None:
         if not codes:
             logger.error("--only produced an empty code list, nothing to do")
             raise SystemExit(2)
+
+        if args.kg:
+            await _run_kg_arm(conn, codes, dataset, canon, dataset_provenance, args.apply)
+            return
 
         if args.apply:
             await conn.execute(ARCHIVE_TABLE_DDL)
