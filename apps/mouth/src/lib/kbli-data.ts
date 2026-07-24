@@ -427,6 +427,15 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     kbli2020Source: raw.kbli_2020_source,
     mappingNote: raw.mapping_note,
     aggregationNote: raw.aggregation_note,
+    bpsCrosswalk: raw.bps_2020_ancestors
+      ? {
+          codes: raw.bps_2020_ancestors.codes ?? [],
+          adjudicationStatus:
+            raw.bps_2020_ancestors.adjudication_status ?? "mechanical-only",
+          inheritanceVerdict:
+            raw.bps_2020_ancestors.inheritance_verdict ?? "not-adjudicated",
+        }
+      : undefined,
   };
 
   return {

@@ -102,4 +102,59 @@ describe("kbli-data", () => {
     expect(getHeroStyle("I").gradient).not.toEqual(getHeroStyle("J").gradient);
     expect(getHeroStyle(null)).toEqual(getHeroStyle("unknown"));
   });
+
+  // Batch-B step 4 (2026-07-25): the additive `bps_2020_ancestors` canonical
+  // field surfaces as `transition.bpsCrosswalk`, DISTINCT from the pp28-sourced
+  // `previousCodes`. These are the guilt+innocence + no-regression tripwires.
+  describe("bps_2020_ancestors → transition.bpsCrosswalk (additive, no regression)", () => {
+    it("derives bpsCrosswalk on an OSS-native Batch-B code and shows the honest mechanical-only status", () => {
+      // 01111 is OSS-native (_l2_status is null) and carries the field.
+      const code = getCode("01111");
+      expect(code).toBeDefined();
+      const bps = code?.transition.bpsCrosswalk;
+      expect(bps).toBeDefined();
+      expect(bps?.codes.length).toBeGreaterThan(0);
+      // At this migration step NOTHING is adjudicated — the surface must NOT
+      // imply a licensing/regime transfer. Mechanical presence ≠ inheritance.
+      expect(bps?.adjudicationStatus).toBe("mechanical-only");
+      expect(bps?.inheritanceVerdict).toBe("not-adjudicated");
+      // Regression guard: the legacy pp28-sourced list is UNTOUCHED alongside it.
+      expect(Array.isArray(code?.transition.previousCodes)).toBe(true);
+    });
+
+    it("leaves bpsCrosswalk undefined on a Batch-A (no_oss_risk) code and keeps previousCodes intact", () => {
+      // 01287 is _l2_status: no_oss_risk → out of Batch-B scope, no field.
+      const code = getCode("01287");
+      expect(code).toBeDefined();
+      expect(code?.transition.bpsCrosswalk).toBeUndefined();
+      expect(Array.isArray(code?.transition.previousCodes)).toBe(true);
+    });
+
+    it("carries bpsCrosswalk on exactly the 1,338 OSS-native codes and never with an empty codes list", () => {
+      const codes = getAllCodes();
+      const withBps = codes.filter((c) => c.transition.bpsCrosswalk);
+      // EXPECTED_BATCH_B in scripts/kbli_filiera/populate_bps_ancestors.py — the
+      // frontend surface is content-bound to the same OSS-native count. If a
+      // future cure changes Batch-B membership, this breaking is a feature: it
+      // forces re-verification of the honesty framing on both sides.
+      expect(withBps.length).toBe(1338);
+      // Never render an empty/degenerate crosswalk element.
+      for (const c of withBps) {
+        const bps = c.transition.bpsCrosswalk!;
+        expect(bps.codes.length).toBeGreaterThan(0);
+        expect(typeof bps.adjudicationStatus).toBe("string");
+        expect(typeof bps.inheritanceVerdict).toBe("string");
+      }
+    });
+
+    it("never clobbers previousCodes — every code still exposes it as an array", () => {
+      // The change is purely additive; previousCodes must remain present and an
+      // array on ALL codes (both those that gained bpsCrosswalk and those that
+      // did not), never turned undefined by the new derivation.
+      const codes = getAllCodes();
+      expect(
+        codes.every((c) => Array.isArray(c.transition.previousCodes)),
+      ).toBe(true);
+    });
+  });
 });

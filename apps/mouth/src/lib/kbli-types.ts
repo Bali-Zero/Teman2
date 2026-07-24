@@ -73,6 +73,9 @@ export interface KBLIRawCode {
   sektor_id: string | null;
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
+  /** BPS 2020↔2025 official crosswalk ancestry (additive canonical field, Batch-B step 2,
+   *  2026-07-25). Present only on the 1,338 OSS-native codes; absent on Batch-A (no-scope). */
+  bps_2020_ancestors?: KBLIBpsAncestorsRaw;
   pma_status: KBLIPmaRawStatus;
   pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
@@ -259,6 +262,16 @@ export interface KBLILicenseByScale {
   fictivePositive: boolean;
 }
 
+/** Raw shape of the additive `bps_2020_ancestors` canonical field (subset we render).
+ *  Mechanical provenance only: `inheritance_verdict` stays `not-adjudicated` until a
+ *  per-code D1/D5 adjudication — an ancestor's presence never implies the licensing
+ *  regime transfers (design §2.2/§4). */
+export interface KBLIBpsAncestorsRaw {
+  codes: string[];
+  adjudication_status: string;
+  inheritance_verdict: string;
+}
+
 /** Transition information from KBLI 2020 to 2025 */
 export interface KBLITransition {
   mappingStatus: KBLIMappingStatus;
@@ -266,6 +279,13 @@ export interface KBLITransition {
   kbli2020Source?: string;
   mappingNote?: string;
   aggregationNote?: string;
+  /** Gate-verified BPS 2020→2025 crosswalk ancestors (provenance-only, additive; distinct
+   *  from the legacy `previousCodes` which is sourced from the unstable `pp28_sources`). */
+  bpsCrosswalk?: {
+    codes: string[];
+    adjudicationStatus: string;
+    inheritanceVerdict: string;
+  };
 }
 
 /** Processed KBLI code — frontend-friendly version */
