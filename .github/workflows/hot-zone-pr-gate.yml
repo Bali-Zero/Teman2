@@ -76,7 +76,38 @@ jobs:
           fetch-depth: 0
 
       # ---------------------------------------------------------------------
+      # Step 1bis — Self-test the changed-file enumerator (guilt + innocence)
+      #
+      # The gate's rules were never the weak part — its INPUT was. Run the
+      # corpus on every PR so the enumerator can never regress to a proxy that
+      # lies about what the branch authored (scar 2026-07-24, PR #3057).
+      # ---------------------------------------------------------------------
+      #
+      # NB: this job checks out the BASE ref (main), never PR head — so the
+      # `-f` guard below is a one-shot bootstrap window (main does not have the
+      # corpus until this very PR lands), NOT a disarm vector: once on main, a
+      # PR deleting the file cannot make the step skip, because the step reads
+      # main's copy.
+      - name: Self-test changed-file enumerator
+        if: steps.kill_switch.outputs.disabled != 'true'
+        continue-on-error: false
+        run: |
+          set -u
+          if [[ -f scripts/ci/test_hotzone_changed_files.sh ]]; then
+            bash scripts/ci/test_hotzone_changed_files.sh
+          else
+            echo "::notice::enumerator corpus not in base checkout yet (bootstrap run)"
+          fi
+
+      # ---------------------------------------------------------------------
       # Step 2 — Enumerate changed files (PR diff)
+      #
+      # Merge-base anchored (three-dot semantics) — what this branch AUTHORED,
+      # not how it differs from main's tip. A two-dot `git diff BASE HEAD` also
+      # lists everything main gained since the branch point, which on 2026-07-24
+      # made this gate hard-block PR #3057 (2 content MDX files) for "modifying
+      # .github/CODEOWNERS" it never touched. Rationale + fallbacks live in
+      # scripts/ci/hotzone_changed_files.sh.
       # ---------------------------------------------------------------------
       - name: Enumerate changed files
         if: steps.kill_switch.outputs.disabled != 'true'
@@ -84,18 +115,30 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -u
           echo "Base SHA: $BASE_SHA"
           echo "Head SHA: $HEAD_SHA"
 
-          git fetch --no-tags --depth=200 origin "$HEAD_SHA" 2>&1 | tail -5 || true
-
-          if ! git cat-file -e "$HEAD_SHA" 2>/dev/null; then
-            echo "::warning::HEAD SHA $HEAD_SHA not in fetched history — using merge-base fallback"
-            CHANGED=""
+          if [[ -f scripts/ci/hotzone_changed_files.sh ]]; then
+            if ! CHANGED=$(bash scripts/ci/hotzone_changed_files.sh \
+                             "$BASE_SHA" "$HEAD_SHA" "${PR_NUMBER:-}"); then
+              echo "::error::Could not determine the changed-file set — failing closed"
+              exit 1
+            fi
           else
-            CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" 2>&1 || true)
+            # Bootstrap window only (base checkout predates the helper).
+            # Same semantics: merge-base anchored, fail-closed, never blind-empty.
+            git fetch --no-tags --depth=200 origin "$HEAD_SHA" >/dev/null 2>&1 || true
+            MERGE_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)
+            if [[ -z "$MERGE_BASE" ]]; then
+              echo "::error::merge-base unresolvable for $BASE_SHA..$HEAD_SHA — failing closed"
+              exit 1
+            fi
+            CHANGED=$(git diff --name-only "$MERGE_BASE" "$HEAD_SHA")
           fi
 
           echo "--- Changed files ---"
