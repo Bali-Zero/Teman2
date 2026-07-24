@@ -32,6 +32,32 @@ from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
 
+_RESERVED_ARG_PREFIX = "_"
+
+
+def _strip_reserved_args(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Drop any LLM-supplied key that looks like a server-reserved field.
+
+    Security (P0-ARG containment, 2026-07-24): `execute_tool` injects
+    server-controlled context (`_user_id`, `_caller_profile`) into
+    `arguments` near the end, but only when ITS OWN server-derived value
+    is truthy — see the two `if ...: arguments["_..."] = ...` lines below.
+    Before this fix, if the LLM's tool-call `arguments` dict (attacker-
+    steerable via prompt injection in the conversation) already contained
+    a same-named key, that injected value survived untouched whenever the
+    server had nothing of its own to overwrite it with — a client/unknown
+    caller's crafted `_caller_profile={"role": "creator"}` argument would
+    reach `tool.execute(**arguments)` unfiltered. Stripping every leading-
+    underscore key from the LLM-supplied dict — before the authorizer even
+    sees it, AND again immediately before the trusted re-injection — makes
+    every server-injected field structurally unforgeable: no LLM-facing
+    tool schema declares a leading-underscore parameter (verified across
+    `backend/services/tools/` 2026-07-24), so this never drops a
+    legitimate argument.
+    """
+    return {k: v for k, v in arguments.items() if not k.startswith(_RESERVED_ARG_PREFIX)}
+
+
 # Module-level singletons — set by service_initializer.py at app startup.
 # Before Phase 3 wiring, the authorizer was a bare ToolAuthorizer() with no
 # dependencies. Now it may have a ConfirmationService. Both are replaced once
@@ -231,6 +257,11 @@ async def execute_tool(
     """
     start_time = time.time()
 
+    # P0-ARG containment: strip any LLM-supplied reserved-prefix key BEFORE
+    # anything (including the authorizer below) sees `arguments` — see
+    # `_strip_reserved_args` docstring.
+    arguments = _strip_reserved_args(arguments)
+
     # Security: Rate limiting - max 10 tool executions per query
     if tool_execution_counter is not None:
         tool_execution_counter["count"] += 1
@@ -338,6 +369,10 @@ async def execute_tool(
     # Authoritative args after the authorizer (possibly mutated in
     # Phase 3+; Phase 2 returns args unchanged).
     arguments = auth_result.args
+    # P0-ARG containment: strip again immediately before the trusted
+    # re-injection below — defense in depth against a future authorizer
+    # mutation accidentally echoing a reserved-looking key back unchanged.
+    arguments = _strip_reserved_args(arguments)
 
     try:
         # Pass user_id to tools that need it (e.g., MCPSuperTool for admin
