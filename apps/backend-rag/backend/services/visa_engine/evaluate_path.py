@@ -42,6 +42,13 @@ Mode discipline (mirrors ``shadow.resolve_match_shadow_enabled``):
   only ``real`` is accepted. This is how the W4 gold-corpus replay driver
   labels its rows on an operator-armed deployment, without opening the
   label to the public.
+- ``VISA_ENGINE_DRIVER_TOKEN`` — the shared secret backing the
+  ``X-Visa-Driver-Token`` header. Arming the allowlist alone would let ANY
+  anonymous caller self-label synthetic (Gemini adversarial pass
+  2026-07-24, adjudicated HIGH), so a synthetic class is accepted only
+  when BOTH the class is allowlisted AND the presented token matches this
+  secret (constant-time compare). Unset: synthetic is always rejected
+  (fail-closed). This token IS the W4 driver credential.
 
 PII boundary (SYMBIOSIS Law 2 / UU PDP): applicant facts are NEVER logged
 and never persisted — the audit row carries only engine identifiers, reason
@@ -58,6 +65,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 from types import MappingProxyType
@@ -121,6 +129,11 @@ _DEFAULT_EVALUATE_ENVIRONMENT = "PRODUCTION"
 #: classes this deployment accepts from callers (migration 256's CHECK
 #: classes minus ``real``). Default unset: only ``real`` is accepted.
 ALLOW_SYNTHETIC_SOURCES_ENV = "VISA_ENGINE_EVALUATE_ALLOW_SYNTHETIC_SOURCES"
+
+#: The shared secret a caller must present (via the router's
+#: ``X-Visa-Driver-Token`` header) to use an allowlisted synthetic class —
+#: the W4 gold-corpus replay driver credential (see module docstring).
+DRIVER_TOKEN_ENV = "VISA_ENGINE_DRIVER_TOKEN"
 
 #: The engine surface every persisted row and every log line of this module
 #: belongs to (migration 252's ``engine_surface`` CHECK admits it verbatim).
@@ -222,32 +235,57 @@ def _resolve_evaluate_environment() -> str:
     return raw or _DEFAULT_EVALUATE_ENVIRONMENT
 
 
+def verify_driver_token(presented: str | None) -> bool:
+    """Constant-time check of the W4 driver credential.
+
+    True iff ``DRIVER_TOKEN_ENV`` is provisioned (non-empty after strip)
+    AND ``presented`` matches it under ``secrets.compare_digest``. Every
+    other shape — unset/empty env, missing header, mismatched token, a
+    non-ASCII header value — is False (fail-closed). The env is re-read on
+    every call, never cached at import (same convention as the allowlist).
+    """
+
+    expected = os.environ.get(DRIVER_TOKEN_ENV, "").strip()
+    if not expected or not presented:
+        return False
+    try:
+        return secrets.compare_digest(presented, expected)
+    except TypeError:
+        return False
+
+
 def derive_request_category(facts: ApplicantFacts, hint: str | None) -> str:
     """The ``request_category`` for this evaluation (migration 257's CHECK).
 
-    Precedence:
+    Facts speak first; the hint is honored ONLY when facts derive
+    ``other`` (Gemini adversarial pass 2026-07-24, adjudicated MEDIUM — an
+    unconditional hint would let any caller relabel a mappable evaluation
+    and game the G-a-vol category counts). Resolution order:
 
-    1. ``hint`` — the v2 interview's tile, supplied by the caller and
-       ALREADY validated against the 10-value enum by the router's query
-       parameter type. This is the only path that can ever produce
-       ``diaspora``: the engine's closed ``VisaPurpose`` vocabulary has no
-       diaspora value, so facts alone can never express it (W1 brief Item 3
-       maps the diaspora TILE; rejecting the hint would silently miscount
-       diaspora demand as ``other`` — the exact outcome Fable rejected).
-    2. Facts-derived — a KNOWN ``intent.purposes`` fact holding EXACTLY ONE
-       purpose maps via ``_VISA_PURPOSE_TO_REQUEST_CATEGORY``. Multi-purpose
-       facts have no honest primary tile, and UNKNOWN facts carry no tile
-       information at all: both derive to ``other`` (never guessed).
+    1. Facts-derived — a KNOWN ``intent.purposes`` fact holding EXACTLY
+       ONE purpose maps via ``_VISA_PURPOSE_TO_REQUEST_CATEGORY``. A
+       mappable single purpose always wins over any hint.
+    2. ``hint`` — the v2 interview's tile, supplied by the caller and
+       ALREADY validated against the 10-value enum by the router. Honored
+       only in the cases facts cannot express: UNKNOWN purposes,
+       multi-purpose facts (no honest primary tile), and purposes with no
+       v2 tile (SECOND_HOME/TRANSIT/MEDICAL/OTHER). This is the only path
+       that can ever produce ``diaspora``: the engine's closed
+       ``VisaPurpose`` vocabulary has no diaspora value (W1 brief Item 3 —
+       rejecting the hint would silently miscount diaspora demand as
+       ``other``, the exact outcome Fable rejected).
+    3. ``other`` — the floor, never guessed.
     """
 
-    if hint is not None:
-        return hint
+    derived = "other"
     purposes_fact = facts.facts.intent_purposes
     if purposes_fact.status == "KNOWN":
         values = purposes_fact.value
         if len(values) == 1:
-            return _VISA_PURPOSE_TO_REQUEST_CATEGORY.get(values[0], "other")
-    return "other"
+            derived = _VISA_PURPOSE_TO_REQUEST_CATEGORY.get(values[0], "other")
+    if derived != "other":
+        return derived
+    return hint if hint is not None else "other"
 
 
 def build_temp_unavailable_body(*, now: datetime, code: str) -> dict[str, JsonValue]:
@@ -632,6 +670,7 @@ async def run_evaluation(
 
 __all__ = [
     "ALLOW_SYNTHETIC_SOURCES_ENV",
+    "DRIVER_TOKEN_ENV",
     "EVALUATE_ENVIRONMENT_ENV",
     "EVALUATE_MODE_ENV",
     "build_temp_unavailable_body",
@@ -640,4 +679,5 @@ __all__ = [
     "resolve_evaluate_shadow_enabled",
     "resolve_response_mode",
     "run_evaluation",
+    "verify_driver_token",
 ]

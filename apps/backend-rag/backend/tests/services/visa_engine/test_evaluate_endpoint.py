@@ -219,10 +219,25 @@ class TestDeriveRequestCategory:
         facts = _facts_with_purposes(None)
         assert evaluate_path.derive_request_category(facts, None) == "other"
 
-    def test_hint_wins_over_derivation(self) -> None:
+    def test_facts_win_over_hint_when_mappable(self) -> None:
+        """A mappable single KNOWN purpose always beats the hint — the hint
+        can never relabel an evaluation facts already express (G-a-vol
+        category-gaming guard)."""
         facts = _facts_with_purposes(["TOURISM"])
-        assert evaluate_path.derive_request_category(facts, "diaspora") == "diaspora"
-        assert evaluate_path.derive_request_category(facts, "business") == "business"
+        assert evaluate_path.derive_request_category(facts, "student") == "long_tourism"
+        assert evaluate_path.derive_request_category(facts, "diaspora") == "long_tourism"
+
+    def test_hint_honored_only_when_facts_derive_other(self) -> None:
+        """The hint's only legitimate territory: UNKNOWN purposes, multi-
+        purpose facts, and unmapped purposes (diaspora is reachable ONLY
+        here — no VisaPurpose expresses it)."""
+        unknown = _facts_with_purposes(None)
+        assert evaluate_path.derive_request_category(unknown, "diaspora") == "diaspora"
+        assert evaluate_path.derive_request_category(unknown, "business") == "business"
+        multi = _facts_with_purposes(["TOURISM", "FAMILY"])
+        assert evaluate_path.derive_request_category(multi, "diaspora") == "diaspora"
+        unmapped = _facts_with_purposes(["SECOND_HOME"])
+        assert evaluate_path.derive_request_category(unmapped, "diaspora") == "diaspora"
 
     def test_diaspora_is_only_reachable_via_the_hint(self) -> None:
         """No VisaPurpose expresses diaspora (the engine's closed vocabulary
@@ -283,6 +298,32 @@ async def test_oversize_body_is_413() -> None:
     assert response.status_code == 413
 
 
+async def test_chunked_oversize_body_aborts_stream_early() -> None:
+    """OOM guard: a chunked body (no Content-Length) must be aborted with
+    413 as soon as the cap is exceeded — the endpoint must NOT pull the
+    whole stream first (a counting async iterator proves early abort)."""
+    chunk_size = 8192
+    total_chunks = 8  # 64 KB on offer; the cap is 32 KB
+    pulled = 0
+
+    async def _counting_chunks():
+        nonlocal pulled
+        for _ in range(total_chunks):
+            pulled += 1
+            yield b"x" * chunk_size
+
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate",
+            content=_counting_chunks(),
+            headers={"content-type": "application/json"},
+        )
+    assert response.status_code == 413
+    # The cap trips after ceil((32768+1)/8192) = 5 chunks; the remaining 3
+    # were never pulled (buffer-then-check would have pulled all 8).
+    assert pulled < total_chunks
+
+
 async def test_invalid_json_is_400() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
@@ -337,27 +378,53 @@ async def test_thin_facts_are_never_rejected(monkeypatch: pytest.MonkeyPatch) ->
     assert response.json()["decision"]["state"] == "TEMPORARILY_UNAVAILABLE"
 
 
-async def test_bogus_traffic_source_param_is_422() -> None:
+async def test_bogus_traffic_source_param_is_400_and_never_echoes() -> None:
+    """In-route validation, no-echo discipline: the attacker's value must
+    not appear anywhere in the rejection body."""
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate?traffic_source=bogus",
+            "/api/visa-oracle/evaluate?traffic_source=bogus-marker-12345",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
         )
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert "bogus-marker-12345" not in response.text
 
 
-async def test_bogus_request_category_param_is_422() -> None:
+async def test_bogus_request_category_param_is_400_and_never_echoes() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate?request_category=bogus",
+            "/api/visa-oracle/evaluate?request_category=bogus-marker-67890",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
         )
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert "bogus-marker-67890" not in response.text
 
 
 # ---------------------------------------------------------------------------
 # §5 — synthetic self-label gate (HTTP; validation order is mode-independent)
 # ---------------------------------------------------------------------------
+
+
+class TestVerifyDriverToken:
+    def test_unset_env_rejects_even_matching_presentation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(evaluate_path.DRIVER_TOKEN_ENV, raising=False)
+        assert evaluate_path.verify_driver_token("anything") is False
+
+    def test_empty_env_rejects(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "   ")
+        assert evaluate_path.verify_driver_token("anything") is False
+
+    def test_correct_token_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
+        assert evaluate_path.verify_driver_token("w4-driver-secret") is True
+
+    def test_wrong_or_missing_token_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
+        assert evaluate_path.verify_driver_token("w4-driver-WRONG") is False
+        assert evaluate_path.verify_driver_token(None) is False
+        assert evaluate_path.verify_driver_token("") is False
 
 
 async def test_synthetic_self_label_rejected_without_allowlist(
@@ -381,6 +448,51 @@ async def test_synthetic_class_not_in_allowlist_is_rejected(
         response = await client.post(
             "/api/visa-oracle/evaluate?traffic_source=synthetic_driver",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+        )
+    assert response.status_code == 400
+
+
+async def test_armed_synthetic_without_driver_header_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Allowlist armed but no X-Visa-Driver-Token header -> 400 (the W4
+    credential is mandatory even on an armed deployment)."""
+    monkeypatch.setenv(evaluate_path.ALLOW_SYNTHETIC_SOURCES_ENV, "synthetic_gold")
+    monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate?traffic_source=synthetic_gold",
+            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+        )
+    assert response.status_code == 400
+
+
+async def test_armed_synthetic_with_wrong_driver_token_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path.ALLOW_SYNTHETIC_SOURCES_ENV, "synthetic_gold")
+    monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate?traffic_source=synthetic_gold",
+            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+            headers={"x-visa-driver-token": "w4-driver-WRONG"},
+        )
+    assert response.status_code == 400
+
+
+async def test_unarmed_synthetic_with_correct_driver_token_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A valid driver token never widens the allowlist: an unarmed class is
+    rejected even with the correct credential."""
+    monkeypatch.delenv(evaluate_path.ALLOW_SYNTHETIC_SOURCES_ENV, raising=False)
+    monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate?traffic_source=synthetic_gold",
+            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+            headers={"x-visa-driver-token": "w4-driver-secret"},
         )
     assert response.status_code == 400
 
@@ -560,6 +672,7 @@ async def test_allowlisted_synthetic_label_is_accepted_and_written(
 ) -> None:
     monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
     monkeypatch.setenv(evaluate_path.ALLOW_SYNTHETIC_SOURCES_ENV, "synthetic_gold")
+    monkeypatch.setenv(evaluate_path.DRIVER_TOKEN_ENV, "w4-driver-secret")
     save_calls, _, _ = _patch_engine_chain(monkeypatch)
 
     class _FakePool:
@@ -570,15 +683,18 @@ async def test_allowlisted_synthetic_label_is_accepted_and_written(
         response = await client.post(
             "/api/visa-oracle/evaluate?traffic_source=synthetic_gold",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+            headers={"x-visa-driver-token": "w4-driver-secret"},
         )
     assert response.status_code == 200
     assert len(save_calls) == 1
     assert save_calls[0]["traffic_source"] == "synthetic_gold"
 
 
-async def test_request_category_hint_overrides_derivation(
+async def test_request_category_hint_honored_when_facts_derive_other(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """UNKNOWN-purposes facts + hint=diaspora -> 'diaspora' (the hint's only
+    legitimate territory)."""
     monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
     save_calls, _, _ = _patch_engine_chain(monkeypatch)
 
@@ -589,10 +705,30 @@ async def test_request_category_hint_overrides_derivation(
     async with _client(_build_app(_FakePool())) as client:
         response = await client.post(
             "/api/visa-oracle/evaluate?request_category=diaspora",
-            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+            json=_wire_payload(_facts_with_purposes(None)),
         )
     assert response.status_code == 200
     assert save_calls[0]["request_category"] == "diaspora"
+
+
+async def test_request_category_hint_loses_to_mappable_facts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TOURISM facts + hint=student -> 'long_tourism': facts speak first."""
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    save_calls, _, _ = _patch_engine_chain(monkeypatch)
+
+    class _FakePool:
+        def acquire(self) -> None:  # pragma: no cover - never reached (writer is faked)
+            raise AssertionError("unexpected pool use")
+
+    async with _client(_build_app(_FakePool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate?request_category=student",
+            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+        )
+    assert response.status_code == 200
+    assert save_calls[0]["request_category"] == "long_tourism"
 
 
 async def test_happy_path_logs_carry_no_fact_values(
