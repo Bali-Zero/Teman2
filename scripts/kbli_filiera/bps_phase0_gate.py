@@ -49,6 +49,10 @@ MIN_NM = 3
 DRAW_SIZE = 10
 PASS_PRECISION = 0.995
 PASS_RECALL = 0.995
+# Evidence floor: a gate cannot PASS on an empty/degenerate holdout. With zero
+# truth edges, precision and recall are both vacuously 1.0 — so require the
+# holdout to actually exercise the parser (≥1 edge per holdout page; 10 pages).
+MIN_HOLDOUT_TRUTH_EDGES = 10
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +107,15 @@ def greedy_stratified_draw(ranked: list[dict], size: int = DRAW_SIZE,
         if pg["pdf_page"] not in chosen_pdf:
             chosen.append(pg)
             chosen_pdf.add(pg["pdf_page"])
+    # Fail LOUD if the eligible pool could not satisfy the stratum floors — a
+    # silent under-fill would ship a holdout that never exercised the hazard
+    # classes the gate is meant to stress (wrapped-cell + N:M pages).
+    got_wrapped = sum(1 for c in chosen if c["wrapped"])
+    got_nm = sum(1 for c in chosen if c["nm"])
+    if got_wrapped < min_wrapped or got_nm < min_nm:
+        raise ValueError(
+            f"stratum floor unmet: wrapped {got_wrapped}/{min_wrapped}, "
+            f"nm {got_nm}/{min_nm} — eligible pool too small to draw a valid holdout")
     # return in rank order (chosen was built stratum-first; the split needs
     # the pages ordered by rank, not by selection order)
     return sorted(chosen, key=lambda p: p["rank"])
@@ -118,6 +131,16 @@ def tuning_holdout_split(drawn_rank_ordered: list[dict]) -> tuple[list[dict], li
 
 def draw_for_lampiran(page_strata: list[dict], parser_run_digest: str,
                       lampiran_id: str) -> dict:
+    """Boundary note (title-independence scope): the page RANK is a pure function
+    of (digest, lampiran, printed_page) — all title-independent. The stratified
+    FILL additionally reads each page's `wrapped` flag, which is title-derived (a
+    multi-line cell is usually a wrapped title). So the digest pins the crosswalk
+    DATA identity (an item-6 title cleanup does not invalidate the relation), while
+    the realized DRAW is a function of the full artifact (relation digest for
+    ranking + strata for the fill) and is itself tracked+pinned in holdout_draw.json.
+    A rendering change large enough to flip `wrapped` on a page yields a new
+    artifact and a new draw — the correct behavior (re-adjudicate), not a silent
+    reseed. `greedy_stratified_draw` fails loud if the pool can't meet the floors."""
     ranked = rank_pages(page_strata, parser_run_digest, lampiran_id)
     drawn = greedy_stratified_draw(ranked)
     tuning, holdout = tuning_holdout_split(drawn)
@@ -196,11 +219,16 @@ def aggregate_scores(page_scores: list[dict]) -> dict:
     fn = sum(s["fn"] for s in page_scores)
     precision = tp / (tp + fp) if (tp + fp) else 1.0
     recall = tp / (tp + fn) if (tp + fn) else 1.0
+    truth_edges = tp + fn
     return {
         "tp": tp, "fp": fp, "fn": fn,
+        "truth_edges": truth_edges,
         "precision": precision, "recall": recall,
         "holdout_edge_error_rate": max(1 - precision, 1 - recall),
-        "passes": precision >= PASS_PRECISION and recall >= PASS_RECALL,
+        # An empty holdout scores precision=recall=1.0 vacuously — the evidence
+        # floor makes that a FAIL, never a silent PASS on zero evidence.
+        "passes": (precision >= PASS_PRECISION and recall >= PASS_RECALL
+                   and truth_edges >= MIN_HOLDOUT_TRUTH_EDGES),
     }
 
 
@@ -291,8 +319,24 @@ def cmd_score(args) -> int:
                      "holdout drawn under a different parse", plan.get("parser_run_digest"), digest)
         raise SystemExit(3)
     truth = _load_artifact(Path(args.truth))
+    # The truth must be pinned to the SAME parse as the artifact and the draw —
+    # scoring an eye-read taken against a different parse is the same silent
+    # mismatch we refuse for the plan above (adversarial review, 2026-07-24).
+    if truth.get("parser_run_digest") != digest:
+        logger.error("truth digest %s != artifact digest %s — refusing to score an "
+                     "eye-read taken against a different parse", truth.get("parser_run_digest"), digest)
+        raise SystemExit(3)
     truth_edges = truth["truth_edges_per_page"]
     holdout_dir = Path(args.holdout_dir)
+
+    # Bind the scored parser edges to the digest-pinned relation: every per-page
+    # edge the gate scores MUST appear in the artifact's global relation edge set
+    # (the object the digest identifies). This closes the "scored object is not
+    # provably the pinned object" gap — an edge file inconsistent with the pinned
+    # parse fails loud instead of being silently scored.
+    relation_edges = {(c2020, c2025)
+                      for c2025, rec in art["relation"].items()
+                      for c2020 in rec["codes"]}
 
     holdout_pages = plan["draws"]["5"]["holdout_pdf_pages"] + plan["draws"]["10"]["holdout_pdf_pages"]
     page_scores = []
@@ -303,6 +347,12 @@ def cmd_score(args) -> int:
             raise SystemExit(3)
         parser_edges = {tuple(e) for e in
                         json.loads((holdout_dir / f"parser_edges_p{pg:04d}.json").read_text())}
+        stray = parser_edges - relation_edges
+        if stray:
+            logger.error("holdout page %s scores %s edge(s) absent from the digest-pinned "
+                         "relation — edge file not consistent with the pinned parse: %s",
+                         pg, len(stray), sorted(stray)[:5])
+            raise SystemExit(3)
         t = {tuple(e) for e in truth_edges[key]}
         s = score_page(parser_edges, t)
         s["page"] = pg

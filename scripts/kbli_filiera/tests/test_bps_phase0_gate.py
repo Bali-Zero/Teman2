@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from kbli_filiera import bps_phase0_gate as gate  # noqa: E402
 
@@ -77,6 +79,19 @@ class TestGreedyStratifiedDraw:
         drawn = gate.greedy_stratified_draw(ranked, min_wrapped=1, min_nm=1, size=3)
         assert any(p["wrapped"] and p["nm"] for p in drawn)
 
+    def test_fails_loud_when_wrapped_stratum_unsatisfiable(self):
+        # only 2 wrapped pages exist but the floor is 3 → refuse, never under-fill
+        pages = _pages(10, wrapped_idx=(0, 1), nm_idx=range(10))
+        ranked = gate.rank_pages(pages, "d", "5")
+        with pytest.raises(ValueError, match="stratum floor unmet"):
+            gate.greedy_stratified_draw(ranked)
+
+    def test_fails_loud_when_nm_stratum_unsatisfiable(self):
+        pages = _pages(10, wrapped_idx=range(10), nm_idx=(0, 1))
+        ranked = gate.rank_pages(pages, "d", "5")
+        with pytest.raises(ValueError, match="stratum floor unmet"):
+            gate.greedy_stratified_draw(ranked)
+
 
 class TestTuningHoldoutSplit:
     def test_odd_positions_tuning_even_holdout(self):
@@ -110,6 +125,23 @@ class TestScoring:
         assert agg["passes"] is True
         # 990/1000 = 0.990 recall < 0.995 -> fail
         assert gate.aggregate_scores([{"tp": 990, "fp": 0, "fn": 10}])["passes"] is False
+
+    def test_vacuous_empty_holdout_does_not_pass(self):
+        # zero truth edges -> precision/recall vacuously 1.0, but the evidence
+        # floor forbids a PASS on no evidence (adversarial review, 2026-07-24).
+        agg = gate.aggregate_scores([{"tp": 0, "fp": 0, "fn": 0}])
+        assert agg["precision"] == 1.0 and agg["recall"] == 1.0
+        assert agg["truth_edges"] == 0
+        assert agg["passes"] is False
+
+    def test_below_evidence_floor_does_not_pass(self):
+        # a perfect but too-small holdout is not a meaningful acceptance signal
+        agg = gate.aggregate_scores([{"tp": gate.MIN_HOLDOUT_TRUTH_EDGES - 1, "fp": 0, "fn": 0}])
+        assert agg["precision"] == 1.0 and agg["passes"] is False
+
+    def test_at_evidence_floor_can_pass(self):
+        agg = gate.aggregate_scores([{"tp": gate.MIN_HOLDOUT_TRUTH_EDGES, "fp": 0, "fn": 0}])
+        assert agg["passes"] is True
 
 
 class TestDeriveTier4AQL:

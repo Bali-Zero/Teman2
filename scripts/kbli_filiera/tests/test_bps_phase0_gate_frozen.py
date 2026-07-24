@@ -101,6 +101,33 @@ class TestFrozenHoldoutScores:
         assert report["aggregate"]["tp"] == agg["tp"]
 
 
+class TestScoredEdgesArePinned:
+    """The scored parser edges must be provably the digest-pinned parse — every
+    per-page fixture edge appears in the artifact's global relation edge set (the
+    object output_relation_digest identifies). Closes the "scored object is not
+    provably the pinned object" gap from the 2026-07-24 adversarial review."""
+
+    def test_every_fixture_edge_is_in_the_pinned_relation(self, artifact):
+        relation_edges = {(c2020, c2025)
+                          for c2025, rec in artifact["relation"].items()
+                          for c2020 in rec["codes"]}
+        fixtures = sorted(_FIXTURES.glob("parser_edges_p*.json"))
+        assert len(fixtures) == 10
+        for fx in fixtures:
+            for e in json.loads(fx.read_text()):
+                assert tuple(e) in relation_edges, f"{fx.name}: {e} absent from pinned relation"
+
+    def test_every_truth_edge_is_in_the_pinned_relation(self, artifact, truth):
+        # independent cross-check: the conductor's eye-read edges also all live in
+        # the parser's global relation — consistent with precision=recall=1.0.
+        relation_edges = {(c2020, c2025)
+                          for c2025, rec in artifact["relation"].items()
+                          for c2020 in rec["codes"]}
+        for page, edges in truth["truth_edges_per_page"].items():
+            for e in edges:
+                assert tuple(e) in relation_edges, f"page {page}: truth {e} absent from relation"
+
+
 class TestItem10AqlDefault:
     def test_zero_error_rate_yields_tightest_aql_in_report(self):
         report = _load(_PHASE0 / "gate_report.json")

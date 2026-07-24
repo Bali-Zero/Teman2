@@ -6,7 +6,8 @@
     "passes": true,
     "precision": 1.0,
     "recall": 1.0,
-    "tp": 211
+    "tp": 211,
+    "truth_edges": 211
   },
   "bps_pdf_sha256": "29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949",
   "consistency_item7": {
