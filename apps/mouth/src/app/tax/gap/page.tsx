@@ -1,4 +1,4 @@
-import React from "react";
+import { type ReactElement } from "react";
 import type { Metadata } from "next";
 import { TaxGapCTA } from "./_components/TaxGapCTA";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function TaxGapPage(): React.ReactElement {
+export default function TaxGapPage(): ReactElement {
   return (
     <main
       style={{

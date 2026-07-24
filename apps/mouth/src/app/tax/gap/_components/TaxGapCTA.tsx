@@ -1,6 +1,6 @@
-import React from "react";
-("use client");
+"use client";
 
+import { type ReactElement } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
@@ -36,7 +36,7 @@ const STEPS: { step: string; text: string }[] = [
   },
 ];
 
-export function TaxGapCTA(): React.ReactElement {
+export function TaxGapCTA(): ReactElement {
   return (
     <section className="max-w-2xl mx-auto px-4 py-12 md:py-20">
       <span
