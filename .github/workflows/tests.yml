@@ -336,7 +336,41 @@ jobs:
         # esbuild) — exploitable only when running `vitest --ui` locally, never
         # in CI or prod. Without --omit=dev these dev-only advisories failed the
         # gate on EVERY PR repo-wide. Production-dependency soglia stays at high.
-        run: npm audit --audit-level=high --omit=dev
+        #
+        # Temporary waiver (2026-07-24, owner-approved, REMOVE when patched
+        # versions ship): 3 advisories with NO patched release available —
+        # every installed version is already the latest published:
+        #   GHSA-frvp-7c67-39w9  @hono/node-server path traversal (Windows-only %5C)
+        #   GHSA-9mqv-5hh9-4cgg  @hono/node-server WebSocket aborted-handshake mem-leak
+        #   GHSA-c96f-x56v-gq3h  find-my-way HTTP2 DDoS
+        # Reachability: @hono/node-server enters via @modelcontextprotocol/sdk
+        # (used for its optional HTTP transport; our MCP servers run stdio) and
+        # find-my-way via @prisma/dev (local dev tooling). Audit runs JSON mode
+        # and fails only on high/critical advisories NOT in the waiver set.
+        run: |
+          npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
+          python3 - "$RUNNER_TEMP/audit.json" <<'PY'
+          import json, sys
+          WAIVE = {"GHSA-frvp-7c67-39w9", "GHSA-9mqv-5hh9-4cgg", "GHSA-c96f-x56v-gq3h"}
+          data = json.load(open(sys.argv[1]))
+          bad = []
+          for name, vuln in (data.get("vulnerabilities") or {}).items():
+              if vuln.get("severity") not in ("high", "critical"):
+                  continue
+              ids = {
+                  str(x.get("url", "")).rsplit("/", 1)[-1]
+                  for x in vuln.get("via", [])
+                  if isinstance(x, dict)
+              }
+              if not ids <= WAIVE:
+                  bad.append((name, vuln.get("severity"), sorted(ids)))
+          if bad:
+              print("npm audit: non-waived high/critical vulnerabilities found:")
+              for row in bad:
+                  print("  ", row)
+              sys.exit(1)
+          print("npm audit: only waived advisories present — gate OK")
+          PY
         continue-on-error: false
 
       - name: Run tests (with coverage)
