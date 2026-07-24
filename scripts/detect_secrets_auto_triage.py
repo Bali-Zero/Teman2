@@ -39,6 +39,16 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.env\.example$"),
         ".env.example: documented placeholder, never a real secret",
     ),
+    # Signed/unsigned visa-engine RulePacks — public legal documents whose
+    # content_sha256 / payload_sha256 / signature fields are cryptographic
+    # hashes of PUBLIC content, never credentials. Private key material is
+    # structurally absent (offline signing, off-repo custody per
+    # docs/runbooks/visa-engine-key-ceremony.md). Scoped to the artifact
+    # naming convention, not the whole packs dir.
+    (
+        re.compile(r"(^|/)contracts/packs/rulepack-[^/]*\.json$"),
+        "visa rulepack artifact: content/payload hashes of public legal documents, never credentials",
+    ),
     # *.py.example, *.json.example, *.yml.example — documented example files
     (
         re.compile(r"\.(py|json|yml|yaml|toml|sh)\.example$"),
