@@ -115,6 +115,49 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
 - **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
+**PHANTOM CODES — a class no cure tool could reach (found + fixed 2026-07-24, PR in flight):**
+
+`kbli_documents` is a strict SUPERSET of the canonical catalogue: **1,563 rows vs 1,559 codes**.
+The 4 extras are KBLI **2020** codes — `26120`, `60111`, `82920`, `85598` — carrying full 2020
+licensing payloads. The router's direct-code path (`kbli_notebook_chat.py:715`) resolves ANY
+5-digit code in the user's question straight against this table, so a phantom row WINS an
+exact-match lookup. Live prod proof before the cure: **82920** → _"Yes, a PT PMA can absolutely
+run this business"_ + per-scale risk tiers + Gubernur authority + ISO 9001 (the 2025 catalogue
+split 82920 into 82921-82929 + 39002); **60111** → _"TERBUKA, 100% open to foreign ownership"_ +
+a full ISR/Kominfo permit path + _"register your NIB under KBLI 60111"_ — for a **government**
+radio-broadcasting code retired in 2025.
+
+> **STRUCTURAL LESSON — why this survived every previous cure.** EVERY cure tool in the fleet keys
+> off _"a canonical record exists"_: `kbli_documents_cure.py` skips on "no `per_skala_disputed_*`
+> marker", `kg_kbli_license_fix.py` skips on `record is None` → "not in canonical dataset". That is
+> exactly what a phantom code lacks, so **a code living only downstream is unreachable by all of
+> them**. Any future cure tool must decide whether its scope is "codes the canonical knows about" or
+> "rows that actually exist in the store" — and say so explicitly.
+
+Cure: `backend/scripts/kbli_documents_phantom_cure.py` — TWO arms, `--only` mandatory, no sweep
+flag, `--census` reports the phantom set without writing. Rows are rewritten into a
+superseded-code notice (2020 payload archived under `*_superseded_kbli2020` + verbatim in
+`kbli_documents_archive`); 2025 successors come ONLY from the canonical crosswalk fields
+(`kbli_2020_source`/`pp28_sources`), each with its `mapping_note` verbatim — the crosswalk carries
+weak auto-matches (39002 "Penyimpanan Karbon" ← 82920 "packaging" at score=71%) and neither silent
+inclusion nor silent exclusion (W97) is acceptable. The `--kg` arm detaches **53 REQUIRES edges**
+(26120=19, 60111=2, 82920=27, 85598=5), the channel `inspect_kbli` turns into `licenses` and
+`_resolve_risk_profile` turns into the risk label. **Qdrant censused 2026-07-24: ZERO phantom
+points — nothing to do there** (recorded so nobody re-derives it).
+
+Cross-family adversarial gate: **Kimi K3 → SHIP-WITH-FIXES**, 2 MAJOR both fixed (metadata
+neutralisation was a whitelist-of-two → now FAIL-CLOSED on any unrecognised metadata key; the
+canonical catalogue was trusted blind though "phantom" is _defined_ by it → `validate_dataset()`
+
+- `--apply` refused against the unpinned `main` URL + dataset sha256 recorded in every cured row).
+  **The Codex seat is 401 token-revoked** (not quota) — needs an interactive `codex login`,
+  `operator[GUI]`.
+
+**STILL PENDING (both arms are dry-run-verified against prod, NOT yet applied):** the script is not
+in the Fly image until this PR merges + deploys. Then, per arm:
+`fly ssh console -a nuzantara-rag -C "python backend/scripts/kbli_documents_phantom_cure.py --only 26120,60111,82920,85598 --dataset <raw-URL-pinned-to-SHA> --apply"`
+(and again with `--kg`), each dry-run first, then PROVE-LIVE on `chat_kbli` AND `inspect_kbli`.
+
 **Surfaces 4-6 + capital doctrine + Batch-B (M5 conductor-verified 2026-07-19):**
 
 - **Surface 4 — `kbli_documents` Postgres table, CURED IN PROD** (#2796 merged + fly apply): table
