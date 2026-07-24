@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function VaultLoading() {
   return (
@@ -22,7 +22,10 @@ export default function VaultLoading() {
           <div
             key={i}
             className="rounded-xl border p-4 space-y-3"
-            style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             <div className="flex items-center gap-3">
               <Skeleton variant="rounded" width={40} height={40} />

@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * Portal Taxes — tax status, obligations and deadlines.
+ *
+ * WS3 slice 5 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slice 3 (billing, PR #3055) and slice 4 (process, PR #3056).
+ * Masthead = copper rule + Cormorant serif (--font-serif) in --tx-pure;
+ * surfaces read --bz-elevated / --bz-card / --bz-border; deadline/status
+ * state colors read the semantic --state-* tokens (WS2 operative-light AA
+ * overrides: success 4.80 / warning 4.78 / danger 5.74 :1 on paper) via
+ * color-mix tints; countdown chips reuse the shared <CountdownChip>;
+ * copper small text reads --bz-copper-text (--tx-secondary fallback).
+ * No hardcoded hexes.
+ */
+
 import React, { useEffect, useState } from "react";
 import { DollarSign, Calendar, FileText } from "lucide-react";
 import { api } from "@/lib/api";
@@ -8,12 +22,63 @@ import { logger } from "@/lib/logger";
 import type { TaxOverview, TaxObligation } from "@/lib/api/portal/portal.types";
 import {
   StatusBadge,
+  CountdownChip,
   PortalEmptyState,
   PortalCardSkeleton,
   PortalListSkeleton,
 } from "@/components/portal";
 import { trackTaxDashboardViewed } from "@/lib/analytics";
 import { formatIDR } from "@balizero/core/utils";
+
+// Day card surface (GARUDA Day concept .panel): white card on warm paper,
+// hairline warm border, soft navy shadow (near-invisible on dark).
+const PORTAL_CARD_STYLE = {
+  background: "var(--bz-elevated)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+} as const;
+
+// Inner tile well — visible on both themes (white 3% on dark, ink 6% on day).
+const TILE_STYLE = { background: "var(--glass-rim)" } as const;
+
+/** Deadline panel: 8% tint bg + 30% tint border of the state token. */
+function tonePanelStyle(token: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, var(${token}) 8%, transparent)`,
+    borderColor: `color-mix(in srgb, var(${token}) 30%, transparent)`,
+  };
+}
+
+/** Urgency → semantic state token (honest day mapping, slice-5 brief). */
+function deadlineToken(days: number): string {
+  return days <= 7
+    ? "--state-danger"
+    : days <= 30
+      ? "--state-warning"
+      : "--state-success";
+}
+
+// Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
+// per concept (--font-serif, wired on <html>); Inter everywhere else.
+function TaxesMasthead() {
+  return (
+    <section>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        Tax Overview
+      </h1>
+      <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        Your tax obligations and history
+      </p>
+    </section>
+  );
+}
 
 export default function TaxesPage() {
   const { error } = useToast();
@@ -60,12 +125,7 @@ export default function TaxesPage() {
   if (!taxData) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        <section>
-          <h1 className="text-2xl font-bold tracking-tight">Tax Overview</h1>
-          <p style={{ color: "var(--bz-text-2)" }}>
-            Your tax obligations and history
-          </p>
-        </section>
+        <TaxesMasthead />
         <PortalEmptyState
           icon={DollarSign}
           title="No tax data available"
@@ -79,27 +139,18 @@ export default function TaxesPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <section>
-        <h1 className="text-2xl font-bold tracking-tight">Tax Overview</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
-          Your tax obligations and history
-        </p>
-      </section>
+      <TaxesMasthead />
 
       {/* Summary Card */}
       <section
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
+        style={PORTAL_CARD_STYLE}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DollarSign
               className="w-5 h-5"
-              style={{ color: "var(--bz-accent-warm)" }}
+              style={{ color: "var(--bz-copper)" }}
             />
             <h2 className="text-lg font-semibold">Tax Status</h2>
           </div>
@@ -107,10 +158,7 @@ export default function TaxesPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div
-            className="p-4 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
-          >
+          <div className="p-4 rounded-lg" style={TILE_STYLE}>
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total Due
             </p>
@@ -121,54 +169,24 @@ export default function TaxesPage() {
             </p>
           </div>
 
-          <div
-            className="p-4 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
-          >
+          <div className="p-4 rounded-lg" style={TILE_STYLE}>
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Next Deadline
             </p>
             {taxData.summary.nextDeadline ? (
-              (() => {
-                const dl = new Date(taxData.summary.nextDeadline);
-                const daysLeft = Math.ceil(
-                  (dl.getTime() - Date.now()) / 86400000,
-                );
-                const chipColor =
-                  daysLeft <= 0
-                    ? "bg-red-500/15 text-red-400"
-                    : daysLeft <= 7
-                      ? "bg-red-500/10 text-red-400"
-                      : daysLeft <= 30
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "bg-emerald-500/10 text-emerald-400";
-                const chipLabel =
-                  daysLeft <= 0
-                    ? `${Math.abs(daysLeft)}d overdue`
-                    : daysLeft === 0
-                      ? "today"
-                      : daysLeft === 1
-                        ? "tomorrow"
-                        : daysLeft <= 365
-                          ? `⏰ ${daysLeft}d left`
-                          : `${Math.floor(daysLeft / 30)}mo left`;
-                return (
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <p className="text-lg font-bold">
-                      {dl.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
-                    >
-                      {chipLabel}
-                    </span>
-                  </div>
-                );
-              })()
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className="text-lg font-bold">
+                  {new Date(taxData.summary.nextDeadline).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    },
+                  )}
+                </p>
+                <CountdownChip date={taxData.summary.nextDeadline} />
+              </div>
             ) : (
               <p className="text-lg font-bold">None</p>
             )}
@@ -179,32 +197,14 @@ export default function TaxesPage() {
         {taxData.summary.daysToDeadline !== null && (
           <div
             className="mt-4 p-4 rounded-lg flex items-center gap-3 border"
-            style={
-              taxData.summary.daysToDeadline <= 7
-                ? {
-                    background: "rgba(239,68,68,0.08)",
-                    borderColor: "rgba(239,68,68,0.3)",
-                  }
-                : taxData.summary.daysToDeadline <= 30
-                  ? {
-                      background: "rgba(245,158,11,0.08)",
-                      borderColor: "rgba(245,158,11,0.3)",
-                    }
-                  : {
-                      background: "rgba(16,185,129,0.06)",
-                      borderColor: "rgba(16,185,129,0.25)",
-                    }
-            }
+            style={tonePanelStyle(
+              deadlineToken(taxData.summary.daysToDeadline),
+            )}
           >
             <Calendar
               className="w-5 h-5"
               style={{
-                color:
-                  taxData.summary.daysToDeadline <= 7
-                    ? "#f87171"
-                    : taxData.summary.daysToDeadline <= 30
-                      ? "#fbbf24"
-                      : "#34d399",
+                color: `var(${deadlineToken(taxData.summary.daysToDeadline)})`,
               }}
             />
             <div className="flex-1">
@@ -212,12 +212,7 @@ export default function TaxesPage() {
                 <span
                   className="text-2xl font-bold font-mono"
                   style={{
-                    color:
-                      taxData.summary.daysToDeadline <= 7
-                        ? "#f87171"
-                        : taxData.summary.daysToDeadline <= 30
-                          ? "#fbbf24"
-                          : "#34d399",
+                    color: `var(${deadlineToken(taxData.summary.daysToDeadline)})`,
                   }}
                 >
                   {taxData.summary.daysToDeadline}
@@ -248,16 +243,12 @@ export default function TaxesPage() {
       {taxData.obligations && taxData.obligations.length > 0 && (
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={PORTAL_CARD_STYLE}
         >
           <div className="flex items-center gap-2">
             <FileText
               className="w-5 h-5"
-              style={{ color: "var(--bz-accent-warm)" }}
+              style={{ color: "var(--bz-copper)" }}
             />
             <h2 className="text-lg font-semibold">Current Obligations</h2>
           </div>
@@ -278,11 +269,14 @@ export default function TaxesPage() {
       <section
         className="rounded-lg border p-4"
         style={{
-          background: "rgba(201,169,110,0.06)",
-          borderColor: "rgba(201,169,110,0.3)",
+          background: "color-mix(in srgb, var(--bz-copper) 8%, transparent)",
+          borderColor: "color-mix(in srgb, var(--bz-copper) 30%, transparent)",
         }}
       >
-        <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
+        <p
+          className="text-sm"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
+        >
           Need help with your taxes? Contact your account manager or reach out
           via Chat for assistance.
         </p>
@@ -298,31 +292,12 @@ function ObligationCard({
   obligation: TaxObligation;
   formatCurrency: (amount: number) => string;
 }) {
-  const getStatusStyle = (status: string): React.CSSProperties => {
-    switch (status) {
-      case "filed":
-      case "paid":
-        return { background: "rgba(16,185,129,0.12)", color: "#34d399" };
-      case "pending":
-      case "upcoming":
-        return { background: "rgba(245,158,11,0.12)", color: "#fbbf24" };
-      case "overdue":
-      case "critical":
-        return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
-      default:
-        return {
-          background: "rgba(255,255,255,0.05)",
-          color: "var(--bz-text-2)",
-        };
-    }
-  };
-
   return (
     <div
       className="rounded-lg border p-4 transition-colors"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        borderColor: "rgba(255,255,255,0.05)",
+        background: "var(--glass-rim)",
+        borderColor: "var(--bz-border)",
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -332,12 +307,7 @@ function ObligationCard({
             {obligation.type} • {obligation.period}
           </p>
         </div>
-        <span
-          className="text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap"
-          style={getStatusStyle(obligation.status)}
-        >
-          {obligation.status}
-        </span>
+        <StatusBadge status={obligation.status} />
       </div>
 
       <div
@@ -355,34 +325,11 @@ function ObligationCard({
             day: "numeric",
             year: "numeric",
           })}
-          {(() => {
-            const daysLeft = Math.ceil(
-              (new Date(obligation.dueDate).getTime() - Date.now()) / 86400000,
-            );
-            const chipColor =
-              daysLeft <= 0
-                ? "bg-red-500/15 text-red-400"
-                : daysLeft <= 7
-                  ? "bg-red-500/10 text-red-400"
-                  : daysLeft <= 30
-                    ? "bg-amber-500/10 text-amber-400"
-                    : undefined;
-            const chipLabel =
-              daysLeft <= 0
-                ? `${Math.abs(daysLeft)}d overdue`
-                : daysLeft === 0
-                  ? "today"
-                  : daysLeft <= 365
-                    ? `⏰ ${daysLeft}d left`
-                    : `${Math.floor(daysLeft / 30)}mo left`;
-            return chipColor ? (
-              <span
-                className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
-              >
-                {chipLabel}
-              </span>
-            ) : null;
-          })()}
+          {/* Chip only inside the 30-day window (previous behavior); the
+              shared CountdownChip owns the state-token styling. */}
+          {Math.ceil(
+            (new Date(obligation.dueDate).getTime() - Date.now()) / 86400000,
+          ) <= 30 && <CountdownChip date={obligation.dueDate} />}
         </div>
         {obligation.amount && (
           <span className="text-sm font-bold">

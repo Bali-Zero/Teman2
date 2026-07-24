@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TaxesLoading() {
   return (
@@ -12,7 +12,10 @@ export default function TaxesLoading() {
       {/* Summary Card */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <div className="flex items-center justify-between">
           <Skeleton variant="text" width={120} height={24} />
@@ -23,9 +26,14 @@ export default function TaxesLoading() {
             <div
               key={i}
               className="p-4 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.03)' }}
+              style={{ background: "var(--glass-rim)" }}
             >
-              <Skeleton variant="text" width={80} height={10} className="mb-2" />
+              <Skeleton
+                variant="text"
+                width={80}
+                height={10}
+                className="mb-2"
+              />
               <Skeleton variant="text" width={110} height={24} />
             </div>
           ))}
@@ -36,7 +44,10 @@ export default function TaxesLoading() {
       {/* Obligations */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <Skeleton variant="text" width={180} height={24} />
         <div className="space-y-3">
@@ -44,7 +55,10 @@ export default function TaxesLoading() {
             <div
               key={i}
               className="rounded-lg border p-4"
-              style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: "var(--glass-rim)",
+                borderColor: "var(--bz-border)",
+              }}
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1 space-y-1">
