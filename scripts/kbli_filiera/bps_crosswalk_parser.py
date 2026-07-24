@@ -80,7 +80,7 @@ logger = common.setup_logger("bps_crosswalk_parser")
 # document, not the same one re-fetched: extraction refuses to run against a
 # sha mismatch rather than silently parse an unknown edition.
 BPS_PDF_REL_PATH = "bps/tabel-konversi-kbli-2020-2025-volume2-2026.pdf"
-BPS_PDF_SHA256 = "29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949"
+BPS_PDF_SHA256 = "29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949"  # pragma: allowlist secret  # sha256 content-hash of the public vault PDF, not a credential
 
 # printed_page = pdf_page + PRINTED_PAGE_OFFSET (verified 131→117 etc.).
 PRINTED_PAGE_OFFSET = -14

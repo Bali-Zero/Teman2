@@ -33,7 +33,7 @@ from kbli_filiera import vault_common as common  # noqa: E402
 
 logger = common.setup_logger("holdout_truth_compile")
 
-PARSER_RUN_DIGEST = "ca9e7ffcadcaf526e1bd69afecb40f23d31ac20db8ab4aafa21a0271206100b2"
+PARSER_RUN_DIGEST = "ca9e7ffcadcaf526e1bd69afecb40f23d31ac20db8ab4aafa21a0271206100b2"  # pragma: allowlist secret  # sha256 of the parse relation, not a credential
 
 DEFAULT_OUT = Path("data/kbli-filiera/phase0/holdout_truth.json")
 
