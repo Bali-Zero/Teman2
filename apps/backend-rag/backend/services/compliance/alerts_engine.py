@@ -38,6 +38,10 @@ _DOCTYPE_TO_CATEGORY: dict[str, str] = {
     "kitas": "visa_expiry",
     "passport": "document_expiry",
     "license": "license_renewal",
+    # E33 Second Home lifecycle (services/crm/e33_lifecycle.py) — the Day-90
+    # guarantee gate and the annual maintenance recurrence.
+    "e33_guarantee": "guarantee_proof",
+    "e33_maintenance": "guarantee_proof",
 }
 
 

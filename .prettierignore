@@ -46,6 +46,10 @@ archives/kbli-feb2026/KBLI_2025_*.json
 # Generated KBLI editorial drafts (Codex writer output, not hand-authored source)
 scripts/kbli_triangle/editorial_drafts/
 
+# Deterministic parser-edge fixtures for the Phase-0 gate (bps_phase0_gate.py render
+# output — must stay byte-identical to the compiler, never Prettier-reflowed)
+scripts/kbli_filiera/tests/fixtures/
+
 # Shell scripts (not supported by Prettier)
 *.sh
 

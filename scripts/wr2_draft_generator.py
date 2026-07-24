@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import asyncpg  # noqa: E402
 
 import wr2_carousel_ir as ir  # noqa: E402  (Phase 1 — typed Carousel IR, pure/zero-I/O)
+import wr2_creative_ledger as wcl  # noqa: E402  (Phase 4 — Creative Ledger, DB-read only, best-effort)
 import wr2_editorial_pregate as pregate  # noqa: E402  (Phase 2 — deterministic pre-gate, pure/zero-I/O)
 import wr2_grounding as wg  # noqa: E402  (pure, side-effect-free: is_citations_only_the_facts SSOT)
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
@@ -2075,6 +2076,7 @@ def _generate_planner_writer_deck(
     writer_fn: "Callable[[str], str]",
     forbidden_phrases: list[str],
     *,
+    reward_by_arc: dict[str, float] | None = None,
     max_repair_rounds: int = 2,
     max_plan_attempts: int = 2,
 ) -> tuple["ir.SlideDeck", dict[str, Any]]:
@@ -2098,7 +2100,10 @@ def _generate_planner_writer_deck(
     """
     plan: "ir.DeckPlan | None" = None
     for plan_attempt in range(1, max_plan_attempts + 1):
-        candidate = pw.plan_deck(brief_ctx, liveness_tier, recent_arcs, planner_fn, max_retries=3)
+        candidate = pw.plan_deck(
+            brief_ctx, liveness_tier, recent_arcs, planner_fn,
+            max_retries=3, reward_by_arc=reward_by_arc,
+        )
         plan = candidate
         closer = max(candidate.slides, key=lambda s: s.slot_id)
         if closer.kind in _CLOSER_SAFE_KINDS:
@@ -2210,7 +2215,16 @@ async def _process_one_planner_writer(
     recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
     recent_registers = [r.get("register") for r in recent if r.get("register")]
     editorial_signatures = await fetch_recent_editorial_signatures(conn, limit=10)
-    recent_arcs = await fetch_recent_arcs(conn, limit=8)
+
+    # Creative Ledger (Fase 4, spec §Mossa-D): ONE multi-axis snapshot replaces
+    # the standalone fetch_recent_arcs at this call site — it also recovers arcs
+    # LLM-backfilled onto monolith-era decks (council_debate_json.backfill.arc),
+    # so the cooldown finally sees the deck history that predates planner_writer.
+    # reward_by_arc is the DORMANT reward socket: {} today (war_room_posts empty,
+    # operator-gated) → build_arc_priors is byte-identical to the pre-Fase-4 path.
+    ledger = await wcl.fetch_creative_ledger(conn, limit=8)
+    recent_arcs = ledger.recent_arcs(limit=8)
+    reward_by_arc = ledger.reward_by_arc()
 
     brief_ctx = _build_brief_ctx(topic, summary, source_url, enrichment, live_reasons, liveness_tier)
     register = _pick_register_for_planner_writer(liveness_tier, recent_registers)
@@ -2219,9 +2233,14 @@ async def _process_one_planner_writer(
     planner_fn = _make_sync_call_fn(pw.DEFAULT_PLANNER_MODEL)
     writer_fn = _make_sync_call_fn(pw.DEFAULT_WRITER_MODEL)
 
+    # reward_live=0 is the honest DORMANT state (cicatrix #2: a dormant organ
+    # must expose its own liveness, never merely look healthy). This line is
+    # the socket's self-probe — when it prints reward_live>0 the loop has closed.
     logger.info(
-        "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s forbidden_phrases=%d",
-        draft_id, register, liveness_tier or "(none)", recent_arcs, len(forbidden_phrases),
+        "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s "
+        "ledger_entries=%d reward_live=%d forbidden_phrases=%d",
+        draft_id, register, liveness_tier or "(none)", recent_arcs,
+        len(ledger.entries), ledger.reward_live_count, len(forbidden_phrases),
     )
 
     try:
@@ -2229,6 +2248,7 @@ async def _process_one_planner_writer(
             _generate_planner_writer_deck,
             brief_ctx, register, liveness_tier, recent_arcs,
             planner_fn, writer_fn, forbidden_phrases,
+            reward_by_arc=reward_by_arc,
         )
     except (pw.PlanValidationExhausted, pw.SlotWriteExhausted) as e:
         logger.error("Draft %s planner_writer generation exhausted: %s", draft_id, e)

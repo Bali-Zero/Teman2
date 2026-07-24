@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * Portal Companies — shareholder's business entities.
+ *
+ * WS3 slice 7 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slices 1-4 (home/matters/billing/process). Masthead = copper
+ * rule + Cormorant serif (--font-serif) in --tx-pure; cards read --bz-card /
+ * --bz-border + the concept .panel shadow; compliance/license state colors
+ * read the semantic --state-* tokens (WS2 operative-light AA overrides:
+ * success 4.80 / warning 4.78 / danger 5.74 :1 on paper); the KBLI chip uses
+ * the hairline-border + --bz-copper-text pattern (a 12% copper tint fails AA
+ * on both themes — slice-6 finding); copper small text reads
+ * --bz-copper-text with the slice-1 --tx-secondary fallback. No hardcoded
+ * hexes.
+ */
+
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,7 +26,6 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import type { PortalCompany } from "@/lib/api/portal/portal.types";
 import {
@@ -19,6 +33,28 @@ import {
   PortalEmptyState,
   PortalListSkeleton,
 } from "@/components/portal";
+
+// Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
+// per concept (--font-serif, wired on <html>); Inter everywhere else.
+function CompaniesMasthead() {
+  return (
+    <section>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        Your Companies
+      </h1>
+      <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        Manage your business entities in Indonesia
+      </p>
+    </section>
+  );
+}
 
 export default function CompaniesPage() {
   const router = useRouter();
@@ -64,12 +100,7 @@ export default function CompaniesPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <section>
-        <h1 className="text-2xl font-bold tracking-tight">Your Companies</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
-          Manage your business entities in Indonesia
-        </p>
-      </section>
+      <CompaniesMasthead />
 
       {/* Companies List */}
       {companies.length === 0 ? (
@@ -111,19 +142,18 @@ function CompanyCard({
   company: PortalCompany;
   onClick: () => void;
 }) {
-  const getComplianceStatus = () => {
+  // Compliance roll-up: worst-case wins, mapped to the StatusBadge
+  // vocabulary (all three statuses are in its STATUS_MAP and render the
+  // semantic --state-* tokens with the AA-verified 12% color-mix tint).
+  const getComplianceStatus = (): string | null => {
     if (!company.compliance || company.compliance.length === 0) return null;
 
     const hasOverdue = company.compliance.some((c) => c.status === "overdue");
     const hasUpcoming = company.compliance.some((c) => c.status === "upcoming");
 
-    if (hasOverdue) {
-      return { label: "Overdue", color: "#f87171" };
-    }
-    if (hasUpcoming) {
-      return { label: "Upcoming", color: "#fbbf24" };
-    }
-    return { label: "Compliant", color: "#34d399" };
+    if (hasOverdue) return "overdue";
+    if (hasUpcoming) return "upcoming";
+    return "compliant";
   };
 
   const getLicenseStatus = () => {
@@ -133,12 +163,12 @@ function CompanyCard({
     const hasExpiring = company.licenses.some((l) => l.status === "expiring");
 
     if (hasExpired) {
-      return { icon: AlertTriangle, className: "text-red-500" };
+      return { icon: AlertTriangle, color: "var(--state-danger)" };
     }
     if (hasExpiring) {
-      return { icon: AlertTriangle, className: "text-amber-500" };
+      return { icon: AlertTriangle, color: "var(--state-warning)" };
     }
-    return { icon: CheckCircle, className: "text-emerald-500" };
+    return { icon: CheckCircle, color: "var(--state-success)" };
   };
 
   const compliance = getComplianceStatus();
@@ -158,15 +188,21 @@ function CompanyCard({
       aria-label={`View ${company.name} details`}
       className="rounded-xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]"
       style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
+        /* WS3: theme surface instead of the dark-only rgba(30,30,35,0.7)
+           glass + white hairline; shadow = concept .panel (soft navy on
+           paper, near-invisible on dark). */
+        background: "var(--bz-card)",
+        borderColor: "var(--bz-border)",
+        boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
         backdropFilter: "blur(24px)",
       }}
     >
       <div className="flex items-start gap-4">
         <div
           className="p-3 rounded-xl flex-shrink-0"
-          style={{ background: "rgba(201,169,110,0.1)" }}
+          style={{
+            background: "color-mix(in srgb, var(--bz-copper) 10%, transparent)",
+          }}
         >
           <Building2
             className="w-6 h-6"
@@ -216,9 +252,9 @@ function CompanyCard({
               <span
                 className="px-2 py-0.5 rounded-full font-mono tabular-nums"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
+                  background: "var(--glass-rim)",
                   color: "var(--bz-text-1)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  border: "1px solid var(--bz-border)",
                 }}
                 title="Nomor Induk Berusaha"
               >
@@ -229,9 +265,12 @@ function CompanyCard({
               <span
                 className="px-2 py-0.5 rounded-full font-mono tabular-nums"
                 style={{
-                  background: "rgba(201,169,110,0.08)",
-                  color: "var(--bz-accent-warm)",
-                  border: "1px solid rgba(201,169,110,0.2)",
+                  /* Hairline copper border + AA copper text (small chip: a
+                     12% copper tint background fails AA on both themes —
+                     slice-6 finding). */
+                  border:
+                    "1px solid color-mix(in srgb, var(--bz-copper) 35%, transparent)",
+                  color: "var(--bz-copper-text, var(--tx-secondary))",
                 }}
                 title="KBLI activity codes"
               >
@@ -249,7 +288,8 @@ function CompanyCard({
                   style={{ color: "var(--bz-text-2)" }}
                 >
                   <licenseStatus.icon
-                    className={cn("w-3.5 h-3.5", licenseStatus.className)}
+                    className="w-3.5 h-3.5"
+                    style={{ color: licenseStatus.color }}
                   />
                   {company.licenses.length} license
                   {company.licenses.length !== 1 ? "s" : ""}
@@ -261,17 +301,7 @@ function CompanyCard({
                 {company.directors.length !== 1 ? "s" : ""}
               </span>
             )}
-            {compliance && (
-              <span
-                className="font-medium px-2 py-0.5 rounded-full"
-                style={{
-                  color: compliance.color,
-                  background: `${compliance.color}15`,
-                }}
-              >
-                {compliance.label}
-              </span>
-            )}
+            {compliance && <StatusBadge status={compliance} />}
           </div>
         </div>
       </div>

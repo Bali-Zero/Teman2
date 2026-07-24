@@ -26,7 +26,73 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-21 — keep current)
+## 1. LIVE STATE (last update 2026-07-24 — keep current)
+
+**W1 PUBLIC-SURFACE HONESTY PASS — SHIPPED & PROVEN-LIVE 2026-07-24 (PR #3049, squash `23fa765e61`).**
+Context: a Codex session (rollout `019f83fc`) had been conducting a 7-work-package program (W0→W7) to
+take the Navigator to BKPM-presentable. W0 (census/governance/role-contract) closed 2026-07-23; its W1
+commits were authored locally but **never survived** (worktree lost, no branch). Zero's read of that
+stretch — _"siamo da 10 giorni su W0"_ / _"molto controllo, zero miglioramenti visibili"_ — is the
+standing constraint on this program: **W1+ must produce visible product change, not more governance docs.**
+Reconciling W1's 5 declared targets against disk found only 2 real:
+
+- **`46100`** — FALSE ALARM. The batch-B design's own REV-2 self-correction (`d7d9486007`, "46100/52101
+  were not inconsistent") already retracted it; `52101`/`10433` were cured in #2786. Nothing to do.
+- **`68112` / `93114`** — already cured and live (Fase-1 cure + #2926). Nothing to do.
+- **"~30% Blocked in Bali" hero stat** (`apps/mouth/src/app/kbli/page.tsx`) — CURED. Was a hardcoded
+  guess whose tooltip asserted the moratorium as settled law. Now **computed at render from
+  `getAllCodes()`** (`baliL4.blocked` → 518/1559 = 33%; same in-memory cache `getSections()` already
+  uses, zero extra I/O) so it self-corrects as cures land, and the copy matches the F15 posture +
+  `KBLIProvenancePanel`'s existing "conservative posture" register: _"a working assessment, not a
+  certified legal determination."_
+- **PT PMA capital claim** in `buying-a-bali-villa-in-2026-…` (**EN/IT/ID/RU, all 4 locales**) — CURED.
+  Asserted a flat "IDR 10bn minimum authorized capital", conflating the two BKPM 5/2025 thresholds.
+  Now: **2.5bn paid-up at incorporation + a separate >10bn total investment plan per KBLI line**, and
+  states the nuance the article had dropped — **for hospitality/property, land+building ARE inside that
+  total** (they're excluded for other sectors). Grounded on two already-correct in-repo articles
+  (`bkpm-regulation-5-2025-fdi.mdx`, `consulting-business-guide.it.mdx`) read BEFORE editing —
+  deliberately NOT a regex sweep on "10 miliar" (rule #1/F-BKPM: E28A KITAS's 10bn is a genuine,
+  unrelated immigration threshold and was verified untouched).
+
+**PROVE-LIVE (both consuming surfaces, curl'd on prod):** `balizero.com/kbli` serves `~33%` + the new
+tooltip · the villa article serves the corrected claim in EN and — via the **`?lang=` query param, NOT
+a URL suffix** (locale routing gotcha, cost one false-negative probe) — in IT/ID/RU, stale copy gone in
+all four. `llms-full.txt` deliberately NOT hand-committed: `npm run build` regenerates it from source
+content, so the fix propagates on the next Vercel build (hand-committing it would have dragged 11 days
+of unrelated derived drift + tripped the PII gate, which is exactly where the lost Codex W1 got stuck).
+
+**Collateral (repo-wide, not KBLI):** this PR was blocked for hours by a red `npm audit` gate failing on
+EVERY open PR — 3 new advisories (`hono` ≤4.12.26, `@hono/node-server` ≤2.0.9, `find-my-way` ≤9.6.0)
+landed ABOVE the existing override floors, so the floors aged out silently (W98 / family #2). Diagnosed
+and fixed here (#3052); a parallel lane shipped the same cure with strictly higher floors first (#3053,
+`hono >=4.12.31`) so #3052 was closed as superseded — verified by CONTENT on main (W88), not by proxy.
+
+**4th-SURFACE LEAK FOUND & CURED IN PROD — 2026-07-24, same session, no PR needed (data-plane
+apply of already-merged cures).** Hunting for remaining W1-class public lies, a read-only census of
+`kbli_documents` against canonical found the Lot-8/Lot-9 cures had landed on canonical + KG + Qdrant
+but **skipped the 4th surface**: of the **217** codes whose canonical `per_skala` is `[]` (detached,
+licensing disputed/unverifiable), **18 still carried populated `per_skala` rows in `kbli_documents`**
+— which `chat_kbli` injects VERBATIM into the LLM context, i.e. the exact 50113 disease still live
+on WhatsApp/webchat. All 18 were the sport/klub cluster: `91425` + `93113/93115/93121/93122/93123/
+93124/93125/93126/93127/93128/93129/93192/93193/93194/93195/93197/93199`; none carried `_data_note`,
+confirming the cure had simply never been run for them.
+Cure: `kbli_documents_cure.py --only <18> --dataset <raw URL pinned to main SHA `5d689084d1`> --apply`,
+run on Fly (the dataset is NOT in the image — pass a **commit-pinned** raw URL, never a moving `main`).
+Dry-run first: 18/18 eligible, 0 skipped, all `[GAP]` class. All 18 verified eligible beforehand
+(`per_skala_disputed_pp28_collision` marker + `intel_2026.whatYouNeed` present) so the tool wrote only
+canonical-derived honest-gap prose — never an invented value (rule #9).
+**VERIFIED INDEPENDENTLY after apply** (re-read via the read-only role, not the tool's own report):
+the 18 → 0 licensing rows / 18 `_data_note`; forensic archive `kbli_documents_archive` captured 18
+pre-cure rows; and the **global** invariant now holds — **217 detached codes, 0 still serving
+licensing**. **PROVE-LIVE on the consuming surface**: `chat_kbli` for 93121 now answers _"the specific
+risk tier and exact licensing workflows … are currently unconfirmed … We do not estimate or guess risk
+tiers … verify directly at oss.go.id"_, and states the capital doctrine correctly (2.5bn paid-up +
+
+> 10bn investment, BKPM 5/2025 superseding 4/2021 — #2813's generation-layer fix confirmed working).
+> **Standing check for every future lot**: after a cure lands on canonical, re-run the
+> detached-vs-`kbli_documents` census — a lot can be "closed" on 3 surfaces and still lie on the 4th.
+
+**W1 is CLOSED. Next per the Codex program: W2 (Batch-B prep — still NO-GO without Zero) / W3+.**
 
 **Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
 (113 A-serving/pp28 + 80190 A-serving/orphan) is done. Final tally: 109 full detach + 2
@@ -115,6 +181,91 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
 - **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
+**PHANTOM CODES — a class no cure tool could reach (found + CURED + PROVEN-LIVE 2026-07-24, #3070/#3072/#3073):**
+
+`kbli_documents` is a strict SUPERSET of the canonical catalogue: **1,563 rows vs 1,559 codes**.
+The 4 extras are KBLI **2020** codes — `26120`, `60111`, `82920`, `85598` — carrying full 2020
+licensing payloads. The router's direct-code path (`kbli_notebook_chat.py:715`) resolves ANY
+5-digit code in the user's question straight against this table, so a phantom row WINS an
+exact-match lookup. Live prod proof before the cure: **82920** → _"Yes, a PT PMA can absolutely
+run this business"_ + per-scale risk tiers + Gubernur authority + ISO 9001 (the 2025 catalogue
+split 82920 into 82921-82929 + 39002); **60111** → _"TERBUKA, 100% open to foreign ownership"_ +
+a full ISR/Kominfo permit path + _"register your NIB under KBLI 60111"_ — for a **government**
+radio-broadcasting code retired in 2025.
+
+> **STRUCTURAL LESSON — why this survived every previous cure.** EVERY cure tool in the fleet keys
+> off _"a canonical record exists"_: `kbli_documents_cure.py` skips on "no `per_skala_disputed_*`
+> marker", `kg_kbli_license_fix.py` skips on `record is None` → "not in canonical dataset". That is
+> exactly what a phantom code lacks, so **a code living only downstream is unreachable by all of
+> them**. Any future cure tool must decide whether its scope is "codes the canonical knows about" or
+> "rows that actually exist in the store" — and say so explicitly.
+
+Cure: `backend/scripts/kbli_documents_phantom_cure.py` — TWO arms, `--only` mandatory, no sweep
+flag, `--census` reports the phantom set without writing. Rows are rewritten into a
+superseded-code notice (2020 payload archived under `*_superseded_kbli2020` + verbatim in
+`kbli_documents_archive`); 2025 successors come ONLY from the canonical crosswalk fields
+(`kbli_2020_source`/`pp28_sources`), each with its `mapping_note` verbatim — the crosswalk carries
+weak auto-matches (39002 "Penyimpanan Karbon" ← 82920 "packaging" at score=71%) and neither silent
+inclusion nor silent exclusion (W97) is acceptable. The `--kg` arm detaches **53 REQUIRES edges**
+(26120=19, 60111=2, 82920=27, 85598=5), the channel `inspect_kbli` turns into `licenses` and
+`_resolve_risk_profile` turns into the risk label.
+
+**FULL CONSUMER MAP for the phantom class, censused 2026-07-24 — the phantom codes live in exactly
+TWO stores.** The verified negatives are recorded here so no session re-derives them:
+
+| Surface                                        | Phantom codes present? | Evidence                                                                 |
+| ---------------------------------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| `kbli_documents` (→ `chat_kbli`)               | **YES — 4**            | 1,563 rows vs 1,559 canonical                                            |
+| `kg_nodes`/`kg_edges` (→ `inspect_kbli`)       | **YES — 4 + 53 edges** | all 4 nodes live, `licensing_status: REGULATED`, `pma_status: TERBUKA`   |
+| Qdrant (→ `search_kbli`)                       | NO                     | `search_kbli` returns only 2025 codes; zero phantom points               |
+| canonical / `apps/mouth` `/kbli/<code>`        | NO                     | phantom absent by definition — pages are generated from the 1,559        |
+| `apps/kbli-navigator/data/kbli-2025.json`      | NO                     | **byte-identical to canonical** (blob `2417c876`, same on `origin/main`) |
+| `apps/kbli-navigator/lib/kbli-gold-content.ts` | NO                     | zero occurrences of any of the 4 codes                                   |
+
+> **CORRECTION to the "Surfaces 5 & 6" block below (2026-07-24):** it describes surface 5 as rotted
+> (1,563 records, zero quarantine markers, cure "in flight"). That is **STALE** — the cure landed:
+> the file is tracked, is 1,559 records, and its blob is IDENTICAL to the canonical dataset on
+> `origin/main` (verified by content per W88, not by branch name or PR state). Surface 6's gold
+> override is likewise clean of phantoms, though its 68112/49213 override issue is a SEPARATE
+> question this census does not speak to.
+
+Cross-family adversarial gate: **Kimi K3 → SHIP-WITH-FIXES**, 2 MAJOR both fixed (metadata
+neutralisation was a whitelist-of-two → now FAIL-CLOSED on any unrecognised metadata key; the
+canonical catalogue was trusted blind though "phantom" is _defined_ by it → `validate_dataset()`
+
+- `--apply` refused against the unpinned `main` URL + dataset sha256 recorded in every cured row).
+  **The Codex seat is 401 token-revoked** (not quota) — needs an interactive `codex login`,
+  `operator[GUI]`.
+
+**APPLIED + PROVEN-LIVE on every consuming surface (2026-07-24, Fly v3910→v3912).** Both arms ran
+on prod (dataset pinned to SHA `e6deb07a25`, never `main` — the script refuses `--apply` against the
+unpinned URL). Independently re-verified by reading the DB with the read-only role, NOT the tool's
+own report:
+
+- `kbli_documents`: 4 rows → 0 licensing rows, `licensing_status: NOT_IN_KBLI_2025`,
+  `pma_status: Verify at OSS`, `_data_note` + `*_superseded_kbli2020` archive present, the false
+  `kode_kbli_2025` key removed.
+- KG: **0 REQUIRES edges** left on the 4 nodes, 53 archived (19/2/27/5 — exact match to pre-cure),
+  nodes marked `NOT_IN_KBLI_2025`.
+- `chat_kbli`: answers "82920 is an obsolete KBLI 2020 code … you cannot use it on OSS today",
+  lists the 2025 successors, refuses to guess risk tiers. ✅
+- `inspect_kbli`: all 4 return `licenses: []`, `risk_profile: "Not classified"`,
+  `licensing_status: NOT_IN_KBLI_2025`, `pma_status: Verify at OSS` — the plantation-contaminated
+  packaging payload is gone. ✅
+
+**Cache trap paid for here (now a tracked tool — `backend/scripts/kbli_inspect_cache_bust.py`,
+#3072 + fail-loud fix #3073):** `inspect_kbli` caches the whole `KBLIDetail` under
+`kbli_inspect_v2_{code}` with a **30-day** TTL (`get_kbli_ttl`), on Redis (survives restart). Two
+gemini traps, both catalogued in memory `lesson_inspect_kbli_cache_poison_and_bust_redis_init_2026_07_24`:
+(1) INSPECTING a cached surface BEFORE curing it poisons its entry for the TTL — my pre-cure
+diagnostic call is why `inspect_kbli` 82920 kept lying after the DB was clean; (2) a one-shot
+eviction tool that does NOT call `RedisManager.get_instance().initialize()` degrades to an empty
+per-process in-memory LRU and reports a FALSE CLEAN ("0/4 had a cache entry" while Redis held them).
+The tool now inits RedisManager, logs `cache backend: shared Redis`, and exits non-zero if REDIS_URL
+is configured but unreachable. **RULE for every future KBLI cure on a cached surface: cure the store
+→ `kbli_inspect_cache_bust.py --only <codes> --apply` → re-verify the surface. Curing the store is
+not curing the surface.**
+
 **Surfaces 4-6 + capital doctrine + Batch-B (M5 conductor-verified 2026-07-19):**
 
 - **Surface 4 — `kbli_documents` Postgres table, CURED IN PROD** (#2796 merged + fly apply): table
@@ -132,13 +283,18 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
   estimate a risk tier by analogy).
 - **Surfaces 5 & 6 — `apps/kbli-navigator` (knowledge.balizero.com; it is a Next.js/Vercel+Netlify
   app, NOT the "native desktop app" §5 describes — mislabel found during Batch-B design work,
-  ALIGN-FLEET TODO):** (5) its `data/kbli-2025.json` was untracked in the 2026-03-28 cleanup and
-  rotted (1,563 records, zero quarantine markers, 68112 still MICE) — **cure lane in flight**,
-  branch `agent/air-m5/frontend/kbli-navigator-dataset-desync` (conductor-gated), re-tracking +
-  extending `scripts/sync_kbli_dataset.sh`/`check-kbli-dataset-sync`. (6)
-  `apps/kbli-navigator/lib/kbli-gold-content.ts` (~45K lines, hand-authored, separate from mouth
-  gold) OVERRIDES cured data on 68112/49213 pages (verified in built HTML) — **OPEN, queued, task
-  #19**.
+  ALIGN-FLEET TODO): BOTH CURED ON MAIN — re-verified on `origin/main` 2026-07-24, this entry
+  previously said otherwise and was STALE.** (5) `data/kbli-2025.json` now carries **1,559**
+  records (not the rotted 1,563) and 68112 reads correctly — residential title, `per_skala: []`,
+  `per_skala_disputed_pp28_mice` + `_l2_status` + `_data_note` markers present; the desync cure
+  landed. (6) `lib/kbli-gold-content.ts` no longer overrides the cure: its 68112 entry is the
+  honest-gap text that NAMES the collision ("code-number collision … MICE-venue rental … do not
+  apply to residential leasing and have been removed"), and 49213 correctly frames AKDP/AKAP as
+  the DIFFERENT regulatory basis it is excluded from. **Do NOT re-open these as work items.**
+  Residual on this app: it is **SSO-gated** (`/kbli/<code>` → 307 → `kita.balizero.com/login`),
+  so it is an INTERNAL/team surface, not an anonymous-public one — anonymous curl can never
+  prove-live it (cf. [[discovery_nuzantara_rag_401_precedes_routing_2026_07_22]]); a real
+  prove-live there needs authenticated browser QA.
 - **Mouth gold cure LIVE** (#2794): 10 gold records' detached-code echoes cured
   (whatYouNeed/zantaraOpener/baliContext), PROVE-LIVE on 68123/60103; 63-phantom triage table
   `scripts/kbli_gold_remap_table_status.json` (48 unmapped / 8 ambiguous-SPLIT / 7
@@ -437,11 +593,13 @@ corner (flagged only, nothing fixed here):**
    **`kbli_documents` (Postgres) → `chat_kbli` LLM context via
    `_fetch_parent_documents_from_kbli_table()` + direct 5-digit lookup
    (`apps/backend-rag/backend/app/routers/kbli_notebook_chat.py:635,699`) — the 4th surface,
-   cured for the 73 quarantined rows by `kbli_documents_cure.py` (#2796, 2026-07-19), whole-table
-   builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
+   cured by `kbli_documents_cure.py` (#2796, 2026-07-19) — and **RECONCILED 2026-07-24: all 217
+   canonical-detached codes now serve 0 licensing rows here (was 18 leaking, see LIVE STATE)**;
+   whole-table builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
    app (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
-   `data/kbli-2025.json` fork (stale, cure in flight) AND its own `lib/kbli-gold-content.ts`
-   override layer (OPEN, task #19) · NB sources. Fix the class across ALL consumers or explicitly
+   `data/kbli-2025.json` fork AND its own `lib/kbli-gold-content.ts` override layer (**both CURED
+   on main, re-verified 2026-07-24 — still consumers to check on every future cure, but not open
+   work items**) · NB sources. Fix the class across ALL consumers or explicitly
    park the rest; "merged" ≠ "live" ≠ "every surface".
 7. **Derived layers need invalidation**: after correcting any source fact, list which derived fields
    (gold whatYouNeed, editorial, l4_bali reason, KG properties, NB) were generated FROM it and

@@ -49,67 +49,83 @@ import {
   statusToBaton,
 } from "@/components/portal/PracticeBaton";
 
-// Status configurations
+// Status configurations — WS3 slice 4 (GARUDA Day Edition, 2026-07-24):
+// state colors read the semantic --state-* tokens (WS2 operative-light AA
+// overrides: success 4.80 / warning 4.78 / danger 5.74 / info 5.94 :1 on
+// paper) instead of Tailwind dark-grade utilities (text-amber-500 & co.
+// fail AA on paper). `fg` is a full CSS color expression; chipStyle()
+// derives the 12% tint background from it.
 const STATUS_CONFIG = {
   pending: {
-    color: "bg-amber-500/10 text-amber-500",
+    fg: "var(--state-warning)",
     icon: <Clock className="w-4 h-4" />,
     label: "Pending",
   },
   uploaded: {
-    color: "bg-blue-500/10 text-blue-500",
+    fg: "var(--state-info)",
     icon: <Upload className="w-4 h-4" />,
     label: "Uploaded",
   },
   verified: {
-    color: "bg-green-500/10 text-green-500",
+    fg: "var(--state-success)",
     icon: <CheckCircle className="w-4 h-4" />,
     label: "Verified",
   },
   rejected: {
-    color: "bg-red-500/10 text-red-500",
+    fg: "var(--state-danger)",
     icon: <X className="w-4 h-4" />,
     label: "Rejected",
   },
 } as const;
 
-// Process status mapping with colors (mirrored from CRM workspace)
-const PROCESS_STATUS_CONFIG: Record<string, { label: string; color: string }> =
-  {
-    inquiry: { label: "Inquiry", color: "bg-slate-500/10 text-slate-400" },
-    quotation_sent: {
-      label: "Quotation Sent",
-      color: "bg-blue-500/10 text-blue-400",
-    },
-    sending_invoice: {
-      label: "Sending Invoice",
-      color: "bg-blue-500/10 text-blue-400",
-    },
-    payment_pending: {
-      label: "Payment Pending",
-      color: "bg-amber-500/10 text-amber-400",
-    },
-    waiting_payment: {
-      label: "Waiting for Payment",
-      color: "bg-amber-500/10 text-amber-400",
-    },
-    in_progress: { label: "In Progress", color: "bg-sky-500/10 text-sky-400" },
-    on_process: { label: "On Process", color: "bg-sky-500/10 text-sky-400" },
-    waiting_documents: {
-      label: "Waiting for Documents",
-      color: "bg-orange-500/10 text-orange-400",
-    },
-    submitted_to_gov: {
-      label: "Submitted to Government",
-      color: "bg-purple-500/10 text-purple-400",
-    },
-    approved: {
-      label: "Approved",
-      color: "bg-emerald-500/10 text-emerald-400",
-    },
-    completed: { label: "Completed", color: "bg-green-500/10 text-green-400" },
-    cancelled: { label: "Cancelled", color: "bg-red-500/10 text-red-400" },
+/** Chip colors: fg at full strength, bg as a 12% tint of the same color. */
+function chipStyle(fg: string): React.CSSProperties {
+  return {
+    color: fg,
+    backgroundColor: `color-mix(in srgb, ${fg} 12%, transparent)`,
   };
+}
+
+// Process status mapping with colors (mirrored from CRM workspace).
+// Honest day mapping (slice-4 brief): done → success, current/in-flight →
+// info, waiting-on-client → warning, blocked/cancelled → danger,
+// early/neutral → --text-tertiary (4.77:1 on paper), money-in-flight →
+// copper via --bz-copper-text (slice-1 fallback until PR #3050 merges).
+const PROCESS_STATUS_CONFIG: Record<string, { label: string; fg: string }> = {
+  inquiry: { label: "Inquiry", fg: "var(--text-tertiary, var(--tx-tertiary))" },
+  quotation_sent: {
+    label: "Quotation Sent",
+    fg: "var(--bz-copper-text, var(--tx-secondary))",
+  },
+  sending_invoice: {
+    label: "Sending Invoice",
+    fg: "var(--bz-copper-text, var(--tx-secondary))",
+  },
+  payment_pending: {
+    label: "Payment Pending",
+    fg: "var(--state-warning)",
+  },
+  waiting_payment: {
+    label: "Waiting for Payment",
+    fg: "var(--state-warning)",
+  },
+  in_progress: { label: "In Progress", fg: "var(--state-info)" },
+  on_process: { label: "On Process", fg: "var(--state-info)" },
+  waiting_documents: {
+    label: "Waiting for Documents",
+    fg: "var(--state-warning)",
+  },
+  submitted_to_gov: {
+    label: "Submitted to Government",
+    fg: "var(--state-info)",
+  },
+  approved: {
+    label: "Approved",
+    fg: "var(--state-success)",
+  },
+  completed: { label: "Completed", fg: "var(--state-success)" },
+  cancelled: { label: "Cancelled", fg: "var(--state-danger)" },
+};
 
 // Keep compat for any old references
 const PROCESS_STATUS_LABELS: Record<string, string> = Object.fromEntries(
@@ -119,7 +135,9 @@ const PROCESS_STATUS_LABELS: Record<string, string> = Object.fromEntries(
 const PORTAL_CARD_STYLE = {
   background: "var(--bz-elevated)",
   borderColor: "var(--bz-border)",
-  boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+  // GARUDA Day concept .panel shadow — soft navy on paper, near-invisible
+  // on dark (harmless there).
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
 } as const;
 
 const PORTAL_CARD_MUTED_STYLE = {
@@ -141,7 +159,8 @@ const StatusBadge = memo(
     return (
       <Badge
         variant="secondary"
-        className={`${config.color} flex items-center gap-1`}
+        className="flex items-center gap-1"
+        style={chipStyle(config.fg)}
       >
         {config.icon}
         {config.label}
@@ -209,7 +228,7 @@ function DocumentUploadModal({
         <div className="space-y-4">
           <div
             className="p-3 rounded-lg backdrop-blur-md"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           >
             <p className="font-medium">{document.document_label}</p>
             {document.description && (
@@ -243,8 +262,8 @@ function DocumentUploadModal({
               placeholder="Add any notes about this document..."
               className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]"
               style={{
-                background: "rgba(255,255,255,0.03)",
-                borderColor: "rgba(255,255,255,0.05)",
+                background: "var(--glass-rim)",
+                borderColor: "var(--bz-border)",
                 color: "var(--bz-text-1)",
               }}
             />
@@ -326,7 +345,11 @@ function ProcessCard({
               {process.processName}
             </h3>
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PROCESS_STATUS_CONFIG[process.processStatus]?.color || "bg-slate-500/10 text-slate-400"}`}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+              style={chipStyle(
+                PROCESS_STATUS_CONFIG[process.processStatus]?.fg ||
+                  "var(--text-tertiary, var(--tx-tertiary))",
+              )}
             >
               {PROCESS_STATUS_CONFIG[process.processStatus]?.label ||
                 process.processStatus}
@@ -372,7 +395,7 @@ function ProcessCard({
           <button
             onClick={() => setShowTimeline(!showTimeline)}
             className="text-xs font-medium flex items-center gap-1 transition-opacity hover:opacity-80"
-            style={{ color: "var(--bz-accent-warm)" }}
+            style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
           >
             {showTimeline ? "Hide Timeline" : "View Timeline"}
           </button>
@@ -383,7 +406,7 @@ function ProcessCard({
                   <div
                     className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
                     style={{
-                      borderColor: "var(--bz-accent-warm)",
+                      borderColor: "var(--bz-copper)",
                       borderTopColor: "transparent",
                     }}
                   />
@@ -399,7 +422,7 @@ function ProcessCard({
               ) : (
                 <p
                   className="text-xs py-2"
-                  style={{ color: "var(--bz-text-3)" }}
+                  style={{ color: "var(--text-tertiary, var(--bz-text-3))" }}
                 >
                   No timeline data available
                 </p>
@@ -468,9 +491,12 @@ function ProcessCard({
               <div
                 key={doc.id}
                 id={`doc-${doc.id}`}
-                className={`p-4 flex items-start justify-between gap-3 ${
-                  doc.is_required ? "border-l-2 border-l-amber-500" : ""
-                }`}
+                className="p-4 flex items-start justify-between gap-3"
+                style={
+                  doc.is_required
+                    ? { borderLeft: "2px solid var(--state-warning)" }
+                    : undefined
+                }
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -478,7 +504,8 @@ function ProcessCard({
                     {doc.is_required && (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] bg-amber-500/10 text-amber-500"
+                        className="text-[10px]"
+                        style={chipStyle("var(--state-warning)")}
                       >
                         Required
                       </Badge>
@@ -516,13 +543,16 @@ function ProcessCard({
                 {doc.status === "uploaded" && (
                   <Badge
                     variant="secondary"
-                    className="bg-blue-500/10 text-blue-500"
+                    style={chipStyle("var(--state-info)")}
                   >
                     Under Review
                   </Badge>
                 )}
                 {doc.status === "verified" && (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <CheckCircle
+                    className="w-5 h-5"
+                    style={{ color: "var(--state-success)" }}
+                  />
                 )}
                 {doc.status === "rejected" && (
                   <Button
@@ -561,38 +591,41 @@ export default function PortalProcessPage() {
   );
 
   // Load profile and documents — stable reference, no toast dependency in deps
-  const loadData = useCallback(async (options?: {
-    showLoading?: boolean;
-    showErrorToast?: boolean;
-  }) => {
-    const showLoading = options?.showLoading ?? true;
-    const showErrorToast = options?.showErrorToast ?? true;
-    try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
+  const loadData = useCallback(
+    async (options?: { showLoading?: boolean; showErrorToast?: boolean }) => {
+      const showLoading = options?.showLoading ?? true;
+      const showErrorToast = options?.showErrorToast ?? true;
+      try {
+        if (showLoading) {
+          setIsLoading(true);
+        }
 
-      // Get profile
-      const profileData = await api.portal.getProfile();
-      setProfile({ id: profileData.id, fullName: profileData.fullName });
+        // Get profile
+        const profileData = await api.portal.getProfile();
+        setProfile({ id: profileData.id, fullName: profileData.fullName });
 
-      // Get required documents via portal-scoped endpoint. The CRM version
-      // 403s for plain client JWTs — this route resolves client_id from
-      // the caller's JWT so shareholders can load their own checklist.
-      const docs =
-        (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
-      setDocuments(docs);
-    } catch (err) {
-      if (showErrorToast) {
-        toastRef.current.error("Failed to load data", "Please try again later");
+        // Get required documents via portal-scoped endpoint. The CRM version
+        // 403s for plain client JWTs — this route resolves client_id from
+        // the caller's JWT so shareholders can load their own checklist.
+        const docs =
+          (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
+        setDocuments(docs);
+      } catch (err) {
+        if (showErrorToast) {
+          toastRef.current.error(
+            "Failed to load data",
+            "Please try again later",
+          );
+        }
+        logger.error("Failed to load process data", {}, err as Error);
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
       }
-      logger.error("Failed to load process data", {}, err as Error);
-    } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
-    }
-  }, []); // stable — no deps that change every render
+    },
+    [],
+  ); // stable — no deps that change every render
 
   useEffect(() => {
     loadData();
@@ -701,10 +734,21 @@ export default function PortalProcessPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
-      {/* Header */}
+      {/* Header — Day masthead (GARUDA Day Edition): copper rule + Cormorant
+          serif headline per concept (--font-serif, wired on <html>); Inter
+          everywhere else. */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight">My Processes</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
+        <div
+          aria-hidden="true"
+          className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+        />
+        <h1
+          className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          My Processes
+        </h1>
+        <p className="text-sm mt-1" style={{ color: "var(--tx-secondary)" }}>
           Track your active processes and upload required documents
         </p>
       </section>
@@ -737,7 +781,12 @@ export default function PortalProcessPage() {
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Pending Upload
             </p>
-            <p className="text-2xl font-bold text-amber-400">{pendingDocs}</p>
+            <p
+              className="text-2xl font-bold"
+              style={{ color: "var(--state-warning)" }}
+            >
+              {pendingDocs}
+            </p>
           </div>
           <div
             className="rounded-xl border p-4"
@@ -746,7 +795,10 @@ export default function PortalProcessPage() {
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Completion
             </p>
-            <p className="text-2xl font-bold text-green-400">
+            <p
+              className="text-2xl font-bold"
+              style={{ color: "var(--state-success)" }}
+            >
               {completionRate}%
             </p>
           </div>
@@ -773,11 +825,29 @@ export default function PortalProcessPage() {
       ) : (
         <div className="space-y-4">
           {pendingDocs > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div
+              className="rounded-lg p-4 flex items-start gap-3"
+              style={{
+                background: "var(--bz-card)",
+                border:
+                  "1px solid color-mix(in srgb, var(--state-warning) 30%, transparent)",
+              }}
+            >
+              <AlertTriangle
+                className="w-5 h-5 shrink-0 mt-0.5"
+                style={{ color: "var(--state-warning)" }}
+              />
               <div>
-                <p className="font-medium text-amber-600">Documents Required</p>
-                <p className="text-sm text-amber-600/80">
+                <p
+                  className="font-medium"
+                  style={{ color: "var(--state-warning)" }}
+                >
+                  Documents Required
+                </p>
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--state-warning)" }}
+                >
                   You have {pendingDocs} document{pendingDocs > 1 ? "s" : ""}{" "}
                   waiting to be uploaded. Please upload them to proceed with
                   your process.

@@ -266,6 +266,43 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
     return response
 
 
+@router.post("/e33-guarantee-scan")
+async def run_e33_guarantee_scan(request: Request) -> dict[str, Any]:
+    """Scan open E33 Second Home cases and persist Day-90 / annual-maintenance alerts.
+
+    Loads non-terminal E33 cases, builds per-case compliance forecasts
+    (Day-90 guarantee gate with Day 30/60/75 escalation + annual maintenance
+    recurrence) and feeds them to the existing AlertsEngine — same
+    persist/dedup/promote path as /compliance-forecast. Team dispatch only;
+    nothing client-facing (Legge 5).
+
+    Kill switch: system_settings.e33_guarantee_scan_enabled must be "true"
+    (blocked by default, same posture as visa_expiry_notifier_enabled).
+    """
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.crm.e33_guarantee_scanner import (
+        E33GuaranteeScanner,
+        is_scan_enabled,
+    )
+
+    if not await is_scan_enabled(db_pool):
+        logger.warning(
+            "E33 guarantee scan BLOCKED — awaiting owner approval "
+            "(set e33_guarantee_scan_enabled=true)"
+        )
+        return {
+            "service": "e33_guarantee_scan",
+            "status": "blocked",
+            "reason": "awaiting_owner_approval",
+        }
+
+    scanner = E33GuaranteeScanner(db_pool)
+    result = await scanner.scan()
+    return {"service": "e33_guarantee_scan", **result}
+
+
 @router.post("/email-health")
 async def run_email_health(request: Request) -> dict[str, Any]:
     """Run retry + stale-detection + escalation + daily report for email.

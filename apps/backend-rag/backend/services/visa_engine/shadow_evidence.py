@@ -15,8 +15,28 @@ classes, honestly labeled in the report fields).  Rows whose
 ``traffic_source`` is NULL (pre-256 legacy rows) or not one of the CHECKed
 classes are reported as ``legacy`` and counted toward NEITHER G-a gate --
 the same fail-closed philosophy as migration 255's nullable correlators.
+Evidence surfaces (W1, 2026-07-23): the audit log is read for the
+``MATCH`` surface (STEP-6c's fire-and-forget shadow twin of the v1 funnel)
+AND the ``RECOMMEND`` surface (the W1 evaluate read-path,
+``POST /api/visa-oracle/evaluate`` — the first writer of
+``traffic_source``-labeled rows).  Both are genuine end-user evaluation
+traffic; G-a measures adoption of the ENGINE, not of one funnel.  Rows from
+any other surface (a future CLOCK writer, say) are skipped fail-closed at
+the aggregation layer too, so a new writer can never silently inflate the
+gates without a deliberate collector update — the skip count is reported.
+
 G-c is intentionally NOT split: grounding quality is a property of the
 engine's output and applies to every audited row regardless of provenance.
+
+W1 Fable delta 3 (binding, 2026-07-23; migration 257): ``request_category``
+now admits 10 values -- the 7 legacy substantive categories, ``other``, and
+the two v2-interview tiles ``business``/``diaspora``.  The 7 legacy
+categories stay REQUIRED for the G-a gates; ``business``/``diaspora`` rows
+are REPORTED (counted in ``category_counts``, honestly labeled via
+``reported_only_categories``) but NEVER required for gate-green, because
+their behavioral trees do not exist yet (Track B FASE 2 order: they are
+lanes 2 and 6) -- demanding them today would require evidence no honest
+evaluation can produce.
 
 No applicant facts, Match tokens, decision IDs, or request fingerprints are
 returned.  The collector reads the PII-free audit projection and emits only
@@ -56,7 +76,23 @@ REAL_TRAFFIC_SOURCE = "real"
 #: honestly-labeled G-a-breadth gate, never G-a-vol.
 SYNTHETIC_TRAFFIC_SOURCES = frozenset({"synthetic_gold", "synthetic_driver"})
 
-_VALID_CATEGORIES = frozenset(purpose.value for purpose in Purpose)
+#: ``request_category`` values (migration 257 CHECK) that are REPORTED but
+#: NOT required for G-a gate-green: the v2 interview's ``business`` and
+#: ``diaspora`` tiles.  Their behavioral trees do not exist yet (Track B
+#: FASE 2 lanes 2 and 6), so a green gate can never honestly demand traffic
+#: in them -- but rows carrying them are real demand and must be counted and
+#: labeled, not silently folded into ``other`` (Fable delta 3).
+REPORTED_ONLY_INTERVIEW_CATEGORIES = frozenset({"business", "diaspora"})
+
+#: ``engine_surface`` values (migration 252 CHECK) whose SHADOW rows are
+#: gate evidence: the MATCH shadow twin and the W1 RECOMMEND evaluate
+#: read-path.  Any other surface is skipped fail-closed (see module
+#: docstring).
+EVIDENCE_ENGINE_SURFACES = frozenset({"MATCH", "RECOMMEND"})
+
+_VALID_CATEGORIES = (
+    frozenset(purpose.value for purpose in Purpose) | REPORTED_ONLY_INTERVIEW_CATEGORIES
+)
 _CITATIONLESS_ABSTENTION_STATES = frozenset({DecisionState.NEEDS_INPUT.value})
 
 
@@ -174,6 +210,7 @@ def _gate_a_report(
         category_counts=dict(sorted(accumulator.categories.items())),
         missing_required_categories=missing_categories,
         required_categories=sorted(REQUIRED_INTERVIEW_CATEGORIES),
+        reported_only_categories=sorted(REPORTED_ONLY_INTERVIEW_CATEGORIES),
         distinct_visa_codes=len(accumulator.candidate_codes),
         minimum_distinct_visa_codes=MIN_DISTINCT_VISA_CODES,
         visa_codes=sorted(accumulator.candidate_codes),
@@ -213,6 +250,8 @@ def evaluate_shadow_evidence(
     real_rows = 0
     synthetic_source_counts: Counter[str] = Counter()
     legacy_rows = 0
+    surface_counts: Counter[str] = Counter()
+    skipped_non_evidence_surfaces = 0
     missing_ruleset_activations = 0
     missing_rule_pack_digests = 0
     malformed_grounding_summaries = 0
@@ -235,6 +274,21 @@ def evaluate_shadow_evidence(
     }
 
     for row in rows:
+        # Fail-closed surface gate (defense-in-depth behind the SQL filter):
+        # a row naming a non-evidence surface is skipped entirely — counted
+        # nowhere, reported as skipped — so a future writer on a new surface
+        # can never silently inflate any gate.  Rows WITHOUT the key
+        # (hand-built pre-surface-split fixture rows) are admitted, matching
+        # the pre-W1 behavior exactly.
+        surface = row.get("engine_surface")
+        if surface is not None and not (
+            isinstance(surface, str) and surface in EVIDENCE_ENGINE_SURFACES
+        ):
+            skipped_non_evidence_surfaces += 1
+            continue
+        if isinstance(surface, str):
+            surface_counts[surface] += 1
+
         traffic_source = row.get("traffic_source")
         if traffic_source == REAL_TRAFFIC_SOURCE:
             accumulator: _GateAAccumulator | None = vol_accumulator
@@ -438,7 +492,7 @@ def evaluate_shadow_evidence(
     )
 
     return {
-        "schema_version": "visa-shadow-evidence/1.1.0",
+        "schema_version": "visa-shadow-evidence/1.3.0",
         "window": {
             "start": window_start.astimezone(timezone.utc).isoformat(),
             "end_exclusive": window_end.astimezone(timezone.utc).isoformat(),
@@ -452,6 +506,8 @@ def evaluate_shadow_evidence(
             "legacy": legacy_rows,
             "total_audit_rows": len(rows),
         },
+        "surfaces": dict(sorted(surface_counts.items())),
+        "skipped_non_evidence_surfaces": skipped_non_evidence_surfaces,
         "gates": {
             "G-a-vol": gate_a_vol,
             "G-a-breadth": gate_a_breadth,
@@ -498,6 +554,7 @@ async def collect_shadow_evidence(
         rows = await conn.fetch(
             """
             SELECT
+                engine_surface,
                 request_fingerprint,
                 request_category,
                 candidate_summary,
@@ -513,7 +570,7 @@ async def collect_shadow_evidence(
                 traffic_source
             FROM public.visa_decisions
             WHERE environment = $1
-              AND engine_surface = 'MATCH'
+              AND engine_surface = ANY($4::text[])
               AND engine_mode = 'SHADOW'
               AND evaluated_at >= $2
               AND evaluated_at < $3
@@ -522,6 +579,7 @@ async def collect_shadow_evidence(
             environment,
             window_start,
             window_end,
+            sorted(EVIDENCE_ENGINE_SURFACES),
         )
 
         pack_ids = sorted(
@@ -563,10 +621,12 @@ async def collect_shadow_evidence(
 
 
 __all__ = [
+    "EVIDENCE_ENGINE_SURFACES",
     "MIN_CONSECUTIVE_DAYS",
     "MIN_DISTINCT_REQUESTS",
     "MIN_DISTINCT_VISA_CODES",
     "REAL_TRAFFIC_SOURCE",
+    "REPORTED_ONLY_INTERVIEW_CATEGORIES",
     "REQUIRED_INTERVIEW_CATEGORIES",
     "SYNTHETIC_TRAFFIC_SOURCES",
     "collect_shadow_evidence",

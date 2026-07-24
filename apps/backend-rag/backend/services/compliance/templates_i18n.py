@@ -149,6 +149,35 @@ TEMPLATE_REGISTRY: dict[TemplateCategory, dict[TemplateField, dict[LangCode, str
             "id": "Tinjau dampak operasional",
         },
     },
+    "guarantee_proof": {
+        "title": {
+            "it": "E33 Second Home — prova di garanzia",
+            "en": "E33 Second Home — guarantee proof",
+            "id": "E33 Second Home — bukti jaminan",
+        },
+        "body": {
+            "it": (
+                "La prova della garanzia E33 ({{ doc_type }}) è dovuta tra "
+                "{{ days_until }} giorni. Il deposito/proprietà deve essere "
+                "dimostrato all'Immigrazione e mantenuto per la validità del permesso."
+            ),
+            "en": (
+                "The E33 guarantee proof ({{ doc_type }}) is due in "
+                "{{ days_until }} days. The deposit/property must be evidenced "
+                "to Immigration and maintained for the permit validity."
+            ),
+            "id": (
+                "Bukti jaminan E33 ({{ doc_type }}) jatuh tempo dalam "
+                "{{ days_until }} hari. Deposit/properti harus dibuktikan ke "
+                "Imigrasi dan dipertahankan selama masa berlaku izin."
+            ),
+        },
+        "action": {
+            "it": "Invia la prova di garanzia all'Immigrazione tramite Bali Zero",
+            "en": "File the guarantee proof with Immigration via Bali Zero",
+            "id": "Serahkan bukti jaminan ke Imigrasi melalui Bali Zero",
+        },
+    },
     "document_expiry": {
         "title": {
             "it": "Documento {{ doc_type }} in scadenza",

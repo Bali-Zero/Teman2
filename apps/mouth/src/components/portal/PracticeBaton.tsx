@@ -70,8 +70,11 @@ const BATON_STYLE: Record<Baton, BatonStyle> = {
     label: "Your turn",
     sub: "Action needed from you",
     fg: "var(--bz-accent)", // vibrant copper — demands attention
-    bg: "rgba(212,132,90,0.12)",
-    ring: "rgba(212,132,90,0.40)",
+    // WS3 slice 4: tints derive from the token (was raw rgba(212,132,90,*),
+    // frozen at the dark-grade copper), so the chip follows the daylight
+    // copper step when slice-1 re-arms --bz-copper on operative-light.
+    bg: "color-mix(in srgb, var(--bz-accent) 12%, transparent)",
+    ring: "color-mix(in srgb, var(--bz-accent) 40%, transparent)",
     pulse: false,
   },
   our_turn: {
@@ -180,7 +183,7 @@ export function PracticeBaton({
       {baton === "our_turn" && !compact && lastUpdate && (
         <p
           className="flex items-center gap-1.5 text-xs"
-          style={{ color: "var(--bz-text-3)" }}
+          style={{ color: "var(--text-tertiary, var(--bz-text-3))" }}
         >
           <Hourglass className="w-3 h-3" aria-hidden />
           Last update: {lastUpdate}

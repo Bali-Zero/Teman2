@@ -13,11 +13,14 @@ const { mockGetProfile, mockGetMyRequiredDocuments, mockUploadClientDocument } =
 
 vi.mock("next/dynamic", () => ({
   default: (
-    loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>,
+    loader: () => Promise<{
+      default: React.ComponentType<Record<string, unknown>>;
+    }>,
   ) => {
     const Component = (props: Record<string, unknown>) => {
-      const [Resolved, setResolved] =
-        React.useState<React.ComponentType<Record<string, unknown>> | null>(null);
+      const [Resolved, setResolved] = React.useState<React.ComponentType<
+        Record<string, unknown>
+      > | null>(null);
       React.useEffect(() => {
         loader().then((mod) => setResolved(() => mod.default));
       }, []);
@@ -65,18 +68,17 @@ vi.mock("@/hooks/usePortalProcessTimeline", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({
-    open,
-    children,
-  }: {
-    open: boolean;
-    children: React.ReactNode;
-  }) => (open ? <div>{children}</div> : null),
+  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { children: React.ReactNode }) => (
     <div role="dialog">{children}</div>
   ),
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
 }));
 
 vi.mock("@/components/ui/toast", () => ({
@@ -189,5 +191,53 @@ describe("PortalProcessPage", () => {
         },
       ]);
     });
+  });
+
+  it("drives practice/doc status styling from semantic --state-* tokens (WS3 day pass)", async () => {
+    mockGetMyRequiredDocuments.mockResolvedValue([pendingDocument]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    // Practice status chip (waiting_documents → --state-warning)
+    const chip = await screen.findByText("Waiting for Documents");
+    expect(chip).toHaveStyle({ color: "var(--state-warning)" });
+
+    // "Documents Required" banner + required badge read the same token
+    // (the stats grid carries a "Documents Required" label too — pick the
+    // warning-styled banner title)
+    const bannerTitle = (await screen.findAllByText("Documents Required")).find(
+      (el) => el.style.color.includes("--state-warning"),
+    );
+    expect(bannerTitle).toBeDefined();
+    expect(screen.getByText("Required")).toHaveStyle({
+      color: "var(--state-warning)",
+    });
+
+    // Doc status badge (pending → --state-warning)
+    expect(screen.getByText("Pending")).toHaveStyle({
+      color: "var(--state-warning)",
+    });
+
+    // Pending stat value uses --state-warning (was text-amber-400)
+    const statsLabel = screen.getByText("Pending Upload");
+    const statValue = statsLabel.parentElement?.querySelector(
+      "p.text-2xl",
+    ) as HTMLElement;
+    expect(statValue).toHaveStyle({ color: "var(--state-warning)" });
+  });
+
+  it("renders the Day masthead: copper rule + Cormorant serif headline", async () => {
+    mockGetMyRequiredDocuments.mockResolvedValue([pendingDocument]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "My Processes",
+    });
+    expect(heading).toHaveStyle({ fontFamily: "var(--font-serif)" });
+    expect(heading.className).toContain("text-[var(--tx-pure)]");
   });
 });

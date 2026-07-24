@@ -4,7 +4,7 @@ Claude CLI client for the gateway — spawns claude -p per request.
 
 Used for admin (Zero) who wants Sonnet 4.6 instead of Gemini.
 Claude CLI has native MCP support via --mcp-config.
-Multi-account fallback: TOKEN_1→2→3→legacy→keychain.
+Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain.
 
 Backend selection (``ZANTARA_CLAUDE_BACKEND``, default ``subprocess``):
   - ``subprocess`` (default): spawns the ``claude`` CLI directly (unchanged
@@ -19,20 +19,84 @@ Backend selection (``ZANTARA_CLAUDE_BACKEND``, default ``subprocess``):
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
 import re
+import signal
 from collections.abc import AsyncIterator
 from typing import Any
 
 logger = logging.getLogger("zantara-gateway.claude")
 
 _RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"capacity|overloaded",
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
+    r"usage limit|weekly limit|capacity|overloaded",
     re.IGNORECASE,
 )
+_AUTH_FAILURE_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_OAUTH_SCRUB_KEYS = frozenset({
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+_STDOUT_RATE_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|capacity (?:exceeded|unavailable)|overloaded|exhausted)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_STDOUT_AUTH_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _oauth_cli_env(token: str = "") -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 # Log the "package not installed" fallback once, not on every request.
 _sdk_import_warned = False
@@ -41,15 +105,49 @@ _sdk_import_warned = False
 def _token_chain() -> list[tuple[str, str]]:
     """Build ordered list of (label, token_or_empty) for fallback."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    seen: set[str] = set()
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
+
+
+async def _terminate_process_group(
+    proc: asyncio.subprocess.Process,
+    *,
+    grace_seconds: float = 0.25,
+) -> None:
+    """Terminate the spawned CLI session and reap it, including descendants."""
+    signaled = False
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        signaled = True
+    except (ProcessLookupError, PermissionError):
+        pass
+    if signaled:
+        await asyncio.sleep(grace_seconds)
+        # The session leader may have exited on TERM while a descendant ignored
+        # it. Always escalate against the group, not the leader's return code.
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(proc.pid, signal.SIGKILL)
+    # `wait()` alone reaps the PID but can leave asyncio's pipe transports
+    # pending until garbage collection. Drain both pipes before an owning event
+    # loop is closed so their transports release deterministically.
+    with contextlib.suppress(
+        BrokenPipeError,
+        ConnectionResetError,
+        ProcessLookupError,
+        RuntimeError,
+    ):
+        await proc.communicate()
+    with contextlib.suppress(ProcessLookupError, RuntimeError):
+        await proc.wait()
 
 
 def _build_subprocess_cmd(
@@ -94,7 +192,7 @@ def _build_sdk_env() -> dict[str, str]:
     SDK's underlying CLI silently pick up a pay-as-you-go key).
 
     Seeds ``CLAUDE_CODE_OAUTH_TOKEN`` from the first non-empty entry of
-    ``_token_chain()`` (TOKEN_1→2→3→legacy). Without this, a deployment
+    ``_token_chain()`` (TOKEN_1→2→3→4→5→legacy). Without this, a deployment
     that only sets the indexed ``CLAUDE_CODE_OAUTH_TOKEN_N`` vars (no
     legacy ``CLAUDE_CODE_OAUTH_TOKEN``) left the SDK-spawned CLI with no
     token at all — it fell through to keychain (or failed outright)
@@ -107,7 +205,7 @@ def _build_sdk_env() -> dict[str, str]:
     ``_stream_via_subprocess``, which walks the full chain itself
     (rotation-by-fallback, by design).
     """
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = _oauth_cli_env()
     _, token = _token_chain()[0]
     if token:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
@@ -302,6 +400,8 @@ async def _stream_via_sdk(
     the gateway.
     """
     global _sdk_import_warned
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
     try:
         from claude_agent_sdk import query as sdk_query, ClaudeAgentOptions  # type: ignore
     except ImportError as e:
@@ -315,7 +415,7 @@ async def _stream_via_sdk(
             model=model,
             mcp_config=mcp_config,
             system_prompt=system_prompt,
-            timeout=timeout,
+            timeout=max(0.0, deadline - loop.time()),
             cwd=cwd,
         ):
             yield line
@@ -361,7 +461,13 @@ async def _stream_via_sdk(
         message_iter = sdk_query(prompt=query, options=options).__aiter__()
         while True:
             try:
-                message = await asyncio.wait_for(message_iter.__anext__(), timeout=timeout)
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                message = await asyncio.wait_for(
+                    message_iter.__anext__(),
+                    timeout=remaining,
+                )
             except StopAsyncIteration:
                 break
             except asyncio.TimeoutError:
@@ -374,17 +480,10 @@ async def _stream_via_sdk(
                     yield "data: [DONE]\n\n"
                 else:
                     logger.warning(
-                        "Claude SDK timeout after %ds — falling back to subprocess", timeout
+                        "Claude SDK global deadline exceeded before content"
                     )
-                    async for line in _stream_via_subprocess(
-                        query,
-                        model=model,
-                        mcp_config=mcp_config,
-                        system_prompt=system_prompt,
-                        timeout=timeout,
-                        cwd=cwd,
-                    ):
-                        yield line
+                    yield f'data: {json.dumps({"type": "error", "data": "timeout"}, separators=(",", ":"))}\n\n'
+                    yield "data: [DONE]\n\n"
                 return
 
             lines, is_terminal, error_subtype = _convert_sdk_message(message, seen_text)
@@ -412,7 +511,7 @@ async def _stream_via_sdk(
                             model=model,
                             mcp_config=mcp_config,
                             system_prompt=system_prompt,
-                            timeout=timeout,
+                            timeout=max(0.0, deadline - loop.time()),
                             cwd=cwd,
                         ):
                             yield line
@@ -423,24 +522,29 @@ async def _stream_via_sdk(
         text = str(e)
         if yielded_any:
             logger.warning(
-                "Claude SDK error after streaming — emitting error event, no replay: %s", text
+                "Claude SDK error after streaming — emitting error event, no replay"
             )
-            yield f'data: {json.dumps({"type": "error", "data": text}, separators=(",", ":"))}\n\n'
+            yield f'data: {json.dumps({"type": "error", "data": "Claude SDK error"}, separators=(",", ":"))}\n\n'
             yield "data: [DONE]\n\n"
             return
         if _RATE_LIMIT_RE.search(text):
-            logger.warning("Claude SDK rate-limited — falling back to subprocess: %s", text)
+            logger.warning("Claude SDK rate-limited — falling back to subprocess")
         else:
-            logger.warning("Claude SDK error — falling back to subprocess: %s", text)
-        async for line in _stream_via_subprocess(
-            query,
-            model=model,
-            mcp_config=mcp_config,
-            system_prompt=system_prompt,
-            timeout=timeout,
-            cwd=cwd,
-        ):
-            yield line
+            logger.warning("Claude SDK error — falling back to subprocess")
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            yield f'data: {json.dumps({"type": "error", "data": "timeout"}, separators=(",", ":"))}\n\n'
+            yield "data: [DONE]\n\n"
+        else:
+            async for line in _stream_via_subprocess(
+                query,
+                model=model,
+                mcp_config=mcp_config,
+                system_prompt=system_prompt,
+                timeout=remaining,
+                cwd=cwd,
+            ):
+                yield line
 
 
 async def _stream_via_subprocess(
@@ -458,16 +562,27 @@ async def _stream_via_subprocess(
       {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
       {"type":"result","subtype":"success","result":"..."}
     """
+    if timeout <= 0:
+        logger.warning("Claude CLI skipped because the shared deadline is exhausted")
+        yield "data: [DONE]\n\n"
+        return
+
     cmd = _build_subprocess_cmd(query, model, mcp_config, system_prompt)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
 
     # Try each token in the chain
     chain = _token_chain()
-    for label, token in chain:
-        env = os.environ.copy()
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    lines_to_process: list[bytes] = []
+    for position, (label, token) in enumerate(chain):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(
+            0.1,
+            remaining / (len(chain) - position),
+        )
+        attempt_deadline = min(deadline, loop.time() + attempt_timeout)
 
         logger.info("Spawning Claude CLI: model=%s, token=%s", model, label)
 
@@ -483,45 +598,119 @@ async def _stream_via_subprocess(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=env,
+            env=_oauth_cli_env(token),
             cwd=cwd or None,
             limit=1024 * 1024,
+            start_new_session=True,
         )
 
-        # Read first line to check for immediate rate-limit error
-        try:
-            first_line = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
-        except asyncio.TimeoutError:
-            logger.warning("Claude CLI %s: no output in 15s — trying next", label)
-            proc.kill()
+        # A normal stream starts with a system/init line. Do not commit to an
+        # account until real assistant/tool content appears: quota/auth/empty
+        # terminal results can arrive after init and must still rotate safely.
+        attempt_lines: list[bytes] = []
+        retry_reason = ""
+        while True:
             try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
+                attempt_remaining = attempt_deadline - loop.time()
+                if attempt_remaining <= 0:
+                    retry_reason = "attempt deadline exceeded"
+                    break
+                raw = await asyncio.wait_for(
+                    proc.stdout.readline(),
+                    timeout=min(15, max(0.1, attempt_remaining)),
+                )
             except asyncio.TimeoutError:
-                pass
-            continue
+                retry_reason = "attempt read deadline exceeded"
+                break
 
-        if first_line:
-            decoded = first_line.decode("utf-8", errors="replace").strip()
-            # Check stderr too
-            stderr_data = b""
-            if proc.stderr:
+            if not raw:
                 try:
-                    stderr_data = await asyncio.wait_for(proc.stderr.read(500), timeout=1)
+                    await asyncio.wait_for(
+                        proc.wait(),
+                        timeout=min(5, max(0.1, attempt_deadline - loop.time())),
+                    )
                 except asyncio.TimeoutError:
-                    pass
-            stderr_text = stderr_data.decode("utf-8", errors="replace")
+                    await _terminate_process_group(proc)
+                stderr_data = b""
+                if proc.stderr:
+                    with contextlib.suppress(asyncio.TimeoutError):
+                        stderr_data = await asyncio.wait_for(
+                            proc.stderr.read(500),
+                            timeout=min(
+                                1,
+                                max(0.1, attempt_deadline - loop.time()),
+                            ),
+                        )
+                terminal_text = stderr_data.decode("utf-8", errors="replace")
+                if _RATE_LIMIT_RE.search(terminal_text):
+                    retry_reason = "rate-limited"
+                elif _AUTH_FAILURE_RE.search(terminal_text):
+                    retry_reason = "authentication failed"
+                else:
+                    retry_reason = "empty completion"
+                break
 
-            if _RATE_LIMIT_RE.search(decoded + stderr_text):
-                logger.warning("Claude CLI %s rate-limited — trying next token", label)
-                proc.kill()
-                try:
-                    await asyncio.wait_for(proc.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    pass
+            decoded = raw.decode("utf-8", errors="replace").strip()
+            attempt_lines.append(raw)
+            try:
+                obj = json.loads(decoded)
+            except json.JSONDecodeError:
+                if _STDOUT_RATE_DIAGNOSTIC.fullmatch(decoded):
+                    retry_reason = "rate-limited"
+                    break
+                if _STDOUT_AUTH_DIAGNOSTIC.fullmatch(decoded):
+                    retry_reason = "authentication failed"
+                    break
+                continue
+            if not isinstance(obj, dict):
                 continue
 
-        # Good — this token works, proceed with streaming
-        break
+            msg_type = obj.get("type", "")
+            if msg_type == "result" and (
+                obj.get("is_error") or obj.get("subtype") not in (None, "success")
+            ):
+                if _RATE_LIMIT_RE.search(decoded):
+                    retry_reason = "rate-limited"
+                    break
+                if _AUTH_FAILURE_RE.search(decoded):
+                    retry_reason = "authentication failed"
+                    break
+            if msg_type == "assistant":
+                blocks = obj.get("message", {}).get("content", [])
+                has_content = any(
+                    (
+                        block.get("type") == "text"
+                        and bool(str(block.get("text", "")).strip())
+                    )
+                    or block.get("type") == "tool_use"
+                    for block in blocks
+                )
+                if has_content:
+                    lines_to_process = attempt_lines
+                    break
+                continue
+            if msg_type == "tool_result":
+                lines_to_process = attempt_lines
+                break
+            if msg_type == "result":
+                if not str(obj.get("result", "")).strip():
+                    retry_reason = "empty terminal result"
+                    break
+                # Preserve the existing result-only completion behavior. Any
+                # account-local error text was already classified above.
+                lines_to_process = attempt_lines
+                break
+
+        if lines_to_process:
+            break
+
+        logger.warning(
+            "Claude CLI %s %s — trying next token",
+            label,
+            retry_reason or "unavailable",
+        )
+        await _terminate_process_group(proc)
+        continue
     else:
         logger.error("All Claude tokens exhausted")
         yield "data: [DONE]\n\n"
@@ -530,14 +719,17 @@ async def _stream_via_subprocess(
     try:
         seen_text = set()  # deduplicate partial messages
 
-        # Process the first_line we already read during fallback check
-        lines_to_process = [first_line] if first_line else []
-
         while True:
             if lines_to_process:
                 raw = lines_to_process.pop(0)
             else:
-                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=timeout)
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                raw = await asyncio.wait_for(
+                    proc.stdout.readline(),
+                    timeout=max(0.1, remaining),
+                )
             if not raw:
                 break
             line = raw.decode("utf-8", errors="replace").strip()
@@ -580,14 +772,9 @@ async def _stream_via_subprocess(
                 return
 
     except asyncio.TimeoutError:
-        logger.warning("Claude CLI timeout after %ds", timeout)
+        logger.warning("Claude CLI global deadline exceeded")
         yield "data: [DONE]\n\n"
     except asyncio.CancelledError:
         raise
     finally:
-        if proc.returncode is None:
-            proc.kill()
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                pass
+        await _terminate_process_group(proc)

@@ -1,0 +1,78 @@
+name: Magazine auto-assets contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/magazine-auto-assets.yml"
+      - "apps/bali-zero-magazine/tests/deployed-platform.test.mjs"
+      - "apps/zantara-media/**"
+      - "docs/runbooks/bali-zero-magazine.md"
+      - "infra/launchagents/wrappers/bali-zero-magazine-publish.sh"
+      - "scripts/flowkit_cli.py"
+      - "scripts/tests/test_flowkit_cli.py"
+      - "scripts/tests/test_magazine_wrapper_lock.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/magazine-auto-assets.yml"
+      - "apps/bali-zero-magazine/tests/deployed-platform.test.mjs"
+      - "apps/zantara-media/**"
+      - "docs/runbooks/bali-zero-magazine.md"
+      - "infra/launchagents/wrappers/bali-zero-magazine-publish.sh"
+      - "scripts/flowkit_cli.py"
+      - "scripts/tests/test_flowkit_cli.py"
+      - "scripts/tests/test_magazine_wrapper_lock.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: magazine-auto-assets-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  deployed-platform:
+    name: Magazine deployed-platform contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Verify publisher wrapper contract
+        run: >-
+          node --experimental-strip-types --test
+          apps/bali-zero-magazine/tests/deployed-platform.test.mjs
+
+  python-lifecycle:
+    name: Magazine Python lifecycle contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: apps/zantara-media
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install focused test dependencies
+        run: >-
+          python -m pip install --quiet
+          pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785
+      - name: Require zsh for real wrapper lifecycle tests
+        run: |
+          if ! command -v zsh >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes zsh
+          fi
+          command -v zsh
+      - name: Verify magazine asset lifecycle contracts
+        run: >-
+          python -m pytest -q
+          apps/zantara-media/tests/magazine/test_cli.py
+          apps/zantara-media/tests/magazine/test_media_resolver.py
+          apps/zantara-media/tests/magazine/test_source_projections.py
+          scripts/tests/test_flowkit_cli.py
+          scripts/tests/test_magazine_wrapper_lock.py

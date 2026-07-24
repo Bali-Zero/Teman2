@@ -19,6 +19,7 @@ from backend.services.visa_engine.enums import SourceStatus
 from backend.services.visa_engine.models import RulePack, SourceRecord
 from backend.services.visa_engine.shadow_evidence import (
     REAL_TRAFFIC_SOURCE,
+    REPORTED_ONLY_INTERVIEW_CATEGORIES,
     REQUIRED_INTERVIEW_CATEGORIES,
     SYNTHETIC_TRAFFIC_SOURCES,
     collect_shadow_evidence,
@@ -30,6 +31,9 @@ _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_252_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "252_visa_engine_write_substrate.sql"
 _MIGRATION_255_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "255_visa_shadow_evidence.sql"
 _MIGRATION_256_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "256_visa_traffic_source.sql"
+_MIGRATION_257_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "257_visa_request_category_extension.sql"
+)
 
 
 def _green_fixture() -> tuple[list[dict[str, object]], RulePack, uuid.UUID]:
@@ -128,21 +132,36 @@ def _read_migration(path: Path, number: int) -> tuple[str, str]:
 
 @pytest_asyncio.fixture
 async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterator[None]:
+    """Layers migrations 252+255+256+257 on conftest.py's visa_schema.
+
+    Ordering note (deliberate, NOT strict reverse-dependency): 257's rollback
+    re-ADDs an 8-value CHECK constraint, which re-VALIDATES every surviving
+    ``visa_decisions`` row — so it must run only AFTER 252's rollback has
+    dropped the table (making it an ``IF EXISTS`` no-op), never while
+    257-era rows ('business'/'diaspora') can still be present. Running it
+    last also makes setup crash-robust: a previous run that died mid-test
+    can leave new-category rows behind, and the 256/255 column drops +
+    252's table drop clear them before 257's rollback is ever attempted.
+    """
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
     forward_256, rollback_256 = _read_migration(_MIGRATION_256_PATH, 256)
+    forward_257, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
     async with db_pool.acquire() as conn:
         await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
+        await conn.execute(rollback_257)
         await conn.execute(forward_252)
         await conn.execute(forward_255)
         await conn.execute(forward_256)
+        await conn.execute(forward_257)
     yield
     async with db_pool.acquire() as conn:
         await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
+        await conn.execute(rollback_257)
 
 
 async def _insert_unavailable_audit_row(
@@ -152,6 +171,8 @@ async def _insert_unavailable_audit_row(
     evaluated_at: datetime,
     fingerprint_seed: str,
     traffic_source: str | None = None,
+    request_category: str = "other",
+    engine_surface: str = "MATCH",
 ) -> None:
     await conn.execute(
         """
@@ -172,8 +193,8 @@ async def _insert_unavailable_audit_row(
             grounding_summary,
             traffic_source
         ) VALUES (
-            $1, $2, 'MATCH', 'SHADOW', 'TEMPORARILY_UNAVAILABLE',
-            '[]'::jsonb, 'visa-engine/test', $3, $3, $3, $4, 'other',
+            $1, $2, $7, 'SHADOW', 'TEMPORARILY_UNAVAILABLE',
+            '[]'::jsonb, 'visa-engine/test', $3, $3, $3, $4, $6,
             '[]'::jsonb, '[]'::jsonb, $5
         )
         """,
@@ -182,6 +203,8 @@ async def _insert_unavailable_audit_row(
         evaluated_at,
         hashlib.sha256(fingerprint_seed.encode("utf-8")).digest(),
         traffic_source,
+        request_category,
+        engine_surface,
     )
 
 
@@ -785,3 +808,332 @@ def test_migration_256_keeps_migrations_v2_prefixes_unique() -> None:
     _assert_unique_migration_numbers(sql_files)
     prefixes = [path.name.split("_", 1)[0] for path in sql_files]
     assert prefixes.count("256") == 1
+
+
+# ---------------------------------------------------------------------------
+# W1 Fable delta 3 (2026-07-23) — migration 257 request_category extension:
+# 'business'/'diaspora' are VALID (counted, honestly labeled) but NOT
+# required for G-a gate-green (their behavioral trees are Track B FASE 2).
+# Guilt AND innocence for both directions of the rule.
+# ---------------------------------------------------------------------------
+
+
+def test_required_interview_categories_still_the_seven_legacy() -> None:
+    assert REQUIRED_INTERVIEW_CATEGORIES == frozenset(
+        {
+            "work_remote",
+            "investor",
+            "work_employee",
+            "family",
+            "long_tourism",
+            "retirement",
+            "student",
+        }
+    )
+    assert REPORTED_ONLY_INTERVIEW_CATEGORIES == frozenset({"business", "diaspora"})
+    assert REQUIRED_INTERVIEW_CATEGORIES.isdisjoint(REPORTED_ONLY_INTERVIEW_CATEGORIES)
+    # Migration 257's CHECK admits exactly these ten values — no more.
+    assert len(REQUIRED_INTERVIEW_CATEGORIES | REPORTED_ONLY_INTERVIEW_CATEGORIES | {"other"}) == 10
+
+
+def test_business_and_diaspora_are_reported_not_required() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    categories = sorted(REQUIRED_INTERVIEW_CATEGORIES) + ["business", "diaspora"]
+    for index, row in enumerate(rows):
+        row["request_category"] = categories[index % len(categories)]
+
+    report = _evaluate(rows, pack, db_pack_id)
+    gate = report["gates"]["G-a-vol"]
+
+    # Innocence: business/diaspora count as VALID categories (never as
+    # missing-or-invalid) and are honestly reported in category_counts...
+    assert gate["missing_or_invalid_categories"] == 0
+    assert gate["category_counts"]["business"] > 0
+    assert gate["category_counts"]["diaspora"] > 0
+    # ...but are NOT required for gate-green: only the 7 legacy categories
+    # feed missing_required_categories.
+    assert gate["missing_required_categories"] == []
+    assert gate["required_categories"] == sorted(REQUIRED_INTERVIEW_CATEGORIES)
+    assert gate["reported_only_categories"] == ["business", "diaspora"]
+    assert gate["green"] is True
+
+
+def test_a_missing_legacy_category_still_fails_closed_with_ten_value_enum() -> None:
+    """Guilt: the widened enum does not dilute the 7-category requirement —
+    a window with zero 'student' rows stays RED even with plenty of
+    business/diaspora traffic."""
+    rows, pack, db_pack_id = _green_fixture()
+    categories = [c for c in sorted(REQUIRED_INTERVIEW_CATEGORIES) if c != "student"]
+    categories += ["business", "diaspora"]
+    for index, row in enumerate(rows):
+        row["request_category"] = categories[index % len(categories)]
+
+    report = _evaluate(rows, pack, db_pack_id)
+    gate = report["gates"]["G-a-vol"]
+
+    assert gate["missing_required_categories"] == ["student"]
+    assert gate["green"] is False
+
+
+def test_migration_257_carries_rollback_marker_and_correct_value_sets() -> None:
+    forward, rollback = _read_migration(_MIGRATION_257_PATH, 257)
+    for value in (
+        "work_remote",
+        "investor",
+        "work_employee",
+        "family",
+        "long_tourism",
+        "retirement",
+        "student",
+        "other",
+        "business",
+        "diaspora",
+    ):
+        assert f"'{value}'" in forward
+    # The restored CHECK is migration 255's exact 8-value one: the two new
+    # values must not appear in it.  (They DO appear earlier in the rollback
+    # — the relabel-first UPDATE that downgrades live new-category rows to
+    # 'other' before the CHECK is restored, which is what makes the rollback
+    # succeed at all — so assert on the ADD CONSTRAINT tail only.)
+    restored_check = rollback.rsplit("ADD CONSTRAINT", 1)[-1]
+    assert "'business'" not in restored_check
+    assert "'diaspora'" not in restored_check
+    for value in (
+        "work_remote",
+        "investor",
+        "work_employee",
+        "family",
+        "long_tourism",
+        "retirement",
+        "student",
+        "other",
+    ):
+        assert f"'{value}'" in restored_check
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_migration_257_check_admits_new_categories_and_rejects_bogus(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    async with db_pool.acquire() as conn:
+        # Innocence: the two new categories insert cleanly.
+        await _insert_unavailable_audit_row(
+            conn,
+            environment="TEST",
+            evaluated_at=start,
+            fingerprint_seed="business-row",
+            request_category="business",
+        )
+        await _insert_unavailable_audit_row(
+            conn,
+            environment="TEST",
+            evaluated_at=start,
+            fingerprint_seed="diaspora-row",
+            request_category="diaspora",
+        )
+        # Guilt: a non-CHECK value is still rejected at the storage layer.
+        with pytest.raises(asyncpg.exceptions.CheckViolationError):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed="bogus-row",
+                request_category="not-a-category",
+            )
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_collect_reports_business_diaspora_as_valid_not_required(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """End-to-end through Postgres: rows carrying the new categories survive
+    the 257 CHECK, are read back by the collector, and land in
+    category_counts without ever feeding missing_required_categories."""
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    async with db_pool.acquire() as conn:
+        for seed, category in (("biz", "business"), ("diaspora", "diaspora")):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                traffic_source=REAL_TRAFFIC_SOURCE,
+                request_category=category,
+            )
+
+    report = await collect_shadow_evidence(
+        db_pool,
+        window_start=start,
+        window_end=end,
+        environment="TEST",
+    )
+
+    gate = report["gates"]["G-a-vol"]
+    assert gate["missing_or_invalid_categories"] == 0
+    assert gate["category_counts"] == {"business": 1, "diaspora": 1}
+    assert "business" not in gate["missing_required_categories"]
+    assert "diaspora" not in gate["missing_required_categories"]
+    assert gate["reported_only_categories"] == ["business", "diaspora"]
+
+
+# ---------------------------------------------------------------------------
+# W1 (2026-07-23) — evidence-surface widening: the collector reads SHADOW
+# rows for MATCH (STEP-6c) AND RECOMMEND (the W1 evaluate read-path).
+# Other surfaces are skipped fail-closed. Guilt AND innocence both ways.
+# ---------------------------------------------------------------------------
+
+
+def test_recommend_surface_rows_count_like_match_rows() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for index, row in enumerate(rows):
+        row["engine_surface"] = "RECOMMEND" if index % 2 == 0 else "MATCH"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    gate = report["gates"]["G-a-vol"]
+    assert gate["total_audit_rows"] == 1_000
+    assert gate["green"] is True
+    assert report["surfaces"] == {"MATCH": 500, "RECOMMEND": 500}
+    assert report["skipped_non_evidence_surfaces"] == 0
+
+
+def test_non_evidence_surface_rows_are_skipped_fail_closed() -> None:
+    """Guilt: a future writer on a non-evidence surface (e.g. CLOCK) must not
+    inflate any gate, even if its rows are fully valid and real-labeled."""
+    rows, pack, db_pack_id = _green_fixture()
+    for row in rows:
+        row["engine_surface"] = "CLOCK"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 0
+    assert report["gates"]["G-a-breadth"]["total_audit_rows"] == 0
+    assert report["traffic_source"] == {
+        "real": 0,
+        "synthetic_gold": 0,
+        "synthetic_driver": 0,
+        "legacy": 0,
+        "total_audit_rows": 1_000,
+    }
+    assert report["surfaces"] == {}
+    assert report["skipped_non_evidence_surfaces"] == 1_000
+    # Reconciliation: admitted traffic classes + skipped == raw input rows.
+    traffic = report["traffic_source"]
+    assert (
+        traffic["real"]
+        + traffic["synthetic_gold"]
+        + traffic["synthetic_driver"]
+        + traffic["legacy"]
+        + report["skipped_non_evidence_surfaces"]
+        == traffic["total_audit_rows"]
+    )
+
+
+def test_rows_without_surface_key_stay_admitted_backward_compatible() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for row in rows:
+        row.pop("engine_surface", None)
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 1_000
+    assert report["skipped_non_evidence_surfaces"] == 0
+    assert report["surfaces"] == {}
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_collect_reads_match_and_recommend_surfaces_only(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """End-to-end through Postgres: the SQL filter admits MATCH + RECOMMEND
+    SHADOW rows and excludes any other surface."""
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    async with db_pool.acquire() as conn:
+        for seed, surface in (
+            ("match-row", "MATCH"),
+            ("recommend-row", "RECOMMEND"),
+            ("clock-row", "CLOCK"),
+            ("catalog-row", "CATALOG"),
+        ):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                traffic_source=REAL_TRAFFIC_SOURCE,
+                engine_surface=surface,
+            )
+
+    report = await collect_shadow_evidence(
+        db_pool,
+        window_start=start,
+        window_end=end,
+        environment="TEST",
+    )
+
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 2
+    assert report["traffic_source"]["total_audit_rows"] == 2
+    assert report["surfaces"] == {"MATCH": 1, "RECOMMEND": 1}
+    assert report["skipped_non_evidence_surfaces"] == 0
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_migration_257_rollback_relabels_new_categories_and_restores_check(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """The rollback must SUCCEED even with 'business'/'diaspora' rows live
+    (the re-added 8-value CHECK re-validates every row): it relabels those
+    rows to 'other' BEFORE restoring the constraint — a lossy but honest
+    downgrade — and never touches legacy-category rows."""
+    _, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    async with db_pool.acquire() as conn:
+        for seed, category in (
+            ("biz", "business"),
+            ("diaspora", "diaspora"),
+            ("legacy", "student"),
+        ):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                request_category=category,
+            )
+
+        # The rollback itself must not fail on the live new-category rows...
+        await conn.execute(rollback_257)
+
+        # ...both new-category rows are relabeled to 'other'; the legacy one
+        # is untouched.
+        rows = await conn.fetch(
+            "SELECT request_category, count(*) AS n FROM public.visa_decisions GROUP BY 1"
+        )
+        counts = {row["request_category"]: row["n"] for row in rows}
+        assert counts == {"other": 2, "student": 1}
+
+        # ...and the restored CHECK is the 8-value one again.
+        with pytest.raises(asyncpg.exceptions.CheckViolationError):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed="post-rollback-biz",
+                request_category="business",
+            )
+
+        # ...and migration 252's append-only guard is re-armed: the relabel
+        # was a one-shot DDL suspension, never a lasting weakening.
+        with pytest.raises(asyncpg.exceptions.RaiseError):
+            await conn.execute("UPDATE public.visa_decisions SET engine_version = 'tamper'")
