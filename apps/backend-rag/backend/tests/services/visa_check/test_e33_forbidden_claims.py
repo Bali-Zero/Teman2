@@ -182,15 +182,28 @@ class TestE33SRE33RScope:
                 offenders.append(str(rel))
         assert not offenders, f"E33S/E33R outside gold_harness: {offenders}"
 
-    def test_gold_harness_fixtures_actually_use_e33s_e33r(self) -> None:
-        """Sanity: the exclusion above is not vacuous."""
-        fixtures = BACKEND_DIR / "tests/services/visa_engine/gold_harness/fixtures"
-        assert fixtures.is_dir(), f"gold_harness fixtures missing: {fixtures}"
-        found = any(
-            re.search(r"\bE33[SR]\b", p.read_text(errors="replace"))
-            for p in fixtures.rglob("*.json")
-        )
-        assert found, "expected E33S/E33R inside gold_harness fixtures"
+    def test_e33s_e33r_eradicated_everywhere(self) -> None:
+        """Post #3044: the synthetic codes were replaced by real E33/E33E/E33F
+        products in the gold harness, so they must appear NOWHERE outside the
+        guard module and its tests (which legitimately name them as the
+        patterns to detect)."""
+        allowed = {
+            "services/visa_check/e33_claim_guard.py",
+            "tests/services/visa_check/test_e33_forbidden_claims.py",
+            "tests/services/visa_check/test_e33_claim_guard.py",
+        }
+        offenders: list[str] = []
+        for path in BACKEND_DIR.rglob("*"):
+            if not path.is_file() or path.suffix not in {".py", ".json", ".md"}:
+                continue
+            if "node_modules" in path.parts or ".venv" in path.parts:
+                continue
+            rel = str(path.relative_to(BACKEND_DIR))
+            if rel in allowed:
+                continue
+            if re.search(r"\bE33[SR]\b", path.read_text(errors="replace")):
+                offenders.append(rel)
+        assert not offenders, f"E33S/E33R still present: {offenders}"
 
 
 class TestGuardPatternConsistency:
