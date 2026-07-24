@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ChatLoading() {
   return (
@@ -6,7 +6,7 @@ export default function ChatLoading() {
       {/* Header */}
       <div
         className="flex items-center gap-3 px-4 py-3 border-b"
-        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+        style={{ borderColor: "var(--bz-border)" }}
       >
         <Skeleton variant="circular" width={36} height={36} />
         <div className="space-y-1">
@@ -20,11 +20,14 @@ export default function ChatLoading() {
         {[80, 60, 90, 50, 70].map((w, i) => (
           <div
             key={i}
-            className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}
+            className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
           >
             <div
-              className="rounded-2xl px-4 py-3 max-w-[70%] space-y-2"
-              style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }}
+              className="rounded-2xl px-4 py-3 max-w-[70%] space-y-2 border"
+              style={{
+                background: "var(--bz-card)",
+                borderColor: "var(--bz-border)",
+              }}
             >
               <Skeleton variant="text" width={`${w}%`} />
               {i % 3 === 0 && <Skeleton variant="text" width="60%" />}
@@ -36,7 +39,7 @@ export default function ChatLoading() {
       {/* Input */}
       <div
         className="px-4 py-3 border-t"
-        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+        style={{ borderColor: "var(--bz-border)" }}
       >
         <div className="flex items-center gap-2">
           <Skeleton variant="rounded" className="flex-1" height={44} />
