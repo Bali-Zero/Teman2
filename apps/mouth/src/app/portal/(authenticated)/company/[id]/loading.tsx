@@ -1,5 +1,11 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
+/**
+ * WS3 slice 9 (GARUDA Day Edition): skeleton cards read the theme surface
+ * (--bz-card / --bz-border / --glass-rim) instead of the dark-only
+ * rgba(30,30,35,0.7) glass + white hairlines, which rendered as muddy dark
+ * islands on operative-light paper.
+ */
 export default function CompanyDetailLoading() {
   return (
     <div className="space-y-6 p-2">
@@ -15,7 +21,10 @@ export default function CompanyDetailLoading() {
       {/* Main Card */}
       <div
         className="rounded-xl border p-6 space-y-5"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <div className="flex items-start gap-4">
           <Skeleton variant="rounded" width={64} height={64} />
@@ -39,7 +48,10 @@ export default function CompanyDetailLoading() {
       {/* Documents Section */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <Skeleton variant="text" width={140} height={20} />
         <div className="space-y-2">
@@ -47,7 +59,10 @@ export default function CompanyDetailLoading() {
             <div
               key={i}
               className="rounded-lg border p-3 flex items-center gap-3"
-              style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: "var(--glass-rim)",
+                borderColor: "var(--bz-border)",
+              }}
             >
               <Skeleton variant="rounded" width={32} height={32} />
               <div className="flex-1 space-y-1">

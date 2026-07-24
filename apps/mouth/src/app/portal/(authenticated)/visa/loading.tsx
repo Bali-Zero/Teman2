@@ -1,5 +1,11 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
+/**
+ * WS3 slice 9 (GARUDA Day Edition): skeleton cards read the theme surface
+ * (--bz-card / --bz-border / --glass-rim) instead of the dark-only
+ * rgba(30,30,35,0.7) glass + white hairlines, which rendered as muddy dark
+ * islands on operative-light paper.
+ */
 export default function VisaLoading() {
   return (
     <div className="space-y-6 p-2">
@@ -12,7 +18,10 @@ export default function VisaLoading() {
       {/* Current Visa Card */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <div className="flex items-center justify-between">
           <Skeleton variant="text" width={140} height={24} />
@@ -32,7 +41,10 @@ export default function VisaLoading() {
       {/* Documents */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <Skeleton variant="text" width={160} height={24} />
         <div className="space-y-2">
@@ -40,7 +52,10 @@ export default function VisaLoading() {
             <div
               key={i}
               className="rounded-lg border p-3"
-              style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: "var(--glass-rim)",
+                borderColor: "var(--bz-border)",
+              }}
             >
               <div className="flex items-center gap-3">
                 <Skeleton variant="rounded" width={36} height={36} />
