@@ -67,6 +67,31 @@ landed ABOVE the existing override floors, so the floors aged out silently (W98 
 and fixed here (#3052); a parallel lane shipped the same cure with strictly higher floors first (#3053,
 `hono >=4.12.31`) so #3052 was closed as superseded — verified by CONTENT on main (W88), not by proxy.
 
+**4th-SURFACE LEAK FOUND & CURED IN PROD — 2026-07-24, same session, no PR needed (data-plane
+apply of already-merged cures).** Hunting for remaining W1-class public lies, a read-only census of
+`kbli_documents` against canonical found the Lot-8/Lot-9 cures had landed on canonical + KG + Qdrant
+but **skipped the 4th surface**: of the **217** codes whose canonical `per_skala` is `[]` (detached,
+licensing disputed/unverifiable), **18 still carried populated `per_skala` rows in `kbli_documents`**
+— which `chat_kbli` injects VERBATIM into the LLM context, i.e. the exact 50113 disease still live
+on WhatsApp/webchat. All 18 were the sport/klub cluster: `91425` + `93113/93115/93121/93122/93123/
+93124/93125/93126/93127/93128/93129/93192/93193/93194/93195/93197/93199`; none carried `_data_note`,
+confirming the cure had simply never been run for them.
+Cure: `kbli_documents_cure.py --only <18> --dataset <raw URL pinned to main SHA `5d689084d1`> --apply`,
+run on Fly (the dataset is NOT in the image — pass a **commit-pinned** raw URL, never a moving `main`).
+Dry-run first: 18/18 eligible, 0 skipped, all `[GAP]` class. All 18 verified eligible beforehand
+(`per_skala_disputed_pp28_collision` marker + `intel_2026.whatYouNeed` present) so the tool wrote only
+canonical-derived honest-gap prose — never an invented value (rule #9).
+**VERIFIED INDEPENDENTLY after apply** (re-read via the read-only role, not the tool's own report):
+the 18 → 0 licensing rows / 18 `_data_note`; forensic archive `kbli_documents_archive` captured 18
+pre-cure rows; and the **global** invariant now holds — **217 detached codes, 0 still serving
+licensing**. **PROVE-LIVE on the consuming surface**: `chat_kbli` for 93121 now answers _"the specific
+risk tier and exact licensing workflows … are currently unconfirmed … We do not estimate or guess risk
+tiers … verify directly at oss.go.id"_, and states the capital doctrine correctly (2.5bn paid-up +
+
+> 10bn investment, BKPM 5/2025 superseding 4/2021 — #2813's generation-layer fix confirmed working).
+> **Standing check for every future lot**: after a cure lands on canonical, re-run the
+> detached-vs-`kbli_documents` census — a lot can be "closed" on 3 surfaces and still lie on the 4th.
+
 **W1 is CLOSED. Next per the Codex program: W2 (Batch-B prep — still NO-GO without Zero) / W3+.**
 
 **Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
@@ -483,8 +508,9 @@ corner (flagged only, nothing fixed here):**
    **`kbli_documents` (Postgres) → `chat_kbli` LLM context via
    `_fetch_parent_documents_from_kbli_table()` + direct 5-digit lookup
    (`apps/backend-rag/backend/app/routers/kbli_notebook_chat.py:635,699`) — the 4th surface,
-   cured for the 73 quarantined rows by `kbli_documents_cure.py` (#2796, 2026-07-19), whole-table
-   builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
+   cured by `kbli_documents_cure.py` (#2796, 2026-07-19) — and **RECONCILED 2026-07-24: all 217
+   canonical-detached codes now serve 0 licensing rows here (was 18 leaking, see LIVE STATE)**;
+   whole-table builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
    app (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
    `data/kbli-2025.json` fork AND its own `lib/kbli-gold-content.ts` override layer (**both CURED
    on main, re-verified 2026-07-24 — still consumers to check on every future cure, but not open
