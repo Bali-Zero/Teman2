@@ -267,6 +267,7 @@ dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico
 grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
 (`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
 corretto ne trova 9 (i 7 persi erano i falsi negativi))**.
+**W102 (two-dot diff = accusa la PR dei file di MAIN, 2026-07-24: il gate `hot-zone-pr-gate.yml` enumerava con `git diff BASE HEAD` mentre `pull_request.base.sha` è il tip CORRENTE di main → ogni branch indietro si vedeva attribuiti, al contrario, tutti i file che MAIN aveva guadagnato dal branch point; PR #3057 (2 soli .mdx) hard-bloccata dal required check per aver "modificato .github/CODEOWNERS". La regola era giusta, mentiva l'INPUT. Antidoto: enumerazione ancorata al MERGE-BASE (`scripts/ci/hotzone_changed_files.sh`, semantica "Files changed" di GitHub) + fail-loud invece di lista vuota-cieca + corpus guilt/innocence/scar-pin che il gate esegue su sé stesso a ogni run. SPECCHIO di W88: là il proxy nega un contenuto già su main, qui ne afferma uno mai toccato — chi generalizza una delle due rompe l'altra)**.
 **→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---
