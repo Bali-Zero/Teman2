@@ -20,8 +20,28 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-22 — keep current)
+## 1. LIVE STATE (last update 2026-07-24 — keep current)
 
+- **P0-ID WA persona-override forgery — SHIPPED+DEPLOYED+PROVEN (PR #3062, 2026-07-24)**: the
+  trusted "creator/team" persona override in `agentic_rag.py` was forgeable — a first server-side
+  fix (re-resolving the WA sender phone instead of trusting a client-declared `profile` field) was
+  still bypassable, because the phone came from the client-controlled `user_id` field and the
+  owner's WA number is documented-public: any holder of the widely-shared `X-Internal-Key` could
+  send `user_id="whatsapp_<owner's public number>"` and get the creator persona. Caught by an
+  independent adversarial review dispatched specifically to try to break the design. Fixed with a
+  SECOND, dedicated secret exclusive to `wa_inbox_bot.py` (`X-WA-Bot-Profile-Key` /
+  `WA_INBOX_BOT_PROFILE_KEY`), modeled on the existing `wa_mirror_crm_write_key` precedent — the
+  override now requires the dedicated key AND `resolve_sender_identity` resolving to owner/team; no
+  request body field can influence the outcome. A second fresh review of the v2 design (not the
+  same reviewer, no context on v1's failure) gave SHIP, independently re-verified on disk before
+  trusting it. Also closed **P0-ARG** in the same PR: `tool_executor.execute_tool` stripped
+  LLM-injected reserved arg keys (`_caller_profile`, `_user_id`) so a forged tool-call argument
+  can never survive to override the server's real profile. Merged (squash `5d689084d1`), deployed,
+  prove-live: container content-verified (grepped the running machine's actual deployed source),
+  secret confirmed present in prod env, zero errors in prod logs post-deploy. Detail: memory
+  `discovery_p0id_narrow_first_fix_insufficient_2026_07_24`. **This is the security prerequisite
+  team-assistant V1 (§1 below) relies on for a safe owner/team persona — it was hardened, not
+  newly built, by this PR.**
 - **GEMINI PREPAY DEPLETION P0 (2026-07-22) — RESOLVED via top-up + verifier revival PROVEN LIVE**:
   while carrying the RAG verifier revival to prove-live, live prod logs revealed the WHOLE bot was
   degraded — NOT by the verifier but by `429 RESOURCE_EXHAUSTED "prepayment credits are depleted"`
