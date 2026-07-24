@@ -59,6 +59,7 @@ from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
+from backend.services.visa_check.e33_claim_guard import guard_e33_answer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
@@ -1372,6 +1373,11 @@ class OrchestratorCore:
             logger.info(
                 f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
             )
+
+        # 12b. E33 Second Home claim guard (log-only, non-blocking): flags
+        # registry-forbidden E33 claims in the generated answer and appends a
+        # safe fallback note. Never rewrites or suppresses the answer.
+        result.answer = guard_e33_answer(result.answer)
 
         # 13. R5 Phase 6: NLM Enrichment merge removed — nlm_task/nlm_domain always None
         evidence_score = getattr(state, "evidence_score", None)

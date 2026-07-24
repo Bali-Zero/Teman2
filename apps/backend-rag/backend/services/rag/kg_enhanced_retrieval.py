@@ -515,9 +515,9 @@ class KGEnhancedRetrieval:
             name="Investor KITAS or Retirement KITAS",
             description="Obtain long-term stay permit for investors or retirees in Indonesia",
             path=[
-                "Choose KITAS type: E28G (Investor) or E31E (Retirement/Lansia)",
+                "Choose KITAS type: E28G (Investor) or E33E/E33F (Retirement/Lansia)",
                 "For Investor: Establish PT PMA or invest in Indonesian company",
-                "For Retirement: Prove pension/passive income min USD 2,500/month",
+                "For Retirement: Prove pension/passive income min USD 3,000/month",
                 "Prepare documents: passport (18+ months validity), health certificate",
                 "Apply for E-Visa online via imigrasi.go.id",
                 "Enter Indonesia and convert to KITAS at immigration office",
@@ -848,7 +848,7 @@ class KGEnhancedRetrieval:
             description="KITAS for retirees wanting to live in Indonesia",
             path=[
                 "Confirm eligibility: minimum age 55 years",
-                "Prepare proof of pension or passive income (min USD 2,500/month)",
+                "Prepare proof of pension or passive income (min USD 3,000/month)",
                 "Arrange accommodation in Indonesia (rental agreement or property proof)",
                 "Obtain health insurance valid in Indonesia",
                 "Apply for E-Visa E33E online via imigrasi.go.id",
@@ -865,7 +865,6 @@ class KGEnhancedRetrieval:
                 "Must show proof of pension/passive income",
                 "Health insurance mandatory",
                 "SKTT reporting every 90 days",
-                "After 3 years: eligible for KITAP",
                 "Alternative: Second Home Visa (E33) for younger retirees with savings",
             ],
             estimated_timeline_months=None,
@@ -874,7 +873,7 @@ class KGEnhancedRetrieval:
         "visa_second_home": GoldenRoute(
             route_id="visa_second_home",
             name="Second Home Visa",
-            description="Long-term visa (5-10 years) for wealthy foreigners to live in Indonesia",
+            description="Long-term visa (up to 5 years first grant) for wealthy foreigners to live in Indonesia",
             path=[
                 "Confirm eligibility: show bank balance of min USD 130,000",
                 "Apply for Second Home Visa online via e-Visa portal (imigrasi.go.id)",
