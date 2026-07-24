@@ -1,4 +1,4 @@
-"""Three metamorphic properties asserted across ALL 20 gold personas, run
+"""Three metamorphic properties asserted across ALL 23 gold personas, run
 against the REAL evaluator (never re-derived by hand):
 
 (a) **Monotonicity** -- de-knowing a single known fact (KNOWN -> UNKNOWN)

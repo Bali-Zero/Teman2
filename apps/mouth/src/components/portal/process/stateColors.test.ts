@@ -20,17 +20,29 @@ describe("STATE_COLORS", () => {
     }
   });
 
-  it("danger states use danger palette with --bz-danger fallback", () => {
-    expect(STATE_COLORS.cancelled.fg).toContain("--bz-danger");
+  it("danger states use the semantic --state-danger token", () => {
+    expect(STATE_COLORS.cancelled.fg).toContain("--state-danger");
   });
 
-  it("success states use success palette", () => {
-    expect(STATE_COLORS.completed.fg).toContain("--bz-success");
-    expect(STATE_COLORS.approved.fg).toContain("--bz-success");
+  it("success states use the semantic --state-success token", () => {
+    expect(STATE_COLORS.completed.fg).toContain("--state-success");
+    expect(STATE_COLORS.approved.fg).toContain("--state-success");
   });
 
-  it("warning states use warning palette", () => {
-    expect(STATE_COLORS.waiting_documents.fg).toContain("--bz-warning");
-    expect(STATE_COLORS.payment_pending.fg).toContain("--bz-warning");
+  it("warning states use the semantic --state-warning token", () => {
+    expect(STATE_COLORS.waiting_documents.fg).toContain("--state-warning");
+    expect(STATE_COLORS.payment_pending.fg).toContain("--state-warning");
+  });
+
+  it("in-flight states use the semantic --state-info token", () => {
+    expect(STATE_COLORS.on_process.fg).toContain("--state-info");
+    expect(STATE_COLORS.in_progress.fg).toContain("--state-info");
+    expect(STATE_COLORS.submitted_to_gov.fg).toContain("--state-info");
+  });
+
+  it("money-in-flight states read copper text with the slice-1 fallback", () => {
+    expect(STATE_COLORS.sending_invoice.fg).toContain("--bz-copper-text");
+    expect(STATE_COLORS.sending_invoice.fg).toContain("--tx-secondary");
+    expect(STATE_COLORS.quotation_sent.fg).toContain("--bz-copper-text");
   });
 });

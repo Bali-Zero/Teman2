@@ -109,6 +109,12 @@
   --bz-accent-glow: rgba(212, 132, 90, 0.3);
   --bz-accent-subtle: rgba(212, 132, 90, 0.1);
   --bz-accent-muted: rgba(212, 132, 90, 0.15);
+  /* On-warm foreground (WS3 slice 6, 2026-07-26): text/icons sitting ON
+     --bz-accent-warm fills (portal chat "own message" bubble, unread-count
+     badge). Dark: warm sand #c9a96e carries near-black ink at 8.43:1.
+     Light flips to white (see override below): daylight gold #8a6d3b with
+     ink would be 3.88:1 (fails AA small text), white is 4.86:1. */
+  --bz-on-warm: #0c0c0e;
 
   /* Borders */
   --bz-border: rgba(255, 255, 255, 0.08);
@@ -166,6 +172,9 @@
   --bz-accent-glow: rgba(181, 99, 58, 0.2);
   --bz-accent-subtle: rgba(181, 99, 58, 0.08);
   --bz-accent-muted: rgba(181, 99, 58, 0.12);
+  /* On-warm flip (WS3 slice 6): white on daylight gold #8a6d3b = 4.86:1
+     (AA small text); ink on that gold would be 3.88:1 (fail). */
+  --bz-on-warm: #ffffff;
 
   /* Borders */
   --bz-border: rgba(0, 0, 0, 0.08);

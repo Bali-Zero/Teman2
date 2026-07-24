@@ -292,7 +292,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 35 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 40 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -325,6 +325,11 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "secondhome.bank_deposit_usd",
+        "secondhome.bank_deposit_at_state_bank",
+        "secondhome.bank_deposit_in_own_name",
+        "secondhome.qualifying_property_value_usd",
+        "secondhome.passive_monthly_income_usd",
         "process.application_channel",
         "process.wants_onshore_conversion",
         "commercial.service_fee_budget_idr",

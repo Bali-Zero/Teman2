@@ -38,8 +38,11 @@ export function PortalEmptyState({
     <section
       className={`rounded-xl border border-dashed p-12 text-center ${className ?? ""}`}
       style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.08)",
+        /* WS3 (GARUDA Day Edition): theme surfaces instead of the dark-only
+           rgba(30,30,35,0.7) card + white hairline, which read as a muddy
+           dark island on operative-light paper. */
+        background: "var(--bz-card)",
+        borderColor: "var(--bz-border)",
         backdropFilter: "blur(24px)",
       }}
     >
@@ -63,8 +66,11 @@ export function PortalEmptyState({
           href={cta.href}
           className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
           style={{
-            background: "rgba(201,169,110,0.12)",
-            color: "var(--bz-accent-warm)",
+            /* WS3: small copper text reads the AA daylight step (slice-1
+               re-arm; --tx-secondary fallback until that merges); tint
+               follows the theme copper instead of a hardcoded gold rgba. */
+            background: "color-mix(in srgb, var(--bz-copper) 12%, transparent)",
+            color: "var(--bz-copper-text, var(--tx-secondary))",
           }}
         >
           {cta.label}

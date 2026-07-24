@@ -801,6 +801,12 @@ export const getAllArticles = unstable_cache(
       const article = await getMdxArticleBySlug(folderCategory, slug);
       if (!article) continue;
 
+      // noIndex articles leave every listing/feed surface (sitemap/robots
+      // already exclude them via getNoIndexSlugs) but stay on disk and remain
+      // reachable at their direct URL: the article page resolves single
+      // articles through getArticleBySlug/getArticleByLocale, not this fn.
+      if (article.noIndex) continue;
+
       if (
         options?.featured !== undefined &&
         article.featured !== options.featured

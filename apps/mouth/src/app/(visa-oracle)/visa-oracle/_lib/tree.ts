@@ -15,10 +15,7 @@
 /** The four eligibility states a candidate visa can carry — never binary,
  * never color-alone (spec hard-constraint 4 / design doc §3). */
 export type EligibilityState =
-  | "eligible"
-  | "likely"
-  | "conditional"
-  | "likely-not";
+  "eligible" | "likely" | "conditional" | "likely-not";
 
 /** A single selectable option on a question. `key` is the only thing ever
  * persisted to facts/state — `labelI18nKey` looks up the display copy. */
@@ -372,10 +369,14 @@ export const MOCK_CATALOG: MockVisaCard[] = [
       "req.sponsor_letter",
     ],
   },
+  // TODO(E33F): senior 1-year Second Home track unmodeled — needs
+  // price/timeline/requirements content decision; backend catalogue.py
+  // models E33F at USD 3,000/month (no deposit). This E33G card covers the
+  // remote-worker track only.
   {
-    code: "E33F",
-    nameI18nKey: "visa.E33F.name",
-    taglineI18nKey: "visa.E33F.tagline",
+    code: "E33G",
+    nameI18nKey: "visa.E33G.name",
+    taglineI18nKey: "visa.E33G.tagline",
     allInclusivePriceIDR: 18_000_000,
     timelineDays: [14, 21],
     eligibility: "eligible",

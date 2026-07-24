@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * Portal Profile — shareholder's personal information.
+ *
+ * WS3 slice 7 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slices 1-4. Masthead = copper rule + Cormorant serif
+ * (--font-serif) in --tx-pure; surfaces read --bz-card / --bz-border +
+ * concept .panel shadow; passport/expiry state colors read the semantic
+ * --state-* tokens (WS2 operative-light AA overrides) via color-mix tints;
+ * the birthday celebration keeps its bright gradient (theme-agnostic
+ * decorative one-off) but its TEXT reads --state-warning (#fbbf24 was
+ * ~1.6:1 on paper). Gender badge (bg-blue-500/bg-pink-500) is a decorative
+ * theme-agnostic one-off, left as-is. No hardcoded hexes.
+ */
+
 import React, { useEffect, useState } from "react";
 import {
   User,
@@ -93,6 +107,74 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
 import { formatDate } from "@/lib/utils/format-date";
 
 // ============================================================================
+// DAY THEME PRIMITIVES (GARUDA Day Edition, WS3)
+// ============================================================================
+
+// Theme surface: token card + concept .panel shadow (soft navy on paper,
+// near-invisible on dark). Was the dark-only rgba(30,30,35,0.7) glass.
+const PROFILE_CARD_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+  backdropFilter: "blur(24px)",
+} as const;
+
+// Passport validity tones — semantic --state-* tokens with color-mix tints
+// (the previous rgba(16,185,129,…) / rgba(245,158,11,…) / rgba(239,68,68,…)
+// tints were dark-grade and failed AA on paper). Border sits at 30-35% mix
+// so the hairline reads on both themes.
+type StateTone = "success" | "warning" | "danger";
+
+const STATE_TONE_STYLES: Record<
+  StateTone,
+  { token: string; bg: string; border: string; well: string }
+> = {
+  success: {
+    token: "var(--state-success)",
+    bg: "color-mix(in srgb, var(--state-success) 6%, transparent)",
+    border: "color-mix(in srgb, var(--state-success) 30%, transparent)",
+    well: "color-mix(in srgb, var(--state-success) 12%, transparent)",
+  },
+  warning: {
+    token: "var(--state-warning)",
+    bg: "color-mix(in srgb, var(--state-warning) 6%, transparent)",
+    border: "color-mix(in srgb, var(--state-warning) 30%, transparent)",
+    well: "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+  },
+  danger: {
+    token: "var(--state-danger)",
+    bg: "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+    border: "color-mix(in srgb, var(--state-danger) 35%, transparent)",
+    well: "color-mix(in srgb, var(--state-danger) 15%, transparent)",
+  },
+};
+
+const toneForAlertLevel = (level: PassportAlertLevel): StateTone =>
+  level === "ok" ? "success" : level === "warning" ? "warning" : "danger";
+
+// Day masthead: copper rule + Cormorant serif headline per concept
+// (--font-serif, wired on <html>); Inter everywhere else.
+function ProfileMasthead() {
+  return (
+    <section>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        Your Profile
+      </h1>
+      <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        View your personal information
+      </p>
+    </section>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -169,8 +251,8 @@ export default function ProfilePage() {
         <div
           className="rounded-xl border p-6 space-y-4 animate-pulse"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div className="flex items-center gap-4">
@@ -204,17 +286,12 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        <section>
-          <h1 className="text-2xl font-bold tracking-tight">Your Profile</h1>
-          <p style={{ color: "var(--bz-text-2)" }}>
-            View your personal information
-          </p>
-        </section>
+        <ProfileMasthead />
         <section
           className="rounded-xl border border-dashed p-12 text-center"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <User
@@ -227,7 +304,9 @@ export default function ProfilePage() {
           >
             Unable to load profile
           </h2>
-          <p className="text-sm mt-1" style={{ color: "var(--bz-text-3)" }}>
+          {/* WS3 AA: guidance copy reads --bz-text-2 (7.64:1 on card);
+              --bz-text-3 was 3.49:1 — below the 4.5:1 floor. */}
+          <p className="text-sm mt-1" style={{ color: "var(--bz-text-2)" }}>
             Please refresh the page or contact support if the issue persists.
           </p>
         </section>
@@ -237,26 +316,19 @@ export default function ProfilePage() {
 
   // Calculate alerts
   const passportValidity = getPassportValidityColor(profile.passportExpiry);
+  const passportTone =
+    STATE_TONE_STYLES[toneForAlertLevel(passportValidity.alertLevel)];
   const isBirthday = isBirthdayToday(profile.dateOfBirth);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <section>
-        <h1 className="text-2xl font-bold tracking-tight">Your Profile</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
-          View your personal information
-        </p>
-      </section>
+      <ProfileMasthead />
 
       {/* Profile Card */}
       <section
         className="rounded-xl border p-6 space-y-6"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
+        style={PROFILE_CARD_STYLE}
       >
         {/* Avatar */}
         <div className="flex flex-col items-center gap-3">
@@ -268,7 +340,12 @@ export default function ProfilePage() {
                   "bg-gradient-to-br from-yellow-300 via-amber-300 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(255,215,0,0.6)]",
               )}
               style={
-                !isBirthday ? { background: "rgba(201,169,110,0.15)" } : {}
+                !isBirthday
+                  ? {
+                      background:
+                        "color-mix(in srgb, var(--bz-copper) 15%, transparent)",
+                    }
+                  : {}
               }
             >
               <User
@@ -311,7 +388,7 @@ export default function ProfilePage() {
             {isBirthday && (
               <p
                 className="text-sm font-medium mt-1 animate-pulse"
-                style={{ color: "#fbbf24" }}
+                style={{ color: "var(--state-warning)" }}
               >
                 🎉 Happy Birthday! 🎉
               </p>
@@ -351,8 +428,10 @@ export default function ProfilePage() {
               style={
                 isBirthday
                   ? {
-                      background: "rgba(251,191,36,0.15)",
-                      boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+                      background:
+                        "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+                      boxShadow:
+                        "0 0 20px color-mix(in srgb, var(--state-warning) 30%, transparent)",
                     }
                   : {}
               }
@@ -361,13 +440,20 @@ export default function ProfilePage() {
                 className="p-2 rounded-md"
                 style={
                   isBirthday
-                    ? { background: "rgba(251,191,36,0.25)" }
-                    : { background: "rgba(255,255,255,0.03)" }
+                    ? {
+                        background:
+                          "color-mix(in srgb, var(--state-warning) 20%, transparent)",
+                      }
+                    : { background: "var(--glass-rim)" }
                 }
               >
                 <Calendar
-                  className={cn("w-4 h-4", isBirthday && "text-yellow-400")}
-                  style={!isBirthday ? { color: "var(--bz-text-2)" } : {}}
+                  className="w-4 h-4"
+                  style={{
+                    color: isBirthday
+                      ? "var(--state-warning)"
+                      : "var(--bz-text-2)",
+                  }}
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -382,7 +468,9 @@ export default function ProfilePage() {
                     "text-sm font-medium break-words",
                     isBirthday && "font-bold",
                   )}
-                  style={isBirthday ? { color: "#fbbf24" } : {}}
+                  style={
+                    isBirthday ? { color: "var(--state-warning)" } : undefined
+                  }
                 >
                   {formatDate(profile.dateOfBirth)}
                   {isBirthday && " 🎂 (Today!)"}
@@ -408,42 +496,23 @@ export default function ProfilePage() {
                 passportValidity.alertLevel === "critical" && "animate-pulse",
               )}
               style={{
-                background:
-                  passportValidity.alertLevel === "ok"
-                    ? "rgba(16,185,129,0.06)"
-                    : passportValidity.alertLevel === "warning"
-                      ? "rgba(245,158,11,0.06)"
-                      : "rgba(239,68,68,0.08)",
-                borderColor:
-                  passportValidity.alertLevel === "ok"
-                    ? "rgba(16,185,129,0.25)"
-                    : passportValidity.alertLevel === "warning"
-                      ? "rgba(245,158,11,0.3)"
-                      : "rgba(239,68,68,0.35)",
+                background: passportTone.bg,
+                borderColor: passportTone.border,
               }}
             >
               <div
                 className="p-2 rounded-md"
-                style={{
-                  background:
-                    passportValidity.alertLevel === "ok"
-                      ? "rgba(16,185,129,0.12)"
-                      : passportValidity.alertLevel === "warning"
-                        ? "rgba(245,158,11,0.12)"
-                        : "rgba(239,68,68,0.15)",
-                }}
+                style={{ background: passportTone.well }}
               >
                 {passportValidity.alertLevel === "ok" ? (
-                  <Calendar className="w-4 h-4" style={{ color: "#34d399" }} />
+                  <Calendar
+                    className="w-4 h-4"
+                    style={{ color: passportTone.token }}
+                  />
                 ) : (
                   <AlertTriangle
                     className="w-4 h-4"
-                    style={{
-                      color:
-                        passportValidity.alertLevel === "warning"
-                          ? "#fbbf24"
-                          : "#f87171",
-                    }}
+                    style={{ color: passportTone.token }}
                   />
                 )}
               </div>
@@ -456,14 +525,7 @@ export default function ProfilePage() {
                 </p>
                 <p
                   className="text-sm font-medium break-words"
-                  style={{
-                    color:
-                      passportValidity.alertLevel === "ok"
-                        ? "#34d399"
-                        : passportValidity.alertLevel === "warning"
-                          ? "#fbbf24"
-                          : "#f87171",
-                  }}
+                  style={{ color: passportTone.token }}
                 >
                   {formatDate(profile.passportExpiry)}
                   {(() => {
@@ -472,14 +534,12 @@ export default function ProfilePage() {
                         Date.now()) /
                         86400000,
                     );
-                    const chipColor =
-                      days < 0
-                        ? "bg-red-500/15 text-red-400"
-                        : days === 0
-                          ? "bg-red-500/15 text-red-400"
-                          : days <= 270
-                            ? "bg-amber-500/10 text-amber-400"
-                            : "bg-emerald-500/10 text-emerald-400";
+                    const chipTone: StateTone =
+                      days <= 0
+                        ? "danger"
+                        : days <= 270
+                          ? "warning"
+                          : "success";
                     const chipText =
                       days < 0
                         ? `Expired ${Math.abs(days)}d ago`
@@ -490,7 +550,11 @@ export default function ProfilePage() {
                             : `${Math.floor(days / 30)}mo left`;
                     return (
                       <span
-                        className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
+                        className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                        style={{
+                          background: STATE_TONE_STYLES[chipTone].well,
+                          color: STATE_TONE_STYLES[chipTone].token,
+                        }}
                       >
                         {chipText}
                       </span>
@@ -499,14 +563,20 @@ export default function ProfilePage() {
                 </p>
                 {/* Alert Messages */}
                 {passportValidity.alertLevel === "warning" && (
-                  <p className="mt-1 text-xs text-yellow-400">
+                  <p
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--state-warning)" }}
+                  >
                     <AlertCircle className="w-3 h-3 inline mr-1" />
                     Your passport expires in less than 14 months. Contact your
                     embassy to begin renewal process.
                   </p>
                 )}
                 {passportValidity.alertLevel === "critical" && (
-                  <p className="mt-1 text-xs text-red-400 font-medium">
+                  <p
+                    className="mt-1 text-xs font-medium"
+                    style={{ color: "var(--state-danger)" }}
+                  >
                     <AlertCircle className="w-3 h-3 inline mr-1" />
                     URGENT: Your passport expires in less than 9 months. You may
                     not be able to travel internationally. Contact your embassy
@@ -514,7 +584,10 @@ export default function ProfilePage() {
                   </p>
                 )}
                 {passportValidity.alertLevel === "expired" && (
-                  <p className="mt-1 text-xs text-red-400 font-bold">
+                  <p
+                    className="mt-1 text-xs font-bold"
+                    style={{ color: "var(--state-danger)" }}
+                  >
                     <AlertCircle className="w-3 h-3 inline mr-1" />
                     Your passport has EXPIRED! Contact your embassy immediately
                     for emergency renewal.
@@ -543,11 +616,7 @@ export default function ProfilePage() {
       ) : (
         <section
           className="space-y-4 rounded-xl border p-6"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={PROFILE_CARD_STYLE}
         >
           <h2 className="text-lg font-semibold">Edit Profile</h2>
           <div className="space-y-3">
@@ -566,10 +635,10 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setEditData((prev) => ({ ...prev, phone: e.target.value }))
                 }
-                className="w-full px-3 py-2 rounded-lg border text-sm"
+                className="w-full px-3 py-2 rounded-lg border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
+                  background: "var(--glass-rim)",
+                  borderColor: "var(--bz-border)",
                   color: "var(--bz-text-1)",
                 }}
               />
@@ -589,10 +658,10 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setEditData((prev) => ({ ...prev, whatsapp: e.target.value }))
                 }
-                className="w-full px-3 py-2 rounded-lg border text-sm"
+                className="w-full px-3 py-2 rounded-lg border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
+                  background: "var(--glass-rim)",
+                  borderColor: "var(--bz-border)",
                   color: "var(--bz-text-1)",
                 }}
               />
@@ -611,10 +680,10 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setEditData((prev) => ({ ...prev, address: e.target.value }))
                 }
-                className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]"
+                className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
+                  background: "var(--glass-rim)",
+                  borderColor: "var(--bz-border)",
                   color: "var(--bz-text-1)",
                 }}
               />
@@ -660,7 +729,7 @@ function ProfileField({
     >
       <div
         className="p-2 rounded-md backdrop-blur-sm shadow-sm"
-        style={{ background: "rgba(255,255,255,0.03)" }}
+        style={{ background: "var(--glass-rim)" }}
       >
         <Icon
           className="w-4 h-4"
@@ -682,7 +751,11 @@ function ProfileField({
             "text-sm break-words",
             muted ? "italic" : "font-medium",
           )}
-          style={muted ? { color: "var(--bz-text-3)" } : undefined}
+          /* WS3 AA: muted small text reads --bz-text-2 (7.64:1 on card);
+             --bz-text-3 is 3.49:1 — below the 4.5:1 floor, so it survives
+             only on the icon (3:1 non-text) where it passes. Italic keeps
+             the muted signal. */
+          style={muted ? { color: "var(--bz-text-2)" } : undefined}
         >
           {value}
         </p>

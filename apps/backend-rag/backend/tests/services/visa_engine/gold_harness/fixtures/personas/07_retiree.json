@@ -1,6 +1,6 @@
 {
   "persona_id": "07_retiree",
-  "narrative": "British retiree, 61, settling in Bali long-term on a retirement permit.",
+  "narrative": "British retiree, 61, settling in Bali long-term on a retirement permit, with a USD 60,000 own-name deposit at a state-owned (BUMN) bank and USD 3,500/month passive income -- qualifies for both the E33E 5-year golden track and the E33F 1-year income-only track.",
   "notes": "",
   "facts": {
     "person.birth_date": {
@@ -127,6 +127,26 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "secondhome.bank_deposit_usd": {
+      "status": "KNOWN",
+      "value": 60000
+    },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.qualifying_property_value_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.passive_monthly_income_usd": {
+      "status": "KNOWN",
+      "value": 3500
+    },
     "process.application_channel": {
       "status": "KNOWN",
       "value": "OFFSHORE"
@@ -148,9 +168,14 @@
     "global_state": "SUPPORTED_CANDIDATES",
     "global_reason_codes": [],
     "products": {
-      "E33R": {
+      "E33E": {
         "proof_state": "SUPPORTED",
         "reason_codes": ["RETIREMENT_SUPPORTED"],
+        "covered_purposes": ["RETIREMENT"]
+      },
+      "E33F": {
+        "proof_state": "SUPPORTED",
+        "reason_codes": ["RETIREMENT_INCOME_ONLY_SUPPORTED"],
         "covered_purposes": ["RETIREMENT"]
       }
     },

@@ -228,9 +228,9 @@ def _resolve_nationality_alpha2(nationality: str) -> str | None:
 
 
 def _default_unknown_facts() -> dict[str, UnknownFact]:
-    """The 35 applicant-collected fact paths, each defaulted to
+    """The 40 applicant-collected fact paths, each defaulted to
     ``UnknownFact(reason=NOT_ASKED)`` — a Match wizard submission never
-    asked the other 32 facts a full visa_oracle interview would. Sharing one
+    asked the other 37 facts a full visa_oracle interview would. Sharing one
     frozen ``UnknownFact`` instance across every key is safe (immutable
     model, no per-key state).
     """
@@ -246,13 +246,13 @@ def build_shadow_facts(
     duration_months: int,
     match_hash: str,
 ) -> ApplicantFacts | None:
-    """Adapt a 4-field Match submission into a full 35-key ``ApplicantFacts``.
+    """Adapt a 4-field Match submission into a full 40-key ``ApplicantFacts``.
 
-    Every one of the 35 fields is built defensively: the 3 KNOWN-able ones
+    Every one of the 40 fields is built defensively: the 3 KNOWN-able ones
     (``person.nationalities``/``intent.purposes``/``intent.stay_days``) are
     each attempted in their own ``try/except`` — a failure on any single
     field degrades ONLY that field to its ``UnknownFact`` default, never
-    aborts the whole build. The remaining 32 stay ``UNKNOWN(NOT_ASKED)``.
+    aborts the whole build. The remaining 37 stay ``UNKNOWN(NOT_ASKED)``.
     Returns ``None`` only if the ``ApplicantFacts`` construction fails
     entirely (e.g. the facts dict itself is somehow malformed) — the whole
     SHADOW evaluation aborts silently in that case (caller logs and returns).

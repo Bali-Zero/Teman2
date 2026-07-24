@@ -15,9 +15,12 @@ import asyncio
 import contextlib
 import hashlib
 import httpx
+import json
 import logging
 import math
 import os
+import re
+import signal
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -80,6 +83,140 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_SIMILARITY_THRESHOLD = 0.35
 EMBEDDING_BORDERLINE_LOW = 0.30
 EMBEDDING_BORDERLINE_HIGH = 0.40
+_CLAUDE_RETRYABLE_RE = re.compile(
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|capacity|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_OAUTH_SCRUB_KEYS = frozenset({
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+_STDOUT_RETRYABLE_RE = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"capacity (?:exceeded|unavailable)|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _oauth_cli_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
+
+
+async def _terminate_process_group(
+    proc: asyncio.subprocess.Process,
+) -> None:
+    """TERM, grace, KILL, and drain a CLI session including descendants."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    else:
+        await asyncio.sleep(0.1)
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(proc.pid, signal.SIGKILL)
+    with contextlib.suppress(
+        BrokenPipeError,
+        ConnectionResetError,
+        ProcessLookupError,
+    ):
+        await proc.communicate()
+
+
+def _claude_retryable(stdout: str, stderr: str) -> bool:
+    """Classify diagnostics without treating generated stdout as an error."""
+    if _CLAUDE_RETRYABLE_RE.search(stderr or ""):
+        return True
+    try:
+        envelope = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        envelope = None
+    if isinstance(envelope, dict):
+        result = envelope.get("result")
+        result_type = ""
+        if isinstance(result, dict):
+            result_type = str(
+                result.get("type")
+                or result.get("status")
+                or result.get("subtype")
+                or ""
+            ).lower()
+        envelope_type = str(
+            envelope.get("type") or envelope.get("status") or ""
+        ).lower()
+        is_error = (
+            envelope.get("is_error") is True
+            or envelope_type in {"error", "failed", "failure"}
+            or (
+                envelope_type == "result"
+                and envelope.get("subtype") not in (None, "success")
+            )
+            or result_type in {"error", "failed", "failure"}
+        )
+        if is_error and _CLAUDE_RETRYABLE_RE.search(
+            json.dumps(envelope, ensure_ascii=False)
+        ):
+            return True
+    return bool(_STDOUT_RETRYABLE_RE.fullmatch(stdout or ""))
+
+
+def _claude_token_chain() -> list[tuple[str, str]]:
+    """Build the OAuth chain once per unique credential value."""
+    chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for index in (1, 2, 3, 4, 5):
+        token = os.environ.get(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
+        ).strip()
+        if token and token not in seen:
+            chain.append((f"token_{index}", token))
+            seen.add(token)
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and legacy not in seen:
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
 
 
 # ---------------------------------------------------------------------------
@@ -305,49 +442,79 @@ class T4RelevanceFilter:
             f"Article: {text[:1500]}"
         )
 
-        # Build env: strip ANTHROPIC_API_KEY (kill-switch), pass first OAuth
-        # token from the 3-token chain. If none set, let the CLI fall back to
-        # the macOS-keychain-stored token.
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        for key in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2",
-                    "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4", "CLAUDE_CODE_OAUTH_TOKEN"):
-            tok = os.environ.get(key, "").strip()
-            if tok:
-                env["CLAUDE_CODE_OAUTH_TOKEN"] = tok
+        # Build a real account chain. Promoting only the first numbered token
+        # made TOKEN_2..5 unreachable whenever TOKEN_1 was expired or capped.
+        token_chain = _claude_token_chain()
+
+        deadline = asyncio.get_running_loop().time() + 30
+
+        for position, (label, token) in enumerate(token_chain):
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
                 break
-
-        proc = await asyncio.create_subprocess_exec(
-            "claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
-        except asyncio.TimeoutError:
-            with contextlib.suppress(ProcessLookupError):
-                proc.kill()
-            logger.warning("Haiku via OAuth CLI timed out — classifier unavailable")
-            return None
-
-        if proc.returncode != 0:
-            logger.warning(
-                "claude CLI exit=%s stderr=%r — classifier unavailable",
-                proc.returncode, stderr.decode("utf-8", errors="replace")[:200],
+            attempt_timeout = max(
+                0.1,
+                remaining / (len(token_chain) - position),
             )
-            return None
 
-        raw = stdout.decode("utf-8", errors="replace").strip()
-        try:
-            return float(raw)
-        except ValueError:
-            # CLI sometimes returns "0.85\n\nExplanation..." — extract first token
-            import re as _re
-            m = _re.search(r"^\d+(?:\.\d+)?", raw)
-            if m:
-                return float(m.group())
-            logger.warning("CLI returned non-float: %r — classifier unavailable", raw)
-            return None
+            proc = await asyncio.create_subprocess_exec(
+                "claude",
+                "-p",
+                prompt,
+                "--model",
+                "claude-haiku-4-5-20251001",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=_oauth_cli_env(token),
+                start_new_session=True,
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=attempt_timeout
+                )
+            except asyncio.TimeoutError:
+                await _terminate_process_group(proc)
+                logger.warning(
+                    "Haiku via OAuth CLI %s timed out — classifier unavailable",
+                    label,
+                )
+                continue
+
+            raw = stdout.decode("utf-8", errors="replace").strip()
+            error = stderr.decode("utf-8", errors="replace").strip()
+            if _claude_retryable(raw, error):
+                logger.warning(
+                    "claude CLI %s unavailable (exit=%s) — trying next account",
+                    label,
+                    proc.returncode,
+                )
+                continue
+            if proc.returncode != 0:
+                logger.warning(
+                    "claude CLI exit=%s — classifier unavailable",
+                    proc.returncode,
+                )
+                return None
+
+            if not raw:
+                logger.warning(
+                    "claude CLI %s returned empty output — trying next account",
+                    label,
+                )
+                continue
+
+            try:
+                return float(raw)
+            except ValueError:
+                # CLI sometimes returns "0.85\n\nExplanation..." — extract first token
+                match = re.search(r"^\d+(?:\.\d+)?", raw)
+                if match:
+                    return float(match.group())
+                logger.warning("CLI returned non-float — classifier unavailable")
+                return None
+
+        logger.warning("All Claude OAuth accounts unavailable — classifier unavailable")
+        return None
 
     async def layer3_haiku(self, text: str) -> Optional[float]:
         """Return Haiku relevance score for text, or None if unavailable."""

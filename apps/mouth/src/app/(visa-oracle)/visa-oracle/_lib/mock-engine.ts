@@ -170,7 +170,7 @@ function adjustEligibility(
   card: MockVisaCard,
   resolved: OracleFacts,
 ): EligibilityState {
-  if (card.code === "E33F") {
+  if (card.code === "E33G") {
     // Finding #14: mixed Indonesian/foreign clients is the honest
     // "likely-not" sample — real tolerance risk, not excluded outright
     // (the other reachable 4th state, alongside the review-gate path).

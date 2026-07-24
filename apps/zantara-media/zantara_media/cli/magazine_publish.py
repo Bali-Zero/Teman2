@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict
 
 from zantara_media.magazine.assets import (
     AssetIntentManifestV1,
+    AssetIntentV1,
     bind_canonical_assets,
-    validate_asset_intent_targets,
 )
 from zantara_media.magazine.audit_anchor import (
     AuditAnchorService,
@@ -32,6 +32,15 @@ from zantara_media.magazine.audit_anchor import (
 )
 from zantara_media.magazine.composer import ComposerConfig, compose_breaking, compose_edition
 from zantara_media.magazine.loaders import load_named_projection
+from zantara_media.magazine.media_resolver import (
+    AssetFingerprintLedger,
+    AssetResolutionResult,
+    generated_manifest_is_intact,
+    generated_manifest_matches_packet,
+    resolve_asset_manifest,
+    validate_generated_asset_bytes,
+    validate_manifest_publication_binding,
+)
 from zantara_media.magazine.ranking import score_candidate
 from zantara_media.magazine.reconciler import DurableOutcomeJournal
 from zantara_media.magazine.transport import MagazineTransport, TransportConfig
@@ -118,8 +127,7 @@ async def _read_json(path: Path) -> dict[str, Any]:
 
 async def _write_packet(path: Path, packet: dict[str, Any]) -> None:
     body = (
-        json.dumps(packet, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+        json.dumps(packet, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode()
 
     def write() -> None:
@@ -175,8 +183,13 @@ async def _publish(
     packet: dict[str, Any],
     *,
     breaking: bool,
-    asset_manifest_path: Path,
+    asset_manifest: AssetIntentManifestV1,
 ) -> dict[str, Any]:
+    preflight_assets = await _preflight_asset_manifest(
+        packet,
+        breaking=breaking,
+        asset_manifest=asset_manifest,
+    )
     journal_path = Path(
         os.environ.get(
             "MAGAZINE_OUTCOME_JOURNAL",
@@ -203,20 +216,13 @@ async def _publish(
         release_gate=interlock,
     )
     try:
-        asset_manifest = AssetIntentManifestV1.model_validate_json(
-            await asyncio.to_thread(asset_manifest_path.read_bytes)
-        )
-        validate_asset_intent_targets(packet, asset_manifest, breaking=breaking)
         canonical: dict[str, str] = {}
-        for intent in asset_manifest.intents:
-            source_bytes = await asyncio.to_thread(intent.source_path.read_bytes)
+        for intent, source_bytes in preflight_assets:
             result = await transport.upload_asset_bytes(
                 source_bytes, intent.provenance(str(packet["packet_id"]))
             )
             canonical[intent.asset_id] = result.canonical_sha256
-        bound = bind_canonical_assets(
-            packet, asset_manifest, canonical, breaking=breaking
-        )
+        bound = bind_canonical_assets(packet, asset_manifest, canonical, breaking=breaking)
         operation: Literal["edition.publish", "breaking.publish"] = (
             "breaking.publish" if breaking else "edition.publish"
         )
@@ -292,9 +298,7 @@ async def _publish(
             release_binding=release_binding,
         )
         if breaking:
-            await transport.publish_breaking(
-                bound, release_binding=release_binding
-            )
+            await transport.publish_breaking(bound, release_binding=release_binding)
         else:
             await transport.post_json(
                 "/api/machine/publications/editions",
@@ -304,6 +308,196 @@ async def _publish(
         return bound
     finally:
         await transport.aclose()
+
+
+async def _preflight_asset_manifest(
+    packet: dict[str, Any],
+    *,
+    breaking: bool,
+    asset_manifest: AssetIntentManifestV1,
+) -> list[tuple[AssetIntentV1, bytes]]:
+    """Validate every asset before secrets are loaded or uploads can begin."""
+
+    validate_manifest_publication_binding(
+        asset_manifest,
+        packet,
+        breaking=breaking,
+    )
+    verified: list[tuple[AssetIntentV1, bytes]] = []
+    for intent in asset_manifest.intents:
+        source_bytes = await asyncio.to_thread(intent.source_path.read_bytes)
+        validate_generated_asset_bytes(
+            intent,
+            packet_id=str(packet["packet_id"]),
+            source_bytes=source_bytes,
+        )
+        verified.append((intent, source_bytes))
+    return verified
+
+
+def _environment_enabled(name: str, *, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
+async def _write_asset_manifest(path: Path, manifest: AssetIntentManifestV1) -> None:
+    body = (manifest.model_dump_json() + "\n").encode()
+
+    def write() -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_bytes(body)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    await asyncio.to_thread(write)
+
+
+async def _resolve_assets_if_needed(
+    packet: dict[str, Any],
+    *,
+    breaking: bool,
+    asset_manifest_path: Path,
+) -> AssetResolutionResult:
+    """Resolve an empty manifest before publish without replacing approved assets."""
+
+    empty_manifest = AssetIntentManifestV1(schema_version="asset-intents.v1", intents=())
+    manifest_exists = await asyncio.to_thread(asset_manifest_path.is_file)
+    manifest = (
+        AssetIntentManifestV1.model_validate_json(
+            await asyncio.to_thread(asset_manifest_path.read_bytes)
+        )
+        if manifest_exists
+        else empty_manifest
+    )
+    state_root = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_STATE_DIR",
+            str(Path.home() / ".local/state/bali-zero-magazine/assets"),
+        )
+    )
+    output_dir = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_OUTPUT_DIR",
+            str(state_root / "generated"),
+        )
+    )
+    ledger_path = Path(
+        os.environ.get(
+            "MAGAZINE_ASSET_FINGERPRINT_LEDGER",
+            str(state_root / "fingerprints.jsonl"),
+        )
+    )
+    ledger = AssetFingerprintLedger(ledger_path, asset_root=output_dir)
+    if manifest.intents:
+        automatic = all(
+            item.rights_basis == "generated" and item.source == "Bali Zero editorial generator"
+            for item in manifest.intents
+        )
+        try:
+            validate_manifest_publication_binding(
+                manifest,
+                packet,
+                breaking=breaking,
+            )
+        except ValueError:
+            if not automatic:
+                raise
+            manifest = empty_manifest
+            manifest_exists = False
+        else:
+            if not automatic or (
+                generated_manifest_matches_packet(manifest, packet, breaking=breaking)
+                and await generated_manifest_is_intact(manifest, output_dir=output_dir)
+            ):
+                return AssetResolutionResult(manifest=manifest, fallback_reason=None)
+            manifest = empty_manifest
+            manifest_exists = False
+    if not _environment_enabled("MAGAZINE_AUTO_ASSETS", default=False):
+        if not manifest_exists:
+            await _write_asset_manifest(asset_manifest_path, manifest)
+        return AssetResolutionResult(manifest=manifest, fallback_reason="auto_assets_disabled")
+
+    result = await resolve_asset_manifest(
+        packet,
+        breaking=breaking,
+        output_dir=output_dir,
+        ledger=ledger,
+        manifest_path=asset_manifest_path,
+    )
+    previous_manifest = manifest
+
+    async def finalize() -> None:
+        try:
+            await _write_asset_manifest(asset_manifest_path, result.manifest)
+            if result.reservation_id is not None:
+                await ledger.commit(result.reservation_id)
+        except Exception:
+            try:
+                await _write_asset_manifest(asset_manifest_path, previous_manifest)
+            except Exception:
+                logger.exception("Magazine asset manifest rollback failed")
+            await _cleanup_asset_resolution_shielded(
+                result,
+                ledger=ledger,
+                output_dir=output_dir,
+            )
+            raise
+
+    finalization = asyncio.create_task(finalize())
+    try:
+        await asyncio.shield(finalization)
+    except asyncio.CancelledError:
+        try:
+            await _finish_shielded_operation(finalization)
+        except Exception:
+            logger.exception("Magazine asset finalization failed during cancellation")
+        raise
+    return result
+
+
+async def _finish_shielded_operation(task: asyncio.Task[Any]) -> Any:
+    """Finish one transaction step before propagating caller cancellation."""
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+    return task.result()
+
+
+async def _cleanup_asset_resolution_shielded(
+    result: AssetResolutionResult,
+    *,
+    ledger: AssetFingerprintLedger,
+    output_dir: Path,
+) -> None:
+    if result.reservation_id is None:
+        return
+
+    async def cleanup() -> None:
+        try:
+            await ledger.release(result.reservation_id)
+        except (OSError, ValueError):
+            logger.exception("Magazine fingerprint reservation release failed")
+        resolved_output_dir = output_dir.resolve()
+        for intent in result.manifest.intents:
+            source_path = intent.source_path.resolve()
+            if source_path.parent == resolved_output_dir:
+                await asyncio.to_thread(source_path.unlink, missing_ok=True)
+
+    cleanup_task = asyncio.create_task(cleanup())
+    await _finish_shielded_operation(cleanup_task)
 
 
 async def _morning(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, Any]:
@@ -372,22 +566,29 @@ async def async_main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("publish requires --asset-manifest")
         if args.offline_audit_events is not None:
             raise ValueError("offline audit fixtures cannot unlock production publish")
-        packet = await _publish(
+        resolution = await _resolve_assets_if_needed(
             packet,
             breaking=args.command == "breaking",
             asset_manifest_path=args.asset_manifest,
         )
+        logger.info(
+            "asset resolution complete packet_id=%s assets=%d fallback=%s",
+            packet["packet_id"],
+            len(resolution.manifest.intents),
+            resolution.fallback_reason or "none",
+        )
+        packet = await _publish(
+            packet,
+            breaking=args.command == "breaking",
+            asset_manifest=resolution.manifest,
+        )
         logger.info("packet published packet_id=%s target=%s", packet["packet_id"], args.command)
     else:
         if args.offline_audit_events is not None:
-            events_raw = json.loads(
-                await asyncio.to_thread(args.offline_audit_events.read_bytes)
-            )
+            events_raw = json.loads(await asyncio.to_thread(args.offline_audit_events.read_bytes))
             if not isinstance(events_raw, list):
                 raise ValueError("offline audit fixture must be an array")
-            verify_audit_stream(
-                tuple(AuditEventRecord.model_validate(item) for item in events_raw)
-            )
+            verify_audit_stream(tuple(AuditEventRecord.model_validate(item) for item in events_raw))
             logger.info("offline audit fixture verified; production unlock disabled")
         logger.info("dry run complete packet_id=%s target=%s", packet["packet_id"], args.command)
     await _write_packet(args.output, packet)

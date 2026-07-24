@@ -125,4 +125,19 @@ describe("TimelineStep", () => {
       "false",
     );
   });
+
+  it("drives the dot from state tokens with a page-bg cutout (WS3 day pass)", () => {
+    render(
+      <TimelineStep
+        step={makeStep({ status: "waiting_documents", completed: false })}
+        onSelect={() => {}}
+        isLast
+      />,
+    );
+    const dot = screen.getByTestId("timeline-step-dot");
+    // Border/color read the semantic --state-warning token (was hex fallbacks)
+    expect(dot.style.borderColor).toContain("--state-warning");
+    // Incomplete dot cuts out to the page bg, not a hardcoded black
+    expect(dot.style.backgroundColor).toBe("var(--bz-base)");
+  });
 });
