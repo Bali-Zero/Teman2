@@ -24,6 +24,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,6 +39,12 @@ from mata_garuda.config import (
 from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
+from mata_garuda.runtime.cli_runtime import (
+    _run_process_group,
+    claude_token_chain,
+    classify_claude_retry,
+    provider_cli_env,
+)
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
@@ -172,38 +179,36 @@ def _tldr_claude(title: str, content: str) -> str:
     """
     if not content:
         return ""
-    token_vars = [
-        "CLAUDE_CODE_OAUTH_TOKEN_1",
-        "CLAUDE_CODE_OAUTH_TOKEN_2",
-        "CLAUDE_CODE_OAUTH_TOKEN_3",
-        "CLAUDE_CODE_OAUTH_TOKEN_4",
-        "CLAUDE_CODE_OAUTH_TOKEN",
-    ]
-    for var in token_vars:
-        token = os.environ.get(var)
-        if not token:
-            continue
-        env = os.environ.copy()
-        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        prompt = (
-            f"Riassumi in MAX 2 righe (italiano, tecnico) questo item:\n"
-            f"Titolo: {title}\nContenuto: {content[:800]}\n"
-            f"Output: solo il riassunto, niente prefissi."
-        )
+    prompt = (
+        f"Riassumi in MAX 2 righe (italiano, tecnico) questo item:\n"
+        f"Titolo: {title}\nContenuto: {content[:800]}\n"
+        f"Output: solo il riassunto, niente prefissi."
+    )
+    deadline = time.monotonic() + 45
+    chain = claude_token_chain()
+    for position, (_label, token) in enumerate(chain):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "-p", prompt],
-                capture_output=True, text=True, timeout=45, env=env,
+                timeout=attempt_timeout,
+                env=provider_cli_env("claude", token),
             )
-            out = (result.stdout or "").strip()
-            if result.returncode == 0 and out:
-                if out.startswith("[Pro]") or out.startswith("[Air]"):
-                    out = out.split("\n", 1)[-1].strip()
-                return out.splitlines()[0:2] and "\n".join(out.splitlines()[:2]) or out
-            if "hit your limit" in (result.stderr + result.stdout).lower():
-                continue
-        except Exception:
+        except (subprocess.TimeoutExpired, OSError):
             continue
+
+        if classify_claude_retry(result.stdout, result.stderr):
+            continue
+        out = (result.stdout or "").strip()
+        if result.returncode == 0 and out:
+            if out.startswith("[Pro]") or out.startswith("[Air]"):
+                out = out.split("\n", 1)[-1].strip()
+            return "\n".join(out.splitlines()[:2])
+        if result.returncode != 0:
+            return ""
     return ""
 
 

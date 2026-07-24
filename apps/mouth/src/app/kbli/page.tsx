@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getSections } from "@/lib/kbli-data";
+import { getAllCodes, getSections } from "@/lib/kbli-data";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
@@ -31,6 +31,10 @@ export default async function KBLIHomePage({
   const { q } = await searchParams;
   const initialQuery = q ? decodeURIComponent(q) : "";
   const sections = getSections().filter((s) => s.codeCount > 0);
+  const allCodes = getAllCodes();
+  const baliBlockedPct = Math.round(
+    (allCodes.filter((c) => c.baliL4?.blocked).length / allCodes.length) * 100,
+  );
 
   return (
     <FunnelFrame
@@ -187,9 +191,9 @@ export default async function KBLIHomePage({
             { num: "1,559", label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
             {
-              num: "~30%",
+              num: `~${baliBlockedPct}%`,
               label: "Blocked in Bali",
-              hint: "Bali blocks low and medium-low-risk activities for foreign-owned companies (PT PMA) under the 13 May 2026 provincial moratorium — every code page shows its Bali verdict.",
+              hint: "Bali Zero's conservative posture on the 13 May 2026 provincial moratorium: low and medium-low-risk activities are treated as closed to foreign-owned companies (PT PMA) pending clearer national guidance — a working assessment, not a certified legal determination. Every code page shows our current verdict.",
             },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (

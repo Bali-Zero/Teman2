@@ -1,5 +1,8 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
+// WS3 slice 4 (GARUDA Day Edition): skeleton panel reads --bz-card /
+// --bz-border (was rgba(30,30,35,0.7) + white rgba hairline — a near-black
+// panel flashing on the warm-paper page).
 export default function PracticeDetailLoading() {
   return (
     <div className="space-y-6 p-2">
@@ -15,7 +18,10 @@ export default function PracticeDetailLoading() {
       {/* Timeline */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">

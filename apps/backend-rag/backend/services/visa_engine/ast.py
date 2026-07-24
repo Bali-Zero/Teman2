@@ -572,7 +572,7 @@ def _leaf_lookup(
 
     Returns ``(referenced_facts, unknown_facts, is_unknown, value_or_none)``.
     A fact path absent from the snapshot (should not happen for a snapshot
-    built by ``FactRegistry.derive()``, which always populates all 38 paths)
+    built by ``FactRegistry.derive()``, which always populates all 43 paths)
     is treated as UNKNOWN rather than raising — the same fail-safe posture
     as an explicit ``UnknownFact`` entry.
     """
