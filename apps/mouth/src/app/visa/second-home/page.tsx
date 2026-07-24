@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { I18nProvider } from "@/i18n";
 import { BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo";
 import { SECOND_HOME_FAQS } from "@/lib/seo/faq-data";
 import { SecondHomeLanding } from "./SecondHomeLanding";
@@ -35,12 +34,10 @@ export default function SecondHomeVisaPage() {
           FAQ copy mirrors the page's localized FAQ section (EN canonical). */}
       <BreadcrumbJsonLd items={breadcrumbItems} />
       <FAQJsonLd items={SECOND_HOME_FAQS} />
-      {/* Page-level provider — same pattern as portal/forgot-password: the
-          /visa segment layout has no I18nProvider ancestor. Missing keys in
-          fr/ru fall back to EN (src/i18n/index.tsx). */}
-      <I18nProvider>
-        <SecondHomeLanding />
-      </I18nProvider>
+      {/* The I18nProvider lives in this route's layout.tsx — required by
+          the lint_i18n_providers contract (provider in the calling file or
+          an ancestor layout, not a sibling page wrapper). */}
+      <SecondHomeLanding />
     </>
   );
 }
