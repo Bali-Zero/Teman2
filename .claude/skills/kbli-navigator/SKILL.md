@@ -142,8 +142,26 @@ superseded-code notice (2020 payload archived under `*_superseded_kbli2020` + ve
 weak auto-matches (39002 "Penyimpanan Karbon" ← 82920 "packaging" at score=71%) and neither silent
 inclusion nor silent exclusion (W97) is acceptable. The `--kg` arm detaches **53 REQUIRES edges**
 (26120=19, 60111=2, 82920=27, 85598=5), the channel `inspect_kbli` turns into `licenses` and
-`_resolve_risk_profile` turns into the risk label. **Qdrant censused 2026-07-24: ZERO phantom
-points — nothing to do there** (recorded so nobody re-derives it).
+`_resolve_risk_profile` turns into the risk label.
+
+**FULL CONSUMER MAP for the phantom class, censused 2026-07-24 — the phantom codes live in exactly
+TWO stores.** The verified negatives are recorded here so no session re-derives them:
+
+| Surface                                        | Phantom codes present? | Evidence                                                                 |
+| ---------------------------------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| `kbli_documents` (→ `chat_kbli`)               | **YES — 4**            | 1,563 rows vs 1,559 canonical                                            |
+| `kg_nodes`/`kg_edges` (→ `inspect_kbli`)       | **YES — 4 + 53 edges** | all 4 nodes live, `licensing_status: REGULATED`, `pma_status: TERBUKA`   |
+| Qdrant (→ `search_kbli`)                       | NO                     | `search_kbli` returns only 2025 codes; zero phantom points               |
+| canonical / `apps/mouth` `/kbli/<code>`        | NO                     | phantom absent by definition — pages are generated from the 1,559        |
+| `apps/kbli-navigator/data/kbli-2025.json`      | NO                     | **byte-identical to canonical** (blob `2417c876`, same on `origin/main`) |
+| `apps/kbli-navigator/lib/kbli-gold-content.ts` | NO                     | zero occurrences of any of the 4 codes                                   |
+
+> **CORRECTION to the "Surfaces 5 & 6" block below (2026-07-24):** it describes surface 5 as rotted
+> (1,563 records, zero quarantine markers, cure "in flight"). That is **STALE** — the cure landed:
+> the file is tracked, is 1,559 records, and its blob is IDENTICAL to the canonical dataset on
+> `origin/main` (verified by content per W88, not by branch name or PR state). Surface 6's gold
+> override is likewise clean of phantoms, though its 68112/49213 override issue is a SEPARATE
+> question this census does not speak to.
 
 Cross-family adversarial gate: **Kimi K3 → SHIP-WITH-FIXES**, 2 MAJOR both fixed (metadata
 neutralisation was a whitelist-of-two → now FAIL-CLOSED on any unrecognised metadata key; the
