@@ -78,12 +78,40 @@ async def main() -> None:
         logger.error("--only produced an empty code list, nothing to do")
         raise SystemExit(2)
 
+    # A one-shot process is NOT the app: `RedisManager` is initialized in the
+    # FastAPI lifespan, so without this call `get_cache_service()` finds no
+    # manager and silently degrades to a per-process in-memory LRU — which is
+    # EMPTY here and would make every key look absent. That is a false clean:
+    # the live web workers hold the poisoned entry in the SHARED Redis this
+    # process never connected to. (Observed 2026-07-24: the first cut of this
+    # script reported "0/4 had a cache entry" while Redis held all 4.)
+    from backend.core.redis_manager import RedisManager
+
+    RedisManager.get_instance().initialize()
+
     from backend.core.cache import get_cache_service
 
     cache = get_cache_service()
     if cache is None:
         logger.error("no cache service available — cannot verify or evict")
         raise SystemExit(2)
+
+    # Force the lazy connect, then FAIL LOUD if Redis is configured but we did
+    # not reach it. Reporting "nothing to evict" against a degraded in-memory
+    # cache is the exact false-success this tool exists to prevent, so a
+    # configured-but-unreachable Redis is an error, never a clean result.
+    cache._try_connect_redis()  # the public cache API has no eager-connect hook
+    redis_configured = bool(RedisManager.get_instance()._redis_url)
+    if redis_configured and not cache.redis_available:
+        logger.error(
+            "REDIS_URL is configured but this process could not connect — refusing to "
+            "report eviction against a per-process in-memory cache the web workers do not "
+            "share. Run this where Redis is reachable."
+        )
+        raise SystemExit(3)
+    logger.info(
+        "cache backend: %s", "shared Redis" if cache.redis_available else "in-memory (no Redis configured)"
+    )
 
     present = 0
     evicted = 0
