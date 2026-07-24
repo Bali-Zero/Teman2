@@ -787,23 +787,19 @@ class TestExtractWhatsappPhone:
 
 
 class TestResolveTrustedWaProfile:
-    """P0-ID containment (2026-07-24): replaces the old client-supplied
-    `profile` request field (removed — no longer exists on
-    `AgenticQueryRequest`) and its `_is_trusted_wa_profile_caller` gate
-    (a client-settable `channel` field was, per the spec's council audit,
-    forgeable by ANY holder of the shared `X-Internal-Key`, not just the
-    WA bot). The server now RE-DERIVES the sender's profile itself via
-    `resolve_sender_identity`, keyed on the phone embedded in `user_id`
-    (`whatsapp_<phone>`) — no request body field can influence the
-    outcome. See `agentic_rag.py::_resolve_trusted_wa_profile`."""
-
-    @staticmethod
-    def _internal_user():
-        return {
-            "role": "internal",
-            "email": "wa-mirror-internal@balizero.com",
-            "user_id": "wa-mirror-internal",
-        }
+    """P0-ID containment (2026-07-24, hardened same day after adversarial
+    review): replaces the old client-supplied `profile` request field
+    (removed — no longer exists on `AgenticQueryRequest`). A FIRST version
+    of this fix re-derived the sender from a phone parsed out of the
+    client-settable `user_id` field, gated only on the SHARED
+    `role=="internal"` identity — an independent review found this was the
+    identical forgery bug relocated, not closed: the owner's WA number is
+    documented-public, so ANY holder of the shared `X-Internal-Key` could
+    send `user_id="whatsapp_<owner number>"` and get the creator persona.
+    The real fix gates resolution on `is_wa_inbox_bot` (see
+    `_verify_wa_inbox_bot_profile_key` — a SECOND secret exclusive to
+    wa_inbox_bot.py, never a request body field). These tests target
+    `_resolve_trusted_wa_profile` directly with that boolean explicit."""
 
     @pytest.mark.asyncio
     async def test_owner_phone_yields_creator_profile(self):
@@ -814,7 +810,7 @@ class TestResolveTrustedWaProfile:
             new=AsyncMock(return_value={"role": "owner"}),
         ):
             result = await _resolve_trusted_wa_profile(
-                self._internal_user(), "whatsapp_62811000111", None
+                True, "whatsapp_62811000111", None
             )
         assert result == {"role": "creator"}
 
@@ -833,14 +829,14 @@ class TestResolveTrustedWaProfile:
             ),
         ):
             result = await _resolve_trusted_wa_profile(
-                self._internal_user(), "whatsapp_62811000222", None
+                True, "whatsapp_62811000222", None
             )
         assert result == {"role": "team", "name": "Ari", "email": "ari@balizero.com"}
 
     @pytest.mark.asyncio
     async def test_client_or_unknown_phone_yields_no_override(self):
         """Innocence: a resolved client/unknown sender never gets a
-        privileged persona."""
+        privileged persona, even WITH the dedicated bot key."""
         from backend.app.routers.agentic_rag import _resolve_trusted_wa_profile
 
         for identity in ({"role": "client", "client_id": 1}, {"role": "unknown"}):
@@ -849,14 +845,33 @@ class TestResolveTrustedWaProfile:
                 new=AsyncMock(return_value=identity),
             ):
                 result = await _resolve_trusted_wa_profile(
-                    self._internal_user(), "whatsapp_62899999999", None
+                    True, "whatsapp_62899999999", None
                 )
             assert result is None
 
     @pytest.mark.asyncio
     async def test_non_whatsapp_user_id_short_circuits_before_any_lookup(self):
-        """Innocence: even a fully-trusted internal caller gets no override
-        — and no DB lookup at all — when `user_id` isn't WA-shaped."""
+        """Innocence: even WITH the dedicated bot key, no override — and no
+        DB lookup at all — when `user_id` isn't WA-shaped."""
+        from backend.app.routers.agentic_rag import _resolve_trusted_wa_profile
+
+        mock_resolve = AsyncMock(return_value={"role": "owner"})
+        with patch(
+            "backend.app.routers.agentic_rag.resolve_sender_identity", new=mock_resolve
+        ):
+            result = await _resolve_trusted_wa_profile(True, "wa-mirror-internal", None)
+        assert result is None
+        mock_resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_without_dedicated_bot_key_no_override_even_with_owner_phone(self):
+        """Guilt (the actual vulnerability this hardening closes): WITHOUT
+        `is_wa_inbox_bot` — i.e. any caller lacking wa_inbox_bot.py's own
+        dedicated secret, including one holding the SHARED `X-Internal-Key`
+        and sending a WA-shaped `user_id` for the documented-public owner
+        number — gets no override, and no DB lookup is even attempted.
+        This is the exact payload the pre-hardening version would have
+        granted a creator persona for."""
         from backend.app.routers.agentic_rag import _resolve_trusted_wa_profile
 
         mock_resolve = AsyncMock(return_value={"role": "owner"})
@@ -864,53 +879,75 @@ class TestResolveTrustedWaProfile:
             "backend.app.routers.agentic_rag.resolve_sender_identity", new=mock_resolve
         ):
             result = await _resolve_trusted_wa_profile(
-                self._internal_user(), "wa-mirror-internal", None
+                False, "whatsapp_62811000111", None
             )
         assert result is None
         mock_resolve.assert_not_awaited()
 
-    @pytest.mark.asyncio
-    async def test_regular_authenticated_user_gets_no_override(self):
-        """Guilt (the actual vulnerability this fix closes): a normal
-        logged-in/JWT caller cannot get a privileged persona merely by
-        having a WA-shaped `user_id` that resolves to the owner's phone —
-        only the shared internal identity is even considered, and no DB
-        lookup is attempted for anyone else."""
-        from backend.app.routers.agentic_rag import _resolve_trusted_wa_profile
 
-        regular_user = {"email": "client@example.com", "user_id": "client-1"}
-        mock_resolve = AsyncMock(return_value={"role": "owner"})
+class TestVerifyWaInboxBotProfileKey:
+    """Direct coverage of the dedicated-secret gate itself."""
+
+    @staticmethod
+    def _request(header_value: str | None):
+        req = MagicMock()
+        req.headers = {"X-WA-Bot-Profile-Key": header_value} if header_value else {}
+        return req
+
+    @pytest.mark.asyncio
+    async def test_matching_key_is_true(self):
+        from backend.app.routers.agentic_rag import _verify_wa_inbox_bot_profile_key
+
         with patch(
-            "backend.app.routers.agentic_rag.resolve_sender_identity", new=mock_resolve
+            "backend.app.routers.agentic_rag.settings.wa_inbox_bot_profile_key",
+            "s3cr3t",
         ):
-            result = await _resolve_trusted_wa_profile(
-                regular_user, "whatsapp_62811000111", None
+            assert await _verify_wa_inbox_bot_profile_key(self._request("s3cr3t")) is True
+
+    @pytest.mark.asyncio
+    async def test_wrong_key_is_false(self):
+        from backend.app.routers.agentic_rag import _verify_wa_inbox_bot_profile_key
+
+        with patch(
+            "backend.app.routers.agentic_rag.settings.wa_inbox_bot_profile_key",
+            "s3cr3t",
+        ):
+            assert (
+                await _verify_wa_inbox_bot_profile_key(self._request("wrong")) is False
             )
-        assert result is None
-        mock_resolve.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_anonymous_caller_gets_no_override(self):
-        """Innocence: unauthenticated caller (current_user=None) — the
-        worst case for the escalation vector."""
-        from backend.app.routers.agentic_rag import _resolve_trusted_wa_profile
+    async def test_missing_header_is_false(self):
+        from backend.app.routers.agentic_rag import _verify_wa_inbox_bot_profile_key
 
-        mock_resolve = AsyncMock(return_value={"role": "owner"})
         with patch(
-            "backend.app.routers.agentic_rag.resolve_sender_identity", new=mock_resolve
+            "backend.app.routers.agentic_rag.settings.wa_inbox_bot_profile_key",
+            "s3cr3t",
         ):
-            result = await _resolve_trusted_wa_profile(None, "whatsapp_62811000111", None)
-        assert result is None
-        mock_resolve.assert_not_awaited()
+            assert await _verify_wa_inbox_bot_profile_key(self._request(None)) is False
+
+    @pytest.mark.asyncio
+    async def test_unconfigured_secret_is_false_even_with_a_header(self):
+        """Fail-safe: an unset secret must never accidentally match an
+        empty/None header value."""
+        from backend.app.routers.agentic_rag import _verify_wa_inbox_bot_profile_key
+
+        with patch(
+            "backend.app.routers.agentic_rag.settings.wa_inbox_bot_profile_key",
+            None,
+        ):
+            assert await _verify_wa_inbox_bot_profile_key(self._request("")) is False
 
 
 class TestWaTrustedProfileRouterWiring:
     """Router-level integration: `query_agentic_rag` must forward whatever
     `_resolve_trusted_wa_profile` returns to the orchestrator as `profile`,
-    and the wire contract must no longer accept a client-declared one."""
+    and the wire contract must no longer accept a client-declared one.
+    `is_wa_inbox_bot` is passed explicitly since these tests call the route
+    function directly (bypassing FastAPI's own dependency resolution)."""
 
     @staticmethod
-    def _base_kwargs(mock_orchestrator, current_user, user_id, channel="whatsapp"):
+    def _base_kwargs(mock_orchestrator, user_id, channel="whatsapp"):
         request_data = AgenticQueryRequest(query="Any question", channel=channel, user_id=user_id)
         mock_ab_manager = MagicMock()
         mock_ab_manager.metrics_tracker = MagicMock()
@@ -921,15 +958,15 @@ class TestWaTrustedProfileRouterWiring:
 
     @pytest.mark.asyncio
     async def test_owner_phone_profile_reaches_orchestrator(self, mock_orchestrator):
-        """Guilt: the WA bridge's shared internal identity + a phone that
-        resolves to 'owner' → creator profile forwarded to the orchestrator."""
+        """Guilt: WITH the dedicated bot key + a phone that resolves to
+        'owner' → creator profile forwarded to the orchestrator."""
         internal_user = {
             "role": "internal",
             "email": "wa-mirror-internal@balizero.com",
             "user_id": "wa-mirror-internal",
         }
         request_data, mock_ab_manager = self._base_kwargs(
-            mock_orchestrator, internal_user, "whatsapp_62811000111"
+            mock_orchestrator, "whatsapp_62811000111"
         )
 
         with (
@@ -961,10 +998,65 @@ class TestWaTrustedProfileRouterWiring:
                 current_user=internal_user,
                 orchestrator=mock_orchestrator,
                 db_pool=None,
+                is_wa_inbox_bot=True,
             )
 
         _, call_kwargs = mock_orchestrator.process_query.call_args
         assert call_kwargs.get("profile") == {"role": "creator"}
+
+    @pytest.mark.asyncio
+    async def test_shared_internal_key_alone_without_bot_key_gets_no_profile(
+        self, mock_orchestrator
+    ):
+        """Guilt (the actual vulnerability this hardening closes): a caller
+        with the SHARED `role=="internal"` identity but WITHOUT the
+        dedicated bot key (`is_wa_inbox_bot=False`) — even sending the
+        exact owner-phone-shaped `user_id` a real attacker would use — gets
+        no profile at all."""
+        internal_user = {
+            "role": "internal",
+            "email": "wa-mirror-internal@balizero.com",
+            "user_id": "wa-mirror-internal",
+        }
+        request_data, mock_ab_manager = self._base_kwargs(
+            mock_orchestrator, "whatsapp_62811000111"
+        )
+        mock_resolve = AsyncMock(return_value={"role": "owner"})
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.resolve_sender_identity", new=mock_resolve
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+                is_wa_inbox_bot=False,
+            )
+
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "profile" not in call_kwargs
+        mock_resolve.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_client_phone_no_profile_reaches_orchestrator(self, mock_orchestrator):
@@ -973,7 +1065,7 @@ class TestWaTrustedProfileRouterWiring:
         orchestrator, matching the pre-identity-wiring shape."""
         internal_user = {"role": "internal", "email": "wa-mirror-internal@balizero.com"}
         request_data, mock_ab_manager = self._base_kwargs(
-            mock_orchestrator, internal_user, "whatsapp_62899999999"
+            mock_orchestrator, "whatsapp_62899999999"
         )
 
         with (
@@ -1005,6 +1097,7 @@ class TestWaTrustedProfileRouterWiring:
                 current_user=internal_user,
                 orchestrator=mock_orchestrator,
                 db_pool=None,
+                is_wa_inbox_bot=True,
             )
 
         _, call_kwargs = mock_orchestrator.process_query.call_args

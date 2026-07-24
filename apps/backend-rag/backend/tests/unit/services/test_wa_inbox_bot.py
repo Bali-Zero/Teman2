@@ -182,27 +182,59 @@ async def test_escalate_marker_stripped(monkeypatch):
 
 def test_rag_client_headers_sends_internal_key_when_configured(monkeypatch):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     headers = wa_inbox_bot._rag_client_headers()
     assert headers == {"X-Internal-Key": "secret-xyz"}
 
 
 def test_rag_client_headers_omits_internal_key_and_warns_when_unset(monkeypatch, caplog):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", None)
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     with caplog.at_level("WARNING"):
         headers = wa_inbox_bot._rag_client_headers()
     assert headers == {}
     assert any("WA_MIRROR_INTERNAL_KEY not configured" in r.message for r in caplog.records)
 
 
+# ── P0-ID hardening: dedicated X-WA-Bot-Profile-Key (2026-07-24) ──
+# Distinct from X-Internal-Key by design — see agentic_rag.py's
+# `_verify_wa_inbox_bot_profile_key` for why the shared internal key alone
+# was not enough to gate persona-override resolution safely.
+
+
+def test_rag_client_headers_sends_both_keys_when_both_configured(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
+    headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {
+        "X-Internal-Key": "secret-xyz",
+        "X-WA-Bot-Profile-Key": "bot-only-secret",
+    }
+
+
+def test_rag_client_headers_omits_profile_key_and_warns_when_unset(monkeypatch, caplog):
+    """Innocence: an unset profile key degrades gracefully — the query
+    itself must still be sent (X-Internal-Key alone is enough for that),
+    only the persona-override channel is silently unavailable."""
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
+    with caplog.at_level("WARNING"):
+        headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {"X-Internal-Key": "secret-xyz"}
+    assert any("WA_INBOX_BOT_PROFILE_KEY not configured" in r.message for r in caplog.records)
+
+
 @pytest.mark.asyncio
 async def test_get_rag_client_applies_internal_key_header(monkeypatch):
-    """End-to-end: the cached client carries the X-Internal-Key header."""
+    """End-to-end: the cached client carries both service-auth headers."""
     monkeypatch.setattr(wa_inbox_bot, "_rag_client", None)
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
     monkeypatch.setattr(wa_inbox_bot, "get_rag_worker_url", lambda: "http://rag.internal:8080")
     client = await wa_inbox_bot._get_rag_client()
     try:
         assert client.headers.get("x-internal-key") == "secret-xyz"
+        assert client.headers.get("x-wa-bot-profile-key") == "bot-only-secret"
     finally:
         await client.aclose()
         wa_inbox_bot._rag_client = None

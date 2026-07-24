@@ -258,18 +258,24 @@ class AgenticQueryRequest(BaseModel):
         None  # Direct history from frontend
     )
     channel: str | None = None  # Channel overlay: "website", "webapp", "whatsapp", etc.
-    # NOTE (P0-ID containment, 2026-07-24): there used to be a `profile`
-    # field here that let a caller declare its own WA sender persona
-    # (creator/team), trusted whenever `current_user.role == "internal"`
-    # AND this `channel` field said "whatsapp". Both gates were forgeable
-    # by ANY holder of the shared `X-Internal-Key` (it authenticates more
-    # than the WA bot — see `_resolve_trusted_wa_profile` below) simply by
-    # setting a body field. Removed: the server now RE-DERIVES the sender
-    # profile itself from `user_id` via the same `resolve_sender_identity`
-    # DB lookup `wa_inbox_bot.py` already trusts — no client-declared
-    # persona is accepted at all. `channel` stays (still used for the
-    # WA prompt overlay elsewhere) but no longer participates in any
-    # trust decision.
+    # NOTE (P0-ID containment, 2026-07-24, hardened same day after
+    # adversarial review): there used to be a `profile` field here that let
+    # a caller declare its own WA sender persona (creator/team), trusted
+    # whenever `current_user.role == "internal"` AND this `channel` field
+    # said "whatsapp". Both gates were forgeable by ANY holder of the shared
+    # `X-Internal-Key` simply by setting body fields. A first fix removed
+    # `profile`/`channel` from the decision and re-derived the sender from a
+    # phone parsed out of `user_id` instead — but `user_id` is ITSELF a
+    # client-settable body field, and the owner's WA number is documented-
+    # public (see `whatsapp_identity.py`), so that was the identical bug
+    # relocated, not closed: any shared-key holder could still send
+    # `user_id="whatsapp_<public owner number>"`. Real fix: profile
+    # resolution now requires a SECOND secret exclusive to wa_inbox_bot.py
+    # (`X-WA-Bot-Profile-Key`, see `_verify_wa_inbox_bot_profile_key` below)
+    # — no request body field can influence the outcome at all; only that
+    # dedicated credential plus real `team_members`/env-roster data can.
+    # `channel` stays (still used for the WA prompt overlay elsewhere) but
+    # never participates in any trust decision.
     # Latency knob (additive, optional): a caller expecting a fast reply
     # (e.g. the WhatsApp bot, see research/operations/2026-07-20-wa-bot-latency.md)
     # may request a lower ReAct step cap. Never allowed to RAISE the cap —
@@ -291,36 +297,56 @@ def _extract_whatsapp_phone(user_id: str | None) -> str | None:
     return match.group("phone") if match else None
 
 
+async def _verify_wa_inbox_bot_profile_key(request: Request) -> bool:
+    """True only if this request carries wa_inbox_bot.py's OWN dedicated
+    secret (`X-WA-Bot-Profile-Key`, `settings.wa_inbox_bot_profile_key`,
+    Fly secret `WA_INBOX_BOT_PROFILE_KEY`).
+
+    P0-ID hardening (2026-07-24, second pass after adversarial review): the
+    generic `X-Internal-Key` → `role="internal"` (`hybrid_auth.py`) is a
+    SHARED secret held by more than just the WA bot (e.g. Pro-side scripts
+    like wa-mirror-auto-promote-leads hitting `crm_clients.py`) — gating
+    profile resolution on that role alone (as an earlier version of this fix
+    did, combined with a phone parsed out of the client-settable `user_id`
+    field) meant ANY holder of the shared key could send
+    `user_id="whatsapp_<owner's public WA number>"` and forge the creator
+    persona. This dependency checks a SECOND, narrower secret that ONLY
+    wa_inbox_bot.py is provisioned with — no request body field, and no
+    other internal-key holder, can satisfy it.
+
+    Deliberately a soft boolean, never an HTTPException: a missing/wrong key
+    just means "no profile override" (identical to any other non-WA
+    caller), not an auth failure for the query itself — every other caller
+    of this endpoint (JWT web users, anonymous, other internal scripts)
+    is completely unaffected and never sends this header at all.
+    """
+    configured = getattr(settings, "wa_inbox_bot_profile_key", None)
+    if not configured:
+        return False
+    provided = request.headers.get("X-WA-Bot-Profile-Key")
+    return bool(provided and provided == configured)
+
+
 async def _resolve_trusted_wa_profile(
-    current_user: dict[str, Any] | None,
+    is_wa_inbox_bot: bool,
     user_id: str | None,
     db_pool: Any | None,
 ) -> dict[str, Any] | None:
     """Server-derived WA sender profile (P0-ID containment, 2026-07-24).
 
-    Replaces the old client-supplied `profile` request field. `X-Internal-Key`
-    (`settings.wa_mirror_internal_key`) is a SHARED secret — `hybrid_auth.py`
-    grants the identical `role="internal"` pseudo-identity to every holder,
-    and that key authenticates more than the WA bot (e.g. Pro-side scripts
-    like wa-mirror-auto-promote-leads hitting `crm_clients.py`). A bare
-    `role == "internal"` check is therefore NOT scoped to "this specific
-    request came from wa_inbox_bot.py resolving a real WhatsApp sender".
-
-    Narrow-first fix (Zero-ratified 2026-07-24, spec Q6): instead of trusting
-    a client-declared `profile` dict gated on a client-settable `channel`
-    field, the server independently RE-RESOLVES the sender from the phone
-    number embedded in `user_id` (`whatsapp_<phone>`, the same shape
+    Replaces the old client-supplied `profile` request field. Trust is
+    gated on `is_wa_inbox_bot` (see `_verify_wa_inbox_bot_profile_key`) —
+    the caller's OWN dedicated secret, never a body field. Once trusted,
+    the server independently RE-RESOLVES the sender from the phone number
+    embedded in `user_id` (`whatsapp_<phone>`, the same shape
     `wa_inbox_bot.py` has always sent) via `resolve_sender_identity` — the
-    exact DB/env lookup `wa_inbox_bot.py` itself uses. No request body field
-    can influence the outcome; only real `team_members`/env-roster data can.
-    A full typed identity envelope (binding the shared key to a specific
-    service + request nonce) is the deferred follow-up, same quarter.
+    exact DB/env lookup `wa_inbox_bot.py` itself uses.
 
     Returns None (no override — the pre-existing, still-correct behavior)
-    unless `current_user` is the shared WA internal identity AND `user_id`
-    is WA-shaped AND that phone resolves to `owner` or `team`.
+    unless the caller holds the dedicated WA-bot secret AND `user_id` is
+    WA-shaped AND that phone resolves to `owner` or `team`.
     """
-    if not current_user or current_user.get("role") != "internal":
+    if not is_wa_inbox_bot:
         return None
     phone = _extract_whatsapp_phone(user_id)
     if phone is None:
@@ -384,6 +410,7 @@ async def query_agentic_rag(
     current_user: dict | None = Depends(get_current_user_optional),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
+    is_wa_inbox_bot: bool = Depends(_verify_wa_inbox_bot_profile_key),
 ) -> AgenticQueryResponse:
     """
     Esegue una query usando il sistema Agentic RAG completo.
@@ -395,7 +422,7 @@ async def query_agentic_rag(
     and records performance metrics for comparison.
     """
     trusted_profile = await _resolve_trusted_wa_profile(
-        current_user, request.user_id, db_pool
+        is_wa_inbox_bot, request.user_id, db_pool
     )
 
     # SECURITY: Use authenticated user if available, otherwise session-based
@@ -480,8 +507,8 @@ async def query_agentic_rag(
         if conversation_history:
             query_kwargs["conversation_history"] = conversation_history
         if trusted_profile is not None:
-            # WA team-assistant V1 — already authorized above (403 on any
-            # untrusted attempt) by `_is_trusted_wa_profile_caller`.
+            # WA team-assistant V1 — already gated above (`_resolve_trusted_wa_profile`
+            # returns None for anyone but a request holding `X-WA-Bot-Profile-Key`).
             query_kwargs["profile"] = trusted_profile
         if request.max_steps is not None:
             query_kwargs["max_steps"] = request.max_steps

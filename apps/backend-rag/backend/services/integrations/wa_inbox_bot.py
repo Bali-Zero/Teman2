@@ -113,15 +113,36 @@ def _rag_client_headers() -> dict[str, str]:
     "role=internal" pseudo-user, the same channel Pro-side internal scripts use.
     Without this the bot can NEVER generate a reply (every call → 401 → worker
     marks the row failed).
+
+    ALSO sends X-WA-Bot-Profile-Key (settings.wa_inbox_bot_profile_key, Fly
+    secret WA_INBOX_BOT_PROFILE_KEY) — a SECOND secret exclusive to this
+    process, distinct from X-Internal-Key (which other Pro-side scripts also
+    hold). `agentic_rag.py::_verify_wa_inbox_bot_profile_key` gates WA
+    sender-profile resolution (owner/team persona override) on THIS key
+    specifically, not on the shared internal-key role (P0-ID hardening,
+    2026-07-24). Missing → profile resolution simply never fires for this
+    bot's calls (fail-safe degrade, not a 401 — the query itself still works).
     """
+    headers: dict[str, str] = {}
     internal_key = getattr(settings, "wa_mirror_internal_key", None)
     if internal_key:
-        return {"X-Internal-Key": internal_key}
-    logger.warning(
-        "wa-inbox bot: WA_MIRROR_INTERNAL_KEY not configured — "
-        "RAG calls will be rejected by HybridAuthMiddleware (401)"
-    )
-    return {}
+        headers["X-Internal-Key"] = internal_key
+    else:
+        logger.warning(
+            "wa-inbox bot: WA_MIRROR_INTERNAL_KEY not configured — "
+            "RAG calls will be rejected by HybridAuthMiddleware (401)"
+        )
+    profile_key = getattr(settings, "wa_inbox_bot_profile_key", None)
+    if profile_key:
+        headers["X-WA-Bot-Profile-Key"] = profile_key
+    else:
+        logger.warning(
+            "wa-inbox bot: WA_INBOX_BOT_PROFILE_KEY not configured — "
+            "owner/team persona override will never resolve for this bot's "
+            "queries (query itself still works; degrades to client-shaped "
+            "persona only)"
+        )
+    return headers
 
 
 async def _get_rag_client() -> httpx.AsyncClient:
