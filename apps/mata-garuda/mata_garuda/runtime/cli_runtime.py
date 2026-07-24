@@ -9,6 +9,9 @@ Multi-account fallback for Claude CLI:
   CLAUDE_CODE_OAUTH_TOKEN_1 → account 1 (try first)
   CLAUDE_CODE_OAUTH_TOKEN_2 → account 2 (if 1 exhausted)
   CLAUDE_CODE_OAUTH_TOKEN_3 → account 3 (if 2 exhausted)
+  CLAUDE_CODE_OAUTH_TOKEN_4 → account 4 (if 3 exhausted)
+  CLAUDE_CODE_OAUTH_TOKEN_5 → Team seat (last-resort subscription)
+  CLAUDE_CODE_OAUTH_TOKEN   → legacy single-token fallback
   keychain fallback          → whatever logged in via claude auth
   agy -p                     → final fallback if all Claude exhausted
 
@@ -25,6 +28,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -40,16 +44,127 @@ CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_3",  # sianoantonello@gmail.com
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # applevisionpro1987@gmail.com (4th MAX x20)
+    "CLAUDE_CODE_OAUTH_TOKEN_5",  # zero@balizero.com (Team premium seat — weekly-capped, last-resort)
 ]
 
 # Rate limit detection patterns in stderr/stdout
 # Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py
 RATE_LIMIT_PATTERNS = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|"
-    r"capacity|overloaded|try again later|hit your limit|"
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|capacity|overloaded|try again later|hit your limit|"
     r"timeout after 90s|possibly rate limit",
     re.IGNORECASE,
 )
+AUTH_FAILURE_PATTERNS = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_CREDENTIAL_SCRUB_KEYS = frozenset({
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
+})
+_CREDENTIAL_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+
+
+def provider_cli_env(provider: str, token: str = "") -> dict[str, str]:
+    """Return an isolated child environment for one CLI provider.
+
+    Every provider starts from an environment with all cloud credentials
+    removed. Only the credentials required by the selected provider are then
+    restored. This prevents a CLI from silently routing through a sibling
+    account or a paid/cross-provider endpoint.
+    """
+    source = dict(os.environ)
+    env = {
+        key: value
+        for key, value in source.items()
+        if key not in _CREDENTIAL_SCRUB_KEYS
+        and not key.startswith(_CREDENTIAL_SCRUB_PREFIXES)
+    }
+
+    if provider == "claude" and token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    elif provider == "agy":
+        for key in _CREDENTIAL_SCRUB_KEYS:
+            if key in source:
+                env[key] = source[key]
+        for key, value in source.items():
+            if key.startswith("GEMINI_"):
+                env[key] = value
+    elif provider == "codex":
+        # codex CLI authenticates via ChatGPT Pro OAuth (CODEX_HOME), never
+        # a per-token key — OPENAI_API_KEY is scrubbed defense-in-depth even
+        # if a caller's environment happens to carry one (mirrors the
+        # ANTHROPIC_API_KEY strip for the "claude" branch above).
+        for key, value in source.items():
+            if key.startswith("OPENAI_") and key != "OPENAI_API_KEY":
+                env[key] = value
+    return env
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=cwd,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+
+# Compatibility alias for callers outside Mata Garuda. New code should use the
+# public provider-aware helper above.
+def _oauth_cli_env(token: str) -> dict[str, str]:
+    return provider_cli_env("claude", token)
 
 # Mapping model -> CLI command + flags
 DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
@@ -98,17 +213,97 @@ CLI_CONFIGS: dict[str, dict] = {
 _exhausted_tokens: set[str] = set()
 
 
+_STDOUT_RATE_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"capacity (?:exceeded|unavailable)|overloaded|try again later|"
+    r"hit your limit|timeout after 90s|possibly rate limit)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_STDOUT_AUTH_DIAGNOSTIC = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:authentication (?:failed|required|expired)|auth required|"
+    r"login required|please (?:log in|login)|not logged in|"
+    r"not authenticated|invalid[_ ](?:grant|token)|token[_ ]revoked|"
+    r"refresh_token(?:_reused)?|unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _explicit_error_envelope(stdout: str) -> str | None:
+    """Return serialized JSON only when stdout is an explicit error envelope."""
+    try:
+        payload = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    result = payload.get("result")
+    result_type = ""
+    if isinstance(result, dict):
+        result_type = str(
+            result.get("type") or result.get("status") or result.get("subtype") or ""
+        ).lower()
+    envelope_type = str(payload.get("type") or payload.get("status") or "").lower()
+    if (
+        payload.get("is_error") is True
+        or envelope_type in {"error", "failed", "failure"}
+        or (
+            envelope_type == "result"
+            and payload.get("subtype") not in (None, "success")
+        )
+        or result_type in {"error", "failed", "failure"}
+    ):
+        return json.dumps(payload, ensure_ascii=False)
+    return None
+
+
+def classify_claude_retry(stdout: str, stderr: str) -> str | None:
+    """Classify retryable Claude diagnostics without scanning valid content.
+
+    Stderr is a diagnostic channel and may be searched freely. Stdout is only
+    searched broadly when it is an explicit JSON error envelope; otherwise the
+    complete stdout must itself look like a short standalone diagnostic.
+    """
+    diagnostic = stderr or ""
+    if RATE_LIMIT_PATTERNS.search(diagnostic):
+        return "rate_limit"
+    if AUTH_FAILURE_PATTERNS.search(diagnostic):
+        return "auth"
+
+    envelope = _explicit_error_envelope(stdout or "")
+    if envelope:
+        if RATE_LIMIT_PATTERNS.search(envelope):
+            return "rate_limit"
+        if AUTH_FAILURE_PATTERNS.search(envelope):
+            return "auth"
+    if _STDOUT_RATE_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "rate_limit"
+    if _STDOUT_AUTH_DIAGNOSTIC.fullmatch(stdout or ""):
+        return "auth"
+    return None
+
+
 def _is_rate_limited(stdout: str, stderr: str) -> bool:
-    """Detect if a CLI call was rate-limited from output strings."""
-    combined = (stdout or "") + (stderr or "")
-    return bool(RATE_LIMIT_PATTERNS.search(combined))
+    """Compatibility wrapper for older callers."""
+    return classify_claude_retry(stdout, stderr) == "rate_limit"
 
 
-def _get_token_chain() -> list[tuple[str, str]]:
+def _is_auth_failed(stdout: str, stderr: str) -> bool:
+    """Compatibility wrapper for older callers."""
+    return classify_claude_retry(stdout, stderr) == "auth"
+
+
+def claude_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
     Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py:
-      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3 (explicit chain)
+      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4/5 (explicit chain)
       2. CLAUDE_CODE_OAUTH_TOKEN (legacy single token, if different from above)
       3. "" (keychain — CLI uses whatever account is logged in)
 
@@ -116,19 +311,26 @@ def _get_token_chain() -> list[tuple[str, str]]:
         List of (label, token_or_empty). Empty string means "use keychain default".
     """
     chain: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for var_name in CLAUDE_TOKEN_VARS:
         token = os.environ.get(var_name, "").strip()
-        if token:
+        if token and token not in seen:
             chain.append((var_name, token))
+            seen.add(token)
 
     # Legacy single token (e.g., from plist or older config)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
 
     # Always fall back to keychain as last resort (empty = let CLI use keychain)
     chain.append(("keychain", ""))
     return chain
+
+
+def _get_token_chain() -> list[tuple[str, str]]:
+    """Compatibility wrapper for older callers."""
+    return claude_token_chain()
 
 
 @dataclass
@@ -145,7 +347,7 @@ class CLIResult:
 
     @property
     def success(self) -> bool:
-        return self.returncode == 0
+        return self.returncode == 0 and bool(self.output)
 
     @property
     def output(self) -> str:
@@ -261,13 +463,12 @@ class CLIRuntime:
         self,
         cmd: list[str],
         env: Optional[dict] = None,
+        timeout: float | None = None,
     ) -> subprocess.CompletedProcess:
         """Run a subprocess with optional env override."""
-        return subprocess.run(
+        return _run_process_group(
             cmd,
-            capture_output=True,
-            text=True,
-            timeout=self.timeout,
+            timeout=self.timeout if timeout is None else timeout,
             cwd=self.working_dir,
             env=env,
         )
@@ -332,19 +533,20 @@ class CLIRuntime:
         cmd: list[str],
         token_label: str,
         token_value: str = "",
+        timeout_override: float | None = None,
     ) -> CLIResult:
         """Invoke CLI with a specific token. Returns CLIResult."""
         # Build env with token override
         # Empty string = use keychain (pop the var so CLI falls back to keychain)
-        env = os.environ.copy()
-        if token_value:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token_value
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        env = provider_cli_env(self.model, token_value)
 
         start = time.monotonic()
         try:
-            result = self._run_subprocess(cmd, env=env)
+            result = self._run_subprocess(
+                cmd,
+                env=env,
+                timeout=timeout_override,
+            )
             elapsed = time.monotonic() - start
 
             return CLIResult(
@@ -360,7 +562,7 @@ class CLIRuntime:
             elapsed = time.monotonic() - start
             return CLIResult(
                 stdout="",
-                stderr=f"Timeout after {self.timeout}s",
+                stderr="Invocation timed out",
                 returncode=-1,
                 elapsed_seconds=round(elapsed, 2),
                 model=self._result_model_name(),
@@ -413,37 +615,73 @@ class CLIRuntime:
             return self._invoke_single(cmd, "default", "")
 
         # Claude: try each token in the chain
-        token_chain = _get_token_chain()
+        token_chain = claude_token_chain()
+        deadline = time.monotonic() + self.timeout
+        last_result: CLIResult | None = None
 
-        for label, token in token_chain:
+        for position, (label, token) in enumerate(token_chain):
             # Latch: skip exhausted tokens instantly
             if label in _exhausted_tokens:
                 logger.info(f"[CLIRuntime] SKIP {label} (exhausted latch)")
                 continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            attempt_timeout = max(
+                0.1,
+                remaining / (len(token_chain) - position),
+            )
 
             logger.info(f"[CLIRuntime] Trying Claude with {label}")
-            result = self._invoke_single(cmd, label, token)
+            result = self._invoke_single(
+                cmd,
+                label,
+                token,
+                timeout_override=attempt_timeout,
+            )
+            last_result = result
 
-            if result.success:
-                logger.info(
-                    f"[CLIRuntime] Success via {label} in {result.elapsed_seconds}s "
-                    f"({len(result.output)} chars)"
-                )
-                return result
-
-            # Check if rate-limited
-            if _is_rate_limited(result.stdout, result.stderr):
+            # Account-specific exhaustion/auth failures and empty success all
+            # rotate to the next subscription seat. A zero exit with no output
+            # is not a successful LLM response.
+            retry_reason = classify_claude_retry(result.stdout, result.stderr)
+            if retry_reason == "rate_limit":
                 _exhausted_tokens.add(label)
                 logger.warning(
                     f"[CLIRuntime] {label} EXHAUSTED (rate limited). "
                     f"Latched for this run."
                 )
                 continue
+            if retry_reason == "auth":
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} AUTH FAILED. Latched for this run."
+                )
+                continue
+            if result.success:
+                logger.info(
+                    f"[CLIRuntime] Success via {label} in {result.elapsed_seconds}s "
+                    f"({len(result.output)} chars)"
+                )
+                return result
+            if result.returncode == -1:
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} TIMED OUT. Latched for this run."
+                )
+                continue
+            if result.returncode == 0 and not result.output:
+                _exhausted_tokens.add(label)
+                logger.warning(
+                    f"[CLIRuntime] {label} returned empty output. "
+                    f"Latched for this run."
+                )
+                continue
 
             # Non-rate-limit failure: return the error, don't try next token
             logger.warning(
-                f"[CLIRuntime] {label} failed (non-rate-limit): "
-                f"{result.stderr[:200]}"
+                f"[CLIRuntime] {label} failed (non-rate-limit), "
+                f"exit={result.returncode}"
             )
             return result
 
@@ -455,9 +693,20 @@ class CLIRuntime:
             "MATA_GARUDA_CLAUDE_FALLBACK_MODEL",
             f"agy:{DEFAULT_AGY_MODEL}",
         )
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return last_result or CLIResult(
+                stdout="",
+                stderr="Global invocation deadline exceeded",
+                returncode=-1,
+                elapsed_seconds=float(self.timeout),
+                model=self._result_model_name(),
+                token_used="deadline",
+                command=cmd,
+            )
         fallback = CLIRuntime(
             model=fallback_model,
-            timeout=self.timeout,
+            timeout=max(1, int(remaining)),
             working_dir=self.working_dir,
         )
         result = fallback.invoke(prompt, system_prompt, extra_flags)

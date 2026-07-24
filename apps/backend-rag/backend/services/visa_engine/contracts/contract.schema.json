@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 35 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 40 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -697,6 +697,96 @@
           ],
           "title": "Process.Wants Onshore Conversion"
         },
+        "secondhome.bank_deposit_at_state_bank": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Secondhome.Bank Deposit At State Bank"
+        },
+        "secondhome.bank_deposit_in_own_name": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Secondhome.Bank Deposit In Own Name"
+        },
+        "secondhome.bank_deposit_usd": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownNonNegativeInteger",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownNonNegativeInteger"
+            }
+          ],
+          "title": "Secondhome.Bank Deposit Usd"
+        },
+        "secondhome.passive_monthly_income_usd": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownNonNegativeInteger",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownNonNegativeInteger"
+            }
+          ],
+          "title": "Secondhome.Passive Monthly Income Usd"
+        },
+        "secondhome.qualifying_property_value_usd": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownNonNegativeInteger",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownNonNegativeInteger"
+            }
+          ],
+          "title": "Secondhome.Qualifying Property Value Usd"
+        },
         "study.admission_confirmed": {
           "discriminator": {
             "mapping": {
@@ -874,6 +964,11 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "secondhome.bank_deposit_usd",
+        "secondhome.bank_deposit_at_state_bank",
+        "secondhome.bank_deposit_in_own_name",
+        "secondhome.qualifying_property_value_usd",
+        "secondhome.passive_monthly_income_usd",
         "process.application_channel",
         "process.wants_onshore_conversion",
         "commercial.service_fee_budget_idr",
@@ -1662,7 +1757,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 35 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 40 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -1695,6 +1790,11 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "secondhome.bank_deposit_usd",
+        "secondhome.bank_deposit_at_state_bank",
+        "secondhome.bank_deposit_in_own_name",
+        "secondhome.qualifying_property_value_usd",
+        "secondhome.passive_monthly_income_usd",
         "process.application_channel",
         "process.wants_onshore_conversion",
         "commercial.service_fee_budget_idr",
@@ -2725,7 +2825,7 @@
       "type": "object"
     },
     "RelationType": {
-      "enum": ["SPOUSE", "CHILD", "PARENT", "DEPENDENT", "OTHER"],
+      "enum": ["SPOUSE", "CHILD", "PARENT", "SIBLING", "DEPENDENT", "OTHER"],
       "title": "RelationType",
       "type": "string"
     },

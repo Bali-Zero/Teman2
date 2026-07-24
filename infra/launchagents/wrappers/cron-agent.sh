@@ -3,11 +3,11 @@
 #
 # Usage:
 #   cron-agent.sh exec  <job-name> <script> [args...]   # Tier 0: run script, alert on failure
-#   cron-agent.sh agent <job-name> <prompt-file>         # Tier 2: claude -p with 3-token fallback
+#   cron-agent.sh agent <job-name> <prompt-file>         # Tier 2: claude -p with account fallback
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - 3-account Claude OAuth fallback (TOKEN_1 → TOKEN_2 → TOKEN_3)
+#   - Claude OAuth fallback (TOKEN_1 → ... → TOKEN_5 → legacy → keychain)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,7 +15,7 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3} — 3 Claude Max accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5} — Claude subscription accounts for agent tier
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -110,9 +110,104 @@ release_lock() {
     rm -f "$LOCK_FILE"
 }
 
+claude_stderr_retryable() {
+    local stderr_file="$1"
+    grep -qiE \
+        'rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|capacity|overloaded|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)' \
+        "$stderr_file"
+}
+
+claude_stdout_retryable() {
+    local stdout_file="$1"
+    python3 - "$stdout_file" <<'PY'
+import json
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+broad = re.compile(
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
+    r"usage limit|weekly limit|hit your limit|capacity|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.I,
+)
+whole = re.compile(
+    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|capacity (?:exceeded|unavailable)|overloaded|"
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
+    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
+    r"(?:[\s:.,;\-].{0,240})?\s*",
+    re.I | re.S,
+)
+try:
+    payload = json.loads(text)
+except (json.JSONDecodeError, TypeError):
+    payload = None
+
+is_error = False
+if isinstance(payload, dict):
+    result = payload.get("result")
+    result_kind = ""
+    if isinstance(result, dict):
+        result_kind = str(
+            result.get("type") or result.get("status") or result.get("subtype") or ""
+        ).lower()
+    envelope_kind = str(payload.get("type") or payload.get("status") or "").lower()
+    is_error = (
+        payload.get("is_error") is True
+        or envelope_kind in {"error", "failed", "failure"}
+        or (
+            envelope_kind == "result"
+            and payload.get("subtype") not in (None, "success")
+        )
+        or result_kind in {"error", "failed", "failure"}
+    )
+
+retryable = (
+    bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
+    or bool(whole.fullmatch(text))
+)
+raise SystemExit(0 if retryable else 1)
+PY
+}
+
+claude_retryable_files() {
+    local stdout_file="$1"
+    local stderr_file="$2"
+    claude_stderr_retryable "$stderr_file" || claude_stdout_retryable "$stdout_file"
+}
+
+claude_oauth_env() {
+    local token="$1"
+    local -a env_args=(env)
+    local provider_var
+    while IFS= read -r provider_var; do
+        case "$provider_var" in
+            CLAUDE_CODE_OAUTH_TOKEN*|CLAUDE_CODE_USE_*|ANTHROPIC_*|AWS_*|VERTEX_AI_*|\
+            OPENAI_*|OPENROUTER_*|GEMINI_*|GOOGLE_API_KEY|\
+            GOOGLE_APPLICATION_CREDENTIALS|CLOUD_ML_REGION|DEEPSEEK_*|\
+            TOGETHER_*|FIREWORKS_*|MISTRAL_*|COHERE_*|GROQ_*|XAI_*|PERPLEXITY_*)
+                env_args+=(-u "$provider_var")
+                ;;
+        esac
+    done < <(compgen -e)
+    if [[ -n "$token" ]]; then
+        env_args+=("CLAUDE_CODE_OAUTH_TOKEN=$token")
+    fi
+    printf '%s\0' "${env_args[@]}"
+}
+
 # ── PATH setup ────────────────────────────────────────────────────────────────
 export PATH="/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin"
-export HOME="/Users/nuzantara"
+export HOME="${CRON_AGENT_HOME:-/Users/nuzantara}"
 
 # sonnet-5 --print + background tasks (W89 class-audit, 2026-07-11): the CLI kills
 # backgrounded work after the print-mode ceiling; 30min keeps a legitimate long agent
@@ -208,13 +303,18 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         return 0
     fi
 
-    # 3-token OAuth fallback chain
+    # Five numbered seats, then legacy and keychain fallback.
     local tokens=()
     local labels=()
-    for i in 1 2 3; do
+    for i in 1 2 3 4 5; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
-        if [[ -n "$tok" ]]; then
+        local is_dup=0
+        local existing
+        for existing in "${tokens[@]:-}"; do
+            [[ "$existing" == "$tok" ]] && is_dup=1
+        done
+        if [[ -n "$tok" && $is_dup -eq 0 ]]; then
             tokens+=("$tok")
             labels+=("token_$i")
         fi
@@ -234,22 +334,31 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
     tokens+=("")
     labels+=("keychain")
 
-    local RATE_LIMIT_PATTERN="rate.limit\|too many requests\|429\|exhausted\|quota\|hit your limit\|capacity\|overloaded"
-    local output="" exit_code=1
+    local output="" exit_code=1 accepted_success=0
     local tried=()
+    local deadline=$(( start_ts + TIMEOUT ))
+    local attempt_out attempt_err
 
     for idx in "${!tokens[@]}"; do
         local token="${tokens[$idx]}"
         local label="${labels[$idx]}"
         log "Trying $label..."
         tried+=("$label")
+        local remaining=$(( deadline - $(date +%s) ))
+        if [[ $remaining -le 0 ]]; then
+            exit_code=124
+            break
+        fi
+        local attempts_left=$(( ${#tokens[@]} - idx ))
+        local attempt_timeout=$(( remaining / attempts_left ))
+        [[ $attempt_timeout -lt 1 ]] && attempt_timeout=1
 
         local env_args=()
-        if [[ -n "$token" ]]; then
-            env_args=(env "CLAUDE_CODE_OAUTH_TOKEN=$token")
-        else
-            env_args=(env -u CLAUDE_CODE_OAUTH_TOKEN)
-        fi
+        while IFS= read -r -d '' env_part; do
+            env_args+=("$env_part")
+        done < <(claude_oauth_env "$token")
+        attempt_out="$(mktemp "${TMPDIR:-/tmp}/cron-agent-out.XXXXXX")"
+        attempt_err="$(mktemp "${TMPDIR:-/tmp}/cron-agent-err.XXXXXX")"
 
         # --permission-mode bypassPermissions: no approval waits.
         # Note: --bare is incompatible with OAuth tokens (requires ANTHROPIC_API_KEY).
@@ -257,11 +366,29 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # libera quota Opus per sessioni interattive. Override via CLAUDE_CRON_MODEL env var.
         # Data-driven decision: cron = 82% sessions but 0.6% output value (empirical analysis 2026-04-22).
         local cron_model="${CLAUDE_CRON_MODEL:-claude-haiku-4-5-20251001}"
-        output=$("${env_args[@]}" timeout "$TIMEOUT" claude -p --model "$cron_model" --permission-mode bypassPermissions --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" 2>&1) && exit_code=0 || exit_code=$?
+        local claude_bin="${CRON_AGENT_CLAUDE_BIN:-claude}"
+        local timeout_bin="${CRON_AGENT_TIMEOUT_BIN:-timeout}"
+        "${env_args[@]}" "$timeout_bin" "$attempt_timeout" "$claude_bin" -p --model "$cron_model" \
+            --permission-mode bypassPermissions \
+            --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" \
+            >"$attempt_out" 2>"$attempt_err" && exit_code=0 || exit_code=$?
+        output="$(cat "$attempt_out")"
 
-        # Check if rate limited (explicit error message)
-        if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "$RATE_LIMIT_PATTERN"; then
-            log "$label: rate limited (explicit), trying next"
+        # A timeout is account-local until the shared deadline is exhausted.
+        # Rotate immediately; the next loop iteration recomputes the remaining
+        # global budget and records a final 124 only when no time remains.
+        if [[ $exit_code -eq 124 ]]; then
+            log "$label: timed out, trying next account within global budget"
+            output=""
+            rm -f "$attempt_out" "$attempt_err"
+            continue
+        fi
+
+        # OAuth quota/auth diagnostics can exit 0: classify before success.
+        if claude_retryable_files "$attempt_out" "$attempt_err"; then
+            log "$label: OAuth account unavailable, trying next"
+            output=""
+            rm -f "$attempt_out" "$attempt_err"
             continue
         fi
 
@@ -269,24 +396,35 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # Claude CLI with exhausted Max-plan token returns empty output with exit 0 or 143.
         # Real errors have messages; real success has non-empty output.
         local output_trimmed="${output//[[:space:]]/}"
-        if [[ -z "$output_trimmed" ]] && [[ $exit_code -ne 124 ]]; then
+        if [[ -z "$output_trimmed" ]]; then
             log "$label: empty output (likely quota/rate issue), trying next"
+            rm -f "$attempt_out" "$attempt_err"
             continue
         fi
 
-        # Success or non-empty error output — stop trying
+        if [[ $exit_code -eq 0 ]]; then
+            accepted_success=1
+        fi
+        rm -f "$attempt_out" "$attempt_err"
+        # Success or non-retryable error output — stop trying.
         break
     done
+
+    # Every attempted account may return an exit-0 retry diagnostic. Never
+    # convert that exhausted chain into a blank successful cron run.
+    if [[ $accepted_success -ne 1 && $exit_code -eq 0 ]]; then
+        exit_code=1
+    fi
 
     local duration=$(( $(date +%s) - start_ts ))
 
     # Log output (last 80 lines)
     echo "$output" | tail -80 >> "$LOG_FILE"
 
-    if [[ $exit_code -eq 0 ]]; then
+    if [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
         log "OK duration=${duration}s label=${labels[$idx]}"
         # Explicit tier-provenance line (W89 class-audit, 2026-07-11): which of the
-        # 4 fallback slots (token_1/2/3/legacy/keychain) actually answered.
+        # numbered/legacy/keychain fallback slots actually answered.
         log "[cron-agent] used: tier2-claude-${labels[$idx]} (exit=0)"
         save_state "ok" 0 "$duration"
     elif [[ $exit_code -eq 124 ]]; then

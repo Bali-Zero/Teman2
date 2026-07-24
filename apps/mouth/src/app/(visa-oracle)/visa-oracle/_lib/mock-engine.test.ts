@@ -183,7 +183,7 @@ describe("mock-engine — review gate forces review, never a candidate", () => {
 });
 
 describe("mock-engine — soft downgrade, not exclusion", () => {
-  it("remote income below the floor downgrades E33F instead of excluding it", () => {
+  it("remote income below the floor downgrades E33G instead of excluding it", () => {
     const result = evaluate(
       factsFor({
         in_indonesia: "no",
@@ -194,8 +194,8 @@ describe("mock-engine — soft downgrade, not exclusion", () => {
       }),
     );
     expect(result.state).toBe("SUPPORTED_CANDIDATES");
-    const e33f = result.candidates.find((c) => c.code === "E33F");
-    expect(e33f?.eligibility).toBe("conditional");
+    const e33g = result.candidates.find((c) => c.code === "E33G");
+    expect(e33g?.eligibility).toBe("conditional");
   });
 });
 
@@ -314,8 +314,8 @@ describe("mock-engine — review-gate CSV values (finding #5, adversarial review
   });
 });
 
-describe("mock-engine — E33F reachable 'likely-not' on mixed clients (finding #14, adversarial review 2026-07-17)", () => {
-  it("mixed clients downgrades E33F to likely-not instead of excluding it from candidates", () => {
+describe("mock-engine — E33G reachable 'likely-not' on mixed clients (finding #14, adversarial review 2026-07-17)", () => {
+  it("mixed clients downgrades E33G to likely-not instead of excluding it from candidates", () => {
     const result = evaluate(
       factsFor({
         in_indonesia: "no",
@@ -326,12 +326,12 @@ describe("mock-engine — E33F reachable 'likely-not' on mixed clients (finding 
       }),
     );
     expect(result.state).toBe("SUPPORTED_CANDIDATES");
-    const e33f = result.candidates.find((c) => c.code === "E33F");
-    expect(e33f).toBeDefined();
-    expect(e33f?.eligibility).toBe("likely-not");
+    const e33g = result.candidates.find((c) => c.code === "E33G");
+    expect(e33g).toBeDefined();
+    expect(e33g?.eligibility).toBe("likely-not");
   });
 
-  it("indonesian-employed clients still hard-excludes E33F (a different lane entirely)", () => {
+  it("indonesian-employed clients still hard-excludes E33G (a different lane entirely)", () => {
     const result = filterCandidates(
       factsFor({
         in_indonesia: "no",
@@ -339,6 +339,6 @@ describe("mock-engine — E33F reachable 'likely-not' on mixed clients (finding 
         remote_clients: "indonesian",
       }),
     );
-    expect(result.some((c) => c.code === "E33F")).toBe(false);
+    expect(result.some((c) => c.code === "E33G")).toBe(false);
   });
 });

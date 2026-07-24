@@ -14,10 +14,13 @@ import pytest
 import pytest_asyncio
 
 from backend.db.migration_base import split_migration_sql
+from backend.db.migration_manager import _assert_unique_migration_numbers
 from backend.services.visa_engine.enums import SourceStatus
 from backend.services.visa_engine.models import RulePack, SourceRecord
 from backend.services.visa_engine.shadow_evidence import (
+    REAL_TRAFFIC_SOURCE,
     REQUIRED_INTERVIEW_CATEGORIES,
+    SYNTHETIC_TRAFFIC_SOURCES,
     collect_shadow_evidence,
     evaluate_shadow_evidence,
 )
@@ -26,6 +29,7 @@ from backend.tests.services.visa_engine.gold_harness import loader as gold_loade
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_252_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "252_visa_engine_write_substrate.sql"
 _MIGRATION_255_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "255_visa_shadow_evidence.sql"
+_MIGRATION_256_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "256_visa_traffic_source.sql"
 
 
 def _green_fixture() -> tuple[list[dict[str, object]], RulePack, uuid.UUID]:
@@ -74,6 +78,7 @@ def _green_fixture() -> tuple[list[dict[str, object]], RulePack, uuid.UUID]:
                 "effective_at": evaluated_at,
                 "observed_at": evaluated_at,
                 "evaluated_at": evaluated_at,
+                "traffic_source": REAL_TRAFFIC_SOURCE,
             }
         )
     return rows, pack, db_pack_id
@@ -125,13 +130,17 @@ def _read_migration(path: Path, number: int) -> tuple[str, str]:
 async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterator[None]:
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
+    forward_256, rollback_256 = _read_migration(_MIGRATION_256_PATH, 256)
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
         await conn.execute(forward_252)
         await conn.execute(forward_255)
+        await conn.execute(forward_256)
     yield
     async with db_pool.acquire() as conn:
+        await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
 
@@ -142,6 +151,7 @@ async def _insert_unavailable_audit_row(
     environment: str,
     evaluated_at: datetime,
     fingerprint_seed: str,
+    traffic_source: str | None = None,
 ) -> None:
     await conn.execute(
         """
@@ -159,17 +169,19 @@ async def _insert_unavailable_audit_row(
             request_fingerprint,
             request_category,
             candidate_summary,
-            grounding_summary
+            grounding_summary,
+            traffic_source
         ) VALUES (
             $1, $2, 'MATCH', 'SHADOW', 'TEMPORARILY_UNAVAILABLE',
             '[]'::jsonb, 'visa-engine/test', $3, $3, $3, $4, 'other',
-            '[]'::jsonb, '[]'::jsonb
+            '[]'::jsonb, '[]'::jsonb, $5
         )
         """,
         uuid.uuid4(),
         environment,
         evaluated_at,
         hashlib.sha256(fingerprint_seed.encode("utf-8")).digest(),
+        traffic_source,
     )
 
 
@@ -225,10 +237,19 @@ def test_green_shadow_projection_still_cannot_arm_enforce() -> None:
     )
 
     gates = report["gates"]
-    assert gates["G-a"]["green"] is True
+    assert gates["G-a-vol"]["green"] is True
+    assert gates["G-a-breadth"]["green"] is False
+    assert gates["G-a-breadth"]["total_audit_rows"] == 0
     assert gates["G-c"]["green"] is True
     assert gates["G-b"]["status"] == "UNMEASURED"
     assert gates["G-d"]["status"] == "UNMEASURED"
+    assert report["traffic_source"] == {
+        "real": 1_000,
+        "synthetic_gold": 0,
+        "synthetic_driver": 0,
+        "legacy": 0,
+        "total_audit_rows": 1_000,
+    }
     assert report["enforce_ready"] is False
     assert report["gate_status"] == "RED"
 
@@ -261,9 +282,9 @@ def test_duplicate_request_and_ungrounded_verdict_fail_closed() -> None:
     )
 
     gates = report["gates"]
-    assert gates["G-a"]["green"] is False
-    assert gates["G-a"]["distinct_requests"] == 999
-    assert gates["G-a"]["invalid_candidate_bindings"] == 1
+    assert gates["G-a-vol"]["green"] is False
+    assert gates["G-a-vol"]["distinct_requests"] == 999
+    assert gates["G-a-vol"]["invalid_candidate_bindings"] == 1
     assert gates["G-c"]["green"] is False
     assert gates["G-c"]["decisions_without_citations"] == 1
     assert gates["G-c"]["missing_ruleset_activations"] == 1
@@ -279,7 +300,7 @@ def test_duplicate_evaluations_ignore_missing_and_malformed_fingerprints() -> No
 
     report = _evaluate(rows, pack, db_pack_id)
 
-    gate_a = report["gates"]["G-a"]
+    gate_a = report["gates"]["G-a-vol"]
     assert gate_a["missing_request_fingerprints"] == 2
     assert gate_a["distinct_requests"] == 997
     assert gate_a["duplicate_evaluations"] == 1
@@ -321,7 +342,7 @@ def test_window_shorter_than_seven_full_days_fails_volume() -> None:
         window_end=start + timedelta(days=6, hours=23),
     )
 
-    gate_a = report["gates"]["G-a"]
+    gate_a = report["gates"]["G-a-vol"]
     assert gate_a["longest_consecutive_utc_day_streak"] == 7
     assert gate_a["window_duration_hours"] == 167
     assert gate_a["green"] is False
@@ -336,8 +357,10 @@ def test_empty_window_is_red_not_vacuously_green() -> None:
         window_end=start + timedelta(days=8),
     )
 
-    assert report["gates"]["G-a"]["green"] is False
+    assert report["gates"]["G-a-vol"]["green"] is False
+    assert report["gates"]["G-a-breadth"]["green"] is False
     assert report["gates"]["G-c"]["green"] is False
+    assert report["traffic_source"]["total_audit_rows"] == 0
     assert report["enforce_ready"] is False
 
 
@@ -351,7 +374,7 @@ def test_legacy_rows_without_correlators_or_grounding_keep_both_gates_red() -> N
 
     report = _evaluate(rows, pack, db_pack_id)
 
-    gate_a = report["gates"]["G-a"]
+    gate_a = report["gates"]["G-a-vol"]
     gate_c = report["gates"]["G-c"]
     assert gate_a["green"] is False
     assert gate_a["missing_request_fingerprints"] == 1_000
@@ -478,19 +501,20 @@ async def test_collect_filters_environment_and_uses_half_open_window(
     start = datetime(2026, 7, 21, tzinfo=timezone.utc)
     end = start + timedelta(days=1)
     rows = [
-        ("TEST", start - timedelta(microseconds=1), "before-start"),
-        ("TEST", start, "at-start"),
-        ("TEST", end - timedelta(microseconds=1), "before-end"),
-        ("TEST", end, "at-end"),
-        ("PRODUCTION", start + timedelta(hours=12), "wrong-environment"),
+        ("TEST", start - timedelta(microseconds=1), "before-start", None),
+        ("TEST", start, "at-start", REAL_TRAFFIC_SOURCE),
+        ("TEST", end - timedelta(microseconds=1), "before-end", REAL_TRAFFIC_SOURCE),
+        ("TEST", end, "at-end", None),
+        ("PRODUCTION", start + timedelta(hours=12), "wrong-environment", None),
     ]
     async with db_pool.acquire() as conn:
-        for environment, evaluated_at, seed in rows:
+        for environment, evaluated_at, seed, traffic_source in rows:
             await _insert_unavailable_audit_row(
                 conn,
                 environment=environment,
                 evaluated_at=evaluated_at,
                 fingerprint_seed=seed,
+                traffic_source=traffic_source,
             )
 
     report = await collect_shadow_evidence(
@@ -500,10 +524,69 @@ async def test_collect_filters_environment_and_uses_half_open_window(
         environment="TEST",
     )
 
-    gate_a = report["gates"]["G-a"]
+    gate_a = report["gates"]["G-a-vol"]
     assert gate_a["total_audit_rows"] == 2
     assert gate_a["distinct_requests"] == 2
     assert gate_a["missing_request_fingerprints"] == 0
+    assert report["traffic_source"] == {
+        "real": 2,
+        "synthetic_gold": 0,
+        "synthetic_driver": 0,
+        "legacy": 0,
+        "total_audit_rows": 2,
+    }
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_collect_splits_traffic_source_end_to_end(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """Migration 256's column round-trips: real -> G-a-vol, synthetic ->
+    G-a-breadth, NULL -> legacy (neither), straight from the database."""
+    start = datetime(2026, 7, 21, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    rows = [
+        ("at-start", REAL_TRAFFIC_SOURCE),
+        ("gold-row", "synthetic_gold"),
+        ("driver-row", "synthetic_driver"),
+        ("legacy-row", None),
+    ]
+    async with db_pool.acquire() as conn:
+        for seed, traffic_source in rows:
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                traffic_source=traffic_source,
+            )
+
+    report = await collect_shadow_evidence(
+        db_pool,
+        window_start=start,
+        window_end=end,
+        environment="TEST",
+    )
+
+    gates = report["gates"]
+    assert gates["G-a-vol"]["total_audit_rows"] == 1
+    assert gates["G-a-vol"]["traffic_sources"] == [REAL_TRAFFIC_SOURCE]
+    assert gates["G-a-vol"]["traffic_source_counts"] == {REAL_TRAFFIC_SOURCE: 1}
+    assert gates["G-a-breadth"]["total_audit_rows"] == 2
+    assert gates["G-a-breadth"]["traffic_sources"] == sorted(SYNTHETIC_TRAFFIC_SOURCES)
+    assert gates["G-a-breadth"]["traffic_source_counts"] == {
+        "synthetic_gold": 1,
+        "synthetic_driver": 1,
+    }
+    assert report["traffic_source"] == {
+        "real": 1,
+        "synthetic_gold": 1,
+        "synthetic_driver": 1,
+        "legacy": 1,
+        "total_audit_rows": 4,
+    }
 
 
 @pytest.mark.parametrize(
@@ -560,3 +643,145 @@ async def test_collect_counts_missing_or_invalid_pack_payloads(
     )
 
     assert report["gates"]["G-c"]["invalid_rule_pack_payloads"] == expected_invalid_count
+
+
+# ---------------------------------------------------------------------------
+# Fable final-gate deltas 1-2 (2026-07-23) — traffic_source split (migration
+# 256): real -> G-a-vol, synthetic classes -> G-a-breadth, NULL/unknown ->
+# legacy (neither).  Guilt AND innocence for each direction.
+# ---------------------------------------------------------------------------
+
+
+def test_synthetic_gold_rows_feed_breadth_never_vol() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for row in rows:
+        row["traffic_source"] = "synthetic_gold"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    gates = report["gates"]
+    # Innocence: the synthetic corpus DOES prove breadth...
+    assert gates["G-a-breadth"]["green"] is True
+    assert gates["G-a-breadth"]["total_audit_rows"] == 1_000
+    assert gates["G-a-breadth"]["distinct_requests"] == 1_000
+    assert gates["G-a-breadth"]["traffic_sources"] == sorted(SYNTHETIC_TRAFFIC_SOURCES)
+    assert gates["G-a-breadth"]["traffic_source_counts"] == {
+        "synthetic_gold": 1_000,
+        "synthetic_driver": 0,
+    }
+    # Guilt: ...but it can NEVER manufacture production adoption.
+    assert gates["G-a-vol"]["green"] is False
+    assert gates["G-a-vol"]["total_audit_rows"] == 0
+    assert gates["G-a-vol"]["distinct_requests"] == 0
+    assert gates["G-a-vol"]["traffic_sources"] == [REAL_TRAFFIC_SOURCE]
+    assert "G-a-vol" in report["blockers"]
+    assert "G-a-breadth" not in report["blockers"]
+
+
+def test_both_synthetic_classes_are_labeled_and_summed_in_breadth() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for index, row in enumerate(rows):
+        row["traffic_source"] = "synthetic_gold" if index % 2 == 0 else "synthetic_driver"
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    breadth = report["gates"]["G-a-breadth"]
+    assert breadth["traffic_source_counts"] == {
+        "synthetic_gold": 500,
+        "synthetic_driver": 500,
+    }
+    assert breadth["total_audit_rows"] == 1_000
+    assert report["traffic_source"]["synthetic_gold"] == 500
+    assert report["traffic_source"]["synthetic_driver"] == 500
+    assert report["gates"]["G-a-vol"]["total_audit_rows"] == 0
+
+
+def test_null_and_unknown_sources_are_legacy_counted_toward_neither_gate() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    for index, row in enumerate(rows):
+        if index % 3 == 0:
+            row["traffic_source"] = None  # pre-256 legacy row
+        elif index % 3 == 1:
+            del row["traffic_source"]  # key absent entirely
+        else:
+            row["traffic_source"] = "not-a-checked-source"  # non-CHECK value
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    gates = report["gates"]
+    assert gates["G-a-vol"]["total_audit_rows"] == 0
+    assert gates["G-a-breadth"]["total_audit_rows"] == 0
+    assert gates["G-a-vol"]["green"] is False
+    assert gates["G-a-breadth"]["green"] is False
+    assert report["traffic_source"] == {
+        "real": 0,
+        "synthetic_gold": 0,
+        "synthetic_driver": 0,
+        "legacy": 1_000,
+        "total_audit_rows": 1_000,
+    }
+
+
+def test_mixed_traffic_split_fields_sum_to_total() -> None:
+    rows, pack, db_pack_id = _green_fixture()
+    synthetic_rows, _, _ = _green_fixture()
+    extra: list[dict[str, object]] = []
+    for index, row in enumerate(synthetic_rows[:40]):
+        clone = dict(row)
+        clone["request_fingerprint"] = (1_000 + index).to_bytes(32, "big")
+        clone["traffic_source"] = "synthetic_driver"
+        extra.append(clone)
+    rows[0]["traffic_source"] = None  # one legacy row
+    mixed = rows + extra
+
+    report = _evaluate(mixed, pack, db_pack_id)
+
+    traffic = report["traffic_source"]
+    assert traffic == {
+        "real": 999,
+        "synthetic_gold": 0,
+        "synthetic_driver": 40,
+        "legacy": 1,
+        "total_audit_rows": 1_040,
+    }
+    gates = report["gates"]
+    # Vol counts ONLY real rows: the 40 synthetic rows carry fresh
+    # fingerprints and must not leak into vol's distinct_requests.
+    assert gates["G-a-vol"]["total_audit_rows"] == 999
+    assert gates["G-a-vol"]["distinct_requests"] == 999
+    assert gates["G-a-breadth"]["total_audit_rows"] == 40
+    assert gates["G-a-breadth"]["distinct_requests"] == 40
+    assert (
+        gates["G-a-vol"]["total_audit_rows"]
+        + gates["G-a-breadth"]["total_audit_rows"]
+        + traffic["legacy"]
+        == traffic["total_audit_rows"]
+    )
+
+
+def test_grounding_gate_spans_all_traffic_sources() -> None:
+    """G-c is intentionally NOT split: a grounding defect in a synthetic row
+    is still an engine-output defect and must keep G-c red."""
+    rows, pack, db_pack_id = _green_fixture()
+    rows[0]["traffic_source"] = "synthetic_gold"
+    rows[0]["grounding_summary"] = []
+
+    report = _evaluate(rows, pack, db_pack_id)
+
+    gate_c = report["gates"]["G-c"]
+    assert gate_c["green"] is False
+    assert gate_c["malformed_grounding_summaries"] == 1
+    assert gate_c["ungrounded_claims"] == 1
+
+
+def test_migration_256_carries_rollback_marker() -> None:
+    forward, rollback = _read_migration(_MIGRATION_256_PATH, 256)
+    assert "traffic_source" in forward
+    assert "traffic_source" in rollback
+
+
+def test_migration_256_keeps_migrations_v2_prefixes_unique() -> None:
+    sql_files = sorted(_MIGRATION_256_PATH.parent.glob("*.sql"))
+    _assert_unique_migration_numbers(sql_files)
+    prefixes = [path.name.split("_", 1)[0] for path in sql_files]
+    assert prefixes.count("256") == 1

@@ -38,9 +38,11 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +53,41 @@ PROJECT_ROOT = SCRIPTS_DIR.parents[2]
 CLAIMS_DB_DIR = SCRIPTS_DIR / "claims_db"
 AI_DISPATCH = PROJECT_ROOT / "scripts" / "ai-dispatch.sh"
 CLAIM_ID_PATTERN = re.compile(r"\[([A-Z]{2,3}-\d{3})\]")
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 # NLM notebook IDs per dominio (da ai-dispatch.sh oracolo-nb mapping)
 DOMAIN_NB_TAGS: dict[str, str] = {
@@ -149,7 +186,11 @@ def run_dispatch(command: str, *args: str, timeout: int = 300) -> str:
             cwd=str(PROJECT_ROOT),
         )
         if result.returncode != 0:
-            logger.warning("ai-dispatch %s failed (rc=%d): %s", command, result.returncode, result.stderr[:200])
+            logger.warning(
+                "ai-dispatch %s failed (rc=%d)",
+                command,
+                result.returncode,
+            )
             return ""
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -165,15 +206,15 @@ def step_nlm_research(domain: str, topic: str, skip: bool) -> str:
     if skip:
         logger.info("  [SKIP] NLM Deep Research")
         return ""
-    print("\nStep 2: NLM Deep Research (Gemini) — searching web sources...")  # noqa: T201
+    print("\nStep 2: NLM Deep Research (Gemini) — searching web sources...")
     query = f"Indonesian law {domain}: {topic} — current regulations, requirements, procedures 2024-2025"
     output = run_dispatch("research", query, "fast", timeout=120)
     if output:
         # research start is async — extract any immediate context from the response
-        print(f"  Research initiated: {output[:200]}...")  # noqa: T201
+        print(f"  Research initiated: {output[:200]}...")
         # Return the initiation confirmation as context (actual results in NB-9)
         return f"[NLM Deep Research initiated for: {query}]\n{output[:500]}"
-    print("  Research unavailable — proceeding without web research")  # noqa: T201
+    print("  Research unavailable — proceeding without web research")
     return ""
 
 
@@ -182,7 +223,7 @@ def step_gemini_search(domain: str, topic: str, skip: bool) -> str:
     if skip:
         logger.info("  [SKIP] Gemini search")
         return ""
-    print("\nStep 3: Gemini CLI search — verifying current law status...")  # noqa: T201
+    print("\nStep 3: Gemini CLI search — verifying current law status...")
     query = (
         f"Indonesian {domain} law: {topic}. "
         f"What are the current legal requirements, procedures, timeframes, and fees? "
@@ -190,9 +231,9 @@ def step_gemini_search(domain: str, topic: str, skip: bool) -> str:
     )
     output = run_dispatch("search", query, timeout=120)
     if output:
-        print(f"  Gemini search: {len(output)} chars of grounded context")  # noqa: T201
+        print(f"  Gemini search: {len(output)} chars of grounded context")
         return output
-    print("  Gemini search unavailable — proceeding without")  # noqa: T201
+    print("  Gemini search unavailable — proceeding without")
     return ""
 
 
@@ -202,16 +243,16 @@ def step_nlm_oracolo(domain: str, topic: str, skip: bool) -> str:
         logger.info("  [SKIP] NLM Oracolo")
         return ""
     nb_tag = DOMAIN_NB_TAGS.get(domain, domain)
-    print(f"\nStep 4: NLM Oracolo (NB: {nb_tag}) — querying legal PDF citations...")  # noqa: T201
+    print(f"\nStep 4: NLM Oracolo (NB: {nb_tag}) — querying legal PDF citations...")
     question = (
         f"What are the specific legal requirements, procedures, timeframes, and fees for: {topic}? "
         f"Provide exact citations with Pasal numbers."
     )
     output = run_dispatch("oracolo-nb", nb_tag, question, timeout=120)
     if output:
-        print(f"  Oracolo: {len(output)} chars of cited legal context")  # noqa: T201
+        print(f"  Oracolo: {len(output)} chars of cited legal context")
         return output
-    print("  Oracolo unavailable — proceeding without PDF citations")  # noqa: T201
+    print("  Oracolo unavailable — proceeding without PDF citations")
     return ""
 
 
@@ -227,7 +268,7 @@ def step_deepseek_reasoning(
     if skip:
         logger.info("  [SKIP] DeepSeek R1 reasoning")
         return ""
-    print("\nStep 5: DeepSeek R1 671b — legal reasoning & contradiction detection...")  # noqa: T201
+    print("\nStep 5: DeepSeek R1 671b — legal reasoning & contradiction detection...")
 
     # Build a focused reasoning prompt
     claims_sample = "\n".join(
@@ -248,31 +289,134 @@ def step_deepseek_reasoning(
     )
     output = run_dispatch("reasoning", reasoning_prompt, timeout=180)
     if output:
-        print(f"  DeepSeek R1: {len(output)} chars of legal reasoning")  # noqa: T201
+        print(f"  DeepSeek R1: {len(output)} chars of legal reasoning")
         return output
-    print("  DeepSeek R1 unavailable — proceeding without reasoning layer")  # noqa: T201
+    print("  DeepSeek R1 unavailable — proceeding without reasoning layer")
     return ""
 
 
 _GEN_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
     re.IGNORECASE,
 )
+_GEN_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_GEN_RATE_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:rate.?limit(?:ed| reached| exceeded)?|"
+    r"too many requests|(?:http(?: status)?\s*)?429(?:\b.*)?|"
+    r"(?:quota|usage limit|weekly limit|capacity)\s+"
+    r"(?:exhausted|exceeded|reached|unavailable)(?:\b.*)?|"
+    r"(?:you(?:'ve| have)\s+)?hit your limit(?:\b.*)?|"
+    r"out of extra usage(?:\b.*)?|service (?:is )?overloaded(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_GEN_AUTH_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:401\s+unauthori[sz]ed(?:\b.*)?|"
+    r"unauthori[sz]ed(?:\b.*)?|authentication (?:failed|required|expired)(?:\b.*)?|"
+    r"auth required(?:\b.*)?|login required(?:\b.*)?|"
+    r"please (?:log in|login)(?:\b.*)?|not (?:logged in|authenticated)(?:\b.*)?|"
+    r"invalid[_ ](?:grant|token)(?:\b.*)?|token[_ ]revoked(?:\b.*)?|"
+    r"refresh_token(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
 _GEN_EXHAUSTED: dict[str, str] = {}
+_OAUTH_SCRUB_KEYS = frozenset(
+    {
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "CLOUD_ML_REGION",
+        "GOOGLE_API_KEY",
+    }
+)
+_OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+
+
+def _gen_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _gen_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3):
+    seen: set[str] = set()
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
+
+
+def _gen_retry_reason(stdout: str, stderr: str) -> str | None:
+    if _GEN_RATE_LIMIT_RE.search(stderr or ""):
+        return "rate_limit"
+    if _GEN_AUTH_RE.search(stderr or ""):
+        return "auth"
+    stripped = (stdout or "").strip()
+    if not stripped:
+        return None
+    try:
+        envelope = json.loads(stripped)
+    except json.JSONDecodeError:
+        envelope = None
+    if isinstance(envelope, dict) and (
+        envelope.get("is_error")
+        or envelope.get("type") == "error"
+        or (
+            envelope.get("type") == "result"
+            and envelope.get("subtype") not in (None, "success")
+        )
+    ):
+        diagnostic = " ".join(
+            str(envelope.get(key, ""))
+            for key in ("error", "message", "result", "subtype")
+        )
+        if _GEN_RATE_LIMIT_RE.search(diagnostic):
+            return "rate_limit"
+        if _GEN_AUTH_RE.search(diagnostic):
+            return "auth"
+        return None
+    if _GEN_RATE_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "rate_limit"
+    if _GEN_AUTH_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "auth"
+    return None
 
 
 def generate_document(
@@ -285,7 +429,7 @@ def generate_document(
     existing_text: str | None = None,
 ) -> str:
     """Step 6: Generate T2 document via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
     claims_summary = build_claims_summary(claims_db)
 
     research_ctx = (research_context[:2000] if research_context else "Not available — proceed from claims_db only")
@@ -311,38 +455,45 @@ def generate_document(
             claims_summary=claims_summary,
         )
 
-    for label, token in _gen_token_chain():
+    deadline = time.monotonic() + 300
+    chain = _gen_token_chain()
+    for position, (label, token) in enumerate(chain):
         if label in _GEN_EXHAUSTED:
             continue
 
-        env = os.environ.copy()
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
+        env = _gen_oauth_env(token)
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "3"],
-                input=prompt, capture_output=True, text=True, timeout=300, env=env,
+                input=prompt,
+                timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:
             logger.warning("generate_document: %s timed out", label)
             _GEN_EXHAUSTED[label] = "timeout"
             continue
 
-        combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _GEN_RATE_LIMIT_RE.search(combined):
-            logger.warning("generate_document: %s rate-limited", label)
-            _GEN_EXHAUSTED[label] = "rate_limit"
+        retry_reason = _gen_retry_reason(result.stdout, result.stderr)
+        if retry_reason is not None:
+            logger.warning("generate_document: %s unavailable (%s)", label, retry_reason)
+            _GEN_EXHAUSTED[label] = retry_reason
             continue
-
         if result.returncode != 0:
-            logger.error("claude CLI error (%s): %s", label, result.stderr[:500])
+            logger.error("claude CLI error via %s (exit=%s)", label, result.returncode)
             sys.exit(1)
 
-        return result.stdout.strip()
+        output = result.stdout.strip()
+        if not output:
+            logger.warning("generate_document: %s returned empty output", label)
+            _GEN_EXHAUSTED[label] = "empty_output"
+            continue
+        return output
 
     logger.error("generate_document: all Claude tokens exhausted")
     sys.exit(1)
@@ -399,14 +550,14 @@ def main() -> None:
     parser.add_argument("--skip-telegram", action="store_true", help="Skip Telegram human review")
     args = parser.parse_args()
 
-    print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")  # noqa: T201
-    print("=" * 70)  # noqa: T201
-    print("Models: NLM Deep Research → Gemini Search → NLM Oracolo → DeepSeek R1 → Claude → CRAG")  # noqa: T201
+    print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")
+    print("=" * 70)
+    print("Models: NLM Deep Research → Gemini Search → NLM Oracolo → DeepSeek R1 → Claude → CRAG")
 
     # Step 1: Load claims_db
-    print("\nStep 1: Loading claims_db...")  # noqa: T201
+    print("\nStep 1: Loading claims_db...")
     claims_db = load_claims_db(args.domain)
-    print(f"  {len(claims_db)} claims loaded")  # noqa: T201
+    print(f"  {len(claims_db)} claims loaded")
 
     # Step 2: NLM Deep Research (Gemini autonomous web search)
     research_context = step_nlm_research(args.domain, args.topic, args.skip_research)
@@ -428,9 +579,9 @@ def main() -> None:
     existing_text: str | None = None
     if args.existing:
         existing_text = Path(args.existing).read_text(encoding="utf-8")
-        print("\nStep 6: Revising existing document via Claude CLI (Max)...")  # noqa: T201
+        print("\nStep 6: Revising existing document via Claude CLI (Max)...")
     else:
-        print("\nStep 6: Generating document via Claude CLI (Max)...")  # noqa: T201
+        print("\nStep 6: Generating document via Claude CLI (Max)...")
 
     document_text = generate_document(
         args.domain, args.topic, claims_db,
@@ -441,24 +592,24 @@ def main() -> None:
     )
     output_path = Path(args.output)
     output_path.write_text(document_text, encoding="utf-8")
-    print(f"  Generated {len(document_text)} chars → {output_path}")  # noqa: T201
+    print(f"  Generated {len(document_text)} chars → {output_path}")
 
     # Step 6b: Validate [CLAIM-ID] markers
-    print("\nStep 6b: Validating [CLAIM-ID] markers...")  # noqa: T201
+    print("\nStep 6b: Validating [CLAIM-ID] markers...")
     valid_ids, missing_ids = validate_markers(document_text, claims_db)
-    print(f"  Valid: {len(valid_ids)}, Missing from DB: {len(missing_ids)}")  # noqa: T201
+    print(f"  Valid: {len(valid_ids)}, Missing from DB: {len(missing_ids)}")
     if missing_ids:
-        print(f"  WARNING: Unknown claim IDs will be flagged UNFAITHFUL: {missing_ids}")  # noqa: T201
+        print(f"  WARNING: Unknown claim IDs will be flagged UNFAITHFUL: {missing_ids}")
 
     # Step 7: CRAG-light auto-verification
-    print("\nStep 7: Running auto-verifier (CRAG-light)...")  # noqa: T201
+    print("\nStep 7: Running auto-verifier (CRAG-light)...")
     claims_db_path = str(CLAIMS_DB_DIR / f"{args.domain}_claims_db.json")
     exit_code, report_path = run_auto_verifier(str(output_path), claims_db_path)
 
     if exit_code == 0:
-        print("  PASSED — all claims verified ≥95%")  # noqa: T201
-        print(f"\nPipeline COMPLETE — document ready: {output_path}")  # noqa: T201
-        print("  Next: upload to NLM using: nlm source_add --notebook-id <NB_ID> --source-type text")  # noqa: T201
+        print("  PASSED — all claims verified ≥95%")
+        print(f"\nPipeline COMPLETE — document ready: {output_path}")
+        print("  Next: upload to NLM using: nlm source_add --notebook-id <NB_ID> --source-type text")
         sys.exit(0)
 
     # Verification failed — load report
@@ -466,27 +617,27 @@ def main() -> None:
         with open(report_path) as f:
             report = json.load(f)
         ratio = report.get("verified_ratio", 0)
-        print(f"  BLOCKED — {ratio:.0%} verified (need ≥95%)")  # noqa: T201
-        print(f"  Blocked claims: {report.get('blocked_claims', [])}")  # noqa: T201
+        print(f"  BLOCKED — {ratio:.0%} verified (need ≥95%)")
+        print(f"  Blocked claims: {report.get('blocked_claims', [])}")
     except (OSError, json.JSONDecodeError):
-        print("  BLOCKED — could not load verification report")  # noqa: T201
+        print("  BLOCKED — could not load verification report")
 
     # Optional: Telegram human review
     if not args.skip_telegram:
-        print("\nStep 7b: Requesting human review via Telegram...")  # noqa: T201
+        print("\nStep 7b: Requesting human review via Telegram...")
         decision = run_telegram_review(str(output_path), report_path, f"{args.domain} — {args.topic}")
         if decision == "approved":
-            print(f"\nApproved — document ready: {output_path}")  # noqa: T201
+            print(f"\nApproved — document ready: {output_path}")
             sys.exit(0)
         elif decision == "skipped":
-            print(f"\nVerification failed — review report: {report_path}")  # noqa: T201
+            print(f"\nVerification failed — review report: {report_path}")
             sys.exit(1)
         else:
-            print("\nRejected — document NOT uploaded. Fix required.")  # noqa: T201
-            print(f"  Review report: {report_path}")  # noqa: T201
+            print("\nRejected — document NOT uploaded. Fix required.")
+            print(f"  Review report: {report_path}")
             sys.exit(1)
     else:
-        print(f"\nVerification failed — review report: {report_path}")  # noqa: T201
+        print(f"\nVerification failed — review report: {report_path}")
         sys.exit(1)
 
 

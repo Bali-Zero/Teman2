@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * Portal Matter Detail — single matter with approved intelligence panel.
+ *
+ * WS3 slice 2 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slice 1 (portal home, PR #3050). Panels read --bz-card /
+ * --bz-border (warm paper + hairline), state colors read the semantic
+ * --state-* tokens (WS2 operative-light AA overrides), masthead = copper
+ * rule + Cormorant serif (--font-serif). No hardcoded hexes.
+ */
+
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -47,15 +57,15 @@ function LoadingState() {
         <div
           className="h-56 animate-pulse rounded-lg border"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         />
         <div
           className="h-56 animate-pulse rounded-lg border"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         />
       </div>
@@ -75,12 +85,12 @@ function ApprovedIntelligencePanel({
       <section
         className="rounded-lg border p-5"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
         }}
       >
         <div className="flex items-start gap-3">
-          <Clock3 className="mt-0.5 h-5 w-5 text-amber-300" />
+          <Clock3 className="mt-0.5 h-5 w-5 text-[var(--state-warning)]" />
           <div>
             <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">
               No approved summary yet
@@ -99,14 +109,14 @@ function ApprovedIntelligencePanel({
     <section
       className="rounded-lg border p-5"
       style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
+        background: "var(--bz-card)",
+        borderColor: "var(--bz-border)",
       }}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold text-[var(--bz-text-1)]">
-            <ShieldCheck className="h-5 w-5 text-emerald-300" />
+            <ShieldCheck className="h-5 w-5 text-[var(--state-success)]" />
             Approved Intelligence
           </h2>
           {intelligence.company_name && (
@@ -115,7 +125,7 @@ function ApprovedIntelligencePanel({
             </p>
           )}
         </div>
-        <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200">
+        <Badge className="border-[color-mix(in_srgb,var(--state-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]">
           Approved
         </Badge>
       </div>
@@ -132,7 +142,7 @@ function ApprovedIntelligencePanel({
       )}
 
       {intelligence.facts.length > 0 && (
-        <div className="mt-5 divide-y divide-white/[0.06]">
+        <div className="mt-5 divide-y divide-[var(--bz-border)]">
           {intelligence.facts.map((fact) => (
             <div
               key={`${fact.category}-${fact.label}`}
@@ -142,7 +152,7 @@ function ApprovedIntelligencePanel({
                 <p className="text-sm font-medium text-[var(--bz-text-1)]">
                   {fact.label}
                 </p>
-                <span className="rounded bg-white/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--tx-secondary)]">
+                <span className="rounded bg-[var(--glass-rim)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--tx-secondary)]">
                   {fact.confidence}
                 </span>
               </div>
@@ -204,12 +214,20 @@ export default function PortalMatterDetailPage() {
           >
             {data.type}
           </Badge>
-          <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200">
+          <Badge className="border-[color-mix(in_srgb,var(--state-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]">
             {data.status_label}
           </Badge>
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight lux-text-gradient">
+          {/* Day masthead (WS3): copper rule + Cormorant serif, per concept */}
+          <div
+            aria-hidden="true"
+            className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+          />
+          <h1
+            className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
             {data.title}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--tx-secondary)]">
@@ -224,8 +242,8 @@ export default function PortalMatterDetailPage() {
         <aside
           className="space-y-4 rounded-lg border p-4"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div>
@@ -239,15 +257,15 @@ export default function PortalMatterDetailPage() {
             </div>
             <Progress
               value={data.progress}
-              className="mt-2 h-2 bg-white/[0.08]"
-              indicatorClassName="bg-[var(--bz-accent-warm)]"
+              className="mt-2 h-2 bg-[var(--glass-rim)]"
+              indicatorClassName="bg-[var(--bz-copper)]"
             />
           </div>
 
           {data.next_deadline && (
             <div
               className="border-t pt-3"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
+              style={{ borderColor: "var(--bz-border)" }}
             >
               <p className="text-xs uppercase tracking-wider text-[var(--tx-secondary)]">
                 Next deadline
@@ -262,7 +280,7 @@ export default function PortalMatterDetailPage() {
             data.approved_intelligence.missing_items.length > 0) && (
             <div>
               <p className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-1)]">
-                <FileText className="h-4 w-4 text-amber-300" />
+                <FileText className="h-4 w-4 text-[var(--state-warning)]" />
                 What we still need
               </p>
               <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--tx-secondary)]">
@@ -280,7 +298,7 @@ export default function PortalMatterDetailPage() {
             data.approved_intelligence.next_steps.length > 0) && (
             <div>
               <p className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-1)]">
-                <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                <CheckCircle2 className="h-4 w-4 text-[var(--state-success)]" />
                 Next steps
               </p>
               <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--tx-secondary)]">

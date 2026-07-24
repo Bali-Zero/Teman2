@@ -224,3 +224,106 @@ class TestHelperFunctions:
         assert entry is not None
         assert entry.match == "exact"
         assert entry.prefix == "/"
+
+
+class TestVisaCheckPublicRegistration:
+    """Guilt+innocence for the /api/visa/* Visa Check v1 funnel.
+
+    Regression (PR #108, 2026-04-25): routers/visa_check.py was mounted but
+    never registered here, so HybridAuthMiddleware 401'd every anonymous
+    call and the public funnel was dead in prod. The 5 routes must resolve
+    as public via exact/template matches only — no blanket /api/visa/ prefix.
+    """
+
+    @pytest.fixture
+    def middleware(self):
+        from backend.middleware.hybrid_auth import HybridAuthMiddleware
+
+        return HybridAuthMiddleware(MagicMock())
+
+    def _mock_request(self, path: str, method: str = "GET"):
+        req = MagicMock()
+        req.url.path = path
+        req.method = method
+        req.headers.get.return_value = None
+        req.client.host = "127.0.0.1"
+        return req
+
+    def test_visa_check_endpoints_are_public(self, middleware):
+        """Guilt: all 5 visa_check routes resolve as public."""
+        public_paths = [
+            "/api/visa/check/start",
+            "/api/visa/clock",
+            "/api/visa/match",
+            "/api/visa/clock/a1b2c3d4e5f6",
+            "/api/visa/match/a1b2c3d4e5f6",
+        ]
+        for path in public_paths:
+            assert middleware.is_public_endpoint(self._mock_request(path)), (
+                f"Visa Check path {path!r} must be public"
+            )
+
+    def test_visa_check_entries_use_exact_or_template_match(self):
+        """Entries must not be prefix matches — no blanket /api/visa/ opening."""
+        for prefix, expected_match in (
+            ("/api/visa/check/start", "exact"),
+            ("/api/visa/clock", "exact"),
+            ("/api/visa/match", "exact"),
+            ("/api/visa/clock/{hash}", "template"),
+            ("/api/visa/match/{hash}", "template"),
+        ):
+            entry = next(e for e in PUBLIC_ENDPOINTS if e.prefix == prefix)
+            assert entry.match == expected_match
+            assert entry.category.value == "visa_oracle"
+
+    def test_visa_check_near_miss_paths_are_not_public(self, middleware):
+        """Innocence: sibling/lookalike paths must still require auth."""
+        not_public = [
+            "/api/visaevil/match",  # near-miss prefix lookalike
+            "/api/visa",  # bare root, not a route
+            "/api/visa/",  # trailing-slash root, not a route
+            "/api/visa/clockadmin",  # exact-match sibling of /api/visa/clock
+            "/api/visa/match/abc/def",  # template is single-segment only
+            "/api/visa/unknown",  # unregistered sibling under /api/visa/
+        ]
+        for path in not_public:
+            assert not middleware.is_public_endpoint(self._mock_request(path)), (
+                f"Path {path!r} must NOT be public"
+            )
+
+    def test_visa_check_rate_limit_class(self):
+        """Anonymous visa_check traffic is rate-limited per-IP via the generic
+        "/api/" bucket (120 req/min) — same class as /api/v1/visa-oracle/*."""
+        from backend.middleware.rate_limiter import RateLimitMiddleware
+
+        rl = RateLimitMiddleware(app=MagicMock())
+        for path in (
+            "/api/visa/check/start",
+            "/api/visa/clock",
+            "/api/visa/match",
+            "/api/visa/clock/a1b2c3d4e5f6",
+            "/api/visa/match/a1b2c3d4e5f6",
+        ):
+            assert rl._get_rate_limit(path) == (120, 60)
+
+    @pytest.mark.asyncio
+    async def test_anonymous_post_passes_dispatch_without_csrf(self, middleware):
+        """CSRF posture: validate_csrf() is only invoked inside the cookie-JWT
+        branch of authenticate_request, which dispatch() never reaches for
+        registered-public paths (Step 1 short-circuit). An anonymous POST with
+        no cookie and no X-CSRF-Token header must therefore pass the middleware.
+        """
+        from unittest.mock import AsyncMock
+
+        req = self._mock_request("/api/visa/match", method="POST")
+        req.headers = {}  # real dict: no cookies, no X-CSRF-Token, no user-agent
+        req.cookies = {}
+        response = MagicMock()
+        response.headers = {}
+        call_next = AsyncMock(return_value=response)
+
+        result = await middleware.dispatch(req, call_next)
+
+        call_next.assert_awaited_once()
+        assert result is response
+        assert result.headers["X-Auth-Type"] == "public"

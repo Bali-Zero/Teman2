@@ -2,7 +2,9 @@
 """Tests for the Claude client backend selection (subprocess default | sdk pilot)."""
 
 import asyncio
+import os
 import sys
+import time
 import types
 
 import claude_client
@@ -280,9 +282,8 @@ def test_stream_via_sdk_timeout_after_yield_no_replay(monkeypatch):
     assert lines[-1] == "data: [DONE]\n\n"
 
 
-def test_stream_via_sdk_timeout_before_yield_falls_back_to_subprocess(monkeypatch):
-    """A timeout with NOTHING yielded yet is still safe to fall back on —
-    unchanged pre-P1-2 behavior, kept green as a regression guard."""
+def test_stream_via_sdk_timeout_before_yield_respects_global_deadline(monkeypatch):
+    """An exhausted SDK deadline cannot restart a fresh subprocess budget."""
 
     async def fake_query(*, prompt, options):
         await asyncio.sleep(10)
@@ -305,8 +306,33 @@ def test_stream_via_sdk_timeout_before_yield_falls_back_to_subprocess(monkeypatc
         _collect(claude_client._stream_via_sdk("hi", timeout=0.05))
     )
 
-    assert calls["subprocess"] == 1
-    assert lines == ["data: [DONE]\n\n"]
+    assert calls["subprocess"] == 0
+    assert any('"type":"error"' in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_stream_via_sdk_uses_one_deadline_across_messages(monkeypatch):
+    """Several individually-fast messages must still share one wall-clock cap."""
+
+    async def fake_query(*, prompt, options):
+        for _ in range(3):
+            await asyncio.sleep(0.04)
+            yield _FakeSystemMessage("progress")
+
+    module = types.ModuleType("claude_agent_sdk")
+    module.query = fake_query
+    module.ClaudeAgentOptions = _FakeClaudeAgentOptions
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", module)
+
+    started = asyncio.get_event_loop().time()
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_sdk("hi", timeout=0.07))
+    )
+    elapsed = asyncio.get_event_loop().time() - started
+
+    assert elapsed < 0.13
+    assert any('"type":"error"' in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
 
 
 # ── P3-a / P3-c: cwd + effort passed to ClaudeAgentOptions ──
@@ -349,6 +375,21 @@ def test_sdk_options_omit_effort_for_long_query(monkeypatch):
 # ── env hygiene ──
 
 
+def test_token_chain_reaches_slot_five_in_order(monkeypatch):
+    for slot in range(1, 6):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"tok{slot}")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+
+    assert claude_client._token_chain() == [
+        ("token_1", "tok1"),
+        ("token_2", "tok2"),
+        ("token_3", "tok3"),
+        ("token_4", "tok4"),
+        ("token_5", "tok5"),
+        ("keychain", ""),
+    ]
+
+
 def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     # Hermeticity: clear any real indexed tokens from the runner's env, else
     # `_token_chain()[0]` (which `_build_sdk_env` seeds from) returns a live
@@ -358,6 +399,8 @@ def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
 
@@ -384,6 +427,8 @@ def test_sdk_env_seeds_oauth_token_from_indexed_chain(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
 
@@ -411,6 +456,8 @@ def test_sdk_env_no_chain_token_leaves_var_absent(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
 
     captured: list = []
     fake_module = _make_fake_sdk_module(
@@ -451,6 +498,127 @@ def _run_subprocess_with_emitter(monkeypatch, emitter_code: str):
     )
 
 
+def test_subprocess_rotates_auth_quota_and_empty_to_slot_five(monkeypatch):
+    for slot in range(1, 6):
+        monkeypatch.setenv(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
+        )
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    emitter = (
+        "import json, os, sys\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'sentinel-1':\n"
+        "    print('401 unauthorized')\n"
+        "elif token == 'sentinel-2':\n"
+        "    print('weekly limit reached')\n"
+        "elif token == 'sentinel-3':\n"
+        "    pass\n"
+        "elif token == 'sentinel-4':\n"
+        "    print('quota exhausted')\n"
+        "elif token == 'sentinel-5':\n"
+        "    assert 'ANTHROPIC_API_KEY' not in os.environ\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-five-success'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-five-success'}))\n"
+        "else:\n"
+        "    print('unexpected account', file=sys.stderr)\n"
+        "    raise SystemExit(7)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any("slot-five-success" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_rotates_init_then_weekly_limit_to_slot_two(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    emitter = (
+        "import json, os\n"
+        "assert 'ANTHROPIC_API_KEY' not in os.environ\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "print(json.dumps({'type':'system','subtype':'init'}))\n"
+        "if token == 'sentinel-1':\n"
+        "    print(json.dumps({'type':'result','subtype':'error','result':'weekly limit reached'}))\n"
+        "elif token == 'sentinel-2':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'slot-two-success'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'slot-two-success'}))\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any("slot-two-success" in line for line in lines)
+    assert not any("weekly limit reached" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_does_not_rotate_limit_after_content(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+
+    emitter = (
+        "import json, os\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'sentinel-1':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'partial'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'error','result':'weekly limit reached'}))\n"
+        "elif token == 'sentinel-2':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'replayed'}]}}))\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'replayed'}))\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+    assert any('"data":"partial"' in line for line in lines)
+    assert not any("replayed" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
 def test_subprocess_streams_line_over_64kb_default_limit(monkeypatch):
     """GUILT: a single assistant NDJSON line larger than asyncio's 64KB default
     StreamReader limit must be read without LimitOverrunError. A small first
@@ -485,6 +653,93 @@ def test_subprocess_streams_small_lines_unchanged(monkeypatch):
 
     assert lines[0] == 'data: {"type":"token","data":"PONG"}\n\n'
     assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_init_heartbeats_do_not_reset_attempt_deadline(
+    monkeypatch,
+):
+    """Repeated init lines must rotate at one monotonic per-seat deadline."""
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slow-seat")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "good-seat")
+    for slot in (3, 4, 5):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    emitter = (
+        "import json, os, time\n"
+        "token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')\n"
+        "if token == 'slow-seat':\n"
+        "    while True:\n"
+        "        print(json.dumps({'type':'system','subtype':'init'}), flush=True)\n"
+        "        time.sleep(0.02)\n"
+        "elif token == 'good-seat':\n"
+        "    print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'rotated-success'}]}}), flush=True)\n"
+        "    print(json.dumps({'type':'result','subtype':'success','result':'rotated-success'}), flush=True)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    started = time.monotonic()
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi", timeout=2.0))
+    )
+    elapsed = time.monotonic() - started
+
+    assert any("rotated-success" in line for line in lines)
+    assert lines[-1] == "data: [DONE]\n\n"
+    assert elapsed < 3.0
+
+
+def test_subprocess_timeout_kills_descendant_session(monkeypatch, tmp_path):
+    """A child ignoring TERM must not survive its Claude session leader."""
+    pid_file = tmp_path / "descendant.pid"
+    emitter = (
+        "import json, subprocess, sys, time\n"
+        f"pid_file = {str(pid_file)!r}\n"
+        "child = subprocess.Popen([sys.executable, '-c', "
+        "'import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'])\n"
+        "open(pid_file, 'w', encoding='utf-8').write(str(child.pid))\n"
+        "while True:\n"
+        "    print(json.dumps({'type':'system','subtype':'init'}), flush=True)\n"
+        "    time.sleep(0.02)\n"
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_token_chain",
+        lambda: [("keychain", "")],
+    )
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [
+            sys.executable,
+            "-c",
+            emitter,
+        ],
+    )
+
+    lines = asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi", timeout=0.8))
+    )
+
+    assert lines == ["data: [DONE]\n\n"]
+    assert pid_file.exists()
+    pid = int(pid_file.read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError(f"gateway descendant pid {pid} survived cleanup")
 
 
 def test_subprocess_cmd_has_max_budget_not_max_turns(monkeypatch):
