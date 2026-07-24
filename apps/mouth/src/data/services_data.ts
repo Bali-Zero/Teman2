@@ -402,7 +402,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       // ═══════════════════════════════════════════════════════════
       {
         name: "E33 - Second Home Visa",
-        description: "Long-term residence (USD 130k+ deposit)",
+        description: "Long-term residence (USD 130k+ deposit) — all-inclusive",
         price: "39.000.000",
         features: [
           "Up to 5 years initial validity",
