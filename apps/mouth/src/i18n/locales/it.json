@@ -289,5 +289,107 @@
     "errors": {
       "network": "Errore di rete"
     }
+  },
+  "secondHome": {
+    "hero": {
+      "eyebrow": "E33 — Visto Second Home",
+      "title": "Vivi in Indonesia fino a 5 anni — con i tuoi fondi",
+      "subtitle": "Il visto Second Home è un permesso di soggiorno a lungo termine per richiedenti con solide disponibilità economiche. Nessuno sponsor, nessun datore di lavoro — la base è il tuo impegno finanziario. Si parte da un fit memo gratuito.",
+      "stat1v": "5 anni",
+      "stat1l": "Primo rilascio, rinnovabile",
+      "stat2v": "USD 130.000",
+      "stat2l": "Deposito a tuo nome in banca statale",
+      "stat3v": "Gratuito",
+      "stat3l": "Valutazione fit memo"
+    },
+    "routes": {
+      "eyebrow": "Requisiti",
+      "title": "Due modi per qualificarsi",
+      "a": {
+        "title": "Percorso A — Deposito bancario",
+        "amount": "USD 130.000",
+        "body": "Un deposito intestato a te presso una banca statale indonesiana (BUMN). I fondi restano tuoi — il deposito è la prova dell'impegno finanziario.",
+        "note": "Prepariamo il dossier probatorio nel formato richiesto dall'imigrasi e coordiniamo con te la conferma della banca."
+      },
+      "b": {
+        "title": "Percorso B — Proprietà",
+        "amount": "USD 1.000.000",
+        "body": "Una proprietà strata-title completata (hak milik atas satuan rumah susun) del valore di almeno USD 1.000.000.",
+        "note": "Solo strata-title completata — acquisti off-plan e leasehold non sono validi."
+      }
+    },
+    "who": {
+      "eyebrow": "Per chi è",
+      "title": "Tre percorsi, un solo soggiorno",
+      "base": {
+        "title": "E33 — Base (fino a 5 anni)",
+        "body": "Per individui e famiglie con solide disponibilità economiche. Primo rilascio fino a 5 anni, rinnovabile — fino a 10 anni di soggiorno cumulativo."
+      },
+      "e33e": {
+        "title": "E33E — Senior, 5 anni",
+        "body": "Età 55+. Deposito di USD 50.000 presso una banca statale più reddito di USD 3.000/mese. Validità cinque anni."
+      },
+      "e33f": {
+        "title": "E33F — Senior, 1 anno",
+        "body": "Età 55+. Solo reddito di USD 3.000/mese — nessun deposito. Validità un anno."
+      },
+      "family": {
+        "title": "Portare la famiglia",
+        "body": "È disponibile un add-on famiglia: i familiari idonei possono aggregarsi tramite i percorsi per dipendenti. Regole e costi aggiornati li confermiamo nel tuo fit memo."
+      },
+      "nowork": {
+        "title": "Nessun diritto al lavoro",
+        "body": "L'E33 è un permesso di soggiorno — non autorizza il lavoro in Indonesia. Il lavoro retribuito richiede un permesso di lavoro/KITAS separato."
+      },
+      "ageNote": "Soglia di età senior: operiamo su 55+ secondo il Permenkumham 11/2024 e le indicazioni ufficiali dell'imigrasi. Un articolo del regolamento riporta ancora 60 — per i 55–59 anni confermiamo l'idoneità caso per caso prima della presentazione."
+    },
+    "how": {
+      "eyebrow": "Come funziona",
+      "title": "Cosa fa Bali Zero",
+      "step1": {
+        "label": "Passo 1 — Gratuito",
+        "title": "Fit memo",
+        "body": "Scrivici su WhatsApp. Valutiamo quale percorso e quale track si adattano davvero alla tua situazione — gratis, senza impegno."
+      },
+      "step2": {
+        "label": "Passo 2",
+        "title": "Verifica delle prove",
+        "body": "Verifichiamo le prove del deposito o della proprietà rispetto a ciò che l'imigrasi richiede davvero — prima di presentare qualsiasi cosa."
+      },
+      "step3": {
+        "label": "Passo 3",
+        "title": "Presentazione",
+        "body": "Prepariamo e presentiamo la domanda, coordiniamo con l'imigrasi e la seguiamo fino al rilascio."
+      },
+      "priceLabel": "E33 base — tutto incluso",
+      "priceNote": "Una cifra sola, tutto compreso. Percorsi senior e add-on famiglia sono quotati nel tuo fit memo gratuito."
+    },
+    "duty": {
+      "eyebrow": "Dopo il rilascio",
+      "title": "L'obbligo di prova entro 90 giorni",
+      "body": "Una volta rilasciato il permesso, hai 90 giorni per dimostrare che l'impegno è reale: il deposito intestato a te, o la proprietà qualificante acquisita. Monitoriamo questa scadenza con te fin dal primo giorno, perché il permesso resti in regola."
+    },
+    "faq": {
+      "eyebrow": "Domande",
+      "title": "Domande frequenti",
+      "q1": "Cos'è il visto Second Home E33 per l'Indonesia?",
+      "a1": "Il visto Second Home E33 è un permesso di soggiorno a lungo termine per richiedenti con solide disponibilità economiche. Il primo rilascio dura fino a 5 anni ed è rinnovabile, con un limite cumulativo di 10 anni. È un puro permesso di soggiorno e non autorizza il lavoro in Indonesia.",
+      "q2": "Come ci si qualifica per il visto Second Home?",
+      "a2": "Due percorsi: un deposito di USD 130.000 intestato a te presso una banca statale indonesiana (BUMN), oppure una proprietà strata-title completata del valore di USD 1.000.000 (hak milik atas satuan rumah susun). Off-plan e leasehold non sono validi.",
+      "q3": "Posso lavorare in Indonesia con il visto Second Home?",
+      "a3": "No. L'E33 è solo un permesso di soggiorno — non autorizza il lavoro. Il lavoro retribuito in Indonesia richiede un permesso di lavoro/KITAS separato.",
+      "q4": "Esiste un'opzione senior per il visto Second Home?",
+      "a4": "Sì. L'E33E (55+, 5 anni) richiede un deposito di USD 50.000 presso una banca statale più un reddito di USD 3.000/mese. L'E33F (55+, 1 anno) richiede solo il reddito di USD 3.000/mese, senza deposito.",
+      "q5": "La mia famiglia può aggregarsi con il visto Second Home?",
+      "a5": "È disponibile un add-on famiglia — i familiari idonei possono aggregarsi tramite i percorsi per dipendenti. Regole e costi aggiornati vengono confermati individualmente nel fit memo gratuito.",
+      "q6": "Quanto costa il visto Second Home con Bali Zero?",
+      "a6": "IDR 39.000.000 tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
+    },
+    "cta": {
+      "title": "Inizia con un fit memo gratuito",
+      "body": "Raccontaci la tua situazione su WhatsApp. Ti rispondiamo con una valutazione onesta: quale percorso conviene, quali prove serviranno e il prezzo esatto per il tuo caso. Senza impegno.",
+      "button": "Richiedi il Fit Memo gratuito →",
+      "note": "Prima risposta su WhatsApp in genere entro 5 ore."
+    }
   }
 }

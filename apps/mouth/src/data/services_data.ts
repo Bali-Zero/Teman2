@@ -7,6 +7,9 @@ export interface ServicePackage {
   price: string;
   features: string[];
   popular: boolean;
+  /** Optional deep-link to a dedicated landing page (rendered in the
+   *  pricing modal below the WhatsApp CTA). */
+  link?: { href: string; label: string };
 }
 
 export interface ServiceData {
@@ -399,14 +402,18 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       // ═══════════════════════════════════════════════════════════
       {
         name: "E33 - Second Home Visa",
-        description: "Long-term residence (USD 130k+ deposit)",
-        price: "Contact",
+        description: "Long-term residence (USD 130k+ deposit) — all-inclusive",
+        price: "39.000.000",
         features: [
           "Up to 5 years initial validity",
           "No sponsor required",
           "Bring family members",
         ],
         popular: false,
+        link: {
+          href: "/visa/second-home",
+          label: "Second Home Visa guide — free fit memo",
+        },
       },
       {
         name: "E35A - Working Holiday",
