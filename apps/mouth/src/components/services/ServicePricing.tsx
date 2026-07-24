@@ -250,6 +250,16 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 Chat on WhatsApp
               </WhatsAppLeadButton>
 
+              {/* Optional deep-link to a dedicated landing page */}
+              {selectedPackage.link && (
+                <Link
+                  href={selectedPackage.link.href}
+                  className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors mb-3"
+                >
+                  {selectedPackage.link.label} →
+                </Link>
+              )}
+
               <Link
                 href="/chat"
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
