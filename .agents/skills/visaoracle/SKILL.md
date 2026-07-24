@@ -335,6 +335,21 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   30-priority-code pack; signing stays M5 (Track A), FASE 2 trees stay Mini (Track B).
   Next: rule authoring → sign → activate → arm SHADOW per
   `research/visa/2026-07-24-shadow-arming-runbook.md`. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~04:00 WITA): **W2 FIRST PACK SIGNED + ON MAIN.**
+  `#3092` (`c33c183ad8ea`, 12 fact-bases corpus) and `#3090` (`3c412c96b085`, first signed
+  PRODUCTION RulePack: **38 products / 110 rules / 28 sources**, `compile_pack` zero errors,
+  kid `prod-2026-07-1`, `payload_sha256 47a97c32…`, Fable gate SHIP with adversarial
+  counter-probe) both merged. Chain: 8 fact-bases (live primary sources 2026-07-24, 2
+  Gemini grade rounds with dispositions) → 2 authoring agents (A1 18p/47r, A2 20p/63r, zero
+  overlap) → assemble → compile → sign → verify. **Kid-pattern bug found+fixed at first
+  signing** (ceremony kids start with a digit, fail the engine's `IDENTIFIER_PATTERN`;
+  relabeled `test-2026-07-1`/`prod-2026-07-1` same key material; Fly trust store re-staged
+  digest `ab319439ecf92a0f`; errata in `docs/runbooks/visa-engine-key-ceremony.md`).
+  **Detect-secrets cure**: pack hashes audited in baseline + naming-scoped triage rule
+  (`contracts/packs/rulepack-*.json`). **Next: activation addendum
+  (`research/visa/2026-07-25-activation-addendum.md`)** — provision `visa_activation_executor`
+  (one-time, operator), build the small `activate_pack.py` ops tool, activate, then the 3
+  SHADOW secrets + smoke per the arming runbook. GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
