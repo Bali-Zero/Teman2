@@ -15,10 +15,10 @@ describe("DeadlineBadge", () => {
     expect(getByText(/overdue/i)).toBeTruthy();
   });
 
-  it("maps days-left to status color", () => {
+  it("maps days-left to a semantic state token", () => {
     const in2d = new Date(Date.now() + 2 * 86400_000);
     const { container } = render(<DeadlineBadge date={in2d} />);
     const fill = container.querySelector("circle[data-role='fill']");
-    expect(fill?.getAttribute("stroke")).toBe("var(--color-status-danger)");
+    expect(fill?.getAttribute("stroke")).toBe("var(--state-danger)");
   });
 });

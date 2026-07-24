@@ -14,7 +14,7 @@ Genes imprinted in the emitted artifacts:
   G4_node_guard      — hostname != assigned node -> heartbeat status=disabled + exit 0
                        (VISIBLE graceful exit — panel 2026-07-06: never a silent skip)
   G5_kill_switch     — <ID>_ENABLED=false honored, final heartbeat status=disabled
-  G6_spawn_hardened  — (--kind llm-cron) claude -p with the 4 headless gotchas cured:
+  G6_spawn_hardened  — (--kind llm-cron) Claude-only cascade with the 4 headless gotchas cured:
                        W84 ssh-localhost trampoline, --strict-mcp-config + empty MCP,
                        </dev/null stdin, wall-clock watchdog
   G7_ledger          — PENDING-ARMS line printed for .claude/skills/modus/PENDING-ARMS.md
@@ -137,16 +137,24 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
-# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
-# Pro: ~/.local/bin only — healer-pro first tick died exit=127 on a hardcoded
-# homebrew default). Env override wins; otherwise probe, then PATH.
-CLAUDE_BIN="${{{var}_CLAUDE_BIN:-}}"
-if [ -z "$CLAUDE_BIN" ]; then
-    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
-        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
-    done
+# The canonical cascade owns provider process groups. Its deadline stays two
+# minutes inside this wrapper watchdog so cleanup/reaping completes first.
+# Long organ turns keep a large attempt budget; dead seats fail fast.
+CLAUDE_CASCADE_DEADLINE_SEC="${{{var}_CLAUDE_CASCADE_DEADLINE_SEC:-$((MAX_WALL_S - 120))}}"
+CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="${{{var}_CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC:-$((CLAUDE_CASCADE_DEADLINE_SEC - 60))}}"
+if [ "$MAX_WALL_S" -le 180 ] \\
+    || [ "$CLAUDE_CASCADE_DEADLINE_SEC" -ge "$MAX_WALL_S" ] \\
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -le 0 ] \\
+    || [ "$CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC" -gt "$CLAUDE_CASCADE_DEADLINE_SEC" ]; then
+    echo "invalid organ/cascade timeout relationship" >&2
+    exit 2
 fi
-[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+export CLAUDE_CASCADE_DEADLINE_SEC CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC
+# Claude-specific organs retry every isolated OAuth seat through the canonical
+# cascade, but never cross to another provider because agent/tool contracts may
+# be Claude-only. Per-organ override wins; repo canon is the final fallback.
+CASCADE_BIN="${{{var}_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$REPO/infra/launchagents/wrappers/claude-cascade.sh"
 MODEL="${{{var}_MODEL:-claude-sonnet-5}}"
 
 if [ -z "${{{var}_TRAMPOLINED:-}}" ] && [ -z "${{SSH_CONNECTION:-}}" ]; then
@@ -164,27 +172,50 @@ fi
 cd "$REPO" || {{ heartbeat "error" "repo missing"; exit 1; }}
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
-if [ -z "${{CLAUDE_CODE_OAUTH_TOKEN:-}}" ] && [ -n "${{CLAUDE_CODE_OAUTH_TOKEN_1:-}}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+if [ -n "${{{var}_CLAUDE_BIN:-}}" ]; then
+    export CLAUDE_CASCADE_DEFAULT_BIN="${{{var}_CLAUDE_BIN}}"
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
-if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
-    log "FATAL: no claude binary (env {var}_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
-    heartbeat "error" "no claude binary"
+if [ ! -x "$CASCADE_BIN" ]; then
+    log "FATAL: canonical Claude cascade missing (env {var}_CLAUDE_CASCADE_BIN, ~/scripts, repo canon)"
+    heartbeat "error" "claude cascade missing"
     exit 1
 fi
-"$CLAUDE_BIN" -p "TODO: your standing mandate here" \\
-    --model "$MODEL" --dangerously-skip-permissions \\
-    --strict-mcp-config --mcp-config '{{"mcpServers":{{}}}}' \\
+"$CASCADE_BIN" "TODO: your standing mandate here" \\
+    --claude-only --model "$MODEL" -- \\
+    --dangerously-skip-permissions --strict-mcp-config \\
+    --mcp-config '{{"mcpServers":{{}}}}' \\
     --max-budget-usd "${{{var}_MAX_BUDGET_USD:-5}}" \\
     </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
-( sleep "$MAX_WALL_S"; kill -0 "$CPID" 2>/dev/null && kill "$CPID" && \\
-    echo "[$(ts)] WATCHDOG: killed after ${{MAX_WALL_S}}s" >> "$LOG" ) &
+# Keep the watchdog single-process so fast cascade returns cannot orphan sleep.
+python3 -c '
+import datetime
+import os
+import signal
+import sys
+import time
+
+child_pid = int(sys.argv[1])
+time.sleep(float(sys.argv[2]))
+try:
+    os.kill(child_pid, 0)
+except ProcessLookupError:
+    raise SystemExit(0)
+try:
+    os.kill(child_pid, signal.SIGTERM)
+except ProcessLookupError:
+    raise SystemExit(0)
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+with open(sys.argv[3], "a", encoding="utf-8") as handle:
+    handle.write("[%s] WATCHDOG: %s\\n" % (timestamp, sys.argv[4]))
+' "$CPID" "$MAX_WALL_S" "$LOG" \\
+    "killed after ${{MAX_WALL_S}}s" </dev/null >/dev/null 2>&1 &
 WPID=$!
 wait "$CPID"; RC=$?
-kill "$WPID" 2>/dev/null
+kill "$WPID" 2>/dev/null || true
+wait "$WPID" 2>/dev/null || true
 
 if [ $RC -eq 0 ]; then heartbeat "ok" "session done"; else heartbeat "error" "session exit=$RC"; fi
 log "done rc=$RC"

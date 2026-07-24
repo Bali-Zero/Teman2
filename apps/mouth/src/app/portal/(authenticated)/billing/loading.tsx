@@ -17,8 +17,8 @@ export default function BillingLoading() {
             key={i}
             className="rounded-xl border p-4 h-24 animate-pulse"
             style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           />
         ))}
@@ -29,8 +29,8 @@ export default function BillingLoading() {
             key={i}
             className="rounded-lg border p-4 h-20 animate-pulse"
             style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           />
         ))}

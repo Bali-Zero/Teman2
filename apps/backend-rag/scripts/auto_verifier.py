@@ -21,8 +21,10 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +33,41 @@ logger = logging.getLogger(__name__)
 
 CLAIM_ID_PATTERN = re.compile(r"\[([A-Z]{2,3}-\d{3})\]")
 MIN_VERIFIED_RATIO = 0.95
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    input: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if input is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
 @dataclass
@@ -83,59 +120,177 @@ REASON: <one sentence>"""
 
 
 _VERIFIER_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
     re.IGNORECASE,
 )
+_VERIFIER_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_VERIFIER_RATE_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:rate.?limit(?:ed| reached| exceeded)?|"
+    r"too many requests|(?:http(?: status)?\s*)?429(?:\b.*)?|"
+    r"(?:quota|usage limit|weekly limit|capacity)\s+"
+    r"(?:exhausted|exceeded|reached|unavailable)(?:\b.*)?|"
+    r"(?:you(?:'ve| have)\s+)?hit your limit(?:\b.*)?|"
+    r"out of extra usage(?:\b.*)?|service (?:is )?overloaded(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_VERIFIER_AUTH_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:401\s+unauthori[sz]ed(?:\b.*)?|"
+    r"unauthori[sz]ed(?:\b.*)?|authentication (?:failed|required|expired)(?:\b.*)?|"
+    r"auth required(?:\b.*)?|login required(?:\b.*)?|"
+    r"please (?:log in|login)(?:\b.*)?|not (?:logged in|authenticated)(?:\b.*)?|"
+    r"invalid[_ ](?:grant|token)(?:\b.*)?|token[_ ]revoked(?:\b.*)?|"
+    r"refresh_token(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
 _VERIFIER_EXHAUSTED: dict[str, str] = {}
+_OAUTH_SCRUB_KEYS = frozenset(
+    {
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "CLOUD_ML_REGION",
+        "GOOGLE_API_KEY",
+    }
+)
+_OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+
+
+def _verifier_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _verifier_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3, 4):
+    seen: set[str] = set()
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
+
+
+def _verifier_retry_reason(stdout: str, stderr: str) -> str | None:
+    """Classify account-local diagnostics without scanning valid stdout prose."""
+    if _VERIFIER_RATE_LIMIT_RE.search(stderr or ""):
+        return "rate_limit"
+    if _VERIFIER_AUTH_RE.search(stderr or ""):
+        return "auth"
+
+    stripped = (stdout or "").strip()
+    if not stripped:
+        return None
+    diagnostic = ""
+    try:
+        envelope = json.loads(stripped)
+    except json.JSONDecodeError:
+        envelope = None
+    if isinstance(envelope, dict) and (
+        envelope.get("is_error")
+        or envelope.get("type") == "error"
+        or (
+            envelope.get("type") == "result"
+            and envelope.get("subtype") not in (None, "success")
+        )
+    ):
+        diagnostic = " ".join(
+            str(envelope.get(key, ""))
+            for key in ("error", "message", "result", "subtype")
+        )
+        if _VERIFIER_RATE_LIMIT_RE.search(diagnostic):
+            return "rate_limit"
+        if _VERIFIER_AUTH_RE.search(diagnostic):
+            return "auth"
+        return None
+    if _VERIFIER_RATE_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "rate_limit"
+    if _VERIFIER_AUTH_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "auth"
+    return None
 
 
 def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
     """Verify a single claim via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
     prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
+    deadline = time.monotonic() + 60
+    chain = _verifier_token_chain()
 
-    for label, token in _verifier_token_chain():
+    for position, (label, token) in enumerate(chain):
         if label in _VERIFIER_EXHAUSTED:
             continue
 
-        env = os.environ.copy()
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
+        env = _verifier_oauth_env(token)
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--dangerously-skip-permissions",
                  "--max-budget-usd", "1"],
-                input=prompt, capture_output=True, text=True, timeout=60, env=env,
+                input=prompt,
+                timeout=attempt_timeout, env=env,
             )
         except subprocess.TimeoutExpired:
             _VERIFIER_EXHAUSTED[label] = "timeout"
             continue
 
-        combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _VERIFIER_RATE_LIMIT_RE.search(combined):
-            _VERIFIER_EXHAUSTED[label] = "rate_limit"
+        retry_reason = _verifier_retry_reason(result.stdout, result.stderr)
+        if retry_reason is not None:
+            _VERIFIER_EXHAUSTED[label] = retry_reason
             continue
+        if result.returncode != 0:
+            return ClaimVerificationResult(
+                claim_id=claim_id,
+                verdict="UNCERTAIN",
+                reason=f"Claude CLI failed via {label}",
+            )
 
-        text = result.stdout.strip() if result.returncode == 0 else ""
+        text = result.stdout.strip()
+        if not text:
+            _VERIFIER_EXHAUSTED[label] = "empty_output"
+            continue
         verdict, reason = "UNCERTAIN", text
         for line in text.split("\n"):
             if line.startswith("VERDICT:"):

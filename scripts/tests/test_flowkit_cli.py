@@ -73,6 +73,56 @@ async def test_health_surfaces_credit_auth_blocker(monkeypatch) -> None:
     assert "extension_connected alone is not enough" in result["next_action"]
 
 
+@pytest.mark.asyncio
+async def test_generate_image_timeout_is_one_overall_deadline(
+    monkeypatch, tmp_path
+) -> None:
+    async def slow_ensure_project(*_args, **_kwargs):
+        await flowkit_cli.asyncio.sleep(0.03)
+        return "project-1"
+
+    async def slow_request(*_args, **_kwargs):
+        await flowkit_cli.asyncio.sleep(0.03)
+        return {
+            "media": [
+                {
+                    "name": "media-1",
+                    "image": {
+                        "generatedImage": {
+                            "mediaId": "media-1",
+                            "fifeUrl": "https://example.invalid/hero.png",
+                        }
+                    },
+                }
+            ]
+        }
+
+    async def slow_download(*_args, **_kwargs):
+        await flowkit_cli.asyncio.sleep(0.03)
+        return tmp_path / "hero.png"
+
+    monkeypatch.setattr(flowkit_cli, "_ensure_project", slow_ensure_project)
+    monkeypatch.setattr(flowkit_cli, "_request_json", slow_request)
+    monkeypatch.setattr(flowkit_cli, "_download_url", slow_download)
+    args = Namespace(
+        base_url="http://127.0.0.1:8100",
+        timeout=0.05,
+        project_id="",
+        project="magazine",
+        material="editorial hero",
+        language="en",
+        prompt="bounded prompt",
+        orientation="LANDSCAPE",
+        paygate_tier="PAYGATE_TIER_TIER1P5",
+        dest=str(tmp_path / "hero.png"),
+    )
+
+    with pytest.raises(flowkit_cli.FlowKitBridgeError) as exc_info:
+        await flowkit_cli.action_generate_image(args)
+
+    assert exc_info.value.kind == "timeout"
+
+
 def test_parse_video_response_accepts_flow_workflows_media_shape() -> None:
     parsed = flowkit_cli._parse_video_response(
         {
