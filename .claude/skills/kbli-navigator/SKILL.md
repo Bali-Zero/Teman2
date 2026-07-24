@@ -181,7 +181,7 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
 - **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
-**PHANTOM CODES — a class no cure tool could reach (found + fixed 2026-07-24, PR in flight):**
+**PHANTOM CODES — a class no cure tool could reach (found + CURED + PROVEN-LIVE 2026-07-24, #3070/#3072/#3073):**
 
 `kbli_documents` is a strict SUPERSET of the canonical catalogue: **1,563 rows vs 1,559 codes**.
 The 4 extras are KBLI **2020** codes — `26120`, `60111`, `82920`, `85598` — carrying full 2020
@@ -237,10 +237,34 @@ canonical catalogue was trusted blind though "phantom" is _defined_ by it → `v
   **The Codex seat is 401 token-revoked** (not quota) — needs an interactive `codex login`,
   `operator[GUI]`.
 
-**STILL PENDING (both arms are dry-run-verified against prod, NOT yet applied):** the script is not
-in the Fly image until this PR merges + deploys. Then, per arm:
-`fly ssh console -a nuzantara-rag -C "python backend/scripts/kbli_documents_phantom_cure.py --only 26120,60111,82920,85598 --dataset <raw-URL-pinned-to-SHA> --apply"`
-(and again with `--kg`), each dry-run first, then PROVE-LIVE on `chat_kbli` AND `inspect_kbli`.
+**APPLIED + PROVEN-LIVE on every consuming surface (2026-07-24, Fly v3910→v3912).** Both arms ran
+on prod (dataset pinned to SHA `e6deb07a25`, never `main` — the script refuses `--apply` against the
+unpinned URL). Independently re-verified by reading the DB with the read-only role, NOT the tool's
+own report:
+
+- `kbli_documents`: 4 rows → 0 licensing rows, `licensing_status: NOT_IN_KBLI_2025`,
+  `pma_status: Verify at OSS`, `_data_note` + `*_superseded_kbli2020` archive present, the false
+  `kode_kbli_2025` key removed.
+- KG: **0 REQUIRES edges** left on the 4 nodes, 53 archived (19/2/27/5 — exact match to pre-cure),
+  nodes marked `NOT_IN_KBLI_2025`.
+- `chat_kbli`: answers "82920 is an obsolete KBLI 2020 code … you cannot use it on OSS today",
+  lists the 2025 successors, refuses to guess risk tiers. ✅
+- `inspect_kbli`: all 4 return `licenses: []`, `risk_profile: "Not classified"`,
+  `licensing_status: NOT_IN_KBLI_2025`, `pma_status: Verify at OSS` — the plantation-contaminated
+  packaging payload is gone. ✅
+
+**Cache trap paid for here (now a tracked tool — `backend/scripts/kbli_inspect_cache_bust.py`,
+#3072 + fail-loud fix #3073):** `inspect_kbli` caches the whole `KBLIDetail` under
+`kbli_inspect_v2_{code}` with a **30-day** TTL (`get_kbli_ttl`), on Redis (survives restart). Two
+gemini traps, both catalogued in memory `lesson_inspect_kbli_cache_poison_and_bust_redis_init_2026_07_24`:
+(1) INSPECTING a cached surface BEFORE curing it poisons its entry for the TTL — my pre-cure
+diagnostic call is why `inspect_kbli` 82920 kept lying after the DB was clean; (2) a one-shot
+eviction tool that does NOT call `RedisManager.get_instance().initialize()` degrades to an empty
+per-process in-memory LRU and reports a FALSE CLEAN ("0/4 had a cache entry" while Redis held them).
+The tool now inits RedisManager, logs `cache backend: shared Redis`, and exits non-zero if REDIS_URL
+is configured but unreachable. **RULE for every future KBLI cure on a cached surface: cure the store
+→ `kbli_inspect_cache_bust.py --only <codes> --apply` → re-verify the surface. Curing the store is
+not curing the surface.**
 
 **Surfaces 4-6 + capital doctrine + Batch-B (M5 conductor-verified 2026-07-19):**
 
