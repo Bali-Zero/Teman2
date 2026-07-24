@@ -26,6 +26,13 @@ It must never store account numbers, balances, amounts, IBANs or any other
 financial-instrument detail — ``EvidenceRef`` has no such fields by design
 and its free-form ``metadata`` dict is rejected by
 :func:`validate_evidence_metadata` if custody-flavoured keys appear.
+
+Validated boundary (explicit scope decision): the no-custody guard validates
+evidence metadata KEYS only. ``document_ref``, ``note`` and metadata VALUES
+are free-text by design and are NOT content-scanned — keeping custody data
+out of those free-text fields is a CRM/UI-layer responsibility (input forms
+must not offer amount/account fields). A unit test pins this boundary so it
+is read as a documented decision, not a gap.
 PII is kept minimal per UU PDP: a case links to the CRM client by id only;
 names/passports stay in the CRM client record.
 
@@ -263,6 +270,11 @@ def validate_evidence_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     references, dates and confirmations may be stored. Matching is
     substring-based on the normalized key so compound keys such as
     ``account_balance`` or ``deposit_amount`` are caught too.
+
+    Scope: metadata KEYS only. Values, ``document_ref`` and ``note`` are
+    free-text and NOT scanned (see module docstring — validated boundary);
+    keeping custody data out of free-text fields is a CRM/UI-layer
+    responsibility.
     """
     for key in metadata:
         norm_key = _normalize_key(str(key))

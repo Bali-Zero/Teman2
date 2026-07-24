@@ -8,16 +8,21 @@ are deterministic.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.services.compliance.alerts_engine import _DOCTYPE_TO_CATEGORY
+from backend.services.compliance.alerts_engine import _DOCTYPE_TO_CATEGORY, AlertsEngine
 from backend.services.compliance.renewal_rules import match_rule
 from backend.services.compliance.templates_i18n import (
     TEMPLATE_REGISTRY,
     render_template,
 )
-from backend.services.crm.e33_case_repository import case_to_row, row_to_case
+from backend.services.crm.e33_case_repository import (
+    E33CaseRepository,
+    case_to_row,
+    row_to_case,
+)
 from backend.services.crm.e33_lifecycle import (
     DEFAULT_DEPENDENT_CODES,
     DOCTYPE_GUARANTEE,
@@ -459,3 +464,131 @@ class TestRepositorySerialization:
         assert restored.evidence[0].kind == EvidenceKind.BANK_CONFIRMATION
         assert restored.dependents[0].code == "E31B"
         assert restored.stayguard_eligible is True
+
+
+# ── No-custody boundary pinning (documented scope decision) ──────────────────
+
+
+class TestNoCustodyBoundary:
+    def test_document_ref_is_not_content_scanned(self):
+        """Pin the documented boundary: the guard validates metadata KEYS only.
+
+        document_ref is free-text and NOT scanned — keeping custody data out
+        of free-text fields is a CRM/UI-layer responsibility (see module
+        docstring). This test exists so the boundary is read as a decision,
+        not mistaken for a gap.
+        """
+        ev = EvidenceRef(
+            evidence_id="ev_boundary",
+            kind=EvidenceKind.BANK_CONFIRMATION,
+            document_ref="free text mentioning account_number and balance",
+        )
+        assert "account_number" in ev.document_ref  # accepted by design
+
+
+# ── AlertsEngine integration (stubbed persistence, no DB) ────────────────────
+
+
+class _StubAlertRepo:
+    """In-memory AlertRepository stand-in (find/insert/promote only)."""
+
+    def __init__(self) -> None:
+        self.rows: dict[str, object] = {}
+
+    async def find_active_by_dedup_key(self, dedup_key: str):
+        return self.rows.get(dedup_key)
+
+    async def insert(self, row):
+        self.rows[row.dedup_key] = row
+        return row
+
+    async def promote(self, alert_id: str, *, new_severity: str, new_days_until: int):
+        row = next(r for r in self.rows.values() if r.alert_id == alert_id)
+        row.severity = new_severity
+        row.days_until = new_days_until
+        return row
+
+
+def _engine_with_stub_repo() -> tuple[AlertsEngine, _StubAlertRepo, AsyncMock]:
+    pricing = MagicMock()
+    pricing.get_price = MagicMock(return_value=None)
+    dispatcher = AsyncMock()
+    dispatcher.dispatch = AsyncMock(return_value=True)
+    engine = AlertsEngine(MagicMock(), pricing=pricing, dispatcher=dispatcher)
+    stub = _StubAlertRepo()
+    engine._repo = stub
+    return engine, stub, dispatcher
+
+
+class TestAlertsEngineIntegration:
+    @pytest.mark.asyncio
+    async def test_case_forecast_produces_guarantee_proof_alert(self):
+        case = _case(stage=E33Stage.ITAS_ACTIVE, itas_date=date(2026, 8, 15))
+        forecasts = case.build_case_forecasts(today=date(2026, 9, 14))  # Day 30
+        engine, _stub, dispatcher = _engine_with_stub_repo()
+
+        alerts = await engine.generate_alerts(forecasts)
+
+        assert len(alerts) == 1
+        alert = alerts[0]
+        assert alert.category == "guarantee_proof"
+        assert alert.severity == "warning"  # 60 days until deadline
+        assert alert.compliance_item_ref == RULE_ID_GUARANTEE_PROOF
+        assert "60 days" in alert.message_en
+        dispatcher.dispatch.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_dedup_and_severity_promotion_across_milestones(self):
+        case = _case(stage=E33Stage.ITAS_ACTIVE, itas_date=date(2026, 8, 15))
+        engine, _stub, dispatcher = _engine_with_stub_repo()
+
+        day30 = await engine.generate_alerts(case.build_case_forecasts(today=date(2026, 9, 14)))
+        dispatcher.reset_mock()
+
+        # Same milestone again → dedup: existing alert, no re-dispatch.
+        again = await engine.generate_alerts(case.build_case_forecasts(today=date(2026, 9, 14)))
+        assert again[0].alert_id == day30[0].alert_id
+        dispatcher.dispatch.assert_not_awaited()
+
+        # Day 60 (30 left, urgent) → severity promotion on the same dedup key.
+        promoted = await engine.generate_alerts(case.build_case_forecasts(today=date(2026, 10, 14)))
+        assert promoted[0].alert_id == day30[0].alert_id
+        assert promoted[0].severity == "urgent"
+        dispatcher.dispatch.assert_awaited_once()
+
+
+# ── Repository through with_connection (stubbed connection, no DB) ────────────
+
+
+class TestRepositoryWithConnection:
+    @pytest.mark.asyncio
+    async def test_insert_binds_case_columns(self):
+        conn = AsyncMock()
+        repo = E33CaseRepository.with_connection(conn)
+        case = _walk_to_annual_maintenance(_case())
+
+        await repo.insert(case)
+
+        conn.execute.assert_awaited_once()
+        bind_args = conn.execute.await_args.args
+        assert bind_args[1] == case.case_id  # first bind param after the SQL
+        assert bind_args[2] == case.client_id
+        assert bind_args[4] == case.basis.value
+
+    @pytest.mark.asyncio
+    async def test_load_round_trip_via_stubbed_connection(self):
+        conn = AsyncMock()
+        repo = E33CaseRepository.with_connection(conn)
+        case = _walk_to_annual_maintenance(_case())
+        for ev in _filed_guarantee_evidence():
+            case.add_evidence(ev)
+        conn.fetchrow = AsyncMock(return_value=case_to_row(case))
+
+        loaded = await repo.load(case.case_id)
+
+        assert loaded is not None
+        assert loaded.case_id == case.case_id
+        assert loaded.stage == case.stage
+        assert loaded.guarantee_deadline == case.guarantee_deadline
+        assert loaded.stayguard_eligible is True
+        assert len(loaded.evidence) == 2

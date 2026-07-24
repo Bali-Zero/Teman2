@@ -274,6 +274,11 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         notes="Annual permit for foreign workers. Usually bundled with Working KITAS renewal.",
     ),
     # ── E33 Second Home (5y permit — guarantee must be maintained) ───────
+    # TODO(senior variants): E33E/E33F senior renewals (income-based, NO
+    # deposit guarantee) also match the "e33"/"second home" patterns below
+    # and would incorrectly inherit the deposit-oriented required_docs.
+    # Add a senior-specific rule (pension/income proof docs) BEFORE E33E/E33F
+    # renewals are sold, and place it earlier in RULE_PRIORITY_ORDER.
     "e33_second_home_renewal": RenewalRule(
         rule_id="e33_second_home_renewal",
         document_types=("visa", "kitas"),
