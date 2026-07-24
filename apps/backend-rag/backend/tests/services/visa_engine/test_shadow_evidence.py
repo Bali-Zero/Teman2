@@ -890,10 +890,14 @@ def test_migration_257_carries_rollback_marker_and_correct_value_sets() -> None:
         "diaspora",
     ):
         assert f"'{value}'" in forward
-    # Rollback restores migration 255's exact 8-value CHECK: the two new
-    # values must NOT survive it.
-    assert "'business'" not in rollback
-    assert "'diaspora'" not in rollback
+    # The restored CHECK is migration 255's exact 8-value one: the two new
+    # values must not appear in it.  (They DO appear earlier in the rollback
+    # — the relabel-first UPDATE that downgrades live new-category rows to
+    # 'other' before the CHECK is restored, which is what makes the rollback
+    # succeed at all — so assert on the ADD CONSTRAINT tail only.)
+    restored_check = rollback.rsplit("ADD CONSTRAINT", 1)[-1]
+    assert "'business'" not in restored_check
+    assert "'diaspora'" not in restored_check
     for value in (
         "work_remote",
         "investor",
@@ -904,7 +908,7 @@ def test_migration_257_carries_rollback_marker_and_correct_value_sets() -> None:
         "student",
         "other",
     ):
-        assert f"'{value}'" in rollback
+        assert f"'{value}'" in restored_check
 
 
 @pytest.mark.integration
@@ -1080,3 +1084,56 @@ async def test_collect_reads_match_and_recommend_surfaces_only(
     assert report["traffic_source"]["total_audit_rows"] == 2
     assert report["surfaces"] == {"MATCH": 1, "RECOMMEND": 1}
     assert report["skipped_non_evidence_surfaces"] == 0
+
+
+@pytest.mark.integration
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_migration_257_rollback_relabels_new_categories_and_restores_check(
+    db_pool: asyncpg.Pool, shadow_evidence_schema: None
+) -> None:
+    """The rollback must SUCCEED even with 'business'/'diaspora' rows live
+    (the re-added 8-value CHECK re-validates every row): it relabels those
+    rows to 'other' BEFORE restoring the constraint — a lossy but honest
+    downgrade — and never touches legacy-category rows."""
+    _, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
+    start = datetime(2026, 7, 23, tzinfo=timezone.utc)
+    async with db_pool.acquire() as conn:
+        for seed, category in (
+            ("biz", "business"),
+            ("diaspora", "diaspora"),
+            ("legacy", "student"),
+        ):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed=seed,
+                request_category=category,
+            )
+
+        # The rollback itself must not fail on the live new-category rows...
+        await conn.execute(rollback_257)
+
+        # ...both new-category rows are relabeled to 'other'; the legacy one
+        # is untouched.
+        rows = await conn.fetch(
+            "SELECT request_category, count(*) AS n FROM public.visa_decisions GROUP BY 1"
+        )
+        counts = {row["request_category"]: row["n"] for row in rows}
+        assert counts == {"other": 2, "student": 1}
+
+        # ...and the restored CHECK is the 8-value one again.
+        with pytest.raises(asyncpg.exceptions.CheckViolationError):
+            await _insert_unavailable_audit_row(
+                conn,
+                environment="TEST",
+                evaluated_at=start,
+                fingerprint_seed="post-rollback-biz",
+                request_category="business",
+            )
+
+        # ...and migration 252's append-only guard is re-armed: the relabel
+        # was a one-shot DDL suspension, never a lasting weakening.
+        with pytest.raises(asyncpg.exceptions.RaiseError):
+            await conn.execute("UPDATE public.visa_decisions SET engine_version = 'tamper'")
