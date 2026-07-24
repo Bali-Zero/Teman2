@@ -320,6 +320,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
 file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
+- 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
+  "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
+  #3038, #3046 (mig 256), #3028 (corpus), #3060 (mig 257, owner-merged), #3061 (**evaluate
+  read-path API live on Fly** — prod smoke: strict no-echo validation, fail-closed
+  TEMP/`CURATED`, 0 rows), #3034 (G-b metamorphic+replay), #3079 (runbook+reports). Gemini
+  adversarial pass on W1b caught 5 real findings (chunked-OOM, rollback rows, synthetic
+  abuse, param echo, blind hint) — all cured and Opus-verified SOLID pre-merge; Opus is the
+  delegated merger (Zero: "io non faccio review"); codex CLI still dead; Opus seat caps
+  ~4-5h cadence; prettier-3.8.4-vs-main skew and docsync/inventory date-drift are the two
+  recurring repo-wide friction points (both flagged for infra). **W2 RulePack factory
+  started**: 4 research lanes in flight (E28+ BVK via Gemini/agy; E33 + Bridging via house
+  seats) producing per-code fact-bases (`research/visa/2026-07-24-w2-factbase-*.md`) for the
+  30-priority-code pack; signing stays M5 (Track A), FASE 2 trees stay Mini (Track B).
+  Next: rule authoring → sign → activate → arm SHADOW per
+  `research/visa/2026-07-24-shadow-arming-runbook.md`. GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
