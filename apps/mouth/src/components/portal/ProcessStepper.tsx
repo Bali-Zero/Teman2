@@ -20,32 +20,41 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
 
         return (
           <div key={`${step.status}-${index}`} className="flex gap-3">
-            {/* Vertical line + dot */}
+            {/* Vertical line + dot — WS3 slice 4 (Day Edition): state colors
+                read --state-* (WS2 operative-light AA overrides); neutral
+                surfaces read --glass-rim (was rgba(255,255,255,0.05),
+                invisible on paper). */}
             <div className="flex flex-col items-center">
               {step.completed ? (
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(16,185,129,0.15)" }}
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--state-success) 15%, transparent)",
+                  }}
                 >
                   <CheckCircle
                     className="w-4 h-4"
-                    style={{ color: "#34d399" }}
+                    style={{ color: "var(--state-success)" }}
                   />
                 </div>
               ) : step.is_current ? (
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse"
-                  style={{ background: "rgba(59,130,246,0.15)" }}
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--state-info) 15%, transparent)",
+                  }}
                 >
                   <Loader
                     className="w-4 h-4 animate-spin"
-                    style={{ color: "#60a5fa" }}
+                    style={{ color: "var(--state-info)" }}
                   />
                 </div>
               ) : (
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
+                  style={{ background: "var(--glass-rim)" }}
                 >
                   <Circle
                     className="w-3 h-3"
@@ -58,8 +67,8 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
                   className="w-0.5 flex-1 min-h-[24px]"
                   style={{
                     background: step.completed
-                      ? "rgba(16,185,129,0.3)"
-                      : "rgba(255,255,255,0.05)",
+                      ? "color-mix(in srgb, var(--state-success) 30%, transparent)"
+                      : "var(--glass-rim)",
                   }}
                 />
               )}
@@ -70,11 +79,11 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
               <p
                 className={cn(
                   "text-sm font-medium",
-                  step.is_current && "text-blue-400",
+                  step.is_current && "text-[var(--state-info)]",
                   step.completed && "text-[var(--bz-text-1)]",
                   !step.completed &&
                     !step.is_current &&
-                    "text-[var(--bz-text-3)]",
+                    "text-[var(--text-tertiary,var(--bz-text-3))]",
                 )}
               >
                 {step.label}
@@ -82,7 +91,7 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
               {step.changed_at && (
                 <p
                   className="text-xs mt-0.5"
-                  style={{ color: "var(--bz-text-3)" }}
+                  style={{ color: "var(--text-tertiary, var(--bz-text-3))" }}
                 >
                   {new Date(step.changed_at).toLocaleDateString("en-US", {
                     month: "short",

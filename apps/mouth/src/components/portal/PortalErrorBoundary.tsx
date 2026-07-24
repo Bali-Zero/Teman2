@@ -170,12 +170,14 @@ export function withPortalErrorBoundary<P extends object>(
   };
 }
 
-// Uses portal design tokens (rgba(30,30,35,0.7) glass + var(--bz-border)) so
-// skeletons match the actual card surface instead of reading as a different
-// shade of gray. Every page had its own hand-rolled skeleton before this.
+// Uses portal design tokens (--bz-card + --bz-border) so skeletons match the
+// actual card surface in BOTH themes — the previous rgba(30,30,35,0.7) glass
+// + white hairline read as a dark island on operative-light paper (WS3,
+// GARUDA Day Edition 2026-07-24). Every page had its own hand-rolled
+// skeleton before this.
 const PORTAL_SKELETON_CARD: React.CSSProperties = {
-  background: "rgba(30,30,35,0.7)",
-  borderColor: "rgba(255,255,255,0.05)",
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
   backdropFilter: "blur(24px)",
 };
 
