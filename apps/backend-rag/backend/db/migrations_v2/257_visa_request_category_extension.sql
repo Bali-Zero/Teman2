@@ -55,9 +55,47 @@ ALTER TABLE public.visa_decisions
 -- request_category column to exist (migration 255 applied) -- the fixture
 -- chain guarantees ordering (257's rollback always runs BEFORE 255's, which
 -- is what drops the column).
+--
+-- RELABEL-FIRST (Gemini adversarial pass, 2026-07-24, adjudicated HIGH):
+-- re-adding the 8-value CHECK re-VALIDATES every surviving row, so any
+-- 'business'/'diaspora' row written while 257 was live would make a bare
+-- rollback FAIL with a CheckViolation.  The guarded UPDATE below relabels
+-- those rows to 'other' BEFORE the constraint is restored -- a lossy but
+-- honest downgrade (the category information is genuinely being retracted
+-- by the rollback; silently failing the rollback instead would trap the
+-- database in a state no forward migration expects).  Guarded on the
+-- column's existence via information_schema so the defensive no-op path
+-- (fresh database, or 255 not yet applied) stays a no-op.
+--
+-- The relabel requires suspending migration 252's
+-- ``visa_decisions_immutable`` trigger (blanket append-only on
+-- UPDATE/DELETE) for the duration of this script: the append-only guard
+-- exists against APPLICATION mutation of the audit log, while this
+-- relabel is exactly the DDL-level operator action a rollback IS.
+-- DISABLE and ENABLE happen inside the same script, so the runner's
+-- per-migration transaction re-arms the trigger on success and rolls the
+-- DISABLE back on any failure -- the guard can never be left off.
+
+ALTER TABLE IF EXISTS public.visa_decisions
+    DISABLE TRIGGER visa_decisions_immutable;
 
 ALTER TABLE IF EXISTS public.visa_decisions
     DROP CONSTRAINT IF EXISTS visa_decisions_request_category_check;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'visa_decisions'
+          AND column_name = 'request_category'
+    ) THEN
+        UPDATE public.visa_decisions
+            SET request_category = 'other'
+            WHERE request_category IN ('business', 'diaspora');
+    END IF;
+END $$;
 
 ALTER TABLE IF EXISTS public.visa_decisions
     ADD CONSTRAINT visa_decisions_request_category_check
@@ -74,3 +112,6 @@ ALTER TABLE IF EXISTS public.visa_decisions
                 'other'
             )
         );
+
+ALTER TABLE IF EXISTS public.visa_decisions
+    ENABLE TRIGGER visa_decisions_immutable;
