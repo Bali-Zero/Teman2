@@ -528,7 +528,7 @@ class KGEnhancedRetrieval:
             key_conditions=[
                 "Investor KITAS requires active PT PMA with IMTA approval",
                 "Retirement KITAS: minimum age 55, proof of income/pension",
-                "Second Home Visa: show USD 130,000 in bank account",
+                "Second Home Visa: USD 130,000 deposit in own name at a state-owned (BUMN) Indonesian bank, or USD 1,000,000 qualifying property",
                 "KITAP available after 3 years continuous KITAS (good behavior)",
                 "Must report to immigration every 90 days (STM)",
                 "Cannot work on Retirement KITAS - investment only",

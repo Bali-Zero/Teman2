@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * Portal LKPM (list) — quarterly investment activity reports.
+ *
+ * WS3 slice 5 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slice 3 (billing, PR #3055) and slice 4 (process, PR #3056).
+ * Masthead = copper rule + Cormorant serif (--font-serif) in --tx-pure;
+ * surfaces read --bz-elevated / --bz-card / --bz-border; deadline/OSS status
+ * colors read the semantic --state-* tokens (WS2 operative-light AA
+ * overrides: success 4.80 / warning 4.78 / danger 5.74 :1 on paper) via
+ * color-mix tints; copper small text reads --bz-copper-text
+ * (--tx-secondary fallback). No hardcoded hexes. Scope: list page only
+ * (lkpm/submit and lkpm/[quarter] are out of this slice).
+ */
+
 import React, { useEffect, useState } from "react";
 import {
   Loader2,
@@ -20,6 +34,53 @@ import type {
   LKPMReceipt,
 } from "@/lib/api/portal/portal.types";
 import { formatIDR } from "@balizero/core/utils";
+
+// Day card surface (GARUDA Day concept .panel): white card on warm paper,
+// hairline warm border, soft navy shadow (near-invisible on dark).
+const PORTAL_CARD_STYLE = {
+  background: "var(--bz-elevated)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+} as const;
+
+/** Deadline panel: 8% tint bg + 30% tint border of the state token. */
+function tonePanelStyle(token: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, var(${token}) 8%, transparent)`,
+    borderColor: `color-mix(in srgb, var(${token}) 30%, transparent)`,
+  };
+}
+
+/** Urgency → semantic state token (honest day mapping, slice-5 brief). */
+function deadlineToken(days: number): string {
+  return days <= 7
+    ? "--state-danger"
+    : days <= 30
+      ? "--state-warning"
+      : "--state-success";
+}
+
+// Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
+// per concept (--font-serif, wired on <html>); Inter everywhere else.
+function LkpmMasthead() {
+  return (
+    <div>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        LKPM Reports
+      </h1>
+      <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        Quarterly investment activity reports
+      </p>
+    </div>
+  );
+}
 
 export default function LKPMPage() {
   const { error } = useToast();
@@ -86,8 +147,8 @@ export default function LKPMPage() {
         <div
           className="rounded-xl border p-6 space-y-3 animate-pulse"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div
@@ -103,8 +164,8 @@ export default function LKPMPage() {
         <div
           className="rounded-xl border p-6 space-y-4 animate-pulse"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div
@@ -115,7 +176,7 @@ export default function LKPMPage() {
             <div
               key={i}
               className="rounded-lg border p-4 flex items-center justify-between"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
+              style={{ borderColor: "var(--bz-border)" }}
             >
               <div className="space-y-1.5">
                 <div
@@ -144,15 +205,10 @@ export default function LKPMPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <section className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">LKPM Reports</h1>
-          <p style={{ color: "var(--bz-text-2)" }}>
-            Quarterly investment activity reports
-          </p>
-        </div>
+        <LkpmMasthead />
         <Link
           href="/portal/lkpm/submit"
-          className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 shrink-0"
           style={{ background: "var(--bz-accent-warm)" }}
         >
           <FileText className="w-4 h-4" />
@@ -162,50 +218,23 @@ export default function LKPMPage() {
 
       {/* Deadline Card */}
       {nextDeadline && (
-        <section
-          className="rounded-xl border p-6"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
-        >
+        <section className="rounded-xl border p-6" style={PORTAL_CARD_STYLE}>
           <div className="flex items-center gap-2 mb-4">
             <Calendar
               className="w-5 h-5"
-              style={{ color: "var(--bz-accent-warm)" }}
+              style={{ color: "var(--bz-copper)" }}
             />
             <h2 className="text-lg font-semibold">Next Deadline</h2>
           </div>
 
           <div
             className="p-4 rounded-lg flex items-center gap-3 border"
-            style={
-              nextDeadline.days_remaining <= 7
-                ? {
-                    background: "rgba(239,68,68,0.08)",
-                    borderColor: "rgba(239,68,68,0.3)",
-                  }
-                : nextDeadline.days_remaining <= 30
-                  ? {
-                      background: "rgba(245,158,11,0.08)",
-                      borderColor: "rgba(245,158,11,0.3)",
-                    }
-                  : {
-                      background: "rgba(16,185,129,0.06)",
-                      borderColor: "rgba(16,185,129,0.25)",
-                    }
-            }
+            style={tonePanelStyle(deadlineToken(nextDeadline.days_remaining))}
           >
             <Calendar
               className="w-5 h-5"
               style={{
-                color:
-                  nextDeadline.days_remaining <= 7
-                    ? "#f87171"
-                    : nextDeadline.days_remaining <= 30
-                      ? "#fbbf24"
-                      : "#34d399",
+                color: `var(${deadlineToken(nextDeadline.days_remaining)})`,
               }}
             />
             <div className="flex-1">
@@ -229,17 +258,10 @@ export default function LKPMPage() {
       {/* Report History */}
       <section
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
+        style={PORTAL_CARD_STYLE}
       >
         <div className="flex items-center gap-2">
-          <Clock
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <Clock className="w-5 h-5" style={{ color: "var(--bz-copper)" }} />
           <h2 className="text-lg font-semibold">Report History</h2>
         </div>
 
@@ -268,11 +290,14 @@ export default function LKPMPage() {
       <section
         className="rounded-lg border p-4"
         style={{
-          background: "rgba(201,169,110,0.06)",
-          borderColor: "rgba(201,169,110,0.3)",
+          background: "color-mix(in srgb, var(--bz-copper) 8%, transparent)",
+          borderColor: "color-mix(in srgb, var(--bz-copper) 30%, transparent)",
         }}
       >
-        <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
+        <p
+          className="text-sm"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
+        >
           LKPM reports must be submitted quarterly to OSS. Contact your account
           manager for assistance.
         </p>
@@ -309,18 +334,11 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
   return (
     <section
       className="rounded-xl border p-6 space-y-4"
-      style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(24px)",
-      }}
+      style={PORTAL_CARD_STYLE}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <FileText className="w-5 h-5" style={{ color: "var(--bz-copper)" }} />
           <h2 className="text-lg font-semibold">OSS Tanda Terima</h2>
         </div>
         <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
@@ -328,7 +346,9 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
           {totalApproved > 0 && (
             <>
               {" · "}
-              <span style={{ color: "#34d399" }}>{totalApproved} approved</span>
+              <span style={{ color: "var(--state-success)" }}>
+                {totalApproved} approved
+              </span>
             </>
           )}
         </p>
@@ -352,7 +372,7 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
             <div key={period} className="space-y-3">
               <p
                 className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--bz-accent-warm)" }}
+                style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
               >
                 {period}
               </p>
@@ -366,12 +386,12 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                   </p>
                   <div
                     className="rounded-lg border overflow-hidden"
-                    style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                    style={{ borderColor: "var(--bz-border)" }}
                   >
                     <table className="w-full text-xs">
                       <thead
                         style={{
-                          background: "rgba(255,255,255,0.03)",
+                          background: "var(--glass-rim)",
                           color: "var(--bz-text-2)",
                         }}
                       >
@@ -404,7 +424,7 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                               key={r.id}
                               className="border-t"
                               style={{
-                                borderColor: "rgba(255,255,255,0.05)",
+                                borderColor: "var(--bz-border)",
                               }}
                             >
                               <td
@@ -429,7 +449,9 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                               <td className="px-3 py-2">
                                 <span
                                   style={{
-                                    color: approved ? "#34d399" : "#fbbf24",
+                                    color: approved
+                                      ? "var(--state-success)"
+                                      : "var(--state-warning)",
                                   }}
                                 >
                                   {r.oss_status ?? "—"}
@@ -449,7 +471,8 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
-                                      color: "var(--bz-accent-warm)",
+                                      color:
+                                        "var(--bz-copper-text, var(--tx-secondary))",
                                     }}
                                     className="hover:underline"
                                   >
@@ -484,16 +507,17 @@ function ReportCard({
   report: LKPMDraftSummary;
   formatIDR: (amount: number) => string;
 }) {
-  // 3-state indicator
+  // 3-state indicator — state colors read the semantic --state-* tokens
+  // (WS2 operative-light AA overrides) instead of neon hexes.
   const isGreen = report.oss_submitted === true;
   const isOrange = report.status === "validated" && !report.client_approved;
   // Gray = everything else (draft, approved without OSS, etc.)
 
   const accentBorder = isGreen
-    ? "rgba(16,185,129,0.4)"
+    ? "color-mix(in srgb, var(--state-success) 40%, transparent)"
     : isOrange
-      ? "rgba(245,158,11,0.4)"
-      : "rgba(255,255,255,0.05)";
+      ? "color-mix(in srgb, var(--state-warning) 40%, transparent)"
+      : "var(--bz-border)";
 
   const statusLabel = isGreen
     ? "Sudah dilapor ke OSS"
@@ -504,9 +528,9 @@ function ReportCard({
   const StatusIcon = isGreen ? CheckCircle : isOrange ? AlertTriangle : Clock;
 
   const statusColor = isGreen
-    ? "#34d399"
+    ? "var(--state-success)"
     : isOrange
-      ? "#fbbf24"
+      ? "var(--state-warning)"
       : "var(--bz-text-2)";
 
   // Deadline formatting helper
@@ -526,18 +550,18 @@ function ReportCard({
 
   const daysColor =
     report.days_to_deadline != null && report.days_to_deadline <= 3
-      ? "#f87171"
+      ? "var(--state-danger)"
       : report.days_to_deadline != null && report.days_to_deadline <= 7
-        ? "#fbbf24"
-        : "#34d399";
+        ? "var(--state-warning)"
+        : "var(--state-success)";
 
   const cardContent = (
     <div
-      className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-accent-warm)]"
+      className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-copper)]"
       style={{
-        background: "rgba(30,30,35,0.7)",
+        background: "var(--bz-card)",
         borderColor: accentBorder,
-        backdropFilter: "blur(24px)",
+        boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
       }}
     >
       <div className="flex items-center justify-between mb-2">

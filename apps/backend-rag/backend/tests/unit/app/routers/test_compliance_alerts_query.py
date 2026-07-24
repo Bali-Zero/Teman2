@@ -48,6 +48,7 @@ async def test_active_only_filters_and_orders_before_limit() -> None:
         category=None,
         severity=None,
         status_filter=None,
+        deadline_within_days=None,
         active_only=True,
         limit=6,
         offset=0,
@@ -72,6 +73,7 @@ async def test_active_only_preserves_team_scope_and_parameter_indexes() -> None:
         category=None,
         severity=None,
         status_filter=None,
+        deadline_within_days=None,
         active_only=True,
         limit=6,
         offset=0,
@@ -80,7 +82,7 @@ async def test_active_only_preserves_team_scope_and_parameter_indexes() -> None:
     )
 
     query = " ".join(pool.connection.query.split())
-    assert "assigned_to = $1" in query
+    assert "LOWER(assigned_to) = $1" in query
     assert "status IN ('pending','sent','acknowledged')" in query
     assert "LIMIT $2 OFFSET $3" in query
     assert pool.connection.args == ("member@example.test", 6, 0)
