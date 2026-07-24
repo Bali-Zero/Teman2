@@ -26,7 +26,48 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-21 — keep current)
+## 1. LIVE STATE (last update 2026-07-24 — keep current)
+
+**W1 PUBLIC-SURFACE HONESTY PASS — SHIPPED & PROVEN-LIVE 2026-07-24 (PR #3049, squash `23fa765e61`).**
+Context: a Codex session (rollout `019f83fc`) had been conducting a 7-work-package program (W0→W7) to
+take the Navigator to BKPM-presentable. W0 (census/governance/role-contract) closed 2026-07-23; its W1
+commits were authored locally but **never survived** (worktree lost, no branch). Zero's read of that
+stretch — _"siamo da 10 giorni su W0"_ / _"molto controllo, zero miglioramenti visibili"_ — is the
+standing constraint on this program: **W1+ must produce visible product change, not more governance docs.**
+Reconciling W1's 5 declared targets against disk found only 2 real:
+
+- **`46100`** — FALSE ALARM. The batch-B design's own REV-2 self-correction (`d7d9486007`, "46100/52101
+  were not inconsistent") already retracted it; `52101`/`10433` were cured in #2786. Nothing to do.
+- **`68112` / `93114`** — already cured and live (Fase-1 cure + #2926). Nothing to do.
+- **"~30% Blocked in Bali" hero stat** (`apps/mouth/src/app/kbli/page.tsx`) — CURED. Was a hardcoded
+  guess whose tooltip asserted the moratorium as settled law. Now **computed at render from
+  `getAllCodes()`** (`baliL4.blocked` → 518/1559 = 33%; same in-memory cache `getSections()` already
+  uses, zero extra I/O) so it self-corrects as cures land, and the copy matches the F15 posture +
+  `KBLIProvenancePanel`'s existing "conservative posture" register: _"a working assessment, not a
+  certified legal determination."_
+- **PT PMA capital claim** in `buying-a-bali-villa-in-2026-…` (**EN/IT/ID/RU, all 4 locales**) — CURED.
+  Asserted a flat "IDR 10bn minimum authorized capital", conflating the two BKPM 5/2025 thresholds.
+  Now: **2.5bn paid-up at incorporation + a separate >10bn total investment plan per KBLI line**, and
+  states the nuance the article had dropped — **for hospitality/property, land+building ARE inside that
+  total** (they're excluded for other sectors). Grounded on two already-correct in-repo articles
+  (`bkpm-regulation-5-2025-fdi.mdx`, `consulting-business-guide.it.mdx`) read BEFORE editing —
+  deliberately NOT a regex sweep on "10 miliar" (rule #1/F-BKPM: E28A KITAS's 10bn is a genuine,
+  unrelated immigration threshold and was verified untouched).
+
+**PROVE-LIVE (both consuming surfaces, curl'd on prod):** `balizero.com/kbli` serves `~33%` + the new
+tooltip · the villa article serves the corrected claim in EN and — via the **`?lang=` query param, NOT
+a URL suffix** (locale routing gotcha, cost one false-negative probe) — in IT/ID/RU, stale copy gone in
+all four. `llms-full.txt` deliberately NOT hand-committed: `npm run build` regenerates it from source
+content, so the fix propagates on the next Vercel build (hand-committing it would have dragged 11 days
+of unrelated derived drift + tripped the PII gate, which is exactly where the lost Codex W1 got stuck).
+
+**Collateral (repo-wide, not KBLI):** this PR was blocked for hours by a red `npm audit` gate failing on
+EVERY open PR — 3 new advisories (`hono` ≤4.12.26, `@hono/node-server` ≤2.0.9, `find-my-way` ≤9.6.0)
+landed ABOVE the existing override floors, so the floors aged out silently (W98 / family #2). Diagnosed
+and fixed here (#3052); a parallel lane shipped the same cure with strictly higher floors first (#3053,
+`hono >=4.12.31`) so #3052 was closed as superseded — verified by CONTENT on main (W88), not by proxy.
+
+**W1 is CLOSED. Next per the Codex program: W2 (Batch-B prep — still NO-GO without Zero) / W3+.**
 
 **Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
 (113 A-serving/pp28 + 80190 A-serving/orphan) is done. Final tally: 109 full detach + 2
