@@ -340,6 +340,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "nuzantara-lex public regulation manifest: SHA-256 content digests, not secrets",
     ),
     (
+        re.compile(
+            r"^apps/backend-rag/backend/services/visa_engine/contracts/packs/"
+            r"rulepack-prod-001\.signed\.json$"
+        ),
+        "signed Visa RulePack: public signature and SHA-256 integrity/evidence digests, not credentials",
+    ),
+    (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",
     ),
