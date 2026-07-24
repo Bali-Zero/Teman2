@@ -173,13 +173,18 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
   estimate a risk tier by analogy).
 - **Surfaces 5 & 6 — `apps/kbli-navigator` (knowledge.balizero.com; it is a Next.js/Vercel+Netlify
   app, NOT the "native desktop app" §5 describes — mislabel found during Batch-B design work,
-  ALIGN-FLEET TODO):** (5) its `data/kbli-2025.json` was untracked in the 2026-03-28 cleanup and
-  rotted (1,563 records, zero quarantine markers, 68112 still MICE) — **cure lane in flight**,
-  branch `agent/air-m5/frontend/kbli-navigator-dataset-desync` (conductor-gated), re-tracking +
-  extending `scripts/sync_kbli_dataset.sh`/`check-kbli-dataset-sync`. (6)
-  `apps/kbli-navigator/lib/kbli-gold-content.ts` (~45K lines, hand-authored, separate from mouth
-  gold) OVERRIDES cured data on 68112/49213 pages (verified in built HTML) — **OPEN, queued, task
-  #19**.
+  ALIGN-FLEET TODO): BOTH CURED ON MAIN — re-verified on `origin/main` 2026-07-24, this entry
+  previously said otherwise and was STALE.** (5) `data/kbli-2025.json` now carries **1,559**
+  records (not the rotted 1,563) and 68112 reads correctly — residential title, `per_skala: []`,
+  `per_skala_disputed_pp28_mice` + `_l2_status` + `_data_note` markers present; the desync cure
+  landed. (6) `lib/kbli-gold-content.ts` no longer overrides the cure: its 68112 entry is the
+  honest-gap text that NAMES the collision ("code-number collision … MICE-venue rental … do not
+  apply to residential leasing and have been removed"), and 49213 correctly frames AKDP/AKAP as
+  the DIFFERENT regulatory basis it is excluded from. **Do NOT re-open these as work items.**
+  Residual on this app: it is **SSO-gated** (`/kbli/<code>` → 307 → `kita.balizero.com/login`),
+  so it is an INTERNAL/team surface, not an anonymous-public one — anonymous curl can never
+  prove-live it (cf. [[discovery_nuzantara_rag_401_precedes_routing_2026_07_22]]); a real
+  prove-live there needs authenticated browser QA.
 - **Mouth gold cure LIVE** (#2794): 10 gold records' detached-code echoes cured
   (whatYouNeed/zantaraOpener/baliContext), PROVE-LIVE on 68123/60103; 63-phantom triage table
   `scripts/kbli_gold_remap_table_status.json` (48 unmapped / 8 ambiguous-SPLIT / 7
@@ -481,8 +486,9 @@ corner (flagged only, nothing fixed here):**
    cured for the 73 quarantined rows by `kbli_documents_cure.py` (#2796, 2026-07-19), whole-table
    builder still missing (PENDING-ARMS)** · intel_2026/editorial → baked prose · `apps/kbli-navigator`
    app (knowledge.balizero.com — Next.js, NOT a native desktop app, see LIVE STATE) → its own
-   `data/kbli-2025.json` fork (stale, cure in flight) AND its own `lib/kbli-gold-content.ts`
-   override layer (OPEN, task #19) · NB sources. Fix the class across ALL consumers or explicitly
+   `data/kbli-2025.json` fork AND its own `lib/kbli-gold-content.ts` override layer (**both CURED
+   on main, re-verified 2026-07-24 — still consumers to check on every future cure, but not open
+   work items**) · NB sources. Fix the class across ALL consumers or explicitly
    park the rest; "merged" ≠ "live" ≠ "every surface".
 7. **Derived layers need invalidation**: after correcting any source fact, list which derived fields
    (gold whatYouNeed, editorial, l4_bali reason, KG properties, NB) were generated FROM it and
