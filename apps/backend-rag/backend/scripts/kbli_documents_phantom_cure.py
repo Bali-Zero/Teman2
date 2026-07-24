@@ -93,6 +93,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -116,6 +117,36 @@ ROUTER_PMA_FALLBACK = "Verify at OSS"  # kbli_notebook_chat.py:734 default
 VINTAGE_SUFFIX = " [KBLI 2020 — tidak ada dalam KBLI 2025]"
 ARCHIVE_REASON = (
     "kbli_documents_phantom_cure: pre-cure KBLI-2020 phantom-row snapshot (2026-07-24)"
+)
+
+# FAIL-CLOSED SHAPE GUARD. This cure neutralises specific metadata keys; a key
+# it has never seen might carry licensing facts it would silently leave behind
+# (adversarial-review finding, 2026-07-24: "the neutralisation is a
+# whitelist-of-two — any other licensing-bearing key survives"). Rather than
+# guess which unknown keys are dangerous with a substring heuristic — the
+# over-match trap of superscar #3 — the script REFUSES any row whose metadata
+# shape it has not been verified against. The set below is the shape actually
+# observed on all 4 phantom rows in prod on 2026-07-24, plus the keys this cure
+# itself writes (so a re-run is not refused by its own output).
+RECOGNISED_METADATA_KEYS = frozenset(
+    {
+        # observed pre-cure shape
+        "judul",
+        "kode_kbli_2025",
+        "licensing_status",
+        "per_skala",
+        "pma_status",
+        "pp28_sources",
+        "sektor_id",
+        "status_mapping",
+        # written by this cure
+        "kode_kbli_2020",
+        "per_skala_superseded_kbli2020",
+        "pma_status_superseded_kbli2020",
+        "kbli_2025_status",
+        "kbli_2025_successors",
+        "_data_note",
+    }
 )
 
 # Shared with kbli_documents_cure.py — created lazily (IF NOT EXISTS) so either
@@ -183,11 +214,24 @@ def find_successors(dataset: list[dict], code: str) -> list[Successor]:
     as certified succession) and silent exclusion (a display cap, W97) would
     misinform. Disclosing the note lets the reader weigh the link, which is
     the only honest option available to a script that must not adjudicate
-    mapping quality on its own authority."""
+    mapping quality on its own authority.
+
+    An adversarial review (2026-07-24) proposed splitting weak auto-matches
+    into a separate fenced sub-list. Declined DELIBERATELY: doing so requires
+    classifying confidence by parsing `mapping_note` prose ("[high]",
+    "Match: 93%", "score=71%"), i.e. inventing a substring classifier over a
+    field whose full range of formats has not been validated across the whole
+    corpus — the over-match trap of superscar #3, introduced into the one place
+    that is supposed to be pure disclosure. The risk it targets (a model
+    flattening the list into "the successors are X, Y, Z") is instead addressed
+    in the rendered lead-in, which states the order is by code number and not
+    by relevance, and that presence is not a recommendation."""
     out: dict[str, Successor] = {}
     for record in dataset:
         src = record.get("kbli_2020_source")
-        ancestors_2020 = [src] if isinstance(src, str) else list(src or [])
+        # The field is a bare string in practice, but a list (or an int, if a
+        # future build drops the zero-padding) must not crash the census.
+        ancestors_2020 = [src] if isinstance(src, (str, int)) else list(src or [])
         pp28 = [str(s) for s in (record.get("pp28_sources") or [])]
 
         via: str | None = None
@@ -252,10 +296,12 @@ def build_phantom_content(
             "",
             "## Kode KBLI 2025 yang Tertaut pada Crosswalk Dataset Kami",
             f"Dataset kanonik kami mencatat kode 2025 berikut sebagai tertaut ke kode "
-            f"2020 {code}. Tautan ini berasal dari proses pemetaan dataset dengan "
-            "tingkat keyakinan yang BERBEDA-BEDA — catatan pemetaan setiap kode "
-            "disertakan apa adanya, dan tautan yang lemah TIDAK berarti kegiatan "
-            "usahanya setara:",
+            f"2020 {code}. Daftar ini diurutkan menurut NOMOR KODE, BUKAN menurut "
+            "relevansi, dan kehadiran sebuah kode di sini BUKAN rekomendasi. Tautan "
+            "berasal dari proses pemetaan dataset dengan tingkat keyakinan yang "
+            "BERBEDA-BEDA — sebagian dihasilkan pencocokan otomatis dan bisa jadi "
+            "TIDAK relevan dengan kegiatan usaha nyata. Catatan pemetaan setiap kode "
+            "disertakan apa adanya; baca catatan itu sebelum memakai kodenya:",
         ]
         for s in successors:
             note = f" — _catatan pemetaan: {s.mapping_note}_" if s.mapping_note else ""
@@ -301,6 +347,8 @@ def build_phantom_metadata(
     code: str,
     old_metadata: dict | None,
     successors: list[Successor],
+    qualified_judul: str | None = None,
+    dataset_provenance: str | None = None,
 ) -> dict:
     """Pure — preserves the pre-cure licensing/PMA values under explicit
     `*_superseded_kbli2020` keys (audit trail lives in the row, not only in the
@@ -312,7 +360,17 @@ def build_phantom_metadata(
     cure's own output and silently destroy the audit trail. So a superseded key
     that already exists is never rewritten."""
     old = dict(old_metadata or {})
-    new_meta = {k: v for k, v in old.items() if k not in ("per_skala", "pma_status")}
+    new_meta = {
+        k: v
+        for k, v in old.items()
+        if k not in ("per_skala", "pma_status", "kode_kbli_2025")
+    }
+
+    # `kode_kbli_2025` on a phantom row is the false claim this cure exists to
+    # remove: the seed wrote the 2020 code into a field whose NAME asserts it is
+    # a 2025 code. Re-key it honestly instead of carrying the lie forward.
+    if "kode_kbli_2025" in old or "kode_kbli_2020" not in old:
+        new_meta["kode_kbli_2020"] = code
 
     old_per_skala = old.get("per_skala")
     if old_per_skala and "per_skala_superseded_kbli2020" not in old:
@@ -320,6 +378,13 @@ def build_phantom_metadata(
     old_pma = old.get("pma_status")
     if old_pma and old_pma != ROUTER_PMA_FALLBACK and "pma_status_superseded_kbli2020" not in old:
         new_meta["pma_status_superseded_kbli2020"] = old_pma
+
+    # `metadata.judul` must carry the SAME vintage qualifier as the row's judul
+    # (adversarial-review finding, 2026-07-24): a consumer reading the metadata
+    # copy instead of the column would otherwise render the bare 2020 title and
+    # lose the whole warning.
+    if qualified_judul:
+        new_meta["judul"] = qualified_judul
 
     new_meta["per_skala"] = []
     new_meta["pma_status"] = ROUTER_PMA_FALLBACK
@@ -343,6 +408,7 @@ def build_phantom_metadata(
         "guidance. Successors, when listed, come from the canonical crosswalk "
         "fields only. This records our catalogue's contents, not a regulatory "
         "determination about the code's status."
+        + (f" Catalogue used: {dataset_provenance}." if dataset_provenance else "")
     )
     return new_meta
 
@@ -352,6 +418,7 @@ def plan_phantom_cure(
     dataset: list[dict],
     canon: set[str],
     current_row: dict | None,
+    dataset_provenance: str | None = None,
 ) -> PhantomCurePlan:
     """Pure decision function — no I/O. Guard order matters: the canonical
     membership check runs BEFORE anything is built, so a live code can never
@@ -372,6 +439,19 @@ def plan_phantom_cure(
             skip_reason="not in kbli_documents table",
         )
 
+    unknown = sorted(set(current_row.get("metadata") or {}) - RECOGNISED_METADATA_KEYS)
+    if unknown:
+        return PhantomCurePlan(
+            code=code,
+            in_canonical=False,
+            in_table=True,
+            skip_reason=(
+                f"unrecognised metadata key(s) {unknown} — refusing to cure a row whose "
+                "shape this script has not been verified against; it could be carrying "
+                "licensing facts the cure would leave behind"
+            ),
+        )
+
     successors = find_successors(dataset, code)
     group = same_group_codes(dataset, code) if not successors else []
     old_judul = current_row.get("judul") or ""
@@ -382,7 +462,13 @@ def plan_phantom_cure(
     base_judul = old_judul.removesuffix(VINTAGE_SUFFIX).strip()
     new_judul = f"{base_judul}{VINTAGE_SUFFIX}".strip()
     new_content = build_phantom_content(code, base_judul, successors, group)
-    new_metadata = build_phantom_metadata(code, current_row.get("metadata"), successors)
+    new_metadata = build_phantom_metadata(
+        code,
+        current_row.get("metadata"),
+        successors,
+        qualified_judul=new_judul,
+        dataset_provenance=dataset_provenance,
+    )
 
     update_row = (
         new_content != current_row.get("content")
@@ -422,15 +508,62 @@ def _looks_like_local_path(source: str) -> bool:
     return not source.startswith(("http://", "https://")) and Path(source).exists()
 
 
-async def load_dataset(source: str) -> list[dict]:
+# The canonical KBLI 2025 catalogue has 1,559 codes. A dataset outside this band
+# is not the catalogue this cure was designed against, and must not be used to
+# decide what "phantom" means.
+EXPECTED_CODE_COUNT_MIN = 1500
+EXPECTED_CODE_COUNT_MAX = 1600
+
+
+def validate_dataset(dataset: list[dict]) -> None:
+    """Fail-closed integrity gate on the canonical catalogue.
+
+    The catalogue is the ONLY thing standing between this cure and a live 2025
+    code: "phantom" is defined as "absent from the catalogue". A truncated or
+    wrong-vintage file that still parses would silently reclassify legitimate
+    codes as phantom, and the innocence guard — which trusts the catalogue —
+    would wave them through (adversarial-review finding, 2026-07-24). So the
+    catalogue is validated before anything is computed from it."""
+    n = len(dataset)
+    if not (EXPECTED_CODE_COUNT_MIN <= n <= EXPECTED_CODE_COUNT_MAX):
+        raise SystemExit(
+            f"dataset integrity: {n} records is outside the expected "
+            f"[{EXPECTED_CODE_COUNT_MIN}, {EXPECTED_CODE_COUNT_MAX}] band for the KBLI 2025 "
+            "catalogue — refusing to derive 'phantom' from a catalogue this may not be"
+        )
+    missing = [i for i, r in enumerate(dataset) if not r.get("kode_kbli_2025") or not r.get("judul")]
+    if missing:
+        raise SystemExit(
+            f"dataset integrity: {len(missing)} record(s) lack kode_kbli_2025/judul "
+            f"(first at index {missing[0]}) — refusing to use a malformed catalogue"
+        )
+    codes = [str(r["kode_kbli_2025"]) for r in dataset]
+    if len(set(codes)) != len(codes):
+        dupes = sorted({c for c in codes if codes.count(c) > 1})
+        raise SystemExit(
+            f"dataset integrity: duplicate kode_kbli_2025 {dupes[:10]} — a duplicated code "
+            "makes successor resolution order-dependent; refusing"
+        )
+
+
+async def load_dataset(source: str) -> tuple[list[dict], str]:
+    """Returns (records, provenance) where provenance is the source plus a
+    sha256 of the exact bytes used, so the audit trail on every cured row
+    records WHICH catalogue justified the cure."""
     if _looks_like_local_path(source):
         logger.info("dataset: reading local file %s", source)
-        return json.loads(Path(source).read_text(encoding="utf-8"))["data"]
-    logger.info("dataset: fetching %s", source)
-    async with httpx.AsyncClient(timeout=60) as http:
-        r = await http.get(source)
-        r.raise_for_status()
-        return r.json()["data"]
+        raw = Path(source).read_bytes()
+    else:
+        logger.info("dataset: fetching %s", source)
+        async with httpx.AsyncClient(timeout=60) as http:
+            r = await http.get(source)
+            r.raise_for_status()
+            raw = r.content
+    digest = hashlib.sha256(raw).hexdigest()
+    data = json.loads(raw.decode("utf-8"))["data"]
+    validate_dataset(data)
+    logger.info("dataset: %d codes, sha256=%s", len(data), digest[:16])
+    return data, f"{source} (sha256:{digest[:16]})"
 
 
 async def main() -> None:
@@ -458,9 +591,21 @@ async def main() -> None:
     if not args.census and not args.only:
         logger.error("--only is MANDATORY (or pass --census to see the phantom set) — "
                      "refusing to guess scope")
-        return
+        raise SystemExit(2)
 
-    dataset = await load_dataset(args.dataset)
+    if args.apply and args.dataset == DATASET_URL:
+        # `main` is a moving target: the catalogue that defines "phantom" could
+        # change between the dry-run an operator read and the apply they then
+        # ran. Writes require a catalogue that cannot move under them.
+        logger.error(
+            "--apply with the unpinned default dataset (%s) is refused — pass --dataset "
+            "pinned to a commit SHA or a local file, so the catalogue that justified the "
+            "cure is the one recorded in the audit trail",
+            DATASET_URL,
+        )
+        raise SystemExit(2)
+
+    dataset, dataset_provenance = await load_dataset(args.dataset)
     canon = canonical_codes(dataset)
     logger.info("canonical catalogue: %d codes", len(canon))
 
@@ -494,8 +639,8 @@ async def main() -> None:
 
         codes = [c.strip() for c in args.only.split(",") if c.strip()]
         if not codes:
-            logger.error("empty code list, nothing to do")
-            return
+            logger.error("--only produced an empty code list, nothing to do")
+            raise SystemExit(2)
 
         if args.apply:
             await conn.execute(ARCHIVE_TABLE_DDL)
@@ -524,7 +669,7 @@ async def main() -> None:
                     "created_at": row["created_at"],
                     "updated_at": row["updated_at"],
                 }
-            plan = plan_phantom_cure(code, dataset, canon, current_row)
+            plan = plan_phantom_cure(code, dataset, canon, current_row, dataset_provenance)
             plans.append(plan)
 
             if not plan.update_row:
@@ -539,25 +684,33 @@ async def main() -> None:
             )
             if args.apply:
                 assert current_row is not None  # update_row=True implies in_table=True
-                await conn.execute(
-                    "INSERT INTO kbli_documents_archive "
-                    "(kode_kbli, judul, content, metadata, original_created_at, "
-                    "original_updated_at, archived_reason) "
-                    "VALUES ($1, $2, $3, $4::text::jsonb, $5, $6, $7) "
-                    "ON CONFLICT (kode_kbli) DO NOTHING",
-                    *archive_params(code, current_row),
-                )
-                # W89 jsonb double-encoding class-guard: bind the pre-serialized
-                # json.dumps() string to a $N::text::jsonb placeholder so the
-                # server casts text->jsonb exactly once.
-                await conn.execute(
-                    "UPDATE kbli_documents SET judul = $2, content = $3, "
-                    "metadata = $4::text::jsonb, updated_at = now() WHERE kode_kbli = $1",
-                    code,
-                    plan.new_judul,
-                    plan.new_content,
-                    json.dumps(plan.new_metadata, ensure_ascii=False),
-                )
+                # ATOMIC per code (adversarial-review finding, 2026-07-24): the
+                # archive INSERT is the ONLY forensic copy of the pre-cure row,
+                # and the UPDATE destroys the original. Outside a transaction, a
+                # failure between them either loses the evidence (update landed,
+                # archive did not) or leaves a half-cured surface. One
+                # transaction per code keeps a mid-run abort at a clean
+                # code-boundary rather than inside one.
+                async with conn.transaction():
+                    await conn.execute(
+                        "INSERT INTO kbli_documents_archive "
+                        "(kode_kbli, judul, content, metadata, original_created_at, "
+                        "original_updated_at, archived_reason) "
+                        "VALUES ($1, $2, $3, $4::text::jsonb, $5, $6, $7) "
+                        "ON CONFLICT (kode_kbli) DO NOTHING",
+                        *archive_params(code, current_row),
+                    )
+                    # W89 jsonb double-encoding class-guard: bind the pre-serialized
+                    # json.dumps() string to a $N::text::jsonb placeholder so the
+                    # server casts text->jsonb exactly once.
+                    await conn.execute(
+                        "UPDATE kbli_documents SET judul = $2, content = $3, "
+                        "metadata = $4::text::jsonb, updated_at = now() WHERE kode_kbli = $1",
+                        code,
+                        plan.new_judul,
+                        plan.new_content,
+                        json.dumps(plan.new_metadata, ensure_ascii=False),
+                    )
     finally:
         await conn.close()
 

@@ -29,10 +29,13 @@ Guilt/innocence corpus (scar #3 discipline — a guard ships only with BOTH):
 
 from __future__ import annotations
 
+import pytest
+
 from backend.scripts.kbli_documents_phantom_cure import (
     KBLI_2025_STATUS,
     LICENSING_STATUS,
     ROUTER_PMA_FALLBACK,
+    VINTAGE_SUFFIX,
     archive_params,
     build_phantom_content,
     build_phantom_metadata,
@@ -41,6 +44,7 @@ from backend.scripts.kbli_documents_phantom_cure import (
     phantom_codes,
     plan_phantom_cure,
     same_group_codes,
+    validate_dataset,
 )
 
 # --- fixtures: a miniature canonical catalogue -----------------------------
@@ -95,6 +99,7 @@ PHANTOM_ROW_82920 = {
     "content": "# KBLI 82920\n\nRisiko: Menengah Tinggi. Perizinan: NIB dan Izin.\n",
     "metadata": {
         "judul": "AKTIVITAS PENGEMASAN",
+        "kode_kbli_2025": "82920",  # the seed's own false claim: a 2020 code in a 2025 field
         "sektor_id": "I.F.h",
         "pma_status": "TERBUKA",
         "per_skala": [
@@ -235,8 +240,12 @@ def test_cured_content_never_claims_certified_equivalence():
         "82920", "AKTIVITAS PENGEMASAN", find_successors(CANONICAL, "82920"), []
     )
     assert "score=71%" in content  # the weak link's provenance reaches the reader
-    assert "tingkat keyakinan yang BERBEDA-BEDA" in content
-    assert "TIDAK berarti kegiatan usahanya setara" in content
+    assert "tingkat keyakinan yang " in content and "BERBEDA-BEDA" in content
+    # Ordering and presence must both be disarmed as relevance signals — the
+    # flattening risk an adversarial review flagged on this section.
+    assert "BUKAN menurut " in content and "relevansi" in content
+    assert "BUKAN rekomendasi" in content
+    assert "TIDAK relevan dengan kegiatan usaha nyata" in content
     assert "Menggantikan" not in content
 
 
@@ -332,4 +341,99 @@ def test_archive_params_are_byte_exact_and_carry_the_phantom_reason():
 def test_metadata_preserves_unrelated_keys():
     meta = build_phantom_metadata("82920", PHANTOM_ROW_82920["metadata"], [])
     assert meta["sektor_id"] == "I.F.h"
-    assert meta["judul"] == "AKTIVITAS PENGEMASAN"
+
+
+def test_metadata_judul_carries_the_same_qualifier_as_the_column():
+    """A consumer reading `metadata.judul` instead of the `judul` column must
+    not get the bare 2020 title — that would drop the whole warning on one of
+    the two paths."""
+    qualified = f"AKTIVITAS PENGEMASAN{VINTAGE_SUFFIX}"
+    meta = build_phantom_metadata(
+        "82920", PHANTOM_ROW_82920["metadata"], [], qualified_judul=qualified
+    )
+    assert meta["judul"] == qualified
+
+
+def test_metadata_rekeys_the_false_2025_claim():
+    """The seed wrote the 2020 code into `kode_kbli_2025`, a field whose NAME
+    asserts it is a 2025 code — the exact claim being cured."""
+    meta = build_phantom_metadata("82920", PHANTOM_ROW_82920["metadata"], [])
+    assert "kode_kbli_2025" not in meta
+    assert meta["kode_kbli_2020"] == "82920"
+
+
+def test_dataset_provenance_is_recorded_in_the_audit_note():
+    meta = build_phantom_metadata(
+        "82920", PHANTOM_ROW_82920["metadata"], [], dataset_provenance="file.json (sha256:abc123)"
+    )
+    assert "sha256:abc123" in meta["_data_note"]
+
+
+# --- fail-closed shape guard ----------------------------------------------
+
+
+def test_unrecognised_metadata_key_is_refused_not_silently_passed_through():
+    """A row carrying a key this cure has never been verified against could be
+    holding licensing facts the cure would leave behind. Refuse rather than
+    guess which unknown keys are dangerous."""
+    row = dict(PHANTOM_ROW_82920)
+    row["metadata"] = {**PHANTOM_ROW_82920["metadata"], "kategori_risiko": "Tinggi"}
+    plan = plan_phantom_cure("82920", CANONICAL, _canon(), row)
+    assert plan.update_row is False
+    assert "unrecognised metadata key" in (plan.skip_reason or "")
+    assert "kategori_risiko" in (plan.skip_reason or "")
+
+
+def test_the_cures_own_output_shape_is_not_refused_on_rerun():
+    """INNOCENCE for the guard above: the keys this cure writes must be in the
+    recognised set, or a second pass would refuse its own work."""
+    first = plan_phantom_cure("82920", CANONICAL, _canon(), PHANTOM_ROW_82920)
+    cured = {
+        "judul": first.new_judul,
+        "content": first.new_content,
+        "metadata": first.new_metadata,
+        "created_at": None,
+        "updated_at": None,
+    }
+    second = plan_phantom_cure("82920", CANONICAL, _canon(), cured)
+    assert "unrecognised metadata key" not in (second.skip_reason or "")
+
+
+# --- dataset integrity gate ------------------------------------------------
+
+
+def test_truncated_catalogue_is_refused():
+    """"Phantom" means "absent from the catalogue", so a truncated catalogue
+    would reclassify live codes as phantom and the innocence guard — which
+    trusts the catalogue — would wave them through."""
+    with pytest.raises(SystemExit) as e:
+        validate_dataset(CANONICAL)  # 5 records, far below the expected band
+    assert "outside the expected" in str(e.value)
+
+
+def test_duplicate_code_in_catalogue_is_refused():
+    big = [
+        {"kode_kbli_2025": f"{10000 + i}", "judul": f"code {i}"} for i in range(1550)
+    ]
+    big.append({"kode_kbli_2025": "10000", "judul": "duplicate"})
+    with pytest.raises(SystemExit) as e:
+        validate_dataset(big)
+    assert "duplicate kode_kbli_2025" in str(e.value)
+
+
+def test_record_without_a_code_is_refused():
+    big = [{"kode_kbli_2025": f"{10000 + i}", "judul": f"code {i}"} for i in range(1550)]
+    big[7] = {"judul": "no code here"}
+    with pytest.raises(SystemExit) as e:
+        validate_dataset(big)
+    assert "lack kode_kbli_2025/judul" in str(e.value)
+
+
+def test_a_well_formed_catalogue_passes():
+    """INNOCENCE for the integrity gate: a gate that rejected the real
+    catalogue would block every cure, so acceptance is asserted explicitly —
+    `validate_dataset` accepts by returning None rather than raising."""
+    big = [{"kode_kbli_2025": f"{10000 + i}", "judul": f"code {i}"} for i in range(1559)]
+    assert validate_dataset(big) is None
+    # And the accepted catalogue still yields a working phantom census.
+    assert phantom_codes(big, ["10000", "99999"]) == ["99999"]
