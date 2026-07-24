@@ -318,7 +318,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 
 ## TRACKS — parallel work groups (multi-session coordination)

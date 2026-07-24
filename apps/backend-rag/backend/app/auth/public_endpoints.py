@@ -476,6 +476,20 @@ _VISA_ORACLE = (
         Category.VISA_ORACLE,
         "Visa types catalog — used by Next.js SSG at build time",
     ),
+    # Visa Oracle v2 evaluate read-path (W1, routers/visa_oracle_evaluate.py).
+    # Anonymous by design: the v2 interview runs pre-account. Canonical
+    # ApplicantFacts in, mode=CURATED envelope out (SHADOW era), one full-fact
+    # SHADOW visa_decisions audit row per call. Dedicated 30/min rate-limit
+    # bucket, 32KB body cap, content-type enforcement, HMAC-fingerprint-only
+    # logs, synthetic traffic_source classes gated by a server-side allowlist
+    # env. Exact match only — the path is a single fixed POST.
+    PublicEndpoint(
+        "/api/visa-oracle/evaluate",
+        Category.VISA_ORACLE,
+        "Visa Oracle v2 evaluate read-path — anonymous canonical-facts evaluation, "
+        "rate-limited 30/min, no PII persisted or logged (HMAC fingerprints only)",
+        match="exact",
+    ),
     # Visa Check v1 homepage funnel (routers/visa_check.py, mounted at /api/visa).
     # Anonymous, no PII (nationality/purpose/budget only), rate-limited per-IP
     # by RateLimitMiddleware via the "/api/" bucket (120 req/min). The hash IS

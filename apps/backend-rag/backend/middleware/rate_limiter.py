@@ -263,6 +263,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/api/audio/": (30, 60),  # 30 per minute - prevent cost abuse (TTS/STT)
         "/api/whatsapp/send": (30, 60),  # 30 per minute - prevent send/message abuse
         "/api/knowledge/visa": (100, 60),  # 100 per minute - public knowledge base
+        # Visa Oracle v2 evaluate read-path (W1) — dedicated bucket, tighter
+        # than the generic /api/ 120/min: exact path beats the /api/ prefix.
+        "/api/visa-oracle/evaluate": (30, 60),  # 30 per minute - public engine evaluation
         "/preview/": (60, 60),  # 60 per minute - article previews
         "/preview/upload": (10, 60),  # 10 per minute - prevent storage abuse
         "/api/legal/parent-documents": (20, 60),  # 20 per minute - internal ingestion

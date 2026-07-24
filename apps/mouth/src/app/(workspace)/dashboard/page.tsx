@@ -492,41 +492,39 @@ export default function DashboardPage() {
 
   // Live events from practices
   const liveEvents: LiveActivityEvent[] = React.useMemo(() => {
-    return practices.slice(0, 8).map(
-      (p): LiveActivityEvent => ({
-        id: String(p.id),
-        type:
-          p.status === "completed"
-            ? "ok"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "critical"
-              : p.status === "documents"
-                ? "warning"
-                : "info",
-        icon:
-          p.status === "completed"
-            ? "✅"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "🚨"
-              : p.status === "documents"
-                ? "📄"
-                : "📁",
-        text: `${p.client} · ${p.title || p.status}`,
-        tag:
-          p.status === "completed"
-            ? "COMPLETED"
-            : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "URGENT"
-              : p.status === "documents"
-                ? "DOCUMENTS"
-                : undefined,
-        timestamp: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        userId: user?.email,
+    return practices.slice(0, 8).map((p): LiveActivityEvent => ({
+      id: String(p.id),
+      type:
+        p.status === "completed"
+          ? "ok"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "critical"
+            : p.status === "documents"
+              ? "warning"
+              : "info",
+      icon:
+        p.status === "completed"
+          ? "✅"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "🚨"
+            : p.status === "documents"
+              ? "📄"
+              : "📁",
+      text: `${p.client} · ${p.title || p.status}`,
+      tag:
+        p.status === "completed"
+          ? "COMPLETED"
+          : p.daysRemaining !== undefined && p.daysRemaining < 7
+            ? "URGENT"
+            : p.status === "documents"
+              ? "DOCUMENTS"
+              : undefined,
+      timestamp: new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
       }),
-    );
+      userId: user?.email,
+    }));
   }, [practices, user?.email]);
 
   // Loading skeleton
