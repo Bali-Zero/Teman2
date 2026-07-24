@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { trackHeroCTA } from "@/lib/analytics";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
+import { TrustBar } from "@/components/trust/TrustBar";
 
 /**
  * HeroCTA — Client Component wrapper for hero section CTA links.
@@ -46,35 +47,38 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
  */
 export function HeroCTA() {
   return (
-    <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-10 flex-wrap">
-      <WhatsAppLeadButton
-        source="homepage_hero"
-        context={{ section: "hero", page: "home" }}
-        whatsappContext={[{ label: "Source", value: "Homepage Hero" }]}
-        utm={{ page: "/" }}
-        fallbackHref={buildWhatsAppLink("home")}
-        className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
-        style={{
-          background: "var(--cta-primary-bg)",
-          color: "var(--cta-primary-fg)",
-          boxShadow: "0 6px 18px rgba(255,45,76,0.3)",
-        }}
-      >
-        Chat with us — avg reply: 2 min
-        <ArrowRight size={15} strokeWidth={2.2} />
-      </WhatsAppLeadButton>
-      <a
-        href="#news"
-        className="inline-flex items-center px-4 py-3 rounded-md text-[13px] font-semibold transition-colors"
-        style={{
-          color: "rgba(255,255,255,0.88)",
-          border: "1px solid rgba(255,255,255,0.4)",
-          background: "transparent",
-        }}
-        onClick={() => trackHeroCTA("hero_cta_read_dispatch")}
-      >
-        Explore Bali insights →
-      </a>
-    </div>
+    <>
+      <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-10 flex-wrap">
+        <WhatsAppLeadButton
+          source="homepage_hero"
+          context={{ section: "hero", page: "home" }}
+          whatsappContext={[{ label: "Source", value: "Homepage Hero" }]}
+          utm={{ page: "/" }}
+          fallbackHref={buildWhatsAppLink("home")}
+          className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
+          style={{
+            background: "var(--cta-primary-bg)",
+            color: "var(--cta-primary-fg)",
+            boxShadow: "0 6px 18px rgba(255,45,76,0.3)",
+          }}
+        >
+          Chat with us — avg reply: 2 min
+          <ArrowRight size={15} strokeWidth={2.2} />
+        </WhatsAppLeadButton>
+        <a
+          href="#news"
+          className="inline-flex items-center px-4 py-3 rounded-md text-[13px] font-semibold transition-colors"
+          style={{
+            color: "rgba(255,255,255,0.88)",
+            border: "1px solid rgba(255,255,255,0.4)",
+            background: "transparent",
+          }}
+          onClick={() => trackHeroCTA("hero_cta_read_dispatch")}
+        >
+          Explore Bali insights →
+        </a>
+      </div>
+      <TrustBar />
+    </>
   );
 }
