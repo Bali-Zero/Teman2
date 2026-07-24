@@ -10,9 +10,10 @@
  * rgba(255,255,255,0.01) fill and --glass-rim border); section icons read
  * --bz-copper; relationship chips read --bz-copper-text (#9d5230 = 5.05:1 on
  * paper / 5.70:1 on card, AA small text; dark aliases --bz-copper, AA on
- * anthracite). The destructive Alert keeps the shared component but its
- * surface/text read --state-danger tints + --bz-text-1 (text-red-500 was
- * ~3.9:1 on paper — below the 4.5:1 floor). No hardcoded hexes.
+ * anthracite). token-lint-ok: doc comment citing token value, not a color use
+ * The destructive Alert keeps the shared component but its surface/text read
+ * --state-danger tints + --bz-text-1 (text-red-500 was ~3.9:1 on paper —
+ * below the 4.5:1 floor). No hardcoded hexes.
  */
 
 import { useQuery } from "@tanstack/react-query";

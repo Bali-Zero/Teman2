@@ -50,9 +50,9 @@ describe("LKPM quarter page (day edition)", () => {
       )
       .join("\n");
     for (const forbidden of [
-      "#f87171",
-      "#fbbf24",
-      "#34d399",
+      "#f87171", // token-lint-ok: drain-guard assertion string, not a color use
+      "#fbbf24", // token-lint-ok: drain-guard assertion string, not a color use
+      "#34d399", // token-lint-ok: drain-guard assertion string, not a color use
       "rgba(244,63,94",
       "rgba(245,158,11",
       "--neon-rose",
