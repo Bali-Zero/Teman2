@@ -273,6 +273,31 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=2.0,
         notes="Annual permit for foreign workers. Usually bundled with Working KITAS renewal.",
     ),
+    # ── E33 Second Home (5y permit — guarantee must be maintained) ───────
+    # TODO(senior variants): E33E/E33F senior renewals (income-based, NO
+    # deposit guarantee) also match the "e33"/"second home" patterns below
+    # and would incorrectly inherit the deposit-oriented required_docs.
+    # Add a senior-specific rule (pension/income proof docs) BEFORE E33E/E33F
+    # renewals are sold, and place it earlier in RULE_PRIORITY_ORDER.
+    "e33_second_home_renewal": RenewalRule(
+        rule_id="e33_second_home_renewal",
+        document_types=("visa", "kitas"),
+        visa_type_patterns=("e33", "second home"),
+        processing_days=30,
+        lead_time_days=120,
+        recommended_start_days=150,
+        renewal_pricing_key=None,  # owner-set all-inclusive pricing; no catalog key yet
+        required_docs=(
+            "valid_passport",
+            "current_itas_card",
+            "guarantee_proof_bank_confirmation_or_property_title",
+            "domicile_letter",
+        ),
+        complexity=2.0,
+        notes="E33 Second Home renewal — verify the USD 130k BUMN deposit (or "
+        "USD 1M property) is still maintained before filing. Day-90 guarantee "
+        "gate tracked separately by services/crm/e33_lifecycle.py.",
+    ),
     # ── Fallback rule — unknown/generic visa ─────────────────────────────────
     "generic_visa_renewal": RenewalRule(
         rule_id="generic_visa_renewal",
@@ -297,6 +322,7 @@ RULE_PRIORITY_ORDER: tuple[str, ...] = (
     "kitas_working_extend",
     "kitas_freelance_extend",
     "kitas_remote_worker_extend",
+    "e33_second_home_renewal",
     "kitas_investor_extend",
     "kitas_retirement_extend",
     "kitas_spouse_extend",
