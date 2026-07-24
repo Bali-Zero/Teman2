@@ -307,6 +307,21 @@ class TestNoCustody:
                 metadata={bad_key: "anything"},
             )
 
+    @pytest.mark.parametrize(
+        "bad_key",
+        ["account_balance", "deposit_amount", "bank_account", "total_saldo", "swift_code"],
+    )
+    def test_compound_custody_keys_rejected(self, bad_key: str):
+        """Gemini F3-review blocker: exact-match normalization let compound
+        keys bypass the no-custody SOP; substring matching must catch them."""
+        with pytest.raises(CustodyViolationError):
+            EvidenceRef(
+                evidence_id="ev_x",
+                kind=EvidenceKind.BANK_CONFIRMATION,
+                document_ref="drive:file1",
+                metadata={bad_key: "anything"},
+            )
+
     def test_reference_metadata_accepted(self):
         ev = EvidenceRef(
             evidence_id="ev_ok",

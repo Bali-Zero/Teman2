@@ -260,10 +260,13 @@ def validate_evidence_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
 
     Bali Zero never holds or observes client funds: account numbers,
     balances and amounts are forbidden in case evidence. Only document
-    references, dates and confirmations may be stored.
+    references, dates and confirmations may be stored. Matching is
+    substring-based on the normalized key so compound keys such as
+    ``account_balance`` or ``deposit_amount`` are caught too.
     """
     for key in metadata:
-        if _normalize_key(str(key)) in FORBIDDEN_METADATA_KEYS:
+        norm_key = _normalize_key(str(key))
+        if any(forbidden in norm_key for forbidden in FORBIDDEN_METADATA_KEYS):
             raise CustodyViolationError(
                 f"Evidence metadata key {key!r} breaches the no-custody SOP: "
                 "store document references and dates only, never account "
