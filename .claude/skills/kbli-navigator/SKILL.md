@@ -26,7 +26,7 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-24 — keep current)
+## 1. LIVE STATE (last update 2026-07-25 — keep current)
 
 **W1 PUBLIC-SURFACE HONESTY PASS — SHIPPED & PROVEN-LIVE 2026-07-24 (PR #3049, squash `23fa765e61`).**
 Context: a Codex session (rollout `019f83fc`) had been conducting a 7-work-package program (W0→W7) to
@@ -143,10 +143,13 @@ signing — canonical hash pin, disputed-key report/spec mismatch, a lampiran-le
 line citation, one typo). Full findings in the report's Adversarial review section. Also an
 evidence-loss incident this cycle (first launch hit an empty evidenceRoot, all ~15 seats correctly
 fail-closed rather than hallucinate — re-pulled and independently re-verified before relaunch,
-PULL COMPLETE 15/15). **Still PENDING: cross-family GLM Appendix A screen for Lot 8 — not yet
-run.** Lot 9 D0 (10 remaining sport-cluster members: 93127-93199 + 2 fresh controls 46201/96300;
-12 codes total) evidence already pulled and independently verified, pins at
-`/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md` — adjudication Workflow not yet launched.
+PULL COMPLETE 15/15). **Cross-family Appendix A screen for Lot 8 — DONE** (PR #2909, Kimi K3
+substitute seat — Codex/agy both dead at the time): verdict **m1 2/2 match**, one real gold-layer
+staleness bug found and fixed in the same session; caveats explicitly declared (no Next.js build
+run). **Lot 9 — DONE**: D6 gate SECOND SIGNING complete (PR #2911, Kimi K3 adversarial review,
+none of the dispositions refuted) + cure APPLIED (PR #2913: 8 detach + 2 tier-scoped-held +
+status_mapping/whatChanged fixes), both merged to main. Lot 9 evidence pins (now historical) were
+at `/tmp/kbli-conductor-a1-0718/lot9-prelaunch-pins.md`.
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -300,8 +303,20 @@ not curing the surface.**
   `scripts/kbli_gold_remap_table_status.json` (48 unmapped / 8 ambiguous-SPLIT / 7
   single-candidate).
 - **Batch-B pre-registration design SIGNED** (#2801 merged, REV-4b): determinism gate closed after
-  4 Codex xhigh rounds + Gemini; OPEN gates before any lot: Phase-0 parser build + Zero's Legge-5
-  ratifications. See §5.
+  4 Codex xhigh rounds + Gemini. **Phase-0 parser gate PASSED** (report
+  `research/operations/2026-07-21-kbli-batch-b-phase0-parser-gate.md`: 20-page holdout, 100%
+  precision/recall, cross-family Sonnet+Kimi K3 blind verification) and the parser+FULL-CORPUS
+  crosswalk relation (`scripts/kbli_filiera/bps_crosswalk_parser.py` + `bps_phase0_gate.py`,
+  `data/kbli-filiera/phase0/bps_crosswalk.json` — 1,559/1,559 codes with BPS ancestry) shipped
+  2026-07-24 via PR #3083 (was orphaned in a local worktree, un-orphaned and merged this session).
+  **Still open before Lot B-1 can dispatch**: (a) `populate_bps_ancestors.py`, the canonical-WRITE
+  compiler that mutates `bps_2020_ancestors` from the relation — not yet built (step 2 of 3; the
+  full-corpus PARSE is done, the canonical WRITE is not); (b) Tier-4 population count — requires
+  applying the design's §1.5 tiering logic to the now-available relation, not yet run; (c) Tier-4
+  AQL parameters (n/Ac/switching state) computed from that count + the measured 0.0 holdout error
+  rate per the frozen ISO 2859-1 rule, then Zero's Legge-5 accept-or-override ratification — not
+  yet computed; (d) 5 fresh POS controls, conductor-eye-adjudicated on raw Lampiran renders —
+  explicitly non-delegable, not yet started. See §5.
 
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
@@ -380,6 +395,10 @@ re-emission on the cured canonical) ships in the governance PR before the Lot 2 
   13 cache keys busted, `kbli_documents` 4th surface applied (13/99 cumulative, whole-table
   builder still missing). **In-scope remainder: 23** (of 221 total, invariant) → **2 lots to
   finish** (L8 12+1/L9 10 — see membership split below; L8 gated on refinement #2, now shipped).
+  **[HISTORICAL — superseded]** this whole dense-recap block is dated 2026-07-19, mid-sweep; L8,
+  L9, and L10 have since all CLOSED (see **Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** at
+  the top of this section, which is the current top-line state) — "2 lots to finish" no longer
+  applies, kept here only as the sweep's own historical log.
   Surfaces: L1-L4 + L6 + L7 applied and PROVEN-LIVE (KG REQUIRES edges removed, Qdrant risk
   cleared, cache busted, backend inspect + mouth SSR eye-verified per lot); **L5 surfaces
   INDEPENDENTLY RE-PROVEN 2026-07-19** (prod KG query: 13/13 zero REQUIRES edges +
@@ -666,9 +685,11 @@ Processed in taxonomy order. Sampling = ISO-2859-spirit AQL (start tightened, lo
 clean run of batches), NOT naive 10%/min-12 (red-team F6). No throughput promises before measurement.
 
 **Batch B design SIGNED 2026-07-19** (REV-4b, `research/operations/2026-07-19-kbli-batch-b-design.md`,
-#2801 merged) — pre-registration determinism gate closed after 4 Codex xhigh rounds + Gemini; OPEN
-gates before any lot: Phase-0 parser build + Zero's Legge-5 ratifications (AQL default, Tier-4
-volume). See LIVE STATE.
+#2801 merged) — pre-registration determinism gate closed after 4 Codex xhigh rounds + Gemini.
+Phase-0 parser gate PASSED + full-corpus BPS crosswalk relation shipped (PR #3083, 2026-07-24).
+Remaining gates before any lot: `populate_bps_ancestors.py` canonical-write compiler (not built),
+Tier-4 population count + AQL parameters (not computed), Zero's Legge-5 ratifications (AQL default,
+Tier-4 volume — pending those numbers), 5 fresh POS controls (not started). See LIVE STATE.
 
 ### The four phases (methodology doc §rollout)
 
