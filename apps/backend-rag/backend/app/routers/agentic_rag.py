@@ -19,7 +19,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import (
@@ -39,6 +39,7 @@ from backend.services.agents.team_agent_config import (
 )
 from backend.services.rag.agentic import AgenticRAGOrchestrator
 from backend.services.rag.evaluation import ABTestManager, MetricsTracker
+from backend.services.whatsapp_identity import resolve_sender_identity
 
 logger = logging.getLogger(__name__)
 
@@ -246,20 +247,6 @@ class ImageInput(BaseModel):
     name: str  # Original filename
 
 
-class InternalSenderProfile(BaseModel):
-    """Narrow service-to-service profile — accepted ONLY from the dedicated
-    WA internal-service identity + `channel="whatsapp"` (see
-    `_is_trusted_wa_profile_caller` at the route below). `extra="forbid"`
-    so this transport can never be used to smuggle an unreviewed field past
-    validation — every field this payload can carry is enumerated here."""
-
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    role: Literal["creator", "team"]
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    email: str | None = Field(default=None, min_length=3, max_length=320)
-
-
 class AgenticQueryRequest(BaseModel):
     query: str
     user_id: str | None = "anonymous"
@@ -271,20 +258,24 @@ class AgenticQueryRequest(BaseModel):
         None  # Direct history from frontend
     )
     channel: str | None = None  # Channel overlay: "website", "webapp", "whatsapp", etc.
-    # WA team-assistant V1 (additive, optional): a caller that has already
-    # resolved the sender's identity out-of-band (e.g. wa_inbox_bot.py via
-    # backend/services/whatsapp_identity.py) can pass it here so the
-    # orchestrator's is_creator/is_team persona check
-    # (prompt_builder.py build_system_prompt) sees it explicitly — see
-    # research/operations/2026-07-19-wa-bot-team-assistant-v1.md. This field
-    # crosses the api-to-rag process boundary, but query_agentic_rag
-    # authorizes it against the server-derived WA internal-service identity
-    # (SECURITY, 2026-07-20 — see `_is_trusted_wa_profile_caller`) before
-    # forwarding it: client/JWT/generic-API-key callers cannot self-declare
-    # a privileged persona, and the closed `InternalSenderProfile` schema
-    # rejects any field this contract doesn't enumerate. None remains a
-    # complete no-op for every existing caller.
-    profile: InternalSenderProfile | None = None
+    # NOTE (P0-ID containment, 2026-07-24, hardened same day after
+    # adversarial review): there used to be a `profile` field here that let
+    # a caller declare its own WA sender persona (creator/team), trusted
+    # whenever `current_user.role == "internal"` AND this `channel` field
+    # said "whatsapp". Both gates were forgeable by ANY holder of the shared
+    # `X-Internal-Key` simply by setting body fields. A first fix removed
+    # `profile`/`channel` from the decision and re-derived the sender from a
+    # phone parsed out of `user_id` instead — but `user_id` is ITSELF a
+    # client-settable body field, and the owner's WA number is documented-
+    # public (see `whatsapp_identity.py`), so that was the identical bug
+    # relocated, not closed: any shared-key holder could still send
+    # `user_id="whatsapp_<public owner number>"`. Real fix: profile
+    # resolution now requires a SECOND secret exclusive to wa_inbox_bot.py
+    # (`X-WA-Bot-Profile-Key`, see `_verify_wa_inbox_bot_profile_key` below)
+    # — no request body field can influence the outcome at all; only that
+    # dedicated credential plus real `team_members`/env-roster data can.
+    # `channel` stays (still used for the WA prompt overlay elsewhere) but
+    # never participates in any trust decision.
     # Latency knob (additive, optional): a caller expecting a fast reply
     # (e.g. the WhatsApp bot, see research/operations/2026-07-20-wa-bot-latency.md)
     # may request a lower ReAct step cap. Never allowed to RAISE the cap —
@@ -295,32 +286,83 @@ class AgenticQueryRequest(BaseModel):
     max_steps: int | None = Field(default=None, ge=1)
 
 
-def _is_trusted_wa_profile_caller(
-    current_user: dict[str, Any] | None,
-    channel: str | None,
-) -> bool:
-    """Return whether auth resolved to the dedicated WA internal service.
+_WHATSAPP_USER_ID_RE = re.compile(r"^whatsapp_(?P<phone>.+)$")
 
-    SECURITY (2026-07-20): `X-Internal-Key` (`settings.wa_mirror_internal_key`)
-    is a SHARED secret — `hybrid_auth.py` grants the exact same
-    `role="internal"` pseudo-identity to every holder, and that key is used
-    by more than just the WhatsApp bot (e.g. Pro-side scripts like
-    wa-mirror-auto-promote-leads hitting `crm_clients.py`). A bare
-    `role == "internal"` check is therefore NOT scoped to "this specific
-    request came from wa_inbox_bot.py resolving a real WhatsApp sender" —
-    it only proves "the caller knows the shared internal key". Requiring
-    `channel == "whatsapp"` too (which `wa_inbox_bot.py` always sets, see
-    `_rag_client_headers`/payload construction) narrows the override to its
-    sole intended consumer without adding a second secret. `role == "admin"`
-    (X-Debug-Key) is deliberately NOT accepted here — no shipped caller
-    needs it, and least-privilege beats convenience for a persona-escalation
-    vector. Request-body fields never participate in this decision.
+
+def _extract_whatsapp_phone(user_id: str | None) -> str | None:
+    """Pull the phone out of a `whatsapp_<phone>` user_id, else None."""
+    if not user_id:
+        return None
+    match = _WHATSAPP_USER_ID_RE.match(user_id)
+    return match.group("phone") if match else None
+
+
+async def _verify_wa_inbox_bot_profile_key(request: Request) -> bool:
+    """True only if this request carries wa_inbox_bot.py's OWN dedicated
+    secret (`X-WA-Bot-Profile-Key`, `settings.wa_inbox_bot_profile_key`,
+    Fly secret `WA_INBOX_BOT_PROFILE_KEY`).
+
+    P0-ID hardening (2026-07-24, second pass after adversarial review): the
+    generic `X-Internal-Key` → `role="internal"` (`hybrid_auth.py`) is a
+    SHARED secret held by more than just the WA bot (e.g. Pro-side scripts
+    like wa-mirror-auto-promote-leads hitting `crm_clients.py`) — gating
+    profile resolution on that role alone (as an earlier version of this fix
+    did, combined with a phone parsed out of the client-settable `user_id`
+    field) meant ANY holder of the shared key could send
+    `user_id="whatsapp_<owner's public WA number>"` and forge the creator
+    persona. This dependency checks a SECOND, narrower secret that ONLY
+    wa_inbox_bot.py is provisioned with — no request body field, and no
+    other internal-key holder, can satisfy it.
+
+    Deliberately a soft boolean, never an HTTPException: a missing/wrong key
+    just means "no profile override" (identical to any other non-WA
+    caller), not an auth failure for the query itself — every other caller
+    of this endpoint (JWT web users, anonymous, other internal scripts)
+    is completely unaffected and never sends this header at all.
     """
-    return bool(
-        current_user
-        and current_user.get("role") == "internal"
-        and channel == "whatsapp"
-    )
+    configured = getattr(settings, "wa_inbox_bot_profile_key", None)
+    if not configured:
+        return False
+    provided = request.headers.get("X-WA-Bot-Profile-Key")
+    return bool(provided and provided == configured)
+
+
+async def _resolve_trusted_wa_profile(
+    is_wa_inbox_bot: bool,
+    user_id: str | None,
+    db_pool: Any | None,
+) -> dict[str, Any] | None:
+    """Server-derived WA sender profile (P0-ID containment, 2026-07-24).
+
+    Replaces the old client-supplied `profile` request field. Trust is
+    gated on `is_wa_inbox_bot` (see `_verify_wa_inbox_bot_profile_key`) —
+    the caller's OWN dedicated secret, never a body field. Once trusted,
+    the server independently RE-RESOLVES the sender from the phone number
+    embedded in `user_id` (`whatsapp_<phone>`, the same shape
+    `wa_inbox_bot.py` has always sent) via `resolve_sender_identity` — the
+    exact DB/env lookup `wa_inbox_bot.py` itself uses.
+
+    Returns None (no override — the pre-existing, still-correct behavior)
+    unless the caller holds the dedicated WA-bot secret AND `user_id` is
+    WA-shaped AND that phone resolves to `owner` or `team`.
+    """
+    if not is_wa_inbox_bot:
+        return None
+    phone = _extract_whatsapp_phone(user_id)
+    if phone is None:
+        return None
+    identity = await resolve_sender_identity(phone, db_pool)
+    role = identity.get("role")
+    if role == "owner":
+        return {"role": "creator"}
+    if role == "team":
+        profile: dict[str, Any] = {"role": "team"}
+        if identity.get("team_member"):
+            profile["name"] = identity["team_member"]
+        if identity.get("team_member_email"):
+            profile["email"] = identity["team_member_email"]
+        return profile
+    return None  # client / unknown → no privileged override
 
 
 class WorkspaceQueryRequest(BaseModel):
@@ -368,6 +410,7 @@ async def query_agentic_rag(
     current_user: dict | None = Depends(get_current_user_optional),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
+    is_wa_inbox_bot: bool = Depends(_verify_wa_inbox_bot_profile_key),
 ) -> AgenticQueryResponse:
     """
     Esegue una query usando il sistema Agentic RAG completo.
@@ -378,22 +421,9 @@ async def query_agentic_rag(
     **A/B TESTING**: Automatically assigns users to retrieval strategy variants
     and records performance metrics for comparison.
     """
-    trusted_profile: dict[str, Any] | None = None
-    if request.profile is not None:
-        if not _is_trusted_wa_profile_caller(current_user, request.channel):
-            logger.warning(
-                "agentic_rag.profile_override_denied",
-                extra={
-                    "authenticated": current_user is not None,
-                    "auth_role": current_user.get("role") if current_user else None,
-                    "channel": request.channel,
-                },
-            )
-            raise HTTPException(
-                status_code=403,
-                detail="Profile override is restricted to the WhatsApp internal service.",
-            )
-        trusted_profile = request.profile.model_dump(exclude_none=True)
+    trusted_profile = await _resolve_trusted_wa_profile(
+        is_wa_inbox_bot, request.user_id, db_pool
+    )
 
     # SECURITY: Use authenticated user if available, otherwise session-based
     if current_user:
@@ -477,8 +507,8 @@ async def query_agentic_rag(
         if conversation_history:
             query_kwargs["conversation_history"] = conversation_history
         if trusted_profile is not None:
-            # WA team-assistant V1 — already authorized above (403 on any
-            # untrusted attempt) by `_is_trusted_wa_profile_caller`.
+            # WA team-assistant V1 — already gated above (`_resolve_trusted_wa_profile`
+            # returns None for anyone but a request holding `X-WA-Bot-Profile-Key`).
             query_kwargs["profile"] = trusted_profile
         if request.max_steps is not None:
             query_kwargs["max_steps"] = request.max_steps
