@@ -253,7 +253,7 @@ def test_run_claude_json_raises_on_429_envelope(monkeypatch):
 
     envelope = _json.dumps({"is_error": True, "api_error_status": 429,
                             "result": "You've hit your session limit · resets 2:40am"})
-    monkeypatch.setattr(claude_vision.subprocess, "run",
+    monkeypatch.setattr(claude_vision, "_run_process_group",
                         lambda *a, **k: _fake_proc(returncode=1, stdout=envelope))
     with pytest.raises(claude_vision.VisionRateLimited):
         claude_vision._run_claude_json("p", {"type": "object"})
@@ -262,7 +262,7 @@ def test_run_claude_json_raises_on_429_envelope(monkeypatch):
 def test_run_claude_json_raises_on_session_limit_text(monkeypatch):
     from wr2_html_renderer import claude_vision
 
-    monkeypatch.setattr(claude_vision.subprocess, "run",
+    monkeypatch.setattr(claude_vision, "_run_process_group",
                         lambda *a, **k: _fake_proc(returncode=1, stderr="Error: session limit reached"))
     with pytest.raises(claude_vision.VisionRateLimited):
         claude_vision._run_claude_json("p", {"type": "object"})
@@ -273,7 +273,7 @@ def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
     path — must NOT be reclassified as rate-limit."""
     from wr2_html_renderer import claude_vision
 
-    monkeypatch.setattr(claude_vision.subprocess, "run",
+    monkeypatch.setattr(claude_vision, "_run_process_group",
                         lambda *a, **k: _fake_proc(returncode=1, stderr="boom: chromium crashed"))
     assert claude_vision._run_claude_json("p", {"type": "object"}) is None
 
@@ -296,7 +296,7 @@ def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "slot-two-token")
-    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
 
     claude_vision._run_claude_json("p", {"type": "object"})
     assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-two-token", (
@@ -304,9 +304,8 @@ def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
     )
 
 
-def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
-    """If the bare CLAUDE_CODE_OAUTH_TOKEN is already set, it must be respected —
-    the numbered-slot promotion only fills an UNSET bare var, never overrides."""
+def test_run_claude_json_tries_numbered_slot_before_existing_bare_token(monkeypatch):
+    """The universal account order keeps numbered seats ahead of legacy bare."""
     from wr2_html_renderer import claude_vision
 
     captured = {}
@@ -317,10 +316,99 @@ def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "bare-token")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot-one-token")
-    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
 
     claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-one-token"
+
+
+def test_run_claude_json_rotates_auth_quota_and_empty_to_slot_five(monkeypatch):
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    for slot in range(1, 6):
+        monkeypatch.setenv(
+            f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
+        )
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+
+    outcomes = (
+        _fake_proc(returncode=1, stderr="401 unauthorized"),
+        _fake_proc(returncode=1, stderr="weekly usage limit"),
+        _fake_proc(returncode=0, stdout=" \n"),
+        _fake_proc(returncode=1, stderr="quota exhausted"),
+        _fake_proc(
+            returncode=0,
+            stdout=_json.dumps({"structured_output": {"passes": True}}),
+        ),
+    )
+    seen: list[str] = []
+
+    def _capture(*args, **kwargs):
+        env = kwargs["env"]
+        assert "ANTHROPIC_API_KEY" not in env
+        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        return outcomes[len(seen) - 1]
+
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
+
+    result = claude_vision._run_claude_json("p", {"type": "object"})
+
+    assert result == {"passes": True}
+    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+
+
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "quota exceeded",
+        "weekly limit reached",
+        "account exhausted",
+        "HTTP 429 Too Many Requests",
+    ],
+)
+def test_run_claude_json_rotates_extended_limit_text_to_next_account(
+    monkeypatch, detail
+):
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    for slot in range(1, 6):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "sentinel-1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "sentinel-2")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+    outcomes = (
+        _fake_proc(returncode=1, stderr=detail),
+        _fake_proc(
+            returncode=0,
+            stdout=_json.dumps({"structured_output": {"passes": True}}),
+        ),
+    )
+    seen: list[str] = []
+
+    def _capture(*args, **kwargs):
+        env = kwargs["env"]
+        assert "ANTHROPIC_API_KEY" not in env
+        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        return outcomes[len(seen) - 1]
+
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
+
+    result = claude_vision._run_claude_json("p", {"type": "object"})
+
+    assert result == {"passes": True}
+    assert seen == ["sentinel-1", "sentinel-2"]
+
+
+def test_detect_rate_limit_does_not_match_kbli_code_42911():
+    from wr2_html_renderer import claude_vision
+
+    assert not claude_vision._detect_rate_limit(None, "KBLI 42911", 1)
 
 
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
@@ -334,7 +422,7 @@ def test_run_claude_json_timeout_raises_transient(monkeypatch):
     def _boom(*a, **k):
         raise _sp.TimeoutExpired(cmd="claude", timeout=180)
 
-    monkeypatch.setattr(claude_vision.subprocess, "run", _boom)
+    monkeypatch.setattr(claude_vision, "_run_process_group", _boom)
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
 
@@ -361,16 +449,16 @@ def test_run_claude_json_timeout_budget_from_env(monkeypatch):
         captured["timeout"] = k.get("timeout")
         raise _sp.TimeoutExpired(cmd="claude", timeout=k.get("timeout"))
 
-    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
     monkeypatch.delenv("WR2_VISION_TIMEOUT_S", raising=False)
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == 180
+    assert captured["timeout"] == pytest.approx(180, abs=0.1)
 
     monkeypatch.setenv("WR2_VISION_TIMEOUT_S", "300")
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == 300
+    assert captured["timeout"] == pytest.approx(300, abs=0.1)
 
 
 def test_run_claude_json_pins_vision_model(monkeypatch):
@@ -386,7 +474,7 @@ def test_run_claude_json_pins_vision_model(monkeypatch):
         captured["cmd"] = cmd
         return _fake_proc(returncode=0, stdout=_json.dumps({"structured_output": {"ok": True}}))
 
-    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
     monkeypatch.delenv("WR2_VISION_MODEL", raising=False)
     claude_vision._run_claude_json("p", {"type": "object"})
     assert "--model" in captured["cmd"]

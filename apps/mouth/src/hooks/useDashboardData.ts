@@ -3,21 +3,41 @@
  * Replaces 7 separate API calls with 1 optimized call using React Query
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import {
   dashboardApi,
   type DashboardData,
 } from "@/lib/api/dashboard/dashboard.api";
 import { logger } from "@/lib/logger";
 
-export function useDashboardData() {
+const DASHBOARD_QUERY_ROOTS = new Set([
+  "dashboard",
+  "intel-feed",
+  "intake-review-count",
+  "system-pulse",
+  "compliance-radar",
+  "team-stats",
+  "role-metrics",
+]);
+
+export const dashboardQueryKey = (identity: string) =>
+  ["dashboard", identity] as const;
+
+export function removeDashboardQueries(queryClient: QueryClient): void {
+  queryClient.removeQueries({
+    predicate: ({ queryKey }) =>
+      typeof queryKey[0] === "string" && DASHBOARD_QUERY_ROOTS.has(queryKey[0]),
+  });
+}
+
+export function useDashboardData(identity: string) {
   const {
     data,
     isLoading: loading,
     error,
     refetch,
   } = useQuery<DashboardData>({
-    queryKey: ["dashboard"],
+    queryKey: dashboardQueryKey(identity),
     queryFn: async () => {
       try {
         const result = await dashboardApi.getDashboardSummary();
@@ -87,6 +107,7 @@ export function useDashboardData() {
     staleTime: 30_000, // Cache for 30 seconds
     refetchInterval: 60_000, // Auto-refresh every minute
     retry: 2, // Retry failed requests 2 times
+    enabled: Boolean(identity),
   });
 
   // Extract data with fallbacks — plain derivations, no useMemo needed
