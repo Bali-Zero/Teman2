@@ -244,6 +244,19 @@ const nextConfig: NextConfig = {
         destination: "/it/taxes/freelancer-tax-guide",
         permanent: true,
       },
+      // Editorial re-slug (2026-07-23): spouse dependent KITAS is E31B, not
+      // E33F (Kepmen M.IP-08.GR.01.01/2025 taxonomy). Must precede the
+      // /immigration/:slug* catch-all below.
+      {
+        source: "/immigration/e33f-spouse-dependent-kitas-guide",
+        destination: "/immigration/e31b-spouse-dependent-kitas-guide",
+        permanent: true,
+      },
+      {
+        source: "/visas/e33f-spouse-dependent-kitas-guide",
+        destination: "/visas/e31b-spouse-dependent-kitas-guide",
+        permanent: true,
+      },
       // Editorial re-slug (2026-07-24): child dependent KITAS is E31E, not
       // E33E (Kepmen M.IP-08.GR.01.01/2025 taxonomy; E33E is the senior
       // 5-year Second Home track). Must precede the /immigration/:slug*

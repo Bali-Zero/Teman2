@@ -19,9 +19,28 @@ describe("ProgressRing", () => {
     expect(label?.textContent).toBe("100%");
   });
 
-  it("uses status color tokens", () => {
+  it("uses semantic state color tokens", () => {
     const { container } = render(<ProgressRing percent={30} status="danger" />);
     const circle = container.querySelector("circle[data-role='fill']");
-    expect(circle?.getAttribute("stroke")).toBe("var(--color-status-danger)");
+    expect(circle?.getAttribute("stroke")).toBe("var(--state-danger)");
+  });
+
+  it("maps every status to a defined semantic token", () => {
+    const expected: Record<string, string> = {
+      ok: "var(--state-success)",
+      warn: "var(--state-warning)",
+      danger: "var(--state-danger)",
+      neutral: "var(--accent-warm)",
+    };
+    for (const [status, token] of Object.entries(expected)) {
+      const { container } = render(
+        <ProgressRing
+          percent={50}
+          status={status as "ok" | "warn" | "danger" | "neutral"}
+        />,
+      );
+      const circle = container.querySelector("circle[data-role='fill']");
+      expect(circle?.getAttribute("stroke")).toBe(token);
+    }
   });
 });

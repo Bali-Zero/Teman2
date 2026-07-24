@@ -251,4 +251,112 @@ describe("PortalHomePage", () => {
       expect(screen.getByText("Welcome Back")).toBeInTheDocument();
     });
   });
+
+  // ── WS3 · GARUDA Day Edition (2026-07-24) ────────────────────────────
+  // Day-theme token alignment: serif masthead, semantic --state-* tokens
+  // for status colors, daylight copper steps for accent text.
+
+  it("renders the day-edition serif masthead (no dark lux gradient)", async () => {
+    mockGetDashboard.mockResolvedValue(createMockDashboard());
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    await waitFor(() => {
+      const h1 = screen.getByRole("heading", {
+        level: 1,
+        name: "Welcome Back",
+      });
+      // Cormorant via the globally wired --font-serif token (inline style)
+      expect(h1.style.fontFamily).toContain("--font-serif");
+      // The white→gray lux gradient is invisible on paper — must be gone
+      expect(h1.className).not.toContain("lux-text-gradient");
+      expect(h1.className).toContain("text-[var(--tx-pure)]");
+    });
+  });
+
+  it("status cards carry semantic state-token classes (AA on light)", async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockDashboard({
+        visa: {
+          status: "active",
+          type: "KITAS",
+          expiryDate: "2025-12-31",
+          daysRemaining: 365,
+        },
+        taxes: {
+          status: "attention",
+          nextDeadline: "2025-11-15",
+          daysToDeadline: 20,
+        },
+      }),
+    );
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    await waitFor(() => {
+      const visaCard = screen.getByLabelText("Immigration status");
+      expect(visaCard.className).toContain("text-[var(--state-success)]");
+      expect(visaCard.className).not.toContain("neon-");
+
+      const taxCard = screen.getByLabelText("Tax status");
+      expect(taxCard.className).toContain("text-[var(--state-warning)]");
+      expect(taxCard.className).not.toContain("neon-");
+    });
+  });
+
+  it("quick-stats chips use warning/info state tokens, not dark-theme utilities", async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockDashboard({
+        documents: { total: 10, pending: 2 },
+        messages: { unread: 3 },
+      }),
+    );
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    await waitFor(() => {
+      const docsChip = screen
+        .getByText(/2 documents pending/)
+        .closest("button");
+      expect(docsChip).not.toBeNull();
+      expect(docsChip?.getAttribute("style")).toContain("var(--state-warning)");
+      expect(docsChip?.innerHTML).not.toContain("text-amber-400");
+
+      const msgsChip = screen.getByText(/3 unread messages/).closest("button");
+      expect(msgsChip).not.toBeNull();
+      expect(msgsChip?.getAttribute("style")).toContain("var(--state-info)");
+      expect(msgsChip?.innerHTML).not.toContain("text-blue-400");
+    });
+  });
+
+  it("action items map priorities to semantic state tokens", async () => {
+    mockGetDashboard.mockResolvedValue(
+      createMockDashboard({
+        documents: { total: 0, pending: 0 },
+        actions: [
+          {
+            id: "a1",
+            title: "Pay invoice",
+            description: "Invoice due",
+            priority: "high",
+            type: "billing",
+            href: "/portal/billing",
+          },
+        ],
+      }),
+    );
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    await waitFor(() => {
+      const actionBtn = screen.getByText("Pay invoice").closest("button");
+      expect(actionBtn).not.toBeNull();
+      expect(actionBtn?.className).toContain("text-[var(--state-danger)]");
+      expect(actionBtn?.className).not.toContain("neon-rose");
+    });
+  });
 });

@@ -1,7 +1,7 @@
 {
   "persona_id": "13_diaspora_second_home",
-  "narrative": "Dutch-passport former Indonesian national returning under the Second Home track, applying offshore.",
-  "notes": "Diaspora/ex-WNI framing is carried in the narrative, not a dedicated fact: the closed 38-path FactPath vocabulary has no 'former citizen' flag, so the scenario is modeled as any foreign-nationality applicant declaring SECOND_HOME purpose -- the product-level mechanics are identical to a non-diaspora Second Home applicant by design.",
+  "narrative": "Dutch-passport former Indonesian national returning under the Second Home track (base E33 bank-deposit route), applying offshore.",
+  "notes": "Diaspora/ex-WNI framing is carried in the narrative, not a dedicated fact: the closed 43-path FactPath vocabulary has no 'former citizen' flag, so the scenario is modeled as any foreign-nationality applicant declaring SECOND_HOME purpose with a qualifying own-name USD 150,000 deposit at a state-owned (BUMN) Indonesian bank (above the USD 130,000 threshold) -- the product-level mechanics are identical to a non-diaspora Second Home applicant by design. The applicant is 55 on GOLD_EFFECTIVE_AT: the E33E/E33F 55-59 BERSYARAT review rule (hr-e33e-e33f-age-band-55-59) does NOT fire here because it is purpose-guarded to RETIREMENT, so the senior products resolve mechanically UNSUPPORTED (no purpose overlap).",
   "facts": {
     "person.birth_date": {
       "status": "KNOWN",
@@ -127,6 +127,26 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "secondhome.bank_deposit_usd": {
+      "status": "KNOWN",
+      "value": 150000
+    },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.qualifying_property_value_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.passive_monthly_income_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "process.application_channel": {
       "status": "KNOWN",
       "value": "OFFSHORE"
@@ -148,7 +168,7 @@
     "global_state": "SUPPORTED_CANDIDATES",
     "global_reason_codes": [],
     "products": {
-      "E33S": {
+      "E33": {
         "proof_state": "SUPPORTED",
         "reason_codes": ["SECOND_HOME_SUPPORTED"],
         "covered_purposes": ["SECOND_HOME"]

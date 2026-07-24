@@ -32,14 +32,15 @@ export class ProcessErrorBoundary extends React.Component<BProps, State> {
       return (
         <div
           role="alert"
-          className="rounded-lg p-6 text-center border border-white/10"
+          className="rounded-lg p-6 text-center border"
+          style={{ borderColor: "var(--bz-border)" }}
         >
-          <p className="text-sm text-[#c9a96e]/70 mb-4">
+          <p className="text-sm text-[var(--bz-copper-text,var(--tx-secondary))] mb-4">
             Unable to load details. Our team has been notified.
           </p>
           <button
             onClick={this.handleRetry}
-            className="text-xs uppercase tracking-[2px] text-[#d4845a] hover:underline"
+            className="text-xs uppercase tracking-[2px] text-[var(--bz-copper-text,var(--tx-secondary))] hover:underline"
           >
             Retry
           </button>

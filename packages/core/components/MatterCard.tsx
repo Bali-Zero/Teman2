@@ -39,8 +39,12 @@ export const MatterCard: FC<MatterCardProps> = ({
       alignItems: "center",
       padding: "var(--space-4)",
       borderRadius: "var(--radius-lg)",
-      background: "var(--surface-raised)",
-      border: "1px solid var(--color-border-subtle)",
+      /* WS3 (GARUDA Day Edition): --surface-matter is the operative-light
+         portal card (#faf9f7 warm white); dark themes lack it and keep the
+         previous --surface-raised. Border one step up from --border-subtle
+         so the hairline survives on paper. */
+      background: "var(--surface-matter, var(--surface-raised))",
+      border: "1px solid var(--border-default, var(--color-border-subtle))",
     }}
   >
     <ProgressRing percent={progressPercent} size={64} />
@@ -66,7 +70,10 @@ export const MatterCard: FC<MatterCardProps> = ({
         <p
           style={{
             margin: "var(--space-1) 0 0",
-            color: "var(--color-status-warn)",
+            /* WS3: --color-status-warn was never defined in the token SSOT
+               (stroke/text silently inherited). --state-warning carries the
+               WS2 operative-light AA override (4.78:1 on paper). */
+            color: "var(--state-warning)",
           }}
         >
           {pendingDocs.length} document{pendingDocs.length === 1 ? "" : "s"}{" "}
@@ -80,7 +87,7 @@ export const MatterCard: FC<MatterCardProps> = ({
             color: "var(--color-text-secondary)",
           }}
         >
-          Prossimo: {nextStep}
+          Next: {nextStep}
         </p>
       ) : null}
     </div>
