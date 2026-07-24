@@ -145,6 +145,7 @@ async def list_alerts(
     category: str | None = Query(None),
     severity: str | None = Query(None),
     status_filter: str | None = Query(None, alias="status"),
+    deadline_within_days: int | None = Query(None, ge=0, le=3650),
     active_only: bool = Query(False),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -161,6 +162,7 @@ async def list_alerts(
         category: Filter by alert category.
         severity: Filter by severity level.
         status_filter: Filter by alert status.
+        deadline_within_days: Include deadlines through today plus this many days.
         active_only: Return open alerts ordered by the nearest deadline.
         limit: Max rows to return (1–500).
         offset: Pagination offset.
@@ -176,7 +178,7 @@ async def list_alerts(
     if not _is_admin(user):
         # team: restrict to rows where the owning client is assigned to this user
         clauses.append(
-            f"client_id IN (SELECT id FROM clients WHERE assigned_to = ${len(params) + 1})"
+            f"client_id IN (SELECT id FROM clients WHERE LOWER(assigned_to) = ${len(params) + 1})"
         )
         params.append((user.get("email") or "").lower())
 
@@ -192,7 +194,10 @@ async def list_alerts(
     if status_filter:
         clauses.append(f"status = ${len(params) + 1}")
         params.append(status_filter)
-    if active_only:
+    if deadline_within_days is not None:
+        clauses.append(f"deadline <= CURRENT_DATE + ${len(params) + 1}::integer")
+        params.append(deadline_within_days)
+    if active_only and not status_filter:
         clauses.append("status IN ('pending','sent','acknowledged')")
 
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""

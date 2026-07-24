@@ -15,10 +15,7 @@
 /** The four eligibility states a candidate visa can carry — never binary,
  * never color-alone (spec hard-constraint 4 / design doc §3). */
 export type EligibilityState =
-  | "eligible"
-  | "likely"
-  | "conditional"
-  | "likely-not";
+  "eligible" | "likely" | "conditional" | "likely-not";
 
 /** A single selectable option on a question. `key` is the only thing ever
  * persisted to facts/state — `labelI18nKey` looks up the display copy. */
