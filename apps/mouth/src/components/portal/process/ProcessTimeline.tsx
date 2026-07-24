@@ -10,7 +10,7 @@ interface Props {
 export function ProcessTimeline({ steps, onSelect }: Props) {
   if (steps.length === 0) {
     return (
-      <p className="text-sm text-[#c9a96e]/60 py-8 text-center">
+      <p className="text-sm text-[var(--bz-copper-text,var(--tx-secondary))] py-8 text-center">
         This practice has no steps yet. The team will set them up shortly.
       </p>
     );

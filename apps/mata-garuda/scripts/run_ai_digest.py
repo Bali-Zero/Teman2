@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +28,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
+from mata_garuda.runtime.cli_runtime import (
+    _run_process_group,
+    claude_token_chain,
+    classify_claude_retry,
+    provider_cli_env,
+)
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.tools.stream_tools import stream_publish
 
@@ -153,38 +160,35 @@ Output SOLO il digest, niente altro."""
 
 def call_claude_synthesis(prompt: str) -> str:
     """Call Claude CLI for synthesis. Uses multi-account fallback."""
-    token_vars = [
-        "CLAUDE_CODE_OAUTH_TOKEN_1",
-        "CLAUDE_CODE_OAUTH_TOKEN_2",
-        "CLAUDE_CODE_OAUTH_TOKEN_3",
-        "CLAUDE_CODE_OAUTH_TOKEN_4",
-    ]
-
-    for var in token_vars:
-        token = os.environ.get(var)
-        if not token:
-            continue
-
-        env = os.environ.copy()
-        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-
+    deadline = time.monotonic() + 120
+    chain = claude_token_chain()
+    for position, (label, token) in enumerate(chain):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "-p", prompt],
-                capture_output=True, text=True, timeout=120, env=env,
+                timeout=attempt_timeout,
+                env=provider_cli_env("claude", token),
             )
-            if result.returncode == 0 and result.stdout.strip():
-                output = result.stdout.strip()
-                # Strip [Pro]/[Air] prefix if present
-                if output.startswith("[Pro]") or output.startswith("[Air]"):
-                    output = output.split("\n", 1)[-1].strip()
-                return output
-            if "hit your limit" in (result.stderr + result.stdout).lower():
-                print(f"  [{var}] rate limited, trying next...")
-                continue
         except subprocess.TimeoutExpired:
-            print(f"  [{var}] timeout, trying next...")
+            print(f"  [{label}] timeout, trying next...")
             continue
+        except OSError:
+            return ""
+
+        if classify_claude_retry(result.stdout, result.stderr):
+            print(f"  [{label}] unavailable, trying next...")
+            continue
+        if result.returncode == 0 and result.stdout.strip():
+            output = result.stdout.strip()
+            if output.startswith("[Pro]") or output.startswith("[Air]"):
+                output = output.split("\n", 1)[-1].strip()
+            return output
+        if result.returncode != 0:
+            return ""
 
     return ""
 
