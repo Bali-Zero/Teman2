@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
 /**
  * Portal notification preferences — channel opt-in (email, WhatsApp).
  */
 
-import { FormEvent, useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { FormEvent, useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 interface PrefsResponse {
   email_enabled: boolean;
@@ -20,42 +20,43 @@ interface PrefsResponse {
 const E164_RE = /^[1-9]\d{6,14}$/;
 
 async function fetchPrefs(): Promise<PrefsResponse> {
-  return api.request<PrefsResponse>('/api/portal/notifications/prefs', {
-    method: 'GET',
+  return api.request<PrefsResponse>("/api/portal/notifications/prefs", {
+    method: "GET",
   });
 }
 
 async function savePrefs(body: PrefsResponse): Promise<PrefsResponse> {
-  return api.request<PrefsResponse>('/api/portal/notifications/prefs', {
-    method: 'PUT',
+  return api.request<PrefsResponse>("/api/portal/notifications/prefs", {
+    method: "PUT",
     body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
+    headers: { "Content-Type": "application/json" },
   });
 }
 
 export default function NotificationsSettingsPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['portal', 'notification_prefs'],
+    queryKey: ["portal", "notification_prefs"],
     queryFn: fetchPrefs,
   });
 
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [waEnabled, setWaEnabled] = useState(false);
-  const [waPhone, setWaPhone] = useState('');
+  const [waPhone, setWaPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) {
       setEmailEnabled(data.email_enabled);
       setWaEnabled(data.wa_enabled);
-      setWaPhone(data.wa_phone ?? '');
+      setWaPhone(data.wa_phone ?? "");
     }
   }, [data]);
 
   const mutation = useMutation({
     mutationFn: savePrefs,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['portal', 'notification_prefs'] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["portal", "notification_prefs"] }),
   });
 
   const onSubmit = (e: FormEvent) => {
@@ -64,11 +65,11 @@ export default function NotificationsSettingsPage() {
     const phone = waPhone.trim();
     if (waEnabled) {
       if (!phone) {
-        setPhoneError('WhatsApp number required when WA notifications are on');
+        setPhoneError("WhatsApp number required when WA notifications are on");
         return;
       }
       if (!E164_RE.test(phone)) {
-        setPhoneError('Enter digits only, no leading + (e.g. 628123456789)');
+        setPhoneError("Enter digits only, no leading + (e.g. 628123456789)");
         return;
       }
     }
@@ -96,7 +97,7 @@ export default function NotificationsSettingsPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unable to load preferences</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : 'Unexpected error.'}
+            {error instanceof Error ? error.message : "Unexpected error."}
           </AlertDescription>
         </Alert>
       </div>
@@ -167,7 +168,7 @@ export default function NotificationsSettingsPage() {
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Save'}
+            {mutation.isPending ? "Saving…" : "Save"}
           </Button>
           {mutation.isSuccess && (
             <span className="text-sm text-[var(--neon-emerald)] inline-flex items-center gap-1">
@@ -178,7 +179,7 @@ export default function NotificationsSettingsPage() {
             <span className="text-sm text-[var(--neon-rose)]">
               {mutation.error instanceof Error
                 ? mutation.error.message
-                : 'Could not save'}
+                : "Could not save"}
             </span>
           )}
         </div>
