@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LkpmLoading() {
   return (
@@ -18,7 +18,10 @@ export default function LkpmLoading() {
           <div
             key={i}
             className="rounded-xl border p-4"
-            style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             <div className="flex items-center justify-between">
               <div className="space-y-2">
