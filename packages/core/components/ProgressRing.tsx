@@ -8,11 +8,15 @@ export interface ProgressRingProps {
   label?: string;
 }
 
+/* WS3 (GARUDA Day Edition): the old --color-status-ok/warn/danger and
+   --accent-copper names were never declared in the token SSOT — the ring
+   strokes resolved to `unset` and disappeared. Read the semantic --state-*
+   tokens (WS2 operative-light AA overrides) + --accent-warm (copper). */
 const STATUS_TOKEN: Record<NonNullable<ProgressRingProps["status"]>, string> = {
-  ok: "var(--color-status-ok)",
-  warn: "var(--color-status-warn)",
-  danger: "var(--color-status-danger)",
-  neutral: "var(--accent-copper)",
+  ok: "var(--state-success)",
+  warn: "var(--state-warning)",
+  danger: "var(--state-danger)",
+  neutral: "var(--accent-warm)",
 };
 
 export const ProgressRing: FC<ProgressRingProps> = ({
@@ -70,7 +74,7 @@ export const ProgressRing: FC<ProgressRingProps> = ({
           justifyContent: "center",
           fontSize: size / 4,
           fontVariantNumeric: "tabular-nums",
-          color: "var(--color-text-primary)",
+          color: "var(--color-text-primary, var(--text-primary))",
         }}
       >
         {label ?? `${clamped}%`}
