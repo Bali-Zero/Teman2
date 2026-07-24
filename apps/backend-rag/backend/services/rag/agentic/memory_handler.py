@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 
 import asyncpg
 
+from backend.services.rag.agentic._memory_identity import is_non_personal_memory_identity
+
 if TYPE_CHECKING:
     from backend.app.metrics import MetricsCollector
     from backend.services.memory import MemoryOrchestrator
@@ -129,13 +131,16 @@ class MemoryHandler:
             metrics_collector: Optional metrics collector for recording lock contention
 
         Note:
-            - Skips anonymous users (user_id == "anonymous")
+            - Skips anonymous AND non-personal/shared-service identities
+              (see is_non_personal_memory_identity — P0-MEM containment:
+              the shared wa-mirror-internal WhatsApp identity must never
+              anchor long-term memory, same treatment as "anonymous")
             - Non-blocking: uses asyncio.create_task() in caller
             - Logs success metrics (facts extracted/saved, processing time)
             - Gracefully handles errors without failing the main flow
             - Lock timeout: configurable (default 5 seconds)
         """
-        if not user_id or user_id == "anonymous":
+        if is_non_personal_memory_identity(user_id):
             return
 
         # Evict unlocked entries when dict grows too large

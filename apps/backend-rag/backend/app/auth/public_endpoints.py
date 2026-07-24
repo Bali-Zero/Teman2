@@ -476,6 +476,43 @@ _VISA_ORACLE = (
         Category.VISA_ORACLE,
         "Visa types catalog — used by Next.js SSG at build time",
     ),
+    # Visa Check v1 homepage funnel (routers/visa_check.py, mounted at /api/visa).
+    # Anonymous, no PII (nationality/purpose/budget only), rate-limited per-IP
+    # by RateLimitMiddleware via the "/api/" bucket (120 req/min). The hash IS
+    # the access token for result pages. Registered 2026-07-23: the funnel was
+    # dead in prod since 2026-04-25 (PR #108) because these routes were never
+    # declared public — HybridAuth returned 401 to every anonymous call.
+    # Exact/template matches only — no blanket "/api/visa/" prefix.
+    PublicEndpoint(
+        "/api/visa/check/start",
+        Category.VISA_ORACLE,
+        "Visa Check funnel branch selector — anonymous yes/no routing, no data persisted",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/clock",
+        Category.VISA_ORACLE,
+        "Visa Check Clock submission — anonymous overstay-timeline wizard, no PII",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/match",
+        Category.VISA_ORACLE,
+        "Visa Check Match submission — anonymous visa recommendation, no PII",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/clock/{hash}",
+        Category.VISA_ORACLE,
+        "Visa Check Clock result page — shareable URL, the hash is the access token",
+        match="template",
+    ),
+    PublicEndpoint(
+        "/api/visa/match/{hash}",
+        Category.VISA_ORACLE,
+        "Visa Check Match result page — shareable URL, the hash is the access token",
+        match="template",
+    ),
 )
 
 _BRIDGE = (

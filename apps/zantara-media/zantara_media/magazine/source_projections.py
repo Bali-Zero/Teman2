@@ -52,9 +52,7 @@ def _slug(value: str, *, fallback: str) -> str:
 
 
 def _digest(value: object) -> str:
-    encoded = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode()
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -67,12 +65,7 @@ def _timestamp(value: object, *, fallback: datetime) -> str:
         parsed = fallback
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("collector timestamp must be timezone-aware")
-    return (
-        parsed.astimezone(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return parsed.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _instant(value: str) -> datetime:
@@ -187,9 +180,7 @@ def _projection(
             "items_seen": max(0, items_seen),
             "items_eligible": len(candidates),
             "source_count": max(0, source_count),
-            "unreachable_source_count": max(
-                0, min(unreachable_source_count, source_count)
-            ),
+            "unreachable_source_count": max(0, min(unreachable_source_count, source_count)),
             "watermark": watermark,
             "verified_at": completed_at,
         },
@@ -197,9 +188,7 @@ def _projection(
     }
 
 
-def build_regulatory_projection(
-    payload: Mapping[str, Any], *, cutoff: datetime
-) -> dict[str, Any]:
+def build_regulatory_projection(payload: Mapping[str, Any], *, cutoff: datetime) -> dict[str, Any]:
     completed_at = _timestamp(payload.get("run_at"), fallback=cutoff)
     rows = payload.get("deltas", [])
     if not isinstance(rows, list):
@@ -267,7 +256,9 @@ def build_regulatory_projection(
                         "syndication_group_fingerprint": f"regulatory-{_digest(source_url or citation)[:24]}",
                         "independence_ruleset_version": "magazine-source.v1",
                         "independence_reason": (
-                            "Official primary host." if official else "Single-source morning evidence."
+                            "Official primary host."
+                            if official
+                            else "Single-source morning evidence."
                         ),
                         "counts_toward_breaking": official,
                     }
@@ -308,9 +299,7 @@ def build_regulatory_projection(
     )
 
 
-def build_mata_garuda_projection(
-    payload: Mapping[str, Any], *, cutoff: datetime
-) -> dict[str, Any]:
+def build_mata_garuda_projection(payload: Mapping[str, Any], *, cutoff: datetime) -> dict[str, Any]:
     completed_at = _timestamp(payload.get("generated_at"), fallback=cutoff)
     rows = payload.get("items", [])
     if not isinstance(rows, list):
@@ -412,9 +401,7 @@ def build_mata_garuda_projection(
     )
 
 
-def build_notebooklm_projection(
-    payload: Mapping[str, Any], *, cutoff: datetime
-) -> dict[str, Any]:
+def build_notebooklm_projection(payload: Mapping[str, Any], *, cutoff: datetime) -> dict[str, Any]:
     completed_at = _timestamp(payload.get("generated_at"), fallback=cutoff)
     notebooks = payload.get("notebooks", [])
     if not isinstance(notebooks, list):
@@ -513,8 +500,7 @@ def build_intel_lake_projection(
         confidence_raw = row.get("confidence_score")
         confidence_score = (
             float(confidence_raw)
-            if isinstance(confidence_raw, (int, float))
-            and not isinstance(confidence_raw, bool)
+            if isinstance(confidence_raw, (int, float)) and not isinstance(confidence_raw, bool)
             else 0.5
         )
         confidence_score = min(1.0, max(0.0, confidence_score))
@@ -610,9 +596,7 @@ def _read_object(path: Path) -> Mapping[str, Any] | None:
 
 def _write_json_atomic(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    body = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ) + "\n"
+    body = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(body, encoding="utf-8")
     temporary.replace(path)
@@ -650,12 +634,8 @@ def prepare_morning_inputs(
     regulatory_raw = _read_object(
         repo_root / "research" / "regulatory" / f"{edition_date}-delta.json"
     )
-    mata_raw = _read_object(
-        repo_root / "apps" / "mata-garuda" / "data" / "kita_feed.json"
-    )
-    notebook_raw = _read_object(
-        repo_root / "research" / "nb-health" / "nb-inventory-live.json"
-    )
+    mata_raw = _read_object(repo_root / "apps" / "mata-garuda" / "data" / "kita_feed.json")
+    notebook_raw = _read_object(repo_root / "research" / "nb-health" / "nb-inventory-live.json")
 
     projections = {
         "intel-lake": build_intel_lake_projection(
@@ -667,16 +647,12 @@ def prepare_morning_inputs(
         "mata-garuda": (
             build_mata_garuda_projection(mata_raw, cutoff=cutoff)
             if mata_raw is not None
-            else _unavailable_projection(
-                "mata-garuda", "mata-garuda-public.v1", cutoff=cutoff
-            )
+            else _unavailable_projection("mata-garuda", "mata-garuda-public.v1", cutoff=cutoff)
         ),
         "notebooklm": (
             build_notebooklm_projection(notebook_raw, cutoff=cutoff)
             if notebook_raw is not None
-            else _unavailable_projection(
-                "notebooklm", "notebooklm-public.v1", cutoff=cutoff
-            )
+            else _unavailable_projection("notebooklm", "notebooklm-public.v1", cutoff=cutoff)
         ),
         "regulatory-watcher": (
             build_regulatory_projection(regulatory_raw, cutoff=cutoff)
@@ -695,9 +671,7 @@ def prepare_morning_inputs(
         path = projection_dir / f"{system_id}.public.json"
         _write_json_atomic(path, projections[system_id])
         projection_paths.append(path)
-        projection_inputs.append(
-            {"system_id": system_id, "projection_path": str(path.resolve())}
-        )
+        projection_inputs.append({"system_id": system_id, "projection_path": str(path.resolve())})
 
     revisions = resolve_published_revisions(packet_dir, journal_path)
     manifest_path = state_dir / "inputs" / f"morning-{edition_date}.json"
@@ -711,10 +685,11 @@ def prepare_morning_inputs(
         },
     )
     asset_manifest_path = state_dir / "inputs" / f"assets-{edition_date}.json"
-    _write_json_atomic(
-        asset_manifest_path,
-        {"schema_version": "asset-intents.v1", "intents": []},
-    )
+    if not asset_manifest_path.is_file():
+        _write_json_atomic(
+            asset_manifest_path,
+            {"schema_version": "asset-intents.v1", "intents": []},
+        )
     return PreparedMorningInputs(
         manifest_path=manifest_path,
         asset_manifest_path=asset_manifest_path,

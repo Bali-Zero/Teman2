@@ -16,7 +16,20 @@ def clear_oauth_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "CLAUDE_CODE_OAUTH_TOKEN_1",
         "CLAUDE_CODE_OAUTH_TOKEN_2",
         "CLAUDE_CODE_OAUTH_TOKEN_3",
+        "CLAUDE_CODE_OAUTH_TOKEN_4",
+        "CLAUDE_CODE_OAUTH_TOKEN_5",
         "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "AWS_REGION",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_CLOUD_PROJECT",
+        "CLOUD_ML_REGION",
     ):
         monkeypatch.delenv(k, raising=False)
 
@@ -38,6 +51,26 @@ def _fake_proc(stdout: bytes, stderr: bytes = b"", returncode: int = 0) -> Any:
     return _P()
 
 
+class _BlockingProc:
+    """Fake child that only exits after the client kills and reaps it."""
+
+    def __init__(self) -> None:
+        self.returncode: int | None = None
+        self.killed = False
+        self.waited = False
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    async def wait(self) -> None:
+        self.waited = True
+
+    def kill(self) -> None:
+        self.killed = True
+        self.returncode = -9
+
+
 @pytest.mark.asyncio
 async def test_collect_tokens_ordering(
     monkeypatch: pytest.MonkeyPatch,
@@ -46,13 +79,23 @@ async def test_collect_tokens_ordering(
     from backend.llm import claude_oauth_client as mod
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "tok2")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "tok3")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_5", "team-slot-not-in-hot-path")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "tok_legacy")
 
     got = mod._collect_tokens()
 
-    assert [label for _, label in got] == ["token_1", "token_3", "token_legacy", "keychain"]
-    assert [t for t, _ in got] == ["tok1", "tok3", "tok_legacy", ""]
+    assert [label for _, label in got] == [
+        "token_1",
+        "token_2",
+        "token_3",
+        "token_4",
+        "token_legacy",
+        "keychain",
+    ]
+    assert [t for t, _ in got] == ["tok1", "tok2", "tok3", "tok4", "tok_legacy", ""]
 
 
 @pytest.mark.asyncio
@@ -71,17 +114,40 @@ async def test_collect_tokens_deduplicates(
 
 
 @pytest.mark.asyncio
-async def test_build_env_strips_api_key(
+async def test_build_env_strips_alternate_provider_credentials(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "should_not_leak")
+    provider_vars = {
+        "ANTHROPIC_API_KEY": "api-secret",
+        "ANTHROPIC_AUTH_TOKEN": "auth-secret",
+        "ANTHROPIC_BASE_URL": "https://paid.invalid",
+        "CLAUDE_CODE_USE_BEDROCK": "1",
+        "AWS_ACCESS_KEY_ID": "aws-key",
+        "AWS_SECRET_ACCESS_KEY": "aws-secret",
+        "AWS_BEDROCK_RUNTIME_ENDPOINT": "https://bedrock.invalid",
+        "BEDROCK_API_KEY": "bedrock-secret",
+        "CLAUDE_CODE_USE_VERTEX": "1",
+        "ANTHROPIC_VERTEX_PROJECT_ID": "vertex-project",
+        "VERTEX_AI_ENDPOINT": "https://vertex.invalid",
+        "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/vertex.json",
+        "GOOGLE_CLOUD_PROJECT": "cloud-project",
+        "CLOUD_ML_REGION": "asia-southeast1",
+        "CLAUDE_CODE_OAUTH_TOKEN_1": "other-seat-1",
+        "CLAUDE_CODE_OAUTH_TOKEN_4": "other-seat-4",
+    }
+    for key, value in provider_vars.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("NUZANTARA_SAFE_MARKER", "preserved")
+
     env = mod._build_env("tok_xyz")
 
-    assert "ANTHROPIC_API_KEY" not in env
+    assert provider_vars.keys().isdisjoint(env)
     assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "tok_xyz"
+    assert env["NUZANTARA_SAFE_MARKER"] == "preserved"
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in mod._build_env("")
 
 
 @pytest.mark.asyncio
@@ -140,6 +206,106 @@ async def test_complete_async_rate_limit_falls_through(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "diagnostic",
+    [
+        b"Error: quota exceeded",
+        b"You've hit your weekly limit; resets tomorrow",
+        b"Authentication failed",
+        b"HTTP 401: Unauthorized",
+        b"Error: token_revoked",
+        b"Error: refresh_token_reused",
+    ],
+)
+async def test_complete_async_exit_zero_diagnostic_falls_through(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+    diagnostic: bytes,
+) -> None:
+    """Short, strongly framed exit-0 diagnostics must rotate to the next seat."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "t2")
+    attempts = 0
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return _fake_proc(stdout=diagnostic, returncode=0)
+        return _fake_proc(stdout=b"valid answer", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    resp = await mod.complete_async("ping")
+
+    assert resp.text == "valid answer"
+    assert resp.token_label == "token_2"
+    assert resp.attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_complete_async_legitimate_auth_content_is_not_diagnostic(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """Diagnostic keywords inside normal prose must not trigger rotation."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    answer = (
+        b"The string token_revoked is an OAuth error code. "
+        b"A quota is simply an allocated allowance."
+    )
+    calls = 0
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return _fake_proc(stdout=answer, returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    resp = await mod.complete_async("explain OAuth errors")
+
+    assert resp.text == answer.decode()
+    assert resp.token_label == "token_1"
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_complete_async_falls_through_to_fourth_token(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    for slot in range(1, 5):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"t{slot}")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-propagate")
+
+    attempted_tokens: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        env = kwargs["env"]
+        attempted_tokens.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        assert "ANTHROPIC_API_KEY" not in env
+        if len(attempted_tokens) < 4:
+            return _fake_proc(stdout=b"", stderr=b"OAuth quota exhausted", returncode=1)
+        return _fake_proc(stdout=b"slot four succeeded", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    resp = await mod.complete_async("ping")
+
+    assert attempted_tokens == ["t1", "t2", "t3", "t4"]
+    assert resp.text == "slot four succeeded"
+    assert resp.token_label == "token_4"
+    assert resp.attempts == 4
+
+
+@pytest.mark.asyncio
 async def test_complete_async_empty_output_falls_through(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,
@@ -181,6 +347,95 @@ async def test_complete_async_all_fail(
 
     with pytest.raises(mod.ClaudeOAuthError):
         await mod.complete_async("ping")
+
+
+@pytest.mark.asyncio
+async def test_complete_async_per_seat_timeout_kills_and_reaps(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "t2")
+    blocked = _BlockingProc()
+    calls = 0
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return blocked
+        return _fake_proc(stdout=b"second seat succeeded", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    resp = await mod.complete_async("ping", timeout_s=0.01, total_timeout_s=0.5)
+
+    assert blocked.killed is True
+    assert blocked.waited is True
+    assert resp.token_label == "token_2"
+    assert resp.attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_complete_async_global_deadline_kills_reaps_and_stops(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "t2")
+    blocked = _BlockingProc()
+    calls = 0
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return blocked
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    with pytest.raises(mod.ClaudeOAuthError, match="global_deadline"):
+        await mod.complete_async("ping", timeout_s=1, total_timeout_s=0.01)
+
+    assert calls == 1
+    assert blocked.killed is True
+    assert blocked.waited is True
+
+
+@pytest.mark.asyncio
+async def test_complete_async_never_logs_or_raises_raw_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    fake_secret = "synthetic-secret-must-not-leak"
+    fake_refresh = "synthetic-refresh-token-must-not-leak"
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        return _fake_proc(
+            stdout=b"",
+            stderr=(
+                f"Authentication failed secret={fake_secret} refresh_token={fake_refresh}"
+            ).encode(),
+            returncode=2,
+        )
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    with caplog.at_level("WARNING"), pytest.raises(mod.ClaudeOAuthError) as exc_info:
+        await mod.complete_async("ping")
+
+    surfaced = f"{caplog.text}\n{exc_info.value}"
+    assert fake_secret not in surfaced
+    assert fake_refresh not in surfaced
+    assert "stderr=" not in surfaced
+    assert "cli_exit_2" in surfaced
 
 
 @pytest.mark.asyncio
@@ -333,7 +588,9 @@ async def test_json_schema_envelope_parsed(
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
 
-    resp = await mod.complete_async("classify", model="claude-haiku-4-5-20251001", json_schema=_SCHEMA)
+    resp = await mod.complete_async(
+        "classify", model="claude-haiku-4-5-20251001", json_schema=_SCHEMA
+    )
 
     # structured_output is the real answer; text is the PROSE result (D2).
     assert resp.structured == {"domain": "visa", "confidence": 0.95}
@@ -361,8 +618,7 @@ async def test_json_schema_ndjson_last_result_wins(
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
     ndjson = (
         b'{"type":"system","subtype":"init"}\n'
-        b'{"type":"assistant","message":"thinking"}\n'
-        + _ENVELOPE_OK
+        b'{"type":"assistant","message":"thinking"}\n' + _ENVELOPE_OK
     )
 
     async def fake_create(*args: Any, **kwargs: Any) -> Any:
@@ -380,7 +636,7 @@ async def test_json_schema_is_error_envelope_falls_through(
     clear_oauth_env: None,
     force_schema_supported: None,
 ) -> None:
-    """is_error:true (even on exit 0) is treated as empty → retry next token."""
+    """is_error:true with an auth diagnostic rotates even when the CLI exits 0."""
     from backend.llm import claude_oauth_client as mod
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
@@ -390,7 +646,9 @@ async def test_json_schema_is_error_envelope_falls_through(
         counter["n"] += 1
         if counter["n"] == 1:
             return _fake_proc(
-                stdout=b'{"type":"result","is_error":true,"result":"Overloaded"}',
+                stdout=(
+                    b'{"type":"result","is_error":true,"result":"Error: token_revoked (HTTP 401)"}'
+                ),
                 returncode=0,
             )
         return _fake_proc(stdout=_ENVELOPE_OK, returncode=0)
@@ -445,7 +703,10 @@ async def test_json_schema_oversize_drops_to_text(
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
 
-    huge_schema = {"type": "object", "properties": {f"f{i}": {"type": "string"} for i in range(5000)}}
+    huge_schema = {
+        "type": "object",
+        "properties": {f"f{i}": {"type": "string"} for i in range(5000)},
+    }
     resp = await mod.complete_async("classify", json_schema=huge_schema)
 
     assert resp.text == "text fallback"
@@ -470,9 +731,7 @@ async def test_json_schema_rate_limit_on_exit_nonzero_scans_stdout(
         counter["n"] += 1
         if counter["n"] == 1:
             # rate-limit reported on stdout, empty stderr, non-zero exit.
-            return _fake_proc(
-                stdout=b'{"error":"rate limit exceeded"}', stderr=b"", returncode=1
-            )
+            return _fake_proc(stdout=b'{"error":"rate limit exceeded"}', stderr=b"", returncode=1)
         return _fake_proc(stdout=_ENVELOPE_OK, returncode=0)
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
@@ -486,19 +745,26 @@ def test_parse_json_envelope_unit() -> None:
     """Direct unit coverage of the envelope parser's return contract."""
     from backend.llm.claude_oauth_client import _parse_json_envelope
 
-    text, structured, usage = _parse_json_envelope(_ENVELOPE_OK.decode())
+    text, structured, usage, is_error = _parse_json_envelope(_ENVELOPE_OK.decode())
     assert text == "The domain is visa."
     assert structured == {"domain": "visa", "confidence": 0.95}
     assert usage == {"input_tokens": 120, "output_tokens": 18}
+    assert is_error is False
 
     # empty / unparseable → all-None contract
-    assert _parse_json_envelope("") == ("", None, None)
-    assert _parse_json_envelope("not json at all") == ("", None, None)
+    assert _parse_json_envelope("") == ("", None, None, False)
+    assert _parse_json_envelope("not json at all") == ("", None, None, False)
 
     # envelope without structured_output → text+usage but structured None
     no_struct = '{"type":"result","is_error":false,"result":"hi","usage":{"input_tokens":3,"output_tokens":1}}'
-    t, s, u = _parse_json_envelope(no_struct)
+    t, s, u, error = _parse_json_envelope(no_struct)
     assert t == "hi" and s is None and u == {"input_tokens": 3, "output_tokens": 1}
+    assert error is False
+
+    error_envelope = '{"type":"result","is_error":true,"result":"Error: refresh_token_reused"}'
+    t, s, u, error = _parse_json_envelope(error_envelope)
+    assert t == "Error: refresh_token_reused"
+    assert s is None and u is None and error is True
 
 
 def test_serialize_schema_compact_and_capped() -> None:

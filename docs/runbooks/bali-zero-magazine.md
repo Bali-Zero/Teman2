@@ -52,6 +52,15 @@ Required publish variables:
 
 Set `MAGAZINE_PUBLISH_ENABLED=false` for dry-run packet generation.
 
+Automatic hero generation is a separate guarded rollout. It defaults to
+`MAGAZINE_AUTO_ASSETS=false`; keep the typographic fallback until the process-tree,
+manifest-binding, and duplicate-ledger gates pass on the exact release commit.
+Enable it explicitly only for an operator-supervised Pro run.
+
+Legacy explicit manifests without `approved_for_packet_id` and `source_sha256`
+fail preflight before transport setup. Re-approve them against the current packet
+and source bytes; the publisher never backfills approval metadata automatically.
+
 ## Phase 0 Sites capability proof
 
 Run this before broadening beyond owner/internal access:
