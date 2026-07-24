@@ -186,3 +186,101 @@ describe("ChatPage – infinite-fetch regression", () => {
     expect(mockGetMessages.mock.calls.length).toBeLessThan(5);
   });
 });
+
+// ─── WS3 slice 6 (GARUDA Day Edition) — semantic-token styling ───────────────
+//
+// The day theme re-arms every surface via CSS custom properties; these tests
+// pin the bubble/composer/masthead chrome to the token names so a future
+// refactor cannot silently reintroduce hardcoded dark-glass colors
+// (rgba(255,255,255,…), #0c0c0e, rgba(201,169,110,…)) that collapse on paper.
+
+const CONVERSATION: MessagesResponse = {
+  messages: [
+    {
+      id: "t1",
+      content: "Your documents are ready for review.",
+      direction: "team_to_client",
+      sentBy: "Team",
+      createdAt: new Date().toISOString(),
+      readAt: new Date().toISOString(),
+    },
+    {
+      id: "c1",
+      content: "Great, thank you!",
+      direction: "client_to_team",
+      sentBy: "Client",
+      createdAt: new Date().toISOString(),
+    },
+  ],
+  total: 2,
+  unreadCount: 0,
+};
+
+describe("ChatPage – day-theme semantic tokens (WS3 slice 6)", () => {
+  async function renderConversation() {
+    mockGetMessages.mockResolvedValue(CONVERSATION);
+    let utils!: ReturnType<typeof render>;
+    await act(async () => {
+      utils = render(<ChatPage />);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return utils;
+  }
+
+  it("renders the Day masthead: serif headline in --tx-pure", async () => {
+    await renderConversation();
+    const h1 = document.querySelector("h1");
+    expect(h1).not.toBeNull();
+    expect(h1!.style.fontFamily).toBe("var(--font-serif)");
+    expect(h1!.className).toContain("text-[var(--tx-pure)]");
+  });
+
+  it("team bubble is a warm-paper card: --bz-card surface + --bz-border hairline", async () => {
+    await renderConversation();
+    const content = document.querySelector("p");
+    const teamText = Array.from(document.querySelectorAll("p")).find(
+      (p) => p.textContent === "Your documents are ready for review.",
+    );
+    expect(teamText).toBeDefined();
+    const bubble = teamText!.closest("div.rounded-2xl") as HTMLElement;
+    expect(bubble).not.toBeNull();
+    const style = bubble.getAttribute("style") ?? "";
+    expect(style).toContain("var(--bz-card)");
+    expect(style).toContain("var(--bz-border)");
+    expect(content).toBeDefined();
+  });
+
+  it("own bubble keeps the warm fill with theme-aware --bz-on-warm text", async () => {
+    await renderConversation();
+    const ownText = Array.from(document.querySelectorAll("p")).find(
+      (p) => p.textContent === "Great, thank you!",
+    );
+    expect(ownText).toBeDefined();
+    const bubble = ownText!.closest("div.rounded-2xl") as HTMLElement;
+    const style = bubble.getAttribute("style") ?? "";
+    expect(style).toContain("var(--bz-accent-warm)");
+    expect(style).toContain("var(--bz-on-warm)");
+  });
+
+  it("composer input uses card surface + token border (no white-glass rgba)", async () => {
+    await renderConversation();
+    const input = document.querySelector(
+      'input[aria-label="Type a message to Bali Zero team"]',
+    ) as HTMLInputElement;
+    expect(input).not.toBeNull();
+    const style = input.getAttribute("style") ?? "";
+    expect(style).toContain("var(--bz-card)");
+    expect(style).toContain("var(--bz-border)");
+  });
+
+  it("contains NO legacy hardcoded dark-glass colors anywhere in the tree", async () => {
+    const { container } = await renderConversation();
+    const html = container.innerHTML;
+    expect(html).not.toContain("rgba(255,255,255");
+    expect(html).not.toContain("#0c0c0e"); // token-lint-ok: drain-guard assertion string, not a color usage
+    expect(html).not.toContain("rgba(12,12,14");
+    expect(html).not.toContain("201,169,110");
+  });
+});

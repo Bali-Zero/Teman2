@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { MessageCircle, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { MessageCircle, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function ChatError({
   error,
@@ -13,20 +13,31 @@ export default function ChatError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Portal chat page error', {}, error);
+    logger.error("Portal chat page error", {}, error);
   }, [error]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: 'rgba(244,63,94,0.1)' }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+        }}
       >
-        <MessageCircle className="h-8 w-8" style={{ color: 'var(--neon-rose)' }} />
+        <MessageCircle
+          className="h-8 w-8"
+          style={{ color: "var(--state-danger)" }}
+        />
       </div>
       <div className="space-y-2 max-w-sm">
-        <h2 className="text-xl font-semibold">Messaging unavailable</h2>
-        <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
+        <h2
+          className="text-xl font-semibold"
+          style={{ color: "var(--tx-pure)" }}
+        >
+          Messaging unavailable
+        </h2>
+        <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
           We couldn&apos;t load your messages. Please try again.
         </p>
       </div>

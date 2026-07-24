@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * Portal Chat — client ↔ Bali Zero team messaging.
+ *
+ * WS3 slice 6 (GARUDA Day Edition, 2026-07-26): day-theme token alignment,
+ * mirroring slices 1-4 (portal home / matters / billing / process).
+ * - Masthead: copper rule + Cormorant serif (--font-serif) in --tx-pure.
+ * - Team bubble: --bz-card warm-paper card + hairline --bz-border (+ concept
+ *   .panel shadow); own bubble: --bz-accent-warm fill + --bz-on-warm fg
+ *   (theme-aware — ink on sand dark 8.43:1, white on daylight-gold light
+ *   4.86:1, both AA). Sender/team distinction is readable without color:
+ *   alignment (left/right), avatar, sender label, "• Read" marker.
+ * - Copper small text reads --bz-copper-text (5.04:1 on paper). The 12%-tint
+ *   chip pattern is NOT used under small copper text (tint drops it to
+ *   ~4.4:1 on BOTH themes) — chips/tabs get a hairline copper border on the
+ *   page surface instead.
+ * - No zantara/AI accent here: this is team messaging, not the AI assistant.
+ */
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
 import { api } from "@/lib/api";
@@ -331,8 +349,21 @@ export default function ChatPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-            <p style={{ color: "var(--bz-text-2)" }}>
+            {/* Day masthead: copper rule + Cormorant serif in --tx-pure */}
+            <div
+              aria-hidden="true"
+              className="w-14 h-[3px] rounded-sm mb-3 bg-[var(--bz-copper)]"
+            />
+            <h1
+              className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              Messages
+            </h1>
+            <p
+              className="text-sm mt-1"
+              style={{ color: "var(--tx-secondary)" }}
+            >
               Chat with your Bali Zero team
             </p>
           </div>
@@ -347,10 +378,15 @@ export default function ChatPage() {
         {unreadCount > 0 && (
           <div className="mt-2 flex items-center gap-2">
             <div
-              className="px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5"
+              className="px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5 border"
               style={{
-                background: "rgba(201,169,110,0.12)",
-                color: "var(--bz-accent-warm)",
+                // Hairline copper border, NOT a 12% tint fill: small copper
+                // text on a copper tint measures ~4.4:1 on both themes
+                // (below the 4.5:1 AA floor); on the page surface
+                // --bz-copper-text is 5.04:1 (paper) / 5.15:1 (anthracite).
+                borderColor:
+                  "color-mix(in srgb, var(--bz-copper) 40%, transparent)",
+                color: "var(--bz-copper-text)",
               }}
             >
               <MessageCircle className="w-4 h-4" />
@@ -377,14 +413,16 @@ export default function ChatPage() {
             <button
               key={thread.id ?? "all"}
               onClick={() => setActiveThread(thread.id)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 border"
               style={
                 activeThread === thread.id
                   ? {
-                      background: "rgba(201,169,110,0.15)",
-                      color: "var(--bz-accent-warm)",
+                      borderColor:
+                        "color-mix(in srgb, var(--bz-copper) 40%, transparent)",
+                      color: "var(--bz-copper-text)",
                     }
                   : {
+                      borderColor: "transparent",
                       color: "var(--bz-text-2)",
                     }
               }
@@ -394,8 +432,8 @@ export default function ChatPage() {
                 <span
                   className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
                   style={{
-                    background: "rgba(201,169,110,0.2)",
-                    color: "var(--bz-accent-warm)",
+                    background: "var(--bz-accent-warm)",
+                    color: "var(--bz-on-warm)",
                   }}
                 >
                   {thread.unread}
@@ -409,7 +447,7 @@ export default function ChatPage() {
       {/* Messages Container */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-600"
+        className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-thin scrollbar-thumb-[var(--bz-border-hover)]"
       >
         {filteredMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -441,7 +479,7 @@ export default function ChatPage() {
                   style={{
                     borderColor: "var(--bz-border)",
                     color: "var(--bz-text-2)",
-                    background: "rgba(255,255,255,0.03)",
+                    background: "var(--bz-card)",
                   }}
                 >
                   {isLoadingMore ? (
@@ -506,13 +544,13 @@ export default function ChatPage() {
             disabled={isSending}
             className={cn(
               "flex-1 px-4 py-3 rounded-xl border",
-              "focus:outline-none focus:ring-2",
+              "focus:outline-none focus:ring-2 focus:ring-[var(--bz-border-accent)]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
             style={{
-              background: "rgba(255,255,255,0.03)",
-              borderColor: "rgba(255,255,255,0.05)",
-              color: "var(--bz-text-1)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+              color: "var(--tx-primary)",
             }}
           />
           <Button
@@ -559,12 +597,11 @@ function MessageBubble({
       {isFromTeam && (
         <div
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: "rgba(201,169,110,0.12)" }}
+          style={{
+            background: "color-mix(in srgb, var(--bz-copper) 10%, transparent)",
+          }}
         >
-          <Users
-            className="w-4 h-4"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <Users className="w-4 h-4" style={{ color: "var(--bz-copper)" }} />
         </div>
       )}
 
@@ -572,26 +609,31 @@ function MessageBubble({
       <div
         className={cn(
           "max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5",
-          isFromTeam ? "rounded-tl-sm" : "rounded-tr-sm",
-          isUnread && "ring-2",
+          isFromTeam ? "rounded-tl-sm border" : "rounded-tr-sm",
         )}
         style={
           isFromTeam
             ? {
-                background: "rgba(255,255,255,0.03)",
-                backdropFilter: "blur(12px)",
+                background: "var(--bz-card)",
+                borderColor: "var(--bz-border)",
+                // Unread: hairline copper ring. Read: GARUDA Day concept
+                // .panel shadow (soft navy on paper, near-invisible on
+                // dark — same precedent as portal process page).
                 boxShadow: isUnread
-                  ? "0 0 0 2px rgba(201,169,110,0.3)"
-                  : undefined,
+                  ? "0 0 0 2px color-mix(in srgb, var(--bz-copper) 35%, transparent)"
+                  : "0 14px 34px rgba(22, 33, 58, 0.07)",
               }
-            : { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
+            : {
+                background: "var(--bz-accent-warm)",
+                color: "var(--bz-on-warm)",
+              }
         }
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
           <p
             className="text-xs font-medium mb-1"
-            style={{ color: "var(--bz-accent-warm)" }}
+            style={{ color: "var(--bz-copper-text)" }}
           >
             {message.sentBy}
           </p>
@@ -601,7 +643,9 @@ function MessageBubble({
         {message.subject && (
           <p
             className="text-sm font-semibold mb-1"
-            style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
+            style={{
+              color: isFromTeam ? "var(--tx-primary)" : "var(--bz-on-warm)",
+            }}
           >
             {message.subject}
           </p>
@@ -610,16 +654,20 @@ function MessageBubble({
         {/* Message content */}
         <p
           className="text-sm whitespace-pre-wrap break-words"
-          style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
+          style={{
+            color: isFromTeam ? "var(--tx-primary)" : "var(--bz-on-warm)",
+          }}
         >
           {message.content}
         </p>
 
-        {/* Time */}
+        {/* Time — full-strength fg on both bubble kinds: the previous
+            60%-opacity ink measured 2.54:1 on daylight gold (AA fail);
+            --bz-on-warm is 4.86:1 light / 8.43:1 dark. */}
         <p
           className="text-[10px] mt-1"
           style={{
-            color: isFromTeam ? "var(--bz-text-2)" : "rgba(12,12,14,0.6)",
+            color: isFromTeam ? "var(--tx-secondary)" : "var(--bz-on-warm)",
           }}
         >
           {formatTime(message.createdAt)}
@@ -633,7 +681,7 @@ function MessageBubble({
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
           style={{ background: "var(--bz-accent-warm)" }}
         >
-          <User className="w-4 h-4" style={{ color: "#0c0c0e" }} />
+          <User className="w-4 h-4" style={{ color: "var(--bz-on-warm)" }} />
         </div>
       )}
     </div>
