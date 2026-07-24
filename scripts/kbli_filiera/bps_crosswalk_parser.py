@@ -258,6 +258,29 @@ class LampiranBlock:
     last_page: int
     edges: list[ParsedRow] = field(default_factory=list)
     unresolved: list[UnresolvedRow] = field(default_factory=list)
+    # Per-page strata for the acceptance-gate holdout draw (§1.4 item 2):
+    # {pdf_page: int, wrapped: bool, nm: bool, edge_count: int}. `wrapped` is
+    # computed from the RAW table (a data cell carrying '\n'), which is lost
+    # once titles are normalized — so it is recorded here at parse time.
+    pages: list[dict] = field(default_factory=list)
+
+
+def page_stratum(raw_table: list[list[str | None]], page_edges: list[ParsedRow]) -> dict:
+    """Classify one page for the holdout draw. `wrapped` = a data row carries a
+    multi-line cell (continuation-row shape B5 named). `nm` = a code
+    participates in >1 edge on this page (a split or a merge visible here)."""
+    wrapped = any(
+        "\n" in (cell or "")
+        for row in raw_table
+        if not is_header_or_label_row(row)
+        for cell in row
+    )
+    counts: dict[str, int] = {}
+    for e in page_edges:
+        counts[e.left_code] = counts.get(e.left_code, 0) + 1
+        counts[e.right_code] = counts.get(e.right_code, 0) + 1
+    nm = any(c > 1 for c in counts.values())
+    return {"wrapped": wrapped, "nm": nm, "edge_count": len(page_edges)}
 
 
 def accumulate_ancestry(block: LampiranBlock) -> dict[str, dict]:
@@ -374,6 +397,9 @@ def find_block(pdf, title_re: re.Pattern, expected_direction: str, lampiran: int
             edges, unresolved = parse_table_rows(table, direction, i + 1)
             block.edges.extend(edges)
             block.unresolved.extend(unresolved)
+            stratum = page_stratum(table, edges)
+            stratum["pdf_page"] = i + 1
+            block.pages.append(stratum)
             block.last_page = i + 1
         elif direction is None:
             # A blank divider AFTER data ends the block; the start page's own
@@ -442,6 +468,13 @@ def extract(vault_root: Path) -> dict:
     consistency = cross_direction_diff(fwd, rev)
 
     # bps_2020_ancestors-shaped edge relation, reverse-driven (2025 → 2020…).
+    # LEAN by design: only the canonical-bound fields the compiler writes
+    # (codes/sebagian/source_locator). Titles are deliberately NOT here — the
+    # output_relation_digest is over this relation and seeds the acceptance-gate
+    # holdout draw, so it MUST be title-independent: an edge-preserving change
+    # (watermark title cleanup in item-6, a pdfplumber upgrade) must not reseed
+    # the gate. Titles carry ~11.5% watermark noise and are auxiliary (item-6
+    # diffing regenerates them deterministically when needed).
     relation: dict[str, dict] = {}
     for code2025 in sorted(ancestry):
         rec = ancestry[code2025]
@@ -449,8 +482,6 @@ def extract(vault_root: Path) -> dict:
             "codes": rec["codes"],
             "sebagian": [False] * len(rec["codes"]),  # verified-absent in source
             "source_locator": rec["locators"],
-            "title_2025": rec["title_2025"],
-            "ancestor_titles": rec["titles"],
         }
 
     payload_core = {"relation": relation}
@@ -498,6 +529,7 @@ def extract(vault_root: Path) -> dict:
         "relation": relation,
         "consistency": consistency,
         "unresolved_rows": unresolved,
+        "page_strata": {"forward_L5": fwd.pages, "reverse_L10": rev.pages},
     }
 
 
