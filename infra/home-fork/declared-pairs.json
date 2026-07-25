@@ -387,6 +387,48 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.log-rotate.daily.plist",
       "repo": "infra/launchagents/com.nuzantara.log-rotate.daily.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/run.sh",
+      "repo": "scripts/cron-agent-python/run.sh",
+      "_note": "W104 promotion (2026-07-25). THE entry point of the cron-agent-python organism: 16 crontab lines exec it (`run.sh <job>`), and --discover flagged it UNDECLARED once per line. Carries the REDISCLI_AUTH export that re-armed redis auth for every job in the tree.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/agent_job.py",
+      "repo": "scripts/cron-agent-python/agent_job.py",
+      "_note": "W104 promotion (2026-07-25). Shared base class every job imports (send_telegram, backend_api, run ledger, redis event bus). STRUCTURALLY INVISIBLE to lint_home_fork --discover, which only resolves payloads named by a plist/crontab — an imported module is never an entry point, so the most load-bearing file in the tree could never be flagged. Declared explicitly for that reason.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/log_anomaly_detector.py",
+      "repo": "scripts/cron-agent-python/log_anomaly_detector.py",
+      "_note": "W104 promotion (2026-07-25): the cured job — positional log freshness + dedup that grades the redis REPLY instead of the exit code. Same lint blind spot as agent_job.py (exec'd via run.sh, never named directly).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/intel_radar_daily_digest.py",
+      "repo": "scripts/cron-agent-python/intel_radar_daily_digest.py",
+      "_note": "W104 promotion (2026-07-25): the one tree payload --discover DID flag (executed straight from com.balizero.intel-radar-daily-digest.plist, bypassing run.sh — which is why agent_job.py now derives REDISCLI_AUTH at import time too).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-agent-python/curiosity_batch.py",
+      "repo": "scripts/cron-agent-python/curiosity_batch.py",
+      "_note": "W104 sweep (2026-07-25): was the ONLY file of this tree already tracked (promoted by #1510) and it had DRIFTED — undeclared, so --check was blind to it. Divergence was comment-only (1 hunk, code byte-identical): live still carried the pre-#1510 note about a plaintext DB-password fallback that #1510 had stripped as a cicatrix-#4 leak. Verified no credential in the live copy, then realigned live from repo canon.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/garuda-consumer.sh",
+      "repo": "infra/launchagents/wrappers/garuda-consumer.sh",
+      "_note": "W104 class-audit (2026-07-25): armed by com.garuda.consumer.daily, was UNDECLARED. Its `if ! redis-cli ping` preflight was decorative — redis-cli exits 0 on NOAUTH — so the gate passed unauthenticated. Now grades the reply (== PONG) AND exports REDISCLI_AUTH, because tightening the gate without supplying the credential would have taken the cron offline. guilt/innocence/scar-pin proven live 3/3.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/garuda-gap-detector.sh",
+      "repo": "infra/launchagents/wrappers/garuda-gap-detector.sh",
+      "_note": "W104 class-audit (2026-07-25): same decorative `redis-cli ping` gate as garuda-consumer.sh, armed by com.garuda.gap-detector.twice-daily. Same cure, same 3/3 proof.",
+      "machines": ["pro"]
     }
   ],
   "allow": [
