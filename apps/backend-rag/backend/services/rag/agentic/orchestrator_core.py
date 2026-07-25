@@ -59,7 +59,10 @@ from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
-from backend.services.visa_check.e33_claim_guard import guard_e33_answer
+from backend.services.visa_check.e33_claim_guard import (
+    apply_guard_enforcement,
+    guard_e33_answer_detailed,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
@@ -79,6 +82,58 @@ _ENABLE_CRAG_ROUTER = os.getenv("ENABLE_CRAG_ROUTER", "false").lower() in ("true
 _ENABLE_HYDE = os.getenv("ENABLE_HYDE", "false").lower() in ("true", "1", "yes")
 # R5 Phase 6: _ENABLE_NLM_ORCHESTRATOR removed — NLM routing decommissioned, Qdrant+KG canonical
 _ENABLE_DEEP_RESEARCH = os.getenv("ENABLE_DEEP_RESEARCH", "false").lower() in ("true", "1", "yes")
+
+# E33 Second Home claim-guard enforcement kill-switch (default OFF = today's
+# behaviour: violations are logged + a safe fallback note is appended, the
+# answer is otherwise untouched). When armed, a violation ALSO sets
+# `CoreResult.abstain` — the SAME field the evidence-score label gate uses —
+# which routes the answer into the existing abstain/HUMAN_REVIEW path
+# (e.g. `wa_inbox_bot.py::generate_bot_reply` parks it for operator
+# takeover instead of auto-sending). Deliberately NOT a hard block/rewrite:
+# .claude/rules/cicatrix-superscar.md #3 documents eight consecutive guard
+# over-match bugs in this repo — a false positive here must degrade to
+# "parked for a human", never to a mangled or refused answer. Arm with:
+# `fly secrets set E33_CLAIM_GUARD_ENFORCE=true -a nuzantara-rag`.
+_E33_CLAIM_GUARD_ENFORCE = os.getenv("E33_CLAIM_GUARD_ENFORCE", "false").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+
+
+def _apply_e33_claim_guard(result: CoreResult) -> None:
+    """Wire the E33 claim guard onto ``result`` in place.
+
+    Always: scan, log, and append the safe fallback note on violation (never
+    rewrites or removes the model's original text). Additionally, when
+    ``_E33_CLAIM_GUARD_ENFORCE`` is armed and a violation fired, route the
+    answer into the existing abstain/HUMAN_REVIEW path via ``CoreResult``'s
+    own ``abstain``/``abstain_reason`` fields — the same fields the
+    evidence-score label gate uses (``orchestrator_response.py``), so
+    downstream consumers that already respect ``abstain`` (e.g.
+    ``wa_inbox_bot.py::generate_bot_reply``) get real protection for free.
+
+    Extracted as a module-level function (not inlined in
+    ``process_query_core``) so it is unit-testable against a bare
+    ``CoreResult`` without constructing an ``OrchestratorCore``/``AgentState``
+    — see ``test_e33_claim_guard.py::TestApplyE33ClaimGuardCallSite``.
+    """
+    guard_outcome = guard_e33_answer_detailed(result.answer)
+    result.answer = guard_outcome.answer
+    new_abstain_reason = apply_guard_enforcement(
+        has_violation=guard_outcome.has_violation,
+        enforce=_E33_CLAIM_GUARD_ENFORCE,
+        existing_abstain_reason=result.abstain_reason,
+    )
+    if new_abstain_reason is not None:
+        result.abstain = True
+        result.abstain_reason = new_abstain_reason
+        logger.warning(
+            "[E33Guard] enforcement armed — routing answer to abstain/HUMAN_REVIEW "
+            "(%d violation(s)): %s",
+            len(guard_outcome.violations),
+            [v.pattern_id for v in guard_outcome.violations],
+        )
 
 # SPEC v2 D3-L2 (F1b, 2026-07-17): curated_qa grounding injection.
 # NOT verbatim serving — a hit is prepended to the ReAct system context as
@@ -1374,10 +1429,13 @@ class OrchestratorCore:
                 f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
             )
 
-        # 12b. E33 Second Home claim guard (log-only, non-blocking): flags
-        # registry-forbidden E33 claims in the generated answer and appends a
-        # safe fallback note. Never rewrites or suppresses the answer.
-        result.answer = guard_e33_answer(result.answer)
+        # 12b. E33 Second Home claim guard: flags registry-forbidden E33
+        # claims in the generated answer and appends a safe fallback note.
+        # The note-append is unconditional and non-blocking — never rewrites
+        # or removes the model's text. Additionally routing the answer to
+        # abstain/HUMAN_REVIEW is gated by _E33_CLAIM_GUARD_ENFORCE (see
+        # flag definition above for the full rationale).
+        _apply_e33_claim_guard(result)
 
         # 13. R5 Phase 6: NLM Enrichment merge removed — nlm_task/nlm_domain always None
         evidence_score = getattr(state, "evidence_score", None)
