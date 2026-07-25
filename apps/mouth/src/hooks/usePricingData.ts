@@ -11,20 +11,32 @@ interface PricingResult {
   isError: boolean;
 }
 
-export function usePricingData(serviceKey: string): PricingResult {
+/**
+ * Fetch a live price by SSOT service key. Pass `null` to skip the fetch
+ * entirely (e.g. a package with no live pricing wired yet) — SWR treats a
+ * `null` key as "don't fetch", so no network call is made and `price` is
+ * always `null` in that case.
+ */
+export function usePricingData(serviceKey: string | null): PricingResult {
   const { data, error, isLoading } = useSWR(
-    `/api/pricing/calculate?service=${encodeURIComponent(serviceKey)}`,
+    serviceKey
+      ? `/api/pricing/calculate?service=${encodeURIComponent(serviceKey)}`
+      : null,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       shouldRetryOnError: false,
-      fallbackData: { price: PRICING_FALLBACK[serviceKey] ?? null },
+      fallbackData: serviceKey
+        ? { price: PRICING_FALLBACK[serviceKey] ?? null }
+        : undefined,
     },
   );
 
   return {
-    price: data?.price ?? PRICING_FALLBACK[serviceKey] ?? null,
+    price:
+      (serviceKey ? (data?.price ?? PRICING_FALLBACK[serviceKey]) : null) ??
+      null,
     isLoading,
     isError: !!error,
   };
