@@ -5,6 +5,15 @@ import { useTranslation } from "@/i18n";
 import type { Locale } from "@/i18n/types";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
+import { usePricingData } from "@/hooks/usePricingData";
+
+// PricingTool SSOT key (bali_zero_official_prices_2026.json). Matches the
+// key registered in PRICING_FALLBACK (components/book/book-data.ts).
+const E33_LIVE_PRICE_KEY = "E33 Second Home (5 Years)";
+// Static fallback — never blank, never a stranding spinner. Kept identical
+// to PRICING_FALLBACK's entry for this key so the figure never visibly
+// shifts between "live" and "fallback" states.
+const E33_FALLBACK_PRICE = "IDR 39,000,000";
 
 /**
  * E33 Second Home Visa landing — Fit-Memo funnel (2026-07-24).
@@ -87,6 +96,8 @@ function LanguageSwitcher() {
 
 export function SecondHomeLanding() {
   const { t } = useTranslation();
+  const { price: livePrice } = usePricingData(E33_LIVE_PRICE_KEY);
+  const price = livePrice ?? E33_FALLBACK_PRICE;
 
   const faqItems = [1, 2, 3, 4, 5, 6].map((n) => ({
     q: t(`secondHome.faq.q${n}`),
@@ -388,7 +399,7 @@ export function SecondHomeLanding() {
               color: "var(--accent-funnel-text, var(--accent-funnel))",
             }}
           >
-            IDR 39,000,000
+            {price}
           </div>
           <p
             style={{

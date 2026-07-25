@@ -25,6 +25,30 @@ describe("TeamVerificationBadge", () => {
     expect(screen.getByText(/Our Legal specialists are verifying/i)).toBeDefined();
   });
 
+  it("renders consulting state in Italian", () => {
+    vi.mocked(useChatLocale).mockReturnValue("it");
+    render(<TeamVerificationBadge status="consulting" domainLabel="Legal" />);
+    expect(screen.getByText(/I nostri specialisti di Legal stanno verificando/i)).toBeDefined();
+  });
+
+  it("renders consulting state in Indonesian", () => {
+    vi.mocked(useChatLocale).mockReturnValue("id");
+    render(<TeamVerificationBadge status="consulting" domainLabel="Imigrasi" />);
+    expect(screen.getByText(/Spesialis Imigrasi kami sedang memverifikasi/i)).toBeDefined();
+  });
+
+  it("renders consulting state in French", () => {
+    vi.mocked(useChatLocale).mockReturnValue("fr");
+    render(<TeamVerificationBadge status="consulting" domainLabel="Legal" />);
+    expect(screen.getByText(/Nos spécialistes de Legal vérifient/i)).toBeDefined();
+  });
+
+  it("renders consulting state in Russian", () => {
+    vi.mocked(useChatLocale).mockReturnValue("ru");
+    render(<TeamVerificationBadge status="consulting" domainLabel="Legal" />);
+    expect(screen.getByText(/Наши специалисты по Legal проверяют/i)).toBeDefined();
+  });
+
   it("renders verified state in Italian", () => {
     vi.mocked(useChatLocale).mockReturnValue("it");
     render(<TeamVerificationBadge status="verified" domainLabel="Legal" />);
