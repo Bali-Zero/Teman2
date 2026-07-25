@@ -161,6 +161,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
 | `.claude/skills/reuse-first/` | Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). C... |
+| `.claude/skills/secondhome/` | "E33 Second Home Visa corner — the live shared context for ALL work on the E33 vertical (base E33 deposit/property route, E33E/E33F senior). Load BEFORE touc... |
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
 | `.claude/skills/sota-architecture-loop/` | Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → coun... |
 | `.claude/skills/visaoracle/` | "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, ... |

@@ -214,7 +214,9 @@ describe("ReviewPage", () => {
     });
 
     render(<ReviewPage />);
-    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review" }))[0],
+    );
 
     // Read-only notice is shown…
     expect(await screen.findByText(/already filed — view only/i)).toBeVisible();
@@ -257,7 +259,9 @@ describe("ReviewPage", () => {
     );
 
     render(<ReviewPage />);
-    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review" }))[0],
+    );
 
     expect(
       await screen.findByText(/claimed by another reviewer — view only/i),
@@ -280,7 +284,9 @@ describe("ReviewPage", () => {
     // beforeEach's apiMock.post already returns a claim_token on /claim.
 
     render(<ReviewPage />);
-    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review" }))[0],
+    );
 
     // The claim was attempted exactly once on the claim endpoint.
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledTimes(1));
@@ -301,7 +307,9 @@ describe("ReviewPage", () => {
     });
 
     render(<ReviewPage />);
-    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review" }))[0],
+    );
 
     expect(
       await screen.findByText("Could not open the document."),

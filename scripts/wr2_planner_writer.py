@@ -424,9 +424,33 @@ assert set(_KIND_TO_MODEL) == set(ir.SLIDE_KIND_TO_FAMILY), (
 # docstring). Importing wr2_ir_shadow_replay here would pull in its asyncpg/
 # backend.llm import surface at module load time, which this module's own
 # zero-I/O discipline (stated in this file's module docstring) forbids.
+# The SILENT GUILLOTINE (2026-07-25, found by running the real pipeline end-to-end).
+# `wr2_carousel_ir._cap_subhead` hard-trims SIX fields across FOUR kinds to
+# _SUBHEAD_MAX_WORDS words / _SUBHEAD_MAX_CHARS chars at a word boundary:
+#     CoverSlide.subhead · ProseSlide.subhead · StatSlide.unit/label ·
+#     CtaSlide.trust_marker/reach
+# and until this change NOT ONE of the six declared that budget to the writer —
+# only `statement` ("a 3-15 word punch line") ever stated its own. So the writer
+# wrote natural sentences and the validator guillotined them mid-phrase, silently,
+# into production copy. Measured on one real deck (Perka BKPM 5/2025, opus-4-7
+# planner + sonnet-5 writer):
+#     cover.subhead    "A new rule just reset one"       -> dangling, no object
+#     cta.trust_marker "Basis: Peraturan BKPM No."       -> the regulation NUMBER cut off
+#     cta.reach        "Butuh hitung modal, KBLI, dan"   -> ends on a conjunction
+# Interpolated from the IR constants (never re-typed) so the instruction cannot
+# drift away from the validator that enforces it — pinned by
+# test_subhead_cap_note_matches_the_ir_constants.
+_SUBHEAD_CAP = (
+    f"MAX {ir._SUBHEAD_MAX_WORDS} WORDS / {ir._SUBHEAD_MAX_CHARS} chars — a LABEL, not a "
+    "sentence; longer text is hard-trimmed at a word boundary and the remainder is LOST"
+)
+
 _KIND_FIELD_SCHEMA: dict[str, str] = {
-    "cover": 'headline (str, required), subhead (str), regulation_code (str), image_prompt (str)',
-    "prose": 'headline (str, required), body (str, required), subhead (str)',
+    "cover": (
+        f'headline (str, required), subhead (str — {_SUBHEAD_CAP}), '
+        'regulation_code (str), image_prompt (str)'
+    ),
+    "prose": f'headline (str, required), body (str, required), subhead (str — {_SUBHEAD_CAP})',
     "statement": 'statement (str, required) — a 3-15 word punch line, never a paragraph',
     "fact_stack": (
         'heading (str, required), facts (list[str], required, >=1 — each item is ONE fact line), '
@@ -442,9 +466,15 @@ _KIND_FIELD_SCHEMA: dict[str, str] = {
         '"3 forces behind the rise")'
     ),
     "qa": 'pairs (list[{voice, line}], required, >=2 — first two entries are the two voices in the exchange)',
-    "stat": 'value (str, required), unit (str), label (str), context (str)',
+    "stat": (
+        f'value (str, required), unit (str — {_SUBHEAD_CAP}), '
+        f'label (str — {_SUBHEAD_CAP}), context (str)'
+    ),
     "citation": 'claim (str, required), sources (list[{code, issuer, date, url, note}], required, >=1)',
-    "cta": 'invite (str, required), trust_marker (str), reach (str)',
+    "cta": (
+        'invite (str, required — the call-to-action line), '
+        f'trust_marker (str — {_SUBHEAD_CAP}), reach (str — {_SUBHEAD_CAP})'
+    ),
 }
 assert set(_KIND_FIELD_SCHEMA) == set(_KIND_TO_MODEL), (
     "_KIND_FIELD_SCHEMA has drifted from _KIND_TO_MODEL's keys"
