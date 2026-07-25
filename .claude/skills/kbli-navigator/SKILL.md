@@ -291,6 +291,40 @@ the agreed hedge, the prose cure may be an **appended recorded sentence** (the m
 already make in L2.1) rather than authored replacement prose — which is what "welded" ruled out.
 Still generator≠grader, and still not started here.
 
+**GROUND CLOSED 2026-07-26 — and it supersedes the 43/38/5 numbers directly above.** Those were a
+slice, measured through an ad-hoc selector. The repo already owns this lane, and reading it changes
+the answer. `python3 scripts/kbli_filiera/emit_l4bali_gap_disclosure_spec.py --census` today reports
+**`IN SCOPE 0` / `already_disclosed 151`**: the FIELD layer is finished catalogue-wide, and that
+emitter's own docstring already draws the boundary — _"this spec does NOT touch editorial prose — it
+only discloses l4_bali"_ — with a `_meta.editorial_residue` counter for exactly this gap. **L2.2 is
+that tool's declared follow-up, not a new discovery. Build on it, not beside it.**
+
+| the population that matters                                | n       |                                                           |
+| ---------------------------------------------------------- | ------- | --------------------------------------------------------- |
+| records whose `l4_bali.reason` carries `DISCLOSURE_PREFIX` | **152** | `disputed_key` 97 · `no_oss_scope` 54 · `detached_tier` 1 |
+
+by `l4_bali.status`: `OK_or_HIGHER_RISK` 90 · `CHIUSO_MORATORIA_BALI` 33 · `CHIUSO_PMA_NO_BESAR` 17 ·
+`APERTO_BALI_RISCHIO_ALTO` 11 · `TERTUTUP` 1. (PENDING-ARMS' "95 of 95" is stale too — the wave grew.)
+
+**And the third conjunct above — "the prose asserts the verdict" — has to go.** No matcher can carry
+it. The emitter's own `_TIER_CLAIM_RE`, run over every `intel_2026` field, flags **152 of 152** — a
+discriminator firing on 100% of its population discriminates nothing, and its author knew, commenting
+it _"Bookkeeping only … NEVER used for selection"_. A strict hand-built matcher over `whatYouNeed`
+flags **19** and demonstrably misses real assertions (`"Bali classifies it as medium-high risk"`,
+`"has a medium-high risk classification"`, `"falls under higher-risk scrutiny"`), while
+over-matching the L1.2 cure text, which itself contains the words "risk tier". Stripping
+disclosure-bearing sentences first does not separate them either. **19 ≤ truth ≤ 152, and no pattern
+closes the gap — so stop trying to select the asserting subset.**
+
+**Design consequence:** append to **all 152, unconditionally**, exactly as the field layer was cured,
+idempotent via a marker the cure writes itself (nothing on a record says "prose already disclosed" —
+`_l3_regen` records how prose was generated, `_data_note` is data-layer). The asymmetry decides it:
+appending a true sentence to a page that never asserted the tier is harmless; missing one that did is
+the client-facing defect. Host = a **new sibling compiler** under `scripts/kbli_filiera/`, NOT
+`cure_l4_editorial.py`, whose contract is spec-authored exact-substring replacement over 8 codes and
+which promises it "NEVER invents a value" — 152 authored old/new pairs is precisely the LLM
+re-authoring this lane rules out.
+
 **SUPERSEDED CENSUS (kept for the correction it records):**
 
 - **4 codes assert a KBLI-2020 renumbering with NO recorded predecessor anywhere.** `64995`, `85691`,
