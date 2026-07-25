@@ -29,7 +29,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.app.core.config import settings
 from backend.services.integrations.openclaw_whatsapp_bridge import ask_openclaw_whatsapp
 from backend.services.integrations.telegram_bot_service import telegram_bot
-from backend.services.integrations.wa_outbox_worker import META_INBOX_PHONE_NUMBER_ID
+from backend.services.integrations.wa_outbox_worker import (
+    META_INBOX_PHONE_NUMBER_ID,
+    _manners_enabled,
+)
 from backend.services.integrations.whatsapp_service import whatsapp_service
 from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
@@ -936,6 +939,12 @@ async def _handle_meta_inbox_message(
     must never be extended by holding a DB transaction open across network I/O.
     Only fires for a genuinely NEW inbound row — a duplicate (Meta retry) is
     already acked from the first delivery.
+
+    Gated by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, DEFAULT
+    OFF) — the SAME dedicated kill-switch as C3/C4 in wa_outbox_worker.py
+    (gate review 2026-07-25: this send has no ``whatsapp_ack.ack_enabled()``
+    equivalent to AND against, it doesn't go through that module at all).
+    Ships dark: unset in prod today.
     """
     wamid = msg.get("id")
     phone = msg.get("from")
@@ -1027,7 +1036,7 @@ async def _handle_meta_inbox_message(
         # else: duplicate inbound (Meta retry) → nothing more to do, transaction
         # commits as a no-op past this point.
 
-    if is_new_inbound:
+    if is_new_inbound and _manners_enabled():
         try:
             await whatsapp_service.mark_message_read(wamid)
         except Exception:

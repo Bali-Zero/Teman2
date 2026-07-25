@@ -16,6 +16,15 @@ invariants (spec sezione 3):
     via whatsapp_service.mark_message_read(wamid) AFTER the transaction
     commits; a duplicate (Meta retry) never does; a mark-read failure never
     propagates (ingestion must survive it).
+
+Arming contract (gate review 2026-07-25): C5 is gated by the SAME dedicated
+WA_OUTBOX_MANNERS_ENABLED kill-switch as C3/C4 in wa_outbox_worker.py,
+DEFAULT OFF in production (unset today). Every "guilt" test above explicitly
+ARMS it via monkeypatch — this file is specifically about exercising the C5
+behavior, so tests opt IN to the real production default (off) only where
+that default is itself under test (see
+test_read_receipt_disabled_by_default_flag_off /
+test_read_receipt_disabled_by_default_flag_explicit_false).
 """
 
 from __future__ import annotations
@@ -200,7 +209,13 @@ async def test_failed_status_records_error() -> None:
 @pytest.mark.asyncio
 async def test_new_inbound_marks_message_read(monkeypatch: pytest.MonkeyPatch) -> None:
     """Item C5: a genuinely new inbound customer message is marked read via
-    the Graph API, using the exact wamid, AFTER the DB transaction commits."""
+    the Graph API, using the exact wamid, AFTER the DB transaction commits.
+
+    Arming contract (gate review 2026-07-25): WA_OUTBOX_MANNERS_ENABLED
+    defaults to OFF in production (unset today) — this "guilt" test opts IN
+    to the real canary-armed state; the production default itself is
+    exercised separately by test_read_receipt_disabled_by_default_*."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
     conn = RecordingConn(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": False},  # thread upsert
@@ -224,6 +239,7 @@ async def test_new_inbound_human_handling_still_marks_read(
 ) -> None:
     """C5 is about acknowledging receipt of the customer's message, not about
     who answers it — it must fire even when a human already owns the thread."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
     conn = RecordingConn(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": True},  # human owns the thread
@@ -245,7 +261,9 @@ async def test_duplicate_inbound_does_not_mark_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A Meta retry of an already-ledgered wamid must NOT re-ack — the first
-    delivery already did (and the dedup already skips the bot enqueue)."""
+    delivery already did (and the dedup already skips the bot enqueue). Flag
+    ARMED so this proves the dedup logic itself, not the default-off gate."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
     conn = RecordingConn(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": False},  # thread upsert
@@ -264,6 +282,7 @@ async def test_duplicate_inbound_does_not_mark_read(
 async def test_mark_read_failure_does_not_raise(monkeypatch: pytest.MonkeyPatch) -> None:
     """A broken/raising mark_message_read must never break ingestion — the
     ledger writes above have already committed by the time this runs."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
     conn = RecordingConn(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": False},
@@ -278,6 +297,57 @@ async def test_mark_read_failure_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     await whatsapp_chat._handle_meta_inbox_message(conn, _msg(), "Mario", webhook_id=5)
 
     mark_read.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_read_receipt_disabled_by_default_flag_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Arming contract (gate review 2026-07-25): WA_OUTBOX_MANNERS_ENABLED
+    defaults to OFF in production (unset today) — the SAME dedicated
+    kill-switch as C3/C4 in wa_outbox_worker.py also gates C5. With it
+    unset, a genuinely new inbound message is still ledgered (ingestion is
+    unaffected) but the Graph API read-receipt call must never fire."""
+    monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
+    conn = RecordingConn(
+        fetchrow_results=[
+            {"thread_id": 7, "human_handling": False},
+            {"id": 100},
+            {"id": 101},
+        ]
+    )
+    mark_read = AsyncMock(return_value=True)
+    monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
+
+    await whatsapp_chat._handle_meta_inbox_message(
+        conn, _msg(wamid="wamid.READ.OFF"), "Mario", webhook_id=5
+    )
+
+    mark_read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_read_receipt_disabled_by_default_flag_explicit_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same contract, explicit 'false' value rather than unset — the two
+    must behave identically (default-safe, not just absence-safe)."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "false")
+    conn = RecordingConn(
+        fetchrow_results=[
+            {"thread_id": 7, "human_handling": False},
+            {"id": 100},
+            {"id": 101},
+        ]
+    )
+    mark_read = AsyncMock(return_value=True)
+    monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
+
+    await whatsapp_chat._handle_meta_inbox_message(
+        conn, _msg(wamid="wamid.READ.OFF2"), "Mario", webhook_id=5
+    )
+
+    mark_read.assert_not_awaited()
 
 
 @pytest.mark.asyncio

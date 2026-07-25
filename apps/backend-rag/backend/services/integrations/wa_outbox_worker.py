@@ -69,17 +69,23 @@ processes at most one outbox row per call. ``main_api.py`` spawns
 ``WA_OUTBOX_WORKERS`` (default 2) concurrent scheduler loops calling this in
 a tight cycle (P9) — safe because of the per-thread advisory lock above.
 
-"Manners" additions (2026-07-25, spec item C3/C4 — the two-sided complement
-to the C5 read-receipt wired into the meta-inbox webhook router): a
-best-effort concierge ack (:func:`_maybe_send_ack`) fires once generation
-starts, and a best-effort apology (:func:`_maybe_send_apology`) fires once
-either terminal-failure branch exhausts ``MAX_ATTEMPTS``. Both are
-idempotent per outbox row via the durable ``ack_sent_at``/
-``apology_sent_at`` columns (migration 260 — an in-memory flag would not
-survive the crash-and-reclaim scenarios this worker is built to tolerate),
-takeover-aware, 24h-window-aware, and swallow their own exceptions —
-neither can ever break generation, the send, or the failure handling they
-piggyback on.
+"Manners" additions (2026-07-25, spec item C3/C4/C5 — a concierge ack, a
+terminal apology, and the read-receipt wired into the meta-inbox webhook
+router): a best-effort concierge ack (:func:`_maybe_send_ack`) fires once
+generation starts, a best-effort apology (:func:`_maybe_send_apology`) fires
+once either terminal-failure branch exhausts ``MAX_ATTEMPTS``, and a
+best-effort read receipt (``whatsapp_chat._handle_meta_inbox_message``)
+fires on genuinely new inbound messages. The ack/apology pair is idempotent
+per outbox row via the durable ``ack_sent_at``/``apology_sent_at`` columns
+(migration 260 — an in-memory flag would not survive the crash-and-reclaim
+scenarios this worker is built to tolerate), takeover-aware, 24h-window-aware,
+and swallow their own exceptions — neither can ever break generation, the
+send, or the failure handling they piggyback on. All three sends are gated
+by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, DEFAULT OFF) — a
+dedicated kill-switch distinct from ``WHATSAPP_ACK_ENABLED`` (which stays
+Path-A's flag, default ON, untouched semantics; the ack ANDs both). Ships
+dark: the deploy alone changes nothing observable until this is armed
+deliberately post-verify.
 """
 
 from __future__ import annotations
@@ -87,6 +93,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
@@ -134,6 +141,26 @@ BotGenerateFn = Callable[[asyncpg.Record], Awaitable[str]]
 # Reused by both the advisory-lock TRY and its matching UNLOCK — must stay
 # identical so the two calls hash to the same lock key for a given thread_id.
 _THREAD_LOCK_KEY_SQL = "hashtext('wa_outbox_thread_' || $1::text)"
+
+# Dedicated kill-switch for the C3/C4 "manners" auto-sends on this (Path B,
+# LIVE-client) worker — DEFAULT OFF. Gate review 2026-07-25 (architect, not
+# self-authored): whatsapp_ack.ack_enabled() (WHATSAPP_ACK_ENABLED) defaults
+# to enabled, which was safe only because Path A (its only prior caller) is
+# dead — this PR is what makes it load-bearing on a LIVE surface for the
+# first time, so it must NOT inherit that default by accident. This flag is
+# the primary gate for BOTH sends; whatsapp_ack.ack_enabled() stays a
+# SEPARATE additional AND-condition on the ack specifically (defense in
+# depth, unchanged semantics/default — never repurposed, per the review).
+# Arm deliberately after a dark deploy is verified live:
+#   fly secrets set WA_OUTBOX_MANNERS_ENABLED=true -a nuzantara-rag
+def _manners_enabled() -> bool:
+    return os.getenv("WA_OUTBOX_MANNERS_ENABLED", "false").strip().lower() in (
+        "true",
+        "1",
+        "yes",
+        "on",
+    )
+
 
 # Terminal-failure apology (item C4). Short, neutral, non-technical — never
 # leaks the underlying exception. Same language keys `detect_language()`
@@ -197,6 +224,10 @@ async def _maybe_send_ack(
     after the row transitions to 'generating', BEFORE bot_generate_fn is
     awaited.
 
+    Armed by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, default
+    OFF) AND-ed with the pre-existing ``whatsapp_ack.ack_enabled()`` — see
+    both docstrings above the constants. Ships dark: unset in prod today.
+
     Idempotent via the durable ``ack_sent_at`` column on the SAME outbox
     row (migration 260): a retry (bot_generate_fn failed once, this row is
     reclaimed and reprocessed) or a worker crash-and-reclaim both re-enter
@@ -227,6 +258,8 @@ async def _maybe_send_ack(
         from backend.services import whatsapp_ack
         from backend.services.communication import detect_language
 
+        if not _manners_enabled():
+            return
         if not whatsapp_ack.ack_enabled():
             return
         if not _window_open_locally(thread):
@@ -300,10 +333,18 @@ async def _maybe_send_apology(
 
     Window-aware: skips if the Meta 24h window is closed (nothing could be
     sent anyway).
+
+    Armed by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, default
+    OFF) — the SAME dedicated kill-switch as the ack (no separate flag;
+    unlike the ack, this send has no whatsapp_ack.ack_enabled() equivalent
+    to AND against, since it doesn't go through that module at all). Ships
+    dark: unset in prod today.
     """
     try:
         from backend.services.communication import detect_language
 
+        if not _manners_enabled():
+            return
         if not _window_open_locally(thread):
             return
 

@@ -7,11 +7,17 @@
 
 Direct unit tests exercise ``_maybe_send_ack``/``_maybe_send_apology`` in
 isolation (guilt: fires under the right conditions; innocence: skipped on
-trivial text / closed window / kill-switch / already-sent / human takeover).
-Integration tests drive the full ``process_outbox_once`` orchestration to
-prove the wiring point — that the real worker flow actually reaches these
-hooks at the right moment, using the existing ScriptedConn/pool fixtures
-from test_wa_outbox_worker.py.
+trivial text / closed window / kill-switch / already-sent / human takeover /
+manners-flag-off). Integration tests drive the full ``process_outbox_once``
+orchestration to prove the wiring point — that the real worker flow actually
+reaches these hooks at the right moment, using the existing ScriptedConn/pool
+fixtures from test_wa_outbox_worker.py.
+
+Arming contract (gate review 2026-07-25): ``WA_OUTBOX_MANNERS_ENABLED``
+defaults to OFF in production (unset today) — every test in this file except
+the two dedicated ``*_disabled_by_default_*`` tests below explicitly ARMS it
+via the autouse fixture, mirroring how a real canary rollout would set it
+before anything in this file's "guilt" tests could fire for real.
 """
 
 from __future__ import annotations
@@ -35,10 +41,17 @@ from backend.tests.unit.services.test_wa_outbox_worker import (
 
 @pytest.fixture(autouse=True)
 def _clean_ack_state(monkeypatch):
-    """Every test gets a fresh should_send_ack throttle state + the
-    kill-switch at its default (enabled) — mirrors test_whatsapp_ack.py."""
+    """Every test gets a fresh should_send_ack throttle state, the
+    pre-existing WHATSAPP_ACK_ENABLED kill-switch at ITS default (enabled —
+    mirrors test_whatsapp_ack.py, untouched by this PR), and the NEW
+    dedicated WA_OUTBOX_MANNERS_ENABLED flag explicitly ARMED — this file is
+    specifically about exercising C3/C4 behavior, so tests opt IN to the
+    real production default (off) only where that default is itself under
+    test (see test_ack_disabled_by_default_flag_off /
+    test_apology_disabled_by_default_flag_off)."""
     whatsapp_ack._reset_for_testing()
     monkeypatch.delenv("WHATSAPP_ACK_ENABLED", raising=False)
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
     yield
     whatsapp_ack._reset_for_testing()
 
@@ -137,6 +150,41 @@ async def test_ack_skipped_when_kill_switch_off(monkeypatch) -> None:
     await wa_outbox_worker._maybe_send_ack(conn, 1, uuid.uuid4(), thread, svc)
 
     svc.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ack_disabled_by_default_flag_off(monkeypatch) -> None:
+    """Arming contract (gate review 2026-07-25): the dedicated
+    WA_OUTBOX_MANNERS_ENABLED flag defaults OFF in production (unset today).
+    With it unset — overriding this file's autouse arm-fixture back to the
+    real prod default — neither a send NOR any DB write happens: the ack
+    must short-circuit before ever touching ack_sent_at (which stays NULL
+    because the claim UPDATE is never even issued)."""
+    monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[_NON_TRIVIAL_TEXT])
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_ack(conn, 1, uuid.uuid4(), thread, svc)
+
+    svc.send_message.assert_not_awaited()
+    assert conn.executed == []  # never touched the DB — not even a read
+    assert not conn.sql_contains("ack_sent_at")
+
+
+@pytest.mark.asyncio
+async def test_ack_disabled_by_default_flag_explicit_false(monkeypatch) -> None:
+    """Same contract, explicit 'false' value rather than unset — the two
+    must behave identically (default-safe, not just absence-safe)."""
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "false")
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[_NON_TRIVIAL_TEXT])
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_ack(conn, 1, uuid.uuid4(), thread, svc)
+
+    svc.send_message.assert_not_awaited()
+    assert conn.executed == []
 
 
 @pytest.mark.asyncio
@@ -247,6 +295,37 @@ async def test_apology_skipped_when_human_took_over() -> None:
 async def test_apology_skipped_when_window_closed() -> None:
     thread = _closed_window_thread()
     conn = ScriptedConn()
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    svc.send_message.assert_not_awaited()
+    assert conn.executed == []
+
+
+@pytest.mark.asyncio
+async def test_apology_disabled_by_default_flag_off(monkeypatch) -> None:
+    """Arming contract (gate review 2026-07-25), apology side: with
+    WA_OUTBOX_MANNERS_ENABLED unset (the real prod default), no send and no
+    DB write — apology_sent_at stays NULL because the claim UPDATE (and even
+    the takeover pre-check) is never issued."""
+    monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[False, _NON_TRIVIAL_TEXT])
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    svc.send_message.assert_not_awaited()
+    assert conn.executed == []
+    assert not conn.sql_contains("apology_sent_at")
+
+
+@pytest.mark.asyncio
+async def test_apology_disabled_by_default_flag_explicit_false(monkeypatch) -> None:
+    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "false")
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[False, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
