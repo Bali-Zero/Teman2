@@ -198,21 +198,41 @@ class AgentJob:
     # ─── Telegram ──────────────────────────────────────────────────────────
 
     async def send_telegram(self, msg: str, chat_id: str | None = None) -> bool:
-        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        if not token:
-            self.logger.warning("telegram_skipped", reason="no_token")
-            return False
-        chat = chat_id or self.telegram_chat_id or os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        gateway = Path(__file__).resolve().parents[1] / "tg_notify.py"
+        if not gateway.is_file():
+            gateway = HOME / "nuzantara" / "scripts" / "tg_notify.py"
+        command = [
+            sys.executable,
+            str(gateway),
+            "--tier",
+            "p0",
+            "--source",
+            self.name,
+            "--",
+            msg,
+        ]
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    data={"chat_id": chat, "text": msg, "parse_mode": "HTML"},
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
+            output = (stdout + stderr).decode(errors="replace")
+            accepted = process.returncode == 0 and any(
+                f"tg_notify: {status}" in output
+                for status in (
+                    "sent",
+                    "spooled",
+                    "logged",
+                    "deduped",
+                    "p0_overflow_spooled",
+                    "p0_unsent_spooled",
                 )
-                success = r.status_code == 200
-                if success:
-                    self._side_effects.append(f"telegram:{chat}")
-                return success
+            )
+            if accepted:
+                self._side_effects.append("telegram:gateway")
+            return accepted
         except Exception as e:
             self.logger.error("telegram_error", error=str(e))
             return False
