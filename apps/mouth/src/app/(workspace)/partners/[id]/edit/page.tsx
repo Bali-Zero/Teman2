@@ -8,7 +8,24 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { Partner, UpdatePartnerBody, TaxWithholdingCategory } from "@/lib/api/partners/partners";
+import type {
+  Partner,
+  UpdatePartnerBody,
+  TaxWithholdingCategory,
+} from "@/lib/api/partners/partners";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Form controls on the panel surface. */
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+};
 
 type FormSection = "profile" | "fiscal" | "payment" | "commission";
 
@@ -35,15 +52,23 @@ interface EditFormState {
   bank_account_holder: string;
   tax_withholding_category: TaxWithholdingCategory;
   // CRIT-8: commission_tier replaced by default_commission_type + default_commission_value
-  default_commission_type: 'percentage' | 'flat';
+  default_commission_type: "percentage" | "flat";
   default_commission_value: string;
   notes: string;
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-zinc-300">{label}</label>
+      <label className="block text-sm font-medium text-[var(--bz-text-1)]">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -66,7 +91,8 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+      className="w-full px-3 py-2 border rounded-lg text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-accent)]"
+      style={INPUT_STYLE}
     />
   );
 }
@@ -89,7 +115,10 @@ function partnerToFormState(partner: Partner): EditFormState {
     tax_withholding_category: partner.tax_withholding_category,
     // CRIT-8: commission fields from backend
     default_commission_type: partner.default_commission_type || "percentage",
-    default_commission_value: partner.default_commission_value != null ? String(partner.default_commission_value) : "10",
+    default_commission_value:
+      partner.default_commission_value != null
+        ? String(partner.default_commission_value)
+        : "10",
     notes: partner.notes || "",
   };
 }
@@ -115,7 +144,11 @@ export default function EditPartnerPage() {
         setPartner(data);
         setForm(partnerToFormState(data));
       } catch (err) {
-        logger.error("Failed to load partner for edit", { component: "EditPartnerPage" }, err as Error);
+        logger.error(
+          "Failed to load partner for edit",
+          { component: "EditPartnerPage" },
+          err as Error,
+        );
         setError("Failed to load partner data.");
       } finally {
         setIsLoading(false);
@@ -124,8 +157,11 @@ export default function EditPartnerPage() {
     load();
   }, [partnerId]);
 
-  const setField = <K extends keyof EditFormState>(key: K, value: EditFormState[K]) => {
-    setForm((prev) => prev ? { ...prev, [key]: value } : prev);
+  const setField = <K extends keyof EditFormState>(
+    key: K,
+    value: EditFormState[K],
+  ) => {
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,7 +194,11 @@ export default function EditPartnerPage() {
       toastSuccess("Partner updated");
       router.push(`/partners/${partnerId}`);
     } catch (err) {
-      logger.error("Failed to update partner", { component: "EditPartnerPage" }, err as Error);
+      logger.error(
+        "Failed to update partner",
+        { component: "EditPartnerPage" },
+        err as Error,
+      );
       toastError("Failed to update partner. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -168,7 +208,7 @@ export default function EditPartnerPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 size={32} className="animate-spin text-amber-400" />
+        <Loader2 size={32} className="animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   }
@@ -176,8 +216,10 @@ export default function EditPartnerPage() {
   if (error || !form) {
     return (
       <div className="flex flex-col items-center gap-4 py-16">
-        <AlertCircle size={32} className="text-red-400" />
-        <p className="text-zinc-400">{error || "Partner not found"}</p>
+        <AlertCircle size={32} className="text-[var(--state-danger)]" />
+        <p className="text-[var(--bz-text-2)]">
+          {error || "Partner not found"}
+        </p>
       </div>
     );
   }
@@ -187,29 +229,41 @@ export default function EditPartnerPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href={`/partners/${partnerId}`}>
-          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
+          >
             <ArrowLeft size={16} className="mr-1" />
             Back
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-zinc-100">Edit Partner</h1>
-          {partner && <p className="text-sm text-zinc-500">{partner.full_name}</p>}
+          <h1 className="text-xl font-bold text-[var(--bz-text-1)]">
+            Edit Partner
+          </h1>
+          {partner && (
+            <p className="text-sm text-[var(--bz-text-3)]">
+              {partner.full_name}
+            </p>
+          )}
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section Tabs */}
-        <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
-          {(["profile", "fiscal", "payment", "commission"] as FormSection[]).map((s) => (
+        <div className="flex gap-1 border rounded-xl p-1" style={PANEL}>
+          {(
+            ["profile", "fiscal", "payment", "commission"] as FormSection[]
+          ).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setActiveSection(s)}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeSection === s
-                  ? "bg-amber-600 text-white"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                  ? "bg-[var(--surface-selected)] text-[var(--bz-text-1)]"
+                  : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
               }`}
             >
               {SECTION_LABELS[s]}
@@ -217,27 +271,51 @@ export default function EditPartnerPage() {
           ))}
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+        <div className="border rounded-xl p-6 space-y-4" style={PANEL}>
           {/* Profile */}
           {activeSection === "profile" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FieldGroup label="Full Name">
-                <Input value={form.full_name} onChange={(v) => setField("full_name", v)} placeholder="Full legal name" />
+                <Input
+                  value={form.full_name}
+                  onChange={(v) => setField("full_name", v)}
+                  placeholder="Full legal name"
+                />
               </FieldGroup>
               <FieldGroup label="Phone">
-                <Input value={form.phone} onChange={(v) => setField("phone", v)} placeholder="+62 8xx xxxx xxxx" />
+                <Input
+                  value={form.phone}
+                  onChange={(v) => setField("phone", v)}
+                  placeholder="+62 8xx xxxx xxxx"
+                />
               </FieldGroup>
               <FieldGroup label="WhatsApp">
-                <Input value={form.whatsapp} onChange={(v) => setField("whatsapp", v)} placeholder="+62 8xx xxxx xxxx" />
+                <Input
+                  value={form.whatsapp}
+                  onChange={(v) => setField("whatsapp", v)}
+                  placeholder="+62 8xx xxxx xxxx"
+                />
               </FieldGroup>
               <FieldGroup label="Nationality">
-                <Input value={form.nationality} onChange={(v) => setField("nationality", v)} placeholder="e.g. Indonesian" />
+                <Input
+                  value={form.nationality}
+                  onChange={(v) => setField("nationality", v)}
+                  placeholder="e.g. Indonesian"
+                />
               </FieldGroup>
               <FieldGroup label="Company Name">
-                <Input value={form.company_name} onChange={(v) => setField("company_name", v)} placeholder="Company or agency" />
+                <Input
+                  value={form.company_name}
+                  onChange={(v) => setField("company_name", v)}
+                  placeholder="Company or agency"
+                />
               </FieldGroup>
               <FieldGroup label="Work Role">
-                <Input value={form.work_role} onChange={(v) => setField("work_role", v)} placeholder="e.g. Real Estate Agent" />
+                <Input
+                  value={form.work_role}
+                  onChange={(v) => setField("work_role", v)}
+                  placeholder="e.g. Real Estate Agent"
+                />
               </FieldGroup>
               <div className="sm:col-span-2">
                 <FieldGroup label="Notes">
@@ -245,7 +323,8 @@ export default function EditPartnerPage() {
                     value={form.notes}
                     onChange={(e) => setField("notes", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
+                    className="w-full px-3 py-2 border rounded-lg text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-accent)] resize-none"
+                    style={INPUT_STYLE}
                   />
                 </FieldGroup>
               </div>
@@ -257,13 +336,23 @@ export default function EditPartnerPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* CRIT-8: was 'tax_id', backend field is 'npwp' */}
               <FieldGroup label="NPWP (Tax ID)">
-                <Input value={form.npwp} onChange={(v) => setField("npwp", v)} placeholder="XX.XXX.XXX.X-XXX.XXX" />
+                <Input
+                  value={form.npwp}
+                  onChange={(v) => setField("npwp", v)}
+                  placeholder="XX.XXX.XXX.X-XXX.XXX"
+                />
               </FieldGroup>
               <FieldGroup label="Tax Withholding Category">
                 <select
                   value={form.tax_withholding_category}
-                  onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  onChange={(e) =>
+                    setField(
+                      "tax_withholding_category",
+                      e.target.value as TaxWithholdingCategory,
+                    )
+                  }
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                  style={INPUT_STYLE}
                 >
                   {/* CRIT-8: aligned to backend enum (pph21/pph23) */}
                   <option value="tbd">TBD (not yet determined)</option>
@@ -282,7 +371,8 @@ export default function EditPartnerPage() {
                 <select
                   value={form.payment_method}
                   onChange={(e) => setField("payment_method", e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                  style={INPUT_STYLE}
                 >
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="cash">Cash</option>
@@ -290,14 +380,26 @@ export default function EditPartnerPage() {
                 </select>
               </FieldGroup>
               <FieldGroup label="Bank Name">
-                <Input value={form.bank_name} onChange={(v) => setField("bank_name", v)} placeholder="e.g. BCA, Mandiri" />
+                <Input
+                  value={form.bank_name}
+                  onChange={(v) => setField("bank_name", v)}
+                  placeholder="e.g. BCA, Mandiri"
+                />
               </FieldGroup>
               <FieldGroup label="Account Number">
-                <Input value={form.bank_account_number} onChange={(v) => setField("bank_account_number", v)} placeholder="Account number" />
+                <Input
+                  value={form.bank_account_number}
+                  onChange={(v) => setField("bank_account_number", v)}
+                  placeholder="Account number"
+                />
               </FieldGroup>
               {/* CRIT-8: was 'bank_account_name', backend field is 'bank_account_holder' */}
               <FieldGroup label="Account Holder Name">
-                <Input value={form.bank_account_holder} onChange={(v) => setField("bank_account_holder", v)} placeholder="Name on account" />
+                <Input
+                  value={form.bank_account_holder}
+                  onChange={(v) => setField("bank_account_holder", v)}
+                  placeholder="Name on account"
+                />
               </FieldGroup>
             </div>
           )}
@@ -308,19 +410,35 @@ export default function EditPartnerPage() {
               <FieldGroup label="Commission Type">
                 <select
                   value={form.default_commission_type}
-                  onChange={(e) => setField("default_commission_type", e.target.value as 'percentage' | 'flat')}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  onChange={(e) =>
+                    setField(
+                      "default_commission_type",
+                      e.target.value as "percentage" | "flat",
+                    )
+                  }
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                  style={INPUT_STYLE}
                 >
                   <option value="percentage">Percentage (%)</option>
                   <option value="flat">Flat (IDR)</option>
                 </select>
               </FieldGroup>
-              <FieldGroup label={form.default_commission_type === 'percentage' ? "Commission Rate (%)" : "Commission Amount (IDR)"}>
+              <FieldGroup
+                label={
+                  form.default_commission_type === "percentage"
+                    ? "Commission Rate (%)"
+                    : "Commission Amount (IDR)"
+                }
+              >
                 <Input
                   value={form.default_commission_value}
                   onChange={(v) => setField("default_commission_value", v)}
                   type="number"
-                  placeholder={form.default_commission_type === 'percentage' ? "e.g. 10" : "e.g. 500000"}
+                  placeholder={
+                    form.default_commission_type === "percentage"
+                      ? "e.g. 10"
+                      : "e.g. 500000"
+                  }
                 />
               </FieldGroup>
             </div>
@@ -330,15 +448,11 @@ export default function EditPartnerPage() {
         {/* Actions */}
         <div className="flex items-center justify-between">
           <Link href={`/partners/${partnerId}`}>
-            <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300">
+            <Button type="button" variant="outline">
               Cancel
             </Button>
           </Link>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-          >
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 size={14} className="mr-2 animate-spin" />
