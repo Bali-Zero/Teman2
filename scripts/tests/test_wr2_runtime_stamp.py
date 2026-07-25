@@ -163,7 +163,7 @@ def _setup_deploy_world(tmp_path):
     return home, src, origin, deploy
 
 
-def _run_pull(home, extra_env=None, path_prefix=None):
+def _run_pull(home, origin, deploy, extra_env=None, path_prefix=None):
     env = dict(os.environ)
     env["HOME"] = str(home)
     env.pop("TELEGRAM_BOT_TOKEN", None)
@@ -172,6 +172,14 @@ def _run_pull(home, extra_env=None, path_prefix=None):
     env["TG_DRY_RUN"] = "1"
     env["TG_SPOOL_DIR"] = str(home / ".organism" / "tg_spool")
     env["TG_SECRETS_FILE"] = "/dev/null"
+    # Hermetic clone source (same fix as test_wr2_deploy_pull_selfheal.py,
+    # 2026-07-25: the script's DEPLOY_DIR default `${HOME}/nuzantara-deploy`
+    # never matched this fixture's `${HOME}/Desktop/nuzantara-deploy`, so
+    # every run silently re-bootstrapped and -- SOURCE_REPO also defaulting
+    # to a nonexistent path -- fell back to a REAL network clone of
+    # production. Proven live as 9 concurrent orphaned clones, 40-48min each.
+    env["WR2_DEPLOY_DIR"] = str(deploy)
+    env["WR2_DEPLOY_ORIGIN"] = str(origin)
     if path_prefix:
         env["WR2_DEPLOY_PULL_TEST_PATH_PREFIX"] = str(path_prefix)
     if extra_env:
@@ -188,8 +196,8 @@ def _outcome(home):
 
 
 def test_deploy_pull_up_to_date_writes_outcome(tmp_path):
-    home, _src, _origin, _deploy = _setup_deploy_world(tmp_path)
-    res = _run_pull(home)
+    home, _src, origin, deploy = _setup_deploy_world(tmp_path)
+    res = _run_pull(home, origin, deploy)
     assert res.returncode == 0, res.stderr
     out = _outcome(home)
     assert out["status"] == "ok:up-to-date"
@@ -202,7 +210,7 @@ def test_deploy_pull_advanced_writes_outcome_and_skips_kickstart(tmp_path):
     _git(src, "add", ".")
     _git(src, "commit", "-qm", "v2")
     _git(src, "push", "-q", str(origin), "main")
-    res = _run_pull(home)
+    res = _run_pull(home, origin, deploy)
     assert res.returncode == 0, res.stderr
     out = _outcome(home)
     assert out["status"] == "ok:advanced"
@@ -224,7 +232,10 @@ def test_deploy_pull_advanced_kickstarts_when_armed(tmp_path):
     fake = fake_bin / "launchctl"
     fake.write_text(f'#!/bin/sh\necho "$@" >> "{calls}"\n')
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-    res = _run_pull(home, extra_env={"WR2_DEPLOY_PULL_KICKSTART": "1"}, path_prefix=fake_bin)
+    res = _run_pull(
+        home, origin, deploy,
+        extra_env={"WR2_DEPLOY_PULL_KICKSTART": "1"}, path_prefix=fake_bin,
+    )
     assert res.returncode == 0, res.stderr
     recorded = calls.read_text()
     assert "com.balizero.wr2.html-apply" in recorded
@@ -238,9 +249,9 @@ def test_deploy_pull_dirty_clone_self_heals(tmp_path):
     for 2+ days) -- it now self-heals instead of freezing. See
     test_wr2_deploy_pull_selfheal.py for the full guilt+innocence matrix
     (untracked / self-heal / staged-refuses / opt-out)."""
-    home, _src, _origin, deploy = _setup_deploy_world(tmp_path)
+    home, _src, origin, deploy = _setup_deploy_world(tmp_path)
     (deploy / "f.txt").write_text("local mutation\n")
-    res = _run_pull(home)
+    res = _run_pull(home, origin, deploy)
     assert res.returncode == 0, res.stderr
     assert _outcome(home)["status"] == "ok:self-healed"
     assert (deploy / "f.txt").read_text() == "v1\n"
