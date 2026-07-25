@@ -92,6 +92,35 @@ def test_golden_rejects_duplicate_ids(tmp_path):
         assert "duplicate" in str(exc)
 
 
+def test_golden_rejects_malformed_anchors(tmp_path):
+    import json
+
+    raw = json.loads(_GOLD.read_text())
+    raw["scenarios"][0]["turns"][0]["key_facts"][0]["anchors"] = ["ok", 42]  # not all strings
+    bad = tmp_path / "bad_anchors.json"
+    bad.write_text(json.dumps(raw))
+    try:
+        E.load_golden(bad)
+        raise AssertionError("expected ValueError on malformed anchors")
+    except ValueError as exc:
+        assert "anchors" in str(exc)
+
+
+def test_golden_set_key_facts_anchors_are_literal_substrings_of_their_own_fact():
+    """Anti-reward-hacking / anti-invention guard on the golden set itself:
+    every anchor must be a literal (case-insensitive) substring of the SAME
+    key_fact's ``fact`` prose — anchors are extracted from already-vetted
+    text, never invented to make the coverage number look better."""
+    _, scenarios = E.load_golden()
+    for s in scenarios:
+        for t in s.turns:
+            for kf in t.key_facts:
+                for a in kf.get("anchors") or []:
+                    assert a.lower() in kf["fact"].lower(), (
+                        f"{s.id} turn {t.turn}: anchor {a!r} is not a literal substring of its fact"
+                    )
+
+
 def test_golden_rejects_unknown_outcome(tmp_path):
     import json
 
@@ -284,6 +313,84 @@ def test_key_facts_coverage_full_and_partial_and_empty():
     hits, total, cov = E.key_facts_coverage("anything", [])
     assert (hits, total) == (0, 0)
     assert cov != cov  # NaN
+
+
+def test_key_facts_coverage_no_anchors_falls_back_to_whole_string():
+    """Backward compatibility (mandate requirement 3): a key_fact with no
+    ``anchors`` key must fall back to the ORIGINAL whole-``fact``-string
+    substring test — this is the same fixture shape test_key_facts_coverage_
+    full_and_partial_and_empty already uses (no 'anchors' key at all), pinned
+    here explicitly under the new anchor-aware name so a future edit that
+    drops the fallback branch fails loudly and unambiguously."""
+    facts = [{"fact": "the sky is blue", "source": "x"}]
+    hits, total, cov = E.key_facts_coverage("Yes, the sky is blue today.", facts)
+    assert (hits, total, cov) == (1, 1, 1.0)
+
+    hits, total, cov = E.key_facts_coverage("It is sunny today.", facts)
+    assert (hits, total, cov) == (0, 1, 0.0)
+
+
+def test_key_facts_coverage_anchor_hit_on_realistic_paraphrase_never_containing_prose():
+    """The bug this whole change fixes: golden `fact` values are full vetted
+    prose sentences a live answer will never echo verbatim. This pins that
+    an ANCHORED fact scores a HIT against a realistic paraphrased answer
+    that does NOT contain the prose sentence at all — mirrors the real
+    company-pma-capital-vs-investment#1 entry (anchors ANY-OF "2,500,000,000"
+    / "2.5 billion")."""
+    facts = [
+        {
+            "fact": (
+                "Minimum paid-up capital (modal ditempatkan/disetor) for a PT PMA is IDR "
+                "2,500,000,000 (2.5 billion), set by Permen BKPM 5/2025 Pasal 26(10) — this "
+                "abrogated the previous IDR 10 billion baseline under Permen BKPM 4/2021."
+            ),
+            "source": "x",
+            "anchors": ["2,500,000,000", "2.5 billion"],
+        }
+    ]
+    # A realistic live-bot paraphrase: correct substance, zero verbatim overlap
+    # with the vetted prose sentence above.
+    answer = (
+        "For a PT PMA, the minimum you need to put in as paid-up capital is IDR 2.5 billion "
+        "under the current BKPM regulation, and that money is locked for a year before you "
+        "can move it out of the company account."
+    )
+    assert facts[0]["fact"].lower() not in answer.lower(), "fixture must not contain the whole prose sentence"
+    hits, total, cov = E.key_facts_coverage(answer, facts)
+    assert (hits, total, cov) == (1, 1, 1.0)
+
+
+def test_key_facts_coverage_anchor_miss_on_wrong_answer():
+    """Innocence's mirror: a wrong/off-topic answer that never states any
+    anchor of the fact must MISS — the anchor check must not be so loose it
+    passes anything mentioning the general subject."""
+    facts = [
+        {
+            "fact": "Minimum total investment must be greater than IDR 10,000,000,000 (10 billion) per KBLI code.",
+            "source": "x",
+            "anchors": ["10,000,000,000", "10 billion"],
+        }
+    ]
+    wrong_answer = "The minimum paid-up capital for a PT PMA is IDR 2.5 billion, set by BKPM 5/2025."
+    hits, total, cov = E.key_facts_coverage(wrong_answer, facts)
+    assert (hits, total, cov) == (0, 1, 0.0)
+
+
+def test_key_facts_coverage_anchor_any_of_not_all_of():
+    """Documents/pins the chosen rule (ANY-OF, not ALL-OF): a fact with two
+    alternative anchors (e.g. the two named current-route codes) must HIT
+    when the answer contains only ONE of them — the source fact itself
+    frames them as alternatives ('X or Y'), so requiring both would punish
+    a correct answer for using just one valid phrasing."""
+    facts = [
+        {
+            "fact": "The current short-stay business route is usually C2 Business or C12 Pre-Investment.",
+            "source": "x",
+            "anchors": ["C2 Business", "C12 Pre-Investment"],
+        }
+    ]
+    hits, total, cov = E.key_facts_coverage("You'd want a C12 Pre-Investment visa for that.", facts)
+    assert (hits, total, cov) == (1, 1, 1.0)
 
 
 def test_must_not_assert_violations_detects_and_clears():

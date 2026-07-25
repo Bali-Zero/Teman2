@@ -22,11 +22,13 @@
           "key_facts": [
             {
               "fact": "B211/C-class is a short-stay visit/business visa with no residency or work rights; a KITAS is a limited-stay residency permit with work rights tied to a sponsor.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-002"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-002",
+              "anchors": ["B211", "KITAS"]
             },
             {
               "fact": "B211 is legacy wording; the current short-stay business route is usually C2 Business or C12 Pre-Investment.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-002"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-002",
+              "anchors": ["C2 Business", "C12 Pre-Investment"]
             }
           ]
         },
@@ -37,7 +39,8 @@
           "key_facts": [
             {
               "fact": "B211/C-class short-stay visas carry no work rights — a reply claiming 'B211A holders can work' is unsafe.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-011"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-011",
+              "anchors": ["no work rights"]
             }
           ]
         }
@@ -55,7 +58,8 @@
           "key_facts": [
             {
               "fact": "The standard overstay fine is IDR 1,000,000 per day.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-001 (PP 28/2019)"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-001 (PP 28/2019)",
+              "anchors": ["1,000,000 per day", "IDR 1,000,000"]
             }
           ]
         },
@@ -84,7 +88,8 @@
           "key_facts": [
             {
               "fact": "Stay duration is visa-type-dependent, not a single number: e.g. legacy B211A totalled 60+60+60=180 days, KITAP duration is per-category (WNI-spouse ~2y / investor ~4y / worker ~5y), and Golden Visa tiers run 5 or 10 years — an unqualified 'how long' cannot be answered correctly without knowing which visa/permit is meant.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-012, #VISA-009, #VISA-006"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-012, #VISA-009, #VISA-006",
+              "anchors": ["180 days", "Golden Visa", "5 or 10 years"]
             }
           ]
         },
@@ -95,7 +100,8 @@
           "key_facts": [
             {
               "fact": "There are TWO retirement routes: E33F (55+, with guarantor/sponsor, pension ~USD 1,500-3,000/month, 1 year renewable) and E33E 'Silver Hair'.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-004"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#VISA-004",
+              "anchors": ["E33F", "E33E"]
             }
           ]
         }
@@ -113,11 +119,13 @@
           "key_facts": [
             {
               "fact": "Minimum paid-up capital (modal ditempatkan/disetor) for a PT PMA is IDR 2,500,000,000 (2.5 billion), set by Permen BKPM 5/2025 Pasal 26(10) — this abrogated the previous IDR 10 billion baseline under Permen BKPM 4/2021.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-paidup-capital; apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-001"
+              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-paidup-capital; apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-001",
+              "anchors": ["2,500,000,000", "2.5 billion"]
             },
             {
               "fact": "There is a 12-month lock-up (Pasal 27(1)): the capital cannot be moved out of the company account for at least 12 months except for asset purchase, building construction, or operational expenses.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-paidup-capital"
+              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-paidup-capital",
+              "anchors": ["12-month lock-up", "12 months"]
             }
           ]
         },
@@ -128,7 +136,8 @@
           "key_facts": [
             {
               "fact": "Minimum total investment (nilai investasi) must be greater than IDR 10,000,000,000 (10 billion) per 5-digit KBLI code per business location, per PP 28/2025 Pasal 212(2) — excludes land and buildings except for real-estate/accommodation sectors.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-total-investment"
+              "source": "apps/evaluator/rag_eval/golden_set.json#company-pma-total-investment",
+              "anchors": ["10,000,000,000", "10 billion"]
             }
           ]
         }
@@ -157,7 +166,11 @@
           "key_facts": [
             {
               "fact": "A villa purchased to live in personally (not rented out) is not a business activity and does not need its own KBLI code — KBLI only applies to registered business activities.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-011 (incidental-mention rule, applied)"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-011 (incidental-mention rule, applied)",
+              "anchors": [
+                "not a business activity",
+                "does not need its own KBLI code"
+              ]
             }
           ]
         }
@@ -175,7 +188,8 @@
           "key_facts": [
             {
               "fact": "Under KBLI 2025 (BPS Regulation 7/2025) the current code for direct villa operations is 55203 - AKTIVITAS VILA. 55193 is NOT a current KBLI 2025 code: it is a legacy KBLI 2020/PP28 source code that maps to 55203.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#kbli-villa-current"
+              "source": "apps/evaluator/rag_eval/golden_set.json#kbli-villa-current",
+              "anchors": ["55203", "AKTIVITAS VILA"]
             }
           ],
           "must_not_assert": [
@@ -190,7 +204,8 @@
           "key_facts": [
             {
               "fact": "KBLI 55203 (AKTIVITAS VILA) is classified TERBUKA in the KBLI 2025 catalog, meaning 100% foreign ownership (WNA) is allowed via a PT PMA.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#kbli-villa-foreign-ownership"
+              "source": "apps/evaluator/rag_eval/golden_set.json#kbli-villa-foreign-ownership",
+              "anchors": ["TERBUKA", "100%"]
             }
           ]
         }
@@ -208,7 +223,8 @@
           "key_facts": [
             {
               "fact": "The effective PPN rate for standard goods/services is 11%, derived from PMK 131/2024 using DPP Nilai Lain of 11/12 times the 12% statutory rate; the full 12% applies only to luxury goods subject to PPnBM.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#tax-ppn-rate"
+              "source": "apps/evaluator/rag_eval/golden_set.json#tax-ppn-rate",
+              "anchors": ["11%", "PMK 131/2024"]
             }
           ]
         },
@@ -219,7 +235,8 @@
           "key_facts": [
             {
               "fact": "CoreTax (PSIAP), introduced by PMK 81/2024, definitively replaced the legacy DJP Online system in 2025.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#tax-coretax"
+              "source": "apps/evaluator/rag_eval/golden_set.json#tax-coretax",
+              "anchors": ["CoreTax", "PMK 81/2024"]
             }
           ]
         }
@@ -237,7 +254,8 @@
           "key_facts": [
             {
               "fact": "LKPM is the investment-realization report a PT PMA submits to BKPM through OSS, usually quarterly for medium/large companies.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#TAX-004"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#TAX-004",
+              "anchors": ["LKPM", "quarterly"]
             }
           ]
         },
@@ -262,7 +280,8 @@
           "key_facts": [
             {
               "fact": "No. Hak Milik (freehold) can only be held by Indonesian citizens (WNI) per UU 5/1960 (UUPA) Pasal 21. Foreigners cannot hold Hak Milik directly, and using a nominee to do so is void and a criminal offense.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#property-hak-milik-foreigner"
+              "source": "apps/evaluator/rag_eval/golden_set.json#property-hak-milik-foreigner",
+              "anchors": ["Hak Milik", "UU 5/1960"]
             }
           ]
         },
@@ -273,7 +292,8 @@
           "key_facts": [
             {
               "fact": "Hak Pakai has a maximum duration of 80 years (30y initial + 20y extension + 30y renewal), per Permen ATR/BPN 29/2016. It is the only direct land title available to an individual foreigner (WNA), requires a valid KITAS/KITAP, and is limited to residential use.",
-              "source": "apps/evaluator/rag_eval/golden_set.json#property-hak-pakai"
+              "source": "apps/evaluator/rag_eval/golden_set.json#property-hak-pakai",
+              "anchors": ["Hak Pakai", "80 years"]
             }
           ]
         }
@@ -291,7 +311,8 @@
           "key_facts": [
             {
               "fact": "A PT PMA allows foreign ownership (with higher capital requirements); a PT lokal is fully Indonesian-owned.",
-              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-004"
+              "source": "apps/evaluator/zantara_persona_eval/golden_corpus.json#COMP-004",
+              "anchors": ["PT PMA", "PT lokal"]
             }
           ]
         },

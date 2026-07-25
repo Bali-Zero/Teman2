@@ -117,7 +117,7 @@ class Turn:
     turn: int
     user: str
     expected_outcomes: list[str]
-    key_facts: list[dict[str, str]] = field(default_factory=list)
+    key_facts: list[dict[str, Any]] = field(default_factory=list)
     must_not_assert: list[str] = field(default_factory=list)
 
 
@@ -201,6 +201,15 @@ def load_golden(path: Path = _GOLDEN_FILE) -> tuple[dict[str, Any], list[Scenari
                         f"{sid} turn {raw_turn.get('turn')}: key_fact missing source — "
                         "an unsourced fact is not golden"
                     )
+                anchors = kf.get("anchors")
+                if anchors is not None:
+                    if not isinstance(anchors, list) or not all(
+                        isinstance(a, str) and a.strip() for a in anchors
+                    ):
+                        raise ValueError(
+                            f"{sid} turn {raw_turn.get('turn')}: anchors must be a list of "
+                            "non-empty strings"
+                        )
             turns.append(
                 Turn(
                     turn=raw_turn["turn"],
@@ -278,26 +287,52 @@ def classify_outcome(response: dict[str, Any]) -> OutcomeClassification:
 # --------------------------------------------------------------------------- #
 # Scoring                                                                     #
 # --------------------------------------------------------------------------- #
-def key_facts_coverage(answer: str, key_facts: list[dict[str, str]]) -> tuple[int, int, float]:
+def key_facts_coverage(answer: str, key_facts: list[dict[str, Any]]) -> tuple[int, int, float]:
     """Cheap lexical must_contain-style coverage (no LLM). Mirrors
     ``rag_eval.mustcontain_coverage`` but works on the ``key_facts`` schema
-    (list of {fact, source} dicts) instead of a flat string list — the
-    substring is taken from a short discriminating token set inside
-    ``fact``, not the whole sentence (a whole vetted sentence is prose, not
-    a thing a live answer will echo verbatim).
+    (list of {fact, source, anchors?} dicts) instead of a flat string list.
+
+    Each key_fact may carry an optional ``anchors: list[str]`` — short,
+    discriminating surface-form tokens (statute/reg numbers, visa/KBLI
+    codes, percentages, defined terms) copied VERBATIM out of that same
+    fact's own prose, never invented. A fact scores HIT when the answer
+    contains AT LEAST ONE of its anchors (case-insensitive substring) —
+    ANY-OF, not ALL-OF. Rationale for ANY-OF: the anchors listed for one
+    fact are alternative surface forms of the SAME underlying claim (e.g.
+    "2,500,000,000" and "2.5 billion" both appear in the same source
+    sentence; "C2 Business" and "C12 Pre-Investment" are the two named
+    alternatives the source itself joins with "or") — requiring every
+    anchor to co-occur would fail a correct answer for using only one of
+    them. This stays non-inflating because each anchor is chosen to be
+    specific (a number, a code, a named regulation) rather than a word
+    generic enough to match any answer — see the commit message for why the
+    prior whole-sentence substring test could never score above 0.0 in
+    practice against live answers.
+
+    BACKWARD COMPATIBLE: a key_fact with no ``anchors`` (or an empty list)
+    falls back to the original whole-``fact``-string case-insensitive
+    substring test. This is used deliberately for facts that describe
+    correct BOT BEHAVIOR/policy (why ABSTAIN/ESCALATE/CLARIFY is the right
+    call) rather than literal answer content — forcing an anchor onto those
+    would mean inventing wording the source fact never states. It also
+    means this function never crashes on an un-migrated golden file.
 
     To keep this a pure, dependency-free lexical check (no fact-specific
-    tokenizer), the check is: fact text present as-is is too strict (prose
-    rewrites), so callers should keep ``key_facts[i]['fact']`` reasonably
-    matchable, OR prefer short anchor phrases. This function does a
-    conservative whole-string case-insensitive substring test and reports
-    the raw hit count — it is a FLOOR signal (never inflates coverage), not
-    a semantic grader.
+    tokenizer), it remains a FLOOR signal (never inflates coverage on its
+    own), not a semantic grader — it cannot tell a correct claim from its
+    negation, only whether the topic's discriminating tokens showed up.
     """
     if not key_facts:
         return 0, 0, float("nan")
     low = answer.lower()
-    hits = sum(1 for kf in key_facts if kf["fact"].lower() in low)
+
+    def _hit(kf: dict[str, Any]) -> bool:
+        anchors = kf.get("anchors") or []
+        if anchors:
+            return any(str(a).lower() in low for a in anchors)
+        return str(kf["fact"]).lower() in low  # backward-compatible whole-string fallback
+
+    hits = sum(1 for kf in key_facts if _hit(kf))
     return hits, len(key_facts), hits / len(key_facts)
 
 
