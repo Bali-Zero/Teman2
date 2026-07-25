@@ -31,7 +31,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
-import { formatIDR, formatIDRCompact } from "@balizero/core/utils";
+import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 import {
   accountingApi,
   type CashoutRow,
@@ -50,13 +51,13 @@ function SummaryCards({ summary }: { summary: CashbookSummary | null }) {
       label: "Income (in)",
       value: summary?.income_idr ?? 0,
       icon: ArrowDownToLine,
-      tone: "text-emerald-600",
+      tone: "text-[var(--state-success)]",
     },
     {
       label: "Outgoing (out)",
       value: summary?.outgoing_idr ?? 0,
       icon: ArrowUpFromLine,
-      tone: "text-rose-600",
+      tone: "text-[var(--state-danger)]",
     },
     {
       label: "Net",
@@ -68,7 +69,7 @@ function SummaryCards({ summary }: { summary: CashbookSummary | null }) {
       label: "Bali Zero margin",
       value: summary?.margin_total_idr ?? 0,
       icon: CheckCircle2,
-      tone: "text-[var(--bz-accent,#d4845a)]",
+      tone: "text-[var(--bz-accent)]",
     },
   ];
   return (
@@ -87,7 +88,7 @@ function SummaryCards({ summary }: { summary: CashbookSummary | null }) {
               className={`mt-2 text-xl font-semibold tabular-nums ${c.tone}`}
               title={formatIDR(c.value)}
             >
-              {formatIDRCompact(c.value)}
+              <Money compact value={c.value} />
             </p>
           </div>
         );
@@ -134,7 +135,7 @@ function CashoutTable({ rows }: { rows: CashoutRow[] }) {
               <td className="px-3 py-2 text-muted-foreground">
                 {r.type === "cashout_worksheet" && (
                   <span
-                    className="mr-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                    className="mr-1.5 inline-block rounded bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--state-warning)]"
                     title="Imported from Asya's worksheet PDF — pending bank reconciliation, excluded from the totals above"
                   >
                     Worksheet
@@ -143,19 +144,19 @@ function CashoutTable({ rows }: { rows: CashoutRow[] }) {
                 {r.category ?? r.type}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {r.pnbp_idr ? formatIDR(r.pnbp_idr) : "—"}
+                {r.pnbp_idr ? <Money value={r.pnbp_idr} /> : "—"}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {r.urgent_idr ? formatIDR(r.urgent_idr) : "—"}
+                {r.urgent_idr ? <Money value={r.urgent_idr} /> : "—"}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {r.rptka_imta_idr ? formatIDR(r.rptka_imta_idr) : "—"}
+                {r.rptka_imta_idr ? <Money value={r.rptka_imta_idr} /> : "—"}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-[var(--bz-accent,#d4845a)]">
-                {r.margin_idr ? formatIDR(r.margin_idr) : "—"}
+              <td className="px-3 py-2 text-right tabular-nums text-[var(--bz-accent)]">
+                {r.margin_idr ? <Money value={r.margin_idr} /> : "—"}
               </td>
               <td className="px-3 py-2 text-right font-medium tabular-nums">
-                {formatIDR(r.final_price_idr || r.amount_idr)}
+                <Money value={r.final_price_idr || r.amount_idr} />
               </td>
               <td className="max-w-[200px] truncate px-3 py-2 text-muted-foreground">
                 {r.description ?? ""}
@@ -239,7 +240,7 @@ function ConfirmModal({
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Transfer</dt>
             <dd className="font-medium tabular-nums">
-              {formatIDR(txn.amount_idr)}
+              <Money value={txn.amount_idr} />
             </dd>
           </div>
           <div className="flex justify-between">
@@ -249,16 +250,16 @@ function ConfirmModal({
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Invoice</dt>
             <dd className="tabular-nums">
-              {formatIDR(candidate.invoice_amount_idr)}
+              <Money value={candidate.invoice_amount_idr} />
             </dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Delta</dt>
             <dd
-              className={`tabular-nums ${delta < 0 ? "text-amber-600" : "text-emerald-600"}`}
+              className={`tabular-nums ${delta < 0 ? "text-[var(--state-warning)]" : "text-[var(--state-success)]"}`}
             >
               {delta >= 0 ? "+" : ""}
-              {formatIDR(delta)}
+              <Money value={delta} />
             </dd>
           </div>
           <div className="flex justify-between">
@@ -266,7 +267,7 @@ function ConfirmModal({
             <dd className="font-semibold uppercase">{newStatus}</dd>
           </div>
           {candidate.likely_withheld && (
-            <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-700">
+            <p className="rounded-md bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] p-2 text-xs text-[var(--state-warning)]">
               Looks net of PPh23 withholding — the delta is recorded as withheld
               tax.
             </p>
@@ -388,8 +389,8 @@ function ReconciliationInbox({ onConfirmed }: { onConfirmed: () => void }) {
                   {txn.txn_date}
                 </p>
               </div>
-              <span className="shrink-0 font-semibold tabular-nums text-emerald-600">
-                {formatIDR(txn.amount_idr)}
+              <span className="shrink-0 font-semibold tabular-nums text-[var(--state-success)]">
+                <Money value={txn.amount_idr} />
               </span>
             </button>
 
@@ -417,7 +418,7 @@ function ReconciliationInbox({ onConfirmed }: { onConfirmed: () => void }) {
                             {c.client_name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatIDR(c.invoice_amount_idr)} ·{" "}
+                            <Money value={c.invoice_amount_idr} /> ·{" "}
                             {(c.confidence * 100).toFixed(0)}% ·{" "}
                             {c.reasons[0] ?? ""}
                           </p>
@@ -536,7 +537,7 @@ export default function AccountingPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wallet className="h-6 w-6 text-[var(--bz-accent,#d4845a)]" />
+          <Wallet className="h-6 w-6 text-[var(--bz-accent)]" />
           <h1 className="text-2xl font-semibold tracking-tight">Accounting</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -580,12 +581,14 @@ export default function AccountingPage() {
         // above) — surface how much pending money is sitting in that bucket so
         // the gap between "what's booked" and "what's confirmed in the bank" is
         // visible at a glance.
-        const ws = summary?.by_type?.find((t) => t.type === "cashout_worksheet");
+        const ws = summary?.by_type?.find(
+          (t) => t.type === "cashout_worksheet",
+        );
         if (!ws || !ws.n) return null;
         return (
-          <p className="-mt-3 text-xs text-amber-700">
-            {ws.n} worksheet draft(s) ({formatIDR(ws.total_idr)}) imported from
-            Asya&apos;s PDF — excluded from the totals above, pending bank
+          <p className="-mt-3 text-xs text-[var(--state-warning)]">
+            {ws.n} worksheet draft(s) (<Money value={ws.total_idr} />) imported
+            from Asya&apos;s PDF — excluded from the totals above, pending bank
             reconciliation.
           </p>
         );
@@ -596,7 +599,7 @@ export default function AccountingPage() {
           onClick={() => setTab("cashout")}
           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
             tab === "cashout"
-              ? "border-b-2 border-[var(--bz-accent,#d4845a)] text-foreground"
+              ? "border-b-2 border-[var(--bz-accent)] text-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -606,7 +609,7 @@ export default function AccountingPage() {
           onClick={() => setTab("inbox")}
           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
             tab === "inbox"
-              ? "border-b-2 border-[var(--bz-accent,#d4845a)] text-foreground"
+              ? "border-b-2 border-[var(--bz-accent)] text-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >

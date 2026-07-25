@@ -2,10 +2,7 @@
 
 import { Edit2 } from "lucide-react";
 import { StatusChip } from "./StatusChip";
-import {
-  formatCapital,
-  companyTypeSubtitles,
-} from "./editorial-tokens";
+import { formatCapital, companyTypeSubtitles } from "./editorial-tokens";
 
 interface EditorialHeroProps {
   companyName: string;
@@ -45,7 +42,14 @@ export function EditorialHero({
   if (words.length >= 3) {
     // If company name has a recognizable type suffix, italicize it
     const lastTwo = words.slice(-2).join(" ");
-    const suffixes = ["Consulting", "Indonesia", "International", "Services", "Group", "Trading"];
+    const suffixes = [
+      "Consulting",
+      "Indonesia",
+      "International",
+      "Services",
+      "Group",
+      "Trading",
+    ];
     if (suffixes.some((s) => lastTwo.includes(s))) {
       mainPart = words.slice(0, -1).join(" ");
       italicPart = words[words.length - 1];
@@ -61,7 +65,8 @@ export function EditorialHero({
   // Line 1: type + location + year
   const line1Parts: string[] = [];
   if (companyType) line1Parts.push(typeStr);
-  if (foundingYear && location) line1Parts.push(`founded in ${location}, ${foundingYear}`);
+  if (foundingYear && location)
+    line1Parts.push(`founded in ${location}, ${foundingYear}`);
   else if (foundingYear) line1Parts.push(`founded ${foundingYear}`);
   else if (location) line1Parts.push(`based in ${location}`);
 
@@ -73,7 +78,9 @@ export function EditorialHero({
   // Line 3: structure summary
   const line3Parts: string[] = [];
   if (shareholderCount > 0)
-    line3Parts.push(`${shareholderCount} shareholder${shareholderCount > 1 ? "s" : ""}`);
+    line3Parts.push(
+      `${shareholderCount} shareholder${shareholderCount > 1 ? "s" : ""}`,
+    );
   if (capital) line3Parts.push(`authorized capital ${capital}`);
 
   const prose = [
@@ -131,7 +138,9 @@ export function EditorialHero({
             }
           />
         )}
-        {status === "in_setup" && <StatusChip label="In Setup" variant="amber" />}
+        {status === "in_setup" && (
+          <StatusChip label="In Setup" variant="amber" />
+        )}
         {status === "dormant" && <StatusChip label="Dormant" variant="cool" />}
         {companyType && <StatusChip label={companyType} variant="accent" />}
         {nib && <StatusChip label="OSS \u2713" variant="cool" />}

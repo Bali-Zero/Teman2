@@ -5,7 +5,10 @@ interface KBLIEditorialProps {
   kbliDescription?: string;
 }
 
-export function KBLIEditorial({ kbliCode, kbliDescription }: KBLIEditorialProps) {
+export function KBLIEditorial({
+  kbliCode,
+  kbliDescription,
+}: KBLIEditorialProps) {
   if (!kbliCode) return null;
 
   // Split comma-separated KBLI codes
@@ -38,7 +41,8 @@ export function KBLIEditorial({ kbliCode, kbliDescription }: KBLIEditorialProps)
             } ${i < codes.length - 1 ? "border-b border-[var(--kbli-border)]" : ""}`}
           >
             {/* Code */}
-            <span className="text-[28px] font-[800] tabular-nums tracking-[-0.03em] leading-none pt-1 opacity-60"
+            <span
+              className="text-[28px] font-[800] tabular-nums tracking-[-0.03em] leading-none pt-1 opacity-60"
               style={{ color: "var(--kbli-accent)" }}
             >
               {code}
