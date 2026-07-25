@@ -23,6 +23,17 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
+// WS3 final slice (GARUDA Day Edition): CTA = darker copper step
+// --bz-copper-text with theme-aware --bz-on-warm fg (white on #9d5230 =
+// 5.70:1 light; ink #0c0c0e on #d4845a = 6.74:1 dark — the #b5633a copper
+// step with white would be 4.37:1, below the 4.5:1 AA floor). Was a
+// #d9bd7a→#a07838 gradient with black text.
+const LOGIN_CTA_STYLE = {
+  background: "var(--bz-copper-text)",
+  color: "var(--bz-on-warm)",
+  boxShadow: "0 4px 24px color-mix(in srgb, var(--bz-copper) 30%, transparent)",
+} as const;
+
 // Map HTTP status code → i18n error key. Unknown → server_error (5xx) or
 // network_error (anything else, including status=0 from opaque fetch failures).
 function errorKeyFor(status: number): string {
@@ -163,18 +174,29 @@ function UpgradedLoginPageInner() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col bg-black">
+    // WS3 final slice (GARUDA Day Edition, 2026-07-26): the shell reads
+    // --bz-base (paper on operative-light, near-black navy on
+    // operative-dark) instead of a forced bg-black. The SVG gate scene JSX
+    // is untouched — the day re-light lives in the <style> block below as
+    // [data-theme="operative-light"] attribute-selector overrides (CSS
+    // beats SVG presentation attributes), so the dark theme renders the
+    // original night scene pixel-identically. The UI layer (card, forms,
+    // CTAs, overlays) reads day tokens throughout.
+    <div className="min-h-screen relative overflow-hidden flex flex-col bg-[var(--bz-base)]">
       {/* ACCESS GRANTED OVERLAY */}
       {loginStage === "success" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.1 }}
-          className="absolute inset-0 z-50 bg-accent-gold-muted/10 flex items-center justify-center backdrop-blur-md"
+          className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--bz-base) 80%, transparent)",
+          }}
         >
           <div className="text-center group">
             <h1
-              className={`${cormorant.className} text-4xl md:text-6xl text-[#f8e89a] tracking-[0.2em] font-light shadow-[0_0_40px_rgba(201,169,110,0.4)]`}
+              className={`${cormorant.className} text-4xl md:text-6xl text-[var(--bz-copper-text)] tracking-[0.2em] font-light shadow-[0_0_40px_rgba(201,169,110,0.4)]`}
             >
               Portal Unlocked
             </h1>
@@ -189,22 +211,31 @@ function UpgradedLoginPageInner() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.1 }}
-          className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center backdrop-blur-md"
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--bz-base) 92%, transparent)",
+          }}
         >
           <h1
-            className={`${cormorant.className} text-4xl md:text-6xl text-red-500/90 tracking-[0.2em] font-light uppercase`}
+            className={`${cormorant.className} text-4xl md:text-6xl tracking-[0.2em] font-light uppercase`}
+            style={{ color: "var(--state-danger)" }}
           >
             Access Denied
           </h1>
           {errorMessage && (
-            <p className="mt-4 text-sm text-red-200/80 tracking-wide max-w-md text-center px-4">
+            <p
+              className="mt-4 text-sm tracking-wide max-w-md text-center px-4"
+              style={{ color: "var(--state-danger)" }}
+            >
               {errorMessage}
             </p>
           )}
         </motion.div>
       )}
 
-      {/* Safe: hardcoded CSS for autofill styling, no external input */}
+      {/* Safe: hardcoded CSS for autofill styling, no external input.
+          WS3: tokenized — card inset + theme text + copper caret (was a
+          dark inset with hardcoded cream text and gold caret). */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -212,9 +243,9 @@ function UpgradedLoginPageInner() {
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 30px rgba(0,0,0,0.8) inset !important;
-            -webkit-text-fill-color: #f0ece4 !important;
-            caret-color: #c9a96e !important;
+            -webkit-box-shadow: 0 0 0 30px var(--bz-card) inset !important;
+            -webkit-text-fill-color: var(--tx-primary) !important;
+            caret-color: var(--bz-copper) !important;
         }
       `,
         }}
@@ -236,6 +267,30 @@ function UpgradedLoginPageInner() {
           0%, 100% { transform: translate(0px, 0px); }
           50%      { transform: translate(5px, -1.5px); }
         }
+
+        /* ── WS3 Day re-light (operative-light only) ────────────────────
+           The gate SVG keeps its single-source night palette in JSX; these
+           attribute-selector overrides re-light it for the Day Edition
+           (CSS beats SVG presentation attributes). Decorative illustration
+           colors, not UI colors. Dark theme: zero rules match → the night
+           scene renders unchanged. */
+        [data-theme="operative-light"] .gate-scene #skyGrad stop[stop-color="#000000"] { stop-color: #f7f3ea; } /* token-lint-ok: decorative illustration day sky */
+        [data-theme="operative-light"] .gate-scene #skyGrad stop[stop-color="#030306"] { stop-color: #e6dcc8; } /* token-lint-ok: decorative illustration day sky depth */
+        [data-theme="operative-light"] .gate-scene #goldEdge stop[stop-color="#f8e89a"] { stop-color: #8a6d3b; } /* token-lint-ok: decorative illustration daylight gold edge */
+        [data-theme="operative-light"] .gate-scene #goldEdge stop[stop-color="#e8c96a"] { stop-color: #b5633a; } /* token-lint-ok: decorative illustration copper edge */
+        [data-theme="operative-light"] .gate-scene #goldEdge stop[stop-color="#c9a96e"] { stop-color: #c07a48; } /* token-lint-ok: decorative illustration copper edge fade */
+        [data-theme="operative-light"] .gate-scene #goldEdge stop[stop-color="#7a5020"] { stop-color: #d4b483; } /* token-lint-ok: decorative illustration sand edge end */
+        [data-theme="operative-light"] .gate-scene [fill="#0a0804"] { fill: #4a3b26; } /* token-lint-ok: decorative illustration umber stone */
+        [data-theme="operative-light"] .gate-scene [fill="#0c0a05"] { fill: #55452e; } /* token-lint-ok: decorative illustration umber stone tier */
+        [data-theme="operative-light"] .gate-scene [fill="#080602"] { fill: #5f4e36; } /* token-lint-ok: decorative illustration umber step */
+        [data-theme="operative-light"] .gate-scene [fill="#060401"] { fill: #6a5840; } /* token-lint-ok: decorative illustration umber step light */
+        [data-theme="operative-light"] .gate-scene [stroke="#f8e89a"] { stroke: #8a6d3b; } /* token-lint-ok: decorative illustration daylight gold stroke */
+        [data-theme="operative-light"] .gate-scene [stroke="#e8c96a"] { stroke: #b5633a; } /* token-lint-ok: decorative illustration copper stroke */
+        [data-theme="operative-light"] .gate-scene [fill="#c9a96e"] { fill: #b08a5a; } /* token-lint-ok: decorative illustration warm carving fill */
+        [data-theme="operative-light"] .gate-scene [stroke="#c9a96e"] { stroke: #a08050; } /* token-lint-ok: decorative illustration warm carving stroke */
+        [data-theme="operative-light"] .gate-scene [stroke="#8a6030"] { stroke: #9c7c4e; } /* token-lint-ok: decorative illustration dim gold stroke */
+        [data-theme="operative-light"] .gate-scene [fill="#000000"] { fill: #d8cdb6; } /* token-lint-ok: decorative illustration sand silhouette (moon cover, ground, foliage) */
+        [data-theme="operative-light"] .gate-scene [fill="#0a0a0a"] { fill: #d9a441; } /* token-lint-ok: decorative illustration sun disc */
       `}</style>
 
       {/* ═══════════════════════════════════════
@@ -245,7 +300,7 @@ function UpgradedLoginPageInner() {
         initial={{ opacity: 0, scale: 1.05 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 2, ease: "easeOut" }}
-        className="absolute inset-0"
+        className="absolute inset-0 gate-scene"
       >
         <svg
           className="absolute inset-0 w-full h-full"
@@ -1206,7 +1261,9 @@ function UpgradedLoginPageInner() {
           />
         </svg>
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/95 pointer-events-none" />
+        {/* WS3: theme-aware veil (was from-black/50 to-black/95) — darkens
+            the scene foot in dark, veils it in paper on operative-light. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bz-base)]/50 via-transparent to-[var(--bz-base)]/95 pointer-events-none" />
       </motion.div>
 
       {/* ═══════════════════════════════════════
@@ -1244,12 +1301,12 @@ function UpgradedLoginPageInner() {
             className="mb-8 text-center"
           >
             <p
-              className={`${cormorant.className} text-[13px] uppercase tracking-[4px] mb-2 text-accent-gold-muted/55 font-light`}
+              className={`${cormorant.className} text-[13px] uppercase tracking-[4px] mb-2 text-[var(--bz-copper-text)] font-light`}
             >
               Turn On
             </p>
             <h1
-              className={`${cormorant.className} text-[42px] leading-tight tracking-[0.06em] uppercase text-white font-light`}
+              className={`${cormorant.className} text-[42px] leading-tight tracking-[0.06em] uppercase text-[var(--bz-copper-text)] font-light`}
             >
               Your Bali Life.
             </h1>
@@ -1269,21 +1326,22 @@ function UpgradedLoginPageInner() {
             }}
             ref={cardRef}
             onMouseMove={handleMouseMove}
-            className="relative rounded-2xl overflow-hidden group shadow-[0_12px_60px_rgba(0,0,0,0.85)]"
+            className="relative rounded-2xl overflow-hidden group shadow-[0_14px_34px_rgba(22,33,58,0.07)]"
           >
             {/* Ambient Base Glow */}
-            <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-30" />
+            <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[var(--bz-copper)]/50 to-transparent opacity-30" />
 
             {/* Mouse Spotlight Effect - The Magic */}
             <div
               className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition duration-300 group-hover:opacity-100 z-30"
               style={{
-                background: `radial-gradient(400px circle at ${mouseX}px ${mouseY}px, rgba(201, 169, 110, 0.15), transparent 40%)`,
+                background: `radial-gradient(400px circle at ${mouseX}px ${mouseY}px, color-mix(in srgb, var(--bz-copper) 15%, transparent), transparent 40%)`,
               }}
             />
 
-            {/* Glass Surface */}
-            <div className="bg-gradient-to-br from-[#201a10]/90 via-[#0a0804]/95 to-[#060402]/95 backdrop-blur-[40px] saturate-150 p-1 rounded-2xl shadow-[inset_0_1.5px_0_rgba(248,232,154,0.1)_inset_0_0_40px_rgba(201,169,110,0.02)]">
+            {/* Card surface — WS3: token card + hairline (was a forced-dark
+                glass gradient with gold inset shadows). */}
+            <div className="bg-[var(--bz-card)]/95 backdrop-blur-[40px] saturate-150 p-1 rounded-2xl border border-[var(--bz-border)]">
               <div className="relative z-40 h-[240px]">
                 {/* ANIMATED FORM TRANSITIONS */}
                 <AnimatePresence mode="popLayout">
@@ -1303,7 +1361,7 @@ function UpgradedLoginPageInner() {
                     >
                       <div className="space-y-2">
                         <label
-                          className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-accent-gold-muted/50 font-bold`}
+                          className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[var(--bz-accent-warm)] font-bold`}
                         >
                           Corporate Email
                         </label>
@@ -1316,7 +1374,7 @@ function UpgradedLoginPageInner() {
                           placeholder="client@company.com"
                           required
                           autoFocus
-                          className="w-full rounded-xl px-4 py-4 text-[13px] outline-none transition-all bg-white/5 border border-accent-gold-muted/20 text-[#f0ece4] focus:border-accent-gold-muted/60 focus:bg-white/10 focus:shadow-[0_0_15px_rgba(201,169,110,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full rounded-xl px-4 py-4 text-[13px] outline-none transition-all bg-[var(--bz-base)] border border-[var(--bz-border)] text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:border-[var(--bz-copper)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
 
@@ -1324,7 +1382,8 @@ function UpgradedLoginPageInner() {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        className="w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase text-black font-bold relative overflow-hidden bg-gradient-to-br from-[#d9bd7a] to-[#a07838] shadow-[0_4px_24px_rgba(201,169,110,0.3)]"
+                        className="w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase font-bold relative overflow-hidden"
+                        style={LOGIN_CTA_STYLE}
                       >
                         Pass the Portal →
                       </motion.button>
@@ -1346,7 +1405,7 @@ function UpgradedLoginPageInner() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <label
-                            className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-accent-gold-muted/50 font-bold`}
+                            className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[var(--bz-accent-warm)] font-bold`}
                           >
                             Access PIN
                           </label>
@@ -1356,7 +1415,7 @@ function UpgradedLoginPageInner() {
                               playClickSound();
                               setStep("email");
                             }}
-                            className="text-[11px] text-accent-gold-muted/50 hover:text-accent-gold-muted transition-colors"
+                            className="text-[11px] text-[var(--bz-accent-warm)] hover:underline transition-colors"
                           >
                             ← {email.split("@")[0]}
                           </button>
@@ -1380,12 +1439,12 @@ function UpgradedLoginPageInner() {
                           required
                           autoFocus
                           maxLength={6}
-                          className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-white/5 border border-accent-gold-muted/20 text-[#f0ece4] focus:border-accent-gold-muted/60 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-[var(--bz-base)] border border-[var(--bz-border)] text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:border-[var(--bz-copper)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <div className="flex justify-end pt-1">
                           <Link
                             href="/portal/forgot-password"
-                            className="text-[11px] text-accent-gold-muted/50 hover:text-accent-gold-muted transition-colors"
+                            className="text-[11px] text-[var(--bz-accent-warm)] hover:underline transition-colors"
                           >
                             {t("portal.login.forgot_password")}
                           </Link>
@@ -1396,10 +1455,11 @@ function UpgradedLoginPageInner() {
                         whileTap={{ scale: 0.98 }}
                         type="submit"
                         disabled={loginStage !== "idle"}
-                        className={`w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase flex items-center justify-center gap-2 text-black font-bold transition-all bg-gradient-to-br from-[#d9bd7a] to-[#a07838] shadow-[0_4px_24px_rgba(201,169,110,0.3)] ${loginStage !== "idle" ? "opacity-70 cursor-not-allowed" : ""}`}
+                        className={`w-full py-4 rounded-xl text-[13px] tracking-[0.08em] uppercase flex items-center justify-center gap-2 font-bold transition-all ${loginStage !== "idle" ? "opacity-70 cursor-not-allowed" : ""}`}
+                        style={LOGIN_CTA_STYLE}
                       >
                         {loginStage === "authenticating" ? (
-                          <Loader2 className="w-5 h-5 animate-spin border-[#000]" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                           "Verify Identity"
                         )}
@@ -1408,7 +1468,7 @@ function UpgradedLoginPageInner() {
                       <div className="pt-3 text-center">
                         <Link
                           href="/portal/magic-link"
-                          className="text-[11px] uppercase tracking-[2px] text-accent-gold-muted/60 hover:text-accent-gold-muted transition-colors"
+                          className="text-[11px] uppercase tracking-[2px] text-[var(--bz-accent-warm)] hover:underline transition-colors"
                         >
                           Sign in with an email link instead
                         </Link>
@@ -1418,7 +1478,7 @@ function UpgradedLoginPageInner() {
                 </AnimatePresence>
               </div>
 
-              <div className="px-6 pb-6 text-center text-[10px] leading-relaxed text-[#8c8884]/40">
+              <div className="px-6 pb-6 text-center text-[10px] leading-relaxed text-[var(--tx-secondary)]">
                 No PIN? Check your invitation email or contact support.
               </div>
             </div>
@@ -1428,7 +1488,7 @@ function UpgradedLoginPageInner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 2 }}
-            className={`${cormorant.className} text-center mt-6 text-[9px] tracking-[3px] uppercase text-accent-gold-muted/20 font-bold`}
+            className={`${cormorant.className} text-center mt-6 text-[9px] tracking-[3px] uppercase text-[var(--tx-secondary)] font-bold`}
           >
             Bali Zero · Private Client Portal
           </motion.p>

@@ -5,7 +5,7 @@ import { Loader2, ArrowLeft, Printer, CheckCircle, Upload } from "lucide-react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 import { logger } from "@/lib/logger";
 import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
 import type { LKPMReadyPack } from "@/lib/api/portal/portal.types";
@@ -160,7 +160,11 @@ export default function LKPMReadyPackPage() {
           <button
             onClick={() => setShowReceiptForm(!showReceiptForm)}
             className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-            style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa" }}
+            style={{
+              background:
+                "color-mix(in srgb, var(--state-info) 12%, transparent)",
+              color: "var(--state-info)",
+            }}
           >
             <Upload className="w-4 h-4" />
             Upload Receipt
@@ -241,8 +245,16 @@ export default function LKPMReadyPackPage() {
                 className="px-2 py-0.5 rounded-full text-xs font-medium"
                 style={
                   pack.validation_summary.is_valid
-                    ? { background: "rgba(16,185,129,0.12)", color: "#34d399" }
-                    : { background: "rgba(239,68,68,0.12)", color: "#f87171" }
+                    ? {
+                        background:
+                          "color-mix(in srgb, var(--state-success) 12%, transparent)",
+                        color: "var(--state-success)",
+                      }
+                    : {
+                        background:
+                          "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+                        color: "var(--state-danger)",
+                      }
                 }
               >
                 {pack.validation_summary.is_valid ? "Valid" : "Issues Found"}
@@ -254,7 +266,7 @@ export default function LKPMReadyPackPage() {
                 <div className="flex items-center gap-1.5">
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ background: "#f87171" }}
+                    style={{ background: "var(--state-danger)" }}
                   />
                   Red
                 </div>
@@ -266,7 +278,7 @@ export default function LKPMReadyPackPage() {
                 <div className="flex items-center gap-1.5">
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ background: "#fbbf24" }}
+                    style={{ background: "var(--state-warning)" }}
                   />
                   Yellow
                 </div>
@@ -278,7 +290,7 @@ export default function LKPMReadyPackPage() {
                 <div className="flex items-center gap-1.5">
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ background: "#34d399" }}
+                    style={{ background: "var(--state-success)" }}
                   />
                   Green
                 </div>
@@ -303,7 +315,7 @@ export default function LKPMReadyPackPage() {
             >
               <p>
                 <span className="font-medium">Grand Total:</span>{" "}
-                {formatIDR(pack.realized.grand_total)}
+                <Money value={pack.realized.grand_total} />
               </p>
               <p>
                 <span className="font-medium">Employees:</span>{" "}

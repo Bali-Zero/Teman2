@@ -1,0 +1,32 @@
+name: cron - notifiers e33-guarantee-scan (daily 07:10 WITA)
+on:
+  schedule:
+    - cron: "10 23 * * *" # 23:10 UTC = 07:10 WITA next day
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-e33-guarantee-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The E33 Day-90 guarantee gate: for every open Second Home case this
+      # builds the Day 30/60/75 escalation toward the 90-day evidence deadline
+      # and the annual-maintenance recurrence, then hands them to the existing
+      # AlertsEngine (dedup + severity promotion + team dispatch).
+      #
+      # Inert until system_settings.e33_guarantee_scan_enabled = "true" — the
+      # endpoint answers {"status":"blocked"} otherwise, and the switch is the
+      # deliberate go-live gesture, not this schedule (same posture as
+      # cron-notifiers-compliance-forecast).
+      #
+      # Scheduled 40 min after compliance-forecast (22:30 UTC) so the two
+      # AlertsEngine writers never contend for the same dedup window.
+      - name: POST /api/cron/notifiers/e33-guarantee-scan
+        run: |
+          curl -fsS -X POST https://nuzantara-rag.fly.dev/api/cron/notifiers/e33-guarantee-scan \
+            -H "X-API-Key: ${{ secrets.NUZANTARA_API_KEY }}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'

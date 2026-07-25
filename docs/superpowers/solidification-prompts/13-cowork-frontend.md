@@ -1,4 +1,5 @@
 # SOLIDIFICATION PROMPT 13 — Frontend (mouth)
+
 # Machine: COWORK | Model: Claude Opus 4.6 MAX | Component: Frontend
 
 ---
@@ -35,13 +36,14 @@ apps/mouth/
   next.config.*                                        # Next.js configuration
   tailwind.config.*                                    # Tailwind configuration
   package.json                                         # Dependencies
-  
+
 packages/core/
   styles/bz-tokens.css                                 # Design tokens (--bz-base, --bz-accent)
   components/BZLogo.tsx                                # Logo component
 ```
 
 Mappa:
+
 1. **Route structure**: quante route, come sono organizzate (public vs auth vs portal)
 2. **Component architecture**: component library, design system, riuso
 3. **State management**: che pattern (Zustand, Context, Redux, niente?)
@@ -58,7 +60,9 @@ Mappa:
 Per il brainstorming su Cowork, usa le risorse disponibili:
 
 ### 2a. Research: Next.js production patterns
+
 Cerca best practice per:
+
 - Next.js 14+ App Router production optimization
 - Multi-subdomain Next.js architecture
 - Design system with Tailwind CSS (tokens, components)
@@ -67,7 +71,9 @@ Cerca best practice per:
 - Cross-domain SSO with httpOnly cookies
 
 ### 2b. Code analysis
+
 Analizza il codice per:
+
 1. Components senza TypeScript types (any, unknown abusati)
 2. API calls senza error handling (no try/catch, no error boundary)
 3. Re-render non necessari (missing memo, useMemo, useCallback)
@@ -76,6 +82,7 @@ Analizza il codice per:
 6. Accessibilita: form senza label, button senza aria-label, contrast ratio
 
 ### 2c. Self-reflection critica
+
 - 1841 file TSX: sono tutti necessari? Dead components?
 - Multi-subdomain: la logica di routing e chiara o spaghetti?
 - Design tokens: sono usati consistentemente o ci sono colori hardcoded?
@@ -87,6 +94,7 @@ Analizza il codice per:
 ## FASE 3 — PIANO DI SOLIDIFICAZIONE
 
 ### A. PULIZIA
+
 - Dead code: componenti non importati, route non raggiungibili
 - Type cleanup: eliminare `any`, aggiungere types mancanti
 - Import cleanup: dipendenze non usate in package.json
@@ -94,6 +102,7 @@ Analizza il codice per:
 - Component consolidation: componenti simili → uno condiviso
 
 ### B. IRROBUSTIMENTO
+
 - Error boundaries: per ogni sezione principale (portal, admin, public)
 - Loading states: skeleton loader consistenti, non spinner random
 - API error handling: retry automatico per errori transient, messaging chiaro per errori permanenti
@@ -102,6 +111,7 @@ Analizza il codice per:
 - Offline handling: basic offline indicator + cache per dati critici
 
 ### C. POTENZIAMENTO
+
 - Performance: Lighthouse score > 90 su tutte le pagine principali
 - Bundle optimization: dynamic import per moduli pesanti, code splitting aggressivo
 - Image optimization: next/image ovunque, responsive sizes, WebP
@@ -110,6 +120,7 @@ Analizza il codice per:
 - Accessibility: WCAG 2.1 AA compliance sulle pagine principali
 
 ### D. AUTOMATISMO EVOLUTIVO
+
 - Lighthouse CI: check automatico su ogni PR (fail se score scende)
 - Bundle size tracking: alert se bundle cresce > 5% su una PR
 - Type coverage: metric tracking (% di file con zero `any`)
@@ -117,6 +128,7 @@ Analizza il codice per:
 - Visual regression: screenshot testing su pagine critiche (portal, KBLI)
 
 ### E. METRICHE
+
 - Lighthouse Performance: > 90
 - LCP: < 2.5s
 - FID/INP: < 100ms
@@ -130,6 +142,7 @@ Analizza il codice per:
 ## FASE 4 — VALIDAZIONE
 
 Scrivi script/test di validazione:
+
 1. Lighthouse audit su pagine principali (kita, portal login, KBLI)
 2. TypeScript strict mode check (trova `any` e type errors)
 3. Unused dependency detection (`depcheck`)
@@ -148,6 +161,6 @@ Scrivi script/test di validazione:
 - Design tokens: `packages/core/styles/bz-tokens.css` (--bz-base: #0c0c0e, --bz-accent: #d4845a)
 - Logo: `packages/core/components/BZLogo.tsx` (balizero-logo-clean.png)
 - KBLI: 1,563 pagine SSG in `/kbli/[code]`
-- Maps: Google Maps API key `AIzaSyCWPZb1_aSV_NVvS9ZSR0Mlq9El8qO8uLQ`
+- Maps: Google Maps API key `<GOOGLE_API_KEY_REDACTED>` — redacted 2026-07-25: a live key must never appear in this public repo; read it from the environment.
 - Portal: cinematic Balinese gate login
 - QA post-deploy: screenshot automatici con claude-in-chrome

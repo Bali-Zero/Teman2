@@ -20,12 +20,30 @@ no WhatsApp/client notifications are sent by this scanner.
 
 Kill switch: system_settings.e33_guarantee_scan_enabled must be "true"
 (same blocked-by-default posture as visa_expiry_notifier_enabled).
+
+UNPROVISIONED vs DISABLED (2026-07-25)
+--------------------------------------
+The switch has THREE meaningful states, not two. A missing row and a row set
+to "false" both block the scan, but they mean opposite things operationally:
+
+- **UNPROVISIONED** (no row): nobody ever decided. The organ was built and
+  deployed — table, scanner, cron endpoint — and then left un-armed without
+  anyone noticing, because "blocked" reads like a decision. This is the
+  superscar-#2 shape ("esiste != armato"): the failure is invisible precisely
+  because it looks identical to the healthy fail-closed state.
+- **DISABLED** (row exists, value != "true"): somebody decided, and the
+  decision is recorded and auditable.
+
+``resolve_scan_switch`` reports which one it is so the endpoint and the logs
+can too. Nothing about the fail-closed behaviour changes: both non-ENABLED
+states block, and an absent row still blocks.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import date
+from enum import Enum
 from typing import Any
 
 import asyncpg
@@ -36,22 +54,69 @@ logger = logging.getLogger(__name__)
 
 _KILL_SWITCH_KEY: str = "e33_guarantee_scan_enabled"
 
+#: The exact stored value that arms the scan. Anything else blocks.
+_ENABLED_VALUE: str = "true"
 
-async def is_scan_enabled(db_pool: asyncpg.Pool) -> bool:
-    """Check the kill switch in system_settings. Blocked unless "true"."""
+
+class ScanSwitchState(str, Enum):
+    """Resolved state of the E33 guarantee-scan kill switch."""
+
+    #: No row for the key — the organ was never armed (nor deliberately disabled).
+    UNPROVISIONED = "unprovisioned"
+    #: Row exists but is not the enabling value — a recorded decision to hold.
+    DISABLED = "disabled"
+    #: Row exists and arms the scan.
+    ENABLED = "enabled"
+
+    @property
+    def is_enabled(self) -> bool:
+        """True only for :attr:`ENABLED` — both other states fail closed."""
+        return self is ScanSwitchState.ENABLED
+
+
+async def resolve_scan_switch(db_pool: asyncpg.Pool) -> ScanSwitchState:
+    """Resolve the kill switch into one of three explicit states.
+
+    Distinguishes "never provisioned" from "deliberately disabled" — see the
+    module docstring. Fail-closed is unchanged: only the exact string
+    ``"true"`` yields :attr:`ScanSwitchState.ENABLED`.
+    """
     async with db_pool.acquire() as conn:
-        value = await conn.fetchval(
+        row = await conn.fetchrow(
             "SELECT value FROM system_settings WHERE key = $1",
             _KILL_SWITCH_KEY,
         )
-    enabled = value == "true"
-    if not enabled:
-        logger.info(
-            "E33GuaranteeScanner: disabled by kill switch '%s' (value=%r)",
+
+    if row is None:
+        logger.warning(
+            "E33GuaranteeScanner: kill switch '%s' has NO ROW in system_settings — "
+            "the scanner is un-armed, not disabled. The Day-90 guarantee gate is "
+            "therefore not being monitored for any open E33 case. Arming it is a "
+            "one-line value change on that key (owner decision).",
             _KILL_SWITCH_KEY,
-            value,
         )
-    return enabled
+        return ScanSwitchState.UNPROVISIONED
+
+    value = row["value"]
+    if value == _ENABLED_VALUE:
+        return ScanSwitchState.ENABLED
+
+    logger.info(
+        "E33GuaranteeScanner: disabled by kill switch '%s' (value=%r) — "
+        "an explicit recorded decision, not a missing arming step.",
+        _KILL_SWITCH_KEY,
+        value,
+    )
+    return ScanSwitchState.DISABLED
+
+
+async def is_scan_enabled(db_pool: asyncpg.Pool) -> bool:
+    """Check the kill switch in system_settings. Blocked unless "true".
+
+    Thin boolean view over :func:`resolve_scan_switch`, kept for callers that
+    only need the yes/no.
+    """
+    return (await resolve_scan_switch(db_pool)).is_enabled
 
 
 class E33GuaranteeScanner:
@@ -114,4 +179,9 @@ class E33GuaranteeScanner:
         return result
 
 
-__all__ = ["E33GuaranteeScanner", "is_scan_enabled"]
+__all__ = [
+    "E33GuaranteeScanner",
+    "ScanSwitchState",
+    "is_scan_enabled",
+    "resolve_scan_switch",
+]

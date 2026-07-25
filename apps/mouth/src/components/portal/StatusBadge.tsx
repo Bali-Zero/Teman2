@@ -75,6 +75,26 @@ const STATUS_MAP: Record<
   overdue: { icon: AlertTriangle, label: "Overdue", tone: "danger" },
   rejected: { icon: AlertTriangle, label: "Rejected", tone: "danger" },
   cancelled: { icon: AlertTriangle, label: "Cancelled", tone: "danger" },
+  // Partner program vocabulary (WS3 final slice, 2026-07-26): commission +
+  // partner onboarding statuses from lib/api/partners/partners.ts. Additive —
+  // existing keys unchanged, so other consumers render identically.
+  accrued: { icon: Clock, label: "Accrued", tone: "warning" },
+  pending_approval: {
+    icon: Clock,
+    label: "Pending Approval",
+    tone: "warning",
+  },
+  ready_to_pay: { icon: Clock, label: "Ready to Pay", tone: "info" },
+  clawback_pending: {
+    icon: AlertTriangle,
+    label: "Clawback Pending",
+    tone: "warning",
+  },
+  clawed_back: { icon: AlertTriangle, label: "Clawed Back", tone: "danger" },
+  inactive: { icon: AlertTriangle, label: "Inactive", tone: "danger" },
+  offset_applied: { icon: CheckCircle, label: "Offset Applied", tone: "info" },
+  waived: { icon: CheckCircle, label: "Waived", tone: "neutral" },
+  repaid: { icon: CheckCircle, label: "Repaid", tone: "neutral" },
   // Default
   none: { icon: Clock, label: "None", tone: "neutral" },
 };
