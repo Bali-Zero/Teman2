@@ -45,7 +45,14 @@ SPEC_PATH = REPO_ROOT / "scripts/kbli_filiera/cure_specs/l4bali_disclosure_2026_
 CANONICAL_PATH = REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
 DISPUTED_KEY = "per_skala_disputed_pp28_collision"
 DISCLOSURE_MARKER = "[derivation under review] "
-DETACH_PHRASE = "has been detached to per_skala_disputed_pp28_collision"
+# The disclosure sentence WAS "has been detached to per_skala_disputed_pp28_collision
+# (see _data_note)". `l4_bali.reason` is reader-facing (Bali badge tooltip +
+# spliced verbatim into a published FAQ answer by apps/mouth/src/lib/kbli-faq.ts),
+# so naming two internal JSON keys in it was the same debt this programme is
+# paying down elsewhere. Migrated catalogue-wide on 2026-07-25 by
+# `cure_l4bali_disclosure.py --reword-legacy`; the key itself is unchanged on the
+# record, in `_data_note` and in the spec, which is where a maintainer looks.
+DETACH_PHRASE = "set aside as unverifiable for KBLI 2025"
 GARUDA_TOKEN = "(GARUDA-FILIERA)"
 
 # --- verbatim from test_kbli_batch_a_lot1_registry.py (2026-07-18) ---------
@@ -314,10 +321,27 @@ UNTOUCHED_L4_BALI: dict[str, dict[str, Any]] = {
 DISCLOSED_PILOT_CODES = [
     "20111", "49213", "50115", "51103", "51203", "60312", "64310", "68112",
 ]
+# RECLASSIFIED 2026-07-25 — 47771, 52211 and 70100 were listed here as CLEAN on
+# the belief that their CHIUSO_PMA_NO_BESAR verdict rests on a STRUCTURAL OSS
+# observation ("OSS has no Usaha Besar scale row, only Mikro/Kecil/Menengah"),
+# independent of the disputed risk tier. The canonical falsifies that belief:
+# all three carry `_l2_status: no_oss_risk` with `_l2_source: None` — OSS
+# returned NO scope at all (404), not "only the smaller scales" — and their only
+# scale rows have ever lived inside the disowned `per_skala_disputed_pp28_collision`
+# block (47771 [Mikro,Kecil]/[Menengah], 52211 [Mikro,Kecil], 70100
+# [Mikro,Kecil,Menengah]). So the "structural" observation is itself read off the
+# vintage-2020 block the programme repudiated, and the sentence attributes it to
+# OSS. They are stale-certifying like the rest and are cured by the wave-2 spec
+# (l4bali_gap_disclosure_2026_07_25.json); `status`/`blocked` remain untouched.
+# The false SENTENCE is a separate, editorial fix — logged AWAITS ZERO in the
+# /kbli-navigator corner, not silently rewritten here.
+WAVE2_RECLASSIFIED_FROM_CLEAN = ["47771", "52211", "70100"]
 CLEAN_CODES = [
-    "01287", "38122", "47771", "52211", "59131", "64110", "68127", "68129", "70100",
+    "01287", "38122", "59131", "64110", "68127", "68129",
 ]
-assert set(UNTOUCHED_L4_BALI) == set(DISCLOSED_PILOT_CODES) | set(CLEAN_CODES)
+assert set(UNTOUCHED_L4_BALI) == (
+    set(DISCLOSED_PILOT_CODES) | set(CLEAN_CODES) | set(WAVE2_RECLASSIFIED_FROM_CLEAN)
+)
 
 # 80190's pre-merge (guarded) l4_bali shape — PR #2800 (origin/kbli/lot6-data-apply)
 # not yet merged as of this cure. If the merge lands and this branch rebases
@@ -483,6 +507,42 @@ def test_clean_structural_records_byte_unchanged(code: str):
         f"{code}: reason unexpectedly carries this cure's disclosure marker — "
         "CLEAN records were never in scope."
     )
+
+
+# ---------------------------------------------------------------------------
+# 6b. The three ex-CLEAN records the evidence reclassified (2026-07-25).
+#     Pinned rather than deleted: a classification overturned by data should
+#     leave a test that says so, not a silent gap where an assertion used to be.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("code", WAVE2_RECLASSIFIED_FROM_CLEAN)
+def test_reclassified_records_are_disclosed_not_clean(code: str):
+    rec = _load_record(CANONICAL_PATH, code)
+    l4 = rec.get("l4_bali") or {}
+
+    # The evidence that overturned the CLEAN classification must still hold —
+    # if OSS ever publishes a real scope for these codes, this test fails and
+    # the classification is re-opened rather than assumed.
+    assert rec.get("_l2_status") == "no_oss_risk", (
+        f"{code}: _l2_status is {rec.get('_l2_status')!r} — OSS now returns a scope, so the "
+        "'no Usaha Besar scale row' observation may no longer be read off the disowned "
+        "PP28 block. Re-adjudicate before trusting either classification."
+    )
+    assert not rec.get("per_skala"), f"{code}: per_skala is populated — risk layer restored"
+    assert DISPUTED_KEY in rec, f"{code}: disputed block missing — evidence for reclassification gone"
+
+    assert l4.get("reason", "").startswith(DISCLOSURE_MARKER), (
+        f"{code}: expected the wave-2 disclosure marker — its verdict is derived from the "
+        "disowned PP28 rows, not from an intact OSS observation."
+    )
+    assert l4.get("confidence") == "LOW" and l4.get("needs_review") is True
+
+    # The cure discloses; it never re-derives. The commercially decisive part of
+    # the verdict must be exactly what it was before.
+    before = UNTOUCHED_L4_BALI[code]
+    assert l4.get("status") == before["status"]
+    assert l4.get("blocked") == before["blocked"]
+    assert before["reason"] in l4["reason"], "original reason must survive as audit trail"
 
 
 # ---------------------------------------------------------------------------
