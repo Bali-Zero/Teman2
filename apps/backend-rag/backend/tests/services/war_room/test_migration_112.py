@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from contextlib import asynccontextmanager, suppress
 from uuid import UUID
 
 import pytest
@@ -27,6 +28,14 @@ except ImportError:  # pragma: no cover
 from backend.migrations import migration_112_war_room_tables  # type: ignore[import-not-found]
 
 TEST_DSN = os.environ.get("TEST_DATABASE_URL")
+
+# Ceiling for both halves of the notify handshake (subscribe, then delivery).
+# Generous on purpose: it is a deadlock guard, not a timing assumption — the
+# tests wait on real events and finish as soon as they fire.
+NOTIFY_TIMEOUT_S = 10.0
+# The listener outlives the delivery wait, so the assertion in the test body —
+# not a listener timeout — is what reports a missing event.
+LISTENER_LIFETIME_S = NOTIFY_TIMEOUT_S * 3
 
 pytestmark = pytest.mark.skipif(
     asyncpg is None or not TEST_DSN,
@@ -69,30 +78,67 @@ async def test_tables_exist(conn):
     }
 
 
+@asynccontextmanager
+async def _listening(received: list[dict]):
+    """Subscribe to war_room_event and yield only once the LISTEN is live.
+
+    Postgres does not queue a NOTIFY for a session that has not subscribed yet,
+    so a listener that is still connecting misses the event outright. These
+    tests used to wait a flat `sleep(0.2)` for the subscription — measured on
+    M5 2026-07-26, `connect() + add_listener()` takes 98-470ms under normal
+    fleet load, i.e. it blew that budget in 3 of 8 samples. The tests were
+    therefore load-flaky by construction, and blocked unrelated pushes on a
+    busy machine (`AssertionError: []` — no events, wrongly read as a missing
+    trigger). Waiting on the real readiness signal removes the guess.
+    """
+    ready = asyncio.Event()
+    done = asyncio.Event()
+
+    async def listener_task():
+        listen_conn = await asyncpg.connect(TEST_DSN)
+        try:
+            await listen_conn.add_listener(
+                "war_room_event",
+                lambda c, pid, ch, payload: received.append(json.loads(payload)),
+            )
+            ready.set()
+            # `done` is always set by the context manager's finally, so this
+            # cannot hang. It must NOT raise on timeout either: a listener that
+            # died first would surface as TimeoutError and mask the real
+            # assertion ("no events received", with the list) that tells you
+            # whether the trigger fired.
+            with suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(done.wait(), timeout=LISTENER_LIFETIME_S)
+        finally:
+            ready.set()  # never leave the test hanging on a failed subscribe
+            await listen_conn.close()
+
+    task = asyncio.create_task(listener_task())
+    await asyncio.wait_for(ready.wait(), timeout=NOTIFY_TIMEOUT_S)
+    try:
+        yield
+        # The NOTIFY is delivered on the listener's connection, not ours: give
+        # the event loop real time to deliver it, but stop as soon as it lands.
+        for _ in range(int(NOTIFY_TIMEOUT_S / 0.05)):
+            if received:
+                break
+            await asyncio.sleep(0.05)
+    finally:
+        done.set()
+        await task
+
+
 @pytest.mark.asyncio
 async def test_insert_draft_triggers_notify(conn):
     """Trigger must emit pg_notify('war_room_event', ...) on draft INSERT."""
     received: list[dict] = []
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
-        )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
+    async with _listening(received):
+        await conn.execute("""
+            INSERT INTO war_room_drafts (topic, status)
+            VALUES ('integration test', 'briefed');
+        """)
 
-    task = asyncio.create_task(listener_task())
-    # give the listener a tick to subscribe
-    await asyncio.sleep(0.2)
-
-    await conn.execute("""
-        INSERT INTO war_room_drafts (topic, status)
-        VALUES ('integration test', 'briefed');
-    """)
-
-    await task
     assert any(p.get("status") == "briefed" for p in received), received
 
 
@@ -107,24 +153,12 @@ async def test_status_change_triggers_notify(conn):
     """)
     draft_id: UUID = draft_row["id"]
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
+    async with _listening(received):
+        await conn.execute(
+            "UPDATE war_room_drafts SET status = 'approved' WHERE id = $1;",
+            draft_id,
         )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
 
-    task = asyncio.create_task(listener_task())
-    await asyncio.sleep(0.2)
-
-    await conn.execute(
-        "UPDATE war_room_drafts SET status = 'approved' WHERE id = $1;",
-        draft_id,
-    )
-
-    await task
     approved_events = [p for p in received if p.get("status") == "approved"]
     assert approved_events, f"no approved event received: {received}"
     assert UUID(approved_events[0]["draft_id"]) == draft_id
@@ -140,27 +174,15 @@ async def test_post_insert_triggers_notify(conn):
     """)
     draft_id: UUID = draft_row["id"]
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
+    async with _listening(received):
+        await conn.execute(
+            """
+            INSERT INTO war_room_posts (draft_id, platform, post_external_id)
+            VALUES ($1, 'instagram', 'ig_test_1');
+            """,
+            draft_id,
         )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
 
-    task = asyncio.create_task(listener_task())
-    await asyncio.sleep(0.2)
-
-    await conn.execute(
-        """
-        INSERT INTO war_room_posts (draft_id, platform, post_external_id)
-        VALUES ($1, 'instagram', 'ig_test_1');
-        """,
-        draft_id,
-    )
-
-    await task
     post_events = [p for p in received if p.get("event_type") == "post_published"]
     assert post_events, f"no post_published event: {received}"
 
