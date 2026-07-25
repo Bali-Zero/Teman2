@@ -8,8 +8,19 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
-import { deriveProvenance, getDisputedLicensing } from "./kbli-provenance";
-import type { KBLIRawCode, KBLIRawDataFile } from "./kbli-types";
+import {
+  deriveProvenance,
+  getDisputedLicensing,
+  isBaliL4BlockVerifiedForBareClaim,
+  isLicensingVerifiedForBareClaim,
+} from "./kbli-provenance";
+import type {
+  KBLICode,
+  KBLILicensingProvenanceStatus,
+  KBLIProvenance,
+  KBLIRawCode,
+  KBLIRawDataFile,
+} from "./kbli-types";
 
 function makeRaw(overrides: Partial<KBLIRawCode> = {}): KBLIRawCode {
   return {
@@ -287,5 +298,102 @@ describe("deriveProvenance — real dataset partition invariants", () => {
         `code ${code} disputed rows`,
       ).toBeGreaterThan(0);
     }
+  });
+});
+
+// =============================================================================
+// Bare-claim gates (2026-07-26) — the POSITIVE complement used by surfaces that
+// cannot carry a "verification pending" qualifier (indexed <title>/meta).
+// The distinction under test is precisely the one a negative gate gets wrong:
+// a record with NO provenance block must be false, not true.
+// =============================================================================
+
+describe("bare-claim gates", () => {
+  function codeWith(
+    licensing: KBLICode["licensing"],
+    provenance?: KBLIProvenance,
+    baliL4?: KBLICode["baliL4"],
+  ): KBLICode {
+    return { licensing, provenance, baliL4 } as KBLICode;
+  }
+
+  const rows = [{ riskCategory: "Tinggi" }] as KBLICode["licensing"];
+
+  function prov(status: KBLILicensingProvenanceStatus): KBLIProvenance {
+    return {
+      licensing: { status, locator: null, vintage: null, noOssScope: false },
+    } as KBLIProvenance;
+  }
+
+  it("licensing: true ONLY for oss_native with rows served", () => {
+    expect(
+      isLicensingVerifiedForBareClaim(codeWith(rows, prov("oss_native"))),
+    ).toBe(true);
+  });
+
+  it("licensing: false for pending_crosswalk, unverified_source, detached", () => {
+    for (const s of [
+      "pending_crosswalk",
+      "unverified_source",
+      "detached",
+    ] as KBLILicensingProvenanceStatus[]) {
+      expect(
+        isLicensingVerifiedForBareClaim(codeWith(rows, prov(s))),
+        `status ${s}`,
+      ).toBe(false);
+    }
+  });
+
+  it("licensing: false when the provenance block is absent (fail closed)", () => {
+    expect(isLicensingVerifiedForBareClaim(codeWith(rows, undefined))).toBe(
+      false,
+    );
+  });
+
+  it("licensing: false when oss_native but no rows are actually served", () => {
+    expect(
+      isLicensingVerifiedForBareClaim(
+        codeWith([] as KBLICode["licensing"], prov("oss_native")),
+      ),
+    ).toBe(false);
+  });
+
+  it("baliL4: true only for blocked + HIGH + not needing review", () => {
+    const l4 = (
+      confidence: "HIGH" | "MEDIUM" | "LOW",
+      needsReview: boolean,
+      blocked = true,
+    ) =>
+      ({
+        status: "CHIUSO_PMA_NO_BESAR",
+        reason: "r",
+        confidence,
+        needsReview,
+        blocked,
+      }) as KBLICode["baliL4"];
+
+    expect(
+      isBaliL4BlockVerifiedForBareClaim(
+        codeWith(rows, undefined, l4("HIGH", false)),
+      ),
+    ).toBe(true);
+    expect(
+      isBaliL4BlockVerifiedForBareClaim(
+        codeWith(rows, undefined, l4("HIGH", true)),
+      ),
+    ).toBe(false);
+    expect(
+      isBaliL4BlockVerifiedForBareClaim(
+        codeWith(rows, undefined, l4("MEDIUM", false)),
+      ),
+    ).toBe(false);
+    expect(
+      isBaliL4BlockVerifiedForBareClaim(
+        codeWith(rows, undefined, l4("HIGH", false, false)),
+      ),
+    ).toBe(false);
+    expect(
+      isBaliL4BlockVerifiedForBareClaim(codeWith(rows, undefined, undefined)),
+    ).toBe(false);
   });
 });
