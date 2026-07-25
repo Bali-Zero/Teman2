@@ -287,7 +287,44 @@ def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
     # must be a direct child .worktrees/<name> (not .worktrees itself, not deeper file)
     if len(rel.parts) < 1 or not rel.parts[0]:
         return None
+    # Prefer the INNERMOST worktree git actually knows that equals-or-contains the
+    # target. Truncating to `rel.parts[0]` is right for `rm -rf <wt>/subdir` (that IS
+    # a removal of <wt>'s content, the W80 protection) but wrong for a NESTED worktree:
+    # `.worktrees/<outer>/.worktrees/<inner>` truncates to <outer>, so removing a clean
+    # nested worktree gets blocked by the dirtiness of a worktree that is not the target
+    # at all. The defect was never "too coarse" — it was picking the OUTERMOST worktree
+    # where the innermost one is the thing being removed.
+    innermost: pathlib.Path | None = None
+    repo_real = pathlib.Path(REPO_ROOT).resolve()
+    for known in _git_worktree_list():
+        if known == repo_real:
+            continue  # main checkout is never a `.worktrees/<name>` verdict
+        if known == cand or known in cand.parents:
+            if innermost is None or len(known.parts) > len(innermost.parts):
+                innermost = known
+    if innermost is not None:
+        return innermost
+    # git could not enumerate (or does not know this path): fall back to the legacy
+    # truncation, which is strictly more conservative.
     return pathlib.Path(wt_root, rel.parts[0])
+
+
+def _worktrees_strictly_inside(wt: pathlib.Path) -> list[pathlib.Path]:
+    """Registered worktrees nested under <wt> — never <wt> itself, never main.
+
+    `.worktrees/` is gitignored, so `git status` run INSIDE an outer worktree is
+    blind to a worktree nested within it: the outer reads CLEAN while removing it
+    would destroy the nested one's uncommitted work. The dirtiness probe cannot
+    see these victims; only the worktree registry can name them.
+    """
+    out: list[pathlib.Path] = []
+    repo_real = pathlib.Path(REPO_ROOT).resolve()
+    for known in _git_worktree_list():
+        if known == wt or known == repo_real:
+            continue
+        if wt in known.parents:
+            out.append(known)
+    return out
 
 
 def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | None:
@@ -302,11 +339,18 @@ def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | Non
         wt = _resolve_under_worktrees(tok, cwd)
         if wt is None or not wt.is_dir():
             continue
-        if not _worktree_is_dirty(wt):
-            continue  # clean → safe to remove, nothing to lose
-        if _ref_exists(_quarantine_ref_for(wt)):
-            continue  # already frozen → safe
-        return wt  # dirty AND unarmed → block
+        # Judge every VICTIM of the removal, not just the named target (W94's
+        # lesson: the fix of an over-match births the under-match twin unless the
+        # corpus covers COMPOSITION). Removing <wt> also removes every worktree
+        # nested inside it, and <wt>'s own status is blind to them.
+        for victim in [wt, *_worktrees_strictly_inside(wt)]:
+            if not victim.is_dir():
+                continue
+            if not _worktree_is_dirty(victim):
+                continue  # clean → safe to remove, nothing to lose
+            if _ref_exists(_quarantine_ref_for(victim)):
+                continue  # already frozen → safe
+            return victim  # dirty AND unarmed → block
     return None
 
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
