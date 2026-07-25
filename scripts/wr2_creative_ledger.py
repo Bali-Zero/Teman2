@@ -42,6 +42,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any
@@ -270,6 +271,29 @@ async def fetch_creative_ledger(conn: Any, limit: int = 8) -> LedgerSnapshot:
 #   - so this is a SOFT, INFORMATIONAL hint to the planner, never a numeric
 #     weight on selection, and every axis value below `_MIN_AXIS_SAMPLES` is
 #     dropped as too-noisy-to-rank.
+#
+# RANK BY MEDIAN, NOT MEAN (2026-07-25 — measured, not theorised). The first
+# retrospective study over the real corpus (50 posts with reach, run read-only
+# on the Pro) found IG reach is extremely long-tailed: min 516 / median 2,288 /
+# mean 8,936 / max 141,240 — a SINGLE post is 31.6% of all reach in the corpus.
+# Ranking by mean therefore ranked the outlier's carrier, not the layout:
+#   cover-photo n=7 -> [141240, 23704, 1360, 1220, 1193, 1185, 1140]
+#                      mean 24,435 (#1)  but median 1,220 (LAST)
+#   rituale     n=5 -> [141240, 1360, 1220, 1193, 1185]
+#                      mean 29,240 (#1)  but median 1,220 (LAST)
+#   statement-bomb n=8 -> median 18,281 — 5 of 8 above 13k, robustly strong.
+# So the hint was naming the two WEAKEST typical performers as the winners. The
+# `n >= _MIN_AXIS_SAMPLES` guard defends against small samples but NOT against
+# SKEW: rituale has n=5, passes the guard, and its typical post (1,220) is BELOW
+# the corpus median. Median is the estimable statistic here; with one
+# observation carrying a third of the corpus the mean is not estimable at all.
+# KNOWN TENSION (deliberate, documented not hidden): median discards tail upside
+# — a layout that goes viral 1-in-7 could win on TOTAL reach while losing on the
+# typical post. That is an EDITORIAL objective choice (reliable reach per post vs
+# expected total), not a statistical one, and it is Zero's call; until it is made,
+# the defensible default is the robust statistic. `corpus_median` is carried into
+# the hint so "higher-reaching" cannot overstate a value that merely ties the
+# corpus baseline.
 # Source of truth is the review-queue JSON (`wr2_queue_writer._resolve_queue_
 # path`), read best-effort: any error → empty signal, generation never blocked.
 
@@ -288,16 +312,55 @@ _HINT_TOP_N = 2
 class AxisEngagement:
     """Per-axis engagement summary from the review queue's published history.
 
-    `by_axis[axis]` is a list of `(value, mean_reach, n)` sorted high→low,
+    `by_axis[axis]` is a list of `(value, MEDIAN_reach, n)` sorted high→low,
     restricted to values with `n >= _MIN_AXIS_SAMPLES`. Empty everywhere when
     there is no usable signal (cold start / unreadable queue) — a caller then
-    gets an empty hint and the planner behaves exactly as before (falsifiable)."""
+    gets an empty hint and the planner behaves exactly as before (falsifiable).
+
+    `corpus_median` is the median reach over ALL counted posts (0.0 when there
+    are none) — the baseline a per-value median must be judged against, so the
+    hint cannot present a value that merely ties the corpus as "higher-reaching"."""
 
     by_axis: dict[str, list[tuple[str, float, int]]]
     total_posts: int
+    corpus_median: float = 0.0
 
     def top(self, axis: str, n: int = _HINT_TOP_N) -> list[tuple[str, float, int]]:
         return (self.by_axis.get(axis) or [])[:n]
+
+    def above_baseline(self, axis: str, n: int = _HINT_TOP_N) -> list[tuple[str, float, int]]:
+        """Top-n values that actually BEAT the corpus median.
+
+        Ranking alone is not evidence of strength: the top-2 of a weak axis are
+        still the top-2. Measured 2026-07-25 on the real corpus — `analitico`
+        (median 2,237) ranked #2 among tones while the TYPICAL post of the whole
+        corpus reaches 2,288, so the hint was about to call a BELOW-baseline
+        value "higher-reaching". Absolute comparison against the baseline, not
+        just rank, is what makes the claim true. An axis where nothing beats the
+        baseline is simply not named (→ possibly an empty hint → the planner
+        falls back to the byte-identical no-hint path, the designed safe state).
+
+        DECLARED LIMITS (cross-family red-team #2, 2026-07-25 — known, not hidden):
+          - the groups ARE the corpus, so a value holding the MAJORITY of posts
+            is structurally unnameable: it defines the baseline it would have to
+            beat. Defensible (it has no contrast to be better THAN), but it means
+            absence here is NOT evidence of weakness;
+          - there is NO materiality threshold. 30 posts at 5,000 + 3 at 5,100
+            names the 3-post value on a +2% edge. Mitigated, not eliminated, by
+            the hint stating the baseline, the n, and "only marginally" inline —
+            the planner is given what it needs to discount it. A minimum edge
+            (e.g. >=1.25x baseline) would close it, but on the real corpus that
+            bar would also silence the tone axis entirely (militante 2,835 vs a
+            2,288 baseline = +24%), so WHERE to put it is an EDITORIAL call for
+            Zero, not a statistical one. Ledgered, deliberately not decided here.
+
+        `corpus_median == 0.0` means "baseline unknown" (cold corpus, or a
+        non-finite median guarded upstream) and degrades to rank-only — exactly
+        the pre-baseline behaviour, never a raise."""
+        rows = self.by_axis.get(axis) or []
+        if self.corpus_median > 0:
+            rows = [r for r in rows if r[1] > self.corpus_median]
+        return rows[:n]
 
     @property
     def has_signal(self) -> bool:
@@ -318,7 +381,7 @@ def _resolve_queue_path(explicit: Any) -> Any:
 
 
 def fetch_axis_engagement(queue_path: Any = None) -> AxisEngagement:
-    """Aggregate mean reach per editorial axis from the review queue's PUBLISHED
+    """Aggregate MEDIAN reach per editorial axis from the review queue's PUBLISHED
     posts that carry engagement_metrics. Best-effort: a missing/unreadable queue
     → empty signal (never raises, never blocks generation). External-only posts
     are included (they are still real IG engagement for the axis), but items
@@ -343,6 +406,7 @@ def fetch_axis_engagement(queue_path: Any = None) -> AxisEngagement:
         return AxisEngagement(by_axis={}, total_posts=0)
 
     reach_by: dict[str, dict[str, list[float]]] = {a: defaultdict(list) for a in _ENGAGEMENT_AXES}
+    all_reaches: list[float] = []
     total = 0
     for it in items:
         if not isinstance(it, dict):
@@ -360,13 +424,14 @@ def fetch_axis_engagement(queue_path: Any = None) -> AxisEngagement:
         except (TypeError, ValueError):
             continue
         # NaN/Infinity survive `<= 0` (every nan/inf comparison is False) and would
-        # both poison the mean AND crash int(mean) in build_engagement_hint —
+        # both poison the statistic AND crash int(...) in build_engagement_hint —
         # json.loads accepts NaN/Infinity by default, so a Python-written queue can
         # legitimately carry them (cross-family red-team D1, 2026-07-25). isfinite is
         # the single guard that keeps the best-effort "never blocks generation" promise.
         if not math.isfinite(reach) or reach <= 0:
             continue
         total += 1
+        all_reaches.append(reach)
         for axis in _ENGAGEMENT_AXES:
             val = it.get(axis)
             if isinstance(val, str) and val.strip():
@@ -374,15 +439,33 @@ def fetch_axis_engagement(queue_path: Any = None) -> AxisEngagement:
 
     by_axis: dict[str, list[tuple[str, float, int]]] = {}
     for axis, buckets in reach_by.items():
-        ranked = [
-            (val, sum(rs) / len(rs), len(rs))
-            for val, rs in buckets.items()
-            if len(rs) >= _MIN_AXIS_SAMPLES
-        ]
+        ranked = []
+        for val, rs in buckets.items():
+            if len(rs) < _MIN_AXIS_SAMPLES:
+                continue
+            # MEDIAN, not mean — one viral post is 31.6% of this corpus's reach
+            # and the mean simply ranked its carrier (see the block comment above).
+            med = statistics.median(rs)
+            # Every ELEMENT is finite (guarded in the loop above), but the median
+            # of an EVEN-sized group averages the two middle values and
+            # 1e308 + 1e308 == inf. `int(inf)` then raises OverflowError inside
+            # build_engagement_hint, whose caller does NOT wrap it
+            # (wr2_draft_generator.py:2237) — that would break this module's
+            # "never blocks generation" promise. Element-level isfinite is NOT
+            # sufficient; the computed statistic needs its own guard.
+            # (cross-family red-team finding #3, 2026-07-25, reproduced on disk.)
+            if not math.isfinite(med):
+                continue
+            ranked.append((val, med, len(rs)))
         ranked.sort(key=lambda t: t[1], reverse=True)
         if ranked:
             by_axis[axis] = ranked
-    return AxisEngagement(by_axis=by_axis, total_posts=total)
+    corpus_median = statistics.median(all_reaches) if all_reaches else 0.0
+    if not math.isfinite(corpus_median):
+        # Same overflow path. 0.0 is the honest "baseline unknown" sentinel:
+        # above_baseline() then degrades to rank-only instead of raising.
+        corpus_median = 0.0
+    return AxisEngagement(by_axis=by_axis, total_posts=total, corpus_median=corpus_median)
 
 
 _AXIS_LABEL = {
@@ -401,17 +484,31 @@ def build_engagement_hint(ae: AxisEngagement) -> str:
     (spec §5 Goodhart guard)."""
     lines: list[str] = []
     for axis in _PLANNER_HINT_AXES:
-        top = ae.top(axis)
+        # above_baseline, NOT top: the top-2 of a weak axis are still the top-2,
+        # and calling a below-corpus-median value "higher-reaching" is a lie the
+        # planner would act on (see AxisEngagement.above_baseline).
+        top = ae.above_baseline(axis)
         if not top:
             continue
-        named = ", ".join(f"{val} (~{int(mr):,} avg reach, n={n})" for val, mr, n in top)
+        named = ", ".join(f"{val} (~{int(mr):,} typical reach, n={n})" for val, mr, n in top)
         lines.append(f"  - higher-reaching {_AXIS_LABEL.get(axis, axis)}: {named}")
     if not lines:
         return ""
+    # State the corpus baseline so a value that merely TIES the typical post
+    # cannot read as a winner (militante measured 2,835 vs a 2,288 corpus median
+    # — "higher-reaching" would badly overstate a 24% edge without this line).
+    baseline = (
+        f" For scale, the TYPICAL post in this corpus reaches ~{int(ae.corpus_median):,}; "
+        "only values that actually beat that are listed, and some beat it only marginally."
+        if ae.corpus_median > 0
+        else ""
+    )
     return (
         "\n\nENGAGEMENT HINT (weak signal — LLM-inferred labels over a small "
-        f"sample of {ae.total_posts} past posts; treat as a gentle nudge, NOT a "
-        "rule):\n"
+        f"sample of {ae.total_posts} past posts. Reach is the MEDIAN (typical) "
+        "post, NOT the mean: this corpus is long-tailed and a single viral post "
+        "otherwise dominates every average. Treat as a gentle nudge, NOT a rule."
+        f"{baseline}):\n"
         + "\n".join(lines)
         + "\nWhen the story genuinely fits one of these, it is worth reaching "
         "for — but CONTENT-FIT and VARIETY still decide. Do not force a "
