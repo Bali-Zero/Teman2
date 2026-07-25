@@ -954,9 +954,11 @@ export default function NewsRoomPage() {
             <button
               className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[12px] font-semibold transition-all"
               style={{
-                background: "rgba(212,132,90,0.12)",
+                background:
+                  "color-mix(in srgb, var(--bz-accent) 12%, transparent)",
                 color: "var(--bz-accent)",
-                border: "1px solid rgba(212,132,90,0.2)",
+                border:
+                  "1px solid color-mix(in srgb, var(--bz-accent) 20%, transparent)",
               }}
               onClick={() => previewItem && handlePublish(previewItem)}
               disabled={previewItem ? publishingIds.has(previewItem.id) : false}
@@ -981,7 +983,7 @@ export default function NewsRoomPage() {
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
                 style={{
                   color: "var(--bz-text-2)",
-                  border: "1px solid rgba(255,255,255,0.07)",
+                  border: "1px solid var(--bz-border)",
                 }}
               >
                 <ExternalLink className="h-4 w-4" />
