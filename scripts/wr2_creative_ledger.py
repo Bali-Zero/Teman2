@@ -41,7 +41,8 @@ from __future__ import annotations
 
 import json
 import logging
-from collections import Counter
+import math
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -249,3 +250,171 @@ async def fetch_creative_ledger(conn: Any, limit: int = 8) -> LedgerSnapshot:
     # exposes, so a row that increments then fails to append can never desync it.
     reward_live = sum(1 for e in entries if e.published)
     return LedgerSnapshot(entries=entries, reward_live_count=reward_live)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fase 4b — AXIS-ENGAGEMENT reward (spec §Mossa-D, closed on the OUTCOME)
+# ═══════════════════════════════════════════════════════════════════════════
+# The war_room_posts-based reward socket above stays DORMANT (0 rows), but a
+# YEAR of real IG engagement DOES exist — in the review queue, on ~45 published
+# carousels whose editorial axes (layout_family/tone_register/domain) were
+# LLM-inferred 2026-06-23. Those posts are NOT war_room_drafts (46/47 carry no
+# draft_id) and carry NO arc, so they cannot feed the ARC reward — but they CAN
+# feed a per-AXIS engagement prior (which layout/tone historically drove reach).
+#
+# HONEST CAVEATS baked into the design (spec §5 Goodhart warning is load-bearing
+# here — the top layouts are the hero-visual ones, and blindly chasing them
+# would collapse the very variety the anti-sameness steer builds):
+#   - the labels are LLM-INFERRED, not ground truth (a guessed layout_family);
+#   - the winners often have TINY n (ironico n=2) — a 2-sample mean is noise;
+#   - so this is a SOFT, INFORMATIONAL hint to the planner, never a numeric
+#     weight on selection, and every axis value below `_MIN_AXIS_SAMPLES` is
+#     dropped as too-noisy-to-rank.
+# Source of truth is the review-queue JSON (`wr2_queue_writer._resolve_queue_
+# path`), read best-effort: any error → empty signal, generation never blocked.
+
+# Axes the planner can actually act on (domain is topic-driven — carried in the
+# object for topic-selection use, but NOT pushed into the planner hint).
+_ENGAGEMENT_AXES: tuple[str, ...] = ("layout_family_primary", "tone_register_primary", "domain")
+_PLANNER_HINT_AXES: tuple[str, ...] = ("layout_family_primary", "tone_register_primary")
+# Below this many published samples an axis value is too noisy to rank (a
+# 1-2 sample mean reach is a coin flip, not a signal — noise guard).
+_MIN_AXIS_SAMPLES = 3
+# Cap how many high performers we name per axis in the hint (keep it a nudge).
+_HINT_TOP_N = 2
+
+
+@dataclass(frozen=True)
+class AxisEngagement:
+    """Per-axis engagement summary from the review queue's published history.
+
+    `by_axis[axis]` is a list of `(value, mean_reach, n)` sorted high→low,
+    restricted to values with `n >= _MIN_AXIS_SAMPLES`. Empty everywhere when
+    there is no usable signal (cold start / unreadable queue) — a caller then
+    gets an empty hint and the planner behaves exactly as before (falsifiable)."""
+
+    by_axis: dict[str, list[tuple[str, float, int]]]
+    total_posts: int
+
+    def top(self, axis: str, n: int = _HINT_TOP_N) -> list[tuple[str, float, int]]:
+        return (self.by_axis.get(axis) or [])[:n]
+
+    @property
+    def has_signal(self) -> bool:
+        return any(self.by_axis.get(a) for a in self.by_axis)
+
+
+def _resolve_queue_path(explicit: Any) -> Any:
+    """Reuse wr2_queue_writer's own resolver (env WR2_QUEUE_PATH → default) so
+    the ledger reads the SAME queue file the writer/server use — never a second
+    hard-coded path (scar #1 HOME-fork). Lazy import keeps this module importable
+    even where wr2_queue_writer's deps are absent (returns None → empty signal)."""
+    try:
+        import wr2_queue_writer as qw  # lazy: avoid a load-time dependency
+        return qw._resolve_queue_path(explicit)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("axis-engagement: cannot resolve queue path: %s", exc)
+        return None
+
+
+def fetch_axis_engagement(queue_path: Any = None) -> AxisEngagement:
+    """Aggregate mean reach per editorial axis from the review queue's PUBLISHED
+    posts that carry engagement_metrics. Best-effort: a missing/unreadable queue
+    → empty signal (never raises, never blocks generation). External-only posts
+    are included (they are still real IG engagement for the axis), but items
+    with no reach are skipped."""
+    path = queue_path if queue_path is not None else _resolve_queue_path(None)
+    if path is None:
+        return AxisEngagement(by_axis={}, total_posts=0)
+    try:
+        import wr2_queue_writer as qw  # lazy
+        items = qw.load_queue(path)
+    except FileNotFoundError:
+        return AxisEngagement(by_axis={}, total_posts=0)
+    except Exception as exc:  # noqa: BLE001 — never block generation on the lookback
+        logger.warning("fetch_axis_engagement failed: %s", exc)
+        return AxisEngagement(by_axis={}, total_posts=0)
+
+    # load_queue raises on a non-list today, but the best-effort "never blocks
+    # generation" promise must not DEPEND on that contract (scar #9 drift): a JSON
+    # `null`/`42` reaching the loop below would raise TypeError uncaught. Guard it
+    # here so this function owns its own promise (cross-family red-team D2, 2026-07-25).
+    if not isinstance(items, list):
+        return AxisEngagement(by_axis={}, total_posts=0)
+
+    reach_by: dict[str, dict[str, list[float]]] = {a: defaultdict(list) for a in _ENGAGEMENT_AXES}
+    total = 0
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        m = it.get("engagement_metrics")
+        if not isinstance(m, dict):
+            continue
+        reach_raw = m.get("reach")
+        # bool is an int subclass — a JSON `true` reach must NOT be counted as 1.0
+        # (cross-family red-team D3, 2026-07-25).
+        if isinstance(reach_raw, bool):
+            continue
+        try:
+            reach = float(reach_raw or 0)
+        except (TypeError, ValueError):
+            continue
+        # NaN/Infinity survive `<= 0` (every nan/inf comparison is False) and would
+        # both poison the mean AND crash int(mean) in build_engagement_hint —
+        # json.loads accepts NaN/Infinity by default, so a Python-written queue can
+        # legitimately carry them (cross-family red-team D1, 2026-07-25). isfinite is
+        # the single guard that keeps the best-effort "never blocks generation" promise.
+        if not math.isfinite(reach) or reach <= 0:
+            continue
+        total += 1
+        for axis in _ENGAGEMENT_AXES:
+            val = it.get(axis)
+            if isinstance(val, str) and val.strip():
+                reach_by[axis][val.strip()].append(reach)
+
+    by_axis: dict[str, list[tuple[str, float, int]]] = {}
+    for axis, buckets in reach_by.items():
+        ranked = [
+            (val, sum(rs) / len(rs), len(rs))
+            for val, rs in buckets.items()
+            if len(rs) >= _MIN_AXIS_SAMPLES
+        ]
+        ranked.sort(key=lambda t: t[1], reverse=True)
+        if ranked:
+            by_axis[axis] = ranked
+    return AxisEngagement(by_axis=by_axis, total_posts=total)
+
+
+_AXIS_LABEL = {
+    "layout_family_primary": "layout families",
+    "tone_register_primary": "tone registers",
+    "domain": "domains",
+}
+
+
+def build_engagement_hint(ae: AxisEngagement) -> str:
+    """Render a SOFT, informational hint for the planner prompt from the
+    per-axis engagement history. Empty string when there is no usable signal
+    (so the prompt is byte-identical to the no-hint path — falsifiable). Frames
+    the signal as a WEAK nudge with its caveats stated inline, so the planner
+    weights it appropriately and does not collapse variety onto the top values
+    (spec §5 Goodhart guard)."""
+    lines: list[str] = []
+    for axis in _PLANNER_HINT_AXES:
+        top = ae.top(axis)
+        if not top:
+            continue
+        named = ", ".join(f"{val} (~{int(mr):,} avg reach, n={n})" for val, mr, n in top)
+        lines.append(f"  - higher-reaching {_AXIS_LABEL.get(axis, axis)}: {named}")
+    if not lines:
+        return ""
+    return (
+        "\n\nENGAGEMENT HINT (weak signal — LLM-inferred labels over a small "
+        f"sample of {ae.total_posts} past posts; treat as a gentle nudge, NOT a "
+        "rule):\n"
+        + "\n".join(lines)
+        + "\nWhen the story genuinely fits one of these, it is worth reaching "
+        "for — but CONTENT-FIT and VARIETY still decide. Do not force a "
+        "high-reach layout/tone onto a story that calls for another; a fresh, "
+        "well-matched choice beats chasing past engagement."
+    )
