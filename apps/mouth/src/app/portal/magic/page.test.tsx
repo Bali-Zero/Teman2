@@ -68,8 +68,8 @@ describe("MagicVerifyPage (WS3 day pass)", () => {
     const html = container.innerHTML;
 
     expect(html).not.toContain("bg-black");
-    expect(html).not.toContain("#c9a96e");
-    expect(html).not.toContain("#d9bd7a");
-    expect(html).not.toContain("#f0ece4");
+    expect(html).not.toContain("#c9a96e"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#d9bd7a"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#f0ece4"); // token-lint-ok: drain-guard assertion string, not a color use
   });
 });

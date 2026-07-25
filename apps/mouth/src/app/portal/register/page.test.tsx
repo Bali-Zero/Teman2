@@ -147,11 +147,11 @@ describe("RegisterPage (WS3 day pass)", () => {
     await screen.findByText("Create Your PIN");
     const html = container.innerHTML;
 
-    expect(html).not.toContain("#4FD1C5");
-    expect(html).not.toContain("#E6E7EB");
-    expect(html).not.toContain("#2a2a2a");
-    expect(html).not.toContain("#242424");
-    expect(html).not.toContain("#0B0E13");
+    expect(html).not.toContain("#4FD1C5"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#E6E7EB"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#2a2a2a"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#242424"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("#0B0E13"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(html).not.toContain("bg-slate-50");
     expect(html).not.toContain("text-muted-cool");
     expect(html).not.toContain("border-white/5");
