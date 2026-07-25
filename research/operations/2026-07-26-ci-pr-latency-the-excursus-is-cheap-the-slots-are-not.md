@@ -2,6 +2,7 @@
 date: 2026-07-26
 domain: compliance
 client_case: none (internal CI infrastructure)
+adversarial_review: kimi-k3
 sources:
   - gh API measurements on Balizero1987/Teman2, 2026-07-25/26 (runs, jobs, steps, branch protection)
   - .github/workflows/*.yml (77 files), .husky/pre-push, scripts/prepush_classify.py
@@ -29,7 +30,8 @@ them do *work* on a diff they have nothing to say about.
 | **Real work per successful job** | **median 57 s** · max 129 s · provisioning overhead 2% |
 | **Queue wait** (`token-lint`, real job) | **54.4 min queue vs 1.1 min execution → 98% waiting** |
 | Achieved parallelism | peak 11, **mean 6.4** concurrent jobs |
-| Machine-minutes consumed in a 0.9 h window | **355** ⇒ ~350 jobs — far more than the 3 open PRs emit |
+| Machine-minutes consumed in a 0.9 h window | **355** ⇒ ~350 jobs |
+| Open PRs feeding that window | **26** (9 branches + `main` actively emitting into the backlog) |
 | Backlog at time of measurement | 90–112 runs queued, oldest 42 min, still growing |
 
 **The arithmetic that reframes everything.** A PR's entire immune system costs ~40 machine-minutes.
@@ -125,3 +127,42 @@ which has anything to say about a markdown file. That is the finding, demonstrat
 Nothing was changed. No workflow was edited, no required context altered, no branch protection
 touched. Each step in §6 needs its own PR, its own guilt-and-innocence corpus, and — per this
 repo's own rule — a grader that is not its author.
+
+## Adversarial review (§9)
+
+Seat: **Kimi K3** (cross-family, flat-sub), fresh context, handed only the finished report and
+instructed to refute rather than assess — reviewer ≠ author. Distinct from §4, which is me grading
+the *planning* seats; this is a seat grading *this artifact*.
+
+**Accepted, and the text above is now qualified accordingly:**
+
+1. **The 54.4-minute queue wait is n=1.** One run of one job (`token-lint`), sampled while the
+   backlog was by my own admission still growing. It anchors the 98%-waiting headline, and one
+   observation cannot carry a steady-state law. Read §0 as conditional: *under the congestion
+   measured here*, runtime is negligible. In an unloaded queue, job duration **is** the latency.
+2. **"~10 usable slots" is inferred, not measured.** Observed concurrency (peak 11, mean 6.4)
+   during saturation is a lower bound on the cap, not the cap. Nothing in my method distinguishes
+   a hard limit from an arrival pattern.
+3. **The "of 40 jobs, ~10-15 do real work" denominator is invented.** I presented no per-workflow
+   applicability data. It is a plausible guess and should not have been written as a figure.
+
+**Refuted in its conclusion — but it found a real error on the way.** The reviewer's headline
+counter-claim was that ≥70% of queue demand is *non-PR*: 3 open PRs × 40 jobs cannot produce ~350
+jobs, therefore §6 attacks the wrong emitter. The arithmetic was right and the conclusion was
+wrong, because the premise it inherited from §1 was **mine and false**. There are not 3 open PRs.
+There are **26**, and at the moment of writing 9 distinct branches plus `main` are emitting into
+the backlog simultaneously. That single wrong figure is what made the numbers look impossible.
+
+Measured rather than argued: over a 57-minute window (100 consecutive runs) the trigger mix is
+**78 `pull_request` + 3 `pull_request_target` + 16 `push` + 3 `schedule`**, with sampled
+jobs-per-run of **1.7 (PR) vs 2.2 (push)** — so PR-triggered work is **~77% of job demand**, not
+≤30%. §6's targeting stands, and the corrected denominator makes it *stronger*: fan-out reduction
+is multiplied by every open PR, not by three. §1 is amended above.
+
+This is the review earning its cost. Not by being right — its conclusion was wrong — but by
+attacking a number hard enough that checking it exposed my own.
+
+**Left standing as a real risk, not resolved here:** the reviewer's read of §6 #1 — a green-N/A
+verdict is only as sound as its classifier, and one misclassified path silently skips a security
+gate. That is the guilt-and-innocence corpus §8 already demands, and it is the reason #1 ships as
+its own PR rather than as part of this capture.
