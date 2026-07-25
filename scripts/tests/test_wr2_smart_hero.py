@@ -214,12 +214,24 @@ def test_routing_layout_family_typo_falls_through_to_auto() -> None:
          "layout_family": "photo-fulbleed"}, 4, 8  # intentional typo
     )
     assert fam == "editorial-text"
-    # an UNDEFINED (named-but-no-skeleton) family is also ignored
+    # An UNDEFINED (named-but-no-skeleton) family is also ignored.
+    # DRIFT-PROOFED 2026-07-25: this used to hardcode "stat-card-hero", which
+    # GRADUATED to RENDERABLE_FAMILIES on 2026-07-11 (it gained a real skeleton).
+    # From that day the pin was correctly HONOURED and this test failed — it had
+    # stopped exercising its own invariant and just asserted a stale fact. Read the
+    # example from the set that DEFINES the concept instead of naming a member that
+    # can graduate out from under the test.
+    from wr2_html_renderer.composer import UNDEFINED_FAMILIES  # noqa: E402
+    assert UNDEFINED_FAMILIES, "no UNDEFINED family left to test the fall-through with"
+    undefined_example = sorted(UNDEFINED_FAMILIES)[0]
     fam2 = map_slide_to_family(
         {"slide_type": "body", "is_hero_image": True,
-         "layout_family": "stat-card-hero"}, 4, 8
+         "layout_family": undefined_example}, 4, 8
     )
-    assert fam2 == "photo-headline-yellow-sub"
+    assert fam2 == "photo-headline-yellow-sub", (
+        f"an UNDEFINED family ({undefined_example!r}) must fall through to auto-routing, "
+        "never be emitted as a blank skeleton"
+    )
 
 
 def test_photo_fullbleed_in_renderable_families() -> None:

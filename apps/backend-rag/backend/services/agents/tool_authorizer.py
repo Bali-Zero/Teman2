@@ -62,6 +62,7 @@ from enum import Enum
 from typing import Any
 
 from backend.services.agents.team_agent_config import AgentRole, is_tool_allowed
+from backend.services.pii.violation_store import hash_subject
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,41 @@ def _truncate(value: Any, max_len: int = 40) -> str:
     if len(s) <= max_len:
         return s
     return s[: max_len - 1] + "…"
+
+
+def _principal_token(user_email: str | None) -> str:
+    """
+    Render the calling principal for the `tool_authz` audit log — NEVER the
+    raw identifier (PII leak, UU PDP Art. 67-68 / SYMBIOSIS Law 2).
+
+    `user_email` is a misnomer inherited from the JWT-only Phase 2 design:
+    `wa_inbox_bot.generate_bot_reply` passes `f"whatsapp_{phone}"` through
+    this exact same parameter for the WhatsApp channel, so a client's phone
+    number reaches `authorize()`/`_audit()` looking like any other
+    principal. Every other current/future channel id (Telegram, web
+    session, ...) will do the same.
+
+    Applied UNIFORMLY — no `.startswith`/substring branch on the shape of
+    `user_email` decides whether it gets redacted (cicatrix-superscar
+    family #3, guard-over/under-match: a shape check here is exactly the
+    disease — the next channel id that doesn't happen to match a pattern
+    would leak in the clear). Every non-empty principal is pseudonymised,
+    full stop; only the true absence of a principal (`None`/empty) renders
+    as the literal "anonymous", so a legacy no-principal passthrough stays
+    visually distinct from a redacted one.
+
+    Reproducible by an operator: given the original identifier `x` (an
+    email or a `whatsapp_<phone>` string), the log token is
+    `hash_subject(x)` — see `backend.services.pii.violation_store` — i.e.
+    `sha256(x.encode()).hexdigest()[:32]`, prefixed with `h:` so a reader
+    can tell at a glance this is a redacted token, never a raw value. Same
+    identifier always yields the same token (stable — greppable/correlatable
+    across log lines for one principal); different identifiers yield
+    different tokens.
+    """
+    if not user_email:
+        return "anonymous"
+    return f"h:{hash_subject(user_email)}"
 
 
 class AuthDecision(str, Enum):
@@ -372,6 +408,12 @@ class ToolAuthorizer:
         Phase 3 adds `needs_confirmation` as a third decision value
         alongside `allow` and `deny`. The format string is unchanged so
         existing log shipper grep patterns keep working.
+
+        `user=` is a pseudonymised token (`_principal_token`), never the raw
+        `user_email` — see that function's docstring. This fires on EVERY
+        tool call (allow included, not just deny), so it is the highest
+        volume of the two PII surfaces this module has had (the other being
+        the SENSITIVE_TOOLS deny path added 2026-07-21).
         """
         role_id = agent_role.role_id if agent_role else "none"
         scope = agent_role.client_scope if agent_role else "none"
@@ -381,7 +423,7 @@ class ToolAuthorizer:
         log_fn(
             "tool_authz decision=%s user=%s role=%s scope=%s tool=%s reason=%s",
             action,
-            user_email or "anonymous",
+            _principal_token(user_email),
             role_id,
             scope,
             tool_name,

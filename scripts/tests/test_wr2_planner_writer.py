@@ -418,3 +418,76 @@ class TestProduceDeckAssembly:
 
         deck = pw.produce_deck("BRIEF", "analitico", "breaking", [], out_of_order_planner_fn, self._writer_fn)
         assert [s.kind for s in deck.slides] == ["cover", "fact_stack", "statement"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The SILENT GUILLOTINE (2026-07-25) — every `_cap_subhead` field must declare
+# its budget to the writer, or production copy ships trimmed mid-phrase.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _classes_whose_validators_call_cap_subhead() -> set[str]:
+    """Derive the capped classes from the IR SOURCE, never from a hand-kept list:
+    a NEW capped field on a NEW kind must fail the test below until someone
+    declares it, instead of silently joining the guillotine."""
+    import ast
+    import inspect
+
+    tree = ast.parse(Path(inspect.getsourcefile(ir)).read_text())
+    out: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for fn in node.body:
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for sub in ast.walk(fn):
+                if isinstance(sub, ast.Name) and sub.id == "_cap_subhead":
+                    out.add(node.name)
+    return out
+
+
+def test_every_cap_subhead_field_declares_its_budget_to_the_writer() -> None:
+    """GUILT (measured live, one real deck): `_cap_subhead` hard-trims to a word
+    boundary and DISCARDS the remainder. Before this pin, not one of the six
+    capped fields told the writer, so it wrote sentences that shipped guillotined:
+    cover.subhead "A new rule just reset one", cta.trust_marker "Basis: Peraturan
+    BKPM No." (the regulation number cut off), cta.reach "Butuh hitung modal,
+    KBLI, dan" (ends on a conjunction)."""
+    capped = _classes_whose_validators_call_cap_subhead()
+    assert capped, "no _cap_subhead validator found — did the guillotine move or get renamed?"
+
+    cls_to_kind = {cls.__name__: kind for kind, cls in pw._KIND_TO_MODEL.items()}
+    checked = []
+    for cname in sorted(capped):
+        kind = cls_to_kind.get(cname)
+        if kind is None:
+            continue  # a capped model the planner cannot emit — not a writer-prompt concern
+        schema = pw._KIND_FIELD_SCHEMA[kind]
+        checked.append(kind)
+        assert pw._SUBHEAD_CAP in schema, (
+            f"kind {kind!r} ({cname}) has a _cap_subhead-trimmed field but its writer "
+            f"schema never states the budget — the writer will overrun it and the "
+            f"overrun will be silently discarded. Schema was: {schema!r}"
+        )
+    assert checked, "no capped class mapped to a planner kind — the mapping broke"
+    # the four known today; a fifth must be declared, not silently added
+    assert set(checked) == {"cover", "prose", "stat", "cta"}, checked
+
+
+def test_subhead_cap_note_matches_the_ir_constants() -> None:
+    """The prompt's numbers are INTERPOLATED from the validator's own constants —
+    a re-typed literal would drift the instruction away from the enforcement."""
+    assert str(ir._SUBHEAD_MAX_WORDS) in pw._SUBHEAD_CAP
+    assert str(ir._SUBHEAD_MAX_CHARS) in pw._SUBHEAD_CAP
+
+
+def test_cap_subhead_really_discards_the_overrun() -> None:
+    """The behaviour the prompt now warns about, pinned: this is LOSS, not wrapping."""
+    long_marker = "Basis: Peraturan BKPM Nomor 5 Tahun 2025 tentang modal disetor"
+    slide = ir.CtaSlide(kind="cta", invite="Cek dua ambang sebelum setor modal.",
+                        trust_marker=long_marker, reach="")
+    assert slide.trust_marker != long_marker
+    assert len(slide.trust_marker) <= ir._SUBHEAD_MAX_CHARS
+    assert len(slide.trust_marker.split()) <= ir._SUBHEAD_MAX_WORDS
+    assert long_marker.startswith(slide.trust_marker.rstrip())  # a prefix — the tail is gone
