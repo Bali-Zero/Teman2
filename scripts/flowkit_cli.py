@@ -598,45 +598,52 @@ async def action_upload_image(args: argparse.Namespace) -> JsonDict:
 
 
 async def action_generate_image(args: argparse.Namespace) -> JsonDict:
-    async with httpx.AsyncClient(
-        base_url=args.base_url.rstrip("/"),
-        timeout=args.timeout,
-    ) as client:
-        project_id = args.project_id or await _ensure_project(
-            client,
-            name=args.project,
-            material=args.material,
-            language=args.language,
-            timeout_s=args.timeout,
-        )
-        data = await _request_json(
-            client,
-            "POST",
-            "/api/flow/generate-image",
-            json_body={
-                "prompt": args.prompt,
-                "project_id": project_id,
-                "aspect_ratio": IMAGE_ASPECT_RATIOS[args.orientation],
-                "user_paygate_tier": args.paygate_tier,
-            },
-            timeout_s=args.timeout,
-        )
-        result = _parse_image_response(data)
-        if args.dest:
-            fife_url = result.get("fife_url")
-            if not isinstance(fife_url, str) or not fife_url:
-                raise FlowKitBridgeError(
-                    kind="flowkit_error",
-                    message="FlowKit image response has no fife_url to download",
-                    detail=_compact_detail(result),
+    try:
+        async with asyncio.timeout(args.timeout):
+            async with httpx.AsyncClient(
+                base_url=args.base_url.rstrip("/"),
+                timeout=args.timeout,
+            ) as client:
+                project_id = args.project_id or await _ensure_project(
+                    client,
+                    name=args.project,
+                    material=args.material,
+                    language=args.language,
+                    timeout_s=args.timeout,
                 )
-            local_path = await _download_url(
-                client,
-                fife_url,
-                Path(args.dest).expanduser(),
-                timeout_s=args.timeout,
-            )
-            result["local_path"] = str(local_path)
+                data = await _request_json(
+                    client,
+                    "POST",
+                    "/api/flow/generate-image",
+                    json_body={
+                        "prompt": args.prompt,
+                        "project_id": project_id,
+                        "aspect_ratio": IMAGE_ASPECT_RATIOS[args.orientation],
+                        "user_paygate_tier": args.paygate_tier,
+                    },
+                    timeout_s=args.timeout,
+                )
+                result = _parse_image_response(data)
+                if args.dest:
+                    fife_url = result.get("fife_url")
+                    if not isinstance(fife_url, str) or not fife_url:
+                        raise FlowKitBridgeError(
+                            kind="flowkit_error",
+                            message="FlowKit image response has no fife_url to download",
+                            detail=_compact_detail(result),
+                        )
+                    local_path = await _download_url(
+                        client,
+                        fife_url,
+                        Path(args.dest).expanduser(),
+                        timeout_s=args.timeout,
+                    )
+                    result["local_path"] = str(local_path)
+    except TimeoutError as exc:
+        raise FlowKitBridgeError(
+            kind="timeout",
+            message="FlowKit image generation exceeded its overall deadline",
+        ) from exc
 
     result.update(
         {

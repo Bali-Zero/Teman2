@@ -934,8 +934,15 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             {kbli.baliL4?.status === "CHIUSO_PMA_NO_BESAR"
               ? "reserved for micro/small/medium enterprises and closed to a PT PMA"
               : "blocked for a PT PMA under the 13 May 2026 moratorium"}
-            {kbli.baliL4?.reason ? ` — ${kbli.baliL4.reason}` : ""}. See the
-            Bali status badge above before planning a Bali setup.
+            {/* The reason is spliced mid-sentence, so its own terminal period
+                would collide with the one below ("…(GARUDA-FILIERA).. See the").
+                Un-disclosed reasons end without a period and were fine; every
+                disclosed one ends with a full stop, and there are now 152 of
+                them. */}
+            {kbli.baliL4?.reason
+              ? ` — ${kbli.baliL4.reason.replace(/\.\s*$/, "")}`
+              : ""}
+            . See the Bali status badge above before planning a Bali setup.
           </p>
         </div>
       )}

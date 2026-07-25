@@ -127,6 +127,26 @@
       "status": "UNKNOWN",
       "reason": "UNVERIFIED"
     },
+    "secondhome.bank_deposit_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.qualifying_property_value_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.passive_monthly_income_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "process.application_channel": {
       "status": "KNOWN",
       "value": "OFFSHORE"

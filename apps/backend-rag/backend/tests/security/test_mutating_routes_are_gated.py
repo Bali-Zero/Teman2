@@ -260,6 +260,36 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "POST", "/api/v1/kbli-notebook/chat",
         "KBLI Explorer — public business-classification chat, no PII.",
     ),
+    # ── Visa Check v1 funnel (routers/visa_check.py): anonymous wizard,
+    #    restored public 2026-07-23 (funnel dead since PR #108 — routes were
+    #    mounted but never registered in PUBLIC_ENDPOINTS). The result-page
+    #    hash IS the access token; per-IP rate-limited via the /api/ bucket. ──
+    IntentionalPublicMutation(
+        "POST", "/api/visa/check/start",
+        "Branch selector — pure yes/no routing, nothing persisted.",
+    ),
+    IntentionalPublicMutation(
+        "POST", "/api/visa/clock",
+        "Clock submission — anonymous overstay-timeline insert "
+        "(visa_type/entry_date/client_fingerprint only, no PII).",
+    ),
+    IntentionalPublicMutation(
+        "POST", "/api/visa/match",
+        "Match submission — anonymous visa-recommendation insert "
+        "(nationality/purpose/duration/budget only, no PII).",
+    ),
+    # ── Visa Oracle v2 evaluate read-path (W1, routers/visa_oracle_evaluate.py):
+    #    anonymous by design (the v2 interview runs pre-account). Engine
+    #    evaluation + SHADOW audit row; abuse controls verified in-router. ──
+    IntentionalPublicMutation(
+        "POST", "/api/visa-oracle/evaluate",
+        "Visa Oracle v2 evaluate read-path (W1) — anonymous canonical-facts "
+        "evaluation, mode=CURATED envelope (SHADOW era). Controls: dedicated "
+        "30/min rate-limit bucket, 32KB body cap, application/json-only, "
+        "contract-schema 422s (no input echo), HMAC-fingerprint-only logs, "
+        "synthetic traffic_source classes rejected unless the server-side "
+        "allowlist env arms them.",
+    ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
         "POST", "/api/blog/ask",

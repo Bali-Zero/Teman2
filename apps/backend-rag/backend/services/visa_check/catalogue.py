@@ -45,6 +45,7 @@ class VisaType(str, Enum):
     E28A = "E28A"  # Investor KITAS 2y
     E30A = "E30A"  # Education (basic & secondary)
     E31 = "E31"  # Family KITAS
+    E33 = "E33"  # Second Home (base, 5y) — bank deposit / property route
     E33E = "E33E"  # Second Home Elder 5y (golden)
     E33F = "E33F"  # Second Home Elder 1y
     E33G = "E33G"  # Second Home Remote Worker / Digital Nomad
@@ -300,6 +301,28 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             seed_source=SEED,
             duration_source=NB2,
         ),
+        VisaType.E33: VisaMeta(
+            name_en="Second Home Visa",
+            name_id="Visa Rumah Kedua",
+            category="KITAS/Limited Stay",
+            # Empty on purpose: the match wizard has no second-home branch
+            # (match_tree.Purpose has no SECOND_HOME tag), so base E33 is
+            # never surfaced by recommend_visa — it exists here for the
+            # pricing bridge and catalogue completeness only.
+            purposes=frozenset(),
+            duration_days=365 * 5,
+            extensions=(
+                1,
+                365 * 5,
+            ),  # Permenkumham 22/2023 Pasal 113: >=5y first grant -> 10y cumulative cap
+            min_budget_idr=500_000_000,  # commercial tier flag, not the legal USD 130k deposit threshold
+            notes="Base Second Home (bank route): USD 130,000 own-name deposit at a "
+            "state-owned (BUMN) bank, or USD 1,000,000 qualifying completed "
+            "strata-title property. 5-year first grant, no sponsor, non-working residency.",
+            seed_source=SEED,
+            duration_source=NB2,
+            fit_tags=frozenset({FitTag.GOLDEN_VISA}),
+        ),
         VisaType.E33E: VisaMeta(
             name_en="Second Home Visa Elderly for 5 Years Golden Visa",
             name_id="Visa Rumah Kedua Lansia Untuk 5 Tahun Golden Visa",
@@ -321,7 +344,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             duration_days=365,
             extensions=(1, 365),
             min_budget_idr=None,
-            notes="Standard 55+ retirement. >= USD 1,500/mo passive income.",
+            notes="Standard 55+ retirement. >= USD 3,000/mo passive income.",
             seed_source=SEED,
             duration_source=NB2,
         ),

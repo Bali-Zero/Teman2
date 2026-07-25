@@ -1,6 +1,6 @@
 #!/bin/zsh
 # regulatory-watcher cron wrapper — multi-LLM cascade
-# Order: Claude OAuth (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
+# Order: all Claude OAuth seats (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
 # Cost: 0$ (4 tier all subscription/free/local)
 #
 # TAC-2 A4 (2026-07-05) — the 07-05 run failure taught four lessons, all cured here:
@@ -151,6 +151,8 @@ PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian busines
 TMPOUT=$(mktemp)
 SUCCESS=0
 USED_LLM=""
+CASCADE_BIN="${REGWATCH_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$HOME/nuzantara/infra/launchagents/wrappers/claude-cascade.sh"
 
 # Stdlib-only python for the output-extractor (json only — no redis needed here).
 # The pyenv pin below (eventbus block) stays Pro-specific; this one must work on
@@ -264,28 +266,23 @@ ensure_full_delta() {
     return 0
 }
 
-# W84 trampoline follow-up (2026-07-06): in the sshd context the login Keychain
-# is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
-# "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
-# MAX-3 env token from ~/.nuzantara-secrets.env (verified working in sshd:
-# TOKEN1-OK). The Keychain is locked in EVERY sshd session, not only the
-# trampolined one — a manual `ssh pro '…run.sh'` run died "Not logged in" at
-# 09:20 (2026-07-06) with the token available but the gate closed. Gate on
-# SSH_CONNECTION too; gui/launchd contexts keep the healthy Keychain path.
-if { [ -n "${REGWATCH_TRAMPOLINED:-}" ] || [ -n "${SSH_CONNECTION:-}" ]; } && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
-    echo "[$(date)] sshd context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
+# Tier 1: every isolated Claude OAuth seat. `--claude-only` is load-bearing:
+# this wrapper owns the cross-provider tiers because each has a different
+# prompt and file-landing contract. The canonical cascade must stop before
+# Gemini/Kimi/Codex/Ollama so ensure_full_delta remains the sole success gate.
+echo "[$(date)] tier 1 — Claude subscription seat cascade" >> "$LOG"
+if [ -x "$CASCADE_BIN" ]; then
+    "$CASCADE_BIN" "$PROMPT_CLAUDE" --claude-only --model claude-sonnet-5 >"$TMPOUT" 2>&1
+    EXIT=$?
+else
+    echo "canonical Claude cascade missing: $CASCADE_BIN" >"$TMPOUT"
+    EXIT=127
 fi
-
-# Tier 1: Claude OAuth Sonnet
-echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
-"$HOME/.local/bin/claude" --print --model claude-sonnet-5 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
-EXIT=$?
 if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
     SUCCESS=1
-    USED_LLM="claude-sonnet-5"
+    USED_LLM="claude-sonnet-5-subscription-cascade"
 elif [ $EXIT -eq 0 ]; then
-    echo "[$(date)] tier 1 exit 0 but NO delta file landed (hallucinated/backgrounded output?) — cascading" >> "$LOG"
+    echo "[$(date)] Claude seat cascade exit 0 but NO delta file landed (hallucinated/backgrounded output?) — cascading cross-provider" >> "$LOG"
 fi
 cat "$TMPOUT" >> "$LOG"
 

@@ -161,7 +161,11 @@ _TIER_PREFERRED_ARCS: dict[str, tuple[str, ...]] = {
 }
 
 
-def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[str, float]:
+def build_arc_priors(
+    recent_arcs: list[str],
+    liveness_tier: str | None,
+    reward_by_arc: dict[str, float] | None = None,
+) -> dict[str, float]:
     """Soft weights over the 7 ratified arcs (`wr2_carousel_ir.ARCS`, spec
     §8) — a cooldown PENALTY (never a mask) for recently-used arcs, plus a
     mild tier-appropriate boost. `recent_arcs` is read newest-first (index 0
@@ -170,7 +174,18 @@ def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[
     boost in play returns an EXACTLY uniform dict — no history, no
     preference. A weight never reaches 0.0: this function only proposes: the
     planner-LLM disposes the arc from the content (spec §2, Kimi red-team
-    objection #1 — CHI PROPONE != CHI DISPONE)."""
+    objection #1 — CHI PROPONE != CHI DISPONE).
+
+    `reward_by_arc` (spec §Mossa-D "chiuso sul risultato") is the DORMANT
+    reward socket: a per-arc positive boost derived from which arcs get
+    PUBLISHED (the Legge-5 human signal), supplied by
+    `wr2_creative_ledger.LedgerSnapshot.reward_by_arc()`. It is EMPTY/None
+    today (`war_room_posts` has 0 rows — operator-gated, see PENDING-ARMS),
+    and when empty/None this function is BYTE-IDENTICAL to the pre-Fase-4
+    path — a falsifiable invariant the tests pin. When real publishes exist
+    the ledger returns a non-empty dict and each named arc is nudged up
+    (still never a mask; a reward boost cannot pull a cooled arc below its
+    floor either, since it only ADDS)."""
     weights: dict[str, float] = {arc: _BASE_WEIGHT for arc in ir.ARCS}
 
     seen: set[str] = set()
@@ -186,6 +201,11 @@ def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[
     for arc in _TIER_PREFERRED_ARCS.get(tier, ()):
         if arc in weights:
             weights[arc] += _TIER_BOOST
+
+    # DORMANT reward socket — no-op when reward_by_arc is None/empty (today).
+    for arc, boost in (reward_by_arc or {}).items():
+        if arc in weights and boost > 0:
+            weights[arc] += boost
 
     return weights
 
@@ -255,6 +275,7 @@ def _build_planner_prompt(
     liveness_tier: str | None,
     recent_arcs: list[str],
     priors: dict[str, float],
+    engagement_hint: str = "",
 ) -> str:
     tier = (liveness_tier or "").strip().lower()
     count_guidance = _PLANNER_SLIDE_COUNT_GUIDANCE.get(tier, _DEFAULT_SLIDE_COUNT_GUIDANCE)
@@ -279,7 +300,7 @@ ARC LIBRARY — the 7 ratified arcs (spec §8), each a sequence of slide ROLES:
 CHI PROPONE != CHI DISPONE: the soft prior weights above come from code — YOU choose the arc FROM
 THE CONTENT, within them. A high-prior arc that does not fit this story is still the wrong choice;
 a low-prior arc the content genuinely demands is still the right one. The weights nudge, they never
-decide for you.
+decide for you.{engagement_hint}
 
 OUTPUT — ONE JSON object, exactly these fields, nothing else:
 {{
@@ -320,15 +341,27 @@ def plan_deck(
     recent_arcs: list[str],
     call_fn: Callable[[str], str],
     max_retries: int = 3,
+    reward_by_arc: dict[str, float] | None = None,
+    engagement_hint: str = "",
 ) -> ir.DeckPlan:
     """Run the planner stage: build the priors + prompt, validate-and-retry
     against `wr2_carousel_ir.DeckPlan` (reusing `extract_json_from_codeblock`,
     same instructor-derived reask pattern `generate_slides_typed` uses).
     Raises `PlanValidationExhausted` after `max_retries` failed attempts —
     the caller decides what happens next (there is no partial-plan
-    fallback)."""
-    priors = build_arc_priors(recent_arcs, liveness_tier)
-    prompt = _build_planner_prompt(brief_ctx, liveness_tier, recent_arcs, priors)
+    fallback).
+
+    `reward_by_arc` (default None) is the DORMANT Creative-Ledger reward
+    socket threaded into `build_arc_priors` — empty/None today, byte-identical
+    to the pre-Fase-4 path (spec §Mossa-D).
+
+    `engagement_hint` (default "") is the Fase-4b per-axis SOFT nudge built from
+    the review queue's published history (`wr2_creative_ledger.build_engagement_
+    hint`); empty string → prompt byte-identical to the no-hint path."""
+    priors = build_arc_priors(recent_arcs, liveness_tier, reward_by_arc)
+    prompt = _build_planner_prompt(
+        brief_ctx, liveness_tier, recent_arcs, priors, engagement_hint
+    )
 
     ctx = prompt
     last_raw = ""

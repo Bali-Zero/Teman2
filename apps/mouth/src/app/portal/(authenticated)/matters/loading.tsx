@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MattersLoading() {
   return (
@@ -15,11 +15,14 @@ export default function MattersLoading() {
           <div
             key={i}
             className="rounded-xl border overflow-hidden"
-            style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             <div
               className="flex items-center justify-between px-5 py-4 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ borderColor: "var(--bz-border)" }}
             >
               <div className="flex items-center gap-3">
                 <Skeleton variant="circular" width={36} height={36} />

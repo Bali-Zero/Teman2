@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LkpmQuarterLoading() {
   return (
@@ -15,7 +15,10 @@ export default function LkpmQuarterLoading() {
       {/* Status Card */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+        }}
       >
         <div className="flex items-center justify-between">
           <Skeleton variant="text" width={160} height={24} />
@@ -26,9 +29,14 @@ export default function LkpmQuarterLoading() {
             <div
               key={i}
               className="p-4 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.03)' }}
+              style={{ background: "rgba(255,255,255,0.03)" }}
             >
-              <Skeleton variant="text" width={80} height={10} className="mb-2" />
+              <Skeleton
+                variant="text"
+                width={80}
+                height={10}
+                className="mb-2"
+              />
               <Skeleton variant="text" width={100} height={22} />
             </div>
           ))}
@@ -38,7 +46,10 @@ export default function LkpmQuarterLoading() {
       {/* Capital Section */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+        }}
       >
         <Skeleton variant="text" width={200} height={20} />
         {Array.from({ length: 5 }).map((_, i) => (

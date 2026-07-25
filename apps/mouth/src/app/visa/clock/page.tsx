@@ -52,6 +52,10 @@ export default function VisaClockPage() {
     setPending(true);
     setError(null);
     tracker.formSubmitted(["visa_type", "entry_date"]);
+    // Same silent-death fix as visa/match: capture the HTTP status so the
+    // failure event can carry it — endpoint + status only, never the
+    // visa type / entry date values (Law 2).
+    let status: number | null = null;
     try {
       const res = await fetch("/api/visa/clock", {
         method: "POST",
@@ -62,10 +66,16 @@ export default function VisaClockPage() {
           in_country_now: true,
         }),
       });
-      if (!res.ok) throw new Error(`${res.status}`);
+      // Status recorded for ANY completed response — a 2xx whose JSON
+      // parse fails must not be misreported as a network failure (null).
+      status = res.status;
+      if (!res.ok) {
+        throw new Error(`${res.status}`);
+      }
       const { hash } = (await res.json()) as { hash: string };
       router.push(`/visa/clock/${hash}`);
     } catch {
+      tracker.formSubmitFailed("/api/visa/clock", status);
       setError("Could not build your timeline. Please try again.");
       setPending(false);
     }

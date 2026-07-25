@@ -32,9 +32,27 @@ class AssetIntentV1(BaseModel):
     dlp_status: Literal["passed"]
     sanitization_status: Literal["passed"]
     perceptual_dedup_status: Literal["unique", "intentional-reuse"]
+    approved_for_packet_id: str | None = None
+    source_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    generated_for_packet_id: str | None = None
+    generated_for_story_version: int | None = Field(default=None, ge=0)
+    generated_for_target_role: Literal["morning-lead", "breaking-story"] | None = None
+    prompt_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     def provenance(self, packet_id: str) -> AssetProvenanceV2:
-        values = self.model_dump(mode="python", exclude={"source_path", "story_ids"})
+        values = self.model_dump(
+            mode="python",
+            exclude={
+                "source_path",
+                "story_ids",
+                "approved_for_packet_id",
+                "source_sha256",
+                "generated_for_packet_id",
+                "generated_for_story_version",
+                "generated_for_target_role",
+                "prompt_sha256",
+            },
+        )
         return AssetProvenanceV2(packet_id=packet_id, **values)
 
 

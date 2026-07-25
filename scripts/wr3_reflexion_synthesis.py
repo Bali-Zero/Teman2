@@ -46,8 +46,12 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
+import signal
 import subprocess
 import sys
+import time
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -90,6 +94,76 @@ def _skill_dir() -> Path:
 WINDOW_DAYS = int(os.environ.get("WR3_REFLEXION_WINDOW_DAYS", "7"))
 MAX_LESSONS = int(os.environ.get("WR3_REFLEXION_MAX_LESSONS", "10"))
 LLM_TIMEOUT_S = int(os.environ.get("WR3_REFLEXION_LLM_TIMEOUT", "600"))
+_OAUTH_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"
+_PROVIDER_ENV_PREFIXES = (
+    "ANTHROPIC" + "_",
+    "AWS_",
+    "BEDROCK_",
+    "VERTEX_",
+    "FOUNDRY_",
+    "OPENAI_",
+    "DEEPSEEK_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "TOGETHER_",
+    "GROQ_",
+    "MISTRAL_",
+    "COHERE_",
+)
+_PROVIDER_ENV_NAMES = frozenset(
+    {
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_CLOUD_PROJECT",
+        "CLOUD_ML_REGION",
+    }
+)
+_QUOTA_RE = re.compile(
+    r"out of extra usage|usage limit|weekly limit|quota(?: exceeded)?|"
+    r"rate.?limit|too many requests|429|exhausted|hit your limit|"
+    r"capacity|overloaded|please try again later",
+    re.IGNORECASE,
+)
+_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh[_ ]token|"
+    r"unauthori[sz]ed|(?:error\D*)?401",
+    re.IGNORECASE,
+)
+_SECRET_DIAGNOSTIC_RE = re.compile(
+    r"(?i)\b(?:bearer|oauth[_ -]?token|access[_ -]?token)\b"
+    r"(\s*[:=]\s*|\s+)\S+"
+)
+_PROCESS_TERM_GRACE_S = 0.25
+_PROCESS_KILL_REAP_S = 0.75
+_PROCESS_POLL_S = 0.01
+_GEMINI_ENV_ALLOWLIST = frozenset(
+    {
+        "HOME",
+        "PATH",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TERM",
+        "SHELL",
+        "USER",
+        "LOGNAME",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "ALL_PROXY",
+    }
+)
 
 # Episode artifacts to harvest as reflexion signal (filename -> short label)
 _SIGNAL_FILES = {
@@ -245,6 +319,222 @@ def _strip_fences(out: str) -> str:
     return out
 
 
+def _collect_claude_seats(
+    source: Mapping[str, str] | None = None,
+) -> list[tuple[str, str]]:
+    """Return deduplicated OAuth seats in fleet order, then keychain."""
+    values = os.environ if source is None else source
+    seats: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for slot in range(1, 6):
+        token = values.get(f"{_OAUTH_TOKEN_ENV}_{slot}", "").strip()
+        if token and token not in seen:
+            label = "slot5-team" if slot == 5 else f"slot{slot}"
+            seats.append((label, token))
+            seen.add(token)
+    legacy = values.get(_OAUTH_TOKEN_ENV, "").strip()
+    if legacy and legacy not in seen:
+        seats.append(("legacy", legacy))
+    seats.append(("keychain", ""))
+    return seats
+
+
+def _is_provider_env(name: str) -> bool:
+    return name in _PROVIDER_ENV_NAMES or name.startswith(_PROVIDER_ENV_PREFIXES)
+
+
+def _build_claude_env(
+    token: str,
+    source: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Build an OAuth-only child env with alternate providers removed."""
+    values = os.environ if source is None else source
+    env = {
+        key: value
+        for key, value in values.items()
+        if not _is_provider_env(key) and not key.startswith(_OAUTH_TOKEN_ENV)
+    }
+    if token:
+        env[_OAUTH_TOKEN_ENV] = token
+    return env
+
+
+def _build_gemini_env(
+    source: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Build a minimal OAuth-CLI environment without any provider credential."""
+    values = os.environ if source is None else source
+    return {
+        key: value
+        for key, value in values.items()
+        if key in _GEMINI_ENV_ALLOWLIST or key.startswith("LC_")
+    }
+
+
+def _sanitize_diagnostic(text: str, secrets: list[str]) -> str:
+    safe = text
+    for secret in secrets:
+        if secret:
+            safe = safe.replace(secret, "[redacted]")
+    safe = _SECRET_DIAGNOSTIC_RE.sub("credential=[redacted]", safe)
+    return " ".join(safe.split())[:300]
+
+
+def _valid_synthesis_json(stdout: str) -> bool:
+    try:
+        payload = json.loads(_strip_fences(stdout))
+    except (json.JSONDecodeError, IndexError):
+        return False
+    return (
+        isinstance(payload, dict)
+        and isinstance(payload.get("week"), str)
+        and isinstance(payload.get("lessons"), list)
+    )
+
+
+def _retry_reason(
+    *,
+    stdout: str,
+    stderr: str,
+    returncode: int,
+    valid_success: bool,
+) -> str | None:
+    """Rotate on transport-empty output, not on a valid zero-lessons payload.
+
+    ``{"week": ..., "lessons": []}`` is an honest synthesis and succeeds.
+    Whitespace/no stdout contains no schema at all and must try the next seat.
+    """
+    if valid_success:
+        return None
+    combined = f"{stdout}\n{stderr}"
+    if _QUOTA_RE.search(combined):
+        return "quota"
+    if _AUTH_RE.search(combined):
+        return "auth"
+    if not stdout.strip():
+        return "empty-output"
+    if returncode == 0:
+        return "invalid-output"
+    return None
+
+
+def _process_group_exists(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _signal_process_group(proc: subprocess.Popen[str], sig: signal.Signals) -> None:
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        try:
+            proc.send_signal(sig)
+        except ProcessLookupError:
+            return
+
+
+def _wait_process_group_exit(pgid: int, *, deadline: float) -> bool:
+    while _process_group_exists(pgid):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(_PROCESS_POLL_S, remaining))
+    return True
+
+
+def _timeout_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value
+
+
+def _invoke_process(
+    cmd: list[str],
+    prompt: str,
+    timeout_s: float,
+    env: dict[str, str],
+) -> tuple[int, str, str, bool]:
+    """Run one CLI attempt within a deadline that includes tree cleanup."""
+    total_budget_s = max(float(timeout_s), 0.001)
+    deadline = time.monotonic() + total_budget_s
+    cleanup_reserve_s = min(
+        _PROCESS_TERM_GRACE_S + _PROCESS_KILL_REAP_S,
+        total_budget_s / 2,
+    )
+    run_budget_s = max(0.001, total_budget_s - cleanup_reserve_s)
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=prompt, timeout=run_budget_s)
+        return proc.returncode or 0, stdout, stderr, False
+    except subprocess.TimeoutExpired as first_timeout:
+        stdout = _timeout_text(first_timeout.output)
+        stderr = _timeout_text(first_timeout.stderr)
+
+    _signal_process_group(proc, signal.SIGTERM)
+    term_deadline = min(deadline, time.monotonic() + _PROCESS_TERM_GRACE_S)
+    communication_done = False
+    remaining = term_deadline - time.monotonic()
+    if remaining > 0:
+        try:
+            stdout, stderr = proc.communicate(timeout=remaining)
+            communication_done = True
+        except subprocess.TimeoutExpired as term_timeout:
+            stdout = _timeout_text(term_timeout.output)
+            stderr = _timeout_text(term_timeout.stderr)
+    _wait_process_group_exit(proc.pid, deadline=term_deadline)
+
+    if _process_group_exists(proc.pid):
+        _signal_process_group(proc, signal.SIGKILL)
+    kill_deadline = min(deadline, time.monotonic() + _PROCESS_KILL_REAP_S)
+    if not communication_done:
+        remaining = kill_deadline - time.monotonic()
+        if remaining > 0:
+            try:
+                stdout, stderr = proc.communicate(timeout=remaining)
+                communication_done = True
+            except subprocess.TimeoutExpired as kill_timeout:
+                stdout = _timeout_text(kill_timeout.output)
+                stderr = _timeout_text(kill_timeout.stderr)
+    _wait_process_group_exit(proc.pid, deadline=kill_deadline)
+
+    if not communication_done:
+        # The in-session tree has received KILL. Close inherited pipe readers
+        # so an escaped descendant cannot extend the caller's wall deadline.
+        for stream in (proc.stdin, proc.stdout, proc.stderr):
+            if stream is not None:
+                stream.close()
+        remaining = deadline - time.monotonic()
+        if proc.returncode is None and remaining > 0:
+            try:
+                proc.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                pass
+
+    return (
+        proc.returncode if proc.returncode is not None else -signal.SIGKILL,
+        stdout,
+        stderr,
+        True,
+    )
+
+
 def call_llm_synthesis(prompt: str) -> dict | None:
     """Tier-1 claude -p (Sonnet), Tier-2 agy (Gemini) on cascade. Returns parsed JSON or None."""
     for tier in ("claude", "gemini"):
@@ -260,31 +550,113 @@ def call_llm_synthesis(prompt: str) -> dict | None:
 
 
 def _run_tier(tier: str, prompt: str) -> str | None:
-    env = os.environ.copy()
-    env.pop("ANTHROPIC_API_KEY", None)  # defense-in-depth: never pay-per-token (CLAUDE.md)
     if tier == "claude":
-        cmd = ["claude", "-p", "--model", "claude-sonnet-5"]
-    else:
-        cmd = ["agy", "-p", "--print-timeout", "5m"]
+        return _run_claude_fleet(prompt)
+    cmd = ["agy", "-p", "--print-timeout", "5m"]
     try:
-        r = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
-                           timeout=LLM_TIMEOUT_S, env=env)
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        returncode, stdout, stderr, timed_out = _invoke_process(
+            cmd,
+            prompt,
+            LLM_TIMEOUT_S,
+            _build_gemini_env(),
+        )
+    except FileNotFoundError as e:
         print(f"[wr3-reflexion] tier {tier} unavailable: {e}", file=sys.stderr)
         return None
-    if r.returncode != 0:
-        low = (r.stdout + r.stderr).lower()
-        if any(s in low for s in ("out of extra usage", "usage limit", "quota",
-                                  "rate limit", "429", "exhausted")):
-            print(f"[wr3-reflexion] tier {tier} quota-exhausted, cascading", file=sys.stderr)
-        else:
-            print(f"[wr3-reflexion] tier {tier} exit {r.returncode}: {r.stderr[:300]}",
-                  file=sys.stderr)
+    if timed_out:
+        print(f"[wr3-reflexion] tier {tier} timed out", file=sys.stderr)
         return None
-    return r.stdout
+    if returncode != 0:
+        if _QUOTA_RE.search(f"{stdout}\n{stderr}"):
+            print(
+                f"[wr3-reflexion] tier {tier} quota-exhausted, cascading",
+                file=sys.stderr,
+            )
+        else:
+            diagnostic = _sanitize_diagnostic(stderr or stdout, [])
+            print(
+                f"[wr3-reflexion] tier {tier} exit {returncode}"
+                + (f": {diagnostic}" if diagnostic else ""),
+                file=sys.stderr,
+            )
+        return None
+    if not stdout.strip():
+        print(f"[wr3-reflexion] tier {tier} returned empty output", file=sys.stderr)
+        return None
+    return stdout
+
+
+def _run_claude_fleet(prompt: str) -> str | None:
+    """Try the full Claude OAuth fleet within one bounded wall-clock budget."""
+    seats = _collect_claude_seats()
+    secrets = [token for _, token in seats if token]
+    deadline = time.monotonic() + max(float(LLM_TIMEOUT_S), 0.001)
+    for index, (label, token) in enumerate(seats):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            print(
+                "[wr3-reflexion] Claude OAuth fleet deadline exhausted", file=sys.stderr
+            )
+            return None
+        seats_left = len(seats) - index
+        seat_budget_s = max(0.001, remaining / seats_left)
+        try:
+            returncode, stdout, stderr, timed_out = _invoke_process(
+                ["claude", "-p", "--model", "claude-sonnet-5"],
+                prompt,
+                seat_budget_s,
+                _build_claude_env(token),
+            )
+        except FileNotFoundError as e:
+            print(f"[wr3-reflexion] Claude CLI unavailable: {e}", file=sys.stderr)
+            return None
+
+        if timed_out:
+            print(
+                f"[wr3-reflexion] Claude OAuth {label} timed out; trying next seat",
+                file=sys.stderr,
+            )
+            continue
+
+        valid_success = returncode == 0 and _valid_synthesis_json(stdout)
+        reason = _retry_reason(
+            stdout=stdout,
+            stderr=stderr,
+            returncode=returncode,
+            valid_success=valid_success,
+        )
+        if reason is not None:
+            print(
+                f"[wr3-reflexion] Claude OAuth {label} failed ({reason}); "
+                "trying next seat",
+                file=sys.stderr,
+            )
+            continue
+
+        if returncode != 0:
+            diagnostic = _sanitize_diagnostic(stderr or stdout, secrets)
+            print(
+                f"[wr3-reflexion] Claude OAuth {label} exit {returncode}"
+                + (f": {diagnostic}" if diagnostic else ""),
+                file=sys.stderr,
+            )
+            return None
+        if not stdout.strip():
+            print(
+                f"[wr3-reflexion] Claude OAuth {label} returned empty output; "
+                "trying next seat",
+                file=sys.stderr,
+            )
+            continue
+        print(f"[wr3-reflexion] Claude OAuth used {label}", file=sys.stderr)
+        return stdout
+
+    print("[wr3-reflexion] Claude OAuth fleet exhausted", file=sys.stderr)
+    return None
 
 
 # ---- Write lessons + skill drafts -------------------------------------------
+
 
 def write_lessons(synthesis: dict, skill_dir: Path) -> int:
     lessons = (synthesis or {}).get("lessons") or []

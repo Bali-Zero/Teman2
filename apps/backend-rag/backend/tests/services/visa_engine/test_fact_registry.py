@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (38
-entries, 35 applicant + 3 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (43
+entries, 40 applicant + 3 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -43,8 +43,8 @@ class TestDefaultCatalogCompleteness:
             spec = DEFAULT_FACT_REGISTRY.spec(path)
             assert spec.path is path
 
-    def test_catalog_has_exactly_38_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+    def test_catalog_has_exactly_43_entries(self) -> None:
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 43
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -137,7 +137,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 43
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -262,7 +262,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 43
 
 
 class TestRegistryConstruction:
@@ -294,14 +294,14 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 43
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
 
 def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | None = None) -> ApplicantFacts:
-    """Build an ``ApplicantFacts`` with every one of the 35 paths defaulted
+    """Build an ``ApplicantFacts`` with every one of the 40 paths defaulted
     to UNKNOWN, then override the given wire keys with KNOWN wire values —
     the minimal builder ``derive()``'s tests need (distinct from
     ``conftest.make_applicant_facts``, which is all-UNKNOWN with no override
@@ -339,6 +339,11 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "study.level": _UNKNOWN_WIRE,
         "study.admission_confirmed": _UNKNOWN_WIRE,
         "study.sponsor_confirmed": _UNKNOWN_WIRE,
+        "secondhome.bank_deposit_usd": _UNKNOWN_WIRE,
+        "secondhome.bank_deposit_at_state_bank": _UNKNOWN_WIRE,
+        "secondhome.bank_deposit_in_own_name": _UNKNOWN_WIRE,
+        "secondhome.qualifying_property_value_usd": _UNKNOWN_WIRE,
+        "secondhome.passive_monthly_income_usd": _UNKNOWN_WIRE,
         "process.application_channel": _UNKNOWN_WIRE,
         "process.wants_onshore_conversion": _UNKNOWN_WIRE,
         "commercial.service_fee_budget_idr": _UNKNOWN_WIRE,
@@ -372,7 +377,7 @@ class TestDeriveRequiresAwareEffectiveAt:
 
 
 class TestDeriveWireToRuntime:
-    def test_every_one_of_38_paths_present_in_snapshot(self) -> None:
+    def test_every_one_of_43_paths_present_in_snapshot(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
         assert frozenset(snapshot.values) == frozenset(FactPath)
 
@@ -507,9 +512,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_35_applicant_paths(self) -> None:
+    def test_covers_all_40_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 35
+        assert len(payload) == 40
 
     def test_is_json_serializable(self) -> None:
         import json

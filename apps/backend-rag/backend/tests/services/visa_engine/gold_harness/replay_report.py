@@ -1,5 +1,5 @@
 """Machine-readable replay-report generator -- the evidence artifact the
-ENFORCE gate (Visa Oracle v2 skill, criterion G-b) cites: "20/20 gold
+ENFORCE gate (Visa Oracle v2 skill, criterion G-b) cites: "23/23 gold
 personas replay through the engine with zero unexplained divergences".
 
 Not a fixture -- this module is RUN, never committed output. Two entry

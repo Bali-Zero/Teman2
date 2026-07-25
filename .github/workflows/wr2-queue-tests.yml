@@ -76,6 +76,8 @@ on:
       - "scripts/wr2_pregate_shadow.py"
       - "scripts/wr2_planner_writer.py"
       - "scripts/wr2_pw_shadow.py"
+      - "scripts/wr2_creative_ledger.py"
+      - "scripts/wr2_ledger_backfill.py"
       - "scripts/tests/test_wr2_queue_hygiene.py"
       - "scripts/tests/test_wr2_visibility_chain.py"
       - "scripts/tests/test_wr2_rerender_requeue.py"
@@ -85,6 +87,8 @@ on:
       - "scripts/tests/test_wr2_carousel_ir.py"
       - "scripts/tests/test_wr2_editorial_pregate.py"
       - "scripts/tests/test_wr2_planner_writer.py"
+      - "scripts/tests/test_wr2_creative_ledger.py"
+      - "scripts/tests/test_wr2_ledger_backfill.py"
       - "scripts/tests/test_wr2_draft_generator_liveness_tier.py"
       - "scripts/tests/test_wr2_draft_generator_cover_codex_detection.py"
       - "scripts/tests/test_wr2_draft_generator_length_per_tier.py"
@@ -95,6 +99,7 @@ on:
       - "scripts/tests/test_wr2_draft_generator_json_example.py"
       - "scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py"
       - "scripts/tests/conftest.py"
+      - "scripts/tests/test_conftest_module_isolation.py"
       - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
       - ".github/workflows/wr2-queue-tests.yml"
   workflow_dispatch:
@@ -130,6 +135,9 @@ jobs:
             scripts/tests/test_wr2_carousel_ir.py \
             scripts/tests/test_wr2_editorial_pregate.py \
             scripts/tests/test_wr2_planner_writer.py \
+            scripts/tests/test_conftest_module_isolation.py \
+            scripts/tests/test_wr2_creative_ledger.py \
+            scripts/tests/test_wr2_ledger_backfill.py \
             scripts/tests/test_wr2_draft_generator_liveness_tier.py \
             scripts/tests/test_wr2_draft_generator_cover_codex_detection.py \
             scripts/tests/test_wr2_draft_generator_length_per_tier.py \

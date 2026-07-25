@@ -24,6 +24,7 @@ export const APP_EVENTS = [
   "app_branch_selected",
   "app_form_started",
   "app_form_submitted",
+  "app_form_submit_failed",
   "app_wizard_step_completed",
   "app_wizard_abandoned",
   "app_result_viewed",
@@ -44,6 +45,16 @@ export type FunnelAppEvent =
       type: "app_form_submitted";
       app: FunnelAppName;
       payload_keys: string[];
+    }
+  | {
+      /** Submit attempt FAILED (HTTP error or network failure). Law 2 /
+       * MYTHOS §6: carries ONLY the endpoint and the HTTP status — never
+       * form values (no nationality, no dates, no payload keys). `status`
+       * is null when fetch rejected before any response (network down). */
+      type: "app_form_submit_failed";
+      app: FunnelAppName;
+      endpoint: string;
+      status: number | null;
     }
   | {
       type: "app_wizard_step_completed";
@@ -156,6 +167,13 @@ export function createFunnelAppTracker(app: FunnelAppName) {
         type: "app_form_submitted",
         app,
         payload_keys: payloadKeys,
+      }),
+    formSubmitFailed: (endpoint: string, status: number | null) =>
+      emitFunnelAppEvent({
+        type: "app_form_submit_failed",
+        app,
+        endpoint,
+        status,
       }),
     wizardStep: (step: number, total: number) =>
       emitFunnelAppEvent({

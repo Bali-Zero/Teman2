@@ -16,6 +16,8 @@ import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { removeDashboardQueries } from "@/hooks/useDashboardData";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -32,6 +34,7 @@ function getRouteTitle(pathname: string | null): string {
 
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const isTerminalPage = pathname === "/terminal";
   const pageTitle = getRouteTitle(pathname);
@@ -246,6 +249,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         error instanceof Error ? error : new Error(String(error)),
       );
     } finally {
+      removeDashboardQueries(queryClient);
       router.push("/login");
     }
   };

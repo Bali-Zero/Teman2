@@ -2,7 +2,7 @@
 
 Source: ``research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 concretization.md`` §1 (module layout, ``fact_registry.py``) and §2
-(``ApplicantFacts.facts`` — the 35 collected paths + the 3 ``derived.*``
+(``ApplicantFacts.facts`` — the 40 collected paths + the 3 ``derived.*``
 paths this catalog also carries).
 
 Why this exists alongside ``enums.FactPath``: ``FactPath`` is the *closed
@@ -148,7 +148,9 @@ def _spec(
 
 
 #: Default catalog seeded 1:1 from spec §2 ``ApplicantFacts.facts.properties``
-#: (35 entries) plus the 3 ``derived.*`` paths from spec §2 ``FactPath``.
+#: (35 entries) plus the 3 ``derived.*`` paths from spec §2 ``FactPath``,
+#: plus the 5 ``secondhome.*`` paths added for the E33 Second Home vertical
+#: (2026-07-23, bank-route owner scope) — 43 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -283,7 +285,7 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         FactPath.FAMILY_RELATION_TO_SPONSOR,
         FactValueKind.STRING,
         "relation_enum",
-        allowed_values=frozenset({"SPOUSE", "CHILD", "PARENT", "DEPENDENT", "OTHER"}),
+        allowed_values=frozenset({"SPOUSE", "CHILD", "PARENT", "SIBLING", "DEPENDENT", "OTHER"}),
     ),
     _spec(
         FactPath.FAMILY_SPONSOR_NATIONALITIES,
@@ -312,6 +314,41 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     ),
     _spec(FactPath.STUDY_ADMISSION_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.STUDY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
+    # secondhome.* — E33 Second Home vertical (2026-07-23, bank-route scope).
+    # USD amounts are SENSITIVE (financial data, same UU PDP rationale as the
+    # IDR investment capital facts); the placement/holder booleans are
+    # PERSONAL (they describe the applicant's banking arrangement, not an
+    # amount). No BSI/sharia or split-deposit variant facts exist by design:
+    # both are FORBIDDEN claims until the official letters are answered (see
+    # research/secondhome/README.md), so the vocabulary cannot express them.
+    _spec(
+        FactPath.SECONDHOME_BANK_DEPOSIT_USD,
+        FactValueKind.INTEGER,
+        "money_usd",
+        pii_class=PiiClass.SENSITIVE,
+    ),
+    _spec(
+        FactPath.SECONDHOME_BANK_DEPOSIT_AT_STATE_BANK,
+        FactValueKind.BOOLEAN,
+        "boolean",
+    ),
+    _spec(
+        FactPath.SECONDHOME_BANK_DEPOSIT_IN_OWN_NAME,
+        FactValueKind.BOOLEAN,
+        "boolean",
+    ),
+    _spec(
+        FactPath.SECONDHOME_QUALIFYING_PROPERTY_VALUE_USD,
+        FactValueKind.INTEGER,
+        "money_usd",
+        pii_class=PiiClass.SENSITIVE,
+    ),
+    _spec(
+        FactPath.SECONDHOME_PASSIVE_MONTHLY_INCOME_USD,
+        FactValueKind.INTEGER,
+        "money_usd",
+        pii_class=PiiClass.SENSITIVE,
+    ),
     _spec(
         FactPath.PROCESS_APPLICATION_CHANNEL,
         FactValueKind.STRING,

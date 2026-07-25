@@ -39,6 +39,16 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.env\.example$"),
         ".env.example: documented placeholder, never a real secret",
     ),
+    # Signed/unsigned visa-engine RulePacks — public legal documents whose
+    # content_sha256 / payload_sha256 / signature fields are cryptographic
+    # hashes of PUBLIC content, never credentials. Private key material is
+    # structurally absent (offline signing, off-repo custody per
+    # docs/runbooks/visa-engine-key-ceremony.md). Scoped to the artifact
+    # naming convention, not the whole packs dir.
+    (
+        re.compile(r"(^|/)contracts/packs/rulepack-[^/]*\.json$"),
+        "visa rulepack artifact: content/payload hashes of public legal documents, never credentials",
+    ),
     # *.py.example, *.json.example, *.yml.example — documented example files
     (
         re.compile(r"\.(py|json|yml|yaml|toml|sh)\.example$"),
@@ -306,6 +316,29 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)scripts/kbli_filiera/cure_specs/.*\.json$"),
         "KBLI filiera cure specs: compiler input artifacts (data-plane guard #2550), "
         "sha256 render/evidence digests by design, zero credentials",
+    ),
+    # KBLI canonical dataset + its sync'd consumer copies. Since Batch-B step 2
+    # (populate_bps_ancestors.py, 2026-07-24) every OSS-native record carries a
+    # `bps_2020_ancestors.parser_run_digest` — the sha256 of the gate-certified
+    # crosswalk parse — which reads as a Hex High Entropy String. Same closed-
+    # writer-set safety as the data/kbli-filiera rule above: the canonical
+    # (data/source_documents/KBLI_2025_FINAL_CLEAN.json) is data-plane-guarded
+    # (#2550, scripts/kbli_filiera/*.py compilers only); the consumer copies are
+    # byte-identical propagations by sync_kbli_dataset.sh, enforced equal to the
+    # canonical by the check-kbli-dataset-sync CI gate — so a credential can't
+    # enter a copy without also failing that gate. These files emit sha256
+    # digests, public KBLI codes, and PP28/OSS citations only, never credentials.
+    (
+        re.compile(
+            r"(^|/)(data/source_documents/KBLI_2025_FINAL_CLEAN\.json"
+            r"|apps/mouth/data/KBLI_2025_FINAL_CLEAN\.json"
+            r"|apps/backend-rag/backend/data/KBLI_2025_FINAL_CLEAN\.json"
+            r"|apps/backend-rag/source_documents/KBLI_2025_FINAL_CLEAN\.json"
+            r"|apps/kbli-navigator/data/kbli-2025\.json)$"
+        ),
+        "KBLI canonical dataset + sync'd copies: compiler-written (data-plane guard "
+        "#2550) / sync-invariant-enforced; bps_2020_ancestors.parser_run_digest sha256 "
+        "provenance by design, zero credentials",
     ),
     # Nuzantara Lex source manifests pin downloaded public regulations by
     # SHA-256 so the fetcher can prove byte identity across runs. These are

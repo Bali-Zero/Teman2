@@ -33,6 +33,7 @@ class _Conn:
         self._rows = rows
         self._fetchrow_result = fetchrow_result
         self._fetchrow_error = fetchrow_error
+        self.fetchrow_calls = 0
 
     async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
         return self._rows
@@ -42,6 +43,7 @@ class _Conn:
         # No table-routing needed here — these tests either want "no match"
         # (default None, both lookups miss → role=unknown) or "DB down"
         # (fetchrow_error, raised on the first lookup it makes).
+        self.fetchrow_calls += 1
         if self._fetchrow_error is not None:
             raise self._fetchrow_error
         return self._fetchrow_result
@@ -180,27 +182,59 @@ async def test_escalate_marker_stripped(monkeypatch):
 
 def test_rag_client_headers_sends_internal_key_when_configured(monkeypatch):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     headers = wa_inbox_bot._rag_client_headers()
     assert headers == {"X-Internal-Key": "secret-xyz"}
 
 
 def test_rag_client_headers_omits_internal_key_and_warns_when_unset(monkeypatch, caplog):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", None)
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     with caplog.at_level("WARNING"):
         headers = wa_inbox_bot._rag_client_headers()
     assert headers == {}
     assert any("WA_MIRROR_INTERNAL_KEY not configured" in r.message for r in caplog.records)
 
 
+# ── P0-ID hardening: dedicated X-WA-Bot-Profile-Key (2026-07-24) ──
+# Distinct from X-Internal-Key by design — see agentic_rag.py's
+# `_verify_wa_inbox_bot_profile_key` for why the shared internal key alone
+# was not enough to gate persona-override resolution safely.
+
+
+def test_rag_client_headers_sends_both_keys_when_both_configured(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
+    headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {
+        "X-Internal-Key": "secret-xyz",
+        "X-WA-Bot-Profile-Key": "bot-only-secret",
+    }
+
+
+def test_rag_client_headers_omits_profile_key_and_warns_when_unset(monkeypatch, caplog):
+    """Innocence: an unset profile key degrades gracefully — the query
+    itself must still be sent (X-Internal-Key alone is enough for that),
+    only the persona-override channel is silently unavailable."""
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
+    with caplog.at_level("WARNING"):
+        headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {"X-Internal-Key": "secret-xyz"}
+    assert any("WA_INBOX_BOT_PROFILE_KEY not configured" in r.message for r in caplog.records)
+
+
 @pytest.mark.asyncio
 async def test_get_rag_client_applies_internal_key_header(monkeypatch):
-    """End-to-end: the cached client carries the X-Internal-Key header."""
+    """End-to-end: the cached client carries both service-auth headers."""
     monkeypatch.setattr(wa_inbox_bot, "_rag_client", None)
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
     monkeypatch.setattr(wa_inbox_bot, "get_rag_worker_url", lambda: "http://rag.internal:8080")
     client = await wa_inbox_bot._get_rag_client()
     try:
         assert client.headers.get("x-internal-key") == "secret-xyz"
+        assert client.headers.get("x-wa-bot-profile-key") == "bot-only-secret"
     finally:
         await client.aclose()
         wa_inbox_bot._rag_client = None
@@ -288,103 +322,66 @@ async def test_bot_generation_semaphore_bounds_concurrent_rag_calls(monkeypatch)
     assert client.post.await_count == 5
 
 
-# ── Team-assistant V1: sender-identity → RAG `profile` field ──────────────
-# Runs the REAL resolve_sender_identity (not mocked) end-to-end through
-# generate_bot_reply — only the RAG POST is mocked. Innocence contract:
-# client/unknown/db-down payloads stay byte-identical to the
-# pre-identity-wiring shape (no "profile" key at all). Guilt: a resolved
-# owner/team sender's payload carries an explicit `profile`.
+# ── P0-ID containment (2026-07-24): no client-side profile field anymore ──
+# Team-assistant V1 (2026-07-19) used to resolve the sender's identity HERE
+# and forward it as an explicit `profile` request field. That mechanism was
+# removed: the RAG router now re-derives the same identity server-side
+# (`agentic_rag.py::_resolve_trusted_wa_profile`) from `user_id`, so a
+# client-declared `profile` can never be forged. These tests assert the new
+# innocence contract: `generate_bot_reply`'s payload NEVER carries a
+# `profile` key, and NEVER calls a DB-backed identity lookup of its own,
+# regardless of whether the sender is owner/team/client/unknown or the DB
+# is down — that work is no longer this function's job.
 
 
 @pytest.mark.asyncio
-async def test_owner_number_adds_creator_profile(monkeypatch):
+@pytest.mark.parametrize(
+    ("owner_env", "team_env", "fetchrow_result", "fetchrow_error", "phone"),
+    [
+        pytest.param("62811000111", None, None, None, "62811000111", id="owner"),
+        pytest.param(
+            None, "62811000222:Test Member Alpha", None, None, "62811000222", id="team-env"
+        ),
+        pytest.param(
+            None,
+            None,
+            {"id": "tm-1", "display_name": "Test Member Beta", "email": "beta@balizero.com"},
+            None,
+            "62811000333",
+            id="team-db",
+        ),
+        pytest.param(None, None, None, None, "62899999999", id="unknown"),
+        pytest.param(
+            None,
+            None,
+            None,
+            asyncpg.PostgresError("db down"),
+            "62899999999",
+            id="db-down",
+        ),
+    ],
+)
+async def test_payload_never_carries_a_profile_key(
+    monkeypatch, owner_env, team_env, fetchrow_result, fetchrow_error, phone
+):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.setenv("WHATSAPP_OWNER_NUMBERS", "62811000111")
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    if owner_env:
+        monkeypatch.setenv("WHATSAPP_OWNER_NUMBERS", owner_env)
+    else:
+        monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    if team_env:
+        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", team_env)
+    else:
+        monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
     captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)  # env resolves before any DB lookup
+    pool = _Pool(_ROWS_NEWEST_FIRST, fetchrow_result=fetchrow_result, fetchrow_error=fetchrow_error)
 
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000111"))
-
-    assert captured["json"]["profile"] == {"role": "creator"}
-
-
-@pytest.mark.asyncio
-async def test_team_env_number_adds_team_profile(monkeypatch):
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "62811000222:Test Member Alpha")
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000222"))
-
-    assert captured["json"]["profile"] == {"role": "team", "name": "Test Member Alpha"}
-
-
-@pytest.mark.asyncio
-async def test_team_db_hit_adds_team_profile_with_email(monkeypatch):
-    """DB-resolved team hit (no env override) must include email in profile."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(
-        _ROWS_NEWEST_FIRST,
-        fetchrow_result={
-            "id": "tm-1",
-            "display_name": "Test Member Beta",
-            "email": "beta.tester@balizero.com",
-        },
-    )
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000333"))
-
-    assert captured["json"]["profile"] == {
-        "role": "team",
-        "name": "Test Member Beta",
-        "email": "beta.tester@balizero.com",
-    }
-
-
-@pytest.mark.asyncio
-async def test_client_and_unknown_payload_has_no_profile_key(monkeypatch):
-    """Innocence contract: no owner/team match → payload identical to the
-    pre-identity-wiring shape (no 'profile' key at all)."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)  # fetchrow_result=None → both lookups miss
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone=phone))
 
     sent = captured["json"]
     assert "profile" not in sent
-    assert sent == {
-        "query": "Quanto costa un KITAS?",
-        "user_id": "whatsapp_62899999999",
-        "session_id": "wa_meta_session_7",
-        "conversation_history": [
-            {"role": "user", "content": "Ciao"},
-            {"role": "assistant", "content": "Ciao! Come posso aiutarti?"},
-        ],
-        "channel": "whatsapp",
-        "max_steps": 2,
-    }
-
-
-@pytest.mark.asyncio
-async def test_identity_db_down_fails_safe_no_profile_key(monkeypatch):
-    """resolve_sender_identity fails safe to 'unknown' on a DB error — the
-    payload must stay identical, not raise, not guess a profile."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST, fetchrow_error=asyncpg.PostgresError("db down"))
-
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
-
-    assert answer == "ok"
-    assert "profile" not in captured["json"]
+    # fetchrow (team/client DB lookups) would only ever fire from a local
+    # identity resolution — asserting it was never called proves the
+    # function truly stopped resolving identity itself, not just that it
+    # happened to drop the key afterward.
+    assert pool._conn.fetchrow_calls == 0
