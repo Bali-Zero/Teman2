@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
 // Team member interface
 interface TeamMember {
   user_id: string;
@@ -59,15 +65,40 @@ const getDepartment = (email: string): string => {
   return "Operations";
 };
 
-// Mock team data for departments
+// Department identity dots — token hues, honestly mapped (identity, not status).
 const teamDepartments = [
-  { name: "Management", members: 2, color: "var(--accent)" },
-  { name: "Setup Team", members: 6, color: "#22c55e" },
-  { name: "Tax Team", members: 4, color: "#3b82f6" },
-  { name: "Advisory", members: 3, color: "#f59e0b" },
-  { name: "Operations", members: 5, color: "#8b5cf6" },
-  { name: "Marketing", members: 3, color: "#ec4899" },
+  { name: "Management", members: 2, color: "var(--bz-accent)" },
+  { name: "Setup Team", members: 6, color: "var(--state-success)" },
+  { name: "Tax Team", members: 4, color: "var(--state-info)" },
+  { name: "Advisory", members: 3, color: "var(--state-warning)" },
+  { name: "Operations", members: 5, color: "var(--bz-neon-purple)" },
+  { name: "Marketing", members: 3, color: "var(--accent-pink-editorial)" },
 ];
+
+function StatCard({
+  label,
+  value,
+  valueStyle,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueStyle?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className="p-4 rounded-xl border shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
+      style={PANEL}
+    >
+      <p className="text-sm text-[var(--bz-text-2)]">{label}</p>
+      <p
+        className="text-2xl font-bold text-[var(--bz-text-1)]"
+        style={valueStyle}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
 
 export default function TeamPage() {
   const router = useRouter();
@@ -126,8 +157,8 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Team</h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
+          <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">Team</h1>
+          <p className="text-sm text-[var(--bz-text-2)]">
             Team management, attendance and timesheet
           </p>
         </div>
@@ -145,50 +176,14 @@ export default function TeamPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
-          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
-          style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-          }}
-        >
-          <p className="text-sm text-[var(--foreground-muted)]">Team Members</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">
-            {isLoading ? "-" : totalMembers}
-          </p>
-        </div>
-        <div
-          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
-          style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-          }}
-        >
-          <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
-          <p className="text-2xl font-bold text-[var(--success)]">
-            {isLoading ? "-" : onlineCount}
-          </p>
-        </div>
-        <div
-          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
-          style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-          }}
-        >
-          <p className="text-sm text-[var(--foreground-muted)]">On Leave</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">0</p>
-        </div>
-        <div
-          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
-          style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-          }}
-        >
-          <p className="text-sm text-[var(--foreground-muted)]">Hours Today</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">0h</p>
-        </div>
+        <StatCard label="Team Members" value={isLoading ? "-" : totalMembers} />
+        <StatCard
+          label="Online Now"
+          value={isLoading ? "-" : onlineCount}
+          valueStyle={{ color: "var(--state-success)" }}
+        />
+        <StatCard label="On Leave" value="0" />
+        <StatCard label="Hours Today" value="0h" />
       </div>
 
       {/* Departments Grid */}
@@ -201,26 +196,23 @@ export default function TeamPage() {
             }
             className={`p-4 rounded-xl border shadow-xl backdrop-blur-md cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 ${
               filteredDept === dept.name
-                ? "border-[var(--accent)] ring-1 ring-[var(--accent)]"
-                : "border-[rgba(255,255,255,0.05)]"
+                ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]"
+                : "border-[var(--bz-border)]"
             }`}
-            style={{
-              background:
-                "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-            }}
+            style={{ background: PANEL.background }}
           >
             <div className="flex items-center gap-3 mb-3">
               <div
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: dept.color }}
               />
-              <h3 className="font-medium text-[var(--foreground)]">
+              <h3 className="font-medium text-[var(--bz-text-1)]">
                 {dept.name}
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[var(--foreground-muted)]" />
-              <span className="text-sm text-[var(--foreground-muted)]">
+              <Users className="w-4 h-4 text-[var(--bz-text-2)]" />
+              <span className="text-sm text-[var(--bz-text-2)]">
                 {dept.members} members
               </span>
             </div>
@@ -230,20 +222,17 @@ export default function TeamPage() {
 
       {/* Team Members List */}
       <div
-        className="rounded-xl border border-[rgba(255,255,255,0.05)] shadow-2xl backdrop-blur-xl"
-        style={{
-          background:
-            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
-        }}
+        className="rounded-xl border shadow-2xl backdrop-blur-xl"
+        style={PANEL}
       >
-        <div className="p-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between">
-          <h2 className="font-semibold text-[var(--foreground)]">
+        <div className="p-4 border-b border-[var(--bz-border)] flex items-center justify-between">
+          <h2 className="font-semibold text-[var(--bz-text-1)]">
             {filteredDept ? `${filteredDept} Members` : "Team Members"}
           </h2>
           {filteredDept && (
             <button
               onClick={() => setFilteredDept(null)}
-              className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="text-xs text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors"
             >
               Clear filter ×
             </button>
@@ -251,24 +240,24 @@ export default function TeamPage() {
         </div>
         {isLoading ? (
           <div className="p-8 text-center">
-            <UserCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50 animate-pulse" />
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <UserCircle className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50 animate-pulse" />
+            <p className="text-sm text-[var(--bz-text-2)]">
               Loading team members...
             </p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-[var(--state-danger)]">{error}</p>
           </div>
         ) : teamMembers.length === 0 ? (
           <div className="p-8 text-center">
-            <UserCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <UserCircle className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+            <p className="text-sm text-[var(--bz-text-2)]">
               No team members have clocked in yet today.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[var(--border)]">
+          <div className="divide-y divide-[var(--bz-border)]">
             {teamMembers
               .filter(
                 (m) => !filteredDept || getDepartment(m.email) === filteredDept,
@@ -276,7 +265,7 @@ export default function TeamPage() {
               .map((member) => (
                 <div
                   key={member.user_id}
-                  className="p-4 flex items-center justify-between hover:bg-[var(--background-elevated)]/50 transition-colors"
+                  className="p-4 flex items-center justify-between hover:bg-[var(--bz-glass-rim)] transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -289,33 +278,33 @@ export default function TeamPage() {
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <UserCircle className="w-10 h-10 text-[var(--foreground-muted)]" />
+                        <UserCircle className="w-10 h-10 text-[var(--bz-text-2)]" />
                       )}
                       <Circle
                         className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${
                           member.is_online
-                            ? "text-green-500 fill-green-500"
-                            : "text-gray-500 fill-gray-500"
+                            ? "text-[var(--state-success)] fill-[var(--state-success)]"
+                            : "text-[var(--bz-text-3)] fill-[var(--bz-text-3)]"
                         }`}
                       />
                     </div>
                     <div>
-                      <p className="font-medium text-[var(--foreground)]">
+                      <p className="font-medium text-[var(--bz-text-1)]">
                         {member.email.split("@")[0].charAt(0).toUpperCase() +
                           member.email.split("@")[0].slice(1)}
                       </p>
-                      <p className="text-xs text-[var(--foreground-muted)]">
+                      <p className="text-xs text-[var(--bz-text-2)]">
                         {getDepartment(member.email)} • {member.email}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p
-                      className={`text-sm font-medium ${member.is_online ? "text-green-500" : "text-[var(--foreground-muted)]"}`}
+                      className={`text-sm font-medium ${member.is_online ? "text-[var(--state-success)]" : "text-[var(--bz-text-2)]"}`}
                     >
                       {member.is_online ? "Online" : "Offline"}
                     </p>
-                    <p className="text-xs text-[var(--foreground-muted)]">
+                    <p className="text-xs text-[var(--bz-text-2)]">
                       {member.last_action_type === "clock_in"
                         ? "Clocked in"
                         : "Clocked out"}{" "}
@@ -329,8 +318,11 @@ export default function TeamPage() {
       </div>
 
       {/* Info Box */}
-      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
-        <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
+      <div
+        className="rounded-xl border border-dashed border-[var(--bz-border)] backdrop-blur-sm p-8 text-center"
+        style={{ background: PANEL.background }}
+      >
+        <p className="text-sm text-[var(--bz-text-2)] max-w-md mx-auto">
           Manage the Bali Zero team with attendance, timesheet, leave and
           permissions. View who is online and hours worked.
         </p>
