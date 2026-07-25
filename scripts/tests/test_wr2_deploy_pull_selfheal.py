@@ -40,7 +40,7 @@ def _setup_deploy_world(tmp_path: Path):
     test_wr2_runtime_stamp.py's _setup_deploy_world -- kept independent here
     so this file runs standalone)."""
     home = tmp_path / "home"
-    (home / "Desktop").mkdir(parents=True)
+    home.mkdir(parents=True, exist_ok=True)
     src = tmp_path / "src"
     src.mkdir()
     _git(src, "init", "-q", "-b", "main")
@@ -52,7 +52,7 @@ def _setup_deploy_world(tmp_path: Path):
     _git(src, "commit", "-qm", "v1")
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True)
-    deploy = home / "Desktop" / "nuzantara-deploy"
+    deploy = home / "nuzantara-deploy"
     subprocess.run(["git", "clone", "-q", str(origin), str(deploy)], check=True)
     return home, src, origin, deploy
 
@@ -74,8 +74,9 @@ def _run_pull(
     # --quiet --branch main https://github.com/Balizero1987/Teman2.git` of the
     # REAL production repo, 40-48min each, orphaned to ppid=1 when pytest's
     # 60s subprocess timeout killed only the parent bash). Root cause was TWO
-    # bugs stacking: (1) the script's DEPLOY_DIR default is `${HOME}/nuzantara-deploy`
-    # (no `/Desktop/`) -- it never matched this fixture's `deploy` path, so
+    # bugs stacking: (1) the script's DEPLOY_DIR default is `${HOME}/nuzantara-deploy`,
+    # while this fixture built its clone one level deeper, under the repo's
+    # pre-2026-07-16 `~/Desktop` home -- the paths never matched, so
     # bootstrap_deploy_clone() ran on EVERY test regardless of the dirty-state
     # being exercised; (2) SOURCE_REPO also defaults to a nonexistent
     # `${HOME}/nuzantara`, so origin resolution fell through to the hardcoded
@@ -202,7 +203,8 @@ def test_selfheal_opt_out_preserves_old_freeze_behavior(tmp_path):
 #     test in this file silently bootstrapped a fresh clone every run --
 #     never touching the pre-built `deploy` fixture -- because the script's
 #     default DEPLOY_DIR (`${HOME}/nuzantara-deploy`) never matched this
-#     fixture's `deploy` path (`${HOME}/Desktop/nuzantara-deploy`). That
+#     fixture's `deploy` path, which still sat under the repo's old
+#     pre-2026-07-16 home. Both now agree on `${HOME}/nuzantara-deploy`. That
 #     mismatch, combined with SOURCE_REPO also defaulting to a nonexistent
 #     path, is what pushed every run to the hardcoded GitHub fallback --
 #     proven live as 9 concurrent orphaned `git clone ... Teman2.git`

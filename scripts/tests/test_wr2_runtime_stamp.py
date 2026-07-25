@@ -147,7 +147,7 @@ def test_gate_strict_blocks_on_missing_head():
 def _setup_deploy_world(tmp_path):
     """origin bare repo + deploy clone under a fake HOME."""
     home = tmp_path / "home"
-    (home / "Desktop").mkdir(parents=True)
+    home.mkdir(parents=True, exist_ok=True)
     src = tmp_path / "src"
     src.mkdir()
     _git(src, "init", "-q", "-b", "main")
@@ -158,7 +158,7 @@ def _setup_deploy_world(tmp_path):
     _git(src, "commit", "-qm", "v1")
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True)
-    deploy = home / "Desktop" / "nuzantara-deploy"
+    deploy = home / "nuzantara-deploy"
     subprocess.run(["git", "clone", "-q", str(origin), str(deploy)], check=True)
     return home, src, origin, deploy
 
@@ -174,7 +174,8 @@ def _run_pull(home, origin, deploy, extra_env=None, path_prefix=None):
     env["TG_SECRETS_FILE"] = "/dev/null"
     # Hermetic clone source (same fix as test_wr2_deploy_pull_selfheal.py,
     # 2026-07-25: the script's DEPLOY_DIR default `${HOME}/nuzantara-deploy`
-    # never matched this fixture's `${HOME}/Desktop/nuzantara-deploy`, so
+    # never matched this fixture's clone, which still sat under the repo's
+    # old pre-2026-07-16 home; both now agree on the same path, so
     # every run silently re-bootstrapped and -- SOURCE_REPO also defaulting
     # to a nonexistent path -- fell back to a REAL network clone of
     # production. Proven live as 9 concurrent orphaned clones, 40-48min each.
