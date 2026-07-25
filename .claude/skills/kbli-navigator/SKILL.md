@@ -207,17 +207,68 @@ guarded file was the one that loses; `kbli-gold-all.json` is now registered too.
 - **Innocence measured on real data:** of the 45 KG nodes opening with the template sentence, **28
   are deliberately untouched and every one really does record a predecessor — 0 misses.**
 
-**NEXT AFTER THIS — L2.2, `whatYouNeed` on detached codes (censused read-only, NOT cured).**
-Of the **217** codes whose `per_skala` is detached (licensing declared unverifiable), **~41** still
-hand the reader a concrete procedure and tier as fact — e.g. `72101`: _"**Small + Medium scales:**
-Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**"_.
-**The ~41 is APPROXIMATE and must not be quoted as exact.** It came from prose matching, which
-mis-measures this class three ways, all observed: the honest-gap text ITSELF names the tier
-("The risk tier and licensing shown here earlier (Low risk, NIB-o…"), so cured records look guilty;
-the gap wording varies between records ("not yet reliably **defined**" vs "**confirmed**"), so any
-fixed disclosure regex under-counts; and the text may be Italian or English. **L2.2's selector must
-be structural** — the record's own gap state via the `_l4bali_basis` machinery — with prose matching
-used ONLY to locate the sentence to rewrite, exactly as pass A does with its template.
+**NEXT AFTER THIS — L2.2, `whatYouNeed` on gapped codes. RE-MEASURED STRUCTURALLY 2026-07-26 —
+the "~41 from prose" figure is RETIRED, and the finding it was hiding is bigger than the number.**
+
+Re-run with `_l4bali_basis.gap_basis()` as the selector (structural, as this section previously
+demanded) instead of prose matching:
+
+|                                             |                                                                                                                                                                                                         |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| gapped population                           | **218** — not 217. `disputed_key` 116 + `no_oss_scope` 101 + `detached_tier` 1. The 218th is the partial-detach case, which still has surviving rows and so is invisible to a `per_skala == []` filter. |
+| carrying `_data_note` (cured)               | **117**                                                                                                                                                                                                 |
+| cured set vs `disputed_key`+`detached_tier` | **SET-IDENTICAL**                                                                                                                                                                                       |
+| `no_oss_scope` codes ever cured             | **0**                                                                                                                                                                                                   |
+
+**That is the finding.** The `whatYouNeed` cure's scope was the disputed-key class; the **101
+`no_oss_scope` codes were never in it at all** — not partially cured, never selected. Of those 101:
+**43 name a risk tier with no gap language**, 44 are clean descriptive prose, 14 already disclose.
+
+The old "~41" was numerically close to 43 by coincidence, off the wrong population, and its
+approximate-ness masked a scope hole rather than a counting error.
+
+**The worst shape, verified in full on `79909`:** the record carries `_l2_status: no_oss_risk`,
+`_l2_source: null`, `per_skala: []`, `kategori_risiko: null` — OSS returned **no risk scope at
+all** — while the client-facing text says _"its **OSS risk class** at the large-enterprise (Besar)
+scale **is** medium-high or high"_ and concludes _"A PT PMA can pursue this code in Bali, subject to
+the standard licensing for its risk class."_ It attributes to OSS a classification OSS never
+returned, then builds a go-ahead on it. Same family as L1.2.
+
+The 43: `65123 72201 72202 79909 84113 84122 84130 84144 84146 85103 85104 85204 85314 85317 85318
+85581 85582 85583 85584 85586 85587 85589 87101 87102 87202 87302 87991 87992 87993 88101 88902
+88903 88904 88905 91421 91423 94110 94121 94122 94910 94990 97000 98100`.
+
+**META-PATTERN, third sighting — the selector is the disease.** Every cure in this programme has so
+far selected on a MARKER or a PROXY of the state rather than on the STATE: wave 1 on
+`per_skala_disputed_*`, wave 2 on `per_skala == []` (defeated by a PARTIAL detach), and this one on
+the disputed-key class (blind to `no_oss_scope`). Each time the population the tool could _see_ was
+a strict subset of the population that was _sick_. The cure is to re-derive the state with the same
+function that wrote it — which is exactly what `gap_basis()` is for, and what L2.1's
+`_whatchanged_basis.plan_text` does for its own three passes.
+
+**Cure shape is NOT mechanical — and "surgical clause removal" is RULED OUT, measured, not
+assumed.** Unlike L2.1 pass A these are not a template sentence, and a compiler must not author
+replacement prose (the constraint that left `46411`/`46631` thin). The obvious fallback — delete the
+tier-asserting clause and append a recorded gap sentence — was tested against the 43 and does not
+survive: **40 of 43 are WELDED**, i.e. the tier claim shares its sentence with a fact the reader
+still needs (PMA openness, moratorium status, `TERTUTUP`/`TERBUKA`). The 3 the check called
+"separable" are welded too on reading — the predicate just missed them. Structure: 32 records carry
+1 tier-sentence of 2, 9 carry 1 of 3, 2 are a single sentence. Deleting the clause mangles the
+paragraph; deleting the sentence removes facts the page is right to state. Example (`79909`):
+
+> _"Nationally this activity is open to foreign ownership, and in Bali it is NOT blocked by the
+> 13 May 2026 moratorium — **its OSS risk class at the large-enterprise (Besar) scale is medium-high
+> or high**, which the moratorium leaves open."_
+
+**So L2.2 is an EDITORIAL lane, not a compiler lane** — same bucket as the 95 tier-asserting texts
+and the 392 field-name narrations already in PENDING-ARMS, generator≠grader mandatory.
+
+**Lead worth chasing first:** the tier in these sentences looks like an **orphan of the detach** —
+`l4_bali.status` (`OK_or_HIGHER_RISK`, …) was derived from `per_skala` BEFORE the rows were
+detached, and the prose narrates that derived verdict. If so, this is L1.2's disease on a second
+surface, and L1.2's cure shape (structural disclosure on the derived verdict via
+`_l4bali_basis.still_certifies` / the `[derivation under review]` prefix) may apply mechanically to
+the VERDICT even though the PROSE needs an editor. Verify that provenance before designing the lane.
 
 **SUPERSEDED CENSUS (kept for the correction it records):**
 
