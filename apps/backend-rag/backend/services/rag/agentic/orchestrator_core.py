@@ -1029,6 +1029,7 @@ class OrchestratorCore:
         tool_execution_counter: dict[str, int] | None = None,
         profile: dict[str, Any] | None = None,
         max_steps: int | None = None,
+        agent_role: Any | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -1054,6 +1055,15 @@ class OrchestratorCore:
                 prepare_query_context()'s DB-keyed lookup found — the
                 caller's fields win on key conflicts. None (every caller
                 except the WA bot today) is a complete no-op.
+            agent_role: T4 unified principal (2026-07-25). The caller's
+                `AgentRole` (from `team_agent_config`), stamped onto
+                `state.agent_role` below — the SAME field
+                `_prepare_react_loop` already stamps for the
+                workspace-stream path, and the only field
+                `tool_authorizer.py` reads for RBAC. None (every caller
+                except an authenticated/trusted principal) is a complete
+                no-op — the authorizer's own backward-compat passthrough
+                fires exactly as before this parameter existed.
 
         Returns:
             CoreResult completo
@@ -1247,6 +1257,18 @@ class OrchestratorCore:
         # can self-scope. None for every caller except the WA bot's
         # team/creator senders (complete no-op elsewhere).
         state.caller_profile = user_context.get("profile")
+
+        # T4 unified principal (2026-07-25): stamp the request-scoped
+        # AgentRole onto the state the same way `_prepare_react_loop` does
+        # for the workspace-stream path. reasoning.py reads this via
+        # `getattr(state, "agent_role", None)` at every execute_tool call
+        # site regardless of which caller set it — so this sync-path stamp
+        # and the streaming-path stamp share the exact same downstream
+        # RBAC enforcement. None (the parameter's default, and every
+        # caller's value until T4 is explicitly derived and armed) is a
+        # complete no-op — `state.agent_role` stays None exactly as before
+        # this line existed.
+        state.agent_role = agent_role
 
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(

@@ -1073,6 +1073,20 @@ class Settings(BaseSettings):
     # Rotate via `fly secrets set WA_INBOX_BOT_PROFILE_KEY=...`.
     wa_inbox_bot_profile_key: str | None = None
 
+    # T4 (spec `2026-07-24-zantara-bot-consultant-assistant-spec.md` §5):
+    # unify the WhatsApp `_caller_profile` identity with the ReAct-loop
+    # `agent_role` RBAC gate (`tool_authorizer.py`). When True, a server-
+    # resolved WA sender profile (see `_resolve_trusted_wa_profile` —
+    # itself gated on `wa_inbox_bot_profile_key` above, never a request
+    # field) is mapped to the caller's `AgentRole` from
+    # `team_agent_config.TEAM_AGENTS`, so a real team member texting the
+    # bot gets their own scope instead of `agent_role=None` (which
+    # hard-denies every `SENSITIVE_TOOLS` entry — the 2026-07-21
+    # tourniquet). Default False: the derivation is dormant and every
+    # WhatsApp query behaves byte-identical to today until this is armed.
+    # Rotate/arm via `fly secrets set WA_BOT_AGENT_ROLE_ENABLED=true`.
+    wa_bot_agent_role_enabled: bool = False
+
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================
