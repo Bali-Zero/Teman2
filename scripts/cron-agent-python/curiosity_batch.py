@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +32,10 @@ import asyncpg
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 TOP_N = 10
+
+# Same contract as agent_job.py's _TG_STATUS_RE / _TG_ACCEPTED: the gateway
+# exits 0 unconditionally, so the real outcome lives on its stderr status line.
+_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
 
 
 # ---------------------------------------------------------------------------
@@ -124,23 +128,34 @@ async def send_telegram_batch(
     gateway = Path(__file__).resolve().parent.parent / "tg_notify.py"
     if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
         gateway = Path.home() / "nuzantara" / "scripts" / "tg_notify.py"
-    proc = subprocess.run(
-        [sys.executable, str(gateway), "--tier", "digest", "--source", "curiosity-batch", "--", text],
-        capture_output=True, text=True, timeout=30,
-    )
+    argv = [sys.executable, str(gateway), "--tier", "digest", "--source", "curiosity-batch"]
+    try:
+        # Message on stdin, not argv (mirrors agent_job.py's send_telegram):
+        # no argv length limit, no leading-dash ambiguity. subprocess.run
+        # inside an `async def` blocks the event loop for up to `timeout`
+        # (this file's own async-regression scar — cron-agent-python's other
+        # jobs already carry it via AgentJob.send_telegram).
+        proc = await asyncio.create_subprocess_exec(
+            *argv,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, err = await asyncio.wait_for(proc.communicate(text.encode()), timeout=30)
+    except Exception as e:
+        print(f"tg_notify gateway error (subprocess): {e}", flush=True)
+        return
     # The gateway always exits 0 by contract; the real outcome is on its
     # "tg_notify: <outcome>" STDERR line (mirrors scripts/sentinel_lib/
     # alerter.py's own parsing — returncode alone can't tell sent from
     # silently-swallowed).
-    outcome = ""
-    for line in ((proc.stderr or "") + "\n" + (proc.stdout or "")).splitlines():
-        if line.startswith("tg_notify:"):
-            outcome = line.split(":", 1)[1].strip().split(" ")[0]
+    found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
+    outcome = found.group(1) if found else ""
     if outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
         print(f"Telegram batch queued via gateway ({outcome}): {len(findings)} findings", flush=True)
     else:
         print(f"tg_notify gateway error (outcome={outcome or 'unparseable'}): "
-              f"{(proc.stderr or '')[:200]}", flush=True)
+              f"{(err or b'').decode(errors='replace')[:200]}", flush=True)
 
 
 # ---------------------------------------------------------------------------

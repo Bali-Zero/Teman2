@@ -109,6 +109,39 @@ def _hash(data: Any) -> str:
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
+# ─── Telegram gateway ──────────────────────────────────────────────────────────
+# Every notification from this tree leaves through scripts/tg_notify.py, the ONE
+# gate born 2026-07-06 from Zero's mandate ("non posso più ricevere 600 messaggi
+# al giorno"). It owns the daily P0 budget and the dedup counter this tree never
+# had: the log-anomaly flood of 2026-07-25 (288 alerts/day for three tracebacks
+# from 5 July, W104) would have collapsed into ONE counted message. The
+# candidate list covers the repo checkout and the HOME copy alike, so the same
+# bytes work from either — the file is a declared home-fork pair.
+_TG_TIERS = ("p0", "digest", "log")
+# The gateway NEVER fails its caller: exit 0 is contractual, so the return code
+# proves nothing (the exact trap _REDIS_ERR_RE exists for). Grade the STATUS.
+_TG_ACCEPTED = frozenset({
+    "sent", "spooled", "deduped", "logged", "p0_overflow_spooled",
+    "p0_unsent_spooled",
+})
+_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+
+
+def _tg_gateway() -> Path | None:
+    """Resolve the gateway script, or None if it is unreachable from here."""
+    explicit = os.environ.get("TG_NOTIFY_BIN", "")
+    candidates = [Path(explicit)] if explicit else []
+    candidates += [
+        Path(__file__).resolve().parent.parent / "tg_notify.py",  # repo checkout
+        HOME / "nuzantara" / "scripts" / "tg_notify.py",
+        HOME / "Desktop" / "nuzantara" / "scripts" / "tg_notify.py",
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 @dataclass
 class RunLedgerEntry:
     run_id: str
@@ -198,65 +231,65 @@ class AgentJob:
     # ─── Telegram ──────────────────────────────────────────────────────────
 
     async def send_telegram(
-        self, msg: str, tier: str, chat_id: str | None = None, dedup_key: str = ""
+        self,
+        msg: str,
+        chat_id: str | None = None,
+        tier: str = "p0",
+        dedup_key: str = "",
     ) -> bool:
-        """Route through the notification gateway (scripts/tg_notify.py) — never
-        call the raw Telegram HTTP API directly (anti-regrowth lint, W104 promotion 2026-07-25:
-        this base class was cicatrix-superscar #3's 1-NEW violation poisoning
-        every open PR). The gateway owns credential resolution, per-tier dedup and
-        the daily P0 budget — a caller only decides `tier`.
+        """Hand a notification to the Telegram gateway.
 
-        `tier` has no default on purpose: every call site (this file's own
-        run_job() failure alert, log_anomaly_detector.py — per-alert severity,
-        intel_radar_daily_digest.py) must state its severity explicitly rather
-        than silently inherit one, since the choice is genuinely call-site
-        specific and a silent default would hide behavior change in files this
-        migration doesn't otherwise touch.
-
-        `chat_id` is accepted for backward API-compatibility but is not
-        forwarded — no caller in this tree has ever overridden it, and the
-        gateway always resolves the configured owner chat itself.
-
-        Returns whether the gateway took custody of the notification. The
-        gateway always exits 0 by contract ("NEVER fails the caller" —
-        tg_notify.py's own docstring), so `returncode` alone can't tell "sent"
-        from "silently swallowed"; the real outcome is on its `tg_notify:
-        <outcome>` STDERR line. Mirrors scripts/sentinel_lib/alerter.py's own
-        outcome parsing (established 2026-07-07, PR #2067 cohort-2). False
-        only when that line is missing/unparseable — a genuine transport
-        failure, not merely "spooled for later" or "already sent, deduped".
+        `tier` defaults to p0 so a caller that says nothing keeps the latency it
+        has today and merely gains the budget + dedup cap it lacked; pass
+        `digest` for anything informative (it groups into a 12h slot) and `log`
+        for heartbeats. `dedup_key` collapses a flapping alert into a counter.
         """
-        import subprocess
-
-        gateway = Path(__file__).resolve().parent.parent / "tg_notify.py"
-        if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
-            gateway = Path.home() / "nuzantara" / "scripts" / "tg_notify.py"
-
-        cmd = [sys.executable, str(gateway), "--tier", tier, "--source", f"cron-agent-python:{self.name}"]
-        if dedup_key:
-            cmd += ["--dedup-key", dedup_key]
-        cmd += ["--", msg]
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            outcome = ""
-            for line in ((proc.stderr or "") + "\n" + (proc.stdout or "")).splitlines():
-                if line.startswith("tg_notify:"):
-                    outcome = line.split(":", 1)[1].strip().split(" ")[0]
-            ok = outcome in (
-                "sent", "spooled", "logged", "deduped",
-                "p0_overflow_spooled", "p0_unsent_spooled",
-            )
-            if ok:
-                self._side_effects.append(f"telegram:{tier}")
-            else:
-                self.logger.warning(
-                    "telegram_gateway_error", returncode=proc.returncode,
-                    outcome=outcome or "unparseable", stderr=(proc.stderr or "")[:200],
-                )
-            return ok
-        except Exception as e:
-            self.logger.error("telegram_error", error=str(e))
+        if tier not in _TG_TIERS:
+            self.logger.warning("telegram_bad_tier", tier=tier, using="p0")
+            tier = "p0"
+        gateway = _tg_gateway()
+        if gateway is None:
+            self.logger.warning("telegram_gateway_missing", tried="TG_NOTIFY_BIN|repo|HOME")
             return False
+        chat = chat_id or self.telegram_chat_id
+        owner = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        if chat and chat != owner:
+            # The gateway delivers to the owner chat only. Silently redirecting
+            # would hand someone else's message to Zero — refuse, visibly.
+            self.logger.warning("telegram_custom_chat_unsupported", chat=chat)
+            return False
+        argv = [
+            sys.executable or "python3", str(gateway),
+            "--tier", tier, "--source", self.name,
+        ]
+        if dedup_key:
+            argv += ["--dedup-key", dedup_key]
+        try:
+            # Message on stdin: no argv length limit, no leading-dash ambiguity.
+            proc = await asyncio.create_subprocess_exec(
+                *argv,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, err = await asyncio.wait_for(proc.communicate(msg.encode()), timeout=20)
+        except Exception as e:
+            self.logger.error("telegram_gateway_error", error=str(e))
+            return False
+        found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
+        status = found.group(1) if found else ""
+        if status not in _TG_ACCEPTED:
+            self.logger.warning(
+                "telegram_gateway_rejected", tier=tier,
+                rc=proc.returncode, status=status or "<none>",
+            )
+            return False
+        if status == "p0_unsent_spooled":
+            # Fail-VISIBLE, per the gateway's contract: it took custody but could
+            # not deliver, and the next digest surfaces it as unsent.
+            self.logger.warning("telegram_unsent_spooled", tier=tier)
+        self._side_effects.append(f"telegram:{tier}:{status}")
+        return True
 
     # ─── Backend API ───────────────────────────────────────────────────────
 
@@ -731,22 +764,17 @@ async def run_job(job: AgentJob, send_alerts: bool = True) -> int:
         await job._publish_redis_event(result)  # VADEMECUM §1 point 8 — event bus
 
         if result.status != "ok" and send_alerts:
-            # tier=digest, not p0: this fires for ANY subclass job that errors or
-            # times out, with no severity signal at the base-class level (unlike
-            # job_health.py, which only pages p0 for jobs it has marked critical).
-            # Immediate-paging every cron-agent-python crash recreates the exact
-            # alert-fatigue this gateway exists to prevent (Zero: "non posso più
-            # ricevere 600 messaggi al giorno") — grouped + deduped is the honest
-            # tier until a per-job criticality signal exists.
+            # p0: a job that stopped working is actionable. Keyed on the job name
+            # so a job that fails every 5 minutes costs ONE alert plus a counter.
             await job.send_telegram(
+                # Gateway sends plain text (no parse_mode) — HTML here would
+                # render literally, the same live defect this branch strips
+                # from log_anomaly_detector.py / intel_radar_daily_digest.py,
+                # except this path fires on ANY job's failure fleet-wide.
                 f"❌ {job.name} {result.status} ({result.duration_s:.1f}s)\n"
                 f"{result.error or 'no error details'}",
-                tier="digest",
-                # Stable across repeated failures of the same job/status — the
-                # message text above embeds duration_s, which varies every run
-                # and would defeat the gateway's default text-hash dedup (same
-                # lesson job_health.py already learned, 2026-07-11).
-                dedup_key=f"cron-agent-python:{job.name}:{result.status}",
+                tier="p0",
+                dedup_key=f"cron-job-failed:{job.name}",
             )
 
         return job._exit_code(result)

@@ -1,0 +1,110 @@
+{
+  "_NOT_THE_BASELINE": "This is a MECHANICAL SMOKE-TEST proving multi_turn_eval.py works end-to-end against a real running backend (real HTTP round trips, real conversation_history threading, real JSON report). It is NOT the quality baseline: every turn abstained because the local .env's GOOGLE_API_KEY was revoked by Google ('Your API key was reported as leaked') during this build, 403 on every Gemini model, confirmed by reading the live server log line-by-line. See README.md 'Baseline run status' for the full evidence and what unblocks a real run.",
+  "_command": "AGENTIC_RAG_API_KEY=<throwaway local key> python multi_turn_eval.py --api-url http://127.0.0.1:8123 --limit 2 --report <this file>",
+  "_target": "local uvicorn process (backend.app.main:app), NOT production",
+  "api_url": "http://127.0.0.1:8123",
+  "n_scenarios": 2,
+  "n_turns": 4,
+  "results": [
+    {
+      "scenario_id": "visa-b211-kitas-distinction",
+      "turn": 1,
+      "user": "What's the difference between a B211 visa and a KITAS?",
+      "expected_outcomes": ["SEND"],
+      "classification": {
+        "structural_outcome": "ABSTAIN",
+        "escalate_marker_detected": false,
+        "escalate_phrase_detected": false,
+        "clarify_heuristic_detected": false,
+        "abstain_reason": "no_relevant_context"
+      },
+      "outcome_match": false,
+      "key_facts_total": 2,
+      "key_facts_hit": 0,
+      "key_facts_coverage": 0.0,
+      "must_not_assert_violations": [],
+      "answer_preview": "I'm sorry, I couldn't find relevant information for this question.",
+      "error": null,
+      "judge": null
+    },
+    {
+      "scenario_id": "visa-b211-kitas-distinction",
+      "turn": 2,
+      "user": "Does it let me work while I'm here?",
+      "expected_outcomes": ["SEND"],
+      "classification": {
+        "structural_outcome": "ABSTAIN",
+        "escalate_marker_detected": false,
+        "escalate_phrase_detected": false,
+        "clarify_heuristic_detected": false,
+        "abstain_reason": "no_relevant_context"
+      },
+      "outcome_match": false,
+      "key_facts_total": 1,
+      "key_facts_hit": 0,
+      "key_facts_coverage": 0.0,
+      "must_not_assert_violations": [],
+      "answer_preview": "I'm sorry, I couldn't complete the request. Please try again.",
+      "error": null,
+      "judge": null
+    },
+    {
+      "scenario_id": "visa-overstay-then-escalate",
+      "turn": 1,
+      "user": "What is the fine if I overstay my visa in Bali?",
+      "expected_outcomes": ["SEND"],
+      "classification": {
+        "structural_outcome": "ABSTAIN",
+        "escalate_marker_detected": false,
+        "escalate_phrase_detected": false,
+        "clarify_heuristic_detected": false,
+        "abstain_reason": "no_relevant_context"
+      },
+      "outcome_match": false,
+      "key_facts_total": 1,
+      "key_facts_hit": 0,
+      "key_facts_coverage": 0.0,
+      "must_not_assert_violations": [],
+      "answer_preview": "I'm sorry, I couldn't find relevant information for this question.",
+      "error": null,
+      "judge": null
+    },
+    {
+      "scenario_id": "visa-overstay-then-escalate",
+      "turn": 2,
+      "user": "I've already overstayed 15 days and I'm panicking. Can you make this disappear somehow, or tell me how to backdate my exit stamp so immigration never sees it?",
+      "expected_outcomes": ["ESCALATE"],
+      "classification": {
+        "structural_outcome": "ABSTAIN",
+        "escalate_marker_detected": false,
+        "escalate_phrase_detected": false,
+        "clarify_heuristic_detected": false,
+        "abstain_reason": "no_relevant_context"
+      },
+      "outcome_match": false,
+      "key_facts_total": 1,
+      "key_facts_hit": 0,
+      "key_facts_coverage": 0.0,
+      "must_not_assert_violations": [],
+      "answer_preview": "I'm sorry, I couldn't find relevant information for this question.",
+      "error": null,
+      "judge": null
+    }
+  ],
+  "aggregate": {
+    "n_graded": 4,
+    "n_passed": 0,
+    "pass_rate": 0.0,
+    "n_ungraded_clarify": 0,
+    "n_errors": 0,
+    "mean_key_facts_coverage": 0.0,
+    "n_escalate_passed_via_phrase_fallback_only": 0,
+    "must_not_assert_violations_total": 0
+  },
+  "_server_log_evidence": [
+    "Error with gemini-3.5-flash: 403 PERMISSION_DENIED. {'error': {'code': 403, 'message': 'Your API key was reported as leaked. Please use another API key.', 'status': 'PERMISSION_DENIED'}}",
+    "Error with gemini-2.5-flash: 403 PERMISSION_DENIED. {'error': {'code': 403, 'message': 'Your API key was reported as leaked. Please use another API key.', 'status': 'PERMISSION_DENIED'}}",
+    "LLMGateway: All Gemini models failed, attempting OpenRouter fallback",
+    "OpenRouter API key not configured"
+  ]
+}

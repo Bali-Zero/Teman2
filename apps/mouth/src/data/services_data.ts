@@ -4,12 +4,19 @@ import { Globe, Building2, Calculator, Home } from "lucide-react";
 export interface ServicePackage {
   name: string;
   description: string;
+  /** Static fallback price (rendered as-is when no live price is available —
+   *  never blank, never a spinner: see `livePriceKey`). */
   price: string;
   features: string[];
   popular: boolean;
   /** Optional deep-link to a dedicated landing page (rendered in the
    *  pricing modal below the WhatsApp CTA). */
   link?: { href: string; label: string };
+  /** Optional PricingTool SSOT key (matches
+   *  `bali_zero_official_prices_2026.json`) — when set, the renderer wires
+   *  this package to `usePricingData(livePriceKey)` via SWR and falls back
+   *  to the static `price` literal above if the live fetch has nothing. */
+  livePriceKey?: string;
 }
 
 export interface ServiceData {
@@ -403,7 +410,11 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       {
         name: "E33 - Second Home Visa",
         description: "Long-term residence (USD 130k+ deposit) — all-inclusive",
-        price: "39.000.000",
+        // Fallback only — live value comes from PricingTool via livePriceKey
+        // below. Format ("IDR 39,000,000") matches the canonical string used
+        // on the /visa/second-home landing page and PRICING_FALLBACK.
+        price: "IDR 39,000,000",
+        livePriceKey: "E33 Second Home (5 Years)",
         features: [
           "Up to 5 years initial validity",
           "No sponsor required",

@@ -57,7 +57,7 @@ def test_send_telegram_p0_reaches_dry_run_delivery(monkeypatch, tmp_path):
     assert "hello from test" in json.loads(sent[0])["text"]
     state = json.loads((tmp_path / "state.json").read_text())
     assert "test-key-p0" in state["dedup"]
-    assert f"telegram:p0" in job._side_effects
+    assert "telegram:p0:sent" in job._side_effects
 
 
 def test_send_telegram_digest_spools_instead_of_sending(monkeypatch, tmp_path):
@@ -86,9 +86,10 @@ def test_send_telegram_digest_spools_instead_of_sending(monkeypatch, tmp_path):
 
 def test_run_job_failure_alert_uses_stable_dedup_key(monkeypatch, tmp_path):
     """run_job()'s own failure path (the flagged call site) must key dedup on
-    job+status, never on the message text (which embeds duration_s and would
-    defeat dedup on every retry — the exact lesson job_health.py already
-    learned, 2026-07-11)."""
+    the job name alone, never on the message text (which embeds duration_s
+    and would defeat dedup on every retry — the exact lesson job_health.py
+    already learned, 2026-07-11). tier is p0: a job that stopped working is
+    actionable — see agent_job.py's own comment at the call site."""
     import agent_job
     import importlib
     importlib.reload(agent_job)
@@ -101,7 +102,7 @@ def test_run_job_failure_alert_uses_stable_dedup_key(monkeypatch, tmp_path):
         async def run(self):
             raise RuntimeError("boom")
 
-        async def send_telegram(self, msg, tier, chat_id=None, dedup_key=""):
+        async def send_telegram(self, msg, chat_id=None, tier="p0", dedup_key=""):
             calls.append({"msg": msg, "tier": tier, "dedup_key": dedup_key})
             return True
 
@@ -124,28 +125,44 @@ def test_run_job_failure_alert_uses_stable_dedup_key(monkeypatch, tmp_path):
     _run(agent_job.run_job(job, send_alerts=True))
 
     assert len(calls) == 1
-    assert calls[0]["tier"] == "digest"
-    assert calls[0]["dedup_key"] == "cron-agent-python:test-fake-job-failure:error"
+    assert calls[0]["tier"] == "p0"
+    assert calls[0]["dedup_key"] == "cron-job-failed:test-fake-job-failure"
     assert "duration_s" not in calls[0]["dedup_key"]
+    assert "<b>" not in calls[0]["msg"] and "<code>" not in calls[0]["msg"]
+
+
+class _FakeAsyncProc:
+    """Stands in for asyncio.subprocess.Process — the gateway subprocess is
+    now spawned via asyncio.create_subprocess_exec (async-regression fix,
+    2026-07-26: subprocess.run inside an `async def` blocked the event loop
+    for up to the call's timeout; main's #3142 fixed this in send_telegram,
+    curiosity_batch.py carried the same defect independently until this
+    branch)."""
+
+    def __init__(self, stderr: bytes = b""):
+        self._stderr = stderr
+        self.returncode = 0
+
+    async def communicate(self, input=None):
+        return b"", self._stderr
 
 
 def test_send_telegram_unparseable_gateway_output_is_not_ok(monkeypatch):
     """The gateway exits 0 by contract even on its own internal failures
     ("NEVER fails the caller") — returncode alone can't distinguish a real
-    send from a swallowed one. A run whose stdout/stderr never carries a
+    send from a swallowed one. A run whose stderr never carries a
     `tg_notify: <outcome>` line is the one case that must come back False."""
     import agent_job
     import importlib
-    import subprocess as _subprocess
     importlib.reload(agent_job)
 
     class _FakeJob(agent_job.AgentJob):
         name = "test-fake-job-unparseable"
 
-    def _fake_run(cmd, **kwargs):
-        return _subprocess.CompletedProcess(cmd, returncode=0, stdout="", stderr="")
+    async def _fake_create_subprocess_exec(*args, **kwargs):
+        return _FakeAsyncProc(stderr=b"")
 
-    monkeypatch.setattr("subprocess.run", _fake_run)
+    monkeypatch.setattr("asyncio.create_subprocess_exec", _fake_create_subprocess_exec)
 
     job = _FakeJob()
     ok = _run(job.send_telegram("hello", tier="p0"))
@@ -160,17 +177,21 @@ def test_send_telegram_recognizes_every_gateway_outcome(monkeypatch):
     parsing (established 2026-07-07)."""
     import agent_job
     import importlib
-    import subprocess as _subprocess
     importlib.reload(agent_job)
 
     class _FakeJob(agent_job.AgentJob):
         name = "test-fake-job-outcomes"
 
-    for outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
-        def _fake_run(cmd, _outcome=outcome, **kwargs):
-            return _subprocess.CompletedProcess(cmd, returncode=0, stdout="", stderr=f"tg_notify: {_outcome}\n")
+    def _make_fake_create(stderr: bytes):
+        async def _fake_create_subprocess_exec(*args, **kwargs):
+            return _FakeAsyncProc(stderr=stderr)
+        return _fake_create_subprocess_exec
 
-        monkeypatch.setattr("subprocess.run", _fake_run)
+    for outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
+        monkeypatch.setattr(
+            "asyncio.create_subprocess_exec",
+            _make_fake_create(f"tg_notify: {outcome}\n".encode()),
+        )
         job = _FakeJob()
         assert _run(job.send_telegram("hello", tier="p0")) is True, outcome
 
@@ -203,6 +224,35 @@ def test_log_anomaly_compose_alert_is_plain_text():
         {"severity": "RED", "label": "fatal_error", "source": "x", "sample": "boom"}
     ])
     assert "<b>" not in msg and "<code>" not in msg and "<i>" not in msg
+
+
+def test_curiosity_batch_send_telegram_batch_reaches_dry_run_delivery(monkeypatch, tmp_path):
+    """curiosity_batch.py's own gateway call (this branch's async-regression
+    fix, mirrors agent_job.py's pattern) actually reaches the gateway's
+    spool path, not just exit-0 — same proof standard as the p0/digest tests
+    above. tier=digest spools to pending.jsonl, never sends immediately."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")  # read at import time
+    import curiosity_batch as cb
+    import importlib
+    importlib.reload(cb)
+
+    monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path))
+    monkeypatch.setenv("TG_DRY_RUN", "1")
+    monkeypatch.setenv("TG_SECRETS_FILE", "/dev/null")
+
+    findings = [{
+        "source": "pattern_mining", "question": "why does X happen?",
+        "finding": "because Y", "actionable": True,
+        "information_gain": 0.9, "created_at": None,
+    }]
+    stats = {"total": 1, "actionable_cnt": 1, "last_finding_at": None}
+
+    _run(cb.send_telegram_batch(findings, stats))
+
+    pending = (tmp_path / "pending.jsonl").read_text().strip().splitlines()
+    assert len(pending) == 1
+    assert "why does X happen?" in json.loads(pending[0])["text"]
+    assert not (tmp_path / "sent-dry.jsonl").exists()
 
 
 def test_intel_radar_compose_message_is_plain_text():

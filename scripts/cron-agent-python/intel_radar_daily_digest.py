@@ -123,9 +123,9 @@ class IntelRadarDailyDigestJob(AgentJob):
                     output=f"dry_run: {len(rows)} rows",
                 )
 
-            # Send Telegram. tier=digest: a scheduled daily report is exactly
-            # tg_notify.py's "informative" tier by name and by content — never
-            # actionable-now.
+            # Send Telegram. A daily intel digest is informative, never
+            # actionable-now: it belongs in the gateway's grouped slot, not in
+            # the P0 budget that prod incidents need.
             ok = await self.send_telegram(msg, tier="digest")
             self.log_step(
                 "telegram_send",
