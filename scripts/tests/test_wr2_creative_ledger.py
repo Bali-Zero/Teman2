@@ -643,3 +643,107 @@ def test_plan_deck_empty_hint_leaves_prompt_without_hint_block() -> None:
         pw.plan_deck("BRIEF", "breaking", ["news_alert"], call_fn, max_retries=1)
     assert seen
     assert "ENGAGEMENT HINT" not in seen[0]
+
+
+# ── materiality bar (+25%, Zero 2026-07-25) ──────────────────────────────────
+
+
+def test_a_marginal_edge_over_the_baseline_is_not_named(tmp_path) -> None:
+    """GUILT: the exact hole the >baseline version shipped with — 30 posts at
+    5,000 and 3 at 5,100 would name the 3-post value on a +2% edge. It clears
+    `> corpus_median` and must NOT clear the materiality bar."""
+    posts = (
+        [_post(reach=5000, tone="the-whole-corpus") for _ in range(30)]
+        + [_post(reach=5100, tone="marginal-winner") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert abs(ae.corpus_median - 5000) < 1
+    # It IS ranked first, and it DOES beat the bare baseline…
+    assert ae.by_axis["tone_register_primary"][0][0] == "marginal-winner"
+    assert 5100 > ae.corpus_median
+    # …but +2% is not a finding.
+    assert ae.above_baseline("tone_register_primary") == []
+    assert "marginal-winner" not in wcl.build_engagement_hint(ae)
+
+
+def test_a_material_edge_is_still_named(tmp_path) -> None:
+    """INNOCENCE: the bar must not silence a real signal. Same shape, real gap."""
+    posts = (
+        [_post(reach=5000, tone="the-whole-corpus") for _ in range(30)]
+        + [_post(reach=9000, tone="genuine-winner") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert [v for v, _, _ in ae.above_baseline("tone_register_primary")] == ["genuine-winner"]
+    assert "genuine-winner" in wcl.build_engagement_hint(ae)
+
+
+def test_the_bar_is_exclusive_at_exactly_the_multiplier(tmp_path) -> None:
+    """EDGE: sitting exactly ON the bar is not beating it (strict `>`), and one
+    reach unit above it is. Pins the comparison operator, not just the constant."""
+    base = 1000.0
+    bar = base * wcl._MATERIALITY_MULTIPLIER
+    posts = (
+        [_post(reach=base, tone="corpus") for _ in range(9)]
+        + [_post(reach=bar, tone="exactly-on-the-bar") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert abs(ae.corpus_median - base) < 1
+    assert ae.above_baseline("tone_register_primary") == []
+
+    posts2 = (
+        [_post(reach=base, tone="corpus") for _ in range(9)]
+        + [_post(reach=bar + 1, tone="just-over-the-bar") for _ in range(3)]
+    )
+    ae2 = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts2))
+    assert [v for v, _, _ in ae2.above_baseline("tone_register_primary")] == ["just-over-the-bar"]
+
+
+def test_hint_states_the_bar_and_never_calls_a_listed_value_marginal(tmp_path) -> None:
+    """The prompt must size the claim. It must NOT keep saying values may beat
+    the baseline 'only marginally' — with the bar armed that is false, and it
+    would tell the planner to discount exactly the material ones."""
+    posts = (
+        [_post(reach=1000, tone="corpus", layout="dark-status-list") for _ in range(9)]
+        + [_post(reach=9000, tone="strong", layout="statement-bomb") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    hint = wcl.build_engagement_hint(ae)
+    pct = int(round((wcl._MATERIALITY_MULTIPLIER - 1) * 100))
+    assert f"at least {pct}%" in hint, "the bar must be stated, not implied"
+    assert "only marginally" not in hint
+    # Absence is explained, so the planner does not read a silent axis as "no data".
+    assert "withheld as noise" in hint
+
+
+def test_one_axis_can_go_silent_while_the_other_survives_the_bar(tmp_path) -> None:
+    """The MEASURED consequence Zero accepted on 2026-07-25, pinned so it cannot
+    regress silently.
+
+    On the real corpus (50 posts, baseline 2,288) the best TONE — `militante`,
+    median 2,835 — sits at 1.24x and misses the +25% bar by 26 reach, while the
+    LAYOUT axis is untouched (statement-bomb 7.99x). The two axes are
+    INDEPENDENT groupings over the same posts, so a two-arm fixture cannot
+    reproduce it; this reproduces the measured RATIO instead (1,240 over a
+    baseline of 1,000 = the same 1.24x), which is what the assertion is about.
+    Lower the bar and this test says so."""
+    posts = (
+        # bulk: sets the corpus baseline at 1,000
+        [_post(reach=1000, layout="dark-status-list", tone="analitico") for _ in range(9)]
+        # top tone — beats the baseline, misses the bar (the real militante shape)
+        + [_post(reach=1240, layout="qa-dialogue", tone="militante") for _ in range(3)]
+        # a genuinely strong LAYOUT, whose tones are singletons (n<_MIN_AXIS_SAMPLES)
+        # so they are noise-guarded out and cannot rescue the tone axis
+        + [_post(reach=8000, layout="statement-bomb", tone=f"one-off-{i}") for i in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert abs(ae.corpus_median - 1000) < 1
+
+    tone_rows = {v: m for v, m, _ in ae.by_axis["tone_register_primary"]}
+    assert tone_rows["militante"] > ae.corpus_median, "it DOES beat the bare baseline…"
+    assert tone_rows["militante"] < ae.corpus_median * wcl._MATERIALITY_MULTIPLIER, "…not the bar"
+    assert ae.above_baseline("tone_register_primary") == [], "tone axis goes silent"
+
+    hint = wcl.build_engagement_hint(ae)
+    assert "militante" not in hint
+    assert "statement-bomb" in hint, "the layout signal must survive the bar"
+    assert "qa-dialogue" not in hint, "1.24x does not earn the word on either axis"

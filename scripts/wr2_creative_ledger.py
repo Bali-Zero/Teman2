@@ -306,6 +306,15 @@ _PLANNER_HINT_AXES: tuple[str, ...] = ("layout_family_primary", "tone_register_p
 _MIN_AXIS_SAMPLES = 3
 # Cap how many high performers we name per axis in the hint (keep it a nudge).
 _HINT_TOP_N = 2
+# How far above the corpus baseline a value must sit before it earns the word
+# "higher-reaching". Beating the typical post by a hair is not a finding — with
+# n=8 samples a few percent is inside the noise. Zero's call, 2026-07-25: +25%.
+# MEASURED CONSEQUENCE on the corpus of the day (50 posts, baseline 2,288):
+# layout is untouched (statement-bomb 7.99x, qa-dialogue 2.05x — the real
+# signals), and the TONE axis goes silent, because its best value `militante`
+# sits at 1.24x — it misses the bar by 26 reach. That silence is the point:
+# a tone that reaches like a typical post is not a tone worth nudging toward.
+_MATERIALITY_MULTIPLIER = 1.25
 
 
 @dataclass(frozen=True)
@@ -329,7 +338,7 @@ class AxisEngagement:
         return (self.by_axis.get(axis) or [])[:n]
 
     def above_baseline(self, axis: str, n: int = _HINT_TOP_N) -> list[tuple[str, float, int]]:
-        """Top-n values that actually BEAT the corpus median.
+        """Top-n values that beat the corpus median by a MATERIAL margin.
 
         Ranking alone is not evidence of strength: the top-2 of a weak axis are
         still the top-2. Measured 2026-07-25 on the real corpus — `analitico`
@@ -345,21 +354,21 @@ class AxisEngagement:
             is structurally unnameable: it defines the baseline it would have to
             beat. Defensible (it has no contrast to be better THAN), but it means
             absence here is NOT evidence of weakness;
-          - there is NO materiality threshold. 30 posts at 5,000 + 3 at 5,100
-            names the 3-post value on a +2% edge. Mitigated, not eliminated, by
-            the hint stating the baseline, the n, and "only marginally" inline —
-            the planner is given what it needs to discount it. A minimum edge
-            (e.g. >=1.25x baseline) would close it, but on the real corpus that
-            bar would also silence the tone axis entirely (militante 2,835 vs a
-            2,288 baseline = +24%), so WHERE to put it is an EDITORIAL call for
-            Zero, not a statistical one. Ledgered, deliberately not decided here.
+          - the materiality bar is a JUDGEMENT, not a derivation. Zero set it at
+            `_MATERIALITY_MULTIPLIER` (+25%) on 2026-07-25, closing the hole the
+            first version shipped with: a bare `> baseline` names a 3-post value
+            on a +2% edge over 30 posts. There is no statistical procedure that
+            hands you 1.25 — it is an editorial statement about how large an
+            edge has to be before it is worth steering on, and it is deliberately
+            NOT tuned per axis (a per-axis bar would be fitted to this corpus).
 
         `corpus_median == 0.0` means "baseline unknown" (cold corpus, or a
         non-finite median guarded upstream) and degrades to rank-only — exactly
         the pre-baseline behaviour, never a raise."""
         rows = self.by_axis.get(axis) or []
         if self.corpus_median > 0:
-            rows = [r for r in rows if r[1] > self.corpus_median]
+            bar = self.corpus_median * _MATERIALITY_MULTIPLIER
+            rows = [r for r in rows if r[1] > bar]
         return rows[:n]
 
     @property
@@ -494,12 +503,18 @@ def build_engagement_hint(ae: AxisEngagement) -> str:
         lines.append(f"  - higher-reaching {_AXIS_LABEL.get(axis, axis)}: {named}")
     if not lines:
         return ""
-    # State the corpus baseline so a value that merely TIES the typical post
-    # cannot read as a winner (militante measured 2,835 vs a 2,288 corpus median
-    # — "higher-reaching" would badly overstate a 24% edge without this line).
+    # State the corpus baseline AND the bar, so the planner can size the claim
+    # instead of taking "higher-reaching" on trust. The wording tracks
+    # `_MATERIALITY_MULTIPLIER`: saying "some beat it only marginally" was true
+    # of the >baseline version and became a LIE the moment the bar rose — the
+    # prompt would have told the planner to discount exactly the values now
+    # guaranteed material.
+    _pct = int(round((_MATERIALITY_MULTIPLIER - 1) * 100))
     baseline = (
         f" For scale, the TYPICAL post in this corpus reaches ~{int(ae.corpus_median):,}; "
-        "only values that actually beat that are listed, and some beat it only marginally."
+        f"only values reaching at least {_pct}% above that are listed — anything "
+        "closer to typical is withheld as noise, so an axis may be absent here "
+        "simply because nothing beat the bar."
         if ae.corpus_median > 0
         else ""
     )
