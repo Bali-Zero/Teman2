@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FamilyLoading() {
   return (
@@ -16,8 +16,8 @@ export default function FamilyLoading() {
             key={i}
             className="rounded-lg border p-4 flex items-center gap-3"
             style={{
-              background: 'rgba(30,30,35,0.7)',
-              borderColor: 'rgba(255,255,255,0.05)',
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           >
             <Skeleton variant="circular" width={36} height={36} />

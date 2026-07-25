@@ -275,6 +275,7 @@ def _build_planner_prompt(
     liveness_tier: str | None,
     recent_arcs: list[str],
     priors: dict[str, float],
+    engagement_hint: str = "",
 ) -> str:
     tier = (liveness_tier or "").strip().lower()
     count_guidance = _PLANNER_SLIDE_COUNT_GUIDANCE.get(tier, _DEFAULT_SLIDE_COUNT_GUIDANCE)
@@ -299,7 +300,7 @@ ARC LIBRARY — the 7 ratified arcs (spec §8), each a sequence of slide ROLES:
 CHI PROPONE != CHI DISPONE: the soft prior weights above come from code — YOU choose the arc FROM
 THE CONTENT, within them. A high-prior arc that does not fit this story is still the wrong choice;
 a low-prior arc the content genuinely demands is still the right one. The weights nudge, they never
-decide for you.
+decide for you.{engagement_hint}
 
 OUTPUT — ONE JSON object, exactly these fields, nothing else:
 {{
@@ -341,6 +342,7 @@ def plan_deck(
     call_fn: Callable[[str], str],
     max_retries: int = 3,
     reward_by_arc: dict[str, float] | None = None,
+    engagement_hint: str = "",
 ) -> ir.DeckPlan:
     """Run the planner stage: build the priors + prompt, validate-and-retry
     against `wr2_carousel_ir.DeckPlan` (reusing `extract_json_from_codeblock`,
@@ -351,9 +353,15 @@ def plan_deck(
 
     `reward_by_arc` (default None) is the DORMANT Creative-Ledger reward
     socket threaded into `build_arc_priors` — empty/None today, byte-identical
-    to the pre-Fase-4 path (spec §Mossa-D)."""
+    to the pre-Fase-4 path (spec §Mossa-D).
+
+    `engagement_hint` (default "") is the Fase-4b per-axis SOFT nudge built from
+    the review queue's published history (`wr2_creative_ledger.build_engagement_
+    hint`); empty string → prompt byte-identical to the no-hint path."""
     priors = build_arc_priors(recent_arcs, liveness_tier, reward_by_arc)
-    prompt = _build_planner_prompt(brief_ctx, liveness_tier, recent_arcs, priors)
+    prompt = _build_planner_prompt(
+        brief_ctx, liveness_tier, recent_arcs, priors, engagement_hint
+    )
 
     ctx = prompt
     last_raw = ""

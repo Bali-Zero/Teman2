@@ -1,0 +1,818 @@
+{
+  "_meta": {
+    "purpose": "GARUDA-FILIERA l4_bali disclosure cure, wave 2: codes whose Bali verdict is derived from a risk/scale layer that is a declared gap, while the record still certifies that verdict (confidence != LOW or needs_review != true). Wave 1 (l4bali_disclosure_2026_07_19.json) selected on the presence of a per_skala_disputed_* marker and so could not see the codes detached without one.",
+    "created": "2026-07-25",
+    "emitted_by": "scripts/kbli_filiera/emit_l4bali_gap_disclosure_spec.py",
+    "canonical_source": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "selection": "l4_bali.status in RISK_DERIVED_STATUSES AND the layer that status derives from is dead — per_skala == [] with a corroborating signal (per_skala_disputed_* present, or _l2_status == 'no_oss_risk'), OR a PARTIAL detach where rows survive but the stored status no longer follows from them — AND the record still certifies (structural only — no prose matching)",
+    "editorial_residue": {
+      "measured": "95 of 95 codes in this spec carry intel_2026 prose that states a risk tier as FACT (e.g. 'as a medium-high/high-risk activity'). This cure deliberately does not touch editorial prose — it only discloses l4_bali.",
+      "consequence": "on those pages the article body and the Bali badge now disagree: the badge reads 'derivation under review', the prose still asserts the tier.",
+      "detection": "prose matching — sound for BOOKKEEPING, and never used to select a record for cure (selection is structural only).",
+      "owner": "editorial rewrite lane — tracked in modus PENDING-ARMS"
+    },
+    "hard_rule": "Changes ONLY l4_bali.confidence -> LOW, l4_bali.needs_review -> true, and l4_bali.reason (disclosure-wrapped, original preserved verbatim as an audit-trail substring). l4_bali.status and l4_bali.blocked are NEVER modified — flipping either would be a re-derivation requiring the true risk tier (F15: the conservative posture stays)."
+  },
+  "codes": {
+    "47771": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "52211": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "64995": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "65123": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "70100": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "72101": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "72103": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "72105": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "72201": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "72202": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "75001": {
+      "gap_basis": "disputed_key",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "75002": {
+      "gap_basis": "disputed_key",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "75009": {
+      "gap_basis": "disputed_key",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Menengah Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "77397": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "78109": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "79909": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "82911": {
+      "gap_basis": "disputed_key",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "85103": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85104": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85203": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85204": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85313": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85314": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85317": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85318": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85323": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "85324": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "85330": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "85404": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "85581": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85582": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85583": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85584": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85585": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85586": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85587": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85589": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85691": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "85692": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "86109": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "86203": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "87101": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87102": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87202": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87302": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87991": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87992": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "87993": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88101": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88102": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88901": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88902": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88903": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88904": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "88905": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "90111": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "90113": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "90391": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "91212": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "91222": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "91300": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "91421": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "91422": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "91423": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "91424": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "91425": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "91426": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "93113": {
+      "gap_basis": "disputed_key",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93114": {
+      "gap_basis": "detached_tier",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "93115": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93121": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93122": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93123": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93124": {
+      "gap_basis": "disputed_key",
+      "expected_status": "APERTO_BALI_RISCHIO_ALTO",
+      "expected_reason": "Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": false,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93125": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93126": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93127": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93128": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row (only Mikro/Kecil/Menengah) -> a PT PMA (Besar by law, Omnibus UU 6/2023) is barred by OSS-RBA scale-gating (PP 28/2025 Pasal 127). Verified NB-3 30 June 2026.",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93129": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93192": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93193": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_MORATORIA_BALI",
+      "expected_reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 28 June 2026]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93194": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93195": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93197": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "93199": {
+      "gap_basis": "disputed_key",
+      "expected_status": "CHIUSO_PMA_NO_BESAR",
+      "expected_reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "disputed_key": "per_skala_disputed_pp28_collision"
+    },
+    "94110": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94121": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94122": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94200": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94910": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94920": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "94990": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "97000": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "98100": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    },
+    "98200": {
+      "gap_basis": "no_oss_scope",
+      "expected_status": "OK_or_HIGHER_RISK",
+      "expected_reason": "medium-high/high risk → not blocked by moratorium (verify per address)",
+      "expected_confidence": "MEDIUM",
+      "expected_needs_review": false,
+      "expected_blocked": false
+    }
+  }
+}
