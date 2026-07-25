@@ -26,6 +26,19 @@ assignment-target pattern (`sha256|cdhash|codex_wrapper|codex_package`), so
 the corpus below proves both halves: the 18 real findings get approved
 (guilt) AND an unrelated secret on some other line in the SAME files does
 not (innocence).
+
+HARDENING (same-day cross-family review, 2026-07-26): the first version of
+CONTENT_KEYED_RULES matched on the assignment TARGET name only, leaving the
+VALUE unconstrained — a real credential assigned to `sha256=`/`cdhash=`
+would have been approved on name alone, and Python's `;`-separated
+statements meant a legitimate pin followed by a second, unrelated secret
+assignment on the same line would ride along under the same line_number
+match. The rule now also requires the value to be exactly the pin's hex
+digest shape (64 lowercase hex chars for sha256/codex_wrapper/codex_package,
+40 for cdhash), end-anchored to the line (optional trailing comma). Two
+more innocence cases below prove both holes are closed; the existing guilt
+cases (still passing) prove the fix didn't reintroduce the opposite
+failure — a real digest getting rejected because the anchor now bites.
 """
 
 from __future__ import annotations
@@ -127,3 +140,32 @@ def test_innocence_other_file_with_sha256_assignment_not_approved() -> None:
     auto, reason = classify("scripts/some_other_script.py", 210)
     assert not auto
     assert reason == "no rule matched"
+
+
+# --- HARDENING (2026-07-26 review): value-shape + end-anchor -------------
+
+
+def test_innocence_pin_key_with_non_hex_value_not_approved() -> None:
+    """A real credential assigned to a pin-named key (`sha256=`) must NOT
+    be approved on the key name alone — the value has to actually be a
+    64/40-char lowercase-hex digest. `ghp_...` is GitHub's real token
+    prefix shape: alnum, not hex, wrong length."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[0]
+    fake_token_line = (
+        '        sha256="ghp_1234567890abcdefghijklmnopqrstuvwxyzABCD",\n'
+    )
+    assert content_pat.search(fake_token_line) is None
+
+
+def test_innocence_pin_followed_by_second_statement_not_approved() -> None:
+    """Python allows `;`-separated statements on one line — a legitimate
+    pin assignment followed by an unrelated secret assignment on the SAME
+    line must not ride along under the pin's approval. The end-anchor
+    (optional trailing comma, then end-of-line) breaks on anything after
+    the pin's closing quote."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[0]
+    compound_line = (
+        '        sha256="d01b49210d72ecbe277a2665d104bacccddf2d22185be99446d2929e0edfc48d"'
+        '; api_key="sk-realsecretvalue1234567890ABCDEF"\n'
+    )
+    assert content_pat.search(compound_line) is None

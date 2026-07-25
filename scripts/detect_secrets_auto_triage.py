@@ -57,17 +57,41 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
     # dict of wrapper/package content hashes for the same purpose. These are
     # public integrity anchors — anyone can recompute them from the signed
     # binary — never credentials; removing them would weaken the check they
-    # implement, not improve security. Content-keyed on the exact assignment
-    # target names actually seen in these two files (verified 2026-07-26),
-    # not on hex shape alone.
+    # implement, not improve security.
+    #
+    # Content-keyed on assignment target NAME *and* VALUE SHAPE, with the
+    # match anchored to end-of-line (optional trailing comma): the whole
+    # line must be exactly `<key><:|=> "<hex>"[,]`. This closes two holes a
+    # target-name-only version had (found in review, 2026-07-26):
+    #   1. `sha256="ghp_<realtoken>"` — a real credential assigned to a pin
+    #      name would have been approved on name alone; the value must now
+    #      be exactly 64 (sha256/codex_wrapper/codex_package) or 40 (cdhash)
+    #      lowercase hex characters.
+    #   2. `sha256="<hash>"; api_key="<realsecret>"` — Python allows
+    #      `;`-separated statements on one line, so a second assignment
+    #      after a legitimate pin used to ride along under the same
+    #      line_number/key-name match. The end-anchor breaks this: anything
+    #      after the pin's closing quote+comma fails the match.
+    #
+    # HONEST LIMIT (not closed by this rule, not closeable by any regex):
+    # a live 64-hex or 40-hex credential pasted directly into a pin's value
+    # slot is byte-indistinguishable from a real digest — no shape check can
+    # tell them apart. This rule narrows the approved surface from "any
+    # secret on a pin-named line" to "only a value that is exactly the
+    # digest length/alphabet", it does not make forgery structurally
+    # impossible.
     (
         re.compile(
-            r"(^|/)scripts/(check_worker_plane_review|launch_worker_plane_review_panel)\.py$"
+            r"^scripts/(check_worker_plane_review|launch_worker_plane_review_panel)\.py$"
         ),
-        re.compile(r'^\s*"?(sha256|cdhash|codex_wrapper|codex_package)"?\s*[:=]'),
+        re.compile(
+            r'^\s*"?(?:sha256|codex_wrapper|codex_package)"?\s*[:=]\s*"[0-9a-f]{64}"\s*,?\s*$'
+            r'|^\s*"?cdhash"?\s*[:=]\s*"[0-9a-f]{40}"\s*,?\s*$'
+        ),
         "worker-plane review panel: sha256/cdhash code-signing identity pins "
         "and PRODUCTION_ARTIFACT_SHA256 content hashes for production CLI "
-        "binaries — public integrity anchors, not credentials",
+        "binaries — public integrity anchors, not credentials (value must be "
+        "exactly the digest's hex shape, end-anchored to the line)",
     ),
 ]
 
