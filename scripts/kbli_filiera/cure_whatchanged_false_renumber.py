@@ -73,6 +73,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -207,6 +208,29 @@ def plan_kg_spec(pull: list[dict[str, Any]], by_code: dict[str, dict[str, Any]])
         "applier": "backend/scripts/kg_whatchanged_cure.py",
         "entries": sorted(entries, key=lambda e: e["entity_id"]),
     }
+
+
+_SHORT_ARRAY_RE = re.compile(r'"passes": \[\n\s+((?:"[a-z_]+",?\s*)+)\n\s+\]')
+
+
+def render_spec_json(spec: dict[str, Any]) -> str:
+    """Serialize the spec the way this repo formats JSON, deterministically.
+
+    `json.dumps` puts every array element on its own line; prettier (which the
+    pre-commit hook enforces on tracked JSON) collapses a short array onto one.
+    Rather than let a committed compiler artifact be reformatted by hand after
+    every emit — which would make the file's bytes depend on who ran it last —
+    the compiler emits prettier's shape itself. The only arrays in this spec are
+    `passes`, so the collapse is anchored to that key and nothing else.
+
+    Same input => byte-identical output (G16), and a test pins that.
+    """
+    text = json.dumps(spec, ensure_ascii=False, indent=2, sort_keys=True)
+    text = _SHORT_ARRAY_RE.sub(
+        lambda m: '"passes": [' + " ".join(m.group(1).split()) + "]",
+        text,
+    )
+    return text + "\n"
 
 
 def _detect_indent(raw_text: str) -> int:
@@ -348,10 +372,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {entry['entity_id']} {entry['passes']}")
         if args.apply:
             args.kg_spec_out.parent.mkdir(parents=True, exist_ok=True)
-            args.kg_spec_out.write_text(
-                json.dumps(spec, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
+            args.kg_spec_out.write_text(render_spec_json(spec), encoding="utf-8")
             logger.info("wrote KG cure spec: %s", args.kg_spec_out)
 
     if args.census or not args.apply:

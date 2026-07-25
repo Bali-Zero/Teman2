@@ -320,6 +320,29 @@ def test_gold_accepts_both_the_wrapped_and_the_bare_shape():
     assert cure.gold_entries({"46415": entry}) == {"46415": entry}
 
 
+def test_the_kg_spec_is_byte_stable_and_already_in_the_repo_json_shape():
+    """A committed compiler artifact must not depend on who ran it last.
+
+    `json.dumps` puts every array element on its own line; the repo's pre-commit
+    prettier collapses short ones. If the compiler emitted the first shape,
+    every emit would be followed by a hand `prettier --write` and the file's
+    bytes would drift with the operator. So the compiler emits prettier's shape
+    itself — and the same input must produce the same bytes (G16)."""
+    spec = {
+        "spec_id": "kg_whatchanged",
+        "entries": [
+            {"entity_id": "kbli:64995", "passes": ["false_renumbering_claim", "midword_truncation"]},
+            {"entity_id": "kbli:46415", "passes": ["contradicted_predecessor"]},
+        ],
+    }
+    rendered = cure.render_spec_json(spec)
+    assert rendered == cure.render_spec_json(spec)
+    assert rendered.endswith("\n") and not rendered.endswith("\n\n")
+    assert '"passes": ["contradicted_predecessor"]' in rendered
+    assert '"passes": ["false_renumbering_claim", "midword_truncation"]' in rendered
+    assert json.loads(rendered) == spec  # the reshaping must never change the DATA
+
+
 def test_thin_outcomes_names_the_records_left_with_no_body():
     planned = [
         ("46631", "old", cure.FALSE_CLAIM, [PASS_TRUNCATED]),
