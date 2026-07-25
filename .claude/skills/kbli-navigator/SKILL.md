@@ -162,8 +162,64 @@ disclosed count 57 → **152**.
    here because a signed classification being overturned by later evidence is exactly the thing that
    must never happen silently — it belongs in the corner even though nothing awaits a ruling.
 
-**NEXT ON THIS PASS — L2.1, censused read-only 2026-07-25, NOT yet cured (numbers re-measured on
-disk, they correct an earlier under-count):**
+**L2.1 — `whatChanged` PROVENANCE PASS: CURED on both in-repo surfaces (PR #TBD, 2026-07-25).
+The field had THREE live vintages, not one.**
+
+Censused on every surface that serves it, `intel_2026.whatChanged` carried three defects:
+
+|                              | canonical | gold | KG (`kg_nodes.properties`) | `kbli_documents`          | Qdrant                   |
+| ---------------------------- | --------: | ---: | -------------------------: | ------------------------- | ------------------------ |
+| A false renumbering claim    |         4 |    1 |                          4 | —                         | inside the embedded text |
+| B mid-word truncation @216   |        13 |    2 |                         13 | —                         | inside the embedded text |
+| C contradicted predecessor   |         4 |    1 |                          4 | —                         | inside the embedded text |
+| population holding the field |     1,559 |  428 |                      1,554 | **0 — verified negative** | 428 `doc_type=kbli_gold` |
+
+**`apps/mouth/data/kbli-gold-all.json` WINS over canonical on the rendered page.**
+`kbli-data.server.ts::transformCode` takes `whatChanged` (and `whatItMeans`/`whatYouNeed`/
+`zantaraOpener`/`youllAlsoNeed`; `baliContext` only if the code is NOT blocked or the gold text does
+not read as a foreign-ownership go-ahead) from gold whenever an entry exists, and
+`app/kbli/[code]/page.tsx:428` renders `gold.whatChanged` directly. **Curing canonical alone changes
+nothing a client sees for those 428 codes** — and a canonical-only immune organ proves nothing.
+Standing rule for every future editorial cure: say which of the two files you wrote, and put the
+organ on the surface that WINS. The canonical was in the data-plane registry and gold was not — the
+guarded file was the one that loses; `kbli-gold-all.json` is now registered too.
+
+- **C is the shape that inverts a client's decision.** `46415`/`46496` said _"→ KBLI 2025: 46415
+  (confermato). Verifica e aggiornamento NIB"_ — _your code carried over unchanged_ — while
+  `status_mapping` is `CODICE_RINUMERATO` and the layers record a DIFFERENT 2020 origin.
+  `49296`/`64210` named `49299`/`64190` while the layers hold `49424`/`64200`.
+  **Cured by DELETION, never by correction:** on 46415 the layers disagree with each other
+  (pp28/`kbli_2020_source` = 46694, BPS = 46419), so substituting "the right number" would be us
+  picking a winner and publishing it as fact. The replacement names every code our layers DO hold
+  and declares the mapping unconfirmed. **Which layer is true is an open source adjudication** for
+  46415 / 46496 / 49296 / 64210 (PENDING-ARMS).
+- **B cannot restore what was lost.** 13 texts were cut mid-word at exactly 216 chars; the trim drops
+  the fragment only. `46411` and `46631` are left with almost nothing (46631 = its opening sentence
+  alone) — named on every run rather than discovered on the page; restoring prose is editorial.
+- **8 gold codes have no canonical record** (`64921`, `85300`, `85491`, `85499`, `85600`, `86903`,
+  `96120`, `96130`). Inert — `generateStaticParams` iterates canonical and `dynamicParams = false` —
+  but this is the phantom class on a 5th store, so it is pinned by a test.
+- **One decision function** (`scripts/kbli_filiera/_whatchanged_basis.py::plan_text`) serves all three
+  surfaces; gold carries no crosswalk fields, so gold is judged by the CANONICAL record. The KG
+  applier (`backend/scripts/kg_whatchanged_cure.py`) holds NO logic — it consumes a compiler-emitted
+  spec whose entries pin `md5` of the text the decision was made against, and refuses to write on
+  drift.
+- **Innocence measured on real data:** of the 45 KG nodes opening with the template sentence, **28
+  are deliberately untouched and every one really does record a predecessor — 0 misses.**
+
+**NEXT AFTER THIS — L2.2, `whatYouNeed` on detached codes (censused read-only, NOT cured).**
+Of the **217** codes whose `per_skala` is detached (licensing declared unverifiable), **~41** still
+hand the reader a concrete procedure and tier as fact — e.g. `72101`: _"**Small + Medium scales:**
+Medium-High risk (Menengah Tinggi). NIB + Sertifikat Standar within **7 working days**"_.
+**The ~41 is APPROXIMATE and must not be quoted as exact.** It came from prose matching, which
+mis-measures this class three ways, all observed: the honest-gap text ITSELF names the tier
+("The risk tier and licensing shown here earlier (Low risk, NIB-o…"), so cured records look guilty;
+the gap wording varies between records ("not yet reliably **defined**" vs "**confirmed**"), so any
+fixed disclosure regex under-counts; and the text may be Italian or English. **L2.2's selector must
+be structural** — the record's own gap state via the `_l4bali_basis` machinery — with prose matching
+used ONLY to locate the sentence to rewrite, exactly as pass A does with its template.
+
+**SUPERSEDED CENSUS (kept for the correction it records):**
 
 - **4 codes assert a KBLI-2020 renumbering with NO recorded predecessor anywhere.** `64995`, `85691`,
   `85692`, `90113` — `status_mapping: BPS_ONLY`, `pp28_sources: []`, `kbli_2020_source: null` **and
