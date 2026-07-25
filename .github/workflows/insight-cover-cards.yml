@@ -47,8 +47,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Pillow
-        run: python -m pip install --quiet "Pillow>=10,<12"
+      - name: Install pytest and Pillow
+        # setup-python gives a clean interpreter — pytest is NOT preinstalled.
+        # Assuming it was is what made this gate's first run red with
+        # "No module named pytest" (sibling workflows all install it explicitly).
+        run: python -m pip install --quiet pytest "Pillow>=10,<12"
 
       - name: Cover-card tripwires
         run: python -m pytest scripts/tests/test_insight_cover_cards.py -q -rs
