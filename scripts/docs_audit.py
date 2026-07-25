@@ -1031,6 +1031,180 @@ def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
     return moved
 
 
+def _read_committed_orphan_claims(content: str) -> Dict[str, Dict[str, str]]:
+    """Parse the COMMITTED (old, working-tree/PR) inventory table into the
+    handful of per-path fields the P3-prime-1a-surgical tolerance check
+    (see `_tolerated_orphan_flip_paths` below) needs: `orphan_flipped_on`
+    and `refs_in`.
+
+    Deliberately a SEPARATE reader from `_parse_inventory_table()` (:524) —
+    that helper serves an existing caller (DOCSYNC/prev-flip parsing) with
+    a different contract; changing its behavior to also serve this new,
+    narrower need was judged riskier than a second small reader (design
+    discussion 2026-07-25, option 1a-surgical). Malformed/missing rows are
+    simply absent from the returned dict — callers must treat an absent
+    path as "nothing to tolerate", never as "tolerate by default" (fail
+    toward strict comparison, matching this file's existing fail-closed
+    posture elsewhere).
+    """
+    claims: Dict[str, Dict[str, str]] = {}
+    for line in content.splitlines():
+        if not line.startswith("| ") or "mtime_days" in line or "---" in line:
+            continue
+        parts = line.split("|")
+        if len(parts) < 12:
+            continue
+        path = parts[1].strip()
+        if not path:
+            continue
+        claims[path] = {
+            "orphan_flipped_on": parts[6].strip(),
+            "refs_in": parts[7].strip(),
+        }
+    return claims
+
+
+def _trusted_ref_tip_date(repo: Path, trusted_ref: str) -> date | None:
+    """The commit date of `trusted_ref`'s own tip — NOT the PR's own commit
+    metadata. One of two independent floors combined (via `max`) into
+    Refinement 1's upper bound at the call site — see that combination's
+    docstring in `main()` for why neither floor is used alone.
+
+    `trusted_ref`'s tip is not under the PR's control: the PR branch cannot
+    rewrite origin/main's history, and this run fetches `trusted_ref` fresh
+    from the remote — the identical trust boundary `read_trusted_prev_
+    flipped()` already established for flip provenance (BLOCKER-2,
+    2026-07-18). Deliberately does NOT reuse `compute_last_commit_date()`
+    (that helper reads the WORKING TREE's checked-out branch — see the
+    cross-family finding this replaced, below).
+
+    Returns None (never raises) if `trusted_ref` cannot be resolved; the
+    call site falls back to the OTHER floor (real "now") rather than
+    treating a resolution failure as fatal — this function only ever
+    TIGHTENS the combined ceiling relative to "now alone" when it
+    succeeds, so a failure degrading to "now alone" loses tightening, not
+    safety.
+    """
+    remote, sep, branch = trusted_ref.partition("/")
+    if not sep or not remote or not branch:
+        return None
+    subprocess.run(
+        ["git", "-C", str(repo), "fetch", remote, branch, "--quiet"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    resolve = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"{trusted_ref}^{{commit}}"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if resolve.returncode != 0:
+        return None
+    result = subprocess.run(
+        ["git", "-C", str(repo), "log", "-1", "--format=%ct", trusted_ref],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        return datetime.fromtimestamp(int(result.stdout.strip()), tz=timezone.utc).date()
+    except (ValueError, OSError):
+        return None
+
+
+def _tolerated_orphan_flip_paths(
+    rows: List[DocRow],
+    prev_flipped: Dict[str, str],
+    committed_claims: Dict[str, Dict[str, str]],
+    trusted_ref_ceiling_date: date | None,
+) -> set:
+    """Paths where `--check` tolerates a STATUS/`orphan_flipped_on`/action
+    mismatch between the committed table and this run's fresh computation
+    — P3-prime option 1a-surgical (2026-07-25).
+
+    Mechanism A (proved on PR #3126, 2026-07-25): under `--check`,
+    `classify()` can only carry an orphan flip FORWARD from `prev_flipped`
+    (trusted-ref, `read_trusted_prev_flipped()`) — it never invents one.
+    A PR introducing a genuinely NEW, never-before-recorded flip can
+    therefore never match `--check`'s fresh computation, no matter how
+    correctly it was produced or how fast the PR is checked: trusted-ref
+    (main, pre-merge) cannot already contain a flip only that PR proposes.
+    This is the ONE case this function tolerates.
+
+    It does NOT touch `classify()` or `read_trusted_prev_flipped()` — the
+    BLOCKER-2 anti-forgery carry-forward logic (2026-07-18 red-team) is
+    completely unchanged. This function only widens what `--check`'s DIFF
+    accepts as equivalent, and only for a path that passes ALL of:
+
+      1. `prev_flipped` has NO entry for this path — trusted-ref has never
+         recorded a flip here at all. If trusted-ref DOES have an entry,
+         any mismatch is a potential resurrection/hiding attempt (BLOCKER-2
+         direction b) and is NEVER tolerated, regardless of what the PR's
+         own table claims.
+      2. The fresh (this-run) row is structurally orphan-eligible:
+         `refs_in == 0` AND `orphan_eligible_on` is set. A doc that isn't
+         structurally eligible (e.g. `refs_in > 0`) must never reach this
+         branch BY CONSTRUCTION — not via an incidental empty-string date
+         comparison that could pass vacuously.
+      3. The committed table's claimed `orphan_flipped_on` for this path is
+         date-plausible: `orphan_eligible_on <= claimed <= trusted_ref_ceiling_date`.
+         The upper bound blocks future-dating; the lower bound blocks
+         premature-archival forgery (BLOCKER-2 direction a). Deliberately
+         `trusted_ref_ceiling_date` — NOT a commit date read from the PR's
+         own branch (see `_trusted_ref_tip_date()`'s docstring: a PR-branch
+         commit date is exactly as attacker-controlled as the claim it
+         would be bounding, via `GIT_COMMITTER_DATE` — a cross-family
+         red-team finding against the first version of this fix,
+         2026-07-25). A missing/unparseable claim, or a missing
+         `trusted_ref_ceiling_date`, is never tolerated (fail closed).
+      4. The committed table's claimed `refs_in` for this path is exactly
+         "0" — the PR's own row must agree with the structural fact, not
+         just assert a flip while disagreeing on why it would be eligible.
+
+    Row PRESENCE (has this path been deleted from, or added to, one side
+    only) is NOT decided here — main()'s comparison remains a whole-string
+    diff over ALL rows, so a path missing from one side still produces a
+    length/content mismatch regardless of anything in this set (verified
+    empirically, see the accompanying tests: a deleted or fabricated row
+    is caught independently of this tolerance list).
+    """
+    tolerated: set = set()
+    if trusted_ref_ceiling_date is None:
+        return tolerated
+    for r in rows:
+        if r.path in prev_flipped:
+            continue  # trusted-ref already has this path — never tolerate (direction b)
+        if r.refs_in != 0 or not r.orphan_eligible_on:
+            continue  # not structurally orphan-eligible (refinement 2)
+        try:
+            eligible_on = date.fromisoformat(r.orphan_eligible_on)
+        except ValueError:
+            continue
+        claim = committed_claims.get(r.path)
+        if claim is None:
+            continue  # no row on the committed side — never tolerate (refinement 3)
+        claimed_raw = claim.get("orphan_flipped_on", "")
+        if claimed_raw in ("", "—"):
+            continue  # nothing claimed — ordinary strict comparison applies
+        try:
+            claimed_date = date.fromisoformat(claimed_raw)
+        except ValueError:
+            continue  # unparseable claim — not tolerated, fail closed
+        if not (eligible_on <= claimed_date <= trusted_ref_ceiling_date):
+            continue  # premature or future-dated (refinement 1)
+        if claim.get("refs_in") != "0":
+            continue  # committed side disagrees on the structural fact itself
+        tolerated.add(r.path)
+    return tolerated
+
+
 def main() -> int:
     args = parse_args()
     repo = Path(args.repo).resolve()
@@ -1124,6 +1298,119 @@ def main() -> int:
 
     new_content = render_inventory(rows, clusters)
 
+    # P3-prime option 1a-surgical (2026-07-25, PR #3126 postmortem): the ONE
+    # case Mechanism A makes categorically unsatisfiable by --check is a
+    # genuinely NEW orphan flip trusted-ref has never recorded — see
+    # `_tolerated_orphan_flip_paths()`'s own docstring for the full
+    # mechanism and the 4 conditions that gate it. Computed ONLY under
+    # --check (write modes never compare against old_content for pass/fail
+    # purposes the way --check does, and never need this).
+    #
+    # `check_content` defaults to the ordinary strict `new_content` and is
+    # ONLY replaced when --check finds a tolerable path. It is deliberately
+    # a full RE-RENDER via classify() (below), not a hand-patch of the file
+    # table's 3 columns — a per-cell mask was tried first and left the
+    # Status Count/% summary table, the "**Orphans:** N" inline count, and
+    # the "### Orphans" candidate-list section (all independently derived
+    # from `rows` by render_inventory()) internally inconsistent with the
+    # masked row, producing a real byte-diff there even though the specific
+    # row was correctly tolerated — caught by
+    # test_p3prime_1a_innocence_earned_unlanded_flip_passes_check on the
+    # first build (2026-07-25). Re-deriving through classify()'s own
+    # carry-forward branch (the same path P3F / MAJOR-5 already exercise)
+    # keeps every derived field, and every aggregate render_inventory()
+    # computes from them, correct BY CONSTRUCTION instead of asking this
+    # function to separately reimplement each rendering surface.
+    tolerated_orphan_paths: set = set()
+    check_content = new_content
+    if args.check:
+        committed_claims = _read_committed_orphan_claims(old_content)
+        # Refinement 1's upper bound is the LATER of two floors, NEITHER of
+        # which the PR branch controls:
+        #
+        #   1. trusted_ref's own tip commit date (`_trusted_ref_tip_date`) —
+        #      guards against a skewed/broken CI-runner clock.
+        #   2. real "now" at check-time.
+        #
+        # Cross-family red-team finding (2026-07-25, Kimi K3) against the
+        # FIRST version of this fix: using `compute_last_commit_date(repo,
+        # inventory_path)` alone — `git log --format=%ct` against the PR's
+        # OWN checked-out branch — is fully attacker-controlled via
+        # `GIT_COMMITTER_DATE`. Demonstrated live: a PR claiming
+        # `orphan_flipped_on=2099-01-01`, committed with
+        # `GIT_COMMITTER_DATE=2099-06-01`, passed `--check` outright, and
+        # the forged flip then survived as trusted provenance post-merge —
+        # `_flip_is_still_valid()` has no upper bound, so the doc stayed
+        # pinned ARCHIVED (immune to MAJOR-5 resurrection-by-edit) for 73
+        # years, and the organ's `--apply` would physically `git mv` an
+        # actively-edited doc into `docs/archive/` on the strength of it.
+        #
+        # `datetime.now()` closes this: it is the CI runner's own real
+        # clock, never PR-branch-derived, so no commit-date forgery can
+        # touch it. Using it here does NOT reintroduce the wall-clock
+        # dependence P3-prime eliminates from `--check`'s CORE decision
+        # (classify() still runs with as_of=None throughout — this value
+        # only feeds a strictly ADDITIONAL widening-layer's sanity bound).
+        # It is also provably monotonic-safe in the one direction P3-prime
+        # actually forbids: a claim already `<= now` stays `<= now`
+        # forever as real time advances, so this can only ever turn a
+        # REJECTED claim into a TOLERATED one later (the date catching up
+        # to an honest near-future claim) — never the reverse. The exact
+        # instability P3-prime removes is a PASSING check going RED for
+        # UNCHANGED content purely because time passed; this addition can
+        # only go the other way (RED -> GREEN), which is benign by
+        # construction, not a reintroduction of that bug.
+        # Residual (team-lead, 2026-07-25, endorsing the fix): a PR could
+        # still claim a date a few days into the real future and have it
+        # rejected today, only to pass on a later re-check once real time
+        # catches up. That is harmless BY CONSTRUCTION, not a narrower
+        # version of the hole: it fails CI today and therefore never
+        # merges today — there is no window in which a still-future claim
+        # is ever accepted before its date has actually arrived.
+        # `max()` with the trusted-ref floor costs nothing (real "now" is
+        # never earlier than any past commit under a sane clock) and only
+        # helps in the degenerate case of a broken CI-runner clock.
+        trusted_ref_tip = _trusted_ref_tip_date(repo, args.trusted_ref)
+        now_date = datetime.now(tz=timezone.utc).date()
+        trusted_ref_ceiling_date = (
+            max(trusted_ref_tip, now_date) if trusted_ref_tip else now_date
+        )
+        tolerated_orphan_paths = _tolerated_orphan_flip_paths(
+            rows, prev_flipped, committed_claims, trusted_ref_ceiling_date
+        )
+        if tolerated_orphan_paths:
+            print(
+                f"docs_audit: tolerating {len(tolerated_orphan_paths)} unlanded "
+                "orphan flip(s) not yet on trusted-ref: "
+                + ", ".join(sorted(tolerated_orphan_paths)),
+                file=sys.stderr,
+            )
+            # `tolerant_prev_flipped` only ever ADDS entries this run's
+            # `_tolerated_orphan_flip_paths()` already proved tolerable on
+            # top of the REAL trusted-ref provenance (`prev_flipped`) — it
+            # never removes or alters an existing trusted entry. as_of stays
+            # None, so Mechanism A (classify() can only carry a flip
+            # FORWARD, never invent one) still holds unchanged: this cannot
+            # be used to introduce a flip `_tolerated_orphan_flip_paths()`
+            # itself would not already have validated.
+            tolerant_prev_flipped = dict(prev_flipped)
+            for p in tolerated_orphan_paths:
+                tolerant_prev_flipped[p] = committed_claims[p]["orphan_flipped_on"]
+            tolerant_rows = [
+                classify(
+                    d,
+                    repo,
+                    args.orphan_days,
+                    whitelist,
+                    clusters,
+                    expected_keys,
+                    as_of=None,
+                    prev_flipped=tolerant_prev_flipped,
+                )
+                for d in docs
+            ]
+            check_content = render_inventory(tolerant_rows, clusters)
+
     # Normalise volatile fields before comparing committed vs. rendered:
     #   * "Last run: …" — wall-clock timestamp, changes every run
     #   * mtime_days column in the file table — increments daily for every
@@ -1134,8 +1421,12 @@ def main() -> int:
     # (columns 4-6, added alongside mtime_days) are DELIBERATELY NOT stripped
     # here — they are stable/deterministic (pure functions of git history, or
     # a carried-forward provenance date), so any real difference in them IS
-    # meaningful drift the gate must catch. Only mtime_days (wall-clock-
-    # relative, cosmetic) gets masked.
+    # meaningful drift the gate must catch. STATUS/orphan_flipped_on/action
+    # for a tolerated path are made to compare equal by rendering
+    # `check_content` from `tolerant_rows` above, not by masking here — this
+    # function only ever neutralizes wall-clock cosmetics, exactly as before
+    # option 1a-surgical, so ordinary drift and both BLOCKER-2 forgery
+    # directions are still caught byte-for-byte.
     def strip_volatile(s: str) -> str:
         out: List[str] = []
         for line in s.splitlines():
@@ -1162,7 +1453,7 @@ def main() -> int:
         return "\n".join(out)
 
     old_normalized = strip_volatile(old_content)
-    new_normalized = strip_volatile(new_content)
+    new_normalized = strip_volatile(check_content)
     stale_delta = new_normalized != old_normalized
 
     if args.json:
