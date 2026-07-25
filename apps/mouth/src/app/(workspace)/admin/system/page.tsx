@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { SystemHealthReport } from '@/lib/api/admin/admin.types';
-import { ServiceHealthCard } from '@/components/admin/ServiceHealthCard';
-import { DbExplorer } from '@/components/admin/DbExplorer';
-import { VectorExplorer } from '@/components/admin/VectorExplorer';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { SystemHealthReport } from "@/lib/api/admin/admin.types";
+import { ServiceHealthCard } from "@/components/admin/ServiceHealthCard";
+import { DbExplorer } from "@/components/admin/DbExplorer";
+import { VectorExplorer } from "@/components/admin/VectorExplorer";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Activity,
   Database,
@@ -24,8 +24,14 @@ import {
   Zap,
   Code2,
   Terminal,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
 
 export default function SystemDashboardPage() {
   const router = useRouter();
@@ -42,8 +48,8 @@ export default function SystemDashboardPage() {
       setReport(data);
       setLastUpdated(new Date());
     } catch (err) {
-      logger.error('Failed to fetch system health', {}, err as Error);
-      setError('System unreachable');
+      logger.error("Failed to fetch system health", {}, err as Error);
+      setError("System unreachable");
     } finally {
       setIsLoading(false);
     }
@@ -53,11 +59,11 @@ export default function SystemDashboardPage() {
     // admin-only surface: DbExplorer (Postgres browser) + VectorExplorer (Qdrant) —
     // backend admin/system routes aren't mounted yet, so this frontend gate is the only guard today
     if (!api.isAuthenticated()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/chat');
+      router.push("/chat");
       return;
     }
     setIsAuthorized(true);
@@ -72,7 +78,7 @@ export default function SystemDashboardPage() {
 
   if (!isAuthorized) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-green-500 font-mono">
+      <div className="flex h-screen items-center justify-center text-[var(--state-success)] font-mono">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-12 h-12 animate-spin" />
           <p>VERIFYING ACCESS...</p>
@@ -83,7 +89,7 @@ export default function SystemDashboardPage() {
 
   if (isLoading && !report) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-green-500 font-mono">
+      <div className="flex h-screen items-center justify-center text-[var(--state-success)] font-mono">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-12 h-12 animate-spin" />
           <p>INITIALIZING CONTROL ROOM...</p>
@@ -97,35 +103,40 @@ export default function SystemDashboardPage() {
   // Helper to map check names to icons
   const getIconForCheck = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower.includes('database') || lower.includes('postgres')) return Database;
-    if (lower.includes('redis')) return Zap;
-    if (lower.includes('qdrant') || lower.includes('vector')) return Layers;
-    if (lower.includes('api')) return Server;
-    if (lower.includes('auth') || lower.includes('guard')) return Shield;
+    if (lower.includes("database") || lower.includes("postgres"))
+      return Database;
+    if (lower.includes("redis")) return Zap;
+    if (lower.includes("qdrant") || lower.includes("vector")) return Layers;
+    if (lower.includes("api")) return Server;
+    if (lower.includes("auth") || lower.includes("guard")) return Shield;
     return Activity;
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 font-mono">
+    <div className="min-h-screen text-[var(--bz-text-1)] p-6 font-mono">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 border-b border-green-900/50 pb-4">
+      <div className="flex items-center justify-between mb-8 border-b border-[var(--bz-border)] pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-widest text-green-500 flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-widest text-[var(--state-success)] flex items-center gap-2">
             <Activity className="w-6 h-6" />
             SYSTEM CONTROL ROOM
           </h1>
-          <p className="text-xs text-green-500/60 mt-1">LIVE REMOTE TELEMETRY // FLY.IO</p>
+          <p className="text-xs text-[var(--bz-text-2)] mt-1">
+            LIVE REMOTE TELEMETRY // FLY.IO
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-xs text-green-500/60">LAST UPDATE</p>
-            <p className="text-sm font-bold text-green-500">{lastUpdated.toLocaleTimeString('en-US')}</p>
+            <p className="text-xs text-[var(--bz-text-2)]">LAST UPDATE</p>
+            <p className="text-sm font-bold text-[var(--state-success)]">
+              {lastUpdated.toLocaleTimeString("en-US")}
+            </p>
           </div>
           <Button
             variant="outline"
             size="icon"
             onClick={fetchHealth}
-            className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:text-green-400"
+            className="border-[var(--state-success)]/50 text-[var(--state-success)] hover:bg-[var(--state-success)]/10"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -133,28 +144,28 @@ export default function SystemDashboardPage() {
       </div>
 
       {error && (
-        <div className="bg-red-900/20 border border-red-500/50 text-red-500 p-4 rounded-lg mb-8 text-center animate-pulse">
+        <div className="bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/30 text-[var(--state-danger)] p-4 rounded-lg mb-8 text-center animate-pulse">
           ⚠️ CONNECTION LOST: {error}
         </div>
       )}
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-black border border-white/10 p-1">
+        <TabsList className="border border-[var(--bz-border)] p-1">
           <TabsTrigger
             value="overview"
-            className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-500 border-none rounded text-muted-foreground"
+            className="data-[state=active]:bg-[var(--state-success)]/20 data-[state=active]:text-[var(--state-success)] border-none rounded text-muted-foreground"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="database"
-            className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-500 border-none rounded text-muted-foreground"
+            className="data-[state=active]:bg-[var(--state-info)]/20 data-[state=active]:text-[var(--state-info)] border-none rounded text-muted-foreground"
           >
             Database
           </TabsTrigger>
           <TabsTrigger
             value="vectors"
-            className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-500 border-none rounded text-muted-foreground"
+            className="data-[state=active]:bg-[var(--bz-neon-purple)]/20 data-[state=active]:text-[var(--bz-neon-purple)] border-none rounded text-muted-foreground"
           >
             Knowledge Vectors
           </TabsTrigger>
@@ -167,71 +178,73 @@ export default function SystemDashboardPage() {
           {/* System Metrics Bar */}
           {metrics && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-black border-green-900/50">
+              <Card className="border" style={PANEL}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-green-500/60 flex items-center gap-2">
+                  <CardTitle className="text-xs font-medium text-[var(--bz-text-2)] flex items-center gap-2">
                     <Cpu className="w-4 h-4" /> CPU LOAD
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-400">
+                  <div className="text-2xl font-bold text-[var(--state-success)]">
                     {metrics.cpu_usage.toFixed(1)}%
                   </div>
                   <Progress
                     value={metrics.cpu_usage}
-                    className="h-1 mt-2 bg-green-900/30"
-                    indicatorClassName="bg-green-500"
+                    className="h-1 mt-2 bg-[var(--bz-glass-rim)]"
+                    indicatorClassName="bg-[var(--state-success)]"
                   />
                 </CardContent>
               </Card>
 
-              <Card className="bg-black border-green-900/50">
+              <Card className="border" style={PANEL}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-green-500/60 flex items-center gap-2">
+                  <CardTitle className="text-xs font-medium text-[var(--bz-text-2)] flex items-center gap-2">
                     <Layers className="w-4 h-4" /> MEMORY
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-400">
+                  <div className="text-2xl font-bold text-[var(--state-success)]">
                     {metrics.memory_usage.toFixed(1)}%
                   </div>
                   <Progress
                     value={metrics.memory_usage}
-                    className="h-1 mt-2 bg-green-900/30"
-                    indicatorClassName="bg-green-500"
+                    className="h-1 mt-2 bg-[var(--bz-glass-rim)]"
+                    indicatorClassName="bg-[var(--state-success)]"
                   />
                 </CardContent>
               </Card>
 
-              <Card className="bg-black border-green-900/50">
+              <Card className="border" style={PANEL}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-green-500/60 flex items-center gap-2">
+                  <CardTitle className="text-xs font-medium text-[var(--bz-text-2)] flex items-center gap-2">
                     <HardDrive className="w-4 h-4" /> DISK
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-400">
+                  <div className="text-2xl font-bold text-[var(--state-success)]">
                     {metrics.disk_usage.toFixed(1)}%
                   </div>
                   <Progress
                     value={metrics.disk_usage}
-                    className="h-1 mt-2 bg-green-900/30"
-                    indicatorClassName="bg-green-500"
+                    className="h-1 mt-2 bg-[var(--bz-glass-rim)]"
+                    indicatorClassName="bg-[var(--state-success)]"
                   />
                 </CardContent>
               </Card>
 
-              <Card className="bg-black border-green-900/50">
+              <Card className="border" style={PANEL}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-green-500/60 flex items-center gap-2">
+                  <CardTitle className="text-xs font-medium text-[var(--bz-text-2)] flex items-center gap-2">
                     <Clock className="w-4 h-4" /> UPTIME
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-400">
+                  <div className="text-2xl font-bold text-[var(--state-success)]">
                     {(metrics.uptime / 3600).toFixed(1)}h
                   </div>
-                  <p className="text-xs text-green-500/40 mt-1">running smooth</p>
+                  <p className="text-xs text-[var(--bz-text-3)] mt-1">
+                    running smooth
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -254,32 +267,32 @@ export default function SystemDashboardPage() {
           </div>
 
           {/* Tech Stack List - Addressing User Request */}
-          <Card className="bg-black/40 border-green-900/30">
+          <Card className="border" style={PANEL}>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-green-500/80 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
                 <Code2 className="w-4 h-4" /> ACTIVE SYSTEM STACK
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono text-zinc-400">
-                <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                  <Database className="w-4 h-4 text-blue-400" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono text-[var(--bz-text-2)]">
+                <div className="flex items-center gap-2 p-2 bg-[var(--bz-glass-rim)] rounded">
+                  <Database className="w-4 h-4 text-[var(--state-info)]" />
                   <span>PostgreSQL 15</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                  <Layers className="w-4 h-4 text-red-500" />
+                <div className="flex items-center gap-2 p-2 bg-[var(--bz-glass-rim)] rounded">
+                  <Layers className="w-4 h-4 text-[var(--state-danger)]" />
                   <span>Qdrant (Vectors)</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                  <Zap className="w-4 h-4 text-orange-500" />
+                <div className="flex items-center gap-2 p-2 bg-[var(--bz-glass-rim)] rounded">
+                  <Zap className="w-4 h-4 text-[var(--state-warning)]" />
                   <span>Redis (Cache)</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                  <Server className="w-4 h-4 text-green-400" />
+                <div className="flex items-center gap-2 p-2 bg-[var(--bz-glass-rim)] rounded">
+                  <Server className="w-4 h-4 text-[var(--state-success)]" />
                   <span>FastAPI + Next.js</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                  <Terminal className="w-4 h-4 text-purple-400" />
+                <div className="flex items-center gap-2 p-2 bg-[var(--bz-glass-rim)] rounded">
+                  <Terminal className="w-4 h-4 text-[var(--bz-neon-purple)]" />
                   <span>Fly.io (Compute)</span>
                 </div>
               </div>
@@ -291,9 +304,9 @@ export default function SystemDashboardPage() {
           value="database"
           className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300"
         >
-          <Card className="bg-black border-blue-900/30 border">
+          <Card className="border" style={PANEL}>
             <CardHeader>
-              <CardTitle className="text-blue-500 text-lg flex items-center gap-2">
+              <CardTitle className="text-[var(--state-info)] text-lg flex items-center gap-2">
                 <Database className="w-5 h-5" /> POSTGRES EXPLORER
               </CardTitle>
             </CardHeader>
@@ -307,9 +320,9 @@ export default function SystemDashboardPage() {
           value="vectors"
           className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300"
         >
-          <Card className="bg-black border-purple-900/30 border">
+          <Card className="border" style={PANEL}>
             <CardHeader>
-              <CardTitle className="text-purple-500 text-lg flex items-center gap-2">
+              <CardTitle className="text-[var(--bz-neon-purple)] text-lg flex items-center gap-2">
                 <Layers className="w-5 h-5" /> QDRANT INSPECTOR
               </CardTitle>
             </CardHeader>

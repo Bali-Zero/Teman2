@@ -224,10 +224,7 @@ export default function TeamAnalyticsPage() {
   // Aggregate stats — all from real fields
   const totalRevenue = performance.reduce((a, b) => a + b.revenue_generated, 0);
   const totalClients = performance.reduce((a, b) => a + b.total_clients, 0);
-  const totalCompleted = performance.reduce(
-    (a, b) => a + b.completed_cases,
-    0,
-  );
+  const totalCompleted = performance.reduce((a, b) => a + b.completed_cases, 0);
   const avgConversion =
     performance.length > 0
       ? performance.reduce((a, b) => a + b.conversion_rate, 0) /
@@ -338,21 +335,21 @@ export default function TeamAnalyticsPage() {
               Performance Leaderboard
             </h2>
             <div className="flex gap-1">
-              {(
-                ["revenue", "clients", "conversion", "completed"] as const
-              ).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setSelectedMetric(m)}
-                  className={`px-3 py-1 text-xs rounded-md transition-colors capitalize ${
-                    selectedMetric === m
-                      ? "bg-[var(--accent)] text-white"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
+              {(["revenue", "clients", "conversion", "completed"] as const).map(
+                (m) => (
+                  <button
+                    key={m}
+                    onClick={() => setSelectedMetric(m)}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors capitalize ${
+                      selectedMetric === m
+                        ? "bg-[var(--accent)] text-white"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ),
+              )}
             </div>
           </div>
 
