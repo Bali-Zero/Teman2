@@ -89,10 +89,10 @@ describe("UpgradedLoginPage (WS3 day pass)", () => {
     expect(html).not.toContain("text-white");
     expect(html).not.toContain("bg-white/5");
     expect(html).not.toContain("bg-white/10");
-    expect(html).not.toContain("from-[#d9bd7a]");
-    expect(html).not.toContain("to-[#a07838]");
-    expect(html).not.toContain("text-[#f0ece4]");
-    expect(html).not.toContain("text-[#f8e89a]");
+    expect(html).not.toContain("from-[#d9bd7a]"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("to-[#a07838]"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("text-[#f0ece4]"); // token-lint-ok: drain-guard assertion string, not a color use
+    expect(html).not.toContain("text-[#f8e89a]"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(html).not.toContain("accent-gold-muted");
   });
 });
