@@ -1,9 +1,45 @@
 """Tests for renewal_rules.py — RenewalRule matching logic."""
 
+import json
+from pathlib import Path
+
 from backend.services.compliance.renewal_rules import (
     RENEWAL_RULES,
+    RULE_PRIORITY_ORDER,
     match_rule,
 )
+
+# .../backend/tests/services/compliance/this_file.py -> parents[3] == backend/
+_PRICES_FILE = (
+    Path(__file__).resolve().parents[3] / "data" / "bali_zero_official_prices_2026.json"
+)
+
+
+def _known_pricing_keys() -> set[str]:
+    """Every service key in the price catalogue.
+
+    ``tax_accounting`` nests one level deeper than the other categories, so we
+    walk instead of assuming a flat two-level shape: an entry is any dict that
+    carries a ``name`` field.
+    """
+    assert _PRICES_FILE.is_file(), f"price catalogue not found at {_PRICES_FILE}"
+    catalogue = json.loads(_PRICES_FILE.read_text())
+
+    keys: set[str] = set()
+
+    def walk(node: object) -> None:
+        if not isinstance(node, dict):
+            return
+        for key, value in node.items():
+            if isinstance(value, dict):
+                if "name" in value:
+                    keys.add(key)
+                else:
+                    walk(value)
+
+    walk(catalogue["services"])
+    assert keys, "walked the price catalogue and found no service entries"
+    return keys
 
 
 class TestMatchRule:
@@ -123,3 +159,158 @@ class TestMatchRule:
         rule_upper = match_rule("KITAS", "INVESTOR KITAS 2 YEARS")
         # Both should match same rule family
         assert rule_lower.rule_id == rule_upper.rule_id
+
+
+# ── E33 senior routes (55+) ────────────────────────────────────────────────────
+#
+# The harm being prevented: "e33" and "second home" are substrings of every
+# senior string, so before these rules existed a senior client was handed the
+# main-route checklist and asked to prove a USD 130,000 deposit (E33F has NO
+# deposit at all) or a USD 1M property title (no such route for seniors).
+#
+# Superscar #3 discipline: every rule below carries BOTH a guilt test (it fires
+# on the case it owns) and an innocence test (it does NOT steal a neighbour).
+
+
+class TestE33SeniorRoutes:
+    # ── Guilt: the senior rules fire on their own cases ───────────────────────
+
+    def test_e33e_code_matches_senior_5y_rule(self) -> None:
+        rule = match_rule("kitas", "E33E")
+        assert rule.rule_id == "e33e_senior_renewal"
+
+    def test_e33f_code_matches_senior_1y_rule(self) -> None:
+        rule = match_rule("kitas", "E33F")
+        assert rule.rule_id == "e33f_senior_renewal"
+
+    def test_e33e_full_pricing_name_matches_by_code_not_prose(self) -> None:
+        # The code wins even though the string also contains "second home senior".
+        rule = match_rule("kitas", "E33E Second Home Senior (5 Years, Offshore)")
+        assert rule.rule_id == "e33e_senior_renewal"
+
+    def test_e33f_extend_pricing_name_matches(self) -> None:
+        rule = match_rule("kitas", "E33F Second Home Senior (Extend)")
+        assert rule.rule_id == "e33f_senior_renewal"
+
+    def test_catalogue_english_name_without_code_hits_unspecified(self) -> None:
+        # catalogue.py name_en for E33F — carries no E-code.
+        rule = match_rule("kitas", "Second Home Visa Elderly for 1 Year")
+        assert rule.rule_id == "e33_senior_route_unspecified"
+
+    def test_catalogue_indonesian_name_hits_unspecified(self) -> None:
+        # W82: the guard must not be blind to the Indonesian surface.
+        rule = match_rule("kitas", "Visa Rumah Kedua Lansia Untuk 5 Tahun")
+        assert rule.rule_id == "e33_senior_route_unspecified"
+
+    # ── Innocence: the senior rules steal nothing from their neighbours ───────
+
+    def test_main_route_e33_still_matches_main_rule(self) -> None:
+        rule = match_rule("kitas", "E33 Second Home")
+        assert rule.rule_id == "e33_second_home_renewal"
+
+    def test_remote_worker_e33g_not_stolen(self) -> None:
+        rule = match_rule("kitas", "E33G Remote Worker")
+        assert rule.rule_id == "kitas_remote_worker_extend"
+
+    def test_retirement_kitas_not_stolen(self) -> None:
+        rule = match_rule("kitas", "Retirement")
+        assert rule.rule_id == "kitas_retirement_extend"
+
+    def test_working_kitas_not_stolen(self) -> None:
+        rule = match_rule("kitas", "Working KITAS")
+        assert rule.rule_id == "kitas_working_extend"
+
+    def test_investor_kitas_not_stolen(self) -> None:
+        rule = match_rule("kitas", "KITAS Investor")
+        assert rule.rule_id == "kitas_investor_extend"
+
+    # ── The defect itself: which documents each route asks for ────────────────
+
+    def test_e33f_never_asks_for_a_deposit_or_guarantee(self) -> None:
+        docs = RENEWAL_RULES["e33f_senior_renewal"].required_docs
+        for doc in docs:
+            assert "deposit" not in doc, f"E33F is income-only; {doc!r} asks for a deposit"
+            assert "guarantee" not in doc, f"E33F is income-only; {doc!r} asks for a guarantee"
+            assert "property_title" not in doc, f"E33F has no property route; {doc!r}"
+        assert "passive_income_proof_usd_3k_per_month" in docs
+
+    def test_e33e_asks_for_its_own_50k_deposit_not_the_main_route_one(self) -> None:
+        docs = RENEWAL_RULES["e33e_senior_renewal"].required_docs
+        assert "deposit_proof_usd_50k_own_name_bumn_bank" in docs
+        assert "passive_income_proof_usd_3k_per_month" in docs
+        # The main-route checklist item must not leak onto the senior route.
+        assert "guarantee_proof_bank_confirmation_or_property_title" not in docs
+
+    def test_main_route_still_asks_for_its_guarantee(self) -> None:
+        docs = RENEWAL_RULES["e33_second_home_renewal"].required_docs
+        assert "guarantee_proof_bank_confirmation_or_property_title" in docs
+
+    def test_unspecified_route_asks_to_confirm_the_route_before_documents(self) -> None:
+        rule = RENEWAL_RULES["e33_senior_route_unspecified"]
+        assert "route_confirmation_e33e_deposit_or_e33f_income_only" in rule.required_docs
+        # Income proof is safe on both senior routes; a deposit is not.
+        assert "passive_income_proof_usd_3k_per_month" in rule.required_docs
+        for doc in rule.required_docs:
+            assert "deposit_proof" not in doc, f"route unknown — {doc!r} presumes E33E"
+        # Quoting a price would presume the route.
+        assert rule.renewal_pricing_key is None
+
+    def test_e33f_annual_lead_time_is_not_the_five_year_one(self) -> None:
+        # E33F is a 1-year permit: a 150-day contact window would fire ~7 months
+        # after issue. The 5-year routes keep the long runway.
+        e33f = RENEWAL_RULES["e33f_senior_renewal"]
+        e33e = RENEWAL_RULES["e33e_senior_renewal"]
+        assert e33f.recommended_start_days < 180
+        assert e33e.recommended_start_days > e33f.recommended_start_days
+
+
+# ── Structural tripwires over the whole rule table ─────────────────────────────
+
+
+class TestRuleTableIntegrity:
+    def test_every_rule_is_reachable_from_the_priority_order(self) -> None:
+        # A rule absent from RULE_PRIORITY_ORDER is dead code: match_rule never
+        # returns it, and the omission is silent.
+        missing = set(RENEWAL_RULES) - set(RULE_PRIORITY_ORDER)
+        assert not missing, f"rules unreachable by match_rule: {sorted(missing)}"
+
+    def test_voa_extension_is_reachable(self) -> None:
+        # visa_voa_extension was defined but absent from RULE_PRIORITY_ORDER, so
+        # every B1/VOA fell through to generic_visa_renewal: a 105-day contact
+        # window on a 30-day visa, and no price. B1 VOA is a live product.
+        rule = match_rule("visa", "B1 Visa on Arrival")
+        assert rule.rule_id == "visa_voa_extension"
+        assert rule.renewal_pricing_key == "B1 Visa on Arrival Extension"
+
+    def test_voa_does_not_steal_the_c1_tourist_extension(self) -> None:
+        rule = match_rule("visa", "C1 Tourism")
+        assert rule.rule_id == "visa_tourist_extension"
+
+    def test_priority_order_has_no_phantom_rule_ids(self) -> None:
+        phantom = set(RULE_PRIORITY_ORDER) - set(RENEWAL_RULES)
+        assert not phantom, f"RULE_PRIORITY_ORDER references undefined rules: {sorted(phantom)}"
+
+    def test_senior_rules_precede_the_generic_e33_rule(self) -> None:
+        order = list(RULE_PRIORITY_ORDER)
+        generic = order.index("e33_second_home_renewal")
+        for senior in (
+            "e33e_senior_renewal",
+            "e33f_senior_renewal",
+            "e33_senior_route_unspecified",
+        ):
+            assert order.index(senior) < generic, (
+                f"{senior} must be matched before e33_second_home_renewal, whose "
+                f'"e33"/"second home" patterns would otherwise capture it'
+            )
+
+    def test_every_renewal_pricing_key_exists_in_the_price_catalogue(self) -> None:
+        # A typo'd key does not raise — it silently yields no price on the alert.
+        known = _known_pricing_keys()
+        for rule in RENEWAL_RULES.values():
+            if rule.renewal_pricing_key is None:
+                continue
+            assert rule.renewal_pricing_key in known, (
+                f"{rule.rule_id} points at pricing key "
+                f"{rule.renewal_pricing_key!r}, which is not in "
+                f"bali_zero_official_prices_2026.json"
+            )

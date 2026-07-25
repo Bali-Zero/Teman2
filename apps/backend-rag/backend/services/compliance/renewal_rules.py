@@ -273,12 +273,78 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=2.0,
         notes="Annual permit for foreign workers. Usually bundled with Working KITAS renewal.",
     ),
-    # ── E33 Second Home (5y permit — guarantee must be maintained) ───────
-    # TODO(senior variants): E33E/E33F senior renewals (income-based, NO
-    # deposit guarantee) also match the "e33"/"second home" patterns below
-    # and would incorrectly inherit the deposit-oriented required_docs.
-    # Add a senior-specific rule (pension/income proof docs) BEFORE E33E/E33F
-    # renewals are sold, and place it earlier in RULE_PRIORITY_ORDER.
+    # ── E33 Second Home senior routes (55+) ──────────────────────────────
+    # These MUST be matched before "e33_second_home_renewal": the generic
+    # rule's patterns ("e33", "second home") are substrings of every senior
+    # string, and its checklist asks for the main-route USD 130k deposit /
+    # USD 1M property title — neither of which applies to a senior client.
+    # Matching is on the VISA CODE (language-invariant fact-key), not prose.
+    "e33e_senior_renewal": RenewalRule(
+        rule_id="e33e_senior_renewal",
+        document_types=("visa", "kitas"),
+        visa_type_patterns=("e33e",),
+        processing_days=30,
+        lead_time_days=120,
+        recommended_start_days=150,
+        renewal_pricing_key="E33E Second Home Senior (5 Years, Altus/Onshore)",
+        required_docs=(
+            "valid_passport",
+            "current_itas_card",
+            "deposit_proof_usd_50k_own_name_bumn_bank",
+            "passive_income_proof_usd_3k_per_month",
+            "domicile_letter",
+        ),
+        complexity=2.0,
+        notes="E33E senior (55+) 5-year route. The permit carries NO extension "
+        "(catalogue extensions=(0,0)) — at expiry this is a fresh application, "
+        "hence the long lead time and the new-application onshore pricing key. "
+        "Financial gate is USD 50,000 own-name BUMN deposit PLUS USD 3,000/month "
+        "passive income — NOT the main-route USD 130k deposit, and there is no "
+        "property alternative on this route.",
+    ),
+    "e33f_senior_renewal": RenewalRule(
+        rule_id="e33f_senior_renewal",
+        document_types=("visa", "kitas"),
+        visa_type_patterns=("e33f",),
+        processing_days=14,
+        lead_time_days=60,
+        recommended_start_days=75,
+        renewal_pricing_key="E33F Second Home Senior (Extend)",
+        required_docs=(
+            "valid_passport",
+            "current_itas_card",
+            "passive_income_proof_usd_3k_per_month",
+            "domicile_letter",
+        ),
+        complexity=1.0,
+        notes="E33F senior (55+) 1-year income-only route, annually renewable. "
+        "NO deposit exists on this route — never request a bank guarantee letter. "
+        "Only the USD 3,000/month passive income proof is re-validated at each "
+        "extension.",
+    ),
+    "e33_senior_route_unspecified": RenewalRule(
+        rule_id="e33_senior_route_unspecified",
+        document_types=("visa", "kitas"),
+        visa_type_patterns=("elderly", "lansia", "second home senior"),
+        processing_days=30,
+        lead_time_days=120,
+        recommended_start_days=150,
+        renewal_pricing_key=None,  # route unknown — quoting one would be a guess
+        required_docs=(
+            "valid_passport",
+            "current_itas_card",
+            "passive_income_proof_usd_3k_per_month",
+            "domicile_letter",
+            "route_confirmation_e33e_deposit_or_e33f_income_only",
+        ),
+        complexity=2.0,
+        notes="Senior second-home client whose record does not carry the E33E/E33F "
+        "code. Income proof is required on both senior routes, so it is safe to ask "
+        "for; the deposit is NOT — confirm the route before requesting documents or "
+        "quoting. Lead time is the conservative (E33E) one: contacting early is "
+        "recoverable, contacting late is not.",
+    ),
+    # ── E33 Second Home main route (5y permit — guarantee must be maintained) ──
     "e33_second_home_renewal": RenewalRule(
         rule_id="e33_second_home_renewal",
         document_types=("visa", "kitas"),
@@ -322,12 +388,19 @@ RULE_PRIORITY_ORDER: tuple[str, ...] = (
     "kitas_working_extend",
     "kitas_freelance_extend",
     "kitas_remote_worker_extend",
+    # Senior second-home routes come BEFORE the generic E33 rule: "e33" and
+    # "second home" are substrings of every senior string, so the generic rule
+    # would otherwise capture them and hand out the main-route deposit checklist.
+    "e33e_senior_renewal",
+    "e33f_senior_renewal",
+    "e33_senior_route_unspecified",
     "e33_second_home_renewal",
     "kitas_investor_extend",
     "kitas_retirement_extend",
     "kitas_spouse_extend",
     "kitas_dependent_extend",
     "imta_annual_renewal",
+    "visa_voa_extension",
     "visa_tourist_extension",
     "passport_renewal",
     "generic_visa_renewal",
