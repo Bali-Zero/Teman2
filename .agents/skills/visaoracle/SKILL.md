@@ -350,6 +350,23 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   (`research/visa/2026-07-25-activation-addendum.md`)** — provision `visa_activation_executor`
   (one-time, operator), build the small `activate_pack.py` ops tool, activate, then the 3
   SHADOW secrets + smoke per the arming runbook. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~12:30 WITA): **SHADOW IS LIVE IN PRODUCTION — first
+  real evidence row.** The full activation arc is done: `activate_pack.py` ops CLI built
+  (PR #3101, 8/8 tests, dry-run verified); fingerprint HMAC key store minted (kid
+  `fp-2026-07-1`, M5 custody) + 3 secrets set on Fly (`VISA_ENGINE_EVALUATE_MODE=SHADOW`,
+  `VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`, `VISA_ENGINE_DRIVER_TOKEN`); roles provisioned
+  on prod PG (`visa_activation_executor` NOLOGIN + grants on `nuzantara_rag`, ops role
+  `visa_activation_operator` LOGIN granted executor — Fly PG is 2-machine HA, primary
+  `5683e090f3d228`, `OPERATOR_PASSWORD` from keeper environ; `fly pg connect` hangs on
+  wireguard — use `fly ssh console -C` + `fly ssh sftp put` with `--machine` pinning, sftp
+  never overwrites); **pack ACTIVATED** (`activation_id bb35cb81-276d-4a6e-8570-e46a2c692777`,
+  actor token `operator.zero-2026-07`). **Smoke green end-to-end:**
+  `POST /api/visa-oracle/evaluate` now returns a real engine verdict
+  (`HUMAN_REVIEW_REQUIRED` + `BRIDGING_FROM_VISIT_ITK_PROHIBITED`, `mode:CURATED`,
+  `rule_pack 446ee4ee seq 1`, HMAC fingerprint `fp-2026-07-1`) and the FIRST row landed in
+  `visa_decisions` (`RECOMMEND`/`SHADOW`, `long_tourism`, 32-byte fingerprint,
+  `ruleset_activation_id` set). The collection window is accumulating from real traffic.
+  GATE STATUS unchanged: 🔴 RED (volume/breadth = 1 row so far).
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
