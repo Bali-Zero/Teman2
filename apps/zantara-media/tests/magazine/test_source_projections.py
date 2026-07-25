@@ -112,7 +112,9 @@ def test_notebook_inventory_exports_health_without_uuid_or_titles() -> None:
     assert "aaaaaaaa-bbbb" not in encoded
 
 
-def test_revision_resolver_uses_only_completed_publication_packets(tmp_path: Path) -> None:
+def test_revision_resolver_uses_only_completed_publication_packets(
+    tmp_path: Path,
+) -> None:
     packets = tmp_path / "packets"
     packets.mkdir()
     morning = packets / "morning.json"
@@ -265,9 +267,7 @@ async def test_prepare_morning_writes_four_loadable_projections_manifest_and_emp
     assert assets == {"schema_version": "asset-intents.v1", "intents": []}
     for item in manifest["projection_inputs"]:
         assert Path(item["projection_path"]).is_file()
-        loaded = await load_named_projection(
-            item["system_id"], Path(item["projection_path"])
-        )
+        loaded = await load_named_projection(item["system_id"], Path(item["projection_path"]))
         assert loaded.system_id == item["system_id"]
 
 
@@ -300,3 +300,26 @@ def test_prepare_morning_rejects_pii_before_any_projection_is_written(
         )
 
     assert not (state / "inputs").exists()
+
+
+def test_prepare_morning_preserves_prebound_asset_manifest(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    state = tmp_path / "state"
+    asset_manifest = state / "inputs" / "assets-2026-07-21.json"
+    asset_manifest.parent.mkdir(parents=True)
+    original = {
+        "schema_version": "asset-intents.v1",
+        "intents": [{"operator_prebound_marker": "must-survive-prepare"}],
+    }
+    asset_manifest.write_text(json.dumps(original), encoding="utf-8")
+
+    result = prepare_morning_inputs(
+        repo_root=repo,
+        state_dir=state,
+        cutoff=CUTOFF,
+        intel_rows=[],
+        intel_status="healthy",
+    )
+
+    assert result.asset_manifest_path == asset_manifest
+    assert json.loads(asset_manifest.read_text(encoding="utf-8")) == original

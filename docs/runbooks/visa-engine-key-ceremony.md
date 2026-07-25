@@ -69,6 +69,34 @@ Staged as a Fly secret named `VISA_ENGINE_TRUST_STORE_KEYS_JSON` on app
 the next deploy). No consumer reads this env var yet — it stays inert until
 the SHADOW wiring stage of the visa-engine strangler plan lands.
 
+## ERRATA (2026-07-25, first real signing — kid pattern bug + fix)
+
+**Bug:** the ceremony minted kids `2026-07-test-1` / `2026-07-prod-1`, but the
+engine's own `IDENTIFIER_PATTERN` (`models.py:90`, `^[A-Za-z][A-Za-z0-9_.:-]{0,127}$`)
+requires kids to **start with a letter**. A `ProtectedHeader` built with a
+digit-start kid fails model validation, so `sign_pack.py` rejected
+`--kid 2026-07-prod-1` at the first real signing. The ceremony's roundtrip
+checks verified `StaticTrustStore.from_env` resolution (which does NOT
+pattern-validate kids — `TrustedSigningKey.key_id` is a plain `str`), so the
+mismatch only surfaced at first use.
+
+**Fix (executed, 2026-07-25):** the kids are RELABELED, same key material:
+
+| old kid (broken) | new kid          | public_key (unchanged)                        |
+| ---------------- | ---------------- | --------------------------------------------- |
+| `2026-07-test-1` | `test-2026-07-1` | `hPwtyP1ekdj_n-BK4M97dyWnRxW1RJ-uGcnVsX5buHM` |
+| `2026-07-prod-1` | `prod-2026-07-1` | `gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA` |
+
+- The Fly secret `VISA_ENGINE_TRUST_STORE_KEYS_JSON` was re-staged with the
+  relabeled array — new digest **`ab319439ecf92a0f`** (supersedes
+  `a68f076bc9993f0c` above).
+- Private-key custody filenames on M5 keep the old names; `--kid` and
+  `--key-file` are independent arguments.
+- First real pack signed with `prod-2026-07-1` and **verified against the
+  relabeled trust store** (`VerifiedRulePack`).
+- Lesson for future ceremonies: mint kids matching the engine's
+  `IDENTIFIER_PATTERN` at birth (start with a letter).
+
 ## Ceremony verification performed (2026-07-19, M5 session)
 
 Real-code roundtrip via `StaticTrustStore.from_env`:

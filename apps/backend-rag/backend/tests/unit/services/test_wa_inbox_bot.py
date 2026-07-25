@@ -33,6 +33,7 @@ class _Conn:
         self._rows = rows
         self._fetchrow_result = fetchrow_result
         self._fetchrow_error = fetchrow_error
+        self.fetchrow_calls = 0
 
     async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
         return self._rows
@@ -42,6 +43,7 @@ class _Conn:
         # No table-routing needed here — these tests either want "no match"
         # (default None, both lookups miss → role=unknown) or "DB down"
         # (fetchrow_error, raised on the first lookup it makes).
+        self.fetchrow_calls += 1
         if self._fetchrow_error is not None:
             raise self._fetchrow_error
         return self._fetchrow_result
@@ -172,6 +174,158 @@ async def test_escalate_marker_stripped(monkeypatch):
     assert answer == "Ti metto in contatto col team"
 
 
+# ── Client-voice hardening (2026-07-25): channel formatting + KG-workflow
+# scaffold strip. Regression pinned to the exact production defect: raw
+# markdown noise (headings/**bold**/bullets/bare citations) AND internal
+# KG diagnostics ("## SUGGESTED WORKFLOW (from ..." through the literal
+# "IMPORTANT: ..." trailer) were both being shipped verbatim to real
+# WhatsApp clients. See _strip_kg_workflow_scaffold + format_rich_text.
+
+
+_KG_WORKFLOW_BLOCK = (
+    "\n## SUGGESTED WORKFLOW (from visa_subgraph, confidence: 78%)\n"
+    "**KITAS Visa Processing** (visa_processing):\n"
+    "\n1. Apply for TKA allocation quota and IMTA via SPKP system"
+    "\n\n**Confidence**: medium — 3 source(s), relationship strength 90%"
+    "\n\nIMPORTANT: This is a suggested workflow. Always verify current requirements with the user."
+)
+
+
+@pytest.mark.asyncio
+async def test_markdown_and_kg_scaffold_stripped_for_whatsapp_client(monkeypatch):
+    """Guilt: the exact production shape — a markdown-formatted answer with
+    the KG workflow block appended — must come out WhatsApp-clean, with the
+    internal scaffold fully removed (not just reformatted)."""
+    raw_answer = (
+        "Hey! Here is the official breakdown for the remote worker visa path.\n"
+        "### Key Features\n"
+        "*   **Initial Validity & Stay:** 1 year (365 days) ... [5]"
+        + _KG_WORKFLOW_BLOCK
+    )
+    _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    # Internal scaffold fully gone.
+    for scaffold_marker in (
+        "SUGGESTED WORKFLOW",
+        "KITAS Visa Processing",
+        "TKA allocation quota",
+        "Confidence**: medium",
+        "IMPORTANT: This is a suggested workflow",
+    ):
+        assert scaffold_marker not in answer, f"{scaffold_marker!r} leaked: {answer!r}"
+    # Raw markdown noise gone too.
+    for md_marker in ("###", "**", "[5]"):
+        assert md_marker not in answer, f"{md_marker!r} leaked: {answer!r}"
+    # The real client-facing content survives, WhatsApp-formatted.
+    assert "*Key Features*" in answer
+    assert "• *Initial Validity & Stay:*" in answer
+    assert "remote worker visa path" in answer
+
+
+@pytest.mark.asyncio
+async def test_kg_workflow_scaffold_stripped_when_answer_is_only_scaffold(monkeypatch):
+    """Guilt, edge case: if the RAG answer is NOTHING but the KG workflow
+    block (no separate main answer — the KG fast-path shape), stripping it
+    must leave nothing, and generate_bot_reply must raise rather than ever
+    send an empty message — mirrors the existing empty-answer guards."""
+    _mock_rag(monkeypatch, {"abstain": False, "answer": _KG_WORKFLOW_BLOCK.strip()})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    with pytest.raises(RuntimeError, match="empty after workflow-scaffold strip"):
+        await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+
+@pytest.mark.asyncio
+async def test_kg_reasoning_after_workflow_block_survives_strip(monkeypatch):
+    """Innocence: the KG fast-path can put the workflow block FIRST and
+    legitimate reasoning/explanation text AFTER it (answer_parts joined
+    with a blank line in orchestrator_core.py::_try_kg_fast_path). The
+    strip must remove ONLY the scaffold span (start heading -> trailer
+    sentence), never content that follows it."""
+    raw_answer = _KG_WORKFLOW_BLOCK.strip() + "\n\nQuesto e' il KBLI 70100 per consulenza IT."
+    _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert "SUGGESTED WORKFLOW" not in answer
+    assert "KBLI 70100 per consulenza IT" in answer
+
+
+@pytest.mark.asyncio
+async def test_legitimate_workflow_mention_is_not_mangled(monkeypatch):
+    """Innocence: an answer that merely uses the word 'workflow' in normal
+    prose (not the literal KG heading) must pass through untouched by the
+    scaffold strip — only the exact anchored heading triggers it."""
+    raw_answer = "Il nostro workflow di onboarding prevede 3 passaggi molto semplici."
+    _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert answer == raw_answer
+
+
+@pytest.mark.asyncio
+async def test_legitimate_numbered_procedure_is_preserved(monkeypatch):
+    """Innocence: a real client-relevant numbered procedure the consultant
+    SHOULD send (not the KG scaffold shape — no '## SUGGESTED WORKFLOW'
+    heading, no trailer sentence) must survive intact."""
+    raw_answer = (
+        "Ecco i passaggi per il tuo KITAS:\n"
+        "1. Prepara il passaporto valido 6+ mesi\n"
+        "2. Invia i documenti al team\n"
+        "3. Paga la fattura"
+    )
+    _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert answer == raw_answer
+
+
+@pytest.mark.asyncio
+async def test_oversized_reply_logs_non_silently(monkeypatch, caplog):
+    """The single-send + hard-truncate behaviour downstream (whatsapp_service.py
+    text[:4096]) is UNCHANGED here — this only proves the near-silent data
+    loss is now logged with the pre-truncation length, out loud, before it
+    happens, so a future chunking feature has real data to work from."""
+    oversized = "A" * 5000
+    _mock_rag(monkeypatch, {"abstain": False, "answer": oversized})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    with caplog.at_level("WARNING"):
+        answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert answer == oversized  # this module does NOT truncate — that's whatsapp_service.py's job
+    assert any(
+        "5000 chars" in r.message and "exceeds WhatsApp" in r.message for r in caplog.records
+    )
+
+
+@pytest.mark.asyncio
+async def test_reply_within_limit_does_not_log_warning(monkeypatch, caplog):
+    """Innocence: an ordinary-length reply must not trip the new warning."""
+    _mock_rag(monkeypatch, {"abstain": False, "answer": "Risposta breve e normale."})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    with caplog.at_level("WARNING"):
+        await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert not any("exceeds WhatsApp" in r.message for r in caplog.records)
+
+
 # ── Service-to-service auth header (X-Internal-Key) ──
 # Regression guard for the silent-401 bug: /api/agentic-rag/query is not public,
 # so the api→rag hop MUST carry X-Internal-Key or HybridAuthMiddleware rejects it
@@ -180,27 +334,59 @@ async def test_escalate_marker_stripped(monkeypatch):
 
 def test_rag_client_headers_sends_internal_key_when_configured(monkeypatch):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     headers = wa_inbox_bot._rag_client_headers()
     assert headers == {"X-Internal-Key": "secret-xyz"}
 
 
 def test_rag_client_headers_omits_internal_key_and_warns_when_unset(monkeypatch, caplog):
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", None)
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
     with caplog.at_level("WARNING"):
         headers = wa_inbox_bot._rag_client_headers()
     assert headers == {}
     assert any("WA_MIRROR_INTERNAL_KEY not configured" in r.message for r in caplog.records)
 
 
+# ── P0-ID hardening: dedicated X-WA-Bot-Profile-Key (2026-07-24) ──
+# Distinct from X-Internal-Key by design — see agentic_rag.py's
+# `_verify_wa_inbox_bot_profile_key` for why the shared internal key alone
+# was not enough to gate persona-override resolution safely.
+
+
+def test_rag_client_headers_sends_both_keys_when_both_configured(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
+    headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {
+        "X-Internal-Key": "secret-xyz",
+        "X-WA-Bot-Profile-Key": "bot-only-secret",
+    }
+
+
+def test_rag_client_headers_omits_profile_key_and_warns_when_unset(monkeypatch, caplog):
+    """Innocence: an unset profile key degrades gracefully — the query
+    itself must still be sent (X-Internal-Key alone is enough for that),
+    only the persona-override channel is silently unavailable."""
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", None)
+    with caplog.at_level("WARNING"):
+        headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {"X-Internal-Key": "secret-xyz"}
+    assert any("WA_INBOX_BOT_PROFILE_KEY not configured" in r.message for r in caplog.records)
+
+
 @pytest.mark.asyncio
 async def test_get_rag_client_applies_internal_key_header(monkeypatch):
-    """End-to-end: the cached client carries the X-Internal-Key header."""
+    """End-to-end: the cached client carries both service-auth headers."""
     monkeypatch.setattr(wa_inbox_bot, "_rag_client", None)
     monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_inbox_bot_profile_key", "bot-only-secret")
     monkeypatch.setattr(wa_inbox_bot, "get_rag_worker_url", lambda: "http://rag.internal:8080")
     client = await wa_inbox_bot._get_rag_client()
     try:
         assert client.headers.get("x-internal-key") == "secret-xyz"
+        assert client.headers.get("x-wa-bot-profile-key") == "bot-only-secret"
     finally:
         await client.aclose()
         wa_inbox_bot._rag_client = None
@@ -288,103 +474,66 @@ async def test_bot_generation_semaphore_bounds_concurrent_rag_calls(monkeypatch)
     assert client.post.await_count == 5
 
 
-# ── Team-assistant V1: sender-identity → RAG `profile` field ──────────────
-# Runs the REAL resolve_sender_identity (not mocked) end-to-end through
-# generate_bot_reply — only the RAG POST is mocked. Innocence contract:
-# client/unknown/db-down payloads stay byte-identical to the
-# pre-identity-wiring shape (no "profile" key at all). Guilt: a resolved
-# owner/team sender's payload carries an explicit `profile`.
+# ── P0-ID containment (2026-07-24): no client-side profile field anymore ──
+# Team-assistant V1 (2026-07-19) used to resolve the sender's identity HERE
+# and forward it as an explicit `profile` request field. That mechanism was
+# removed: the RAG router now re-derives the same identity server-side
+# (`agentic_rag.py::_resolve_trusted_wa_profile`) from `user_id`, so a
+# client-declared `profile` can never be forged. These tests assert the new
+# innocence contract: `generate_bot_reply`'s payload NEVER carries a
+# `profile` key, and NEVER calls a DB-backed identity lookup of its own,
+# regardless of whether the sender is owner/team/client/unknown or the DB
+# is down — that work is no longer this function's job.
 
 
 @pytest.mark.asyncio
-async def test_owner_number_adds_creator_profile(monkeypatch):
+@pytest.mark.parametrize(
+    ("owner_env", "team_env", "fetchrow_result", "fetchrow_error", "phone"),
+    [
+        pytest.param("62811000111", None, None, None, "62811000111", id="owner"),
+        pytest.param(
+            None, "62811000222:Test Member Alpha", None, None, "62811000222", id="team-env"
+        ),
+        pytest.param(
+            None,
+            None,
+            {"id": "tm-1", "display_name": "Test Member Beta", "email": "beta@balizero.com"},
+            None,
+            "62811000333",
+            id="team-db",
+        ),
+        pytest.param(None, None, None, None, "62899999999", id="unknown"),
+        pytest.param(
+            None,
+            None,
+            None,
+            asyncpg.PostgresError("db down"),
+            "62899999999",
+            id="db-down",
+        ),
+    ],
+)
+async def test_payload_never_carries_a_profile_key(
+    monkeypatch, owner_env, team_env, fetchrow_result, fetchrow_error, phone
+):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.setenv("WHATSAPP_OWNER_NUMBERS", "62811000111")
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
+    if owner_env:
+        monkeypatch.setenv("WHATSAPP_OWNER_NUMBERS", owner_env)
+    else:
+        monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
+    if team_env:
+        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", team_env)
+    else:
+        monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
     captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)  # env resolves before any DB lookup
+    pool = _Pool(_ROWS_NEWEST_FIRST, fetchrow_result=fetchrow_result, fetchrow_error=fetchrow_error)
 
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000111"))
-
-    assert captured["json"]["profile"] == {"role": "creator"}
-
-
-@pytest.mark.asyncio
-async def test_team_env_number_adds_team_profile(monkeypatch):
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "62811000222:Test Member Alpha")
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000222"))
-
-    assert captured["json"]["profile"] == {"role": "team", "name": "Test Member Alpha"}
-
-
-@pytest.mark.asyncio
-async def test_team_db_hit_adds_team_profile_with_email(monkeypatch):
-    """DB-resolved team hit (no env override) must include email in profile."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(
-        _ROWS_NEWEST_FIRST,
-        fetchrow_result={
-            "id": "tm-1",
-            "display_name": "Test Member Beta",
-            "email": "beta.tester@balizero.com",
-        },
-    )
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62811000333"))
-
-    assert captured["json"]["profile"] == {
-        "role": "team",
-        "name": "Test Member Beta",
-        "email": "beta.tester@balizero.com",
-    }
-
-
-@pytest.mark.asyncio
-async def test_client_and_unknown_payload_has_no_profile_key(monkeypatch):
-    """Innocence contract: no owner/team match → payload identical to the
-    pre-identity-wiring shape (no 'profile' key at all)."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST)  # fetchrow_result=None → both lookups miss
-
-    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
+    await wa_inbox_bot.generate_bot_reply(pool, _thread(phone=phone))
 
     sent = captured["json"]
     assert "profile" not in sent
-    assert sent == {
-        "query": "Quanto costa un KITAS?",
-        "user_id": "whatsapp_62899999999",
-        "session_id": "wa_meta_session_7",
-        "conversation_history": [
-            {"role": "user", "content": "Ciao"},
-            {"role": "assistant", "content": "Ciao! Come posso aiutarti?"},
-        ],
-        "channel": "whatsapp",
-        "max_steps": 2,
-    }
-
-
-@pytest.mark.asyncio
-async def test_identity_db_down_fails_safe_no_profile_key(monkeypatch):
-    """resolve_sender_identity fails safe to 'unknown' on a DB error — the
-    payload must stay identical, not raise, not guess a profile."""
-    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    monkeypatch.delenv("WHATSAPP_OWNER_NUMBERS", raising=False)
-    monkeypatch.delenv("WHATSAPP_TEAM_NUMBERS", raising=False)
-    captured = _mock_rag(monkeypatch, {"abstain": False, "answer": "ok"})
-    pool = _Pool(_ROWS_NEWEST_FIRST, fetchrow_error=asyncpg.PostgresError("db down"))
-
-    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread(phone="62899999999"))
-
-    assert answer == "ok"
-    assert "profile" not in captured["json"]
+    # fetchrow (team/client DB lookups) would only ever fire from a local
+    # identity resolution — asserting it was never called proves the
+    # function truly stopped resolving identity itself, not just that it
+    # happened to drop the key afterward.
+    assert pool._conn.fetchrow_calls == 0

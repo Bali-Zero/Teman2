@@ -66,13 +66,31 @@ import {
 import { STRINGS } from "@/lib/strings";
 import UnnamedLeadsBanner from "./UnnamedLeadsBanner";
 
-// Status badge styling
+// Status badge styling — WS2 (GARUDA OS): state semantics read --state-*
+// tokens; "completed" keeps its purple identity via --bz-neon-purple (same
+// hue family, tokenized); "inactive" is neutral. Shared shape with the
+// clients/[id] header badge — keep the two maps aligned.
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  lead: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  active: { bg: "bg-green-500/20", text: "text-green-400" },
-  completed: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  lost: { bg: "bg-red-500/20", text: "text-red-400" },
-  inactive: { bg: "bg-gray-500/20", text: "text-gray-400" },
+  lead: {
+    bg: "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)]",
+    text: "text-[var(--state-info)]",
+  },
+  active: {
+    bg: "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)]",
+    text: "text-[var(--state-success)]",
+  },
+  completed: {
+    bg: "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)]",
+    text: "text-[var(--bz-neon-purple)]",
+  },
+  lost: {
+    bg: "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]",
+    text: "text-[var(--state-danger)]",
+  },
+  inactive: {
+    bg: "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)]",
+    text: "text-[var(--bz-text-2)]",
+  },
 };
 
 type SortField =
@@ -98,8 +116,8 @@ const VIRTUALIZATION_THRESHOLD = 30;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const FILTER_SELECT_STYLE: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.05)",
-  background: "rgba(19, 19, 21, 0.5)",
+  border: "1px solid var(--bz-border)",
+  background: "var(--bz-base)",
   color: "var(--bz-text-1)",
 };
 
@@ -506,15 +524,17 @@ function ClientsListContent() {
       <div
         className="rounded-xl p-8 text-center"
         style={{
-          border: "1px solid rgba(217,95,90,0.3)",
-          background: "rgba(217,95,90,0.1)",
+          border:
+            "1px solid color-mix(in srgb, var(--state-danger) 30%, transparent)",
+          background:
+            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
         }}
       >
-        <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
-        <h2 className="text-lg font-semibold text-red-400 mb-2">
+        <AlertCircle className="w-12 h-12 mx-auto text-[var(--state-danger)] mb-4" />
+        <h2 className="text-lg font-semibold text-[var(--state-danger)] mb-2">
           Error loading clients
         </h2>
-        <p className="text-sm text-red-400/80 mb-4">
+        <p className="text-sm text-[var(--state-danger)] opacity-80 mb-4">
           {error instanceof Error
             ? error.message
             : "An unexpected error occurred"}
@@ -552,8 +572,8 @@ function ClientsListContent() {
             <div
               className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
               style={{
-                background: "rgba(35, 35, 40, 0.45)",
-                border: "1px solid rgba(255,255,255,0.05)",
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid var(--bz-border)",
               }}
             >
               {(
@@ -591,8 +611,8 @@ function ClientsListContent() {
                   style={
                     viewMode === mode
                       ? {
-                          background: "rgba(255, 255, 255, 0.1)",
-                          color: "var(--bz-text-1)",
+                          background: "var(--surface-selected)",
+                          color: "var(--bz-accent)",
                           boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                         }
                       : { color: "var(--bz-text-2)" }
@@ -632,38 +652,39 @@ function ClientsListContent() {
               label: "Total Clients",
               value: stats.totalClients.toLocaleString("en-US"),
               color: "var(--bz-text-2)",
-              bg: "rgba(255,255,255,0.04)",
-              border: "rgba(255,255,255,0.06)",
+              bg: "var(--surface-raised)",
+              border: "var(--bz-border)",
             },
             {
               label: "Active Practices",
               value: stats.activePractices.toLocaleString("en-US"),
-              color: "var(--bz-blue)",
-              bg: "rgba(59,130,246,0.08)",
-              border: "rgba(59,130,246,0.15)",
+              color: "var(--state-info)",
+              bg: "color-mix(in srgb, var(--state-info) 8%, transparent)",
+              border: "color-mix(in srgb, var(--state-info) 15%, transparent)",
             },
             {
               label: "Outstanding",
               value: formatIDRCompact(stats.revenue.outstanding),
               color:
                 stats.revenue.outstanding > 0
-                  ? "var(--bz-warning)"
-                  : "var(--bz-success)",
+                  ? "var(--state-warning)"
+                  : "var(--state-success)",
               bg:
                 stats.revenue.outstanding > 0
-                  ? "rgba(249,115,22,0.08)"
-                  : "rgba(74,222,128,0.08)",
+                  ? "color-mix(in srgb, var(--state-warning) 8%, transparent)"
+                  : "color-mix(in srgb, var(--state-success) 8%, transparent)",
               border:
                 stats.revenue.outstanding > 0
-                  ? "rgba(249,115,22,0.15)"
-                  : "rgba(74,222,128,0.15)",
+                  ? "color-mix(in srgb, var(--state-warning) 15%, transparent)"
+                  : "color-mix(in srgb, var(--state-success) 15%, transparent)",
             },
             {
               label: "Paid Revenue",
               value: formatIDRCompact(stats.revenue.paid),
-              color: "var(--bz-success)",
-              bg: "rgba(74,222,128,0.08)",
-              border: "rgba(74,222,128,0.15)",
+              color: "var(--state-success)",
+              bg: "color-mix(in srgb, var(--state-success) 8%, transparent)",
+              border:
+                "color-mix(in srgb, var(--state-success) 15%, transparent)",
             },
           ].map((s) => ({
             key: s.label,
@@ -697,9 +718,11 @@ function ClientsListContent() {
                 }
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
-                  background: "rgba(239,68,68,0.15)",
-                  color: "var(--bz-error)",
-                  border: "1px solid rgba(239,68,68,0.25)",
+                  background:
+                    "color-mix(in srgb, var(--state-danger) 15%, transparent)",
+                  color: "var(--state-danger)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--state-danger) 25%, transparent)",
                 }}
               >
                 <AlertCircle className="w-3 h-3" />
@@ -714,9 +737,11 @@ function ClientsListContent() {
                 }
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
-                  background: "rgba(245,158,11,0.15)",
-                  color: "var(--bz-warning)",
-                  border: "1px solid rgba(245,158,11,0.25)",
+                  background:
+                    "color-mix(in srgb, var(--state-warning) 15%, transparent)",
+                  color: "var(--state-warning)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--state-warning) 25%, transparent)",
                 }}
               >
                 <AlertCircle className="w-3 h-3" />
@@ -728,9 +753,11 @@ function ClientsListContent() {
                 onClick={() => setSilentFilter(silentFilter === 30 ? null : 30)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
-                  background: "rgba(139,92,246,0.15)",
+                  background:
+                    "color-mix(in srgb, var(--bz-neon-purple) 15%, transparent)",
                   color: "var(--bz-neon-purple)",
-                  border: "1px solid rgba(139,92,246,0.25)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--bz-neon-purple) 25%, transparent)",
                 }}
               >
                 <AlertCircle className="w-3 h-3" />
@@ -755,12 +782,13 @@ function ClientsListContent() {
             className="focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
             style={
               {
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-                background: "rgba(35, 35, 40, 0.45)",
+                border: "1px solid var(--bz-border)",
+                background: "rgba(35, 35, 40, 0.65)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
                 color: "var(--bz-text-1)",
-                "--tw-ring-color": "rgba(212,132,90,0.5)",
+                "--tw-ring-color":
+                  "color-mix(in srgb, var(--bz-accent) 50%, transparent)",
               } as React.CSSProperties
             }
           />
@@ -780,12 +808,12 @@ function ClientsListContent() {
                 background:
                   filters.assigned_to === currentUserEmail
                     ? "var(--bz-accent)"
-                    : "rgba(35, 35, 40, 0.45)",
+                    : "rgba(35, 35, 40, 0.65)",
                 color:
                   filters.assigned_to === currentUserEmail
                     ? "var(--bz-text-pure)"
                     : "var(--bz-text-2)",
-                border: "1px solid rgba(255,255,255,0.05)",
+                border: "1px solid var(--bz-border)",
               }}
             >
               My Clients
@@ -802,13 +830,13 @@ function ClientsListContent() {
               style={{
                 background:
                   silentFilter === days
-                    ? "rgba(239,68,68,0.2)"
-                    : "rgba(35, 35, 40, 0.45)",
+                    ? "color-mix(in srgb, var(--state-danger) 20%, transparent)"
+                    : "rgba(35, 35, 40, 0.65)",
                 color:
                   silentFilter === days
-                    ? "var(--bz-error)"
+                    ? "var(--state-danger)"
                     : "var(--bz-text-2)",
-                border: `1px solid ${silentFilter === days ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.05)"}`,
+                border: `1px solid ${silentFilter === days ? "color-mix(in srgb, var(--state-danger) 30%, transparent)" : "var(--bz-border)"}`,
               }}
               title={`Clients not contacted in ${days}+ days`}
             >
@@ -840,8 +868,8 @@ function ClientsListContent() {
             onClearAll={clearFilters}
             className="rounded-xl shadow-xl backdrop-blur-xl transition-all duration-300"
             style={{
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              background: "rgba(32, 32, 36, 0.65)",
+              border: "1px solid var(--bz-border)",
+              background: "rgba(35, 35, 40, 0.65)",
             }}
             clearLabel={
               <>
@@ -985,11 +1013,12 @@ function ClientsListContent() {
                 style={
                   sortField === field
                     ? {
-                        background: "rgba(212,132,90,0.2)",
+                        background:
+                          "color-mix(in srgb, var(--bz-accent) 20%, transparent)",
                         color: "var(--bz-accent)",
                       }
                     : {
-                        background: "rgba(35,35,40,0.6)",
+                        background: "rgba(35,35,40,0.65)",
                         backdropFilter: "blur(12px)",
                         color: "var(--bz-text-2)",
                       }
@@ -1013,7 +1042,7 @@ function ClientsListContent() {
         <div
           className="rounded-xl overflow-hidden"
           style={{
-            border: "1px solid rgba(255,255,255,0.1)",
+            border: "1px solid var(--bz-border-hover)",
             height: "calc(100vh - 220px)",
             minHeight: "480px",
           }}
@@ -1025,8 +1054,8 @@ function ClientsListContent() {
         <div
           className="rounded-xl p-12 text-center backdrop-blur-sm"
           style={{
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(26,26,30,0.5)",
+            border: "1px solid var(--bz-border-hover)",
+            background: "rgba(35,35,40,0.65)",
           }}
         >
           <CRMSkeleton count={6} />
@@ -1104,8 +1133,8 @@ function ClientsListContent() {
                         )
                       : null;
                     const statusStyle = STATUS_STYLES[client.status] ?? {
-                      bg: "bg-gray-500/20",
-                      text: "text-gray-400",
+                      bg: "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)]",
+                      text: "text-[var(--bz-text-2)]",
                     };
                     return (
                       <tr
@@ -1117,7 +1146,7 @@ function ClientsListContent() {
                             idx % 2 === 0
                               ? "transparent"
                               : "rgba(255,255,255,0.015)",
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          borderBottom: "1px solid var(--bz-border)",
                         }}
                         onMouseEnter={(e) => {
                           (
@@ -1205,15 +1234,15 @@ function ClientsListContent() {
                                   style={{
                                     background:
                                       ageDays === 0
-                                        ? "rgba(34,197,94,0.12)"
+                                        ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
                                         : ageDays > 30
-                                          ? "rgba(239,68,68,0.10)"
+                                          ? "color-mix(in srgb, var(--state-danger) 10%, transparent)"
                                           : "transparent",
                                     color:
                                       ageDays === 0
-                                        ? "var(--bz-success)"
+                                        ? "var(--state-success)"
                                         : ageDays > 30
-                                          ? "var(--bz-error)"
+                                          ? "var(--state-danger)"
                                           : "var(--bz-text-2)",
                                   }}
                                   title={new Date(
@@ -1237,9 +1266,9 @@ function ClientsListContent() {
                             <span
                               className={`inline-flex items-center px-1.5 py-0.5 rounded-full tabular-nums ${
                                 passportDaysLeft < 0
-                                  ? "bg-red-500/20 text-red-400"
+                                  ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
                                   : passportDaysLeft <= 90
-                                    ? "bg-yellow-500/15 text-yellow-400"
+                                    ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)]"
                                     : "bg-[var(--bz-base)] text-[var(--bz-text-2)]"
                               }`}
                               title={passportExpiry.toLocaleDateString(
@@ -1269,16 +1298,15 @@ function ClientsListContent() {
                             <span
                               className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold"
                               style={{
-                                background: "rgba(212,132,90,0.2)",
+                                background:
+                                  "color-mix(in srgb, var(--bz-accent) 20%, transparent)",
                                 color: "var(--bz-accent)",
                               }}
                             >
                               {client.active_practices}
                             </span>
                           ) : (
-                            <span style={{ color: "rgba(255,255,255,0.2)" }}>
-                              —
-                            </span>
+                            <span style={{ color: "var(--bz-text-3)" }}>—</span>
                           )}
                         </td>
                       </tr>
@@ -1310,7 +1338,7 @@ function ClientsListContent() {
           className="rounded-xl border border-dashed p-12 text-center"
           style={{
             borderColor: "var(--bz-border)",
-            background: "rgba(26,26,30,0.5)",
+            background: "rgba(35,35,40,0.65)",
           }}
         >
           <Users

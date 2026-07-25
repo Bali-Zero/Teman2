@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Check, X, Info, Phone } from "lucide-react";
 import type { ServicePackage } from "@/data/services_data";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
+import { usePricingData } from "@/hooks/usePricingData";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -48,6 +49,68 @@ function getVisaPackageColor(name: string): {
     border: "border-sky-500/40 hover:border-sky-400",
     badge: "bg-sky-500",
   };
+}
+
+// A raw digit-and-separator string ("39.000.000", "10.000.000") gets an
+// " IDR" suffix appended by the renderer below. Anything that already
+// contains letters — an already-formatted live value ("IDR 39,000,000"), a
+// placeholder ("Check live pricing"), or "Contact" — must render as-is.
+// Word/entity check on shape, never a substring/keyword list (cicatrix
+// family #3 — guard-over-match): a new placeholder string added later still
+// classifies correctly without touching this function.
+function isNumericPrice(price: string): boolean {
+  return /^\d[\d.,]*$/.test(price);
+}
+
+/**
+ * Resolves a package's display price: live PricingTool value (via
+ * `usePricingData`, when the package declares `livePriceKey`) falling back
+ * to the static `pkg.price` literal — never blank, never a stranding
+ * spinner. `usePricingData(null)` is a documented no-op (no fetch, no
+ * loading state), so this is safe to call unconditionally for every
+ * package, including the ones with no live pricing wired yet.
+ */
+function usePackagePrice(pkg: ServicePackage): string {
+  const { price: livePrice } = usePricingData(pkg.livePriceKey ?? null);
+  return livePrice ?? pkg.price;
+}
+
+function PriceValue({
+  pkg,
+  variant,
+}: {
+  pkg: ServicePackage;
+  variant: "card" | "modal";
+}) {
+  const price = usePackagePrice(pkg);
+
+  if (price === "Contact") {
+    return (
+      <span className="text-2xl font-bold text-accent-blue-editorial">
+        Contact for quote
+      </span>
+    );
+  }
+
+  const amount = isNumericPrice(price) ? (
+    <>
+      <span className="text-3xl font-bold text-white">{price}</span>
+      <span className="text-white/40 text-sm ml-2">IDR</span>
+    </>
+  ) : (
+    <span className="text-3xl font-bold text-white">{price}</span>
+  );
+
+  if (variant === "card") {
+    return amount;
+  }
+
+  return (
+    <div>
+      {amount}
+      <p className="text-[#22c55e] text-sm mt-1">All-inclusive pricing</p>
+    </div>
+  );
 }
 
 export default function ServicePricing({ service, slug }: ServicePricingProps) {
@@ -107,18 +170,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                   </p>
 
                   <div className="mb-6">
-                    {pkg.price === "Contact" ? (
-                      <span className="text-2xl font-bold text-accent-blue-editorial">
-                        Contact for quote
-                      </span>
-                    ) : (
-                      <>
-                        <span className="text-3xl font-bold text-white">
-                          {pkg.price}
-                        </span>
-                        <span className="text-white/40 text-sm ml-2">IDR</span>
-                      </>
-                    )}
+                    <PriceValue pkg={pkg} variant="card" />
                   </div>
 
                   <ul className="space-y-3 mb-6">
@@ -191,21 +243,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
               {/* Price */}
               <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-                {selectedPackage.price === "Contact" ? (
-                  <span className="text-2xl font-bold text-accent-blue-editorial">
-                    Contact for quote
-                  </span>
-                ) : (
-                  <div>
-                    <span className="text-3xl font-bold text-white">
-                      {selectedPackage.price}
-                    </span>
-                    <span className="text-white/40 text-sm ml-2">IDR</span>
-                    <p className="text-[#22c55e] text-sm mt-1">
-                      All-inclusive pricing
-                    </p>
-                  </div>
-                )}
+                <PriceValue pkg={selectedPackage} variant="modal" />
               </div>
 
               {/* Features */}
@@ -249,6 +287,16 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 <Phone className="w-5 h-5" />
                 Chat on WhatsApp
               </WhatsAppLeadButton>
+
+              {/* Optional deep-link to a dedicated landing page */}
+              {selectedPackage.link && (
+                <Link
+                  href={selectedPackage.link.href}
+                  className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors mb-3"
+                >
+                  {selectedPackage.link.label} →
+                </Link>
+              )}
 
               <Link
                 href="/chat"

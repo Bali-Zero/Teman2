@@ -1,0 +1,74 @@
+{
+  "registry": "E33 Second Home Visa — fact registry (TEST FIXTURE, trimmed copy)",
+  "version": "1.0.0",
+  "derived_from": "research/secondhome/e33-fact-registry.json (branch backend-rag-e33-fact-registry, pending merge)",
+  "derived_on": "2026-07-23",
+  "note": "Trimmed fixture for tests — keeps only the facts the claim guard references. Do NOT edit here; edit the canonical registry and re-derive.",
+  "status_enum": ["confirmed", "pending", "disputed", "unknown"],
+  "forbidden_legacy_errors": [
+    "IDR 2,000,000 fee (1000x error)",
+    "USD 1,500/month for E33F (superseded pre-2024 figure; current USD 3,000/month)",
+    "LPS fully covers the deposit",
+    "approval guaranteed",
+    "automatic KITAP",
+    "E33 permits local work",
+    "deposit at any bank (must be state-owned BUMN bank)",
+    "5-10 years first grant (base E33 first grant is up to 5 years)"
+  ],
+  "facts": [
+    {
+      "id": "e33_base_deposit_amount",
+      "value": "USD 130,000 deposit in the applicant's own name at a state-owned (BUMN) Indonesian bank",
+      "status": "confirmed",
+      "notes": "Own-name requirement is explicit. Not 'any bank'."
+    },
+    {
+      "id": "e33_first_grant_duration",
+      "value": "Up to 5 years first grant",
+      "status": "confirmed",
+      "notes": "KG golden-route text previously said '5-10 years' — corrected 2026-07-23. 10-year figure applies to other first-grant categories, not base E33."
+    },
+    {
+      "id": "e33_not_work_visa",
+      "value": "Base E33 (deposit/property route) is a pure residence permit — it does NOT authorize employment; paid work needs a separate work permit/KITAS",
+      "status": "confirmed",
+      "notes": "Work appears only on government-sponsored E33A/E33C variants with dual-activity reporting."
+    },
+    {
+      "id": "e33e_requirements",
+      "value": "Age 55+, USD 50,000 deposit (state-owned bank) + USD 3,000/month income; 5-year validity",
+      "status": "confirmed",
+      "notes": "Financial figures are not disputed."
+    },
+    {
+      "id": "e33f_requirements",
+      "value": "Senior 1-year route; USD 3,000/month income only (no deposit). USD 1,500/month is the SUPERSEDED pre-2024 figure",
+      "status": "confirmed",
+      "notes": "Code fixes applied 2026-07-23: catalogue.py E33F notes, match_tree.py _STEPS_RETIREMENT (both said USD 1,500)."
+    },
+    {
+      "id": "bsi_sharia_accepted",
+      "value": "Whether a deposit at Bank Syariah Indonesia counts as the state-owned-bank deposit for E33",
+      "status": "pending",
+      "notes": "FORBIDDEN to claim BSI equivalence until answered."
+    },
+    {
+      "id": "split_deposit_accepted",
+      "value": "Whether the USD 130,000 may be split across more than one BUMN bank",
+      "status": "pending",
+      "notes": "FORBIDDEN to claim split deposits are accepted until answered."
+    },
+    {
+      "id": "itap_after_3y_criteria",
+      "value": "Whether/under what criteria an E33 holder may convert to ITAP after 3 years",
+      "status": "pending",
+      "notes": "FORBIDDEN to market ITAP-after-3y until answered."
+    },
+    {
+      "id": "usd_deposit_rates_and_lps_cap_confirmation",
+      "value": "Each bank's USD deposit rates and confirmation of LPS deposit-insurance cap applicability",
+      "status": "pending",
+      "notes": "LPS insurance has a cap — never claim it fully covers the deposit."
+    }
+  ]
+}

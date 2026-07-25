@@ -289,5 +289,107 @@
     "errors": {
       "network": "Kesalahan jaringan"
     }
+  },
+  "secondHome": {
+    "hero": {
+      "eyebrow": "E33 — Visa Second Home",
+      "title": "Tinggal di Indonesia hingga 5 tahun — dengan dana Anda sendiri",
+      "subtitle": "Visa Second Home adalah izin tinggal jangka panjang bagi pemohon dengan kondisi finansial mapan. Tanpa sponsor, tanpa pemberi kerja — komitmen finansial Anda sendiri yang menjadi dasar. Mulai dengan fit memo gratis.",
+      "stat1v": "5 tahun",
+      "stat1l": "Izin pertama, dapat diperpanjang",
+      "stat2v": "USD 130.000",
+      "stat2l": "Deposito atas nama sendiri di bank BUMN",
+      "stat3v": "Gratis",
+      "stat3l": "Penilaian fit memo"
+    },
+    "routes": {
+      "eyebrow": "Kualifikasi",
+      "title": "Dua cara memenuhi syarat",
+      "a": {
+        "title": "Jalur A — Deposito bank",
+        "amount": "USD 130.000",
+        "body": "Deposito atas nama Anda sendiri di bank BUMN Indonesia. Dana tetap milik Anda — deposito ini menjadi bukti komitmen finansial.",
+        "note": "Kami menyiapkan berkas bukti sesuai format yang diminta imigrasi, dan mengoordinasikan konfirmasi bank bersama Anda."
+      },
+      "b": {
+        "title": "Jalur B — Properti",
+        "amount": "USD 1.000.000",
+        "body": "Properti strata-title yang sudah selesai dibangun (hak milik atas satuan rumah susun) senilai minimal USD 1.000.000.",
+        "note": "Hanya strata-title yang sudah selesai — pembelian off-plan dan leasehold tidak memenuhi syarat."
+      }
+    },
+    "who": {
+      "eyebrow": "Untuk siapa",
+      "title": "Tiga jalur, satu izin tinggal",
+      "base": {
+        "title": "E33 — Dasar (hingga 5 tahun)",
+        "body": "Untuk individu dan keluarga dengan kondisi finansial mapan. Izin pertama hingga 5 tahun, dapat diperpanjang — total tinggal kumulatif hingga 10 tahun."
+      },
+      "e33e": {
+        "title": "E33E — Senior, 5 tahun",
+        "body": "Usia 55+. Deposito USD 50.000 di bank BUMN ditambah penghasilan USD 3.000/bulan. Berlaku lima tahun."
+      },
+      "e33f": {
+        "title": "E33F — Senior, 1 tahun",
+        "body": "Usia 55+. Hanya penghasilan USD 3.000/bulan — tanpa deposito. Berlaku satu tahun."
+      },
+      "family": {
+        "title": "Membawa keluarga",
+        "body": "Tersedia add-on keluarga: anggota keluarga yang memenuhi syarat dapat ikut melalui jalur dependen. Aturan dependen dan biayanya kami konfirmasi dalam fit memo Anda."
+      },
+      "nowork": {
+        "title": "Tanpa hak kerja",
+        "body": "E33 adalah izin tinggal — tidak memberikan hak bekerja di Indonesia. Pekerjaan berbayar memerlukan izin kerja/KITAS terpisah."
+      },
+      "ageNote": "Batas usia senior: kami berpatokan pada 55+ sesuai Permenkumham 11/2024 dan panduan resmi imigrasi. Satu pasal dalam regulasi masih menyebut 60 — untuk usia 55–59 tahun kami konfirmasi kelayakan secara individual sebelum pengajuan."
+    },
+    "how": {
+      "eyebrow": "Cara kerja",
+      "title": "Yang Bali Zero lakukan",
+      "step1": {
+        "label": "Langkah 1 — Gratis",
+        "title": "Fit memo",
+        "body": "Hubungi kami di WhatsApp. Kami menilai jalur dan track mana yang paling sesuai dengan situasi Anda — gratis, tanpa kewajiban."
+      },
+      "step2": {
+        "label": "Langkah 2",
+        "title": "Review bukti",
+        "body": "Kami meninjau bukti deposito atau properti Anda sesuai yang benar-benar diminta imigrasi — sebelum ada yang diajukan."
+      },
+      "step3": {
+        "label": "Langkah 3",
+        "title": "Pengajuan",
+        "body": "Kami menyiapkan dan mengajukan permohonan, berkoordinasi dengan imigrasi, dan memantaunya hingga terbit."
+      },
+      "priceLabel": "E33 dasar — all-inclusive",
+      "priceNote": "Satu angka, semua sudah termasuk. Jalur senior dan add-on keluarga dihitung dalam fit memo gratis Anda."
+    },
+    "duty": {
+      "eyebrow": "Setelah izin terbit",
+      "title": "Kewajiban bukti 90 hari",
+      "body": "Setelah izin Anda terbit, Anda memiliki 90 hari untuk membuktikan bahwa komitmennya nyata: deposito telah ditempatkan atas nama Anda sendiri, atau properti yang memenuhi syarat telah diamankan. Kami memantau tenggat ini bersama Anda sejak hari pertama, agar izin Anda tetap bersih."
+    },
+    "faq": {
+      "eyebrow": "Pertanyaan",
+      "title": "Pertanyaan yang sering diajukan",
+      "q1": "Apa itu Visa Second Home E33 Indonesia?",
+      "a1": "Visa Second Home E33 adalah izin tinggal jangka panjang bagi pemohon dengan kondisi finansial mapan. Izin pertama hingga 5 tahun dan dapat diperpanjang, dengan batas kumulatif 10 tahun. Ini murni izin tinggal dan tidak memberikan hak bekerja di Indonesia.",
+      "q2": "Bagaimana cara memenuhi syarat Visa Second Home?",
+      "a2": "Dua jalur kualifikasi: deposito USD 130.000 atas nama Anda sendiri di bank BUMN Indonesia, atau properti strata-title yang sudah selesai dibangun senilai USD 1.000.000 (hak milik atas satuan rumah susun). Properti off-plan dan leasehold tidak memenuhi syarat.",
+      "q3": "Apakah saya bisa bekerja di Indonesia dengan Visa Second Home?",
+      "a3": "Tidak. E33 hanyalah izin tinggal — tidak memberikan hak bekerja. Pekerjaan berbayar di Indonesia memerlukan izin kerja/KITAS terpisah.",
+      "q4": "Apakah ada opsi senior untuk Visa Second Home?",
+      "a4": "Ada. E33E (usia 55+, 5 tahun) memerlukan deposito USD 50.000 di bank BUMN ditambah penghasilan USD 3.000/bulan. E33F (usia 55+, 1 tahun) hanya memerlukan penghasilan USD 3.000/bulan, tanpa deposito.",
+      "q5": "Apakah keluarga saya bisa ikut dengan Visa Second Home?",
+      "a5": "Tersedia add-on keluarga — anggota keluarga yang memenuhi syarat dapat ikut melalui jalur dependen. Aturan dependen terkini dan biayanya dikonfirmasi secara individual dalam fit memo gratis.",
+      "q6": "Berapa biaya Visa Second Home dengan Bali Zero?",
+      "a6": "IDR 39.000.000 all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
+    },
+    "cta": {
+      "title": "Mulai dengan fit memo gratis",
+      "body": "Ceritakan situasi Anda di WhatsApp. Kami balas dengan penilaian jujur: jalur mana yang cocok, bukti apa yang Anda perlukan, dan harga pasti untuk kasus Anda. Tanpa kewajiban.",
+      "button": "Dapatkan Fit Memo gratis →",
+      "note": "Balasan pertama di WhatsApp biasanya kurang dari 5 jam."
+    }
   }
 }

@@ -133,10 +133,10 @@ const CARD = {
 function DecisionBadge({ decision }: { decision: string }) {
   const color =
     decision === "AUTO_ATTACH"
-      ? "var(--bz-success, #4db87a)"
+      ? "var(--state-success)"
       : decision === "NO_MATCH" || decision === "AMBIGUOUS"
-        ? "var(--bz-error, #d95f5a)"
-        : "var(--bz-warning, #d4923a)";
+        ? "var(--state-danger)"
+        : "var(--state-warning)";
   return (
     <span
       className="rounded px-2 py-0.5 text-xs font-medium"
@@ -804,7 +804,7 @@ export default function ReviewPage() {
         <div
           className="mb-4 rounded-md border px-4 py-2 text-sm"
           style={{
-            borderColor: "var(--bz-error, #d95f5a)",
+            borderColor: "var(--state-danger)",
             color: "var(--bz-text-1)",
           }}
         >
@@ -815,7 +815,7 @@ export default function ReviewPage() {
         <div
           className="mb-4 rounded-md border px-4 py-2 text-sm"
           style={{
-            borderColor: "var(--bz-success, #2e9e6b)",
+            borderColor: "var(--state-success)",
             color: "var(--bz-text-1)",
           }}
         >
@@ -826,7 +826,7 @@ export default function ReviewPage() {
       {loading ? (
         <p style={{ color: "var(--bz-text-3)" }}>Loading…</p>
       ) : !error && items.length === 0 ? (
-        <p style={{ color: "var(--bz-success, #2e9e6b)" }}>
+        <p style={{ color: "var(--state-success)" }}>
           ✓ No documents to review.
         </p>
       ) : (
@@ -898,7 +898,7 @@ export default function ReviewPage() {
       {detail && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
-          style={{ background: "rgba(0,0,0,0.55)" }}
+          style={{ background: "var(--surface-overlay)" }}
           onClick={() => void closeDetail()}
         >
           <div
@@ -928,7 +928,7 @@ export default function ReviewPage() {
                 className="mb-3 rounded-md border px-3 py-2 text-sm"
                 role="status"
                 style={{
-                  borderColor: "var(--bz-warning, #d4923a)",
+                  borderColor: "var(--state-warning)",
                   color: "var(--bz-text-1)",
                 }}
               >
@@ -1060,7 +1060,7 @@ export default function ReviewPage() {
                   <div
                     className="rounded-md border p-3"
                     style={{
-                      borderColor: "var(--bz-accent, #d4845a)",
+                      borderColor: "var(--bz-accent)",
                       background: "var(--bz-surface)",
                     }}
                   >
@@ -1128,7 +1128,7 @@ export default function ReviewPage() {
                       onClick={() => void createAndApprove()}
                       className="mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white"
                       style={{
-                        background: "var(--bz-accent, #d4845a)",
+                        background: "var(--bz-accent)",
                         opacity:
                           createBusy ||
                           busy === detail.proposal_id ||
@@ -1164,7 +1164,7 @@ export default function ReviewPage() {
                           style={{
                             borderColor:
                               selectedClient?.client_id === c.client_id
-                                ? "var(--bz-accent, #d4845a)"
+                                ? "var(--bz-accent)"
                                 : "var(--bz-border)",
                             color: "var(--bz-text-1)",
                           }}
@@ -1284,7 +1284,7 @@ export default function ReviewPage() {
                         type="button"
                         onClick={() => setShowCreateForm(true)}
                         className="mt-2 text-xs underline"
-                        style={{ color: "var(--bz-accent, #d4845a)" }}
+                        style={{ color: "var(--bz-accent)" }}
                       >
                         ➕ None of these — create a new client
                       </button>
@@ -1404,8 +1404,8 @@ export default function ReviewPage() {
                   className="rounded-md border px-3 py-2 text-sm"
                   style={{
                     borderColor: selectedClient
-                      ? "var(--bz-success, #2e9e6b)"
-                      : "var(--bz-warning, #d4923a)",
+                      ? "var(--state-success)"
+                      : "var(--state-warning)",
                     color: "var(--bz-text-1)",
                   }}
                 >
@@ -1430,7 +1430,7 @@ export default function ReviewPage() {
                     onClick={() => void decide("approve")}
                     className="flex-1 rounded-md px-4 py-2 text-sm font-medium text-white"
                     style={{
-                      background: "var(--bz-success, #2e9e6b)",
+                      background: "var(--state-success)",
                       opacity:
                         busy === detail.proposal_id ||
                         !claimToken ||
@@ -1447,7 +1447,7 @@ export default function ReviewPage() {
                     onClick={() => void decide("reject")}
                     className="flex-1 rounded-md px-4 py-2 text-sm font-medium text-white"
                     style={{
-                      background: "var(--bz-error, #d95f5a)",
+                      background: "var(--state-danger)",
                       opacity:
                         busy === detail.proposal_id || !claimToken ? 0.6 : 1,
                     }}

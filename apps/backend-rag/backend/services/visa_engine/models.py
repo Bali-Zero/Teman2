@@ -834,7 +834,7 @@ StudyLevelFact = Annotated[UnknownFact | KnownStudyLevel, Field(discriminator="s
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 35 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 40 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
@@ -844,9 +844,10 @@ StudyLevelFact = Annotated[UnknownFact | KnownStudyLevel, Field(discriminator="s
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-    with all 35 keys required. Field order mirrors ``enums.FactPath``'s
+    with all 40 keys required. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
-    ``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.
+    ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
+    grouping.
 
     ``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted
     ``FactPath`` string (e.g. ``"person.birth_date"``) that cannot be a
@@ -920,6 +921,24 @@ class ApplicantFactsData(BaseModel):
     study_level: Annotated[StudyLevelFact, Field(alias="study.level")]
     study_admission_confirmed: Annotated[BooleanFact, Field(alias="study.admission_confirmed")]
     study_sponsor_confirmed: Annotated[BooleanFact, Field(alias="study.sponsor_confirmed")]
+    # secondhome.* — E33 Second Home vertical (2026-07-23). USD amounts use
+    # NonNegativeIntegerFact, NOT MoneyFact: ``KnownMoney`` is documented as
+    # an IDR amount (spec §2 ``KnownMoney``), and these three are USD.
+    secondhome_bank_deposit_usd: Annotated[
+        NonNegativeIntegerFact, Field(alias="secondhome.bank_deposit_usd")
+    ]
+    secondhome_bank_deposit_at_state_bank: Annotated[
+        BooleanFact, Field(alias="secondhome.bank_deposit_at_state_bank")
+    ]
+    secondhome_bank_deposit_in_own_name: Annotated[
+        BooleanFact, Field(alias="secondhome.bank_deposit_in_own_name")
+    ]
+    secondhome_qualifying_property_value_usd: Annotated[
+        NonNegativeIntegerFact, Field(alias="secondhome.qualifying_property_value_usd")
+    ]
+    secondhome_passive_monthly_income_usd: Annotated[
+        NonNegativeIntegerFact, Field(alias="secondhome.passive_monthly_income_usd")
+    ]
     process_application_channel: Annotated[
         ApplicationChannelFact, Field(alias="process.application_channel")
     ]

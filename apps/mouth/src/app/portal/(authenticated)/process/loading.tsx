@@ -1,5 +1,8 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
+// WS3 slice 4 (GARUDA Day Edition): skeleton cards read --bz-card /
+// --bz-border / --glass-rim (was rgba(30,30,35,0.7) + white rgba hairlines
+// — near-black panels flashing on the warm-paper page).
 export default function ProcessLoading() {
   return (
     <div className="space-y-6 p-2">
@@ -15,12 +18,15 @@ export default function ProcessLoading() {
           <div
             key={i}
             className="rounded-xl border overflow-hidden"
-            style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             {/* Card Header */}
             <div
               className="flex items-center justify-between px-5 py-4 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ borderColor: "var(--bz-border)" }}
             >
               <div className="flex items-center gap-3">
                 <Skeleton variant="circular" width={36} height={36} />
@@ -38,7 +44,10 @@ export default function ProcessLoading() {
                 <div
                   key={j}
                   className="rounded-lg border p-3 flex items-center gap-3"
-                  style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
+                  style={{
+                    background: "var(--glass-rim)",
+                    borderColor: "var(--bz-border)",
+                  }}
                 >
                   <Skeleton variant="rounded" width={32} height={32} />
                   <div className="flex-1 space-y-1">

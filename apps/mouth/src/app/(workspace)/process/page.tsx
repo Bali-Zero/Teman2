@@ -8,11 +8,11 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { formatIDRCompact } from "@balizero/core/utils";
 import {
   FilterBar,
   FilterSelect,
   ListPageHeader,
+  Money,
   SearchBox,
   StatChips,
 } from "@balizero/core";
@@ -156,13 +156,11 @@ const FILTER_SELECT_CLASS =
   "border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
 // Status dot per kanban column — shared by list-view table + context menu.
-const STATUS_DOT_COLOR: Record<CaseStatus, string> = {
-  inquiry: "bg-gray-400",
-  waiting_documents: "bg-orange-400",
-  sending_invoice: "bg-yellow-400",
-  on_process: "bg-blue-500",
-  completed: "bg-green-500",
-};
+// WS2: reads the canonical column palette (kanban-colors) instead of its own
+// hardcoded Tailwind step map, so board, table and menu can never drift apart.
+const statusDotStyle = (column: CaseStatus): React.CSSProperties => ({
+  backgroundColor: COLUMN_COLORS[column].textColor,
+});
 
 /** WhatsApp + Email quick actions — identical on kanban cards and table rows. */
 function ContactQuickActions({ practice }: { practice: Practice }) {
@@ -178,7 +176,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
               "_blank",
             );
           }}
-          className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_20%,transparent)] text-[var(--accent-whatsapp)] transition-colors"
           title="WhatsApp"
           aria-label="Contact via WhatsApp"
         >
@@ -191,7 +189,7 @@ function ContactQuickActions({ practice }: { practice: Practice }) {
             e.stopPropagation();
             window.open(`mailto:${practice.client_email}`, "_blank");
           }}
-          className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)] transition-colors"
           title="Email"
           aria-label="Send email"
         >
@@ -747,7 +745,7 @@ export default function PratichePage() {
   const totalPages = Math.ceil(filteredPractices.length / itemsPerPage);
 
   const SkeletonCard = () => (
-    <div className="p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.45)] backdrop-blur-md space-y-2">
+    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md space-y-2">
       <div className="h-4 bg-[rgba(255,255,255,0.05)] rounded w-3/4 animate-pulse" />
       <div className="h-3 bg-[rgba(255,255,255,0.05)] rounded w-1/2 animate-pulse" />
       <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--bz-border)]">
@@ -815,12 +813,12 @@ export default function PratichePage() {
           }).length;
           return (
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-raised)] border border-[var(--bz-border)] text-[var(--bz-text-2)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--state-info)]" />
                 {active} active
               </span>
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-raised)] border border-[var(--bz-border)] text-[var(--bz-text-2)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--state-success)]" />
                 {completed} completed
               </span>
               {totalRevenue > 0 && (
@@ -833,13 +831,13 @@ export default function PratichePage() {
                   }
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
                     filters.payment_filter === "paid"
-                      ? "bg-green-500/25 border-green-500/50 text-green-400"
-                      : "bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20"
+                      ? "bg-[color-mix(in_srgb,var(--state-success)_25%,transparent)] border-[color-mix(in_srgb,var(--state-success)_50%,transparent)] text-[var(--state-success)]"
+                      : "bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] border-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)] hover:bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)]"
                   }`}
                   title="Click to filter paid practices"
                   aria-label="Filter paid practices"
                 >
-                  {formatIDRCompact(totalRevenue)} paid
+                  <Money compact value={totalRevenue} /> paid
                 </button>
               )}
               {unpaidRevenue > 0 && (
@@ -853,13 +851,13 @@ export default function PratichePage() {
                   }
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
                     filters.payment_filter === "unpaid"
-                      ? "bg-red-500/25 border-red-500/50 text-red-400"
-                      : "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      ? "bg-[color-mix(in_srgb,var(--state-danger)_25%,transparent)] border-[color-mix(in_srgb,var(--state-danger)_50%,transparent)] text-[var(--state-danger)]"
+                      : "bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] border-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]"
                   }`}
                   title="Click to filter unpaid practices"
                   aria-label="Filter unpaid practices"
                 >
-                  {formatIDRCompact(unpaidRevenue)} unpaid
+                  <Money compact value={unpaidRevenue} /> unpaid
                 </button>
               )}
               {expiringCount > 0 && (
@@ -869,8 +867,8 @@ export default function PratichePage() {
                   }
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
                     filters.expiring
-                      ? "bg-yellow-500/20 border-yellow-500/40 text-yellow-400"
-                      : "bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20"
+                      ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_40%,transparent)] text-[var(--state-warning)]"
+                      : "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)]"
                   }`}
                 >
                   ⏰ {expiringCount} expiring
@@ -889,12 +887,12 @@ export default function PratichePage() {
             placeholder="Search process… (press / to focus)"
             ariaLabel="Search process"
             title="Press / to focus search, Escape to clear"
-            className="border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
+            className="border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
           />
           <div className="flex gap-2">
             <Button
               variant={showFilters ? "default" : "outline"}
-              className="gap-2 border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(45,45,50,0.8)]"
+              className="gap-2 border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(35,35,40,0.8)]"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4" />
@@ -907,7 +905,7 @@ export default function PratichePage() {
             </Button>
             <Button
               variant="outline"
-              className="gap-2 border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-2)] hover:bg-[rgba(45,45,50,0.8)] hover:text-[var(--bz-text-1)]"
+              className="gap-2 border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md text-[var(--bz-text-2)] hover:bg-[rgba(35,35,40,0.8)] hover:text-[var(--bz-text-1)]"
               onClick={exportCSV}
               title={`Export ${filteredPractices.length} processes as CSV`}
               aria-label={`Export ${filteredPractices.length} processes as CSV`}
@@ -915,7 +913,7 @@ export default function PratichePage() {
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <div className="flex rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md overflow-hidden">
+            <div className="flex rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md overflow-hidden">
               {(
                 [
                   { mode: "kanban", icon: LayoutGrid, label: "Kanban Board" },
@@ -955,7 +953,7 @@ export default function PratichePage() {
               className:
                 filters.assigned_to === currentUserEmail
                   ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] border-[var(--bz-accent)]/40"
-                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30 hover:text-[var(--bz-accent)]",
+                  : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30 hover:text-[var(--bz-accent)]",
               content: (
                 <>
                   <User className="w-3 h-3" />
@@ -972,8 +970,8 @@ export default function PratichePage() {
                 })),
               className:
                 filters.payment_filter === "unpaid"
-                  ? "bg-red-500/20 text-red-400 border-red-500/40"
-                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400",
+                  ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] border-[color-mix(in_srgb,var(--state-danger)_40%,transparent)]"
+                  : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] hover:text-[var(--state-danger)]",
               content: (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-current" />
@@ -990,8 +988,8 @@ export default function PratichePage() {
                 })),
               className:
                 filters.priority === "urgent"
-                  ? "bg-red-500/20 text-red-400 border-red-500/40"
-                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400",
+                  ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] border-[color-mix(in_srgb,var(--state-danger)_40%,transparent)]"
+                  : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] hover:text-[var(--state-danger)]",
               content: <>🔥 Urgent</>,
             },
             {
@@ -1003,8 +1001,8 @@ export default function PratichePage() {
                 })),
               className:
                 filters.priority === "high"
-                  ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
-                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-orange-500/30 hover:text-orange-400",
+                  ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] border-[color-mix(in_srgb,var(--state-warning)_40%,transparent)]"
+                  : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] hover:text-[var(--state-warning)]",
               content: <>↑ High</>,
             },
             {
@@ -1012,16 +1010,16 @@ export default function PratichePage() {
               onClick: () =>
                 setFilters((f) => ({ ...f, expiring: !f.expiring })),
               className: filters.expiring
-                ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-yellow-500/30 hover:text-yellow-400",
+                ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] border-[color-mix(in_srgb,var(--state-warning)_40%,transparent)]"
+                : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] hover:text-[var(--state-warning)]",
               content: <>⏰ Expiring 30d</>,
             },
             {
               key: "stale",
               onClick: () => setFilters((f) => ({ ...f, stale: !f.stale })),
               className: filters.stale
-                ? "bg-purple-500/20 text-purple-400 border-purple-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-purple-500/30 hover:text-purple-400",
+                ? "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)] border-[color-mix(in_srgb,var(--bz-neon-purple)_40%,transparent)]"
+                : "bg-[var(--surface-raised)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[color-mix(in_srgb,var(--bz-neon-purple)_30%,transparent)] hover:text-[var(--bz-neon-purple)]",
               title: "Show processes not updated in >14 days",
               ariaLabel: "Show stale processes (not updated in 14+ days)",
               content: <>🕰 Stale 14d+</>,
@@ -1033,7 +1031,7 @@ export default function PratichePage() {
           <FilterBar
             activeCount={activeFiltersCount}
             onClearAll={clearFilters}
-            className="rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.7)] backdrop-blur-xl shadow-2xl"
+            className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-xl shadow-2xl"
             gridClassName="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
             <FilterSelect
@@ -1120,7 +1118,7 @@ export default function PratichePage() {
                 className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md"
                 style={{
                   background: colors.tintBg,
-                  border: `1px solid rgba(255,255,255,0.05)`,
+                  border: `1px solid var(--bz-border)`,
                 }}
               >
                 {/* Gradient top bar */}
@@ -1199,7 +1197,7 @@ export default function PratichePage() {
                           className="mb-3 text-[10px] font-medium tabular-nums opacity-70"
                           style={{ color: colors.textColor }}
                         >
-                          {formatIDRCompact(colRevenue)}
+                          <Money compact value={colRevenue} />
                         </div>
                       );
                     })()}
@@ -1257,9 +1255,6 @@ export default function PratichePage() {
 
                           const priceValue =
                             practice.actual_price ?? practice.quoted_price ?? 0;
-                          const priceStr = priceValue
-                            ? formatIDRCompact(priceValue)
-                            : null;
 
                           return (
                             <div
@@ -1306,25 +1301,25 @@ export default function PratichePage() {
                                     practice.payment_status !== "paid")) && (
                                   <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                                     {practice.priority === "urgent" && (
-                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wide">
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] uppercase tracking-wide">
                                         urgent
                                       </span>
                                     )}
                                     {practice.priority === "high" && (
-                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)] uppercase tracking-wide">
                                         high
                                       </span>
                                     )}
                                     {cardIsCompleted && (
-                                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                                      <CheckCircle className="w-3.5 h-3.5 text-[var(--state-success)]" />
                                     )}
                                     {practice.payment_status &&
                                       practice.payment_status !== "paid" && (
                                         <span
                                           className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wide ${
                                             practice.payment_status === "unpaid"
-                                              ? "bg-red-500/20 text-red-400"
-                                              : "bg-yellow-500/20 text-yellow-400"
+                                              ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
+                                              : "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)]"
                                           }`}
                                         >
                                           {practice.payment_status}
@@ -1396,17 +1391,17 @@ export default function PratichePage() {
                                 )}
 
                                 {/* Price — doubled size, prominent */}
-                                {priceStr && (
-                                  <p
-                                    className={`text-xl font-bold tabular-nums leading-none ${
+                                {priceValue ? (
+                                  <Money
+                                    compact
+                                    value={priceValue}
+                                    className={`block text-xl font-bold leading-none ${
                                       practice.payment_status === "paid"
-                                        ? "text-green-400"
+                                        ? "text-[var(--state-success)]"
                                         : "text-[var(--bz-text-1)]"
                                     }`}
-                                  >
-                                    {priceStr}
-                                  </p>
-                                )}
+                                  />
+                                ) : null}
 
                                 {/* Meta row: expiry + age chips */}
                                 {(practice.expiry_date ||
@@ -1431,7 +1426,7 @@ export default function PratichePage() {
                                         if (d < 0)
                                           return (
                                             <span
-                                              className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums"
+                                              className="text-[9px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] tabular-nums"
                                               title={`Expired on ${expiryDateStr}`}
                                             >
                                               exp {Math.abs(d)}d ago
@@ -1440,7 +1435,7 @@ export default function PratichePage() {
                                         if (d <= 30)
                                           return (
                                             <span
-                                              className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 tabular-nums"
+                                              className="text-[9px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)] tabular-nums"
                                               title={`Expires ${expiryDateStr}`}
                                             >
                                               ⏰ {d}d
@@ -1466,9 +1461,9 @@ export default function PratichePage() {
                                           <span
                                             className={`text-[9px] px-1.5 py-0.5 rounded tabular-nums ${
                                               ageDays > 14
-                                                ? "bg-red-500/15 text-red-400"
+                                                ? "bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)]"
                                                 : ageDays > 7
-                                                  ? "bg-yellow-500/15 text-yellow-400"
+                                                  ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)]"
                                                   : "text-[var(--bz-text-2)]"
                                             }`}
                                             title={`Last updated ${ageDays} days ago`}
@@ -1490,7 +1485,7 @@ export default function PratichePage() {
                                         `/clients/${practice.client_id}?tab=documents`,
                                       );
                                     }}
-                                    className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                                    className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] transition-colors ml-auto"
                                     title="View Documents"
                                     aria-label="View documents"
                                   >
@@ -1546,7 +1541,7 @@ export default function PratichePage() {
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.6)] backdrop-blur-md shadow-2xl overflow-hidden">
+        <div className="rounded-xl border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-md shadow-2xl overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
               <div className="animate-pulse space-y-4">
@@ -1587,7 +1582,7 @@ export default function PratichePage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[rgba(35,35,40,0.8)] border-b border-[rgba(255,255,255,0.05)] backdrop-blur-lg">
+                <thead className="bg-[rgba(35,35,40,0.8)] border-b border-[var(--bz-border)] backdrop-blur-lg">
                   <tr>
                     {(
                       [
@@ -1646,7 +1641,7 @@ export default function PratichePage() {
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[rgba(255,255,255,0.05)]">
+                <tbody className="divide-y divide-[var(--bz-border)]">
                   {paginatedPractices.map((practice) => (
                     <tr
                       key={practice.id}
@@ -1702,11 +1697,10 @@ export default function PratichePage() {
                       <td className="px-4 py-3 text-sm">
                         <div className="inline-flex items-center gap-1.5">
                           <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              STATUS_DOT_COLOR[
-                                getStatusColumn(practice.status)
-                              ] || "bg-gray-400"
-                            }`}
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={statusDotStyle(
+                              getStatusColumn(practice.status),
+                            )}
                           />
                           <span className="text-[var(--bz-text-1)]">
                             {practice.status
@@ -1720,11 +1714,11 @@ export default function PratichePage() {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {practice.priority === "urgent" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-500/15 text-red-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)]">
                             🔥 urgent
                           </span>
                         ) : practice.priority === "high" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-orange-500/12 text-orange-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[color-mix(in_srgb,var(--state-warning)_12%,transparent)] text-[var(--state-warning)]">
                             ↑ high
                           </span>
                         ) : (
@@ -1742,10 +1736,10 @@ export default function PratichePage() {
                           <span
                             className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
                               practice.payment_status === "paid"
-                                ? "bg-green-500/15 text-green-400"
+                                ? "bg-[color-mix(in_srgb,var(--state-success)_15%,transparent)] text-[var(--state-success)]"
                                 : practice.payment_status === "partial"
-                                  ? "bg-yellow-500/15 text-yellow-400"
-                                  : "bg-red-500/15 text-red-400"
+                                  ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)]"
+                                  : "bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)]"
                             }`}
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-current" />
@@ -1763,16 +1757,16 @@ export default function PratichePage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
                         {practice.actual_price || practice.quoted_price ? (
-                          <span
-                            className="font-medium tabular-nums"
-                            style={{ color: "var(--bz-accent)" }}
-                          >
-                            {formatIDRCompact(
+                          <Money
+                            compact
+                            value={
                               practice.actual_price ||
-                                practice.quoted_price ||
-                                0,
-                            )}
-                          </span>
+                              practice.quoted_price ||
+                              0
+                            }
+                            className="font-medium"
+                            style={{ color: "var(--bz-accent)" }}
+                          />
                         ) : (
                           <span className="text-[var(--bz-text-2)] text-xs">
                             —
@@ -1801,15 +1795,15 @@ export default function PratichePage() {
                                 style={{
                                   background:
                                     ageDays > 14
-                                      ? "rgba(239,68,68,0.12)"
+                                      ? "color-mix(in srgb, var(--state-danger) 12%, transparent)"
                                       : ageDays > 7
-                                        ? "rgba(245,158,11,0.10)"
+                                        ? "color-mix(in srgb, var(--state-warning) 10%, transparent)"
                                         : "transparent",
                                   color:
                                     ageDays > 14
-                                      ? "var(--bz-error)"
+                                      ? "var(--state-danger)"
                                       : ageDays > 7
-                                        ? "var(--bz-warning)"
+                                        ? "var(--state-warning)"
                                         : "var(--bz-text-2)",
                                 }}
                                 title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString("en-US")}`}
@@ -1848,7 +1842,7 @@ export default function PratichePage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.8)] backdrop-blur-lg">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bz-border)] bg-[rgba(35,35,40,0.8)] backdrop-blur-lg">
                   <div className="text-sm text-[var(--bz-text-2)]">
                     Showing {(listPageNumber - 1) * itemsPerPage + 1} to{" "}
                     {Math.min(
@@ -1863,7 +1857,7 @@ export default function PratichePage() {
                         setListPageNumber((p) => Math.max(1, p - 1))
                       }
                       disabled={listPageNumber === 1}
-                      className="px-3 py-1 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(45,45,50,0.5)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(65,65,70,0.8)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Previous
                     </button>
@@ -1879,7 +1873,7 @@ export default function PratichePage() {
                               className={`px-2 py-1 rounded-lg transition-colors ${
                                 listPageNumber === pageNum
                                   ? "bg-[var(--bz-accent)] text-white"
-                                  : "bg-[rgba(45,45,50,0.5)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(65,65,70,0.8)]"
+                                  : "bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)]"
                               }`}
                             >
                               {pageNum}
@@ -1920,7 +1914,7 @@ export default function PratichePage() {
       {selectedPractice && menuPosition && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[200px] rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(30,30,35,0.8)] backdrop-blur-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--bz-border)] bg-[rgba(30,30,35,0.8)] backdrop-blur-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{
             // ✅ Smart positioning: adjusts based on viewport boundaries
             // Menu height ~340px (header 40px + 9 items * 32px + padding)
@@ -1938,7 +1932,7 @@ export default function PratichePage() {
             maxWidth: "calc(100vw - 20px)",
           }}
         >
-          <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.05)] bg-[rgba(40,40,45,0.6)] backdrop-blur-md rounded-t-lg">
+          <div className="px-3 py-2 border-b border-[var(--bz-border)] bg-[rgba(40,40,45,0.6)] backdrop-blur-md rounded-t-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--bz-text-1)]">
@@ -1982,9 +1976,8 @@ export default function PratichePage() {
               >
                 <div className="flex items-center gap-2">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      STATUS_DOT_COLOR[option.column] || "bg-gray-400"
-                    }`}
+                    className="w-2 h-2 rounded-full"
+                    style={statusDotStyle(option.column)}
                   />
                   {option.label}
                 </div>
@@ -1995,7 +1988,7 @@ export default function PratichePage() {
             ))}
           </div>
           {/* Payment Status Section */}
-          <div className="border-t border-[rgba(255,255,255,0.05)] px-3 py-2">
+          <div className="border-t border-[var(--bz-border)] px-3 py-2">
             <p className="text-[10px] text-[var(--bz-text-2)] mb-1.5 font-medium uppercase tracking-wide">
               Payment
             </p>
@@ -2013,27 +2006,27 @@ export default function PratichePage() {
                     background:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
-                          ? "rgba(34,197,94,0.25)"
+                          ? "color-mix(in srgb, var(--state-success) 25%, transparent)"
                           : ps === "partial"
-                            ? "rgba(245,158,11,0.25)"
-                            : "rgba(239,68,68,0.25)"
+                            ? "color-mix(in srgb, var(--state-warning) 25%, transparent)"
+                            : "color-mix(in srgb, var(--state-danger) 25%, transparent)"
                         : "rgba(255,255,255,0.05)",
                     color:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
-                          ? "var(--bz-success)"
+                          ? "var(--state-success)"
                           : ps === "partial"
-                            ? "var(--bz-warning)"
-                            : "var(--bz-error)"
+                            ? "var(--state-warning)"
+                            : "var(--state-danger)"
                         : "var(--bz-text-2)",
                     border:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
-                          ? "1px solid rgba(34,197,94,0.4)"
+                          ? "1px solid color-mix(in srgb, var(--state-success) 40%, transparent)"
                           : ps === "partial"
-                            ? "1px solid rgba(245,158,11,0.4)"
-                            : "1px solid rgba(239,68,68,0.4)"
-                        : "1px solid rgba(255,255,255,0.06)",
+                            ? "1px solid color-mix(in srgb, var(--state-warning) 40%, transparent)"
+                            : "1px solid color-mix(in srgb, var(--state-danger) 40%, transparent)"
+                        : "1px solid var(--bz-border)",
                   }}
                 >
                   {ps}
@@ -2042,7 +2035,7 @@ export default function PratichePage() {
             </div>
           </div>
           {/* Priority Section */}
-          <div className="border-t border-[rgba(255,255,255,0.05)] px-3 py-2">
+          <div className="border-t border-[var(--bz-border)] px-3 py-2">
             <p className="text-[10px] text-[var(--bz-text-2)] mb-1.5 font-medium uppercase tracking-wide">
               Priority
             </p>
@@ -2053,22 +2046,28 @@ export default function PratichePage() {
                     value: "normal",
                     label: "Normal",
                     color: "var(--bz-text-secondary)",
-                    active: "rgba(156,163,175,0.25)",
-                    border: "rgba(156,163,175,0.4)",
+                    active:
+                      "color-mix(in srgb, var(--bz-text-secondary) 25%, transparent)",
+                    border:
+                      "color-mix(in srgb, var(--bz-text-secondary) 40%, transparent)",
                   },
                   {
                     value: "high",
                     label: "High",
-                    color: "var(--bz-warning)",
-                    active: "rgba(249,115,22,0.25)",
-                    border: "rgba(249,115,22,0.4)",
+                    color: "var(--state-warning)",
+                    active:
+                      "color-mix(in srgb, var(--state-warning) 25%, transparent)",
+                    border:
+                      "color-mix(in srgb, var(--state-warning) 40%, transparent)",
                   },
                   {
                     value: "urgent",
                     label: "Urgent",
-                    color: "var(--bz-error)",
-                    active: "rgba(239,68,68,0.25)",
-                    border: "rgba(239,68,68,0.4)",
+                    color: "var(--state-danger)",
+                    active:
+                      "color-mix(in srgb, var(--state-danger) 25%, transparent)",
+                    border:
+                      "color-mix(in srgb, var(--state-danger) 40%, transparent)",
                   },
                 ] as const
               ).map((p) => {
@@ -2089,7 +2088,7 @@ export default function PratichePage() {
                       color: isCurrent ? p.color : "var(--bz-text-2)",
                       border: isCurrent
                         ? `1px solid ${p.border}`
-                        : "1px solid rgba(255,255,255,0.06)",
+                        : "1px solid var(--bz-border)",
                     }}
                   >
                     {p.label}

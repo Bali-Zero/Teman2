@@ -51,7 +51,7 @@ class TestEnumStability:
     def test_b211a_removed(self):
         assert not hasattr(VisaType, "B211A"), "B211A must not exist — it is not in the seed"
 
-    def test_all_19_codes_present(self):
+    def test_all_20_codes_present(self):
         expected = {
             "B1",
             "C1",
@@ -69,6 +69,7 @@ class TestEnumStability:
             "E28A",
             "E30A",
             "E31",
+            "E33",
             "E33E",
             "E33F",
             "E33G",

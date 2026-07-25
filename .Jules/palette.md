@@ -87,3 +87,8 @@
 
 **Learning:** Sidebars that are visually animated off-screen using CSS transitions (e.g., `transform: translateX`) remain in the active document flow unless hidden or made inert. This allows screen readers and keyboard users (via the Tab key) to focus hidden elements inside the sidebar, creating a confusing and unexpected keyboard experience. Applying the standard HTML `inert` attribute (natively supported in React 19) when the sidebar is closed ensures all interactive children are completely removed from the tab order.
 **Action:** Always apply `inert={!isOpen ? true : undefined}` (or similar) to sliding or off-screen panels/drawers to keep the keyboard navigation and tab flow clean and expected.
+
+## 2026-07-21 - [Localization Accuracy for Asynchronous States]
+
+**Learning:** Translating asynchronous/in-progress states (e.g., "Our specialists are verifying") using the same translations as finished states (e.g., "Verified by") in secondary locales creates highly misleading and confusing UX. Non-English users would see false indicators of completion.
+**Action:** Ensure that different interaction states (e.g., active versus complete) always map to distinct, accurate localized labels across all supported languages.

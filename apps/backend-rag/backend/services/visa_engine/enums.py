@@ -273,6 +273,7 @@ class RelationType(str, Enum):
     SPOUSE = "SPOUSE"
     CHILD = "CHILD"
     PARENT = "PARENT"
+    SIBLING = "SIBLING"
     DEPENDENT = "DEPENDENT"
     OTHER = "OTHER"
 
@@ -380,13 +381,14 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 38-path fact vocabulary (35 applicant + 3 derived; spec §2 ``FactPath``)
+# FactPath — the closed 43-path fact vocabulary (40 applicant + 3 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 35 applicant-collected
-    + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``).
+    """Every fact path the engine may ever reference — 40 applicant-collected
+    + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -434,6 +436,16 @@ class FactPath(str, Enum):
     STUDY_LEVEL = "study.level"
     STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
     STUDY_SPONSOR_CONFIRMED = "study.sponsor_confirmed"
+    # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
+    # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
+    # eligibility rules test. ``bank_deposit_*`` is one deposit, evidenced as
+    # a whole (amount + state-owned-bank (BUMN) placement + own-name holder);
+    # split deposits are never modeled (owner decision: never offered).
+    SECONDHOME_BANK_DEPOSIT_USD = "secondhome.bank_deposit_usd"
+    SECONDHOME_BANK_DEPOSIT_AT_STATE_BANK = "secondhome.bank_deposit_at_state_bank"
+    SECONDHOME_BANK_DEPOSIT_IN_OWN_NAME = "secondhome.bank_deposit_in_own_name"
+    SECONDHOME_QUALIFYING_PROPERTY_VALUE_USD = "secondhome.qualifying_property_value_usd"
+    SECONDHOME_PASSIVE_MONTHLY_INCOME_USD = "secondhome.passive_monthly_income_usd"
     # process.*
     PROCESS_APPLICATION_CHANNEL = "process.application_channel"
     PROCESS_WANTS_ONSHORE_CONVERSION = "process.wants_onshore_conversion"
@@ -446,7 +458,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
 
 
-#: The 35 applicant-collected paths (everything except ``derived.*``).
+#: The 40 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   AppBranchSelector,
   AppFrame,
@@ -58,29 +59,41 @@ export default function VisaEntryPage() {
         </video>
       </div>
 
-      <div style={{ position: "relative", zIndex: 1, display: "grid", gap: "var(--space-5, 2rem)" }}>
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "grid",
+          gap: "var(--space-5, 2rem)",
+        }}
+      >
         {/* Live marker */}
-        <div style={{
-          position: "absolute",
-          top: "-2.5rem",
-          right: 0,
-          fontSize: "0.6rem",
-          opacity: 0.5,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--color-text-muted)",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-        }}>
-          <span aria-hidden style={{
-            display: "inline-block",
-            width: "6px",
-            height: "6px",
-            borderRadius: "50%",
-            background: "var(--accent-funnel)",
-            animation: "bz-live-pulse 2.4s ease-in-out infinite",
-          }} />
+        <div
+          style={{
+            position: "absolute",
+            top: "-2.5rem",
+            right: 0,
+            fontSize: "0.6rem",
+            opacity: 0.5,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--color-text-muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              display: "inline-block",
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "var(--accent-funnel)",
+              animation: "bz-live-pulse 2.4s ease-in-out infinite",
+            }}
+          />
           Ambient · Bali
         </div>
 
@@ -90,18 +103,37 @@ export default function VisaEntryPage() {
             {
               id: "clock",
               title: "Yes, I'm here",
-              description: "Tell us which visa and when you entered. We'll build your expiry timeline.",
+              description:
+                "Tell us which visa and when you entered. We'll build your expiry timeline.",
               href: "/visa/clock",
             },
             {
               id: "match",
               title: "No, I'm planning",
-              description: "Answer 4 short questions. We'll recommend the right visa and show the cost.",
+              description:
+                "Answer 4 short questions. We'll recommend the right visa and show the cost.",
               href: "/visa/match",
             },
           ]}
           onSelect={(opt) => tracker.branchSelected(opt.id)}
         />
+
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "var(--text-sm, 0.88rem)",
+            color: "var(--color-text-muted)",
+            margin: 0,
+          }}
+        >
+          Buying property or keeping USD 130,000+ in savings?{" "}
+          <Link
+            href="/visa/second-home"
+            style={{ color: "var(--accent-funnel)" }}
+          >
+            See the Second Home Visa (E33) →
+          </Link>
+        </p>
 
         <style>{`
           @keyframes bz-live-pulse {

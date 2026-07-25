@@ -31,7 +31,7 @@ never ``backend.services.visa_engine.models.Decision``) so that once PR5
 lands, the persona replay tests in this package can be repointed at the real
 ``evaluate()`` by swapping this module's two entry points
 (``evaluate_product`` / ``evaluate_all``) for thin calls into PR5's API --
-the 20 persona fixtures and their expectations do not change.
+the 23 persona fixtures and their expectations do not change.
 
 Deliberate simplifications documented up front (so a reviewer does not read
 them as bugs):
@@ -39,7 +39,7 @@ them as bugs):
 1. ``missing_facts`` on a ``ProductProof``/``GlobalDecision`` is the raw
    ``ConditionResult.unknown_facts`` set, NOT translated from a
    ``derived.*`` fact back to its applicant-collected dependency (spec's
-   ``underlying_applicant_facts`` helper). None of this harness's 20 gold
+   ``underlying_applicant_facts`` helper). None of this harness's 23 gold
    personas ever produces an UNKNOWN ``derived.*`` fact as the safety-critical
    culprit (every persona supplies a definite ``person.birth_date``, so
    ``derived.is_minor``/``derived.age_years`` always resolve to a known
@@ -54,7 +54,9 @@ them as bugs):
    across every product in that bucket, deduplicated and sorted for
    determinism -- there is no dedicated "global-only" rule stage in this
    pack (every review/hard-filter trigger in the designed pack is GLOBAL
-   scope, so it fires identically for every product; the union is therefore
+   scope except the E33E/E33F-scoped ``hr-e33e-e33f-age-band-55-59``
+   BERSYARAT band rule, which fires TRUE only for RETIREMENT-purpose
+   applicants aged 55-59 (persona 21), so the union is
    always a singleton set in this harness's personas, but the aggregation
    code does not assume that).
 """

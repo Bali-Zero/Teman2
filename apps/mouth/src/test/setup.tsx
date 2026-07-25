@@ -27,6 +27,11 @@ vi.mock("next/font/google", () => ({
     variable: "--font-montserrat",
     style: { fontFamily: "Montserrat" },
   }),
+  Cormorant_Garamond: () => ({
+    className: "mock-cormorant",
+    variable: "--font-cormorant",
+    style: { fontFamily: "Cormorant Garamond" },
+  }),
 }));
 
 // Mock Next.js Image component

@@ -161,7 +161,11 @@ _TIER_PREFERRED_ARCS: dict[str, tuple[str, ...]] = {
 }
 
 
-def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[str, float]:
+def build_arc_priors(
+    recent_arcs: list[str],
+    liveness_tier: str | None,
+    reward_by_arc: dict[str, float] | None = None,
+) -> dict[str, float]:
     """Soft weights over the 7 ratified arcs (`wr2_carousel_ir.ARCS`, spec
     §8) — a cooldown PENALTY (never a mask) for recently-used arcs, plus a
     mild tier-appropriate boost. `recent_arcs` is read newest-first (index 0
@@ -170,7 +174,18 @@ def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[
     boost in play returns an EXACTLY uniform dict — no history, no
     preference. A weight never reaches 0.0: this function only proposes: the
     planner-LLM disposes the arc from the content (spec §2, Kimi red-team
-    objection #1 — CHI PROPONE != CHI DISPONE)."""
+    objection #1 — CHI PROPONE != CHI DISPONE).
+
+    `reward_by_arc` (spec §Mossa-D "chiuso sul risultato") is the DORMANT
+    reward socket: a per-arc positive boost derived from which arcs get
+    PUBLISHED (the Legge-5 human signal), supplied by
+    `wr2_creative_ledger.LedgerSnapshot.reward_by_arc()`. It is EMPTY/None
+    today (`war_room_posts` has 0 rows — operator-gated, see PENDING-ARMS),
+    and when empty/None this function is BYTE-IDENTICAL to the pre-Fase-4
+    path — a falsifiable invariant the tests pin. When real publishes exist
+    the ledger returns a non-empty dict and each named arc is nudged up
+    (still never a mask; a reward boost cannot pull a cooled arc below its
+    floor either, since it only ADDS)."""
     weights: dict[str, float] = {arc: _BASE_WEIGHT for arc in ir.ARCS}
 
     seen: set[str] = set()
@@ -186,6 +201,11 @@ def build_arc_priors(recent_arcs: list[str], liveness_tier: str | None) -> dict[
     for arc in _TIER_PREFERRED_ARCS.get(tier, ()):
         if arc in weights:
             weights[arc] += _TIER_BOOST
+
+    # DORMANT reward socket — no-op when reward_by_arc is None/empty (today).
+    for arc, boost in (reward_by_arc or {}).items():
+        if arc in weights and boost > 0:
+            weights[arc] += boost
 
     return weights
 
@@ -255,6 +275,7 @@ def _build_planner_prompt(
     liveness_tier: str | None,
     recent_arcs: list[str],
     priors: dict[str, float],
+    engagement_hint: str = "",
 ) -> str:
     tier = (liveness_tier or "").strip().lower()
     count_guidance = _PLANNER_SLIDE_COUNT_GUIDANCE.get(tier, _DEFAULT_SLIDE_COUNT_GUIDANCE)
@@ -279,7 +300,7 @@ ARC LIBRARY — the 7 ratified arcs (spec §8), each a sequence of slide ROLES:
 CHI PROPONE != CHI DISPONE: the soft prior weights above come from code — YOU choose the arc FROM
 THE CONTENT, within them. A high-prior arc that does not fit this story is still the wrong choice;
 a low-prior arc the content genuinely demands is still the right one. The weights nudge, they never
-decide for you.
+decide for you.{engagement_hint}
 
 OUTPUT — ONE JSON object, exactly these fields, nothing else:
 {{
@@ -320,15 +341,27 @@ def plan_deck(
     recent_arcs: list[str],
     call_fn: Callable[[str], str],
     max_retries: int = 3,
+    reward_by_arc: dict[str, float] | None = None,
+    engagement_hint: str = "",
 ) -> ir.DeckPlan:
     """Run the planner stage: build the priors + prompt, validate-and-retry
     against `wr2_carousel_ir.DeckPlan` (reusing `extract_json_from_codeblock`,
     same instructor-derived reask pattern `generate_slides_typed` uses).
     Raises `PlanValidationExhausted` after `max_retries` failed attempts —
     the caller decides what happens next (there is no partial-plan
-    fallback)."""
-    priors = build_arc_priors(recent_arcs, liveness_tier)
-    prompt = _build_planner_prompt(brief_ctx, liveness_tier, recent_arcs, priors)
+    fallback).
+
+    `reward_by_arc` (default None) is the DORMANT Creative-Ledger reward
+    socket threaded into `build_arc_priors` — empty/None today, byte-identical
+    to the pre-Fase-4 path (spec §Mossa-D).
+
+    `engagement_hint` (default "") is the Fase-4b per-axis SOFT nudge built from
+    the review queue's published history (`wr2_creative_ledger.build_engagement_
+    hint`); empty string → prompt byte-identical to the no-hint path."""
+    priors = build_arc_priors(recent_arcs, liveness_tier, reward_by_arc)
+    prompt = _build_planner_prompt(
+        brief_ctx, liveness_tier, recent_arcs, priors, engagement_hint
+    )
 
     ctx = prompt
     last_raw = ""
@@ -391,9 +424,33 @@ assert set(_KIND_TO_MODEL) == set(ir.SLIDE_KIND_TO_FAMILY), (
 # docstring). Importing wr2_ir_shadow_replay here would pull in its asyncpg/
 # backend.llm import surface at module load time, which this module's own
 # zero-I/O discipline (stated in this file's module docstring) forbids.
+# The SILENT GUILLOTINE (2026-07-25, found by running the real pipeline end-to-end).
+# `wr2_carousel_ir._cap_subhead` hard-trims SIX fields across FOUR kinds to
+# _SUBHEAD_MAX_WORDS words / _SUBHEAD_MAX_CHARS chars at a word boundary:
+#     CoverSlide.subhead · ProseSlide.subhead · StatSlide.unit/label ·
+#     CtaSlide.trust_marker/reach
+# and until this change NOT ONE of the six declared that budget to the writer —
+# only `statement` ("a 3-15 word punch line") ever stated its own. So the writer
+# wrote natural sentences and the validator guillotined them mid-phrase, silently,
+# into production copy. Measured on one real deck (Perka BKPM 5/2025, opus-4-7
+# planner + sonnet-5 writer):
+#     cover.subhead    "A new rule just reset one"       -> dangling, no object
+#     cta.trust_marker "Basis: Peraturan BKPM No."       -> the regulation NUMBER cut off
+#     cta.reach        "Butuh hitung modal, KBLI, dan"   -> ends on a conjunction
+# Interpolated from the IR constants (never re-typed) so the instruction cannot
+# drift away from the validator that enforces it — pinned by
+# test_subhead_cap_note_matches_the_ir_constants.
+_SUBHEAD_CAP = (
+    f"MAX {ir._SUBHEAD_MAX_WORDS} WORDS / {ir._SUBHEAD_MAX_CHARS} chars — a LABEL, not a "
+    "sentence; longer text is hard-trimmed at a word boundary and the remainder is LOST"
+)
+
 _KIND_FIELD_SCHEMA: dict[str, str] = {
-    "cover": 'headline (str, required), subhead (str), regulation_code (str), image_prompt (str)',
-    "prose": 'headline (str, required), body (str, required), subhead (str)',
+    "cover": (
+        f'headline (str, required), subhead (str — {_SUBHEAD_CAP}), '
+        'regulation_code (str), image_prompt (str)'
+    ),
+    "prose": f'headline (str, required), body (str, required), subhead (str — {_SUBHEAD_CAP})',
     "statement": 'statement (str, required) — a 3-15 word punch line, never a paragraph',
     "fact_stack": (
         'heading (str, required), facts (list[str], required, >=1 — each item is ONE fact line), '
@@ -409,9 +466,15 @@ _KIND_FIELD_SCHEMA: dict[str, str] = {
         '"3 forces behind the rise")'
     ),
     "qa": 'pairs (list[{voice, line}], required, >=2 — first two entries are the two voices in the exchange)',
-    "stat": 'value (str, required), unit (str), label (str), context (str)',
+    "stat": (
+        f'value (str, required), unit (str — {_SUBHEAD_CAP}), '
+        f'label (str — {_SUBHEAD_CAP}), context (str)'
+    ),
     "citation": 'claim (str, required), sources (list[{code, issuer, date, url, note}], required, >=1)',
-    "cta": 'invite (str, required), trust_marker (str), reach (str)',
+    "cta": (
+        'invite (str, required — the call-to-action line), '
+        f'trust_marker (str — {_SUBHEAD_CAP}), reach (str — {_SUBHEAD_CAP})'
+    ),
 }
 assert set(_KIND_FIELD_SCHEMA) == set(_KIND_TO_MODEL), (
     "_KIND_FIELD_SCHEMA has drifted from _KIND_TO_MODEL's keys"

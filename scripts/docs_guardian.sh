@@ -16,6 +16,22 @@
 
 set -euo pipefail
 
+L25_AUDIT_JSON=""
+L25_SHIM_DIR=""
+PR_BODY_FILE=""
+cleanup_docs_guardian_temp() {
+  if [[ -n "${L25_SHIM_DIR:-}" ]]; then
+    rm -f -- "$L25_SHIM_DIR/claude" 2>/dev/null || true
+    rmdir -- "$L25_SHIM_DIR" 2>/dev/null || true
+  fi
+  [[ -n "${L25_AUDIT_JSON:-}" ]] && rm -f -- "$L25_AUDIT_JSON" 2>/dev/null || true
+  [[ -n "${PR_BODY_FILE:-}" ]] && rm -f -- "$PR_BODY_FILE" 2>/dev/null || true
+}
+trap cleanup_docs_guardian_temp EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 DRY_RUN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -169,8 +185,9 @@ Co-Authored-By: docs-guardian <noreply@balizero.com>"
 fi
 
 # --- L2.5 — Claude-assisted broken-link auto-fix ---
-# Runs only if there are broken links AND a Claude OAuth token is available.
-# Loads tokens from ~/.nuzantara-secrets.env (same pattern as cron-agent.sh).
+# Runs only if there are broken links AND the canonical Claude cascade exists.
+# This task needs strict Claude JSON decisions, so it retries every OAuth seat
+# but deliberately never crosses to a different LLM provider.
 if [[ "$BROKEN" != "0" ]]; then
   SECRETS_FILE="$HOME/.nuzantara-secrets.env"
   if [[ -f "$SECRETS_FILE" ]]; then
@@ -180,17 +197,38 @@ if [[ "$BROKEN" != "0" ]]; then
     set +a
   fi
 
-  # Pick the first available token; export as the var `claude` CLI reads
-  L25_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN_1:-${CLAUDE_CODE_OAUTH_TOKEN:-}}"
+  L25_CASCADE_BIN="${DOCS_GUARDIAN_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+  [[ -x "$L25_CASCADE_BIN" ]] || L25_CASCADE_BIN="$(pwd)/infra/launchagents/wrappers/claude-cascade.sh"
 
-  if [[ -n "$L25_TOKEN" ]] && command -v claude >/dev/null 2>&1; then
+  if [[ -x "$L25_CASCADE_BIN" ]]; then
     # Fresh audit JSON snapshot (post-L1 state)
     L25_AUDIT_JSON=$(mktemp -t docs-audit-XXXXXX.json)
     python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" >"$L25_AUDIT_JSON" 2>/dev/null || true
 
-    # Invoke link_fixer with OAuth token in env; capture summary
-    L25_RESULT=$(CLAUDE_CODE_OAUTH_TOKEN="$L25_TOKEN" \
-      python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" --repo . 2>/dev/null || echo '{}')
+    # docs_link_fixer invokes a binary named `claude`. A temporary symlink keeps
+    # its stable subprocess contract while routing each decision through the
+    # canonical all-seat cascade in Claude-only CLI-compat mode.
+    L25_SHIM_DIR=$(mktemp -d -t docs-guardian-claude-shim.XXXXXX)
+    ln -s "$L25_CASCADE_BIN" "$L25_SHIM_DIR/claude"
+    # docs_link_fixer allows 60s per decision. Seven 7s seat attempts fit
+    # inside a 50s cascade deadline, leaving 10s for process-group cleanup and
+    # JSON parsing before Python's outer timeout can kill the wrapper.
+    L25_CALL_TIMEOUT_SEC="${DOCS_GUARDIAN_CALL_TIMEOUT_SEC:-60}"
+    L25_CASCADE_DEADLINE_SEC="${DOCS_GUARDIAN_CASCADE_DEADLINE_SEC:-50}"
+    L25_CASCADE_ATTEMPT_TIMEOUT_SEC="${DOCS_GUARDIAN_CASCADE_ATTEMPT_TIMEOUT_SEC:-7}"
+    if [[ "$L25_CASCADE_DEADLINE_SEC" -ge "$L25_CALL_TIMEOUT_SEC" ]]; then
+      echo "docs-guardian: cascade deadline must be below call timeout" >&2
+      exit 2
+    fi
+    L25_RESULT=$(PATH="$L25_SHIM_DIR:$PATH" \
+      CLAUDE_CASCADE_MODE=claude-only CLAUDE_CASCADE_CLI_COMPAT=1 \
+      CLAUDE_CASCADE_DEADLINE_SEC="$L25_CASCADE_DEADLINE_SEC" \
+      CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC="$L25_CASCADE_ATTEMPT_TIMEOUT_SEC" \
+      python scripts/docs_link_fixer.py --audit-json "$L25_AUDIT_JSON" \
+      --repo . --timeout "$L25_CALL_TIMEOUT_SEC" 2>/dev/null || echo '{}')
+    rm -f "$L25_SHIM_DIR/claude"
+    rmdir "$L25_SHIM_DIR"
+    L25_SHIM_DIR=""
     L25_APPLIED=$(echo "$L25_RESULT" | python -c "
 import json, sys
 try:
@@ -239,6 +277,7 @@ Co-Authored-By: claude-haiku-4-5 <noreply@anthropic.com>"
       fi
     fi
     rm -f "$L25_AUDIT_JSON"
+    L25_AUDIT_JSON=""
   fi
 fi
 
@@ -332,6 +371,7 @@ PR_URL=$(gh pr create --base main --head "$BRANCH" \
   --title "$PR_TITLE" \
   --body-file "$PR_BODY_FILE" 2>&1 | tail -1 || echo "")
 rm -f "$PR_BODY_FILE"
+PR_BODY_FILE=""
 
 # Enable auto-merge only if there's no manual work pending
 if [[ "$BROKEN" == "0" && -n "$PR_URL" && "$PR_URL" =~ ^https://github.com/.+/pull/[0-9]+$ ]]; then

@@ -1,3 +1,7 @@
+import {
+  humanizeInternalEnums,
+  humanizeIntelBlock,
+} from "@/lib/kbli-status-labels";
 import fs from "fs";
 import path from "path";
 import type {
@@ -128,9 +132,22 @@ export function getCode(code: string): KBLICode | undefined {
   return loadAllCodes().map.get(code);
 }
 
-/** Get gold content for a single code */
+/**
+ * Get gold content for a single code.
+ *
+ * Cured at THIS choke point, not at the call sites: the gold layout on
+ * `/kbli/[code]` renders `gold.whatChanged` / `gold.whatYouNeed` /
+ * `gold.baliContext` / `gold.zantaraOpener` / `gold.tkaInfo` DIRECTLY, bypassing
+ * `transformCode`'s merged `intel` entirely — so the loader cure never reached
+ * them and 113 of the 428 gold codes were still printing `MATCH_CON_AGGREGAZIONE`
+ * and friends at readers (whatChanged 111, whatYouNeed 11, baliContext 3,
+ * zantaraOpener 2). Curing the accessor covers the page, `/api/kbli/gold/[code]`
+ * and any future consumer at once. Found by the adversarial review of this
+ * change, then re-measured against the gold file before fixing.
+ */
 export function getGoldContent(code: string): KBLIGoldContent | null {
-  return loadGoldData()[code] ?? null;
+  const raw = loadGoldData()[code];
+  return raw ? humanizeIntelBlock(raw) : null;
 }
 
 /** Check if a code has gold content */
@@ -243,27 +260,32 @@ function transformCode(
   const goldBaliMisleads =
     !!raw.l4_bali?.blocked &&
     /\b(PT PMA|100% foreign|foreign-owned|open to foreign)\b/i.test(goldBali);
-  const intel = goldEntry
-    ? {
-        whatItMeans: goldEntry.whatItMeans || "",
-        whatYouNeed: goldEntry.whatYouNeed || "",
-        whatChanged: goldEntry.whatChanged || "",
-        baliContext: goldBaliMisleads && liveBali ? liveBali : goldBali,
-        zantaraOpener: goldEntry.zantaraOpener || "",
-        youllAlsoNeed: goldEntry.youllAlsoNeed || "",
-        coverImage: raw.intel_2026?.coverImage || null,
-      }
-    : raw.intel_2026
+  // Internal pipeline symbols resolved to the labels the badges use — the gold
+  // layer inherited the same narration, so it needs the same pass. Presentation
+  // only; no verdict changes. See @/lib/kbli-status-labels.
+  const intel = humanizeIntelBlock(
+    goldEntry
       ? {
-          whatItMeans: raw.intel_2026.whatItMeans || "",
-          whatYouNeed: raw.intel_2026.whatYouNeed || "",
-          whatChanged: raw.intel_2026.whatChanged || "",
-          baliContext: raw.intel_2026.baliContext || "",
-          zantaraOpener: raw.intel_2026.zantaraOpener || "",
-          youllAlsoNeed: raw.intel_2026.youllAlsoNeed || "",
-          coverImage: raw.intel_2026.coverImage || null,
+          whatItMeans: goldEntry.whatItMeans || "",
+          whatYouNeed: goldEntry.whatYouNeed || "",
+          whatChanged: goldEntry.whatChanged || "",
+          baliContext: goldBaliMisleads && liveBali ? liveBali : goldBali,
+          zantaraOpener: goldEntry.zantaraOpener || "",
+          youllAlsoNeed: goldEntry.youllAlsoNeed || "",
+          coverImage: raw.intel_2026?.coverImage || null,
         }
-      : undefined;
+      : raw.intel_2026
+        ? {
+            whatItMeans: raw.intel_2026.whatItMeans || "",
+            whatYouNeed: raw.intel_2026.whatYouNeed || "",
+            whatChanged: raw.intel_2026.whatChanged || "",
+            baliContext: raw.intel_2026.baliContext || "",
+            zantaraOpener: raw.intel_2026.zantaraOpener || "",
+            youllAlsoNeed: raw.intel_2026.youllAlsoNeed || "",
+            coverImage: raw.intel_2026.coverImage || null,
+          }
+        : undefined,
+  );
 
   return {
     code,
@@ -300,13 +322,25 @@ function transformCode(
       previousCodes: raw.pp28_sources || [],
       mappingNote: raw.mapping_note || undefined,
       aggregationNote: raw.aggregation_note || undefined,
+      bpsCrosswalk: raw.bps_2020_ancestors
+        ? {
+            codes: raw.bps_2020_ancestors.codes || [],
+            adjudicationStatus:
+              raw.bps_2020_ancestors.adjudication_status || "mechanical-only",
+            inheritanceVerdict:
+              raw.bps_2020_ancestors.inheritance_verdict || "not-adjudicated",
+          }
+        : undefined,
     },
     intel,
     // L4 — Bali sovereign-local status (national PMA openness != Bali registrability)
     baliL4: raw.l4_bali?.status
       ? {
           status: raw.l4_bali.status,
-          reason: raw.l4_bali.reason || "",
+          // Reader-facing prose (badge tooltip + generated FAQ answer) — cured like
+          // the editorial layer. `_data_note` deliberately stays verbatim: there the
+          // symbol is cited AS EVIDENCE of divergence, not narrated at a reader.
+          reason: humanizeInternalEnums(raw.l4_bali.reason || ""),
           confidence: raw.l4_bali.confidence || "MEDIUM",
           needsReview: !!raw.l4_bali.needs_review,
           blocked: !!raw.l4_bali.blocked,

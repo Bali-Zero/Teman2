@@ -1,11 +1,52 @@
 "use client";
 
+/**
+ * Register — invite-token validation + PIN creation.
+ *
+ * WS3 final slice (GARUDA Day Edition, 2026-07-26): aligned to the day
+ * tokens (was a forced-dark #2a2a2a/#242424 page with teal #4FD1C5 accents
+ * and near-white #E6E7EB text — including on the isComplete screen, which
+ * rendered a WHITE slate-50 card with that same near-white heading:
+ * ~1.2:1, unreadable; fixed as part of the pass). Paper shell (--bz-base),
+ * warm card (--bz-card + --bz-border + concept .panel shadow), serif-grade
+ * ink headings (--tx-pure), forms = warm paper inputs + token borders +
+ * copper focus rings, CTAs = darker copper step --bz-copper-text with
+ * theme-aware --bz-on-warm fg (5.70:1 light; 6.74:1 dark — the base
+ * copper step with white would be 4.37:1, below the 4.5:1 AA floor).
+ * Status colors read --state-* AA tokens. Layout unchanged.
+ */
+
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+
+const CARD_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+} as const;
+
+const CTA_STYLE = {
+  background: "var(--bz-copper-text)",
+  color: "var(--bz-on-warm)",
+} as const;
+
+const INPUT_CLASS =
+  "w-full px-4 py-3 bg-[var(--bz-base)] border border-[var(--bz-border)] rounded-lg text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] focus:border-[var(--bz-copper)]";
+
+function ValidatingScreen({ message }: { message: string }) {
+  return (
+    <div className="min-h-screen bg-[var(--bz-base)] flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 text-[var(--bz-copper)] animate-spin mx-auto mb-4" />
+        <p className="text-[var(--tx-secondary)]">{message}</p>
+      </div>
+    </div>
+  );
+}
 
 function RegisterContent() {
   const searchParams = useSearchParams();
@@ -98,22 +139,27 @@ function RegisterContent() {
   };
 
   if (isValidating) {
-    return (
-      <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
-          <p className="text-muted-cool">Validating your invitation...</p>
-        </div>
-      </div>
-    );
+    return <ValidatingScreen message="Validating your invitation..." />;
   }
 
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="p-4 bg-emerald-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+      <div className="min-h-screen bg-[var(--bz-base)] flex items-center justify-center p-4">
+        <div
+          className="rounded-2xl border p-8 max-w-md w-full text-center"
+          style={CARD_STYLE}
+        >
+          <div
+            className="p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center"
+            style={{
+              background:
+                "color-mix(in srgb, var(--state-success) 12%, transparent)",
+            }}
+          >
+            <CheckCircle2
+              className="w-10 h-10"
+              style={{ color: "var(--state-success)" }}
+            />
           </div>
           <div className="flex items-center justify-center mb-4">
             <div className="relative w-16 h-16 rounded-full overflow-hidden">
@@ -125,13 +171,13 @@ function RegisterContent() {
               />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+          <h1 className="text-2xl font-bold text-[var(--tx-pure)] mb-2">
             Welcome to Bali Zero!
           </h1>
-          <p className="text-muted-cool mb-6">
+          <p className="text-[var(--tx-secondary)] mb-6">
             Your portal account has been activated. Redirecting you to login...
           </p>
-          <div className="flex items-center justify-center gap-2 text-[#4FD1C5]">
+          <div className="flex items-center justify-center gap-2 text-[var(--bz-copper-text)]">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Redirecting...</span>
           </div>
@@ -142,21 +188,34 @@ function RegisterContent() {
 
   if (!isValid) {
     return (
-      <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center p-4">
-        <div className="bg-[#242424] border border-white/5 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <AlertCircle className="w-10 h-10 text-red-500" />
+      <div className="min-h-screen bg-[var(--bz-base)] flex items-center justify-center p-4">
+        <div
+          className="rounded-2xl border p-8 max-w-md w-full text-center"
+          style={CARD_STYLE}
+        >
+          <div
+            className="p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center"
+            style={{
+              background:
+                "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+            }}
+          >
+            <AlertCircle
+              className="w-10 h-10"
+              style={{ color: "var(--state-danger)" }}
+            />
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+          <h1 className="text-2xl font-bold text-[var(--tx-pure)] mb-2">
             Invalid Invitation
           </h1>
-          <p className="text-muted-cool mb-6">
+          <p className="text-[var(--tx-secondary)] mb-6">
             {error ||
               "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
           </p>
           <a
             href="mailto:zantara@balizero.com"
-            className="inline-block px-6 py-3 bg-[#4FD1C5] text-[#0B0E13] rounded-lg font-medium hover:bg-[#4FD1C5]/80 transition-colors"
+            className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
+            style={CTA_STYLE}
           >
             Contact Support
           </a>
@@ -166,8 +225,11 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center p-4">
-      <div className="bg-[#242424] border border-white/5 rounded-2xl shadow-lg p-8 max-w-md w-full">
+    <div className="min-h-screen bg-[var(--bz-base)] flex items-center justify-center p-4">
+      <div
+        className="rounded-2xl border p-8 max-w-md w-full"
+        style={CARD_STYLE}
+      >
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <div className="relative w-16 h-16 rounded-full overflow-hidden">
@@ -179,15 +241,24 @@ function RegisterContent() {
               />
             </div>
           </div>
-          <div className="p-4 bg-[#4FD1C5]/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <Lock className="w-10 h-10 text-[#4FD1C5]" />
+          <div
+            className="p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center"
+            style={{
+              background:
+                "color-mix(in srgb, var(--bz-copper) 12%, transparent)",
+            }}
+          >
+            <Lock className="w-10 h-10" style={{ color: "var(--bz-copper)" }} />
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+          <h1 className="text-2xl font-bold text-[var(--tx-pure)] mb-2">
             Create Your PIN
           </h1>
-          <p className="text-muted-cool">
+          <p className="text-[var(--tx-secondary)]">
             Welcome,{" "}
-            <span className="font-medium text-[#E6E7EB]">{clientName}</span>!
+            <span className="font-medium text-[var(--tx-pure)]">
+              {clientName}
+            </span>
+            !
             <br />
             Set a 4-6 digit PIN to secure your portal access.
           </p>
@@ -195,19 +266,19 @@ function RegisterContent() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
+            <label className="block text-sm font-medium text-[var(--tx-primary)] mb-2">
               Email
             </label>
             <input
               type="email"
               value={clientEmail}
               disabled
-              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg text-muted-cool"
+              className={`${INPUT_CLASS} disabled:text-[var(--tx-secondary)] disabled:opacity-70`}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
+            <label className="block text-sm font-medium text-[var(--tx-primary)] mb-2">
               Create PIN (4-6 digits)
             </label>
             <input
@@ -218,12 +289,12 @@ function RegisterContent() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Enter PIN"
-              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-muted-cool"
+              className={`${INPUT_CLASS} text-center text-2xl tracking-widest`}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
+            <label className="block text-sm font-medium text-[var(--tx-primary)] mb-2">
               Confirm PIN
             </label>
             <input
@@ -234,24 +305,41 @@ function RegisterContent() {
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Confirm PIN"
-              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-muted-cool"
+              className={`${INPUT_CLASS} text-center text-2xl tracking-widest`}
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-              <p className="text-sm text-red-400 text-center">{error}</p>
+            <div
+              className="p-3 rounded-lg border"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+                borderColor:
+                  "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+              }}
+            >
+              <p
+                className="text-sm text-center"
+                style={{ color: "var(--state-danger)" }}
+              >
+                {error}
+              </p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={isSubmitting || pin.length < 4 || confirmPin.length < 4}
-            className={`w-full py-3 rounded-lg font-medium transition-colors ${
+            className="w-full py-3 rounded-lg font-medium transition-opacity disabled:cursor-not-allowed"
+            style={
               isSubmitting || pin.length < 4 || confirmPin.length < 4
-                ? "bg-surface-editorial-elevated text-muted-cool cursor-not-allowed"
-                : "bg-[#4FD1C5] text-[#0B0E13] hover:bg-[#4FD1C5]/80"
-            }`}
+                ? {
+                    background: "var(--bz-border)",
+                    color: "var(--tx-secondary)",
+                  }
+                : CTA_STYLE
+            }
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
@@ -264,7 +352,7 @@ function RegisterContent() {
           </button>
         </form>
 
-        <p className="text-xs text-muted-cool text-center mt-6">
+        <p className="text-xs text-[var(--tx-secondary)] text-center mt-6">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
@@ -274,16 +362,7 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
-            <p className="text-muted-cool">Loading...</p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<ValidatingScreen message="Loading..." />}>
       <RegisterContent />
     </Suspense>
   );
