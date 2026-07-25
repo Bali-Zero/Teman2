@@ -7,6 +7,7 @@ sources:
   - scripts/wr2_html_renderer/claude_vision.py, scripts/wr2_html_render_apply.py, scripts/wr2_supervisor.py
   - apps/backend-rag/backend/services/canva_renderer_v2/_pg.py (kill switch)
   - 3-seat LLM panel 2026-07-25 — Codex gpt-5.6-sol (xhigh) · Kimi K3 · Gemini 3.1 Pro (agy)
+adversarial_review: glm
 ---
 
 # WR2 vision lane: an infinite loop with a bounded cause — findings and plan
@@ -132,3 +133,45 @@ health is *unknown*, not *good* — P2 must not be built on the assumption that 
 No production state was changed and no lane code was modified. The kill switch was **not** flipped
 (§4). The two drafts remain in their loop; the cost is bounded (CPU + log volume, no additional quota)
 and will self-clear when the weekly quota resets. Every step in §5 needs its own worktree, tests and PR.
+
+## Adversarial review
+
+**Seat:** GLM (`claude-glm`), probed for liveness first (replied `PONG` in ~20s) before dispatch.
+Framed as an independent correctness review, not adversarial rhetoric — pointed at this file's path in
+its own worktree, not pasted content. Reviewer is not this document's author (generator≠grader). Every
+finding below was re-checked against the actual file text before being accepted or dismissed (a refuter
+can hallucinate too — cicatrix-superscar #6/W65).
+
+**Overall verdict:** clean bill of health with one residual worth stating and one flagged concern that
+does not hold up on re-check.
+
+**Survived (1):**
+
+- **§5 P0b's falsifiable-proof column doesn't gate the caller sweep.** The row's stated proof is only
+  "an artificial cascade of 1 quota + 3 timeouts no longer raises `VisionRateLimited`" — the caveat
+  "callers matching on `VisionRateLimited` must be swept — grep before merge" lives in the *failure-mode*
+  column, not as a required, falsifiable condition. The awareness is present; it just isn't wired into
+  the gate that would catch a missed caller. Same shape as W99 (check≠action) and the "the FIX needs
+  checking too, not just the author's assurance" pattern
+  ([[lesson_a_bound_is_worthless_when_the_bounded_party_controls_it_2026_07_26]]). Not a reason to block
+  P0b — a reason to add the sweep as an explicit proof condition when that step is implemented.
+
+**Dismissed on re-check (1):**
+
+- GLM flagged "P2's measurement precondition isn't explicit, creating a circular dependency between
+  timeout-tuning and unknown seat health," citing this as an §6 gap. On re-read: the document already
+  states this exact concern verbatim, in §5 (not §6) — *"Open question that gates P2: are
+  `token_4`/`token_5`/keychain healthy-but-starved, or also rate-limited-but-slow? ... P2 must not be
+  built on the assumption that they are fine."* The precondition is already explicit and already gates
+  the step; GLM's citation was misplaced and the underlying concern was already handled by the plan as
+  written.
+
+**Noted, non-blocking (1):**
+
+- The plan doesn't explicitly rule out kick paths other than the supervisor's reconcile loop (manual
+  intervention, other supervisors/admin actions) that could bypass the §5 P1 circuit breaker. Speculative
+  — the reviewer has no codebase access beyond this document — but worth a check when P1 is implemented,
+  since a bypassable breaker would silently reproduce the exact failure mode this plan exists to close.
+
+No changes were made to the plan's substance (§0-§7) as part of this review — only this section and the
+`adversarial_review` frontmatter key were added.
