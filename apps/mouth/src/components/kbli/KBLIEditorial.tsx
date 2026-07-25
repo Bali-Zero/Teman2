@@ -1,4 +1,8 @@
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
+import {
+  humanizeInternalEnums,
+  humanizeStatValue,
+} from "@/lib/kbli-status-labels";
 import type { KBLIEditorialContent } from "@/lib/kbli-types";
 
 /**
@@ -6,23 +10,35 @@ import type { KBLIEditorialContent } from "@/lib/kbli-types";
  * page leads with: display headline, standfirst dek, "By the numbers" sidebar
  * card, editorial body, pull-quote. Server component, no client JS of its own.
  * Content arrives only through scripts/kbli_apply_editorials.py gates, so this
- * component renders it verbatim (markdown body via MarkdownClient).
+ * component renders it verbatim (markdown body via MarkdownClient) — with ONE
+ * exception: internal pipeline symbols are resolved to the labels the KBLI
+ * badges already use (see `@/lib/kbli-status-labels`). The editorial pass
+ * authored these articles by narrating the JSON record, so `OK_or_HIGHER_RISK`
+ * reached readers on 908 "By the numbers" cells and 725 times inside prose.
+ * The mapping changes no verdict — symbol and label denote the same fact.
  */
-export function KBLIEditorial({ editorial }: { editorial: KBLIEditorialContent }) {
+export function KBLIEditorial({
+  editorial,
+}: {
+  editorial: KBLIEditorialContent;
+}) {
   return (
     <article className="relative">
       <header className="mb-8" style={{ maxWidth: "820px" }}>
         <h2
           className="mb-4 font-bold leading-tight"
-          style={{ fontSize: "clamp(1.6rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}
+          style={{
+            fontSize: "clamp(1.6rem, 3.2vw, 2.4rem)",
+            letterSpacing: "-0.02em",
+          }}
         >
-          {editorial.headline}
+          {humanizeInternalEnums(editorial.headline)}
         </h2>
         <p
           className="leading-relaxed"
           style={{ fontSize: "1.125rem", color: "var(--kbli-text-secondary)" }}
         >
-          {editorial.standfirst}
+          {humanizeInternalEnums(editorial.standfirst)}
         </p>
       </header>
 
@@ -49,7 +65,9 @@ export function KBLIEditorial({ editorial }: { editorial: KBLIEditorialContent }
                 >
                   {n.label}
                 </dt>
-                <dd className="mt-0.5 text-sm font-semibold">{n.value}</dd>
+                <dd className="mt-0.5 text-sm font-semibold">
+                  {humanizeStatValue(n.value)}
+                </dd>
               </div>
             ))}
           </dl>
@@ -57,7 +75,9 @@ export function KBLIEditorial({ editorial }: { editorial: KBLIEditorialContent }
       )}
 
       <div className="kbli-prose" style={{ maxWidth: "720px" }}>
-        <MarkdownClient withKbliLinks>{editorial.body}</MarkdownClient>
+        <MarkdownClient withKbliLinks>
+          {humanizeInternalEnums(editorial.body)}
+        </MarkdownClient>
       </div>
 
       {editorial.pullQuote && (
@@ -69,7 +89,7 @@ export function KBLIEditorial({ editorial }: { editorial: KBLIEditorialContent }
             maxWidth: "640px",
           }}
         >
-          {editorial.pullQuote}
+          {humanizeInternalEnums(editorial.pullQuote)}
         </blockquote>
       )}
     </article>

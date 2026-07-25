@@ -39,20 +39,23 @@
 2. **`configure_tool_executor(authorizer, confirmation_service)` is the DI entry point**. Called once in `service_initializer.py:initialize_services` at step 0.5. Phase 4 may need to extend this if it adds per-user API key checking to the authorizer.
 
 3. **The SSE event contract is**:
+
    ```json
    {
      "type": "confirmation_required",
      "data": {
        "request_id": "uuid4-string",
        "tool_name": "image_generation",
-       "args": {"prompt": "a KITAS card"},
+       "args": { "prompt": "a KITAS card" },
        "preview": "Tool 'image_generation' requires user confirmation for role 'visa_specialist'. Arguments: {prompt=a KITAS card}"
      }
    }
    ```
+
    Phase 3B frontend must parse this event type from the SSE stream and render a confirmation modal.
 
 4. **The POST /confirm contract is**:
+
    ```
    POST /api/agentic-rag/confirm
    Auth: JWT (get_current_user)
@@ -66,7 +69,9 @@
 
 6. **`agent_role=None` is STILL legacy-compat and passes through as ALLOWED with NO confirmation**. Phase 3B or 4 must NOT regress this.
 
-7. **Audit log extended**: `decision=needs_confirmation` is a valid third value alongside `allow` and `deny`. Log shippers that grep for `tool_authz decision=` should accept this new value.
+7. **Audit log extended**: `decision=needs_confirmation` is a valid third value alongside `allow` and `deny`. Log shippers that grep for `tool_authz decision=` should accept this new value. Since 2026-07-25, `user=` in this log line is a pseudonymised token (`h:<hash>` / `anonymous`), never the raw `user_email` — see `_principal_token` in `tool_authorizer.py`.
+
+8. **KNOWN SEPARATE PII SURFACE (not fixed by the 2026-07-25 audit-log pseudonymisation, flagged for a follow-up)**: `ConfirmationService.resolve_confirmation` (`confirmation_service.py:218-223`) still logs the raw `user_email` on an ownership mismatch (`logger.warning("... user %s does not own request %s (owner: %s)", user_email, request_id, payload.get("user_email"))`), and the Redis payload for a pending confirmation stores `user_email` in the clear (needed functionally — the SSE confirmation modal is shown to that same principal). Lower volume than the `_audit` leak (only fires on a resolve-mismatch, and only for the 2 roles with a non-empty `requires_confirmation`), but the same class of defect.
 
 ## (c) ConfirmationService interface contract
 
@@ -114,6 +119,7 @@ Phase 3B/4 must NOT change the `request_and_wait` or `resolve_confirmation` sign
 ## (e) Hooks prepared for Phase 3B (frontend) and Phase 4 (per-user API keys)
 
 **Phase 3B hooks:**
+
 - SSE event `confirmation_required` is emitted by ConfirmationService when `emitter` is provided. Phase 3B needs to:
   1. In `reasoning.py`'s streaming call site, create an emitter closure that enqueues events into the SSE generator, and pass it as `confirmation_emitter` to `execute_tool`.
   2. In `WorkspaceAssistant.tsx`, handle `confirmation_required` events from the SSE stream and render a modal.
@@ -121,6 +127,7 @@ Phase 3B/4 must NOT change the `request_and_wait` or `resolve_confirmation` sign
 - The `confirmation_emitter` parameter on `execute_tool` is ready. The streaming call site in `reasoning.py:1203` just needs to pass it.
 
 **Phase 4 hooks:**
+
 - `ToolAuthorizer.__init__` still accepts no arguments beyond what Phase 3 left. Phase 4 may add a `key_store` or `token_validator` if per-user API keys need to be checked alongside role-based authorization.
 - `configure_tool_executor` can be extended with additional services.
 
@@ -145,21 +152,22 @@ Phase 3B/4 must NOT change the `request_and_wait` or `resolve_confirmation` sign
 
 ## Phase 3 deliverables — final state
 
-| Item | Location | Status |
-|---|---|---|
-| `confirmation_service.py` | `backend/services/agents/` | ✅ ~260 LOC |
-| `AgentRole.requires_confirmation` | `backend/services/agents/team_agent_config.py` | ✅ Field + 2 role values |
-| `_check_requires_confirmation` active | `backend/services/agents/tool_authorizer.py` | ✅ No longer a no-op |
-| `execute_tool` confirmation branch | `backend/services/rag/agentic/tool_executor.py` | ✅ Real ConfirmationService call |
-| `configure_tool_executor()` DI | `backend/services/rag/agentic/tool_executor.py` | ✅ Module-level singleton replacement |
-| `POST /api/agentic-rag/confirm` | `backend/app/routers/agentic_rag.py` | ✅ ~40 LOC |
-| Service initializer wiring | `backend/app/setup/service_initializer.py` | ✅ Step 0.5 |
-| Unit tests: authorizer | `tests/unit/agents/test_confirmation_authorizer.py` | ✅ 16 tests |
-| Unit tests: service | `tests/unit/agents/test_confirmation_service.py` | ✅ 11 tests |
-| Integration tests | `tests/integration/agents/test_confirmation_flow.py` | ✅ 5 tests |
-| Phase 2 regression | `tests/unit/agents/test_tool_authorizer.py` | ✅ 24/24 pass (1 updated) |
+| Item                                  | Location                                             | Status                                |
+| ------------------------------------- | ---------------------------------------------------- | ------------------------------------- |
+| `confirmation_service.py`             | `backend/services/agents/`                           | ✅ ~260 LOC                           |
+| `AgentRole.requires_confirmation`     | `backend/services/agents/team_agent_config.py`       | ✅ Field + 2 role values              |
+| `_check_requires_confirmation` active | `backend/services/agents/tool_authorizer.py`         | ✅ No longer a no-op                  |
+| `execute_tool` confirmation branch    | `backend/services/rag/agentic/tool_executor.py`      | ✅ Real ConfirmationService call      |
+| `configure_tool_executor()` DI        | `backend/services/rag/agentic/tool_executor.py`      | ✅ Module-level singleton replacement |
+| `POST /api/agentic-rag/confirm`       | `backend/app/routers/agentic_rag.py`                 | ✅ ~40 LOC                            |
+| Service initializer wiring            | `backend/app/setup/service_initializer.py`           | ✅ Step 0.5                           |
+| Unit tests: authorizer                | `tests/unit/agents/test_confirmation_authorizer.py`  | ✅ 16 tests                           |
+| Unit tests: service                   | `tests/unit/agents/test_confirmation_service.py`     | ✅ 11 tests                           |
+| Integration tests                     | `tests/integration/agents/test_confirmation_flow.py` | ✅ 5 tests                            |
+| Phase 2 regression                    | `tests/unit/agents/test_tool_authorizer.py`          | ✅ 24/24 pass (1 updated)             |
 
 **Diff stat (Phase 3 only):**
+
 - 3 new files: `confirmation_service.py` (~260 LOC), `test_confirmation_service.py` (~320 LOC), `test_confirmation_flow.py` (~275 LOC)
 - 1 new test file: `test_confirmation_authorizer.py` (~280 LOC)
 - 5 modified files: `team_agent_config.py`, `tool_authorizer.py`, `tool_executor.py`, `agentic_rag.py`, `service_initializer.py`
@@ -168,6 +176,7 @@ Phase 3B/4 must NOT change the `request_and_wait` or `resolve_confirmation` sign
 v8 estimate was ~470 LOC total. Actual is ~1400 including tests, ~500 production code. The 1.5x multiplier on production code and the 2.5x including tests is consistent with Phase 2's experience.
 
 **Test summary:**
+
 - 24 Phase 2 tests: ✅ all green (1 updated for Phase 3 semantics)
 - 16 new authorizer tests: ✅ all green
 - 11 new ConfirmationService tests: ✅ all green
