@@ -89,9 +89,17 @@ async def test_trend_insert_notifies_intel_event(conn):
     attached = asyncio.Event()
     delivered = asyncio.Event()
 
+    def is_trend_signal(event: dict) -> bool:
+        return event.get("event_type") == "trend_signal_detected"
+
     def on_notify(_conn, _pid, _channel, payload):
-        received.append(json.loads(payload))
-        delivered.set()
+        event = json.loads(payload)
+        received.append(event)
+        # Stop on the event this test actually asserts on, not on the first
+        # payload of any kind — otherwise an unrelated notify that happens to
+        # land first would satisfy the wait and fail the assertion spuriously.
+        if is_trend_signal(event):
+            delivered.set()
 
     async def listener():
         listen_conn = await asyncpg.connect(TEST_DSN)
@@ -115,7 +123,7 @@ async def test_trend_insert_notifies_intel_event(conn):
     """)
 
     await task
-    assert any(p.get("event_type") == "trend_signal_detected" for p in received), (
+    assert any(is_trend_signal(p) for p in received), (
         f"no trend_signal_detected NOTIFY arrived within 30s; payloads seen: {received}"
     )
 
