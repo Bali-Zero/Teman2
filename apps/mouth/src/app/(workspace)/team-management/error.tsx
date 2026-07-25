@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Users, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Users, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function TeamManagementError({
   error,
@@ -13,7 +13,7 @@ export default function TeamManagementError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Team Management Error', {}, error);
+    logger.error("Team Management Error", {}, error);
   }, [error]);
 
   return (
@@ -27,8 +27,8 @@ export default function TeamManagementError({
           Couldn&apos;t Load Team Management
         </h2>
         <p className="text-muted-foreground">
-          There was an error loading your team data. Please try again or contact support if the
-          problem persists.
+          There was an error loading your team data. Please try again or contact
+          support if the problem persists.
         </p>
       </div>
 
