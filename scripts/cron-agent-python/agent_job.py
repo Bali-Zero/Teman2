@@ -982,7 +982,12 @@ async def web_search(
     if not results:
         try:
             import re
-            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False) as client:
+            # TLS verification stays ON. This fallback's HTML is parsed into
+            # search results that are fed straight into LLM synthesis prompts,
+            # so a MITM here is a prompt-injection channel into an unattended
+            # agent. `verify=False` bought nothing: probed 3x on Pro 2026-07-25,
+            # verified and unverified returned identical status/bytes.
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 r = await client.post(
                     _DDG_SEARCH_URL,
                     data={"q": query},
