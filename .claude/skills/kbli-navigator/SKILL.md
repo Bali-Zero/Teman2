@@ -28,6 +28,211 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-25 — keep current)
 
+**RENDER-TRUTH PASS — 2026-07-25. Two defects found by PROBING THE LIVE PRODUCT, both invisible to
+every existing gate, both measured on the real data before a line was written.**
+
+**(a) The catalogue spoke pipeline at its clients.** `intel_2026.editorial` was authored by an LLM
+NARRATING THE JSON RECORD, so internal symbols reached readers verbatim: **`Bali status:
+OK_or_HIGHER_RISK` on 908 "By the numbers" cells across 1,141 codes (73% of the catalogue)**, +725
+occurrences inside editorial prose, +8 in `l4_bali.reason`, +**113 of the 428 GOLD codes**. Cured at
+RENDER (`apps/mouth/src/lib/kbli-status-labels.ts`) by resolving each symbol to the label
+`BaliStatusBadge`/`TransitionBadge` already used — the labels existed, they were simply unreachable
+from the editorial renderer. **Presentation only: symbol and label denote the same verdict, no fact
+moved.** Deliberate non-targets, both test-pinned: **TERBUKA/TERTUTUP/TERBATAS stay Indonesian**
+(terms of art the product teaches), and **`_data_note` stays verbatim** (there a symbol is a CITATION
+of the record used as divergence evidence — rewriting evidence corrupts the audit trail).
+Coverage is a **deny list** (walk everything, skip only `_l3_regen` + `coverImage`), so a field added
+tomorrow is covered by default. Gate `kbli-internal-leak.test.ts` measures BOTH data files and also
+**ratchets a SEPARATE debt it cannot fix: 392 codes narrate raw field names** ("l4_bali_blocked is
+false", `pma_max_asing`) — that class needs an editorial rewrite (W5), and the ratchet only falls.
+
+> Cross-family gate (Kimi K3, generator≠grader) returned **2 real BLOCKERs**, both re-measured on disk
+> before acting: the gold layout renders `gold.*` DIRECTLY from `getGoldContent()`, bypassing the
+> loader cure entirely; and the first gate was blind to that very file. Cured at the `getGoldContent`
+> choke point (covers the page + `/api/kbli/gold/[code]` at once).
+
+**(b) 95 codes CERTIFIED a Bali verdict derived from a basis the same record calls unverifiable.**
+`l4_bali.confidence` MEDIUM/HIGH + `needs_review:false` while `per_skala == []` — **24 of them
+`blocked: true` at HIGH confidence**, i.e. the page tells a client "a PT PMA cannot register this in
+Bali", stated as settled, on a detached risk tier. Cured with the ALREADY-SANCTIONED wave-1 treatment
+(`cure_l4bali_disclosure.py`: confidence→LOW, needs_review→true, reason disclosure-wrapped with the
+original preserved verbatim; **`status` and `blocked` are NEVER touched** — flipping either is a
+re-derivation that needs the true tier, F15). Spec `cure_specs/l4bali_gap_disclosure_2026_07_25.json`
+(95 codes), emitter `emit_l4bali_gap_disclosure_spec.py`, structural predicates shared with the writer
+in `_l4bali_basis.py`. Applied + content-verified on **all FIVE dataset copies** (canonical, mouth,
+kbli-navigator, and the two gitignored backend-rag copies the sync script also writes); catalogue-wide
+disclosed count 57 → **152**.
+
+> **The cross-family gate (Kimi K3, generator≠grader) earned its keep — 4 of its 5 findings were real,
+> each re-verified on disk before acting (W65), and one was refuted with evidence:**
+>
+> 1. **A THIRD shape of dead basis, invisible to the wave-2 selector — found, cured.** `per_skala == []`
+>    is itself a PROXY for "the basis is gone", and PR #2921's `partial_detach` primitive breaks it:
+>    rows survive while the tier the verdict cites does not. **`93114`** read `APERTO_BALI_RISCHIO_ALTO`,
+>    `blocked:false`, **HIGH confidence**, reason _"the Besar scale is 'Tinggi'"_ — with NO Besar row
+>    left in the record (the tier lives in the disowned block). It failed in the PERMISSIVE direction:
+>    the page told a client the code IS registrable by a PT PMA. Cured via a new `detached_tier` basis
+>    that re-derives the status from the surviving rows with the SAME function that wrote it
+>    (`resolve_kbli_l4_needs_review.besar_risk`) and fires only on a mismatch. Catalogue-wide census of
+>    the class: 3 partial detaches (`49213`, `93114`, `93191`), exactly 1 inconsistent.
+> 2. **A client-facing sentence asserted an HTTP status we never observed — rewritten.** The first
+>    `no_oss_scope` suffix said _"(the scope endpoint returns 404)"_. `_l2_status = no_oss_risk` is
+>    written by `build_kbli_l2_oss_risk.py:163` for a MISSING dump line, ANY non-200, **or**
+>    `success:false` — asserting `404` inside the sentence whose whole job is honesty is the disease
+>    itself (F12). Now: _"could not be retrieved from the OSS API when this dataset was built"_ —
+>    independently corroborated by `KBLI_2025_OSS_GROUND_TRUTH.json` (`ruang_lingkup_no_scope: 221`,
+>    `ruang_lingkup_errors: 0`, all 54 at `_rl_status: "no_scope"`).
+> 3. **Wave 1's disclosure sentence narrated two JSON keys at clients — migrated catalogue-wide.** It
+>    read _"detached to `per_skala_disputed_pp28_collision` (see `_data_note`)"_, and `kbli-faq.ts:42`
+>    splices that verbatim into a published FAQ answer. Fixing only the new codes would have shipped a
+>    half-fixed class + two dialects, so `--reword-legacy` migrated **all 57 wave-1 records** too.
+>    Now **0 of 1,559 verdict sentences name a pipeline field**, pinned by a test that measures the
+>    live catalogue. The key is not lost — it stays on the record, in `_data_note`, and in the spec.
+> 4. **Editorial residue is now declared instead of silent.** `_meta.editorial_residue` records that
+>    **95 of 95** cured codes still carry `intel_2026` prose stating a risk tier as FACT ("as a
+>    medium-high/high-risk activity"), so on those pages the article body and the badge now disagree.
+>    The cure deliberately does not touch editorial prose; wave 1 flagged this class and wave 2 had
+>    dropped the practice.
+> 5. **REFUTED with evidence — `93111`/`93112`/`93119`/`93191`.** The gate called these false negatives
+>    (they carry `_l2_status: no_oss_risk` AND a surviving row). They are NOT: each has
+>    `pp28_sources` populated (a declared PP28 locator) and their stored verdict still follows from the
+>    row they keep — and all four were adjudicated by the signed Batch-A Lot-8/9 gates. Their real
+>    exposure is the PP28 **vintage-2020** axis (FATAL-2), already tracked catalogue-wide — not this
+>    wave. Recorded here so the next session does not re-derive it.
+
+> **META-PATTERN — THE SELECTOR IS THE DISEASE (THIRD sighting in one session; this is now a rule).**
+> Wave 1 cured 57 of these and left 94 not because it failed, but because **it selected on a MARKER
+> (`per_skala_disputed_*` present) instead of on the STATE (the layer this verdict derives from is a
+> declared gap)** — so 54 codes detached without ever receiving a marker were not skipped, not
+> reported, simply **unreachable by the tool**. This is the exact shape already recorded in this
+> corner for the PHANTOM CODES ("every cure tool keys off _a canonical record exists_ → a code living
+> only downstream is unreachable by all of them"). **RULE: every cure tool must state whether its
+> scope is 'records carrying marker X' or 'records in state Y', and prefer the STATE.** A marker is
+> an artefact of which lot happened to touch a code; the state is the defect.
+> **And the wave-2 selector fell into it too, one level down** (found by the adversarial gate, not by
+> us): `per_skala == []` is ITSELF a marker standing in for the state "this verdict's basis is gone".
+> A partial detach leaves rows behind, so the marker reads INTACT while the cited tier is gone — 93114.
+> The cure for a proxy is to ask the question the proxy was standing in for: **re-derive the verdict
+> from what the record holds NOW, with the same function that wrote it, and compare.** That is
+> `_l4bali_basis.status_matches_surviving_rows`, and it is deliberately restricted to the three
+> statuses whose derivation is TOTAL in `besar_risk` — the other three come from a different pass
+> (lowest tier across all scales), so re-deriving them here would manufacture false mismatches.
+> Undecidable is recorded as undecidable, never as clean.
+> The wave-2 selector is structural — `l4_bali.status` enum identity + a dead-basis shape + a
+> corroborating signal — and **fails loud on an unclassified status** rather than guessing (an
+> unclassified enum cannot be known to derive from the detached layer). It deliberately EXCLUDES
+> TERTUTUP/TERBATAS/CHIUSO_REGOLATORE_SETTORIALE: those derive from `pma_status` or a sector
+> regulator, bases that are intact, so disclosing a derivation defect there would itself be false.
+> (Corrective note for anyone reading an earlier draft: a first prose-based count said "134 codes /
+> 64 blocked". That over-counted by matching risk words in the reason of PMA-derived verdicts. The
+> structural number is **95 / 24** — 40 disputed-key + 54 no-OSS-scope + 1 partial-detach. The spec
+> file IS the census; a number that lives only in prose rots, so a test now pins it to the artefact.)
+
+**⚠️ AWAITS ZERO (Legge 5) — three linked editorial calls, investigation CLOSED, no cure past the gate:**
+
+1. **17 codes attribute to OSS an observation OSS never served, client-facing, at `blocked: true`.**
+   Their reason reads _"OSS has no Usaha Besar scale row → a PT PMA is barred"_ — and **7 of the 17 go
+   further and enumerate _"(only Mikro/Kecil/Menengah)"_**. But all 17 (verified on canonical, this is
+   the whole `CHIUSO_PMA_NO_BESAR` slice of the wave: `47771 52211 70100 91424 93115 93121 93122 93123
+93125 93126 93128 93129 93192 93194 93195 93197 93199`) carry `_l2_status: no_oss_risk` — OSS
+   returned **no scope at all** — plus a disputed key: their ONLY scale rows ever lived in the
+   **disowned PP28 vintage-2020 block**. Two different sentences are in play and they do not fail the
+   same way: _"OSS has no Besar row"_ is trivially TRUE when OSS serves nothing (though the reader
+   hears "OSS says UMKM-only", which is not what a 404 says), while the enumeration _"only
+   Mikro/Kecil/Menengah"_ is **unsupportable** — it is a positive claim about rows OSS never served,
+   read off the repudiated block. The wave-2 cure DISCLOSES all 17 (confidence LOW + needs_review) but
+   does **not** rewrite the sentence: correcting a client-facing claim is editorial.
+   **Decision needed: rewrite (and to what — "OSS serves no scope for this code" vs the current
+   UMKM-reserved framing), or leave it disclosed as-is?**
+2. **May a verdict stand at all once its basis is disowned?** 24 codes now read "blocked, low
+   confidence, needs review". The conservative posture (F15) says keep the block; the honesty
+   contract says we are asserting a commercially decisive NO on data we do not trust. **And it cuts
+   both ways**: `93114` asserts the OPPOSITE — `blocked:false`, _"Registrable by a PT PMA in Bali"_ —
+   on a tier equally disowned. A client acting on a wrong NO loses an option; a client acting on a
+   wrong YES spends money on a company that cannot be licensed.
+   **Options: (i) keep the verdict + disclosed [current, shipped]; (ii) flip to NON_CLASSIFICABILE
+   like the 8 pilot codes; (iii) keep it but suppress the verdict from the hero badge.**
+3. **RECORDED, not a pending decision — a prior signed classification was falsified by the data.**
+   The wave-1 test listed `47771`, `52211`, `70100` under CLEAN_CODES ("clean structural", asserted
+   byte-unchanged) on the belief that their verdict rests on a structural OSS observation independent
+   of the risk tier. The evidence in (1) refutes that belief. They were RECLASSIFIED in this ship —
+   moved out of CLEAN_CODES into `WAVE2_RECLASSIFIED_FROM_CLEAN` with a new test that pins both the
+   reclassification AND its evidence (`_l2_status == no_oss_risk`, `per_skala == []`, disputed key
+   present, disclosure marker present, `status`/`blocked` unchanged, original reason preserved). Noted
+   here because a signed classification being overturned by later evidence is exactly the thing that
+   must never happen silently — it belongs in the corner even though nothing awaits a ruling.
+
+**NEXT ON THIS PASS — L2.1, censused read-only 2026-07-25, NOT yet cured (numbers re-measured on
+disk, they correct an earlier under-count):**
+
+- **4 codes assert a KBLI-2020 renumbering with NO recorded predecessor anywhere.** `64995`, `85691`,
+  `85692`, `90113` — `status_mapping: BPS_ONLY`, `pp28_sources: []`, `kbli_2020_source: null` **and
+  `bps_2020_ancestors: null`** — yet their `whatChanged` opens with _"Renumbered/adjusted from KBLI
+  2020."_. `64995` contradicts itself inside the same paragraph: _"Renumbered/adjusted from KBLI 2020. Codice completamente nuovo in KBLI 2025"_. FACTUAL defect (a provenance claim nothing in the
+  record supports), curable by a `scripts/kbli_filiera/` compiler — and the honest replacement is
+  _"no KBLI-2020 predecessor is recorded for this code"_, **never** _"new in 2025"_: absence of a
+  crosswalk row is not evidence the activity did not exist (that inference is how this class of
+  defect is born).
+  > **Correction, and why it matters:** an earlier pass in this same session listed **8** codes here.
+  > Re-measured on the live canonical after Batch-B's `bps_2020_ancestors` populate landed
+  > (2026-07-24, #3082), **4 of those 8 now DO carry a BPS ancestor with a lampiran locator** —
+  > `65121→65121`, `85571→78421`, `85693→74321`, `85694→74322` — so their claim is plausibly TRUE
+  > (85571's own text already said "Migrated from KBLI 78421"). Their residual issue is a lesser one:
+  > `adjudication_status: mechanical-only` / `inheritance_verdict: not-adjudicated`, i.e. the prose
+  > states as settled what the record marks as un-adjudicated. A census taken before a sibling lane
+  > lands is stale by the time you cure it — re-measure at cure time, never cite the old number.
+- **215 `whatChanged` texts mix Italian into client-facing English** (not "10" — that earlier figure
+  was a sample read as a population, W97). Two shapes: an English sentence with `"PP28 usa
+c[odice]…"` appended, and fully-Italian ones like `"KBLI 2020→2025 mapping: codice rinumerato."`.
+  This is editorial, not factual, and belongs to the same editorial-rewrite lane as the 95 tier-
+  asserting texts + the 392 field-name narrations (all three tracked in modus PENDING-ARMS).
+
+**W2 / BATCH-B IS UNDERWAY (the "W2 NO-GO" line further down is STALE — Zero gave GO and it has shipped
+in mechanical, additive increments).** Chain so far, all merged + proven:
+
+- **Phase-0 gate — SHIPPED (PR #3080, PASS).** BPS 2020↔2025 crosswalk parser + acceptance gate; relation
+  digest `ca9e7ffc`, P=R=1.0 on 211 edges; Kimi red-team → 4 fixes. (item-10 Tier-4 AQL default **0.010%
+  still awaits Zero's Legge-5 ruling** — the one true open Zero-gate on the mechanical pipeline.)
+- **Step 2 — populate SHIPPED (PR #3082, squash `e9f71479`).** Additive canonical field
+  `bps_2020_ancestors` written **mechanical-only** onto the **1,338 OSS-native** codes (`_l2_status is
+null`); Batch-A's 221 untouched. `inheritance_verdict` always `not-adjudicated` — mechanical presence
+  NEVER implies regime transfer. Gate-content-bound (recompute `_relation_digest`), additive-proven 2 ways.
+- **Step 4 — SURFACE SHIPPED + PROVEN-LIVE (PR #3095, squash `bc52c788`, 2026-07-25, apps/mouth only).**
+  New labeled **"BPS crosswalk"** element on `/kbli/<code>` rendering the field — the FIRST runtime reader
+  (was dormant). **Zero chose "additive: new BPS element (safe)"** over re-pointing the legacy `previousCodes`
+  (a data-audit proved re-point unsafe). Diff **153 insertions / 0 deletions** → legacy "Previous codes"
+  BYTE-UNTOUCHED, zero regression. Honest framing verbatim on prod: _"provenance only, not a licensing
+  claim: the regulatory regime of these predecessor codes has not been adjudicated as transferring."_
+  **Cross-family gate (generator≠grader; Kimi K3 — Codex 401-dead) CAUGHT A BLOCKER**: the first draft
+  LINKED each ancestor to `/kbli/<c>`, but ancestors are KBLI-**2020** vintage while `/kbli/<c>` is a **2025**
+  page — verified on real data, **317** ancestor codes coincide with an UNRELATED 2025 code (wrong-vintage
+  link = client harm; `KBLI2020:X ≠ KBLI2025:X`). Fix: **ancestors render as PLAIN TEXT, never linked.**
+  Proven live on the collision case `01138` (ancestor `01283` = `<span>` plain text, **0** `<a href=.../kbli/01283>`
+  on the page). Detail: memory `ops_kbli_batch_b_step4_shipped_2026_07_25`. GOTCHA: `/kbli` pages are
+  **SSG+ISR** — `?cb=` does NOT force a fresh render, so a stale edge-cache can serve an old prerender for
+  minutes (seen on `01111`); not a gate (twin `01118` renders its self-code fine).
+
+**⚠️ OPEN FINDING surfaced by step 4 — AWAITS ZERO'S EDITORIAL RULING (Legge 5).** Step 4 made VISIBLE that
+the two predecessor sources disagree. Grounded on the canonical data (1,338 Batch-B): **703 identical
+(pp28 == BPS)**, **635 divergent** (328 where the OFFICIAL BPS knows ancestors the legacy pp28 drops · 69
+where pp28 has extra · 238 mixed), and **560 codes render BOTH elements with DIFFERENT 2020 codes side by
+side on prod right now** (e.g. `01138`: legacy "Previous codes" = `01122` vs BPS = `01283`; `01309`: `02119`
+vs `01302`, disjoint). They are two DIFFERENT sources: **BPS crosswalk = the official government conversion
+table** ("which 2020 code does this 2025 code descend from"); **pp28 = a PP28-risk regulatory citation**, not
+a real crosswalk. So the element did not create a bug — it EXPOSED that the legacy "Previous codes" likely
+over-promises on ~635 codes. **Decision put to Zero (3 options): (a) keep both + a source-note, (b) BPS is
+authoritative → demote/relabel the legacy pp28 element, (c) hold + adjudicate the 635 vs ground-truth
+(tier-1, heavy).** He interrupted the option-picker with "salva tutto in /kbli-navigator" — so this is
+PARKED here awaiting his choice; NO cure/reconciliation started (investigation was read-only). The **211**
+figure used earlier was a narrower cut of this same phenomenon; the accurate numbers are 635 divergent /
+560 visible.
+
+**Still-open on the program**: Step 3 (per-code `bps_2020_ancestors` correction-key in the cure-spec
+compilers) NOT started; item-10 AQL 0.010% awaits Zero; the legacy `previousCodes` has the SAME latent
+vintage-link issue (it links pp28 2020 codes to 2025 pages) — pre-existing, candidate follow-up.
+
+---
+
 **W1 PUBLIC-SURFACE HONESTY PASS — SHIPPED & PROVEN-LIVE 2026-07-24 (PR #3049, squash `23fa765e61`).**
 Context: a Codex session (rollout `019f83fc`) had been conducting a 7-work-package program (W0→W7) to
 take the Navigator to BKPM-presentable. W0 (census/governance/role-contract) closed 2026-07-23; its W1
@@ -92,7 +297,8 @@ tiers … verify directly at oss.go.id"_, and states the capital doctrine correc
 > **Standing check for every future lot**: after a cure lands on canonical, re-run the
 > detached-vs-`kbli_documents` census — a lot can be "closed" on 3 surfaces and still lie on the 4th.
 
-**W1 is CLOSED. Next per the Codex program: W2 (Batch-B prep — still NO-GO without Zero) / W3+.**
+**W1 is CLOSED. W2/Batch-B is now UNDERWAY and shipping (see the top LIVE-STATE entry: Phase-0 gate #3080,
+step-2 populate #3082, step-4 surface #3095). The "still NO-GO" wording below is superseded — Zero GO'd it.**
 
 **Batch A CLOSED 2026-07-21 (114/114, 0 remaining)** — the full "A-serving" 114-code sweep
 (113 A-serving/pp28 + 80190 A-serving/orphan) is done. Final tally: 109 full detach + 2
@@ -108,8 +314,9 @@ npm-audit CI gate that PR #2931 healed on main AFTER #2926's own CI ran — a re
 2026-07-21 to pick up the fix; check PR #2926's current state before assuming still-blocked.
 **What's NOT done:** Batch A was a SUBSET of the ~221 no-scope population (8 pilot + 114 Batch
 A = 122 adjudicated; ≈99 genuinely untouched remain — supersedes the stale "~213" figure
-below, which pre-dates Batch A's closure). Batch B has a SIGNED design (#2801) but NO Zero GO
-— per this program's own per-batch phase-gate rule, Batch B does not start without one.
+below, which pre-dates Batch A's closure). Batch B had a SIGNED design (#2801); it has since been GO'd by
+Zero and is shipping mechanically (Phase-0 gate #3080 · step-2 populate #3082 · step-4 surface #3095 — see
+the top LIVE-STATE entry). The one open Zero-gate on Batch B is the Tier-4 AQL 0.010% default (#3080).
 
 **Lot 7 (A-L7) — CLOSED 2026-07-20** (closure PR #2885, squash `7fc6c18f3c`, merged
 2026-07-20T11:01:47Z — pure-docs: gate reports, corner updates, ledger entries, zero code/data
