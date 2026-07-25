@@ -109,7 +109,10 @@ export function PeopleColumn({
                 style={{
                   background: colors.bg,
                   border: `1px solid ${colors.border}`,
-                  color: colors.accent,
+                  /* WS3 slice 9: initials are 13px — small text — so they
+                     read the AA text step (copper tint wells fail AA for
+                     small copper text on both themes). */
+                  color: colors.text,
                 }}
               >
                 {initials}
