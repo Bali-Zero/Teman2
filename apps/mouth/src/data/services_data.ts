@@ -386,17 +386,21 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         ],
         popular: false,
       },
-      {
-        name: "E33A/B/C - Research/Education KITAS",
-        description: "Researchers, students, educators",
-        price: "Contact",
-        features: [
-          "1-2 years validity",
-          "Institution sponsorship",
-          "Academic documentation",
-        ],
-        popular: false,
-      },
+      // REMOVED 2026-07-25: "E33A/B/C - Research/Education KITAS" was a
+      // fabricated product. Under Kepmen M.IP-08.GR.01.01/2025 (the instrument
+      // that actually enumerates the visa index — Permenkumham 11/2024 does not)
+      // the E33 sub-codes are: E33A foreign expert invited by the government,
+      // E33B special-expertise government collaboration, E33C world figure,
+      // E33D world figure establishing a company (not even fileable — its
+      // imigrasi.go.id requirements page reads "Data Belum Tersedia").
+      // Research is E29; education is the E30 series. E33A/B/C were NEVER
+      // assigned to research or education under any instrument.
+      // Verified against the regulation via NB-2 plus two non-Claude seats and
+      // research/visa/2026-07-24-w2-factbase-e33.md (built from live per-code
+      // fetches of imigrasi.go.id).
+      // Deliberately NOT replaced with E29/E30 cards here: listing a new
+      // sellable service is a business decision (SYMBIOSIS Law 5), not a
+      // correction. Removing a false claim is.
       // ═══════════════════════════════════════════════════════════
       // SECOND HOME VISA (E33)
       // ═══════════════════════════════════════════════════════════
