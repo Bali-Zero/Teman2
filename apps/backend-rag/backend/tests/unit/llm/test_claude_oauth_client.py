@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import time
 from typing import Any
 
 import pytest
@@ -32,6 +33,24 @@ def clear_oauth_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "CLOUD_ML_REGION",
     ):
         monkeypatch.delenv(k, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def isolate_seat_cooldowns(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Keep the module-level cooldown memo out of every other test.
+
+    ``_seat_cooldowns`` is process state on an imported (therefore cached)
+    module, so without this a seat cooled in one test would silently be skipped
+    in the next — the W96 class of defect, one scope down. Autouse so it also
+    protects the tests that predate the cooldown. Also clears the tuning env
+    var so a developer's shell cannot change what the suite measures.
+    """
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.delenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", raising=False)
+    mod._reset_seat_cooldowns()
+    yield
+    mod._reset_seat_cooldowns()
 
 
 def _fake_proc(stdout: bytes, stderr: bytes = b"", returncode: int = 0) -> Any:
@@ -435,7 +454,13 @@ async def test_complete_async_never_logs_or_raises_raw_stderr(
     assert fake_secret not in surfaced
     assert fake_refresh not in surfaced
     assert "stderr=" not in surfaced
-    assert "cli_exit_2" in surfaced
+    # Something identifying the failure MUST surface — a silent redaction that
+    # reported nothing would satisfy the three assertions above vacuously.
+    # This used to read `cli_exit_2`; since 2026-07-25 the non-zero exit path
+    # runs the diagnostic classifier too, so a framed auth error is now named
+    # rather than reduced to its exit code. Equally redacted (the classifier
+    # returns a fixed class and never the raw text), strictly more useful.
+    assert "authentication" in surfaced
 
 
 @pytest.mark.asyncio
@@ -775,3 +800,217 @@ def test_serialize_schema_compact_and_capped() -> None:
 
     with pytest.raises(ValueError):
         _serialize_schema({"x": "y" * (_MAX_SCHEMA_BYTES + 100)})
+
+
+# ---------------------------------------------------------------------------
+# Seat cooldown — an exhausted seat must be recognised AND remembered
+# ---------------------------------------------------------------------------
+# The message below is the REAL one, copied from a live probe on 2026-07-25
+# (`claude -p PONG` against a weekly-exhausted Max seat): exit 1, no rate-limit
+# wording the loose RATE_LIMIT_PATTERN would catch. Before the fix it logged as
+# `cli_exit_1` and the dead seat was re-spawned on every single call.
+_EXHAUSTED_SEAT_MESSAGE = b"You've hit your weekly limit \xc2\xb7 resets 9am (Asia/Makassar)"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+async def test_exhausted_seat_is_classified_as_quota_not_a_bare_exit_code(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+    stream: str,
+) -> None:
+    """The live message must reach the classifier on the NON-zero exit path."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        if stream == "stdout":
+            return _fake_proc(stdout=_EXHAUSTED_SEAT_MESSAGE, returncode=1)
+        return _fake_proc(stdout=b"", stderr=_EXHAUSTED_SEAT_MESSAGE, returncode=1)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    with pytest.raises(mod.ClaudeOAuthError) as excinfo:
+        await mod.complete_async("ping")
+
+    message = str(excinfo.value)
+    assert "quota" in message
+    assert "cli_exit_1" not in message
+    # The raw diagnostic itself never leaks into the error surface.
+    assert "Makassar" not in message
+
+
+@pytest.mark.asyncio
+async def test_exhausted_seat_is_skipped_on_the_following_call(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """The whole point: stop re-spawning a CLI for a seat known to be dead."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    attempted: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        seat = kwargs["env"].get("CLAUDE_CODE_OAUTH_TOKEN", "<keychain>")
+        attempted.append(seat)
+        if seat == "t1":
+            return _fake_proc(stdout=b"", stderr=_EXHAUSTED_SEAT_MESSAGE, returncode=1)
+        return _fake_proc(stdout=b"ok", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    first = await mod.complete_async("ping")
+    assert attempted == ["t1", "<keychain>"]
+    assert first.token_label == "keychain"
+
+    second = await mod.complete_async("ping")
+    assert attempted == ["t1", "<keychain>", "<keychain>"], "dead seat re-probed"
+    assert second.token_label == "keychain"
+    assert second.attempts == 1, "the skipped seat must not be counted as an attempt"
+
+
+@pytest.mark.asyncio
+async def test_a_plain_crash_is_not_a_cooldown(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """INNOCENCE: a seat that merely crashed is still healthy — retry it."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    attempted: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        seat = kwargs["env"].get("CLAUDE_CODE_OAUTH_TOKEN", "<keychain>")
+        attempted.append(seat)
+        if seat == "t1":
+            return _fake_proc(stdout=b"", stderr=b"Segmentation fault", returncode=139)
+        return _fake_proc(stdout=b"ok", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    await mod.complete_async("ping")
+    await mod.complete_async("ping")
+
+    assert attempted == ["t1", "<keychain>", "t1", "<keychain>"]
+    assert not mod._seat_cooldowns
+
+
+@pytest.mark.asyncio
+async def test_long_prose_mentioning_a_weekly_limit_is_not_a_diagnostic(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """INNOCENCE: the classifier decides on error SHAPE, never on a substring."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    prose = (
+        b"The regulation says the applicant has hit your weekly limit only when "
+        b"the filing window closes, and the weekly limit is counted from the first "
+        b"business day, which for this particular case means the deadline lands on "
+        b"a Monday rather than the Friday the client assumed when they filed."
+    )
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        return _fake_proc(stdout=prose, stderr=b"", returncode=1)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    with pytest.raises(mod.ClaudeOAuthError) as excinfo:
+        await mod.complete_async("ping")
+
+    assert "cli_exit_1" in str(excinfo.value)
+    assert not mod._seat_cooldowns, "prose must never cool a healthy seat"
+
+
+@pytest.mark.asyncio
+async def test_cooldown_can_be_disabled_by_env(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """Kill switch: 0 keeps the honest classification, drops the memo."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    monkeypatch.setenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", "0")
+    attempted: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        seat = kwargs["env"].get("CLAUDE_CODE_OAUTH_TOKEN", "<keychain>")
+        attempted.append(seat)
+        if seat == "t1":
+            return _fake_proc(stdout=b"", stderr=_EXHAUSTED_SEAT_MESSAGE, returncode=1)
+        return _fake_proc(stdout=b"ok", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    await mod.complete_async("ping")
+    await mod.complete_async("ping")
+
+    assert attempted == ["t1", "<keychain>", "t1", "<keychain>"]
+    assert not mod._seat_cooldowns
+
+
+def test_seat_key_never_contains_the_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cicatrix #4: the memo holds a fingerprint, never the credential."""
+    from backend.llm import claude_oauth_client as mod
+
+    secret = "sk-ant-oat01-VERY-SECRET-VALUE"
+    key = mod._seat_key(secret, "token_1")
+
+    assert secret not in key
+    assert "VERY-SECRET" not in key
+    assert key.startswith("token_1:")
+    assert key != mod._seat_key(secret + "x", "token_1")
+
+
+def test_rotated_token_does_not_inherit_the_old_cooldown() -> None:
+    """A new credential under the same label starts clean."""
+    from backend.llm import claude_oauth_client as mod
+
+    mod._seat_cooldowns[mod._seat_key("old", "token_1")] = time.monotonic() + 900
+
+    assert mod._drop_cooling_seats([("old", "token_1")]) == [("old", "token_1")], (
+        "the only seat is cooling — must fail open"
+    )
+    kept = mod._drop_cooling_seats([("old", "token_1"), ("new", "token_1")])
+    assert kept == [("new", "token_1")]
+
+
+def test_expired_cooldown_is_dropped_and_the_seat_returns() -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    mod._seat_cooldowns[mod._seat_key("t1", "token_1")] = time.monotonic() - 1.0
+    pairs = [("t1", "token_1"), ("", "keychain")]
+
+    assert mod._drop_cooling_seats(pairs) == pairs
+    assert not mod._seat_cooldowns, "expired entries must be purged, not accumulated"
+
+
+def test_all_seats_cooling_fails_open() -> None:
+    """A cooldown is an optimisation — it may never starve the cascade."""
+    from backend.llm import claude_oauth_client as mod
+
+    pairs = [("t1", "token_1"), ("t2", "token_2"), ("", "keychain")]
+    for token, label in pairs:
+        mod._seat_cooldowns[mod._seat_key(token, label)] = time.monotonic() + 900
+
+    assert mod._drop_cooling_seats(pairs) == pairs
+
+
+def test_malformed_cooldown_env_degrades_to_a_safe_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", "not-a-number")
+    assert mod._seat_cooldown_s() == mod._DEFAULT_SEAT_COOLDOWN_S
+
+    monkeypatch.setenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", "nan")
+    assert mod._seat_cooldown_s() == 0.0, "NaN must disable, never strand a seat"
+
+    monkeypatch.setenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", "-5")
+    assert mod._seat_cooldown_s() == 0.0
