@@ -1,7 +1,14 @@
 // =============================================================================
 // KBLI 2025 Gold Codes
-// All 1,563 codes now have gold-tier editorial content (Batch A + B + C).
-// Gold content is loaded from data/kbli-gold-all.json at build time.
+// 428 of the 1,559 codes carry gold-tier editorial content — NOT all of them.
+// (Corrected 2026-07-25: this header claimed "all 1,563 codes". Both halves were
+// wrong. 1,563 is the count of a DIFFERENT population — the `kbli_documents`
+// superset, which carries 4 retired KBLI-2020 phantom rows the canonical
+// catalogue does not have — and the file has held 428 entries throughout.
+// A comment is not load-bearing, but a wrong one is how the next reader
+// concludes gold mirrors canonical and drops a check that isn't redundant.)
+// Gold content is loaded from data/kbli-gold-all.json at build time and
+// OVERRIDES the canonical editorial fields wherever an entry exists.
 // This module reads the gold JSON directly to avoid circular dependencies.
 // =============================================================================
 
