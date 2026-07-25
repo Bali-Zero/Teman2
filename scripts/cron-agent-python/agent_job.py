@@ -197,22 +197,46 @@ class AgentJob:
 
     # ─── Telegram ──────────────────────────────────────────────────────────
 
-    async def send_telegram(self, msg: str, chat_id: str | None = None) -> bool:
-        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        if not token:
-            self.logger.warning("telegram_skipped", reason="no_token")
-            return False
-        chat = chat_id or self.telegram_chat_id or os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    async def send_telegram(
+        self, msg: str, tier: str, chat_id: str | None = None, dedup_key: str = ""
+    ) -> bool:
+        """Route through the notification gateway (scripts/tg_notify.py) — never
+        call the raw Telegram HTTP API directly (anti-regrowth lint, W104 promotion 2026-07-25:
+        this base class was cicatrix-superscar #3's 1-NEW violation poisoning
+        every open PR). The gateway owns credential resolution, per-tier dedup and
+        the daily P0 budget — a caller only decides `tier`.
+
+        `tier` has no default on purpose: every one of this class's 3 call sites
+        (this file's own run_job() failure alert, log_anomaly_detector.py,
+        intel_radar_daily_digest.py) must state its severity explicitly rather
+        than silently inherit one, since the choice is genuinely call-site
+        specific and a silent default would hide behavior change in the two
+        files this migration doesn't otherwise touch.
+
+        `chat_id` is accepted for backward API-compatibility but is not
+        forwarded — no caller in this tree has ever overridden it, and the
+        gateway always resolves the configured owner chat itself.
+        """
+        import subprocess
+
+        gateway = Path(__file__).resolve().parent.parent / "tg_notify.py"
+        if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
+            gateway = Path.home() / "nuzantara" / "scripts" / "tg_notify.py"
+
+        cmd = [sys.executable, str(gateway), "--tier", tier, "--source", f"cron-agent-python:{self.name}"]
+        if dedup_key:
+            cmd += ["--dedup-key", dedup_key]
+        cmd += ["--", msg]
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    data={"chat_id": chat, "text": msg, "parse_mode": "HTML"},
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            ok = proc.returncode == 0
+            if ok:
+                self._side_effects.append(f"telegram:{tier}")
+            else:
+                self.logger.warning(
+                    "telegram_gateway_error", returncode=proc.returncode, stderr=(proc.stderr or "")[:200]
                 )
-                success = r.status_code == 200
-                if success:
-                    self._side_effects.append(f"telegram:{chat}")
-                return success
+            return ok
         except Exception as e:
             self.logger.error("telegram_error", error=str(e))
             return False
@@ -690,9 +714,22 @@ async def run_job(job: AgentJob, send_alerts: bool = True) -> int:
         await job._publish_redis_event(result)  # VADEMECUM §1 point 8 — event bus
 
         if result.status != "ok" and send_alerts:
+            # tier=digest, not p0: this fires for ANY subclass job that errors or
+            # times out, with no severity signal at the base-class level (unlike
+            # job_health.py, which only pages p0 for jobs it has marked critical).
+            # Immediate-paging every cron-agent-python crash recreates the exact
+            # alert-fatigue this gateway exists to prevent (Zero: "non posso più
+            # ricevere 600 messaggi al giorno") — grouped + deduped is the honest
+            # tier until a per-job criticality signal exists.
             await job.send_telegram(
-                f"❌ <b>{job.name}</b> {result.status} ({result.duration_s:.1f}s)\n"
-                f"{result.error or 'no error details'}"
+                f"❌ {job.name} {result.status} ({result.duration_s:.1f}s)\n"
+                f"{result.error or 'no error details'}",
+                tier="digest",
+                # Stable across repeated failures of the same job/status — the
+                # message text above embeds duration_s, which varies every run
+                # and would defeat the gateway's default text-hash dedup (same
+                # lesson job_health.py already learned, 2026-07-11).
+                dedup_key=f"cron-agent-python:{job.name}:{result.status}",
             )
 
         return job._exit_code(result)

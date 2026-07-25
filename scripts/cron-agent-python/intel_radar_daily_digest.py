@@ -123,8 +123,10 @@ class IntelRadarDailyDigestJob(AgentJob):
                     output=f"dry_run: {len(rows)} rows",
                 )
 
-            # Send Telegram.
-            ok = await self.send_telegram(msg)
+            # Send Telegram. tier=digest: a scheduled daily report is exactly
+            # tg_notify.py's "informative" tier by name and by content — never
+            # actionable-now.
+            ok = await self.send_telegram(msg, tier="digest")
             self.log_step(
                 "telegram_send",
                 outputs={"ok": ok, "rows": len(rows)},

@@ -156,7 +156,12 @@ class LogAnomalyDetectorJob(AgentJob):
 
         if alerts:
             msg = self._compose_alert(alerts)
-            ok = await self.send_telegram(msg)
+            # tier=digest: this IS "watcher findings" (tg_notify.py's own tier
+            # description) — the gateway's dedup+budget is a second, independent
+            # backstop on top of this job's own 30min-cooldown/3-per-run limits
+            # (W104, 2026-07-25: those upstream limits fail-opened to 288/day
+            # once, so the transport itself should not also be unbounded).
+            ok = await self.send_telegram(msg, tier="digest")
             self.log_step("telegram_sent", outputs={"ok": ok},
                           side_effect="anomaly_alert" if ok else None)
 
