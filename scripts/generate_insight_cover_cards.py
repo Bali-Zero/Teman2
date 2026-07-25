@@ -80,6 +80,16 @@ _FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 )
 
+# The font the committed cards were actually rendered with.
+#
+# Font choice changes the output BYTES — measured, not assumed: the same card
+# rendered with Helvetica hashes 087a2b8c…, with Arial b01a857c…. So "the
+# generator is deterministic" is only true relative to a font, and on a Linux
+# CI runner (no Helvetica) a re-render legitimately differs from what is on
+# disk. Tests that re-render compare against this and SKIP with a stated reason
+# rather than failing for a difference that is not a defect.
+GENERATION_FONT = "/System/Library/Fonts/Helvetica.ttc"
+
 
 @dataclass(frozen=True)
 class Card:
@@ -132,17 +142,29 @@ CARDS: tuple[Card, ...] = (
 OUT_DIR = Path("apps/mouth/public/static/insights/immigration")
 
 
-def _font(size: int, index: int = 0) -> ImageFont.FreeTypeFont:
+def resolved_font_path() -> str:
+    """The font this machine will actually render with.
+
+    First candidate that both exists AND opens. `_font()` is defined in terms of
+    this rather than repeating the loop: if the two could disagree, the tests'
+    font guard would report one font while the renderer used another, and skip
+    or run on a false premise.
+    """
     for path in _FONT_CANDIDATES:
         if Path(path).is_file():
             try:
-                return ImageFont.truetype(path, size, index=index)
+                ImageFont.truetype(path, 12)
             except OSError:
                 continue
+            return path
     raise RuntimeError(
         f"no usable font among {_FONT_CANDIDATES} — refusing to render with a "
         "bitmap fallback, which would look nothing like the brand card"
     )
+
+
+def _font(size: int, index: int = 0) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(resolved_font_path(), size, index=index)
 
 
 def _gradient() -> Image.Image:

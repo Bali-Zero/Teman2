@@ -1,0 +1,54 @@
+name: Insight cover cards — no article may wear another article's card
+
+# Fails the PR if a generated Bali Zero cover card is shared between articles,
+# if the retired "Investor KITAS (E28A)" card reappears anywhere under
+# static/insights, or if an article declares a sibling's card.
+#
+# Born from the 2026-07-26 finding: thirteen immigration articles pointed at
+# thirteen different filenames holding ONE byte-identical image — and that image
+# was not a stock photo but a TITLED brand card reading "Investor KITAS (E28A)".
+# Eight of them were serving it live. A shared generic photo is weak; a shared
+# titled card is a false claim above the headline and in every OG preview, so
+# the rule these tests encode is "the generated cards are one-per-article", not
+# "covers must be unique".
+#
+# Without this workflow the test file would never execute: every test under
+# scripts/tests/ in this repo runs only because some workflow names it, and a
+# guard that no workflow names is written, not armed (superscar #2).
+#
+# Two of the seven tests re-render and are font-bound (Helvetica on macOS
+# produces different bytes than DejaVu on a Linux runner — measured, not
+# assumed). They skip HERE with a stated reason; the ones that pin the defect
+# are pure file reads and run.
+
+on:
+  pull_request:
+    paths:
+      - "apps/mouth/public/static/insights/**"
+      - "apps/mouth/src/content/articles/immigration/**/*.mdx"
+      - "scripts/generate_insight_cover_cards.py"
+      - "scripts/tests/test_insight_cover_cards.py"
+      - ".github/workflows/insight-cover-cards.yml"
+
+concurrency:
+  group: insight-cover-cards-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cover-cards:
+    name: Cover cards are one-per-article
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Pillow
+        run: python -m pip install --quiet "Pillow>=10,<12"
+
+      - name: Cover-card tripwires
+        run: python -m pytest scripts/tests/test_insight_cover_cards.py -q -rs
