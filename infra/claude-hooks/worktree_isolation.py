@@ -248,8 +248,13 @@ def _worktree_is_dirty(wt: pathlib.Path) -> bool:
         return False
 
 
-def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
-    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None.
+def _worktrees_root() -> pathlib.Path:
+    return pathlib.Path(REPO_ROOT, ".worktrees").resolve()
+
+
+def _token_to_worktrees_path(token: str, cwd: str) -> pathlib.Path | None:
+    """Normalize a removal-command token to an absolute path that IS, or lives
+    under, `<repo>/.worktrees` — else None.
 
     Conservative by design (superscar #3): a removal command names the worktree
     EXPLICITLY, and that name always contains the `.worktrees/` segment (absolute
@@ -263,6 +268,12 @@ def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
     token = token.strip().strip("'\"")
     if not token or token.startswith("-"):
         return None
+    # `rm -rf <...>/.worktrees/*` is an ordinary command a human types, and the
+    # metacharacter gate below would drop it as shell residue — letting it wipe every
+    # worktree unseen. Normalize exactly that one shape to the container it names.
+    # Anything else containing `*` still falls to the gate.
+    if token.endswith("/*"):
+        token = token[:-2]
     # Shell-structure residue that survived noise-strip is NOT a path.
     if any(ch in token for ch in (">", "<", "&", "|", ";", "$", "*", "`")):
         return None
@@ -274,16 +285,39 @@ def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
         return None
     base = pathlib.Path(cwd) if cwd else pathlib.Path(REPO_ROOT)
     p = pathlib.Path(token)
-    cand = (p if p.is_absolute() else (base / p))
+    raw = (p if p.is_absolute() else (base / p))
+    # `rm -rf <symlink>` removes the LINK, not the referent — resolving it first would
+    # incriminate a worktree the command never touches. A TRAILING SLASH is the
+    # opposite intent (addressing the directory THROUGH the link), so it is not exempt.
+    if not token.endswith("/"):
+        try:
+            if raw.is_symlink():
+                return None
+        except Exception:
+            pass
     try:
-        cand = cand.resolve()
+        cand = raw.resolve()
     except Exception:
         return None
-    wt_root = pathlib.Path(REPO_ROOT, ".worktrees").resolve()
-    try:
-        rel = cand.relative_to(wt_root)
-    except ValueError:
+    wt_root = _worktrees_root()
+    if cand != wt_root and wt_root not in cand.parents:
         return None
+    return cand
+
+
+def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
+    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None.
+
+    None for a `.worktrees` DIRECTORY itself (the repo's own, or one nested inside a
+    worktree): that names a container, not a worktree. Such a target is not safe,
+    though — see `_unarmed_dirty_removal_target`, which judges it by its contents
+    instead of by a verdict path.
+    """
+    cand = _token_to_worktrees_path(token, cwd)
+    wt_root = _worktrees_root()
+    if cand is None or cand.name == ".worktrees":
+        return None
+    rel = cand.relative_to(wt_root)
     # must be a direct child .worktrees/<name> (not .worktrees itself, not deeper file)
     if len(rel.parts) < 1 or not rel.parts[0]:
         return None
@@ -296,7 +330,7 @@ def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
     # where the innermost one is the thing being removed.
     innermost: pathlib.Path | None = None
     repo_real = pathlib.Path(REPO_ROOT).resolve()
-    for known in _git_worktree_list():
+    for known in _git_worktree_list_cached():
         if known == repo_real:
             continue  # main checkout is never a `.worktrees/<name>` verdict
         if known == cand or known in cand.parents:
@@ -309,22 +343,35 @@ def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
     return pathlib.Path(wt_root, rel.parts[0])
 
 
-def _worktrees_strictly_inside(wt: pathlib.Path) -> list[pathlib.Path]:
-    """Registered worktrees nested under <wt> — never <wt> itself, never main.
+def _worktrees_strictly_inside(container: pathlib.Path) -> list[pathlib.Path]:
+    """Worktrees nested under <container> — never <container> itself, never main.
 
     `.worktrees/` is gitignored, so `git status` run INSIDE an outer worktree is
     blind to a worktree nested within it: the outer reads CLEAN while removing it
     would destroy the nested one's uncommitted work. The dirtiness probe cannot
     see these victims; only the worktree registry can name them.
+
+    Sorted, so the victim a block message names is deterministic instead of
+    inheriting `git worktree list` ordering.
     """
-    out: list[pathlib.Path] = []
+    known = _git_worktree_list_cached()
     repo_real = pathlib.Path(REPO_ROOT).resolve()
-    for known in _git_worktree_list():
-        if known == wt or known == repo_real:
-            continue
-        if wt in known.parents:
-            out.append(known)
-    return out
+    out = [w for w in known
+           if w != container and w != repo_real and container in w.parents]
+    if not known:
+        # The registry is UNAVAILABLE (git timed out / errored), which is not the
+        # same fact as "nothing is nested inside" — reading a dead probe's empty
+        # answer as a clean bill of health is family #2. Fall back to the only place
+        # a nested worktree can live, so a slow git cannot turn `rm -rf .worktrees`
+        # into a pass. Scoped to that one directory on purpose: walking <container>
+        # itself would hand back ordinary subdirectories, and `git -C <subdir> status`
+        # answers for the ENCLOSING worktree — a fresh over-match.
+        base = container if container.name == ".worktrees" else (container / ".worktrees")
+        try:
+            out += [d for d in base.iterdir() if d.is_dir()]
+        except Exception:
+            pass
+    return sorted(set(out))
 
 
 def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | None:
@@ -336,14 +383,32 @@ def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | Non
     for m in RM_RF_RE.finditer(cmd_scan):
         tokens += m.group(1).split()
     for tok in tokens:
-        wt = _resolve_under_worktrees(tok, cwd)
-        if wt is None or not wt.is_dir():
+        cand = _token_to_worktrees_path(tok, cwd)
+        if cand is None:
             continue
         # Judge every VICTIM of the removal, not just the named target (W94's
         # lesson: the fix of an over-match births the under-match twin unless the
-        # corpus covers COMPOSITION). Removing <wt> also removes every worktree
-        # nested inside it, and <wt>'s own status is blind to them.
-        for victim in [wt, *_worktrees_strictly_inside(wt)]:
+        # corpus covers COMPOSITION). Victims are scoped to what THIS path actually
+        # removes — never to "everything under the worktree it belongs to", which
+        # would block `rm -rf <clean-wt>/build-cache` because some unrelated nested
+        # worktree elsewhere in that worktree happens to be dirty.
+        if cand.name == ".worktrees":
+            # A `.worktrees` DIRECTORY is a container, not a worktree — the repo's
+            # own, or one nested inside a worktree. Removing it destroys everything
+            # registered inside and nothing of whatever encloses it (`.worktrees/`
+            # is gitignored, so the enclosing checkout's tracked state is untouched).
+            # Measured 2026-07-26: `rm -rf <repo>/.worktrees` used to sail straight
+            # through, because the resolver returned None for a target it could not
+            # name as a single worktree. Judge it by its CONTENTS only — never by
+            # `git -C <container> status`, which answers for the enclosing checkout.
+            victims = _worktrees_strictly_inside(cand)
+        else:
+            wt = _resolve_under_worktrees(tok, cwd)
+            if wt is None or not wt.is_dir():
+                continue
+            # <wt> itself: removing any of its content is judged against it (W80).
+            victims = [wt, *_worktrees_strictly_inside(cand)]
+        for victim in victims:
             if not victim.is_dir():
                 continue
             if not _worktree_is_dirty(victim):
@@ -626,6 +691,20 @@ def _git_worktree_list() -> list[pathlib.Path]:
         return worktrees
     except Exception:
         return []
+
+
+_WT_LIST_CACHE: list[pathlib.Path] | None = None
+
+
+def _git_worktree_list_cached() -> list[pathlib.Path]:
+    """Per-process memo. The hook is one process per Bash tool call, so the registry
+    cannot change under us; without this, a command naming several worktrees pays a
+    fresh 2s-timeout subprocess per token per victim lookup.
+    """
+    global _WT_LIST_CACHE
+    if _WT_LIST_CACHE is None:
+        _WT_LIST_CACHE = _git_worktree_list()
+    return _WT_LIST_CACHE
 
 
 def _is_path_in_allowed_worktree(path_str: str) -> bool:
