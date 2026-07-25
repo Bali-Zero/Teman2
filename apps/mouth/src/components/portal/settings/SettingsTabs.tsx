@@ -31,6 +31,11 @@ const LABELS: Record<TabId, string> = {
  * The active tab lives in the `?tab=<id>` query param; unknown/missing values
  * fall back to "account". Navigation uses `router.replace` so the tab switch
  * does not pollute the browser history stack.
+ *
+ * WS3 slice 7 (GARUDA Day Edition): tab chrome reads theme tokens —
+ * hairline = --bz-border, inactive label = --bz-text-2 (was #c9a96e/70,
+ * ~1.4:1 on paper), active label = --tx-pure with the copper daylight step
+ * --bz-copper as the underline (was #d4845a, 2.57:1 on paper).
  */
 export function SettingsTabs() {
   const router = useRouter();
@@ -51,7 +56,7 @@ export function SettingsTabs() {
       <TabsList
         aria-label="Settings sections"
         role="tablist"
-        className="flex flex-wrap gap-1 border-b border-white/10 mb-6"
+        className="flex flex-wrap gap-1 border-b border-[var(--bz-border)] mb-6"
       >
         {TAB_IDS.map((t) => (
           <TabsTrigger
@@ -59,7 +64,7 @@ export function SettingsTabs() {
             value={t}
             role="tab"
             aria-selected={active === t}
-            className="px-4 py-2 text-sm text-[#c9a96e]/70 data-[state=active]:text-[#f0ece4] data-[state=active]:border-b-2 data-[state=active]:border-[#d4845a]"
+            className="px-4 py-2 text-sm text-[var(--bz-text-2)] data-[state=active]:text-[var(--tx-pure)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--bz-copper)]"
           >
             {LABELS[t]}
           </TabsTrigger>

@@ -12,7 +12,10 @@ import { logger } from "@/lib/logger";
  * are intentionally rendered as informational panels because the BE does
  * not expose `/me/password` or `/me/2fa` endpoints yet (see Task 4.2
  * audit). When those endpoints ship, replace the Panel placeholders
- * with real forms — do NOT fake the flow in the meantime.
+ * with real forms — do NOT fake the flow in the meantime. *
+ * WS3 slice 7 (GARUDA Day Edition): headings/body read --bz-text-2,
+ * the revoke action --bz-copper-text (slice-1 fallback), results
+ * --state-success/--state-danger (was #c9a96e/#d4845a/#4a9c5c/#c94a4a).
  */
 export function SecuritySettings() {
   const [revoking, setRevoking] = useState(false);
@@ -50,27 +53,27 @@ export function SecuritySettings() {
         subtitle="2FA is coming soon. Your account is currently secured by email + PIN."
       />
       <div>
-        <h3 className="text-sm uppercase tracking-[2px] text-[#c9a96e]/50 mb-2">
+        <h3 className="text-sm uppercase tracking-[2px] text-[var(--bz-text-2)] mb-2">
           Active sessions
         </h3>
-        <p className="text-sm text-[#c9a96e]/70 mb-3">
+        <p className="text-sm text-[var(--bz-text-2)] mb-3">
           If you suspect unauthorized access, log out all other devices now.
         </p>
         <button
           type="button"
           onClick={revokeAll}
           disabled={revoking}
-          className="text-xs uppercase tracking-[2px] text-[#d4845a] hover:underline disabled:opacity-50"
+          className="text-xs uppercase tracking-[2px] text-[var(--bz-copper-text,var(--tx-secondary))] hover:underline disabled:opacity-50"
         >
           {revoking ? "Logging out…" : "Log out all other sessions"}
         </button>
         {result === "ok" && (
-          <p role="status" className="text-xs text-[#4a9c5c] mt-2">
+          <p role="status" className="text-xs text-[var(--state-success)] mt-2">
             All other sessions revoked.
           </p>
         )}
         {result === "error" && (
-          <p role="alert" className="text-xs text-[#c94a4a] mt-2">
+          <p role="alert" className="text-xs text-[var(--state-danger)] mt-2">
             Unable to revoke sessions. Try again.
           </p>
         )}
@@ -82,10 +85,10 @@ export function SecuritySettings() {
 function Panel({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h3 className="text-sm uppercase tracking-[2px] text-[#c9a96e]/50 mb-1">
+      <h3 className="text-sm uppercase tracking-[2px] text-[var(--bz-text-2)] mb-1">
         {title}
       </h3>
-      <p className="text-sm text-[#c9a96e]/70">{subtitle}</p>
+      <p className="text-sm text-[var(--bz-text-2)]">{subtitle}</p>
     </div>
   );
 }

@@ -64,4 +64,42 @@ describe("NotificationSettings", () => {
       wa_phone: null,
     });
   });
+
+  it("reads theme tokens for toggles, input and notice (WS3 day pass)", () => {
+    hookMock.mockReturnValue({
+      data: { email_enabled: true, wa_enabled: true, wa_phone: "6281" },
+      migrationMissing: false,
+      isLoading: false,
+      error: undefined,
+      updatePrefs: vi.fn(),
+    });
+    const { container } = render(<NotificationSettings />);
+
+    // Toggle accent reads the daylight copper step (was accent-[#d4845a]).
+    const email = screen.getByLabelText(/email notifications/i);
+    expect(email.className).toContain("accent-[var(--bz-copper)]");
+
+    // WhatsApp number input: token well + border + ink (was
+    // bg-white/5 + border-white/10 + #f0ece4).
+    const input = screen.getByLabelText(/whatsapp number/i);
+    expect(input.className).toContain("bg-[var(--glass-rim)]");
+    expect(input.className).toContain("border-[var(--bz-border)]");
+    expect(input.className).toContain("text-[var(--bz-text-1)]");
+
+    // Drain guard: no hardcoded hex colors in the panel.
+    expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  it("colors the migration-missing banner with the warning token", () => {
+    hookMock.mockReturnValue({
+      data: null,
+      migrationMissing: true,
+      isLoading: false,
+      error: undefined,
+      updatePrefs: vi.fn(),
+    });
+    render(<NotificationSettings />);
+    const alert = screen.getByRole("alert");
+    expect(alert.className).toContain("text-[var(--state-warning)]");
+  });
 });

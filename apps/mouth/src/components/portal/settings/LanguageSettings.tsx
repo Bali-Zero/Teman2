@@ -17,7 +17,9 @@ const LABELS: Record<Language, string> = {
  *
  * The BE does NOT enforce the `{it,en,id}` enum, so we narrow with
  * `Language.safeParse` and fall back to "en" when the stored value is
- * outside the supported set.
+ * outside the supported set. *
+ * WS3 slice 7 (GARUDA Day Edition): radios accent-[var(--bz-copper)],
+ * labels --bz-text-1 (was accent-[#d4845a] + #f0ece4).
  */
 export function LanguageSettings() {
   const { data: me } = useMe();
@@ -40,9 +42,11 @@ export function LanguageSettings() {
             value={lang}
             defaultChecked={current === lang}
             onChange={() => setLanguage(lang)}
-            className="accent-[#d4845a]"
+            className="accent-[var(--bz-copper)]"
           />
-          <span className="text-sm text-[#f0ece4]">{LABELS[lang]}</span>
+          <span className="text-sm text-[var(--bz-text-1)]">
+            {LABELS[lang]}
+          </span>
         </label>
       ))}
     </section>

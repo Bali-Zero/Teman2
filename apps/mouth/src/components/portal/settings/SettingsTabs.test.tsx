@@ -62,4 +62,27 @@ describe("SettingsTabs", () => {
     const account = screen.getByRole("tab", { name: "Account" });
     expect(account).toHaveAttribute("data-state", "active");
   });
+
+  it("reads theme tokens for the tab chrome (WS3 day pass)", () => {
+    searchParamsState.current = new URLSearchParams("tab=security");
+    const { container } = render(<SettingsTabs />);
+
+    // Hairline under the tablist reads --bz-border (was border-white/10).
+    const list = screen.getByRole("tablist");
+    expect(list.className).toContain("border-[var(--bz-border)]");
+
+    // Active tab: --tx-pure label + --bz-copper underline (was
+    // #f0ece4/#d4845a); inactive: --bz-text-2 (was #c9a96e/70).
+    const security = screen.getByRole("tab", { name: "Security" });
+    expect(security.className).toContain(
+      "data-[state=active]:text-[var(--tx-pure)]",
+    );
+    expect(security.className).toContain(
+      "data-[state=active]:border-[var(--bz-copper)]",
+    );
+    expect(security.className).toContain("text-[var(--bz-text-2)]");
+
+    // Drain guard: no hardcoded hex colors in the tab chrome.
+    expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
 });

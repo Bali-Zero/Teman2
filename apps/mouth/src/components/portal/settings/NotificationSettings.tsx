@@ -9,20 +9,23 @@ import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
  * 110 can be absent on the deployed DB — the hook catches the BE 503 and
  * exposes `migrationMissing`, which we render as a graceful "coming
  * soon" banner rather than a hard error. Under no circumstances do we
- * fake the toggles: when prefs cannot be read, controls are hidden.
+ * fake the toggles: when prefs cannot be read, controls are hidden. *
+ * WS3 slice 7 (GARUDA Day Edition): tokens throughout — --bz-text-*,
+ * --state-warning/--state-danger, --glass-rim input well with a copper
+ * focus ring, accent-[var(--bz-copper)] toggles (was dark-grade hexes).
  */
 export function NotificationSettings() {
   const { data, migrationMissing, isLoading, error, updatePrefs } =
     useNotificationPrefs();
 
   if (isLoading) {
-    return <p className="text-sm text-[#c9a96e]/60">Loading…</p>;
+    return <p className="text-sm text-[var(--bz-text-2)]">Loading…</p>;
   }
 
   if (migrationMissing) {
     return (
       <section className="space-y-4">
-        <p role="alert" className="text-sm text-[#c9a14a]">
+        <p role="alert" className="text-sm text-[var(--state-warning)]">
           Notification preferences are temporarily unavailable. Our team is
           working on it — please check back soon.
         </p>
@@ -32,7 +35,7 @@ export function NotificationSettings() {
 
   if (error || !data) {
     return (
-      <p role="alert" className="text-sm text-[#c94a4a]">
+      <p role="alert" className="text-sm text-[var(--state-danger)]">
         Unable to load preferences.
       </p>
     );
@@ -54,7 +57,7 @@ export function NotificationSettings() {
         <div>
           <label
             htmlFor="wa-phone-input"
-            className="text-xs uppercase tracking-[2px] text-[#c9a96e]/50 block mb-1"
+            className="text-xs uppercase tracking-[2px] text-[var(--bz-text-2)] block mb-1"
           >
             WhatsApp number
           </label>
@@ -66,9 +69,9 @@ export function NotificationSettings() {
               updatePrefs({ ...data, wa_phone: e.target.value || null })
             }
             placeholder="628123456789"
-            className="w-full px-3 py-2 bg-white/5 rounded border border-white/10 text-sm text-[#f0ece4]"
+            className="w-full px-3 py-2 rounded border border-[var(--bz-border)] bg-[var(--glass-rim)] text-sm text-[var(--bz-text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
           />
-          <p className="text-[10px] text-[#c9a96e]/40 mt-1">
+          <p className="text-[10px] text-[var(--bz-text-2)] mt-1">
             Format: country code + number, no leading +. Example: 628123456789.
           </p>
         </div>
@@ -92,9 +95,9 @@ function Toggle({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-[#d4845a]"
+        className="w-4 h-4 accent-[var(--bz-copper)]"
       />
-      <span className="text-sm text-[#f0ece4]">{label}</span>
+      <span className="text-sm text-[var(--bz-text-1)]">{label}</span>
     </label>
   );
 }
