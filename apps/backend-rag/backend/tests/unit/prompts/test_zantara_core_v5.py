@@ -279,12 +279,12 @@ class TestFactParity:
 
 
 # ---------------------------------------------------------------------------
-# 5. FLAG-OFF — this file's existence must not change the live door's
-# behaviour. v5 is NOT wired into backend.llm.prompt_manager yet (see module
-# docstring), so the honest, meaningful version of this test is: adding
-# zantara_core_v5.py does not perturb prompt_manager's resolution for any
-# value other than a hypothetical future "v5" (which today falls through to
-# the same "unrecognized value" branch as any typo).
+# 5. FLAG-OFF / DOOR WIRING — v5 IS now wired into backend.llm.prompt_manager
+# (see prompt_manager.py's "v5" branch and get_master_template()). The
+# invariant this section protects: wiring v5 in must not perturb the door's
+# resolution for unset or "v4" (still byte-identical to before this file
+# existed), while ZANTARA_PROMPT_VERSION=v5 now DOES select an audience-
+# composed build instead of silently falling through to v1.
 # ---------------------------------------------------------------------------
 
 
@@ -317,17 +317,47 @@ class TestFlagOff:
         pm = self._reload_with_version(monkeypatch, "v4")
         assert pm.ZANTARA_MASTER_TEMPLATE == v4.ZANTARA_MASTER_TEMPLATE
 
-    def test_v5_env_var_has_no_effect_yet_not_wired_into_door(self, monkeypatch) -> None:
-        """Documents current reality: ZANTARA_PROMPT_VERSION=v5 is not an
-        armed value in prompt_manager.py. It falls to the same `else`
-        branch as any unrecognized string (mirrors
-        test_prompt_manager.py::test_unrecognized_version_falls_back_to_v1).
-        Wiring v5 into the door is explicitly out of scope for this lane —
-        see the module docstring's "Versioned door" section — this test
-        exists so that wiring, when it lands, changes this assertion
-        deliberately instead of silently."""
+    def test_v5_env_var_now_selects_v5_client_build_through_the_door(self, monkeypatch) -> None:
+        """v5 IS wired into prompt_manager.py now — this is the deliberate
+        assertion change the old test's docstring promised (see the class
+        docstring above). ZANTARA_PROMPT_VERSION=v5 no longer falls through
+        to v1: it resolves PROMPT_VERSION_ACTIVE to "v5" and binds the
+        legacy/non-audience-aware ZANTARA_MASTER_TEMPLATE name to the
+        "client" build (the most-restricted audience — fail-safe default
+        for any consumer that doesn't thread an explicit audience)."""
         pm = self._reload_with_version(monkeypatch, "v5")
-        assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
+        assert pm.PROMPT_VERSION_ACTIVE == "v5"
+        assert pm.ZANTARA_MASTER_TEMPLATE == v5.build_master_template("client")
+        assert pm.ZANTARA_MASTER_TEMPLATE != pm._TEMPLATE_V1
+
+    def test_get_master_template_threads_audience_under_v5(self, monkeypatch) -> None:
+        pm = self._reload_with_version(monkeypatch, "v5")
+        assert pm.get_master_template("client") == v5.build_master_template("client")
+        assert pm.get_master_template("team") == v5.build_master_template("team")
+        assert pm.get_master_template("creator") == v5.build_master_template("creator")
+        assert pm.get_master_template("client") != pm.get_master_template("team")
+        assert pm.get_master_template("team") != pm.get_master_template("creator")
+
+    def test_get_master_template_unknown_or_none_audience_falls_to_client_under_v5(
+        self,
+        monkeypatch,
+    ) -> None:
+        """The load-bearing security property: an unresolved/unrecognised
+        audience must NEVER fall to team/creator's wider capability set."""
+        pm = self._reload_with_version(monkeypatch, "v5")
+        client_build = v5.build_master_template("client")
+        assert pm.get_master_template(None) == client_build
+        assert pm.get_master_template("bogus-role") == client_build
+        assert pm.get_master_template("") == client_build
+
+    def test_get_master_template_ignores_audience_under_v4(self, monkeypatch) -> None:
+        """v1-v4 have no audience axis — get_master_template must return the
+        SAME flat ZANTARA_MASTER_TEMPLATE regardless of the audience passed,
+        exactly as calling the name directly did before this function
+        existed."""
+        pm = self._reload_with_version(monkeypatch, "v4")
+        for audience in ("client", "team", "creator", None, "bogus"):
+            assert pm.get_master_template(audience) == pm.ZANTARA_MASTER_TEMPLATE
 
     def test_zantara_core_v5_import_does_not_mutate_v4_module(self) -> None:
         """Importing zantara_core_v5 must never mutate the v4 module it
