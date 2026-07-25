@@ -107,6 +107,50 @@ from _whatchanged_basis import (  # noqa: E402  (sibling-import idiom, see other
     trim_to_last_complete_sentence,
 )
 
+# The re-exports above are unused *inside* this module by construction — they exist
+# so callers reach the decision vocabulary through one module object. Declaring them
+# in __all__ states that intent in the form the linter reads, instead of stamping
+# eleven per-line suppressions onto the import block. The module's own public API is
+# listed too, so adding __all__ does not silently narrow a future star-import.
+__all__ = [
+    # re-exported from _whatchanged_basis (single module object — see comment above)
+    "ALL_PASSES",
+    "FALSE_CLAIM",
+    "HONEST_CLAIM",
+    "PASS_CONTRADICTED_PREDECESSOR",
+    "PASS_FALSE_CLAIM",
+    "PASS_TRUNCATED",
+    "TRUNCATION_LENGTH",
+    "WhatChangedError",
+    "contradicted_predecessors",
+    "drop_contradicted_predecessor",
+    "has_no_recorded_predecessor",
+    "is_truncated_midword",
+    "plan_text",
+    "recorded_predecessors",
+    "swap_false_claim",
+    "trim_to_last_complete_sentence",
+    # this module's own surface
+    "CODE_FIELD",
+    "DEFAULT_CANONICAL",
+    "DEFAULT_GOLD",
+    "MIN_SURVIVING_BODY",
+    "REPO_ROOT",
+    "SIDECAR_DATASET_PATH",
+    "SIDECAR_PATH",
+    "SYNC_SCRIPT",
+    "canonical_index",
+    "gold_entries",
+    "main",
+    "plan_canonical",
+    "plan_gold",
+    "plan_kg_spec",
+    "render_spec_json",
+    "run_sync_script",
+    "thin_outcomes",
+    "update_sidecar",
+]
+
 logger = logging.getLogger("kbli_filiera.cure_whatchanged_false_renumber")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
