@@ -899,6 +899,90 @@ async def test_a_plain_crash_is_not_a_cooldown(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "diagnostic",
+    [
+        b"Error: HTTP 429 Too Many Requests",
+        b"Error: rate limited, please retry",
+        b"Error: too many requests",
+    ],
+)
+async def test_transient_rate_limit_is_recognised_but_never_cooled(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+    diagnostic: bytes,
+) -> None:
+    """GUILT+INNOCENCE pair for the cross-family finding (2026-07-25): a 429
+    used to share the `quota` class with a genuine weekly-limit exhaustion, so
+    it earned the same 15-minute seat cooldown even though it is transient by
+    nature.
+
+    Deliberately targets the exit==0 / no-schema classify call site (line
+    ~769: `if exit_code == 0 and not use_schema`), NOT the exit!=0 site: an
+    exit!=0 stderr containing "429"/"rate limit"/"too many requests" is
+    intercepted EARLIER by the pre-existing, unrelated `RATE_LIMIT_PATTERN`
+    short-circuit (only guards exit_code != 0), which `continue`s WITHOUT
+    ever calling `_mark_seat_cooling` — so that site can never discriminate
+    pre/post-fix (confirmed empirically: it passes either way). The exit==0
+    stdout site has no such guard, so it is where the granularity bug
+    actually lived and is actually fixed.
+
+    Two things must both hold: the diagnostic IS recognised (rotates to the
+    next seat WITHIN this call, same as any other framed diagnostic — that
+    part is correct and pre-dates this fix), but it must NEVER be
+    persisted as a cooldown, so the very next call retries the same seat.
+
+    This test FAILS on the pre-fix code (rate-limit shared the `quota` class,
+    so `t1` would still be missing from `attempted` on the second call) and
+    PASSES after `_RATE_LIMIT_DIAGNOSTIC_PATTERN` is classified separately
+    from `_QUOTA_DIAGNOSTIC_PATTERN` and excluded from `_COOLDOWN_CLASSES`.
+    """
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
+    attempted: list[str] = []
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        seat = kwargs["env"].get("CLAUDE_CODE_OAUTH_TOKEN", "<keychain>")
+        attempted.append(seat)
+        if seat == "t1":
+            return _fake_proc(stdout=diagnostic, stderr=b"", returncode=0)
+        return _fake_proc(stdout=b"ok", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    first = await mod.complete_async("ping")
+    assert attempted == ["t1", "<keychain>"], "429 must still rotate within the same call"
+    assert first.token_label == "keychain"
+    assert not mod._seat_cooldowns, "a transient 429 must never be memoised as cooling"
+
+    second = await mod.complete_async("ping")
+    assert attempted == [
+        "t1",
+        "<keychain>",
+        "t1",
+        "<keychain>",
+    ], "t1 must be retried on the very next call, not skipped as if exhausted"
+    assert second.token_label == "keychain"
+
+
+def test_transient_429_and_durable_quota_classify_differently() -> None:
+    """Unit-level guilt+innocence on the classifier itself, no subprocess."""
+    from backend.llm import claude_oauth_client as mod
+
+    assert mod._classify_cli_diagnostic("Error: HTTP 429 Too Many Requests") == "rate_limit"
+    assert mod._classify_cli_diagnostic("Error: rate limited") == "rate_limit"
+    assert mod._classify_cli_diagnostic("Error: too many requests") == "rate_limit"
+    assert (
+        mod._classify_cli_diagnostic("You've hit your weekly limit · resets 9am")
+        == "quota"
+    )
+    assert mod._classify_cli_diagnostic("Error: quota exceeded") == "quota"
+    assert "rate_limit" not in mod._COOLDOWN_CLASSES
+    assert "quota" in mod._COOLDOWN_CLASSES
+
+
+@pytest.mark.asyncio
 async def test_long_prose_mentioning_a_weekly_limit_is_not_a_diagnostic(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,

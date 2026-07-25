@@ -106,7 +106,18 @@ _QUOTA_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"\b(?:"
     r"out of extra usage|"
     r"(?:weekly|usage)\s+(?:limit|quota)|"
-    r"quota\s+(?:exceeded|exhausted)|"
+    r"quota\s+(?:exceeded|exhausted)"
+    r")\b",
+    re.IGNORECASE,
+)
+# Distinct from _QUOTA_DIAGNOSTIC_PATTERN on purpose (found by cross-family
+# review 2026-07-25): a 429/rate-limit is a TRANSIENT condition that can
+# clear in seconds, unlike a weekly/usage quota exhaustion which persists for
+# days. Both used to share the "quota" class, which meant a single transient
+# 429 earned the same 15-minute seat cooldown as a durable exhaustion — this
+# class exists so only the durable signal ever reaches _COOLDOWN_CLASSES.
+_RATE_LIMIT_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:"
     r"rate[ -]?limit(?:ed| exceeded)?|"
     r"too many requests|429"
     r")\b",
@@ -253,6 +264,8 @@ def _classify_cli_diagnostic(text: str) -> str | None:
         return "authentication"
     if _QUOTA_DIAGNOSTIC_PATTERN.search(compact):
         return "quota"
+    if _RATE_LIMIT_DIAGNOSTIC_PATTERN.search(compact):
+        return "rate_limit"
     return None
 
 
@@ -281,6 +294,16 @@ def _classify_cli_diagnostic(text: str) -> str | None:
 # `_classify_cli_diagnostic` — which requires a bounded, error-shaped message —
 # are durable enough to earn a skip. Widening the loose pattern instead would
 # be cicatrix #3 (guard deciding on substring, not entity).
+#
+# CORRECTION (cross-family review, 2026-07-25): being FRAMED is necessary but
+# not sufficient for durability — a 429/rate-limit is just as tightly framed
+# as a weekly-limit message, but resolves in seconds, not days. It used to
+# share the `quota` class with genuine exhaustion for exactly that reason and
+# would have earned the same 15-minute cooldown. `_RATE_LIMIT_DIAGNOSTIC_PATTERN`
+# now classifies it separately as `rate_limit`, which is deliberately absent
+# from `_COOLDOWN_CLASSES` below — still rotates to the next seat WITHIN the
+# current call (via `_classify_cli_diagnostic` returning non-None), never
+# remembered ACROSS calls.
 _DEFAULT_SEAT_COOLDOWN_S: Final[float] = 900.0
 _COOLDOWN_CLASSES: Final[frozenset[str]] = frozenset({"quota", "authentication"})
 # label+fingerprint -> monotonic deadline. Process-local by design: no shared
