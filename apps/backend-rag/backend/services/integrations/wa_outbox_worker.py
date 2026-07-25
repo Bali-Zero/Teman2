@@ -68,6 +68,18 @@ This module exposes a single callable, :func:`process_outbox_once`, which
 processes at most one outbox row per call. ``main_api.py`` spawns
 ``WA_OUTBOX_WORKERS`` (default 2) concurrent scheduler loops calling this in
 a tight cycle (P9) — safe because of the per-thread advisory lock above.
+
+"Manners" additions (2026-07-25, spec item C3/C4 — the two-sided complement
+to the C5 read-receipt wired into the meta-inbox webhook router): a
+best-effort concierge ack (:func:`_maybe_send_ack`) fires once generation
+starts, and a best-effort apology (:func:`_maybe_send_apology`) fires once
+either terminal-failure branch exhausts ``MAX_ATTEMPTS``. Both are
+idempotent per outbox row via the durable ``ack_sent_at``/
+``apology_sent_at`` columns (migration 260 — an in-memory flag would not
+survive the crash-and-reclaim scenarios this worker is built to tolerate),
+takeover-aware, 24h-window-aware, and swallow their own exceptions —
+neither can ever break generation, the send, or the failure handling they
+piggyback on.
 """
 
 from __future__ import annotations
@@ -77,6 +89,7 @@ import contextlib
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -121,6 +134,212 @@ BotGenerateFn = Callable[[asyncpg.Record], Awaitable[str]]
 # Reused by both the advisory-lock TRY and its matching UNLOCK — must stay
 # identical so the two calls hash to the same lock key for a given thread_id.
 _THREAD_LOCK_KEY_SQL = "hashtext('wa_outbox_thread_' || $1::text)"
+
+# Terminal-failure apology (item C4). Short, neutral, non-technical — never
+# leaks the underlying exception. Same language keys `detect_language()`
+# returns (backend.services.communication.language_detector); "auto"/unknown
+# falls back to English via the .get(..., default) below, mirroring
+# whatsapp_ack.ack_text()'s pattern. Deliberately NOT a new translation
+# subsystem: five short strings, same shape as _ACK_TEXTS.
+_APOLOGY_TEXTS = {
+    "en": "Sorry — we're having a technical hiccup on our end. A member of our team will follow up with you shortly.",
+    "id": "Maaf, sistem kami sedang ada kendala teknis. Tim kami akan segera menindaklanjuti pesan Anda.",
+    "it": "Ci scusiamo — abbiamo un problema tecnico momentaneo. Un membro del team ti risponderà a breve.",
+    "ru": "Извините — у нас временные технические неполадки. Наш сотрудник свяжется с вами в ближайшее время.",
+    "uk": "Вибачте — у нас тимчасові технічні проблеми. Наш співробітник незабаром зв'яжеться з вами.",
+}
+
+
+def _apology_text(detected_language: str | None) -> str:
+    return _APOLOGY_TEXTS.get((detected_language or "en").lower(), _APOLOGY_TEXTS["en"])
+
+
+def _window_open_locally(thread: asyncpg.Record) -> bool:
+    """Same Meta 24h customer-care rule as the SQL check in step 6, evaluated
+    in Python against a `thread` row already in hand — avoids a redundant
+    DB round-trip for the ack/apology's own window check. Pure/no I/O
+    (unlike the rest of this module's helpers, deliberately NOT async)."""
+    last_customer_at = thread["last_customer_at"]
+    if last_customer_at is None:
+        return False
+    return datetime.now(timezone.utc) - last_customer_at < timedelta(
+        hours=CUSTOMER_WINDOW_HOURS
+    )
+
+
+async def _latest_inbound_text(conn: asyncpg.Connection, thread_id: int) -> str:
+    """The most recent CUSTOMER message body for this thread — used only to
+    drive should_send_ack's triviality filter and detect_language. Filters
+    on direction='inbound' because the bot's own outbound ledger row for
+    this very reply already exists (created by _handle_meta_inbox_message)
+    with body=NULL at this point — an unfiltered "latest row" query would
+    pick that empty row up instead of the customer's actual text."""
+    body = await conn.fetchval(
+        """
+        SELECT body FROM meta_inbox_messages
+        WHERE thread_id = $1 AND direction = 'inbound'
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        thread_id,
+    )
+    return body or ""
+
+
+async def _maybe_send_ack(
+    conn: asyncpg.Connection,
+    outbox_id: int,
+    claim_token: uuid.UUID,
+    thread: asyncpg.Record,
+    whatsapp_service: Any,
+) -> None:
+    """Best-effort "checking…" pre-message so the client isn't staring at
+    silence for the 10-50s the RAG loop can take (item C3). Fires right
+    after the row transitions to 'generating', BEFORE bot_generate_fn is
+    awaited.
+
+    Idempotent via the durable ``ack_sent_at`` column on the SAME outbox
+    row (migration 260): a retry (bot_generate_fn failed once, this row is
+    reclaimed and reprocessed) or a worker crash-and-reclaim both re-enter
+    this function against the *same* row id, and the fenced UPDATE below
+    only ever matches once — ``ack_sent_at`` is set BEFORE the network send
+    is attempted, so a second attempt sees it already non-NULL and skips
+    (prefers a rare missed ack over any risk of a duplicate one — this
+    sends a real WhatsApp message, so idempotency beats completeness).
+
+    Takeover-aware: relies on the caller's already-fresh `thread` (loaded
+    at the top of _process_claimed_row and re-verified human_handling=false
+    immediately before the 'generating' transition — no new DB read here,
+    the race window between that check and this call is a handful of
+    already-awaited statements, not a genuine takeover opportunity).
+
+    Window-aware: skips if the Meta 24h customer-care window is closed —
+    checked locally (thread['last_customer_at'] is already in hand).
+
+    Never raises: any failure here must not break generation or the send.
+
+    Detecting a fast cache-hit path to skip acking it is NOT implemented —
+    bot_generate_fn is an opaque injected callable (wa_inbox_bot.generate_
+    bot_reply in prod) with no cheap, safe way to predict its latency
+    before calling it; duplicating its cache-lookup here would be a
+    fragile heuristic prone to drift. Per spec: prefer always-ack.
+    """
+    try:
+        from backend.services import whatsapp_ack
+        from backend.services.communication import detect_language
+
+        if not whatsapp_ack.ack_enabled():
+            return
+        if not _window_open_locally(thread):
+            return
+
+        phone = thread["counterpart_phone"]
+        latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
+        if not whatsapp_ack.should_send_ack(latest_inbound, phone):
+            return
+
+        claimed = await conn.fetchrow(
+            """
+            UPDATE wa_outbox SET ack_sent_at = NOW()
+            WHERE id = $1 AND claim_token = $2 AND status = 'generating'
+              AND ack_sent_at IS NULL
+            RETURNING id
+            """,
+            outbox_id,
+            claim_token,
+        )
+        if claimed is None:
+            return  # already acked (retry) or lease already lost
+
+        detected_language = detect_language(latest_inbound)
+        await whatsapp_service.send_message(
+            phone=phone,
+            text=whatsapp_ack.ack_text(detected_language),
+        )
+        whatsapp_ack.mark_acked(phone)
+        logger.info(
+            "wa_outbox: concierge ack sent (outbox=%s thread=%s)",
+            outbox_id,
+            thread["thread_id"],
+        )
+    except Exception:
+        logger.exception(
+            "wa_outbox: concierge ack failed (non-blocking, outbox=%s)", outbox_id
+        )
+
+
+async def _maybe_send_apology(
+    conn: asyncpg.Connection,
+    outbox_id: int,
+    thread: asyncpg.Record,
+    whatsapp_service: Any,
+) -> None:
+    """Best-effort apology when a row is permanently failed after exhausting
+    retries (item C4) — tells the client a team member will follow up
+    instead of leaving them in silence. Called from BOTH terminal-failure
+    branches (bot-generation exhausted, Graph-send exhausted) AFTER the
+    caller has already recorded the real failure on wa_outbox/
+    meta_inbox_messages — this function's own failure is swallowed and
+    logged, never allowed to mask or replace that recording (checked by
+    the caller unconditionally proceeding to `return "failed"` regardless
+    of what happens here).
+
+    Idempotent via the durable ``apology_sent_at`` column (migration 260):
+    'failed' is a terminal wa_outbox status no other code path resets back
+    to 'pending' (the stale-claim reclaimer only touches 'claimed'/
+    'generating'; coalescing only touches 'pending'), so in practice this
+    can only be entered once per row — the
+    ``WHERE apology_sent_at IS NULL`` guard is kept as defense-in-depth
+    against future code paths, not because a race is currently reachable.
+
+    Takeover-aware: does a FRESH human_handling read (unlike the ack, which
+    reuses the caller's just-verified value) — a terminal failure can be
+    reached long after the original human_handling check (bot generation
+    can run for minutes, and Graph-send retries backoff for several more),
+    so the value the caller loaded at claim time may be stale. If a human
+    now owns the thread, they are already the one following up — skip.
+
+    Window-aware: skips if the Meta 24h window is closed (nothing could be
+    sent anyway).
+    """
+    try:
+        from backend.services.communication import detect_language
+
+        if not _window_open_locally(thread):
+            return
+
+        human_handling_now = await conn.fetchval(
+            "SELECT human_handling FROM meta_inbox_threads WHERE thread_id = $1",
+            thread["thread_id"],
+        )
+        if human_handling_now:
+            return
+
+        claimed = await conn.fetchrow(
+            """
+            UPDATE wa_outbox SET apology_sent_at = NOW()
+            WHERE id = $1 AND apology_sent_at IS NULL
+            RETURNING id
+            """,
+            outbox_id,
+        )
+        if claimed is None:
+            return  # already apologized
+
+        latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
+        detected_language = detect_language(latest_inbound)
+        await whatsapp_service.send_message(
+            phone=thread["counterpart_phone"],
+            text=_apology_text(detected_language),
+        )
+        logger.info(
+            "wa_outbox: apology sent (outbox=%s thread=%s)", outbox_id, thread["thread_id"]
+        )
+    except Exception:
+        logger.exception(
+            "wa_outbox: apology send failed (non-blocking, outbox=%s) — the "
+            "original failure was already recorded and is unaffected",
+            outbox_id,
+        )
 
 
 def _extract_wamid(send_result: dict[str, Any] | None) -> str | None:
@@ -471,6 +690,11 @@ async def _process_claimed_row(
             message_id,
         )
 
+        # Concierge ack (C3) — fire right as generation starts, before the
+        # potentially slow bot_generate_fn call below. Fully self-contained
+        # (idempotent, takeover/window-aware, never raises) — see docstring.
+        await _maybe_send_ack(conn, outbox_id, claim_token, thread, whatsapp_service)
+
         # bot_generate_fn may raise (transient RAG error, or — in the
         # human-send-only v1 — a NotImplementedError sentinel). Without this
         # guard the exception bubbles to the scheduler and the row is left
@@ -537,6 +761,9 @@ async def _process_claimed_row(
                     thread_id,
                     gen_exc,
                 )
+                # Apology (C4) — best-effort, never masks the failure above
+                # (already recorded on both ledgers by this point).
+                await _maybe_send_apology(conn, outbox_id, thread, whatsapp_service)
                 return "failed"
 
             backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
@@ -725,6 +952,11 @@ async def _process_claimed_row(
                 thread_id,
                 exc,
             )
+            # Apology (C4) — best-effort. Note the Graph API itself is what
+            # just failed, so this attempt may also fail; that's fine, it's
+            # swallowed by _maybe_send_apology and never masks the failure
+            # already recorded above.
+            await _maybe_send_apology(conn, outbox_id, thread, whatsapp_service)
             return "failed"
 
         backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
