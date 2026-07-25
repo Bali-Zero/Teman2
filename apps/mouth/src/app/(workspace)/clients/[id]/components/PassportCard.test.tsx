@@ -37,7 +37,8 @@ const documents = [
     document_type: "passport",
     document_category: "personal",
     file_name: "passport.jpg",
-    google_drive_file_url: "https://drive.google.com/file/d/drive-file-123/view",
+    google_drive_file_url:
+      "https://drive.google.com/file/d/drive-file-123/view",
     family_member_id: null,
   },
 ];
@@ -100,7 +101,9 @@ describe("PassportCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /extract/i }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/api/documents/proxy/drive-file-123");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/documents/proxy/drive-file-123",
+      );
       expect(api.crm.extractPassportForClient).toHaveBeenCalledWith(
         expect.any(String),
         "image/jpeg",

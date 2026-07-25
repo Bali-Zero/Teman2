@@ -43,17 +43,25 @@ export function KeyNumbersColumn({
   // Authorized Capital
   const fullCapital = formatCapitalFull(sharesCount, shareNominalValue);
   // Fallback: read from custom_fields.authorized_capital if computed capital is null
-  const capitalDisplay = fullCapital || (() => {
-    try {
-      const cf = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
-      const authCap = cf?.authorized_capital;
-      if (authCap) {
-        const num = Number(authCap);
-        if (!isNaN(num) && num > 0) return `Rp ${num.toLocaleString('id-ID')}`;
+  const capitalDisplay =
+    fullCapital ||
+    (() => {
+      try {
+        const cf =
+          typeof customFields === "string"
+            ? JSON.parse(customFields)
+            : customFields;
+        const authCap = cf?.authorized_capital;
+        if (authCap) {
+          const num = Number(authCap);
+          if (!isNaN(num) && num > 0)
+            return `Rp ${num.toLocaleString("id-ID")}`;
+        }
+      } catch {
+        /* ignore parse errors */
       }
-    } catch { /* ignore parse errors */ }
-    return null;
-  })();
+      return null;
+    })();
   if (capitalDisplay) {
     items.push({
       label: "Authorized Capital",
@@ -102,7 +110,10 @@ export function KeyNumbersColumn({
     items.push({
       label: "Registered Address",
       value: city || addressStr || "",
-      sub: fullAddress && fullAddress !== (city || addressStr) ? fullAddress : undefined,
+      sub:
+        fullAddress && fullAddress !== (city || addressStr)
+          ? fullAddress
+          : undefined,
       valueStyle: "text-[15px] tracking-normal",
     });
   }

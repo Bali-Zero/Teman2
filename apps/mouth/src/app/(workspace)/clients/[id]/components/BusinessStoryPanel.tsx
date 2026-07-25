@@ -162,7 +162,9 @@ function humanReadinessLabel(readiness: TaxCompanyPilotReadiness): string {
   return "Needs a check";
 }
 
-function humanConfidenceLabel(confidence: TaxCompanyPilotMap["confidence"]): string {
+function humanConfidenceLabel(
+  confidence: TaxCompanyPilotMap["confidence"],
+): string {
   const labels: Record<TaxCompanyPilotMap["confidence"], string> = {
     unconfirmed: "not confirmed",
     low: "early draft",
@@ -221,9 +223,7 @@ function EmptyBusinessStory({ companyNames }: { companyNames: string[] }) {
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-[var(--bz-text-1)]">
-            {hasCompanyLinks
-              ? "Story not built yet"
-              : "No company linked yet"}
+            {hasCompanyLinks ? "Story not built yet" : "No company linked yet"}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--bz-text-2)]">
             {hasCompanyLinks
