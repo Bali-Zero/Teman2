@@ -121,12 +121,23 @@ def _candidate(
     }
 
 
-def _thread_row(thread_id: int = 7, human_handling: bool = False) -> dict[str, Any]:
+def _thread_row(
+    thread_id: int = 7,
+    human_handling: bool = False,
+    last_customer_at: Any = None,
+) -> dict[str, Any]:
+    # last_customer_at defaults to None (Meta 24h window "closed" from the
+    # ack/apology helpers' point of view — see _window_open_locally) so every
+    # PRE-EXISTING test in this file, none of which exercises the C3/C4
+    # concierge-ack/apology manners, gets a clean no-op from
+    # _maybe_send_ack/_maybe_send_apology without needing extra scripted
+    # fetchval/fetchrow entries. Tests that DO exercise C3/C4 pass a real
+    # recent datetime explicitly (see the "manners" section below).
     return {
         "thread_id": thread_id,
         "counterpart_phone": "628111",
         "human_handling": human_handling,
-        "last_customer_at": "x",
+        "last_customer_at": last_customer_at,
     }
 
 

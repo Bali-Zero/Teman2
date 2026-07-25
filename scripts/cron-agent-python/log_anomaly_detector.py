@@ -156,7 +156,7 @@ class LogAnomalyDetectorJob(AgentJob):
 
         if alerts:
             msg = self._compose_alert(alerts)
-            ok = await self.send_telegram(msg)
+            ok = await self.send_telegram(msg, tier="p0", dedup_key=self._dedup_key(alerts))
             self.log_step("telegram_sent", outputs={"ok": ok},
                           side_effect="anomaly_alert" if ok else None)
 
@@ -337,6 +337,18 @@ class LogAnomalyDetectorJob(AgentJob):
             ["redis-cli", "SET", key, "1", "EX", str(LINE_DEDUP_TTL)]
         )
         return True
+
+    @staticmethod
+    def _dedup_key(alerts: list[dict]) -> str:
+        """Gateway dedup key: WHICH anomalies, not how many.
+
+        Keyed on the sorted (source, label) set and deliberately NOT on the
+        count, so a rising count still collapses into one counted alert. This is
+        the second net under the job's own 30min/24h dedup — the flood of
+        2026-07-25 happened because that first net was fail-open (W104).
+        """
+        sig = sorted({f"{a['source']}|{a['label']}" for a in alerts})
+        return "log-anomaly:" + hashlib.sha256(",".join(sig).encode()).hexdigest()[:12]
 
     def _compose_alert(self, alerts: list[dict]) -> str:
         now = datetime.now(WITA)
