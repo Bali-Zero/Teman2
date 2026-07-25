@@ -97,11 +97,30 @@ for deploys.
 - **Password rotation: genuinely `operator[secret]`, still open.** Unverifiable without reading
   the value, which is exactly what must not happen. Runbook below.
 
-### CONFIRMED still blocked (1, re-probed)
+### CONTESTED — two sessions, two answers, not reconciled (1)
 
-**GLM 5.2 seat.** `CLAUDE_CONFIG_DIR=~/.claude-glm claude -p "PONG" --model glm-5.2` →
-`Failed to authenticate. API Error: 401 token expired or incorrect`. Correctly open; the probe
-date is now fresh rather than 5 days old.
+**GLM 5.2 seat.** Left open, and deliberately NOT closed either way.
+
+- My probe, run twice ~20 minutes apart:
+  `CLAUDE_CONFIG_DIR=~/.claude-glm claude -p "PONG" --model glm-5.2` →
+  `Failed to authenticate. API Error: 401 token expired or incorrect`, rc=1.
+- A **sibling session**, concurrently, reports the opposite: PR #3161 (title:
+  *"the seat was never dead, the probe was …"*, still **OPEN**) plus a memory line asserting
+  **GLM VIVO** — z.ai exposes two endpoints and the subscription lives on `/api/anthropic`.
+  `~/.claude-glm/settings.json` on this machine already names `z.ai/api/anthropic`, and its
+  `backups/` directory was touched at 03:53 today, i.e. mid-session by that sibling.
+
+So the endpoint half looks fixed and the **auth** half still fails from my invocation. Two
+readings are possible and I cannot discriminate them from here: the sibling drives the seat
+through the shim rather than through `claude --model glm-5.2`, or #3161 is not yet fully applied
+to the path I invoke. Either way the honest state is **contested, pending #3161's merge**, not
+"confirmed dead" — which is what an earlier draft of this report said on the strength of my probe
+alone.
+
+Recorded because the failure mode is the interesting part: a single-session live probe reads like
+hard evidence, and it is — of *that invocation*, on *that path*, at *that minute*. It is not
+evidence about the seat. W100's line continues: the refuter hallucinates, the ground truth ages,
+agreement lies — and now, a probe answers a narrower question than the one it appears to answer.
 
 ## Meta-pattern — what these share
 
@@ -137,4 +156,6 @@ claims it already is.
       never `cat` the file to verify; confirm with `stat` and a live app health probe.
    5. Verify: `/health` 200 on `nuzantara-rag`, plus one real DB-backed endpoint.
    The demotion step in the original line is **not needed** — already `NOSUPERUSER` on prod.
-2. **GLM 5.2 z.ai recharge** (`operator[business]`) — unchanged, re-probed dead today.
+2. **GLM 5.2 z.ai seat** (`operator[business]`) — **do not act on my probe alone**: it is
+   contested against a sibling session's concurrent finding (see above). Resolve by merging #3161
+   and re-probing through the shim; only recharge if the seat still fails after that.
