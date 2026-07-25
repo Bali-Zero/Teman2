@@ -43,7 +43,13 @@ DEFAULT_TIMEOUT = 300
 CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
     "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
-    "CLAUDE_CODE_OAUTH_TOKEN_3",  # sianoantonello@gmail.com
+    # RETIRED 2026-07-25 (Zero): l'abbonamento MAX dietro lo slot 3 non viene
+    # rinnovato; la credenziale e' stata rimossa da ~/.nuzantara-secrets.env su
+    # M5+Pro+Mini. La voce resta in lista di proposito: ogni consumatore salta i
+    # token vuoti, quindi la posizione e' riusabile per un seat futuro senza
+    # toccare le 6 liste di enumerazione sparse nel repo. Prove-live 2026-07-25:
+    # la cascata su Pro fa 1(limit) -> 2(limit) -> 4(PONG), slot 3 mai tentato.
+    "CLAUDE_CODE_OAUTH_TOKEN_3",  # RITIRATO — slot libero
     "CLAUDE_CODE_OAUTH_TOKEN_4",  # applevisionpro1987@gmail.com (4th MAX x20)
     "CLAUDE_CODE_OAUTH_TOKEN_5",  # zero@balizero.com (Team premium seat — weekly-capped, last-resort)
 ]
