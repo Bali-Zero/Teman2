@@ -4,6 +4,7 @@ Target: 100% coverage
 """
 
 import importlib
+import logging
 import sys
 from pathlib import Path
 
@@ -215,28 +216,58 @@ class TestPromptManagerFailLoudOnUnknownVersion:
         monkeypatch.delenv("ZANTARA_PROMPT_VERSION", raising=False)
         importlib.reload(pm)
 
-    def test_unrecognized_explicit_value_logs_error(self, monkeypatch, caplog):
+    @staticmethod
+    def _capture_module_errors(reload_target):
+        """Capture ERROR records emitted DURING an import, independently of the
+        global logging config.
+
+        `caplog` reaches this logger only while propagation to the root handler
+        is intact — and in a full-suite run an earlier import can leave
+        propagation off or the root reconfigured, so the same assertion passed
+        alone and failed in batch (order-dependent, i.e. it would fail in CI and
+        pass locally). Attaching a handler to THIS logger removes the dependency
+        on anything global.
+        """
+        records: list[logging.LogRecord] = []
+
+        class _Sink(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                records.append(record)
+
+        logger = logging.getLogger("backend.llm.prompt_manager")
+        sink = _Sink(level=logging.ERROR)
+        previous_level, previous_disabled = logger.level, logger.disabled
+        logger.addHandler(sink)
+        logger.setLevel(logging.ERROR)
+        logger.disabled = False
+        try:
+            importlib.reload(reload_target)
+        finally:
+            logger.removeHandler(sink)
+            logger.setLevel(previous_level)
+            logger.disabled = previous_disabled
+        return records
+
+    def test_unrecognized_explicit_value_logs_error(self, monkeypatch):
         import backend.llm.prompt_manager as pm
 
         monkeypatch.setenv("ZANTARA_PROMPT_VERSION", "v9")
-        with caplog.at_level("ERROR", logger="backend.llm.prompt_manager"):
-            importlib.reload(pm)
-
-        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        error_records = [
+            r for r in self._capture_module_errors(pm) if r.levelname == "ERROR"
+        ]
         assert error_records, "Expected a logger.error for an unrecognised ZANTARA_PROMPT_VERSION"
         assert any("v9" in r.getMessage() for r in error_records)
         assert any("v1" in r.getMessage() for r in error_records)
         # Still serves v1 — loud, not a crash.
         assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
 
-    def test_unset_version_stays_silent_and_identical_to_today(self, monkeypatch, caplog):
+    def test_unset_version_stays_silent_and_identical_to_today(self, monkeypatch):
         import backend.llm.prompt_manager as pm
 
         monkeypatch.delenv("ZANTARA_PROMPT_VERSION", raising=False)
-        with caplog.at_level("ERROR", logger="backend.llm.prompt_manager"):
-            importlib.reload(pm)
-
-        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        error_records = [
+            r for r in self._capture_module_errors(pm) if r.levelname == "ERROR"
+        ]
         assert error_records == [], (
             "Unset ZANTARA_PROMPT_VERSION must never log an error — this is "
             "today's default path, not a misconfiguration."
