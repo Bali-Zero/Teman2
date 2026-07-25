@@ -32,14 +32,16 @@ export class VaultErrorBoundary extends React.Component<BProps, State> {
       return (
         <div
           role="alert"
-          className="rounded-lg p-6 text-center border border-white/10"
+          className="rounded-lg p-6 text-center border"
+          style={{ borderColor: "var(--bz-border)" }}
         >
-          <p className="text-sm text-[#c9a96e]/70 mb-4">
+          <p className="text-sm mb-4" style={{ color: "var(--bz-text-2)" }}>
             Unable to load your vault. Our team has been notified.
           </p>
           <button
             onClick={this.handleRetry}
-            className="text-xs uppercase tracking-[2px] text-[#d4845a] hover:underline"
+            className="text-xs uppercase tracking-[2px] hover:underline"
+            style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
           >
             Retry
           </button>

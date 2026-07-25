@@ -68,26 +68,39 @@ export function VaultLayout() {
           />
           <div>
             {isLoading && (
-              <p className="text-sm text-[#c9a96e]/60 py-8 text-center">
+              <p
+                className="text-sm py-8 text-center"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Loading your files…
               </p>
             )}
             {error && !isLoading && (
               <div
                 role="alert"
-                className="rounded-lg p-4 border border-white/10 text-sm"
+                className="rounded-lg p-4 border text-sm"
+                style={{ borderColor: "var(--bz-border)" }}
               >
-                <p className="mb-2 text-[#f0ece4]">Unable to load vault.</p>
+                <p className="mb-2" style={{ color: "var(--bz-text-1)" }}>
+                  Unable to load vault.
+                </p>
                 <button
                   onClick={() => mutate()}
-                  className="text-xs uppercase tracking-[2px] text-[#d4845a] hover:underline"
+                  className="text-xs uppercase tracking-[2px] hover:underline"
+                  style={{
+                    color: "var(--bz-copper-text, var(--tx-secondary))",
+                  }}
                 >
                   Retry
                 </button>
               </div>
             )}
             {actionError && (
-              <p role="alert" className="text-xs text-[#c94a4a] mb-2">
+              <p
+                role="alert"
+                className="text-xs mb-2"
+                style={{ color: "var(--state-danger)" }}
+              >
                 {actionError}
               </p>
             )}

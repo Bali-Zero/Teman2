@@ -35,7 +35,8 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
       <div>
         <label
           htmlFor="vault-upload-purpose"
-          className="block text-[10px] uppercase tracking-[2px] text-[#c9a96e]/50 mb-1"
+          className="block text-[10px] uppercase tracking-[2px] mb-1"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
         >
           What is this document for? (optional)
         </label>
@@ -46,7 +47,12 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           maxLength={500}
           onChange={(e) => setPurpose(e.target.value)}
           placeholder="e.g. Passport for KITAS renewal"
-          className="w-full rounded-lg border border-white/15 bg-transparent px-3 py-2 text-sm text-[#f0ece4] placeholder:text-[#c9a96e]/30 focus:border-[#d4845a] focus:outline-none"
+          className="w-full rounded-lg border px-3 py-2 text-sm placeholder:text-[var(--text-tertiary,var(--tx-tertiary))] focus:border-[var(--bz-copper)] focus:outline-none"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+            color: "var(--bz-text-1)",
+          }}
         />
       </div>
       <div
@@ -62,19 +68,29 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           setDragOver(false);
           handleFiles(e.dataTransfer.files);
         }}
-        className={`rounded-lg border-2 border-dashed p-6 text-center transition ${
-          dragOver ? "border-[#d4845a] bg-white/5" : "border-white/20"
-        }`}
+        className="rounded-lg border-2 border-dashed p-6 text-center transition"
+        style={
+          dragOver
+            ? {
+                borderColor: "var(--bz-copper)",
+                background: "var(--glass-rim)",
+              }
+            : { borderColor: "var(--bz-border-hover)" }
+        }
       >
         <Upload
           aria-hidden
-          className="w-6 h-6 mx-auto text-[#c9a96e]/60 mb-2"
+          className="w-6 h-6 mx-auto mb-2"
+          style={{ color: "var(--bz-copper)" }}
         />
-        <p className="text-sm text-[#c9a96e]/70 mb-3">Drag & drop here, or</p>
+        <p className="text-sm mb-3" style={{ color: "var(--bz-text-2)" }}>
+          Drag & drop here, or
+        </p>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="text-xs uppercase tracking-[2px] text-[#d4845a] hover:underline"
+          className="text-xs uppercase tracking-[2px] hover:underline"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
         >
           Choose file
         </button>
@@ -86,17 +102,29 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           aria-label="Choose file to upload"
         />
         {state.status === "uploading" && (
-          <p role="status" className="text-xs text-[#c9a96e]/60 mt-3">
+          <p
+            role="status"
+            className="text-xs mt-3"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             Uploading… {Math.round(state.progress)}%
           </p>
         )}
         {state.status === "error" && (
-          <p role="alert" className="text-xs text-[#c94a4a] mt-3">
+          <p
+            role="alert"
+            className="text-xs mt-3"
+            style={{ color: "var(--state-danger)" }}
+          >
             {state.message}
           </p>
         )}
         {state.status === "done" && (
-          <p role="status" className="text-xs text-[#4a9c5c] mt-3">
+          <p
+            role="status"
+            className="text-xs mt-3"
+            style={{ color: "var(--state-success)" }}
+          >
             Uploaded: {state.file.name}
             {!state.processing.virus_clean && " (flagged)"}
           </p>

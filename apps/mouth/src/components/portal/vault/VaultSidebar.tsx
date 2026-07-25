@@ -35,30 +35,46 @@ export function VaultSidebar({
   return (
     <aside className="space-y-6" aria-label="Vault filters">
       <section>
-        <h3 className="text-xs uppercase tracking-[2px] text-[#c9a96e]/50 mb-2">
+        <h3
+          className="text-xs uppercase tracking-[2px] mb-2"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
+        >
           Practices
         </h3>
         <ul className="space-y-1">
           <li>
             <button
               className={`w-full text-left text-sm px-2 py-1 rounded ${
-                !practiceFilter ? "bg-white/10" : "hover:bg-white/5"
+                !practiceFilter
+                  ? "bg-[var(--glass-rim)]"
+                  : "hover:bg-[var(--bz-card-hover)]"
               }`}
               onClick={() => onPracticeChange(null)}
             >
-              All <span className="text-[#c9a96e]/40">({files.length})</span>
+              All{" "}
+              <span
+                style={{ color: "var(--text-tertiary, var(--tx-tertiary))" }}
+              >
+                ({files.length})
+              </span>
             </button>
           </li>
           {practices.map(([id, label]) => (
             <li key={id}>
               <button
                 className={`w-full text-left text-sm px-2 py-1 rounded ${
-                  practiceFilter === id ? "bg-white/10" : "hover:bg-white/5"
+                  practiceFilter === id
+                    ? "bg-[var(--glass-rim)]"
+                    : "hover:bg-[var(--bz-card-hover)]"
                 }`}
                 onClick={() => onPracticeChange(id)}
               >
                 {label}{" "}
-                <span className="text-[#c9a96e]/40">({countPractice(id)})</span>
+                <span
+                  style={{ color: "var(--text-tertiary, var(--tx-tertiary))" }}
+                >
+                  ({countPractice(id)})
+                </span>
               </button>
             </li>
           ))}
@@ -66,7 +82,10 @@ export function VaultSidebar({
       </section>
       {types.length > 0 && (
         <section>
-          <h3 className="text-xs uppercase tracking-[2px] text-[#c9a96e]/50 mb-2">
+          <h3
+            className="text-xs uppercase tracking-[2px] mb-2"
+            style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
+          >
             Types
           </h3>
           <ul className="space-y-1">
@@ -74,12 +93,20 @@ export function VaultSidebar({
               <li key={t}>
                 <button
                   className={`w-full text-left text-sm px-2 py-1 rounded ${
-                    typeFilter === t ? "bg-white/10" : "hover:bg-white/5"
+                    typeFilter === t
+                      ? "bg-[var(--glass-rim)]"
+                      : "hover:bg-[var(--bz-card-hover)]"
                   }`}
                   onClick={() => onTypeChange(typeFilter === t ? null : t)}
                 >
                   {t}{" "}
-                  <span className="text-[#c9a96e]/40">({countType(t)})</span>
+                  <span
+                    style={{
+                      color: "var(--text-tertiary, var(--tx-tertiary))",
+                    }}
+                  >
+                    ({countType(t)})
+                  </span>
                 </button>
               </li>
             ))}

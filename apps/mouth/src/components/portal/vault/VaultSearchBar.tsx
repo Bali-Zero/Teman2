@@ -19,7 +19,8 @@ export function VaultSearchBar({ value, onChange, placeholder }: Props) {
     <div className="relative">
       <Search
         aria-hidden
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#c9a96e]/50"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+        style={{ color: "var(--bz-copper)" }}
       />
       <input
         role="searchbox"
@@ -27,7 +28,12 @@ export function VaultSearchBar({ value, onChange, placeholder }: Props) {
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         placeholder={placeholder ?? "Search files…"}
-        className="w-full pl-10 pr-3 py-2 bg-white/5 rounded border border-white/10 text-sm text-[#f0ece4] placeholder:text-[#c9a96e]/40"
+        className="w-full pl-10 pr-3 py-2 rounded border text-sm placeholder:text-[var(--text-tertiary,var(--tx-tertiary))] focus:border-[var(--bz-copper)] focus:outline-none"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+          color: "var(--bz-text-1)",
+        }}
       />
     </div>
   );
