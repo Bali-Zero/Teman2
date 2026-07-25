@@ -3,7 +3,18 @@ from typing import Any
 
 import pytest
 
+from backend.services.agents.confirmation_service import (
+    ConfirmationRedisDown,
+    ConfirmationTimeout,
+)
+from backend.services.agents.tool_authorizer import SENSITIVE_TOOLS
 from backend.services.rag.agentic import tool_executor
+
+# Deny-narration fix (P0-DENY, 2026-07-25): a sentinel standing in for "a
+# real, authenticated AgentRole" wherever a test needs to simulate the
+# *with-principal* audience. The fakes below don't consult its attributes —
+# only its identity (`is None` vs not) — so any non-None object does the job.
+A_PRINCIPAL = SimpleNamespace(role_id="visa_specialist")
 
 
 class FakeMetricsCollector:
@@ -43,12 +54,16 @@ class AllowAuthorizer:
 
 
 class DenyAuthorizer(AllowAuthorizer):
+    def __init__(self, deny_reason: str = "role not allowed") -> None:
+        super().__init__()
+        self.deny_reason = deny_reason
+
     async def authorize(self, **kwargs: Any) -> SimpleNamespace:
         await super().authorize(**kwargs)
         return SimpleNamespace(
             is_denied=True,
             needs_confirmation=False,
-            reason="role not allowed",
+            reason=self.deny_reason,
             args=kwargs["args"],
         )
 
@@ -82,6 +97,19 @@ class FakeConfirmationService:
     async def request_and_wait(self, **kwargs: Any) -> bool:
         self.calls.append(kwargs)
         return self.approved
+
+
+class RaisingConfirmationService:
+    """Fake confirmation service that raises instead of resolving —
+    exercises the ConfirmationRedisDown / ConfirmationTimeout denial paths."""
+
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+        self.calls: list[dict[str, Any]] = []
+
+    async def request_and_wait(self, **kwargs: Any) -> bool:
+        self.calls.append(kwargs)
+        raise self.exc
 
 
 @pytest.fixture(autouse=True)
@@ -164,6 +192,12 @@ async def test_execute_tool_authorizes_then_injects_user_id() -> None:
 async def test_execute_tool_denies_without_running_tool(
     reset_tool_executor: FakeMetricsCollector,
 ) -> None:
+    """INNOCENCE 1 (P0-DENY): a real `agent_role` (authenticated/team
+    caller) still gets today's informative reason, byte-identical. In the
+    real ToolAuthorizer this "role not allowed" verdict is only reachable
+    once `agent_role is not None` (the legacy-passthrough branch returns
+    ALLOWED before ever reaching the allowlist check) — so this test now
+    passes a principal to match reality."""
     tool = FakeTool()
     tool_executor.configure_tool_executor(DenyAuthorizer())
 
@@ -171,6 +205,7 @@ async def test_execute_tool_denies_without_running_tool(
         tool_map={"admin_tool": tool},
         tool_name="admin_tool",
         arguments={"target": "client"},
+        agent_role=A_PRINCIPAL,
     )
 
     assert result == "Tool execution denied: role not allowed"
@@ -179,19 +214,206 @@ async def test_execute_tool_denies_without_running_tool(
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_denies_anonymous_caller_with_neutral_observation(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """GUILT (P0-DENY): a no-principal caller (`agent_role=None` — client,
+    unknown WA sender, public /stream) asking for a SENSITIVE_TOOLS-style
+    tool gets a neutral, non-diagnostic observation. It must not name the
+    tool's internal semantics, and must not contain any of the words that
+    would let the LLM narrate "there's a CRM/database and a permission
+    control blocked you" back to an untrusted stranger — this is the exact
+    live-production leak this fix closes."""
+    tool = FakeTool()
+    tool_executor.configure_tool_executor(
+        DenyAuthorizer(deny_reason="This action needs an authenticated Bali Zero staff account."),
+    )
+
+    result, _duration = await tool_executor.execute_tool(
+        tool_map={"crm_query": tool},
+        tool_name="crm_query",
+        arguments={"query": "quanti clienti attivi abbiamo adesso?"},
+        agent_role=None,
+    )
+
+    lowered = result.lower()
+    for forbidden in ("crm_query", "denied", "permission", "authoriz", "crm", "database"):
+        assert forbidden not in lowered, f"leaked {forbidden!r} in anonymous denial: {result!r}"
+    assert tool.calls == []
+    assert reset_tool_executor.calls == [("crm_query", "denied")]
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_fails_closed_when_confirmation_service_missing(
     reset_tool_executor: FakeMetricsCollector,
 ) -> None:
+    """With a real principal, the confirmation-unavailable reason stays
+    exactly as informative as before (INNOCENCE-adjacent — this path is
+    only reachable with `agent_role is not None` in the real authorizer,
+    since NEEDS_CONFIRMATION requires a resolved AgentRole)."""
     tool_executor.configure_tool_executor(ConfirmAuthorizer(), confirmation_service=None)
 
     result, _duration = await tool_executor.execute_tool(
         tool_map={"dangerous": FakeTool()},
         tool_name="dangerous",
         arguments={"target": "client"},
+        agent_role=A_PRINCIPAL,
     )
 
     assert "confirmation service unavailable" in result
     assert reset_tool_executor.calls == [("dangerous", "denied")]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_confirmation_unavailable_anonymous_caller_is_neutral(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """COVERAGE (P0-DENY): the confirmation-service-unavailable fallback is
+    itself audience-aware, defense-in-depth, even though the real
+    ToolAuthorizer never produces NEEDS_CONFIRMATION for `agent_role=None`
+    today — a future code path must not silently regain the leak."""
+    tool_executor.configure_tool_executor(ConfirmAuthorizer(), confirmation_service=None)
+
+    result, _duration = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=None,
+    )
+
+    assert "confirmation service unavailable" not in result
+    assert "denied" not in result.lower()
+    assert reset_tool_executor.calls == [("dangerous", "denied")]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_confirmation_redis_down_audience_aware(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """COVERAGE: ConfirmationRedisDown denial — principal gets the
+    informative message, anonymous gets the neutral one."""
+    tool_executor.configure_tool_executor(
+        ConfirmAuthorizer(),
+        confirmation_service=RaisingConfirmationService(ConfirmationRedisDown("down")),
+    )
+
+    result_principal, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=A_PRINCIPAL,
+    )
+    assert "confirmation system unavailable" in result_principal
+    assert "Redis down" in result_principal
+
+    result_anonymous, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=None,
+    )
+    assert "redis" not in result_anonymous.lower()
+    assert "denied" not in result_anonymous.lower()
+
+    assert reset_tool_executor.calls == [
+        ("dangerous", "denied"),
+        ("dangerous", "denied"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_confirmation_timeout_audience_aware(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """COVERAGE: ConfirmationTimeout denial — principal gets the
+    informative message, anonymous gets the neutral one."""
+    tool_executor.configure_tool_executor(
+        ConfirmAuthorizer(),
+        confirmation_service=RaisingConfirmationService(ConfirmationTimeout("timed out")),
+    )
+
+    result_principal, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=A_PRINCIPAL,
+    )
+    assert "did not confirm" in result_principal
+
+    result_anonymous, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=None,
+    )
+    assert "confirm" not in result_anonymous.lower()
+    assert "denied" not in result_anonymous.lower()
+
+    assert reset_tool_executor.calls == [
+        ("dangerous", "timeout"),
+        ("dangerous", "timeout"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_confirmation_rejected_audience_aware(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """COVERAGE: user-rejected-confirmation denial — principal gets the
+    informative message, anonymous gets the neutral one."""
+    tool_executor.configure_tool_executor(
+        ConfirmAuthorizer(),
+        confirmation_service=FakeConfirmationService(approved=False),
+    )
+
+    result_principal, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=A_PRINCIPAL,
+    )
+    assert "user rejected" in result_principal
+
+    result_anonymous, _ = await tool_executor.execute_tool(
+        tool_map={"dangerous": FakeTool()},
+        tool_name="dangerous",
+        arguments={"target": "client"},
+        agent_role=None,
+    )
+    assert "rejected" not in result_anonymous.lower()
+    assert "denied" not in result_anonymous.lower()
+
+    assert reset_tool_executor.calls == [
+        ("dangerous", "rejected"),
+        ("dangerous", "rejected"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_allowed_path_unaffected_by_agent_role(
+    reset_tool_executor: FakeMetricsCollector,
+) -> None:
+    """INNOCENCE 2 (P0-DENY): the allow/deny decision set is untouched by
+    this fix — only the DENIAL string changes. Parameterised over
+    SENSITIVE_TOOLS names plus a normal tool: for an ALLOWED verdict (the
+    authorizer's call, unaffected by this change), execution proceeds and
+    returns the tool's real result regardless of `agent_role`."""
+    for tool_name in (*sorted(SENSITIVE_TOOLS), "vector_search"):
+        for agent_role in (None, A_PRINCIPAL):
+            authorizer = AllowAuthorizer()
+            tool_executor.configure_tool_executor(authorizer)
+            tool = FakeTool(result=f"ok:{tool_name}")
+
+            result, _duration = await tool_executor.execute_tool(
+                tool_map={tool_name: tool},
+                tool_name=tool_name,
+                arguments={"query": "hello"},
+                agent_role=agent_role,
+            )
+
+            assert result == f"ok:{tool_name}"
+            assert tool.calls == [{"query": "hello"}]
+            assert authorizer.calls[0]["agent_role"] is agent_role
 
 
 @pytest.mark.asyncio

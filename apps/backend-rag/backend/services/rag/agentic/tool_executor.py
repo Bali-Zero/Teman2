@@ -58,6 +58,47 @@ def _strip_reserved_args(arguments: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in arguments.items() if not k.startswith(_RESERVED_ARG_PREFIX)}
 
 
+# P0-DENY (2026-07-25): the string returned by every denial-shaped branch
+# below is a tool OBSERVATION handed straight back to the LLM, which then
+# paraphrases it to whoever is asking. For an authenticated/team caller
+# (`agent_role` resolved) that is useful — "you don't have permission to
+# call X, try Y". For a NO-PRINCIPAL caller (client / unknown WA sender /
+# public blog-ask — `agent_role is None`) it turned the assistant into a
+# probing oracle: a synthetic client-role caller asked a production bot
+# "quanti clienti attivi abbiamo adesso?" and the bot narrated back that a
+# CRM database exists and that an authorization control blocked the call.
+# The DATA never leaked (SENSITIVE_TOOLS correctly denied), but the DENIAL
+# did. This constant is the fixed, non-diagnostic string every anonymous
+# caller gets instead — it names no tool, no control, no internal system,
+# so the model has nothing interesting to narrate.
+_ANONYMOUS_DENIAL_OBSERVATION = "This capability is not available in this conversation."
+
+
+def _denial_observation(agent_role: Any | None, detail: str) -> str:
+    """Render a denial-shaped tool observation, audience-aware.
+
+    `detail` is always the full, informative reason (never pre-redacted by
+    the caller). With a resolved `agent_role` (authenticated/team caller)
+    this returns the same `"Tool execution denied: {detail}"` shape every
+    call site returned before this fix — byte-identical, so the team
+    assistant does not regress. With `agent_role=None` (no principal) it
+    returns the fixed neutral string above, dropping `detail` entirely.
+
+    Applied uniformly to EVERY denial-shaped return in `execute_tool`
+    (not just the primary is_denied branch) so a future code path can't
+    silently reopen the leak in one of the others — this repo has been
+    bitten before by a fix applied to 1 of N equivalent paths (cicatrix
+    #3, guard-over/under-match family).
+
+    Server-side fidelity is untouched: `metrics_collector.record_tool_call`
+    and the `logger.warning`/`logger.info` calls at each site still log the
+    full detail — only the string handed back to the LLM is redacted here.
+    """
+    if agent_role is None:
+        return _ANONYMOUS_DENIAL_OBSERVATION
+    return f"Tool execution denied: {detail}"
+
+
 # Module-level singletons — set by service_initializer.py at app startup.
 # Before Phase 3 wiring, the authorizer was a bare ToolAuthorizer() with no
 # dependencies. Now it may have a ConfirmationService. Both are replaced once
@@ -301,7 +342,7 @@ async def execute_tool(
     if auth_result.is_denied:
         metrics_collector.record_tool_call(tool_name, "denied")
         return (
-            f"Tool execution denied: {auth_result.reason}",
+            _denial_observation(agent_role, auth_result.reason),
             time.time() - start_time,
         )
     if auth_result.needs_confirmation:
@@ -320,7 +361,10 @@ async def execute_tool(
             )
             metrics_collector.record_tool_call(tool_name, "denied")
             return (
-                f"Tool execution denied: confirmation service unavailable for '{tool_name}'",
+                _denial_observation(
+                    agent_role,
+                    f"confirmation service unavailable for '{tool_name}'",
+                ),
                 time.time() - start_time,
             )
         try:
@@ -339,8 +383,10 @@ async def execute_tool(
                 exc,
             )
             return (
-                f"Tool execution denied: confirmation system unavailable "
-                f"(Redis down) for '{tool_name}'",
+                _denial_observation(
+                    agent_role,
+                    f"confirmation system unavailable (Redis down) for '{tool_name}'",
+                ),
                 time.time() - start_time,
             )
         except ConfirmationTimeout:
@@ -350,8 +396,10 @@ async def execute_tool(
                 tool_name,
             )
             return (
-                f"Tool execution denied: user did not confirm "
-                f"'{tool_name}' within the allowed time",
+                _denial_observation(
+                    agent_role,
+                    f"user did not confirm '{tool_name}' within the allowed time",
+                ),
                 time.time() - start_time,
             )
         if not approved:
@@ -361,7 +409,7 @@ async def execute_tool(
                 tool_name,
             )
             return (
-                f"Tool execution denied: user rejected '{tool_name}'",
+                _denial_observation(agent_role, f"user rejected '{tool_name}'"),
                 time.time() - start_time,
             )
         metrics_collector.record_tool_call(tool_name, "confirmed")
