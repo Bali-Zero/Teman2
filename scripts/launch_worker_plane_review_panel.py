@@ -3594,6 +3594,24 @@ def launch_panel(
                 sandbox=home,
             )
 
+        # NOTE (2026-07-25, inferred from commit 21f41378d0 "fix(review):
+        # preserve Gemini login keychain access" -- reconstructed from that
+        # commit's message and diff, not a comment recovered from the
+        # original author): Gemini's HOME was ONCE isolated the same way
+        # Codex/Kimi are below -- a helper, _stage_gemini_auth, copied only
+        # oauth_creds.json/google_accounts.json into a disposable sandbox
+        # home -- and was deliberately reverted two days into this branch.
+        # The revert's stated reason is that agy's login also depends on
+        # macOS Keychain state bound to the real user session: a file-copy
+        # into a fake HOME reproduces the on-disk OAuth files but not the
+        # Keychain entry, and login broke. As a result: the "every seat's
+        # blast radius is a disposable tempdir" property holds for Codex
+        # and Kimi (seeded credentials, sandboxed HOME) but NOT for Gemini,
+        # whose HOME is the real one in production -- only its CWD is still
+        # sandboxed. Re-isolating this for real would mean solving
+        # Keychain-scoped credential export/import (e.g. a scoped login
+        # keychain via `security`), which was not attempted here; it was
+        # reverted, not skipped.
         if production:
             environments["gemini"]["HOME"] = os.environ.get(
                 "HOME", environments["gemini"]["HOME"]

@@ -70,6 +70,31 @@ EXPECTED_HEADINGS = (
     "# Required amendments",
     "# Falsification test",
 )
+# WARNING (2026-07-25, post-review finding on PR #3127): flipping this to
+# True is NOT the last step. Everything below in this file still encodes
+# the RETIRED v2 council architecture, not the v3 one that
+# scripts/launch_worker_plane_review_panel.py actually produces:
+#   - EXPECTED_ROUTES / _expected_argv / EXPECTED_EXECUTABLE_IDENTITIES
+#     treat claude-fable-5 as one of THREE co-equal panel voices. v3's
+#     real model (see freeze_worker_plane_review.EXPECTED_COUNCIL_ROUTE_CONFIG)
+#     has Fable as a SEPARATE sequential final-gate phase after three
+#     parallel reviewers (gemini/codex/kimi) -- not a fourth interchangeable
+#     route.
+#   - The route set here still includes the retired "glm-5.2" and is
+#     missing "codex"/"kimi" entirely; the GLM-specific route_config_path
+#     check in _validate_review has no codex/kimi equivalent.
+#   - The panel-size assertion is hardcoded to 3 routes -- v3's real panel
+#     is also 3, but a DIFFERENT 3.
+#   - There is currently NO validation logic anywhere in this file for the
+#     Phase-2 final-gate receipt itself (nothing here consumes
+#     launch_worker_plane_review_panel.launch_final_gate()'s output --
+#     that function is itself an unconditional-raise stub today). That
+#     validator does not exist yet and has to be designed and written,
+#     not just wired up.
+# Concrete work needed before this flag can safely become True: rebuild
+# the route/seat/identity constants from freeze_worker_plane_review.py's
+# EXPECTED_COUNCIL_ROUTE_CONFIG, restructure the route-branching functions
+# for the real v3 seat set, and add a genuine Phase-2/final-gate validator.
 V3_FINAL_GATE_READY = False
 V3_FINAL_GATE_BLOCKER = (
     "worker-plane council v3 final Fable gate is not implemented; "

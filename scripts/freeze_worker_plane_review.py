@@ -6,6 +6,15 @@ brief.  Review identity is the SHA-256 of the canonical input manifest; commit,
 generator, route, and filesystem evidence belongs only in the external freeze
 receipt.  Length framing makes every input byte unambiguous, including NULs and
 text that resembles packet markers.
+
+SECURITY / PII BOUNDARY: every path passed to --covered/--covered-set is
+later shipped VERBATIM to Gemini, OpenAI (Codex) and Kimi cloud endpoints
+by scripts/launch_worker_plane_review_panel.py -- there is no content
+inspection, redaction, or PII filter anywhere in this tool. This
+invocation's own covered set is ten non-PII architecture documents, but
+nothing in the code enforces that for future callers. NEVER point
+--covered at a CRM export, intake OCR output, or any client-facing
+document (standing PII boundary: CLAUDE.md / SYMBIOSIS Law 2 / UU PDP).
 """
 
 from __future__ import annotations
@@ -1079,8 +1088,23 @@ def build_parser() -> argparse.ArgumentParser:
     freeze.add_argument("--base", required=True)
     freeze.add_argument("--upstream", default="origin/main")
     freeze_inputs = freeze.add_mutually_exclusive_group(required=True)
-    freeze_inputs.add_argument("--covered", action="append")
-    freeze_inputs.add_argument("--covered-set")
+    freeze_inputs.add_argument(
+        "--covered",
+        action="append",
+        help=(
+            "git-tracked path to include in the packet. WARNING: covered "
+            "files are shipped verbatim to Gemini/Codex/Kimi clouds by the "
+            "launcher -- never point this at client PII (CRM exports, "
+            "intake OCR, client-facing docs)."
+        ),
+    )
+    freeze_inputs.add_argument(
+        "--covered-set",
+        help=(
+            "JSON file listing git-tracked covered paths. Same PII warning "
+            "as --covered applies to every path it contains."
+        ),
+    )
     freeze.add_argument("--instructions", required=True)
     freeze.add_argument("--output-store", type=Path, required=True)
     freeze.set_defaults(handler=_freeze_command)
