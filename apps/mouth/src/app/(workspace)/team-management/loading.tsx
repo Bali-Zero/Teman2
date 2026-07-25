@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeamManagementLoading() {
   return (
@@ -19,7 +19,10 @@ export default function TeamManagementLoading() {
       {/* Team Members */}
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg border p-4 flex items-center gap-4">
+          <div
+            key={i}
+            className="rounded-lg border p-4 flex items-center gap-4"
+          >
             <Skeleton variant="circular" width={48} height={48} />
             <div className="flex-1 space-y-2">
               <Skeleton variant="text" width={160} />
