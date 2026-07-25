@@ -128,12 +128,19 @@ async def send_telegram_batch(
         [sys.executable, str(gateway), "--tier", "digest", "--source", "curiosity-batch", "--", text],
         capture_output=True, text=True, timeout=30,
     )
-    if proc.returncode != 0:
-        print(f"tg_notify gateway error: {(proc.stderr or '')[:200]}", flush=True)
+    # The gateway always exits 0 by contract; the real outcome is on its
+    # "tg_notify: <outcome>" STDERR line (mirrors scripts/sentinel_lib/
+    # alerter.py's own parsing — returncode alone can't tell sent from
+    # silently-swallowed).
+    outcome = ""
+    for line in ((proc.stderr or "") + "\n" + (proc.stdout or "")).splitlines():
+        if line.startswith("tg_notify:"):
+            outcome = line.split(":", 1)[1].strip().split(" ")[0]
+    if outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
+        print(f"Telegram batch queued via gateway ({outcome}): {len(findings)} findings", flush=True)
     else:
-        print(f"Telegram batch queued via gateway: {len(findings)} findings", flush=True)
-
-    print(f"Telegram batch sent: {len(findings)} findings", flush=True)
+        print(f"tg_notify gateway error (outcome={outcome or 'unparseable'}): "
+              f"{(proc.stderr or '')[:200]}", flush=True)
 
 
 # ---------------------------------------------------------------------------

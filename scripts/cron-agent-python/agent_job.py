@@ -206,16 +206,25 @@ class AgentJob:
         every open PR). The gateway owns credential resolution, per-tier dedup and
         the daily P0 budget — a caller only decides `tier`.
 
-        `tier` has no default on purpose: every one of this class's 3 call sites
-        (this file's own run_job() failure alert, log_anomaly_detector.py,
+        `tier` has no default on purpose: every call site (this file's own
+        run_job() failure alert, log_anomaly_detector.py — per-alert severity,
         intel_radar_daily_digest.py) must state its severity explicitly rather
         than silently inherit one, since the choice is genuinely call-site
-        specific and a silent default would hide behavior change in the two
-        files this migration doesn't otherwise touch.
+        specific and a silent default would hide behavior change in files this
+        migration doesn't otherwise touch.
 
         `chat_id` is accepted for backward API-compatibility but is not
         forwarded — no caller in this tree has ever overridden it, and the
         gateway always resolves the configured owner chat itself.
+
+        Returns whether the gateway took custody of the notification. The
+        gateway always exits 0 by contract ("NEVER fails the caller" —
+        tg_notify.py's own docstring), so `returncode` alone can't tell "sent"
+        from "silently swallowed"; the real outcome is on its `tg_notify:
+        <outcome>` STDERR line. Mirrors scripts/sentinel_lib/alerter.py's own
+        outcome parsing (established 2026-07-07, PR #2067 cohort-2). False
+        only when that line is missing/unparseable — a genuine transport
+        failure, not merely "spooled for later" or "already sent, deduped".
         """
         import subprocess
 
@@ -229,12 +238,20 @@ class AgentJob:
         cmd += ["--", msg]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            ok = proc.returncode == 0
+            outcome = ""
+            for line in ((proc.stderr or "") + "\n" + (proc.stdout or "")).splitlines():
+                if line.startswith("tg_notify:"):
+                    outcome = line.split(":", 1)[1].strip().split(" ")[0]
+            ok = outcome in (
+                "sent", "spooled", "logged", "deduped",
+                "p0_overflow_spooled", "p0_unsent_spooled",
+            )
             if ok:
                 self._side_effects.append(f"telegram:{tier}")
             else:
                 self.logger.warning(
-                    "telegram_gateway_error", returncode=proc.returncode, stderr=(proc.stderr or "")[:200]
+                    "telegram_gateway_error", returncode=proc.returncode,
+                    outcome=outcome or "unparseable", stderr=(proc.stderr or "")[:200],
                 )
             return ok
         except Exception as e:

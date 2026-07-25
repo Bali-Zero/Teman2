@@ -127,3 +127,95 @@ def test_run_job_failure_alert_uses_stable_dedup_key(monkeypatch, tmp_path):
     assert calls[0]["tier"] == "digest"
     assert calls[0]["dedup_key"] == "cron-agent-python:test-fake-job-failure:error"
     assert "duration_s" not in calls[0]["dedup_key"]
+
+
+def test_send_telegram_unparseable_gateway_output_is_not_ok(monkeypatch):
+    """The gateway exits 0 by contract even on its own internal failures
+    ("NEVER fails the caller") — returncode alone can't distinguish a real
+    send from a swallowed one. A run whose stdout/stderr never carries a
+    `tg_notify: <outcome>` line is the one case that must come back False."""
+    import agent_job
+    import importlib
+    import subprocess as _subprocess
+    importlib.reload(agent_job)
+
+    class _FakeJob(agent_job.AgentJob):
+        name = "test-fake-job-unparseable"
+
+    def _fake_run(cmd, **kwargs):
+        return _subprocess.CompletedProcess(cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    job = _FakeJob()
+    ok = _run(job.send_telegram("hello", tier="p0"))
+
+    assert ok is False
+    assert job._side_effects == []  # no false side_effect recorded either
+
+
+def test_send_telegram_recognizes_every_gateway_outcome(monkeypatch):
+    """Every real outcome tg_notify.py can print is treated as delivery
+    custody taken, not just 'sent' — mirrors sentinel_lib/alerter.py's own
+    parsing (established 2026-07-07)."""
+    import agent_job
+    import importlib
+    import subprocess as _subprocess
+    importlib.reload(agent_job)
+
+    class _FakeJob(agent_job.AgentJob):
+        name = "test-fake-job-outcomes"
+
+    for outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
+        def _fake_run(cmd, _outcome=outcome, **kwargs):
+            return _subprocess.CompletedProcess(cmd, returncode=0, stdout="", stderr=f"tg_notify: {_outcome}\n")
+
+        monkeypatch.setattr("subprocess.run", _fake_run)
+        job = _FakeJob()
+        assert _run(job.send_telegram("hello", tier="p0")) is True, outcome
+
+
+def test_log_anomaly_tier_follows_alert_severity():
+    """RED (FATAL/OOM/502/503/CRM-down) escalates to p0; an all-YELLOW batch
+    (circuit-breaker, timeouts) stays digest. Any RED in a mixed batch wins."""
+    import log_anomaly_detector as lad
+    import importlib
+    importlib.reload(lad)
+
+    red = [{"severity": "RED", "label": "fatal_error"}]
+    yellow = [{"severity": "YELLOW", "label": "job_timeout"}]
+
+    assert lad._tier_for(red) == "p0"
+    assert lad._tier_for(yellow) == "digest"
+    assert lad._tier_for(red + yellow) == "p0"
+
+
+def test_log_anomaly_compose_alert_is_plain_text():
+    """The gateway sends without parse_mode — a message built with HTML tags
+    would show up literally, especially damaging now that RED alerts go out
+    immediate+untruncated via tier=p0 (no digest-flush truncation to hide it)."""
+    import log_anomaly_detector as lad
+    import importlib
+    importlib.reload(lad)
+
+    job = lad.LogAnomalyDetectorJob()
+    msg = job._compose_alert([
+        {"severity": "RED", "label": "fatal_error", "source": "x", "sample": "boom"}
+    ])
+    assert "<b>" not in msg and "<code>" not in msg and "<i>" not in msg
+
+
+def test_intel_radar_compose_message_is_plain_text():
+    """Same gateway constraint as log-anomaly — no parse_mode support."""
+    import intel_radar_daily_digest as ird
+    import importlib
+    importlib.reload(ird)
+
+    job = ird.IntelRadarDailyDigestJob()
+    msg = job._compose_message([
+        {"query_tier": "L1", "title": "<script>x</script>", "source_domain": "example.com"}
+    ])
+    assert "<b>" not in msg and "<i>" not in msg
+    # No HTML-entity leakage either — plain text should show the raw title,
+    # not an escaped-then-never-unescaped "&lt;script&gt;".
+    assert "&lt;" not in msg
