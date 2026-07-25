@@ -68,6 +68,20 @@ def get_capabilities(channel: str) -> ChannelCapabilities:
     return CHANNEL_CAPS.get(channel, ChannelCapabilities(name=channel))
 
 
+# Bare numeric citation markers the LLM emits inline (e.g. "[5]", "[1, 5]")
+# per the CITATION_RULES prompt convention (zantara_core.py). No plain-text
+# or WhatsApp channel ever renders an accompanying footnote/source list, so
+# these are dangling noise on those surfaces. Digits-only inside the
+# brackets is a deliberately narrow match (entity: a numeric citation
+# index), NOT a loose "contains a bracket" substring guard — a real
+# regulation/entity reference in this corpus is always named text
+# ("[PP 48/2021]", "[Art. 26]", "[KBLI 70100]"), never a bare digit list,
+# so this cannot collide with legitimate bracketed content. See
+# .claude/rules/cicatrix-superscar.md family #3 (guard-over-match) for why
+# that distinction matters.
+_BARE_CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
+
+
 def format_rich_text(text: str, channel: str) -> str:
     """Convert generic markdown to channel-specific format.
 
@@ -90,16 +104,41 @@ def format_rich_text(text: str, channel: str) -> str:
         return text
 
     if channel == "whatsapp":
-        # WhatsApp: limited markdown
+        # WhatsApp: limited markdown — *bold*, _italic_, ```monospace``` are
+        # the ONLY formatting WA renders. Headings, **bold**, markdown
+        # bullets/links and bare citation markers all render as literal
+        # noise to the end client if left untouched.
+        #
+        # Order matters: structural markers (links/bullets) are normalized
+        # BEFORE the inline **bold**/heading conversion, so a line like
+        # "*   **Initial Validity:** 1 year [5]" resolves correctly —
+        # the leading "*   " bullet becomes "• " first, so it never collides
+        # with the "**...**" -> "*...*" bold-delimiter rewrite that follows.
+        #
+        # Markdown links: [text](url) -> "text (url)" — keep the URL,
+        # drop the syntax WA doesn't understand.
+        text = re.sub(r"\[(.+?)\]\((\S+?)\)", r"\1 (\2)", text)
+        # Bullet markers ("* item" / "- item") -> unicode bullet. WA has no
+        # native list syntax, and a bare leading "*" would otherwise be
+        # ambiguous with the *bold* delimiter. Anchored to line-start so a
+        # "**Bold**: text" line (no space after the first "*") never
+        # matches here — only an actual bullet ("* "/"- " + whitespace) does.
+        text = re.sub(r"^[ \t]*[*-]\s+", "• ", text, flags=re.MULTILINE)
         # Convert **bold** → *bold* (WA uses single asterisks)
         text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
-        # Convert headers (## Header) → *Header*
-        text = re.sub(r"^#{1,3}\s+(.+)$", r"*\1*", text, flags=re.MULTILINE)
+        # Convert headers (#{1,6} Header) → *Header*
+        text = re.sub(r"^#{1,6}\s+(.+)$", r"*\1*", text, flags=re.MULTILINE)
         # Strip code blocks (WA doesn't render them well)
         text = re.sub(r"```[\s\S]*?```", lambda m: m.group(0).strip("`"), text)
         # Strip inline code backticks
         text = re.sub(r"`(.+?)`", r"\1", text)
-        return text
+        # Strip horizontal rules
+        text = re.sub(r"^[-*_]{3,}$", "", text, flags=re.MULTILINE)
+        # Strip bare numeric citation markers ([5], [1, 5])
+        text = _BARE_CITATION_RE.sub("", text)
+        # Collapse blank-line buildup left by the strips above
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
 
     if channel in ("instagram", "twitter"):
         # Plain text: strip ALL markdown
@@ -183,6 +222,9 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r"\[(.+?)\]\(.+?\)", r"\1", text)
     # Remove images: ![alt](url)
     text = re.sub(r"!\[.*?\]\(.*?\)", "", text)
+    # Remove bare numeric citation markers ([5], [1, 5]) — see
+    # _BARE_CITATION_RE docstring for why this is a safe, narrow match.
+    text = _BARE_CITATION_RE.sub("", text)
     # Remove horizontal rules
     text = re.sub(r"^[-*_]{3,}$", "", text, flags=re.MULTILINE)
     # Collapse multiple blank lines
