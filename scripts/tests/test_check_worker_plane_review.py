@@ -36,6 +36,24 @@ from scripts.freeze_worker_plane_review import (
 )
 
 
+# This module uses zip(..., strict=True) below (Python 3.10+ only, PEP 618).
+# A fresh worktree has no committed venv, and macOS system Python
+# (/usr/bin/python3) is 3.9 -- running this suite under it does not fail
+# cleanly, it throws "TypeError: zip() takes no keyword arguments" from
+# inside nearly every test that shares the make_bundle()/duplicate-route
+# helpers, which reads like 64 unrelated failures instead of one
+# environment problem. Skip loudly with the real reason instead (this
+# repo's CI standard, see .github/workflows/tests.yml's
+# "python-version: 3.11", is >= 3.10).
+if sys.version_info < (3, 10):
+    pytest.skip(
+        "this suite requires Python >= 3.10 (uses zip(..., strict=True)); "
+        f"running under {sys.version.split()[0]}. Use the repo's "
+        "CI-standard interpreter (3.11), e.g. "
+        "`python3.11 -m venv <path> && <path>/bin/pip install pytest`.",
+        allow_module_level=True,
+    )
+
 CLAUDE_EXECUTABLE = "/Users/nuzantara/.local/share/claude/versions/2.1.214"
 GEMINI_EXECUTABLE = "/Users/nuzantara/.local/bin/agy"
 MCP_CONFIG = '{"mcpServers":{}}'
