@@ -47,6 +47,11 @@ itself.
 So the method used here is per-line and evidential, not mechanical:
 
 1. Take the line's **own** declared proof criterion — never a substitute of my own invention.
+   **Amended mid-pass:** the criterion is an artifact too, and it rots. One line here carries a
+   probe that cannot pass *by construction* (see the GLM section), and executing it faithfully
+   produced a confident false verdict. So: run the line's criterion, and where it invokes a
+   system, check that it invokes it the way the system is actually invoked — the wrapper, the
+   shim, the env the cron sets — not a lookalike assembled from its parts.
 2. Execute it live this turn (disk, ssh, CLI probe, prod DB, HTTP).
 3. Close only on a pass. Where the criterion is unexecutable, say so and leave the line open.
 4. Where a branch is involved, take the file-set from the commits the branch **authored**
@@ -97,40 +102,68 @@ for deploys.
 - **Password rotation: genuinely `operator[secret]`, still open.** Unverifiable without reading
   the value, which is exactly what must not happen. Runbook below.
 
-### CONTESTED — two sessions, two answers, not reconciled (1)
+### The one I got wrong, and how it resolved (1)
 
-**GLM 5.2 seat.** Left open, and deliberately NOT closed either way.
+**GLM 5.2 seat — ALIVE. My probe was the defect, not the seat.**
 
-- My probe, run twice ~20 minutes apart:
-  `CLAUDE_CONFIG_DIR=~/.claude-glm claude -p "PONG" --model glm-5.2` →
-  `Failed to authenticate. API Error: 401 token expired or incorrect`, rc=1.
-- A **sibling session**, concurrently, reports the opposite: PR #3161 (title:
-  *"the seat was never dead, the probe was …"*, still **OPEN**) plus a memory line asserting
-  **GLM VIVO** — z.ai exposes two endpoints and the subscription lives on `/api/anthropic`.
-  `~/.claude-glm/settings.json` on this machine already names `z.ai/api/anthropic`, and its
-  `backups/` directory was touched at 03:53 today, i.e. mid-session by that sibling.
+Two earlier drafts of this section said the opposite, and the sequence is the finding:
 
-So the endpoint half looks fixed and the **auth** half still fails from my invocation. Two
-readings are possible and I cannot discriminate them from here: the sibling drives the seat
-through the shim rather than through `claude --model glm-5.2`, or #3161 is not yet fully applied
-to the path I invoke. Either way the honest state is **contested, pending #3161's merge**, not
-"confirmed dead" — which is what an earlier draft of this report said on the strength of my probe
-alone.
+1. **"Confirmed still blocked."** `CLAUDE_CONFIG_DIR=~/.claude-glm claude -p "PONG" --model
+   glm-5.2` → `401 token expired or incorrect`, rc=1. Run twice, ~20 minutes apart, same
+   result. Two independent runs of the same wrong probe.
+2. **"Contested."** A sibling session, concurrently, had reached the opposite conclusion —
+   PR #3161, *"the seat was never dead, the probe was …"*, plus a memory line asserting GLM
+   VIVO. I could not discriminate its reading from mine, so I held this PR in draft and said
+   so rather than picking the answer I had evidence for.
+3. **Resolved — the sibling is right.** The seat is driven by a `claude-glm` shell function
+   that clears `ANTHROPIC_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` and sets
+   **`ANTHROPIC_AUTH_TOKEN`** from the Keychain item `glm-coding-plan-token`, on top of
+   `CLAUDE_CONFIG_DIR=~/.claude-glm`. My probe set the config dir and **not the token**.
+   Through the real entry point: `claude-glm -p "reply with exactly: PONG" --model glm-5.2`
+   → `PONG`. The `operator[business]` recharge this line asked for would have bought
+   capacity that was never lost.
 
-Recorded because the failure mode is the interesting part: a single-session live probe reads like
-hard evidence, and it is — of *that invocation*, on *that path*, at *that minute*. It is not
-evidence about the seat. W100's line continues: the refuter hallucinates, the ground truth ages,
-agreement lies — and now, a probe answers a narrower question than the one it appears to answer.
+What the probe actually measured was *my own missing credential*, and it reported it in the
+seat's voice. Every property that makes a live probe feel authoritative was present: real
+invocation, real network, real error string, reproduced. The error was even *accurate* — that
+invocation genuinely was unauthenticated. It just wasn't an answer to the question I asked it.
+
+This is the same defect as the rest of this report, turned on me. Every stale line here is a
+`proof:` criterion that nobody executes; this is a criterion executed **wrongly** and trusted
+because it ran. An unexecuted proof leaves a gap you can see. A mis-executed one produces a
+verdict, a recorded conclusion, and — one step further — a purchase order.
+
+The general form, and the reason this section survives instead of being quietly deleted: **a
+probe answers the question its invocation encodes, not the question you meant.** Before
+treating a probe as evidence about a *system*, check that you invoked the system the way the
+system is actually invoked — the wrapper, the shim, the env the cron sets — and not a
+lookalike you assembled from its parts. W100's line continues: the refuter hallucinates
+(W65), the ground truth ages (W90), agreement lies (W100), and now the live probe answers
+narrower than it appears to.
+
+What saved it was not skepticism about the probe — I ran it twice and believed it both times.
+It was the **sibling's disagreement**, and the decision to hold the PR in draft rather than
+resolve the disagreement in favour of my own evidence. Draft is the only real hold; disarming
+`--auto` is not one.
 
 ## Meta-pattern — what these share
 
 Every stale line above is the **same defect as the one that triggered this pass**, and it is not
 "someone forgot to write it down". It is structural: **the ledger records the moment a gap is
-opened and has no organ that notices when the world closes it.** The proof criteria are excellent
-— specific, executable, falsifiable — and nothing ever executes them. A line's age therefore
-measures *time since it was written*, not *time the gap has existed*, and the two diverge without
-limit. That is W78 (no unlearning) operating at the level of the instrument the organism uses to
-decide what still needs doing.
+opened and has no organ that notices when the world closes it.** The proof criteria are mostly
+excellent — specific, executable, falsifiable — and nothing ever executes them. A line's age
+therefore measures *time since it was written*, not *time the gap has existed*, and the two
+diverge without limit. That is W78 (no unlearning) operating at the level of the instrument the
+organism uses to decide what still needs doing.
+
+"Mostly" is doing real work in that sentence, and it is the second half of the pattern. Because
+nothing executes the criteria, **nothing tests them either** — a proof that can never pass looks
+exactly like a proof that has not been tried. The GLM line is the specimen: its criterion is
+`CLAUDE_CONFIG_DIR=~/.claude-glm claude -p "PONG"`, which cannot authenticate by construction,
+while a *closed* line seventeen entries down records the correct invocation, `claude-glm -p`,
+passing on 2026-07-03. The ledger held the right form and the broken form simultaneously, and
+the later line regressed to the broken one. A criterion no one runs is not merely inert; it
+decays, and its decay is unobservable until someone runs it and believes the answer.
 
 The Codex-slug line is the sharpest case, because it is worse than stale: it is **actively
 misleading**. `.claude/skills/modus/SKILL.md` §Arsenal row 119 tells every session that
@@ -144,6 +177,15 @@ file, a `curl` of a named URL, a named CLI probe) and mark lines *criterion-pass
 That converts the bucket from a to-do list into a reconciliation, which is what the W81 antidote
 claims it already is.
 
+Two design notes it must not skip, both bought this session. **A criterion that fails is not
+evidence the gap is open** — the GLM line failed because the criterion was broken, and a naive
+`--verify` would have re-confirmed "still blocked" every night, indefinitely and with rising
+confidence. Failures belong in a *third* bucket, "criterion did not pass — is the criterion
+sound?", never folded into "still open". And **a criterion that names an invocation should name
+the real entry point** (`claude-glm`, the wrapper the fleet actually calls) rather than
+hand-rolled env; `--verify` could lint for that at parse time, which is cheaper than discovering
+it thirteen days later on the strength of a purchase recommendation.
+
 ## §Solo-operatore
 
 1. **`backend_rag_v2` password rotation** (`operator[secret]`). Everything else on that P0 is
@@ -156,6 +198,11 @@ claims it already is.
       never `cat` the file to verify; confirm with `stat` and a live app health probe.
    5. Verify: `/health` 200 on `nuzantara-rag`, plus one real DB-backed endpoint.
    The demotion step in the original line is **not needed** — already `NOSUPERUSER` on prod.
-2. **GLM 5.2 z.ai seat** (`operator[business]`) — **do not act on my probe alone**: it is
-   contested against a sibling session's concurrent finding (see above). Resolve by merging #3161
-   and re-probing through the shim; only recharge if the seat still fails after that.
+2. ~~**GLM 5.2 z.ai recharge**~~ — **struck. Nothing to buy.** The seat is alive; the probe was
+   wrong. The ledger line is closed by the sibling's PR #3161 (which also ships
+   `scripts/claude-glm.sh` and corrects the modus §Arsenal rows), so this report does not touch
+   it — one line, one owner. This entry stays visible rather than being deleted because a
+   report that silently drops a spend recommendation teaches nothing about how it got there.
+
+That leaves **exactly one** genuinely operator-owned item out of the six examined: the
+`backend_rag_v2` password rotation. The other five were a session's work all along.
