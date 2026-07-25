@@ -263,12 +263,33 @@ paragraph; deleting the sentence removes facts the page is right to state. Examp
 **So L2.2 is an EDITORIAL lane, not a compiler lane** — same bucket as the 95 tier-asserting texts
 and the 392 field-name narrations already in PENDING-ARMS, generator≠grader mandatory.
 
-**Lead worth chasing first:** the tier in these sentences looks like an **orphan of the detach** —
-`l4_bali.status` (`OK_or_HIGHER_RISK`, …) was derived from `per_skala` BEFORE the rows were
-detached, and the prose narrates that derived verdict. If so, this is L1.2's disease on a second
-surface, and L1.2's cure shape (structural disclosure on the derived verdict via
-`_l4bali_basis.still_certifies` / the `[derivation under review]` prefix) may apply mechanically to
-the VERDICT even though the PROSE needs an editor. Verify that provenance before designing the lane.
+**PROVENANCE VERIFIED — and it hands L2.2 a fully structural selector.** The hypothesis was "the
+tier is an orphan of the detach". Measured against `l4_bali`, the truth is sharper:
+
+| `l4_bali.status`    | n   | confidence / needs_review | `still_certifies()` |
+| ------------------- | --- | ------------------------- | ------------------- |
+| `OK_or_HIGHER_RISK` | 38  | `LOW` / `true`            | **False**           |
+| `TERTUTUP`          | 5   | `HIGH` / `false`          | True                |
+
+For **38 of 43 the L1.2 cure ALREADY RAN**: the structured verdict is disclosed, its `reason`
+literally begins `[derivation under review]`, and the record no longer certifies it. **It is the
+`whatYouNeed` prose that still narrates that same verdict as settled fact.** So this is not an
+orphaned derivation — it is **the cure landing on the field but not on the prose that narrates the
+field**, the same shape as "the rendered surface is not the guarded surface".
+
+That gives L2.2 the structural predicate it was missing, with no prose matching anywhere in the
+selection: **`gap_basis(record) is not None` AND `still_certifies(record["l4_bali"]) is False` AND
+the prose asserts the verdict** — and only that last conjunct needs text, exactly as L2.1's pass A
+uses its template only to LOCATE the sentence, never to decide membership.
+
+It also splits the population honestly: the **5 `TERTUTUP`** records still certify (`HIGH`/`false`)
+and are a different subcase — nationally closed, so the Bali tier is moot rather than unsupported.
+Do not sweep them in with the 38.
+
+Residual editorial need is now much smaller than a rewrite: since `l4_bali.reason` already carries
+the agreed hedge, the prose cure may be an **appended recorded sentence** (the move passes A and C
+already make in L2.1) rather than authored replacement prose — which is what "welded" ruled out.
+Still generator≠grader, and still not started here.
 
 **SUPERSEDED CENSUS (kept for the correction it records):**
 
