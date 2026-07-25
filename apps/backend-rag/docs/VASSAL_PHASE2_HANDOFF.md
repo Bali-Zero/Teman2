@@ -66,15 +66,26 @@ class ToolAuthorizer:
 ```
 
 **Current `NEEDS_CONFIRMATION` handling:**
+
 - `AuthResult.confirm()` exists as a classmethod
 - `_check_requires_confirmation()` is a no-op stub returning `None` (AgentRole has no `requires_confirmation` field yet — Phase 3 must add it)
 - `tool_executor.execute_tool()` defensively handles `auth_result.needs_confirmation` by treating it as DENIED with a clear error message ("confirmation gates are not active yet"). When Phase 3 wires the real confirmation service, that branch must replace the defensive deny with the actual `await confirmation_service.request_and_wait(...)` call.
 
 **Audit log format (downstream log shippers grep this):**
+
 ```
-tool_authz decision={allow|deny} user={email} role={role_id} scope={client_scope} tool={tool_name} reason={text}
+tool_authz decision={allow|deny} user={token} role={role_id} scope={client_scope} tool={tool_name} reason={text}
 ```
+
 Stable. Don't change without coordinating downstream consumers.
+
+`{token}` is `anonymous` for a genuinely absent principal, or `h:<sha256[:32]>`
+(`tool_authorizer._principal_token`, reusing `pii.violation_store.hash_subject`)
+for any present one — NEVER the raw `user_email`. Fixed 2026-07-25: the
+WhatsApp channel passes `f"whatsapp_{phone}"` as `user_email`, so the field
+was logging a client's phone number in the clear on every tool call
+(allow included). An operator holding a known identifier reproduces its
+token with `hash_subject(identifier)`.
 
 ## (d) Files Phase 3 MUST read as baseline
 
@@ -115,17 +126,18 @@ These exist already and Phase 3 should use them (don't refactor them):
 
 ## Phase 2 deliverables — final state
 
-| Item | Location | Status |
-|---|---|---|
-| `tool_authorizer.py` | `backend/services/agents/` | ✅ 304 LOC |
-| `tool_executor.py` integration | `backend/services/rag/agentic/` | ✅ Authorizer chokepoint, defensive NEEDS_CONFIRMATION branch |
-| `state.agent_role` propagation | `definitions.py`, `orchestrator*.py`, `reasoning.py` | ✅ End-to-end wired |
-| Allowlist explicit expansion | `team_agent_config.py` ROLE_VISA + ROLE_EXEC | ✅ 7 read + 1 write tool added per role |
-| `workspace_page` prompt-injection fix | `agentic_rag.py:_inject_agent_context_prefix` | ✅ Embedded inside [AGENT CONTEXT] block |
-| Unit tests | `tests/unit/agents/test_tool_authorizer.py` | ✅ 24/24 pass |
-| Phase 1 regression | `test_confidence.py` + `test_agentic_rag_optional_auth.py` | ✅ 26/26 pass (50 total Phase 1+2) |
+| Item                                  | Location                                                   | Status                                                        |
+| ------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
+| `tool_authorizer.py`                  | `backend/services/agents/`                                 | ✅ 304 LOC                                                    |
+| `tool_executor.py` integration        | `backend/services/rag/agentic/`                            | ✅ Authorizer chokepoint, defensive NEEDS_CONFIRMATION branch |
+| `state.agent_role` propagation        | `definitions.py`, `orchestrator*.py`, `reasoning.py`       | ✅ End-to-end wired                                           |
+| Allowlist explicit expansion          | `team_agent_config.py` ROLE_VISA + ROLE_EXEC               | ✅ 7 read + 1 write tool added per role                       |
+| `workspace_page` prompt-injection fix | `agentic_rag.py:_inject_agent_context_prefix`              | ✅ Embedded inside [AGENT CONTEXT] block                      |
+| Unit tests                            | `tests/unit/agents/test_tool_authorizer.py`                | ✅ 24/24 pass                                                 |
+| Phase 1 regression                    | `test_confidence.py` + `test_agentic_rag_optional_auth.py` | ✅ 26/26 pass (50 total Phase 1+2)                            |
 
 **Diff stat (Phase 2 only, excluding parallel-session pollution):**
+
 - 1 new file: `tool_authorizer.py` (304 LOC)
 - 1 new test file: `test_tool_authorizer.py` (~330 LOC)
 - 7 modified files for authorizer wiring + workspace_page hardening + role allowlist expansion
