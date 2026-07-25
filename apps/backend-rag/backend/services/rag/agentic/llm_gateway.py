@@ -294,6 +294,7 @@ class LLMGateway:
         conversation_messages: list[dict] | None = None,
         images: list[dict]
         | None = None,  # Vision: [{"base64": "data:image/...", "name": "file.jpg"}]
+        gemini_tools: list[dict] | None = None,
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message to LLM with tier-based routing and automatic fallback.
 
@@ -313,6 +314,18 @@ class LLMGateway:
             enable_function_calling: Enable native function calling for Gemini models
             conversation_messages: Conversation history for OpenRouter fallback
             images: List of images for vision (base64 encoded with data URI prefix)
+            gemini_tools: Optional PER-CALL override of the function
+                declarations sent to Gemini (T-VIS, W0 safety pre-arm,
+                2026-07-25). `self._gemini_tools` is set ONCE at
+                orchestrator-construction time and this gateway instance is
+                SHARED across every concurrent request — mutating
+                `self._gemini_tools` per request would leak one caller's
+                tool schema into another's. Passing `gemini_tools` here
+                sends exactly that list for THIS call only, without
+                touching shared state. `None` (the default) reproduces
+                today's behaviour exactly (falls back to
+                `self._gemini_tools`); `[]` explicitly means "send no
+                tools" and does NOT fall back.
 
         Returns:
             Tuple of (response_text, model_name_used, response_object, token_usage)
@@ -351,6 +364,7 @@ class LLMGateway:
                 conversation_messages=conversation_messages or [],
                 query_cost_tracker=query_cost_tracker,
                 images=images,
+                gemini_tools_override=gemini_tools,
             )
             latency_ms = round((time.perf_counter() - t0) * 1000)
             provider = "openrouter" if model_used == "openrouter" else "gemini"
@@ -453,6 +467,7 @@ class LLMGateway:
         conversation_messages: list[dict],
         query_cost_tracker: dict,
         images: list[dict] | None = None,
+        gemini_tools_override: list[dict] | None = None,
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message with tier-based routing, native function calling, and cascade fallback.
 
@@ -471,6 +486,9 @@ class LLMGateway:
             enable_function_calling: Whether to enable native function calling (default: True)
             conversation_messages: Message history for OpenRouter
             images: Optional list of images for vision capability
+            gemini_tools_override: Optional per-call tool-declaration
+                override forwarded to `_call_model` (see `send_message`
+                docstring — None reproduces today's shared-list behaviour).
 
         Returns:
             Tuple of (response_text, model_name_used, response_object)
@@ -525,6 +543,7 @@ class LLMGateway:
                     message=message,
                     images=images,
                     _system_prompt=system_prompt,
+                    gemini_tools_override=gemini_tools_override,
                 )
 
                 # Success - reset circuit breaker
@@ -594,11 +613,23 @@ class LLMGateway:
         message: str = "",
         images: list[dict] | None = None,
         _system_prompt: str = "",
+        gemini_tools_override: list[dict] | None = None,
     ) -> tuple[str, Any, TokenUsage]:
         """Call a specific model and return (text, response, token_usage)."""
         if not self._available:
             raise RuntimeError("GenAI client not available")
         client = self._get_genai_client()
+
+        # T-VIS (W0 safety pre-arm, 2026-07-25): `gemini_tools_override`
+        # lets a caller narrow the tool declarations for THIS call only,
+        # without mutating the shared `self._gemini_tools` (this gateway
+        # instance is reused across every concurrent request). `None` means
+        # "no override" -> shared list (today's behaviour, unchanged); `[]`
+        # means "override to nothing" and must NOT fall back to the shared
+        # list — the two are semantically distinct.
+        effective_gemini_tools = (
+            self._gemini_tools if gemini_tools_override is None else gemini_tools_override
+        )
 
         # Helper function to build multimodal content
         def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
@@ -646,11 +677,11 @@ class LLMGateway:
         def _build_config(with_tools: bool = False, sys_prompt: str = "") -> Any:
             """Build configuration for model generation."""
             config_args = {}
-            if with_tools and self._gemini_tools:
+            if with_tools and effective_gemini_tools:
                 # Convert tool dicts to proper FunctionDeclaration format for new SDK
                 # (Same conversion as in the class-level _build_config method)
                 function_declarations = []
-                for tool_dict in self._gemini_tools:
+                for tool_dict in effective_gemini_tools:
                     params = tool_dict.get("parameters", {})
                     func_decl = types.FunctionDeclaration(
                         name=tool_dict["name"],
