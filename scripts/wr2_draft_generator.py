@@ -2077,6 +2077,7 @@ def _generate_planner_writer_deck(
     forbidden_phrases: list[str],
     *,
     reward_by_arc: dict[str, float] | None = None,
+    engagement_hint: str = "",
     max_repair_rounds: int = 2,
     max_plan_attempts: int = 2,
 ) -> tuple["ir.SlideDeck", dict[str, Any]]:
@@ -2103,6 +2104,7 @@ def _generate_planner_writer_deck(
         candidate = pw.plan_deck(
             brief_ctx, liveness_tier, recent_arcs, planner_fn,
             max_retries=3, reward_by_arc=reward_by_arc,
+            engagement_hint=engagement_hint,
         )
         plan = candidate
         closer = max(candidate.slides, key=lambda s: s.slot_id)
@@ -2226,6 +2228,14 @@ async def _process_one_planner_writer(
     recent_arcs = ledger.recent_arcs(limit=8)
     reward_by_arc = ledger.reward_by_arc()
 
+    # Fase 4b (spec §Mossa-D): SOFT per-axis engagement nudge from the review
+    # queue's PUBLISHED history — real IG reach the war_room_posts reward can't
+    # see (those posts carry no draft_id/arc, so they feed layout/tone, not arc).
+    # Best-effort + off-thread (file read): unreadable/cold queue → empty hint →
+    # planner prompt byte-identical to the no-hint path (falsifiable, spec §5).
+    axis_engagement = await asyncio.to_thread(wcl.fetch_axis_engagement)
+    engagement_hint = wcl.build_engagement_hint(axis_engagement)
+
     brief_ctx = _build_brief_ctx(topic, summary, source_url, enrichment, live_reasons, liveness_tier)
     register = _pick_register_for_planner_writer(liveness_tier, recent_registers)
     forbidden_phrases = _load_forbidden_phrases_for_writer()
@@ -2238,9 +2248,12 @@ async def _process_one_planner_writer(
     # the socket's self-probe — when it prints reward_live>0 the loop has closed.
     logger.info(
         "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s "
-        "ledger_entries=%d reward_live=%d forbidden_phrases=%d",
+        "ledger_entries=%d reward_live=%d engagement_signal=%s(n=%d) "
+        "forbidden_phrases=%d",
         draft_id, register, liveness_tier or "(none)", recent_arcs,
-        len(ledger.entries), ledger.reward_live_count, len(forbidden_phrases),
+        len(ledger.entries), ledger.reward_live_count,
+        axis_engagement.has_signal, axis_engagement.total_posts,
+        len(forbidden_phrases),
     )
 
     try:
@@ -2249,6 +2262,7 @@ async def _process_one_planner_writer(
             brief_ctx, register, liveness_tier, recent_arcs,
             planner_fn, writer_fn, forbidden_phrases,
             reward_by_arc=reward_by_arc,
+            engagement_hint=engagement_hint,
         )
     except (pw.PlanValidationExhausted, pw.SlotWriteExhausted) as e:
         logger.error("Draft %s planner_writer generation exhausted: %s", draft_id, e)

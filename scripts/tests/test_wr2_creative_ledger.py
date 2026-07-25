@@ -264,3 +264,213 @@ def test_ledger_sql_keeps_the_null_council_filter() -> None:
     # was dropped once and caught by review — pin it so it can't silently vanish.
     assert "council_debate_json IS NOT NULL" in wcl._LEDGER_SQL
     assert "ORDER BY d.created_at DESC" in wcl._LEDGER_SQL
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Fase 4b — AXIS-ENGAGEMENT reward (per-axis SOFT nudge from the review queue)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _post(
+    *,
+    reach,
+    layout: str | None = None,
+    tone: str | None = None,
+    domain: str | None = None,
+    metrics: bool = True,
+) -> dict:
+    d: dict = {"state": "published"}
+    if metrics:
+        d["engagement_metrics"] = {"reach": reach}
+    if layout is not None:
+        d["layout_family_primary"] = layout
+    if tone is not None:
+        d["tone_register_primary"] = tone
+    if domain is not None:
+        d["domain"] = domain
+    return d
+
+
+def _write_queue(tmp_path, posts) -> Path:
+    import json
+    p = tmp_path / "queue.json"
+    p.write_text(json.dumps(posts))
+    return p
+
+
+def test_axis_engagement_aggregates_ranks_and_drops_noise(tmp_path) -> None:
+    # guilt: mean reach per axis value, sorted high→low; noise-guard drops n<3.
+    posts = (
+        [_post(reach=30000, layout="cover-photo") for _ in range(3)]        # mean 30k, n=3
+        + [_post(reach=5000, layout="dark-status-list") for _ in range(4)]  # mean 5k,  n=4
+        + [_post(reach=99999, layout="rare-once") for _ in range(2)]        # n=2 → dropped
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    lf = ae.by_axis["layout_family_primary"]
+    vals = [v for v, _, _ in lf]
+    assert vals == ["cover-photo", "dark-status-list"]   # sorted high→low
+    assert "rare-once" not in vals                        # n<_MIN_AXIS_SAMPLES dropped
+    assert lf[0][2] == 3                                  # n reported
+    assert abs(lf[0][1] - 30000) < 1                      # mean reach
+    assert ae.total_posts == 9                            # every reach>0 post counted
+    assert ae.has_signal
+
+
+def test_axis_engagement_missing_queue_is_empty(tmp_path) -> None:
+    # innocence: cold/absent queue → empty signal, empty hint (byte-identical path).
+    ae = wcl.fetch_axis_engagement(queue_path=tmp_path / "does-not-exist.json")
+    assert not ae.has_signal
+    assert ae.total_posts == 0
+    assert wcl.build_engagement_hint(ae) == ""
+
+
+def test_axis_engagement_malformed_queue_is_empty(tmp_path) -> None:
+    # best-effort: a broken queue never raises, never blocks generation.
+    p = tmp_path / "bad.json"
+    p.write_text("{ not valid json ")
+    ae = wcl.fetch_axis_engagement(queue_path=p)
+    assert not ae.has_signal
+    assert ae.total_posts == 0
+
+
+def test_axis_engagement_skips_zero_and_missing_reach(tmp_path) -> None:
+    posts = (
+        [_post(reach=0, layout="cover-photo") for _ in range(5)]                       # reach 0 → skip
+        + [_post(reach=1, metrics=False, layout="cover-photo") for _ in range(5)]      # no metrics → skip
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert ae.total_posts == 0
+    assert not ae.has_signal
+
+
+def test_hint_names_layout_and_tone_but_not_domain(tmp_path) -> None:
+    posts = (
+        [_post(reach=30000, layout="cover-photo", tone="rituale", domain="visa") for _ in range(4)]
+        + [_post(reach=1000, layout="dark-status-list", tone="analitico", domain="tax") for _ in range(4)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    assert "domain" in ae.by_axis            # domain IS aggregated (carried for topic-selection)
+    hint = wcl.build_engagement_hint(ae)
+    assert "layout families" in hint
+    assert "tone registers" in hint
+    assert "domains" not in hint             # ...but never surfaced to the planner
+    assert "cover-photo" in hint
+    assert "visa" not in hint                # a domain VALUE never leaks into the planner nudge
+
+
+def test_hint_states_sample_size_and_goodhart_caveat(tmp_path) -> None:
+    posts = [_post(reach=30000, layout="cover-photo", tone="rituale") for _ in range(4)]
+    hint = wcl.build_engagement_hint(wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts)))
+    assert "n=4" in hint          # sample size stated inline (weak-signal honesty)
+    assert "NOT a rule" in hint   # Goodhart caveat present
+    assert "CONTENT-FIT" in hint
+
+
+def test_domain_is_aggregated_but_not_a_planner_hint_axis() -> None:
+    # drift pin (scar #9): domain is topic-driven, not planner-controllable — it
+    # must stay OUT of the planner hint even though it is aggregated in the object.
+    assert "domain" not in wcl._PLANNER_HINT_AXES
+    assert "domain" in wcl._ENGAGEMENT_AXES
+
+
+# ── cross-family red-team (Kimi K3, 2026-07-25) confirmed-defect guilt corpus ─
+
+
+def test_axis_engagement_excludes_nan_and_inf_reach_without_crashing(tmp_path) -> None:
+    # D1: json.loads accepts NaN/Infinity by default; they survive `<= 0` and would
+    # poison the mean AND crash int(mean) in build_engagement_hint. They must be
+    # excluded at the source, and the hint must render without raising.
+    import math as _m
+    posts = (
+        [_post(reach=_m.nan, layout="nan-poison") for _ in range(3)]
+        + [_post(reach=_m.inf, layout="inf-poison") for _ in range(3)]
+        + [_post(reach=5000, layout="clean") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    vals = [v for v, _, _ in ae.by_axis.get("layout_family_primary", [])]
+    assert vals == ["clean"]              # only finite-reach values survive
+    assert ae.total_posts == 3            # nan/inf posts never counted
+    hint = wcl.build_engagement_hint(ae)  # int(nan) would raise here without the guard
+    assert "clean" in hint
+    assert "poison" not in hint
+
+
+def test_axis_engagement_non_list_queue_never_raises(tmp_path) -> None:
+    # D2 (end-to-end): a JSON null/scalar queue yields empty signal, never raises.
+    for payload in ("null", "42", '"just a string"'):
+        p = tmp_path / "q.json"
+        p.write_text(payload)
+        ae = wcl.fetch_axis_engagement(queue_path=p)
+        assert not ae.has_signal
+        assert ae.total_posts == 0
+
+
+def test_axis_engagement_guard_survives_loader_returning_non_list(tmp_path, monkeypatch) -> None:
+    # D2 (defense-in-depth): even if a FUTURE load_queue returns None/non-list
+    # (contract drift, scar #9), fetch_axis_engagement returns empty, not TypeError.
+    import wr2_queue_writer as qw
+    p = _write_queue(tmp_path, [])
+    monkeypatch.setattr(qw, "load_queue", lambda _p: None)
+    ae = wcl.fetch_axis_engagement(queue_path=p)
+    assert not ae.has_signal
+    assert ae.total_posts == 0
+
+
+def test_axis_engagement_bool_reach_is_not_counted(tmp_path) -> None:
+    # D3: a JSON `true` reach is a bool (int subclass) — must NOT count as reach 1.0.
+    posts = (
+        [_post(reach=True, layout="boolish") for _ in range(3)]
+        + [_post(reach=4000, layout="clean") for _ in range(3)]
+    )
+    ae = wcl.fetch_axis_engagement(queue_path=_write_queue(tmp_path, posts))
+    vals = [v for v, _, _ in ae.by_axis.get("layout_family_primary", [])]
+    assert vals == ["clean"]     # boolish excluded (no bogus 1.0 sample)
+    assert ae.total_posts == 3
+
+
+# ── planner threading (byte-identical dormant path + live injection) ───────
+
+
+def test_planner_prompt_byte_identical_when_hint_empty() -> None:
+    priors = pw.build_arc_priors(["news_alert"], "breaking")
+    default = pw._build_planner_prompt("BRIEF", "breaking", ["news_alert"], priors)
+    empty = pw._build_planner_prompt("BRIEF", "breaking", ["news_alert"], priors, "")
+    assert default == empty
+    assert "ENGAGEMENT HINT" not in default
+
+
+def test_planner_prompt_places_hint_before_output_block() -> None:
+    priors = pw.build_arc_priors(["news_alert"], "breaking")
+    hint = "\n\nENGAGEMENT HINT (weak signal — ...):\n  - higher-reaching layout families: X"
+    prompt = pw._build_planner_prompt("BRIEF", "breaking", ["news_alert"], priors, hint)
+    assert "ENGAGEMENT HINT" in prompt
+    assert prompt.index("ENGAGEMENT HINT") < prompt.index("OUTPUT — ONE JSON")
+
+
+def test_plan_deck_threads_engagement_hint_into_prompt() -> None:
+    seen: list[str] = []
+
+    def call_fn(p: str) -> str:
+        seen.append(p)
+        return "not json"  # force validation failure — no valid plan needed here
+
+    with pytest.raises(pw.PlanValidationExhausted):
+        pw.plan_deck(
+            "BRIEF", "breaking", ["news_alert"], call_fn,
+            max_retries=1, engagement_hint="ZZZ_UNIQUE_HINT_MARKER",
+        )
+    assert seen, "call_fn was never invoked"
+    assert "ZZZ_UNIQUE_HINT_MARKER" in seen[0]
+
+
+def test_plan_deck_empty_hint_leaves_prompt_without_hint_block() -> None:
+    seen: list[str] = []
+
+    def call_fn(p: str) -> str:
+        seen.append(p)
+        return "not json"
+
+    with pytest.raises(pw.PlanValidationExhausted):
+        pw.plan_deck("BRIEF", "breaking", ["news_alert"], call_fn, max_retries=1)
+    assert seen
+    assert "ENGAGEMENT HINT" not in seen[0]

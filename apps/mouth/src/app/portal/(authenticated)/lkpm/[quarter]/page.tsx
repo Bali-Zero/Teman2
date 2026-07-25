@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * Portal LKPM Draft Detail — review + approve a quarterly draft.
+ *
+ * WS3 slice 8 (GARUDA Day Edition, 2026-07-27): day-theme token alignment,
+ * mirroring slice 5 (lkpm list, PR #3066). Masthead = copper rule + Cormorant
+ * serif (--font-serif) in --tx-pure; surfaces read --bz-card / --bz-border +
+ * the concept .panel shadow; status chips and validation alerts read the
+ * semantic --state-* tokens (WS2 operative-light AA overrides: success 4.80 /
+ * warning 4.78 / danger 5.74 / info 5.94 :1 on paper) via color-mix tints —
+ * the old raw hexes (#34d399, #fbbf24, #f87171, …) were dark-only and fail
+ * AA on paper. client_review keeps a distinct copper chip: 12% copper tint
+ * fails AA in both themes, so it gets a hairline copper border +
+ * --bz-copper-text fg (the established small-copper-chip pattern). The warm
+ * approve button carries --bz-on-warm text (slice 6). No hardcoded hexes.
+ */
+
 import React, { useEffect, useState } from "react";
 import {
   Loader2,
@@ -19,6 +35,33 @@ import type {
   LKPMValidationAlert,
 } from "@/lib/api/portal/portal.types";
 import { formatIDR } from "@balizero/core/utils";
+
+// Day card surface (GARUDA Day concept .panel): white card on warm paper,
+// hairline warm border, soft navy shadow (near-invisible on dark).
+const DETAIL_CARD_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+  backdropFilter: "blur(24px)",
+} as const;
+
+/** State-tinted panel: 8% tint bg + 30% tint border of the state token. */
+function statePanelStyle(token: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, var(${token}) 8%, transparent)`,
+    borderColor: `color-mix(in srgb, var(${token}) 30%, transparent)`,
+  };
+}
+
+/** Status chip: 12% tint bg of the state token + state-token fg (AA-verified
+ *  state fg on near-paper tints); copper chip gets a hairline border instead
+ *  (12% copper tint fails AA both themes). */
+function statusChipStyle(token: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, var(${token}) 12%, transparent)`,
+    color: `var(${token})`,
+  };
+}
 
 export default function LKPMReviewPage() {
   const params = useParams();
@@ -98,8 +141,8 @@ export default function LKPMReviewPage() {
         <div
           className="rounded-xl border p-6 space-y-3 animate-pulse"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div
@@ -118,8 +161,8 @@ export default function LKPMReviewPage() {
         <div
           className="rounded-xl border p-6 space-y-4 animate-pulse"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <div
@@ -176,7 +219,7 @@ export default function LKPMReviewPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
+      {/* Header — day masthead: copper rule + Cormorant serif in --tx-pure */}
       <section className="flex items-center gap-3">
         <Link href="/portal/lkpm">
           <ArrowLeft
@@ -185,10 +228,17 @@ export default function LKPMReviewPage() {
           />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
+          <div
+            aria-hidden="true"
+            className="w-14 h-[3px] rounded-sm mb-3 bg-[var(--bz-copper)]"
+          />
+          <h1
+            className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
             {quarter} {year} — LKPM Draft
           </h1>
-          <p style={{ color: "var(--bz-text-2)" }}>
+          <p className="text-sm mt-1" style={{ color: "var(--bz-text-2)" }}>
             Review your data before approval
           </p>
         </div>
@@ -210,11 +260,7 @@ export default function LKPMReviewPage() {
       {/* Investment Realization Table */}
       <section
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
+        style={DETAIL_CARD_STYLE}
       >
         <h2 className="text-lg font-semibold">Investment Realization</h2>
         <div className="overflow-x-auto">
@@ -286,19 +332,12 @@ export default function LKPMReviewPage() {
       </section>
 
       {/* Employment */}
-      <section
-        className="rounded-xl border p-6"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
-      >
+      <section className="rounded-xl border p-6" style={DETAIL_CARD_STYLE}>
         <h2 className="text-lg font-semibold mb-4">Employment</h2>
         <div className="grid grid-cols-3 gap-4">
           <div
             className="p-4 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               TKI (Indonesian)
@@ -307,7 +346,7 @@ export default function LKPMReviewPage() {
           </div>
           <div
             className="p-4 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               TKA (Foreign)
@@ -316,7 +355,7 @@ export default function LKPMReviewPage() {
           </div>
           <div
             className="p-4 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total
@@ -330,16 +369,15 @@ export default function LKPMReviewPage() {
       {greenAlerts.length > 0 && (
         <section
           className="rounded-xl border p-6 space-y-2"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={DETAIL_CARD_STYLE}
         >
           <h2 className="text-lg font-semibold mb-2">Validation Passed</h2>
           {greenAlerts.map((alert, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
-              <CheckCircle className="w-4 h-4" style={{ color: "#34d399" }} />
+              <CheckCircle
+                className="w-4 h-4"
+                style={{ color: "var(--state-success)" }}
+              />
               <span>{alert.message}</span>
             </div>
           ))}
@@ -352,8 +390,13 @@ export default function LKPMReviewPage() {
           <button
             onClick={handleApprove}
             disabled={isApproving || redAlerts.length > 0}
-            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50"
-            style={{ background: "var(--bz-accent-warm)" }}
+            className="px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+            style={{
+              background: "var(--bz-accent-warm)",
+              // --bz-on-warm: white on daylight gold (4.86:1), near-black on
+              // dark sand (8.43:1) — AA in both themes (slice 6 token).
+              color: "var(--bz-on-warm)",
+            }}
           >
             {isApproving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -368,14 +411,17 @@ export default function LKPMReviewPage() {
       {draft.status === "approved" && (
         <section
           className="rounded-lg border p-4"
-          style={{
-            background: "rgba(16,185,129,0.06)",
-            borderColor: "rgba(16,185,129,0.25)",
-          }}
+          style={statePanelStyle("--state-success")}
         >
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5" style={{ color: "#34d399" }} />
-            <p className="text-sm font-medium" style={{ color: "#34d399" }}>
+            <CheckCircle
+              className="w-5 h-5"
+              style={{ color: "var(--state-success)" }}
+            />
+            <p
+              className="text-sm font-medium"
+              style={{ color: "var(--state-success)" }}
+            >
               This report has been approved. Your team will submit it to OSS.
             </p>
           </div>
@@ -385,14 +431,17 @@ export default function LKPMReviewPage() {
       {draft.status === "submitted" && (
         <section
           className="rounded-lg border p-4"
-          style={{
-            background: "rgba(16,185,129,0.06)",
-            borderColor: "rgba(16,185,129,0.25)",
-          }}
+          style={statePanelStyle("--state-success")}
         >
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5" style={{ color: "#34d399" }} />
-            <p className="text-sm font-medium" style={{ color: "#34d399" }}>
+            <CheckCircle
+              className="w-5 h-5"
+              style={{ color: "var(--state-success)" }}
+            />
+            <p
+              className="text-sm font-medium"
+              style={{ color: "var(--state-success)" }}
+            >
               This report has been submitted to OSS.
             </p>
           </div>
@@ -403,31 +452,40 @@ export default function LKPMReviewPage() {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // Semantic state mapping (WS3 slice 8): statuses read the AA-verified
+  // --state-* tokens as 12% self-tint chips; client_review keeps a distinct
+  // copper chip — 12% copper tint fails AA in both themes, so it reads
+  // --bz-copper-text on a hairline copper border (small-copper-chip pattern).
   const config: Record<string, { label: string; style: React.CSSProperties }> =
     {
-      draft: {
-        label: "Draft",
-        style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-      },
+      draft: { label: "Draft", style: statusChipStyle("--state-warning") },
       validated: {
         label: "Validated",
-        style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
+        style: statusChipStyle("--state-info"),
       },
       client_review: {
         label: "Client Review",
-        style: { background: "rgba(168,85,247,0.12)", color: "#a78bfa" },
+        style: {
+          background: "transparent",
+          border:
+            "1px solid color-mix(in srgb, var(--bz-copper) 45%, transparent)",
+          color: "var(--bz-copper-text, var(--tx-secondary))",
+        },
       },
       approved: {
         label: "Approved",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+        style: statusChipStyle("--state-success"),
       },
       submitted: {
         label: "Submitted",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+        style: statusChipStyle("--state-success"),
       },
       archived: {
         label: "Archived",
-        style: { background: "rgba(107,114,128,0.12)", color: "#9ca3af" },
+        style: {
+          background: "var(--glass-rim)",
+          color: "var(--bz-text-2)",
+        },
       },
     };
 
@@ -450,21 +508,28 @@ function AlertCard({ alert }: { alert: LKPMValidationAlert }) {
       style={
         isRed
           ? {
-              background: "rgba(239,68,68,0.08)",
-              borderColor: "rgba(239,68,68,0.3)",
+              background:
+                "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+              borderColor:
+                "color-mix(in srgb, var(--state-danger) 30%, transparent)",
             }
           : {
-              background: "rgba(245,158,11,0.08)",
-              borderColor: "rgba(245,158,11,0.3)",
+              background:
+                "color-mix(in srgb, var(--state-warning) 8%, transparent)",
+              borderColor:
+                "color-mix(in srgb, var(--state-warning) 30%, transparent)",
             }
       }
     >
       {isRed ? (
-        <AlertCircle className="w-4 h-4 mt-0.5" style={{ color: "#f87171" }} />
+        <AlertCircle
+          className="w-4 h-4 mt-0.5"
+          style={{ color: "var(--state-danger)" }}
+        />
       ) : (
         <AlertTriangle
           className="w-4 h-4 mt-0.5"
-          style={{ color: "#fbbf24" }}
+          style={{ color: "var(--state-warning)" }}
         />
       )}
       <div>
