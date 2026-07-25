@@ -88,6 +88,22 @@ TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash
 _QUOTA_ALERT_DEDUP_KEY = "gemini_quota_exhausted"
 
 
+def _is_429_signal(value: object) -> bool:
+    """True if `value` plausibly encodes an HTTP 429, whether the SDK/
+    exception put it there as an int or as a str, on whichever attribute
+    it chose (`.code` or `.status` both observed in the wild — see
+    `_classify_quota_exhaustion`). `bool` is excluded even though it's an
+    `int` subclass in Python (never a meaningful 429 signal).
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value == 429
+    if isinstance(value, str):
+        return value.strip() == "429"
+    return False
+
+
 def _classify_quota_exhaustion(exc: Exception) -> str | None:
     """Return a quota-exhaustion subtype if `exc` represents a Gemini
     429/RESOURCE_EXHAUSTED failure, else None (not a quota error at all).
@@ -96,8 +112,13 @@ def _classify_quota_exhaustion(exc: Exception) -> str | None:
     `google.genai.errors.ClientError` (a subclass of `APIError`) for 4xx
     responses, exposing `.code` (int HTTP status) and `.status` (the API's
     error status string, e.g. "RESOURCE_EXHAUSTED") — verified live against
-    the installed google-genai==2.7.0. `code == 429` alone is sufficient:
-    HTTP 429 has no other meaning for this API. The legacy
+    the installed google-genai==2.7.0. A 429 signal alone is sufficient:
+    HTTP 429 has no other meaning for this API. Some code paths have been
+    observed carrying the 429 as a string (`code = "429"`) or the status as
+    an int, so both attributes are checked for either representation
+    (`_is_429_signal`) rather than assuming the SDK's exact int/str
+    convention — a narrower check silently skips the alert on those shapes,
+    during the exact outage this guard exists to catch. The legacy
     `google.api_core.exceptions.ResourceExhausted` class (already imported/
     caught elsewhere in this file's fallback cascade) is matched too, for
     defense-in-depth against any code path still raising it.
@@ -105,12 +126,19 @@ def _classify_quota_exhaustion(exc: Exception) -> str | None:
     The exception message is used ONLY as a secondary signal, to pick a
     human-readable subtype for the alert text (balance depletion vs a
     transient per-minute rate limit) — never to decide whether to alert at
-    all.
+    all. Rate-limit phrasing is checked BEFORE balance phrasing: a
+    transient 429 can mention "credit" in passing (e.g. a billing-quota
+    footnote), but "rate limit"/"per minute" is the more specific signal
+    that this is self-clearing, not a depleted prepay balance — matching on
+    the wrong order previously raised a false CRITICAL "top up the prepay
+    balance" alert for an ordinary rate-limit blip (cicatrix family #3,
+    guard over-match).
     """
     code = getattr(exc, "code", None)
     status = getattr(exc, "status", None)
     is_quota_error = (
-        code == 429
+        _is_429_signal(code)
+        or _is_429_signal(status)
         or (isinstance(status, str) and status.upper() == "RESOURCE_EXHAUSTED")
         or isinstance(exc, ResourceExhausted)
     )
@@ -118,10 +146,10 @@ def _classify_quota_exhaustion(exc: Exception) -> str | None:
         return None
 
     message = str(getattr(exc, "message", None) or exc).lower()
-    if any(hint in message for hint in ("prepay", "balance", "credit")):
-        return "balance_depleted"
     if any(hint in message for hint in ("per minute", "per-minute", "rate limit", "rate_limit")):
         return "rate_limited"
+    if any(hint in message for hint in ("prepay", "balance", "credit")):
+        return "balance_depleted"
     return "quota_exhausted"
 
 
@@ -134,11 +162,11 @@ async def _alert_quota_exhausted(model_name: str, exc: Exception) -> None:
     and the derived subtype — never the user's query text, phone number, or
     any client data (UU PDP hard boundary).
     """
-    subtype = _classify_quota_exhaustion(exc)
-    if subtype is None:
-        return
-
     try:
+        subtype = _classify_quota_exhaustion(exc)
+        if subtype is None:
+            return
+
         from backend.services.monitoring.alert_service import AlertLevel, get_alert_service
 
         subtype_text = {

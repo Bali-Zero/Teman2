@@ -36,7 +36,24 @@ from google.api_core.exceptions import ResourceExhausted
 from google.genai.errors import ClientError, ServerError
 
 from backend.services.monitoring.alert_service import AlertLevel
-from backend.services.rag.agentic.llm_gateway import LLMGateway
+from backend.services.rag.agentic.llm_gateway import (
+    LLMGateway,
+    _alert_quota_exhausted,
+    _classify_quota_exhaustion,
+)
+
+
+class _FakeQuotaError(Exception):
+    """Minimal stand-in for an exception whose `.code`/`.status` shape
+    doesn't match the google-genai SDK's exact int/str convention —
+    used to pin defect-2 (widened 429 detection) without depending on
+    ClientError's internals."""
+
+    def __init__(self, message: str, code: object = None, status: object = None):
+        super().__init__(message)
+        self.message = message
+        self.code = code
+        self.status = status
 
 
 def _make_fake_response(prompt_tokens: int = 42, completion_tokens: int = 7) -> SimpleNamespace:
@@ -346,3 +363,95 @@ class TestQuotaExhaustionAlertsInnocence:
                     )
 
         mock_send_telegram.assert_awaited_once()
+
+
+# ============================================================================
+# Defect 1 — subtype ordering: rate-limit phrasing beats a stray "credit"
+# mention. Family #3 (guard over-match): a transient 429 that happens to
+# mention billing must NOT raise a false CRITICAL "top up the prepay
+# balance" alert.
+# ============================================================================
+
+
+class TestQuotaSubtypeOrdering:
+    def test_message_with_both_rate_limit_and_credit_hints_classifies_rate_limited(self):
+        """INNOCENCE pin: 'credit' alone used to win regardless of position,
+        so a message containing BOTH families of hint must resolve to the
+        more specific, self-clearing signal — never balance_depleted."""
+        exc = _make_client_error(
+            message="Rate limit exceeded for requests per minute; check billing credit limit",
+        )
+        assert _classify_quota_exhaustion(exc) == "rate_limited"
+
+    def test_real_2026_07_22_incident_shape_still_classifies_balance_depleted(self):
+        """GUILT pin: the shape that actually paged nobody must still
+        resolve to balance_depleted now that rate-limit hints are checked
+        first — it contains no rate-limit phrasing at all."""
+        exc = _make_client_error(message="prepayment credits are depleted")
+        assert _classify_quota_exhaustion(exc) == "balance_depleted"
+
+
+# ============================================================================
+# Defect 2 — widened 429 detection: the signal can land as an int or a str,
+# on either `.code` or `.status`. A narrower check silently skips the alert
+# on these shapes, during the exact outage this guard exists to catch.
+# ============================================================================
+
+
+class TestQuotaDetectionWidened:
+    @pytest.mark.asyncio
+    async def test_integer_status_429_without_code_attribute_alerts(
+        self, mock_alert_service,
+    ):
+        exc = _FakeQuotaError("odd shape", status=429)
+        await _alert_quota_exhausted("gemini-3-flash", exc)
+        mock_alert_service.send_alert.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_string_code_429_alerts(self, mock_alert_service):
+        exc = _FakeQuotaError("odd shape", code="429")
+        await _alert_quota_exhausted("gemini-3-flash", exc)
+        mock_alert_service.send_alert.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_non_quota_500_error_does_not_alert(self, mock_alert_service):
+        """INNOCENCE pin: widening 429 detection must not sweep in an
+        unrelated 5xx server error."""
+        exc = _FakeQuotaError("server error", status=500)
+        await _alert_quota_exhausted("gemini-3-flash", exc)
+        mock_alert_service.send_alert.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_non_quota_400_invalid_argument_does_not_alert(
+        self, mock_alert_service,
+    ):
+        exc = _FakeQuotaError("bad request", code=400, status="INVALID_ARGUMENT")
+        await _alert_quota_exhausted("gemini-3-flash", exc)
+        mock_alert_service.send_alert.assert_not_awaited()
+
+
+# ============================================================================
+# Defect 3 — classification runs INSIDE the guarded region: if it raises,
+# the docstring's "never raises" promise must hold, and the caller's
+# original exception must remain what propagates.
+# ============================================================================
+
+
+class TestClassificationFailureIsSwallowed:
+    @pytest.mark.asyncio
+    async def test_classification_raising_is_swallowed_not_propagated(
+        self, mock_alert_service,
+    ):
+        class _Pathological(Exception):
+            code = 429  # trips is_quota_error before message-text classification
+
+            def __str__(self):  # noqa: D105 - deliberately pathological
+                raise RuntimeError("boom in __str__")
+
+        exc = _Pathological()
+        with pytest.raises(RuntimeError):
+            str(exc)  # sanity: confirm __str__ really raises before relying on it
+        # Must not raise: _alert_quota_exhausted's whole body — including the
+        # _classify_quota_exhaustion() call — is the guarded region.
+        await _alert_quota_exhausted("gemini-3-flash", exc)
+        mock_alert_service.send_alert.assert_not_awaited()
