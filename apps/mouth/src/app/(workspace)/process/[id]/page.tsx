@@ -33,45 +33,55 @@ import {
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
+import {
+  COLUMN_COLORS,
+  getStatusColumn,
+} from "@/components/process/kanban-colors";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { initialsOf } from "@/data/team-roster";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
-// Status mapping for display — use static classes for Tailwind JIT compatibility
-const STATUS_INFO: Record<
-  string,
-  { label: string; badgeClass: string; icon: React.ReactNode }
-> = {
+// Status badge styling — WS2 (GARUDA OS): reuses the canonical kanban column
+// palette (kanban-colors.ts) so the detail page can never drift from the
+// board. "cancelled" is outside the 5-step workflow and reads --state-danger.
+const statusBadgeStyle = (status: string): React.CSSProperties => {
+  if (status === "cancelled") {
+    return {
+      background: "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+      color: "var(--state-danger)",
+    };
+  }
+  const colors = COLUMN_COLORS[getStatusColumn(status)];
+  return { background: colors.badgeBg, color: colors.textColor };
+};
+
+// Status mapping for display — icons per status; colors come from
+// statusBadgeStyle (kanban palette) instead of per-page Tailwind steps.
+const STATUS_INFO: Record<string, { label: string; icon: React.ReactNode }> = {
   inquiry: {
     label: "Inquiry",
-    badgeClass: "bg-blue-500/10 text-blue-500",
     icon: <AlertCircle className="w-4 h-4" />,
   },
   waiting_documents: {
     label: "Waiting Documents",
-    badgeClass: "bg-amber-500/10 text-amber-500",
     icon: <FileText className="w-4 h-4" />,
   },
   sending_invoice: {
     label: "Sending Invoice",
-    badgeClass: "bg-orange-500/10 text-orange-500",
     icon: <DollarSign className="w-4 h-4" />,
   },
   on_process: {
     label: "On Process",
-    badgeClass: "bg-purple-500/10 text-purple-500",
     icon: <Clock className="w-4 h-4" />,
   },
   completed: {
     label: "Completed",
-    badgeClass: "bg-green-500/10 text-green-500",
     icon: <CheckCircle2 className="w-4 h-4" />,
   },
   cancelled: {
     label: "Cancelled",
-    badgeClass: "bg-red-500/10 text-red-500",
     icon: <XCircle className="w-4 h-4" />,
   },
 };
@@ -253,11 +263,6 @@ export default function CaseDetailPage() {
       month: "long",
       day: "numeric",
     });
-  };
-
-  const formatCurrency = (amount?: number) => {
-    if (amount === undefined || amount === null) return "Not set";
-    return formatIDR(amount);
   };
 
   const saveNotes = async () => {
@@ -618,7 +623,7 @@ export default function CaseDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="w-16 h-16 text-[var(--state-danger)] mx-auto mb-4" />
           <h2
             className="text-2xl font-bold mb-2"
             style={{ color: "var(--bz-text-1)" }}
@@ -640,9 +645,9 @@ export default function CaseDetailPage() {
 
   const statusInfo = STATUS_INFO[practice.status] || {
     label: practice.status,
-    badgeClass: "bg-gray-500/10 text-gray-400",
     icon: <FileText className="w-4 h-4" />,
   };
+  const statusStyle = statusBadgeStyle(practice.status);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -703,7 +708,8 @@ export default function CaseDetailPage() {
                 #{practice.id}
               </h1>
               <div
-                className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.badgeClass}`}
+                className="flex items-center gap-2 px-3 py-1 rounded-full"
+                style={statusStyle}
               >
                 {statusInfo.icon}
                 <span className="text-sm font-medium">{statusInfo.label}</span>
@@ -734,14 +740,14 @@ export default function CaseDetailPage() {
                     className="text-[10px] px-2 py-1 rounded-full font-medium"
                     style={{
                       background: isVeryStale
-                        ? "rgba(239,68,68,0.15)"
+                        ? "color-mix(in srgb, var(--state-danger) 15%, transparent)"
                         : isStale
-                          ? "rgba(245,158,11,0.15)"
-                          : "rgba(255,255,255,0.06)",
+                          ? "color-mix(in srgb, var(--state-warning) 15%, transparent)"
+                          : "var(--surface-raised)",
                       color: isVeryStale
-                        ? "#f87171"
+                        ? "var(--state-danger)"
                         : isStale
-                          ? "#fbbf24"
+                          ? "var(--state-warning)"
                           : "var(--bz-text-2)",
                     }}
                     title={`In current status for ${ageDays} days`}
@@ -767,22 +773,22 @@ export default function CaseDetailPage() {
                 style={{
                   background:
                     practice.payment_status === "paid"
-                      ? "rgba(34,197,94,0.12)"
+                      ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
                       : practice.payment_status === "partial"
-                        ? "rgba(245,158,11,0.12)"
-                        : "rgba(239,68,68,0.12)",
+                        ? "color-mix(in srgb, var(--state-warning) 12%, transparent)"
+                        : "color-mix(in srgb, var(--state-danger) 12%, transparent)",
                   color:
                     practice.payment_status === "paid"
-                      ? "#4ade80"
+                      ? "var(--state-success)"
                       : practice.payment_status === "partial"
-                        ? "#fbbf24"
-                        : "#f87171",
+                        ? "var(--state-warning)"
+                        : "var(--state-danger)",
                   border:
                     practice.payment_status === "paid"
-                      ? "1px solid rgba(34,197,94,0.25)"
+                      ? "1px solid color-mix(in srgb, var(--state-success) 25%, transparent)"
                       : practice.payment_status === "partial"
-                        ? "1px solid rgba(245,158,11,0.25)"
-                        : "1px solid rgba(239,68,68,0.25)",
+                        ? "1px solid color-mix(in srgb, var(--state-warning) 25%, transparent)"
+                        : "1px solid color-mix(in srgb, var(--state-danger) 25%, transparent)",
                 }}
               >
                 {isUpdatingPayment ? (
@@ -793,10 +799,10 @@ export default function CaseDetailPage() {
                     style={{
                       background:
                         practice.payment_status === "paid"
-                          ? "#4ade80"
+                          ? "var(--state-success)"
                           : practice.payment_status === "partial"
-                            ? "#fbbf24"
-                            : "#f87171",
+                            ? "var(--state-warning)"
+                            : "var(--state-danger)",
                     }}
                   />
                 )}
@@ -809,9 +815,10 @@ export default function CaseDetailPage() {
               <div
                 className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg tabular-nums"
                 style={{
-                  background: "rgba(99,102,241,0.10)",
-                  color: "#818cf8",
-                  border: "1px solid rgba(99,102,241,0.20)",
+                  background: "var(--bz-accent-subtle)",
+                  color: "var(--bz-accent)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--bz-accent) 20%, transparent)",
                 }}
                 title={
                   practice.actual_price
@@ -820,7 +827,9 @@ export default function CaseDetailPage() {
                 }
               >
                 <DollarSign className="w-3.5 h-3.5" />
-                {formatCurrency(practice.actual_price ?? practice.quoted_price)}
+                <Money
+                  value={practice.actual_price ?? practice.quoted_price ?? 0}
+                />
                 {!practice.actual_price && (
                   <span className="opacity-60 font-normal ml-0.5">est</span>
                 )}
@@ -867,7 +876,7 @@ export default function CaseDetailPage() {
                         setShowMoreMenu(false);
                       }}
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+                      <MessageCircle className="w-3.5 h-3.5 text-[var(--accent-whatsapp)]" />
                       WhatsApp client
                     </button>
                   )}
@@ -882,7 +891,7 @@ export default function CaseDetailPage() {
                         setShowMoreMenu(false);
                       }}
                     >
-                      <Mail className="w-3.5 h-3.5 text-blue-400" />
+                      <Mail className="w-3.5 h-3.5 text-[var(--state-info)]" />
                       Email client
                     </button>
                   )}
@@ -900,7 +909,7 @@ export default function CaseDetailPage() {
                   )}
                   <div className="my-1 border-t border-[var(--bz-border)]" />
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] transition-colors"
                     onClick={async () => {
                       setShowMoreMenu(false);
                       if (!caseId) return;
@@ -933,14 +942,36 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
-      {/* Workflow Progress Stepper */}
+      {/* Workflow Progress Stepper — colors read the canonical kanban column
+          palette (kanban-colors.ts); filled steps carry dark ink on the pastel
+          fills (white on pastel would fail AA). */}
       {(() => {
         const STEPS = [
-          { key: "inquiry", label: "Inquiry", color: "#6b7280" },
-          { key: "waiting_documents", label: "Documents", color: "#f59e0b" },
-          { key: "sending_invoice", label: "Invoice", color: "#f97316" },
-          { key: "on_process", label: "Processing", color: "#6366f1" },
-          { key: "completed", label: "Done", color: "#22c55e" },
+          {
+            key: "inquiry",
+            label: "Inquiry",
+            color: COLUMN_COLORS.inquiry.textColor,
+          },
+          {
+            key: "waiting_documents",
+            label: "Documents",
+            color: COLUMN_COLORS.waiting_documents.textColor,
+          },
+          {
+            key: "sending_invoice",
+            label: "Invoice",
+            color: COLUMN_COLORS.sending_invoice.textColor,
+          },
+          {
+            key: "on_process",
+            label: "Processing",
+            color: COLUMN_COLORS.on_process.textColor,
+          },
+          {
+            key: "completed",
+            label: "Done",
+            color: COLUMN_COLORS.completed.textColor,
+          },
         ];
         const currentIdx = STEPS.findIndex((s) => {
           if (practice.status === s.key) return true;
@@ -981,16 +1012,19 @@ export default function CaseDetailPage() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
                         isDone
-                          ? "text-white group-hover/step:opacity-80"
+                          ? "group-hover/step:opacity-80"
                           : isCurrent
-                            ? "text-white ring-2 ring-offset-2 ring-offset-[var(--bz-base)]"
-                            : "text-[var(--bz-text-2)] group-hover/step:text-white group-hover/step:opacity-70"
+                            ? ""
+                            : "text-[var(--bz-text-2)] group-hover/step:opacity-70"
                       }`}
                       style={{
                         background:
                           isDone || isCurrent
                             ? step.color
                             : "rgba(255,255,255,0.06)",
+                        ...(isDone || isCurrent
+                          ? { color: "var(--bz-base)" }
+                          : {}),
                         ...(isCurrent
                           ? {
                               outline: `2px solid ${step.color}`,
@@ -1055,7 +1089,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(26,26,30,0.5)",
+              background: "rgba(35,35,40,0.65)",
             }}
           >
             <h2
@@ -1212,9 +1246,9 @@ export default function CaseDetailPage() {
                         <AvatarWithFallback
                           src={assignedAvatar}
                           alt={assignedName}
-                          className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
+                          className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--glass-highlight)]"
                           fallback={
-                            <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
+                            <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[var(--glass-highlight)] flex items-center justify-center">
                               <span className="text-[9px] font-bold uppercase text-[var(--bz-text-2)]">
                                 {initialsOf(assignedName)}
                               </span>
@@ -1239,7 +1273,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(26,26,30,0.5)",
+              background: "rgba(35,35,40,0.65)",
             }}
           >
             <h2
@@ -1259,7 +1293,8 @@ export default function CaseDetailPage() {
                   Status
                 </label>
                 <div
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.badgeClass}`}
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full"
+                  style={statusStyle}
                 >
                   {statusInfo.icon}
                   <span className="font-medium">{statusInfo.label}</span>
@@ -1280,10 +1315,10 @@ export default function CaseDetailPage() {
                   aria-label="Cycle priority"
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                     practice.priority === "urgent"
-                      ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                      ? "bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_25%,transparent)]"
                       : practice.priority === "high"
-                        ? "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25"
-                        : "bg-zinc-500/15 text-zinc-400 hover:bg-zinc-500/25"
+                        ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)] hover:bg-[color-mix(in_srgb,var(--state-warning)_25%,transparent)]"
+                        : "bg-[color-mix(in_srgb,var(--bz-text-2)_15%,transparent)] text-[var(--bz-text-2)] hover:bg-[color-mix(in_srgb,var(--bz-text-2)_25%,transparent)]"
                   }`}
                 >
                   {isUpdatingPriority ? (
@@ -1311,10 +1346,10 @@ export default function CaseDetailPage() {
                   aria-label="Cycle payment status"
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                     practice.payment_status === "paid"
-                      ? "bg-green-500/15 text-green-400 hover:bg-green-500/25"
+                      ? "bg-[color-mix(in_srgb,var(--state-success)_15%,transparent)] text-[var(--state-success)] hover:bg-[color-mix(in_srgb,var(--state-success)_25%,transparent)]"
                       : practice.payment_status === "partial"
-                        ? "bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25"
-                        : "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                        ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)] hover:bg-[color-mix(in_srgb,var(--state-warning)_25%,transparent)]"
+                        : "bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_25%,transparent)]"
                   }`}
                 >
                   {isUpdatingPayment ? (
@@ -1360,7 +1395,7 @@ export default function CaseDetailPage() {
                     ) : (
                       <button
                         onClick={() => savePrice("quoted_price")}
-                        className="text-xs text-green-400"
+                        className="text-xs text-[var(--state-success)]"
                       >
                         ✓
                       </button>
@@ -1377,7 +1412,11 @@ export default function CaseDetailPage() {
                     title="Click to edit"
                     aria-label="Edit quoted price"
                   >
-                    {formatCurrency(practice.quoted_price)}
+                    {practice.quoted_price != null ? (
+                      <Money value={practice.quoted_price} />
+                    ) : (
+                      "Not set"
+                    )}
                   </button>
                 )}
               </div>
@@ -1414,7 +1453,7 @@ export default function CaseDetailPage() {
                     ) : (
                       <button
                         onClick={() => savePrice("actual_price")}
-                        className="text-xs text-green-400"
+                        className="text-xs text-[var(--state-success)]"
                       >
                         ✓
                       </button>
@@ -1431,7 +1470,11 @@ export default function CaseDetailPage() {
                     title="Click to edit"
                     aria-label="Edit actual price"
                   >
-                    {formatCurrency(practice.actual_price)}
+                    {practice.actual_price != null ? (
+                      <Money value={practice.actual_price} />
+                    ) : (
+                      "Not set"
+                    )}
                   </button>
                 )}
               </div>
@@ -1467,9 +1510,12 @@ export default function CaseDetailPage() {
                         style={{
                           background:
                             ageDays > 180
-                              ? "rgba(239,68,68,0.08)"
-                              : "rgba(255,255,255,0.04)",
-                          color: ageDays > 180 ? "#f87171" : "var(--bz-text-2)",
+                              ? "color-mix(in srgb, var(--state-danger) 8%, transparent)"
+                              : "var(--surface-raised)",
+                          color:
+                            ageDays > 180
+                              ? "var(--state-danger)"
+                              : "var(--bz-text-2)",
                         }}
                         title={`${ageDays} days since created`}
                       >
@@ -1511,7 +1557,7 @@ export default function CaseDetailPage() {
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
                           style={{
-                            background: "rgba(255,255,255,0.04)",
+                            background: "var(--surface-raised)",
                             color: "var(--bz-text-2)",
                           }}
                         >
@@ -1554,8 +1600,9 @@ export default function CaseDetailPage() {
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
                           style={{
-                            background: "rgba(16,185,129,0.08)",
-                            color: "#34d399",
+                            background:
+                              "color-mix(in srgb, var(--state-success) 8%, transparent)",
+                            color: "var(--state-success)",
                           }}
                           title="Time since completion"
                           aria-label="Time since completion"
@@ -1583,9 +1630,9 @@ export default function CaseDetailPage() {
                     );
                     const color =
                       daysLeft < 0
-                        ? "#f87171"
+                        ? "var(--state-danger)"
                         : daysLeft <= 30
-                          ? "#fb923c"
+                          ? "var(--state-warning)"
                           : "var(--bz-text-1)";
                     const label =
                       daysLeft < 0
@@ -1614,7 +1661,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(26,26,30,0.5)",
+              background: "rgba(35,35,40,0.65)",
             }}
           >
             <div className="flex items-center justify-between mb-4">
@@ -1717,7 +1764,7 @@ export default function CaseDetailPage() {
             className="rounded-xl p-6"
             style={{
               border: "1px solid var(--bz-border)",
-              background: "rgba(26,26,30,0.5)",
+              background: "rgba(35,35,40,0.65)",
             }}
           >
             <h3
@@ -1799,7 +1846,7 @@ export default function CaseDetailPage() {
                 className="rounded-xl p-6"
                 style={{
                   border: "1px solid var(--bz-border)",
-                  background: "rgba(26,26,30,0.5)",
+                  background: "rgba(35,35,40,0.65)",
                 }}
               >
                 <h3
@@ -1841,7 +1888,7 @@ export default function CaseDetailPage() {
                             style={{
                               background: isCurrent
                                 ? "var(--bz-accent)"
-                                : "rgba(255,255,255,0.25)",
+                                : "var(--bz-text-3)",
                             }}
                           />
                           <span
@@ -1859,11 +1906,11 @@ export default function CaseDetailPage() {
                             style={{
                               background:
                                 durationDays > 14
-                                  ? "rgba(245,158,11,0.12)"
-                                  : "rgba(255,255,255,0.05)",
+                                  ? "color-mix(in srgb, var(--state-warning) 12%, transparent)"
+                                  : "var(--surface-raised)",
                               color:
                                 durationDays > 14
-                                  ? "#fbbf24"
+                                  ? "var(--state-warning)"
                                   : "var(--bz-text-2)",
                             }}
                             title={`Time in this status: ${durationLabel}\nEntered: ${formatDate(t.at)}`}
@@ -1980,23 +2027,29 @@ export default function CaseDetailPage() {
                       {
                         value: "normal",
                         label: "Normal",
-                        color: "text-zinc-400",
-                        activeBg: "rgba(113,113,122,0.2)",
-                        activeBorder: "rgba(113,113,122,0.4)",
+                        color: "var(--bz-text-2)",
+                        activeBg:
+                          "color-mix(in srgb, var(--bz-text-2) 20%, transparent)",
+                        activeBorder:
+                          "color-mix(in srgb, var(--bz-text-2) 40%, transparent)",
                       },
                       {
                         value: "high",
                         label: "↑ High",
-                        color: "text-orange-400",
-                        activeBg: "rgba(249,115,22,0.2)",
-                        activeBorder: "rgba(249,115,22,0.4)",
+                        color: "var(--state-warning)",
+                        activeBg:
+                          "color-mix(in srgb, var(--state-warning) 20%, transparent)",
+                        activeBorder:
+                          "color-mix(in srgb, var(--state-warning) 40%, transparent)",
                       },
                       {
                         value: "urgent",
                         label: "🔥 Urgent",
-                        color: "text-red-400",
-                        activeBg: "rgba(239,68,68,0.2)",
-                        activeBorder: "rgba(239,68,68,0.4)",
+                        color: "var(--state-danger)",
+                        activeBg:
+                          "color-mix(in srgb, var(--state-danger) 20%, transparent)",
+                        activeBorder:
+                          "color-mix(in srgb, var(--state-danger) 40%, transparent)",
                       },
                     ] as const
                   ).map((p) => (
@@ -2012,12 +2065,7 @@ export default function CaseDetailPage() {
                           ? {
                               background: p.activeBg,
                               border: `1px solid ${p.activeBorder}`,
-                              color:
-                                p.value === "normal"
-                                  ? "#a1a1aa"
-                                  : p.value === "high"
-                                    ? "#fb923c"
-                                    : "#f87171",
+                              color: p.color,
                             }
                           : {
                               background: "var(--bz-card)",

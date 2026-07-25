@@ -36,23 +36,26 @@ export default function UnnamedLeadsBanner() {
       href="/clients?unnamed=1"
       className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors"
       style={{
-        background: "rgba(212, 132, 90, 0.12)",
-        border: "1px solid rgba(212, 132, 90, 0.35)",
+        background: "color-mix(in srgb, var(--bz-accent) 12%, transparent)",
+        border:
+          "1px solid color-mix(in srgb, var(--bz-accent) 35%, transparent)",
       }}
     >
       <span
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-        style={{ background: "rgba(212, 132, 90, 0.22)" }}
+        style={{
+          background: "color-mix(in srgb, var(--bz-accent) 22%, transparent)",
+        }}
       >
-        <UserPlus className="h-4 w-4" style={{ color: "#d4845a" }} />
+        <UserPlus className="h-4 w-4" style={{ color: "var(--bz-accent)" }} />
       </span>
       <span className="text-sm">
-        <span className="font-semibold" style={{ color: "#d4845a" }}>
+        <span className="font-semibold" style={{ color: "var(--bz-accent)" }}>
           {count} {count === 1 ? "contact" : "contacts"} to name
         </span>
         <span className="ml-2 text-[var(--foreground-muted)]">
-          — new WhatsApp leads without a name. Name them so their documents
-          link automatically.
+          — new WhatsApp leads without a name. Name them so their documents link
+          automatically.
         </span>
       </span>
     </Link>

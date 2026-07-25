@@ -506,11 +506,22 @@ class CitationSlide(BaseModel):
 
 
 class CtaSlide(BaseModel):
-    """→ elegant-close. `invite` required content (the core call-to-action
-    line). See the DISCOVERED GAP note in to_composer_dict: NONE of this
-    family's top-level fields (trust_marker/reach/invite/…) are ever
-    substituted by composer._fill_placeholders today — verified by grep,
-    zero hits for all of them."""
+    """→ elegant-close. `invite` required content (the core call-to-action line).
+
+    STALE-CLAIM CORRECTED 2026-07-25. This docstring used to say "NONE of this
+    family's top-level fields (trust_marker/reach/invite/…) are ever substituted
+    by composer._fill_placeholders today — verified by grep, zero hits". That was
+    true when written and is FALSE now: PR #2958 (the W99 placeholder-sweep-gate
+    class-cure) made every RENDERABLE family fill its own tokens. Re-verified on
+    disk this session by substituting sentinels through the real compose pipeline:
+    invite / trust_marker / reach ALL render. Leaving the old note would have kept
+    scaring readers off a layout that works — and elegant-close is one of only two
+    families the planner/writer engine reaches beyond the legacy auto-routed four.
+
+    `trust_marker` and `reach` are LABEL fields: `_cap_subhead` hard-trims them to
+    _SUBHEAD_MAX_WORDS/_SUBHEAD_MAX_CHARS at a word boundary and silently discards
+    the rest, so the writer prompt MUST state that budget (it now does — see
+    wr2_planner_writer._SUBHEAD_CAP)."""
 
     model_config = ConfigDict(extra="ignore")
 

@@ -496,6 +496,48 @@ try_kimi() {
     return 0
 }
 
+codex_attempt() {
+    local codex_bin="$1"
+    local model="$2"
+    local label="tier4 codex"
+    local -a model_args
+    model_args=()
+    if [ -n "$model" ]; then
+        label="tier4 codex ($model)"
+        model_args=(-m "$model")
+    fi
+    local tmpout tmperr exit_code
+    new_temp_file
+    tmpout="$REPLY"
+    new_temp_file
+    tmperr="$REPLY"
+    echo "  [try] $label" >&2
+    build_isolated_provider_env
+    run_bounded "$tmpout" "$tmperr" "$label" \
+        "${ISOLATED_PROVIDER_ENV[@]}" \
+        "$codex_bin" exec "${model_args[@]}" --sandbox read-only --skip-git-repo-check "$PROMPT"
+    exit_code=$?
+    if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
+        echo "  [exhausted] $label quota" >&2
+        rm -f "$tmpout" "$tmperr"
+        return 98
+    fi
+    if [ "$exit_code" -ne 0 ]; then
+        echo "  [error] $label exit=$exit_code" >&2
+        rm -f "$tmpout" "$tmperr"
+        return "$exit_code"
+    fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] $label returned empty output" >&2
+        rm -f "$tmpout" "$tmperr"
+        return 97
+    fi
+    cat "$tmpout"
+    rm -f "$tmpout" "$tmperr"
+    echo "[claude-cascade] used: $label" >&2
+    return 0
+}
+
 try_codex() {
     local codex_bin="$HOME/.local/bin/codex"
     [ ! -x "$codex_bin" ] && codex_bin="/opt/homebrew/bin/codex"
@@ -504,36 +546,22 @@ try_codex() {
         echo "  [skip] tier4 codex — --agent=$AGENT requires Claude tier" >&2
         return 99
     fi
-    local tmpout tmperr exit_code
-    new_temp_file
-    tmpout="$REPLY"
-    new_temp_file
-    tmperr="$REPLY"
-    echo "  [try] tier4 codex" >&2
-    build_isolated_provider_env
-    run_bounded "$tmpout" "$tmperr" "tier4 codex" \
-        "${ISOLATED_PROVIDER_ENV[@]}" \
-        "$codex_bin" exec --sandbox read-only --skip-git-repo-check "$PROMPT"
-    exit_code=$?
-    if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
-        echo "  [exhausted] codex quota" >&2
-        rm -f "$tmpout" "$tmperr"
-        return 98
-    fi
-    if [ "$exit_code" -ne 0 ]; then
-        echo "  [error] codex exit=$exit_code" >&2
-        rm -f "$tmpout" "$tmperr"
-        return "$exit_code"
-    fi
-    if [ ! -s "$tmpout" ]; then
-        echo "  [error] codex returned empty output" >&2
-        rm -f "$tmpout" "$tmperr"
-        return 97
-    fi
-    cat "$tmpout"
-    rm -f "$tmpout" "$tmperr"
-    echo "[claude-cascade] used: tier4 codex" >&2
-    return 0
+
+    # First attempt uses the default model from ~/.codex/config.toml (gpt-5.6-sol).
+    codex_attempt "$codex_bin" ""
+    local rc=$?
+    [ "$rc" -ne 98 ] && return "$rc"
+
+    # gpt-5.3-codex-spark bills against a weekly bucket SEPARATE from the
+    # gpt-5.6-* family, so an exhausted primary says nothing about Spark's
+    # headroom — measured 2026-07-25 with sol at 1% and Spark at 100% on both
+    # ChatGPT Pro seats. Without this retry the cascade abandons a paid, full
+    # bucket and crosses the provider boundary for no reason.
+    # Kill switch: export CLAUDE_CASCADE_CODEX_SPARK_MODEL="" to disable.
+    local spark_model="${CLAUDE_CASCADE_CODEX_SPARK_MODEL-gpt-5.3-codex-spark}"
+    [ -z "$spark_model" ] && return 98
+    echo "  [retry] tier4 codex — primary bucket exhausted, trying $spark_model (separate weekly quota)" >&2
+    codex_attempt "$codex_bin" "$spark_model"
 }
 
 try_ollama() {

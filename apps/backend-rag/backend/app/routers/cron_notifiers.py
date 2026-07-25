@@ -284,18 +284,30 @@ async def run_e33_guarantee_scan(request: Request) -> dict[str, Any]:
 
     from backend.services.crm.e33_guarantee_scanner import (
         E33GuaranteeScanner,
-        is_scan_enabled,
+        ScanSwitchState,
+        resolve_scan_switch,
     )
 
-    if not await is_scan_enabled(db_pool):
+    switch = await resolve_scan_switch(db_pool)
+    if not switch.is_enabled:
+        # Both states block, but they are not the same event: an absent row
+        # means nobody ever armed the organ (it can sit dead indefinitely and
+        # look healthy), while an explicit non-"true" value is a recorded
+        # decision. Reporting them identically is what let this scanner ship
+        # un-armed and unnoticed — see the scanner module docstring.
+        unprovisioned = switch is ScanSwitchState.UNPROVISIONED
         logger.warning(
-            "E33 guarantee scan BLOCKED — awaiting owner approval "
-            "(set e33_guarantee_scan_enabled=true)"
+            "E33 guarantee scan BLOCKED — %s (switch '%s')",
+            "kill switch NEVER PROVISIONED" if unprovisioned else "explicitly disabled",
+            "e33_guarantee_scan_enabled",
         )
         return {
             "service": "e33_guarantee_scan",
             "status": "blocked",
-            "reason": "awaiting_owner_approval",
+            "switch_state": switch.value,
+            "reason": (
+                "switch_not_provisioned" if unprovisioned else "awaiting_owner_approval"
+            ),
         }
 
     scanner = E33GuaranteeScanner(db_pool)

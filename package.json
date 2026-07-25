@@ -150,6 +150,7 @@
     "dompurify": ">=3.4.0",
     "qs": ">=6.15.2",
     "brace-expansion": ">=5.0.8",
+    "valibot": ">=1.4.2",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "sharp": ">=0.35.3"
@@ -171,6 +172,7 @@
     "effect": ">=3.20.0",
     "handlebars": ">=4.7.9",
     "brace-expansion": ">=5.0.8",
+    "valibot": ">=1.4.2",
     "vite": ">=8.0.4",
     "follow-redirects": ">=1.16.0",
     "uuid": ">=14.0.0",
