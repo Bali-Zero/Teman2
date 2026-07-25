@@ -367,6 +367,28 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   `visa_decisions` (`RECOMMEND`/`SHADOW`, `long_tourism`, 32-byte fingerprint,
   `ruleset_activation_id` set). The collection window is accumulating from real traffic.
   GATE STATUS unchanged: 🔴 RED (volume/breadth = 1 row so far).
+- 2026-07-25 (M5, Kimi orchestrator, consolidation): **FINAL LEDGER of the two-day run.**
+  **12 PRs merged**: #3032 `8875b95a` (funnel v1 resurrected, live-smoked 201 + DB row),
+  #3033 `0185dc5c` (disclaimer all-5-states + PII-free submit-failure telemetry), #3038
+  `6e88b24b` (next-steps gated on SUPPORTED_CANDIDATES), #3046 `7f99e570` (mig 256
+  traffic_source + G-a-vol/breadth split), #3028 `8b5dffbd` (architect corpus + definitive
+  plan), #3060 `35da9284` (mig 257 business/diaspora categories), #3061 `726dbc93`
+  (**evaluate read-path API**), #3034 `dbb31e4d` (G-b metamorphic + canonical replay CLI),
+  #3079 `f43f04c1` (SHADOW arming runbook), #3092 `c33c183a` (12 W2 fact-bases), #3090
+  `3c412c96` (**first signed PRODUCTION RulePack** 38p/110r/28s, kid prod-2026-07-1),
+  #3101 `6893ea5d` (activate_pack ops CLI). **Production state**: endpoint live serving
+  real verdicts in SHADOW+CURATED; pack `446ee4ee` seq 1 ACTIVE (activation bb35cb81);
+  secrets staged: trust store (relabeled kids), EVALUATE_MODE=SHADOW, FINGERPRINT_KEYS,
+  DRIVER_TOKEN; roles: visa_activation_executor (NOLOGIN, grants on nuzantara_rag),
+  visa_activation_operator (LOGIN, custody M5); `visa_decisions` accumulating.
+  **Standing bugs fixed en route**: key-ceremony digit-start kids (errata + relabel),
+  detect-secrets pack-hash baseline (+ triage rule), docsync/inventory date-drift pattern,
+  prettier-3.8.4-vs-main skew (3 files, flagged for infra), `fly pg connect` wireguard
+  hang (use fly ssh console -C + sftp put --machine). **Open items**: D1/D2/D3 owner
+  decisions (pack in `research/visa/2026-07-23-d1-decision-pack.md`); W1c persona breadth
+  extension (after window data); Track C wiring 4a/4b (Pro, briefed); Track B FASE 2
+  (Mini, briefed); G-d drill + flip only at all-green. Seat status: codex CLI dead on M5,
+  GLM Keychain-only, Opus caps ~4-5h — graders fall back to Opus/Fable per Zero.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
