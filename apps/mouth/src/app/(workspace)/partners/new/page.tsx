@@ -2,13 +2,27 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, AlertTriangle, User, Mail, Phone, Briefcase, CreditCard, Building2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  AlertTriangle,
+  User,
+  Mail,
+  Phone,
+  Briefcase,
+  CreditCard,
+  Building2,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { CreatePartnerBody, TaxWithholdingCategory, EntityType } from "@/lib/api/partners/partners";
+import type {
+  CreatePartnerBody,
+  TaxWithholdingCategory,
+  EntityType,
+} from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
 // NB-2 guardrail: warn if work_role matches sponsor/guarantor patterns
@@ -41,7 +55,7 @@ interface FormState {
   bank_account_holder: string;
   tax_withholding_category: TaxWithholdingCategory;
   // CRIT-8: commission_tier removed — backend uses default_commission_type + default_commission_value
-  default_commission_type: 'percentage' | 'flat';
+  default_commission_type: "percentage" | "flat";
   default_commission_value: string;
   assigned_to: string;
   notes: string;
@@ -96,7 +110,13 @@ function SectionTab({
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1">
       <label className="block text-sm font-medium text-zinc-300">{label}</label>
@@ -160,7 +180,8 @@ export default function NewPartnerPage() {
     const errors: Record<string, string> = {};
     if (!form.full_name.trim()) errors.full_name = "Full name is required";
     if (!form.email.trim()) errors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "Invalid email address";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      errors.email = "Invalid email address";
     if (!form.pdp_consent) errors.pdp_consent = "PDP consent is required";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -205,9 +226,17 @@ export default function NewPartnerPage() {
       // CRIT-8: partner.id is a UUID string, no Number() conversion needed
       router.push(`/partners/${partner.id}`);
     } catch (err) {
-      logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
+      logger.error(
+        "Failed to create partner",
+        { component: "NewPartnerPage" },
+        err as Error,
+      );
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("409") || msg.toLowerCase().includes("conflict") || msg.toLowerCase().includes("already exists")) {
+      if (
+        msg.includes("409") ||
+        msg.toLowerCase().includes("conflict") ||
+        msg.toLowerCase().includes("already exists")
+      ) {
         toastError("A partner with this email already exists");
         setFieldErrors({ email: "Email already registered" });
         setActiveSection("profile");
@@ -224,7 +253,11 @@ export default function NewPartnerPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/partners">
-          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-zinc-400 hover:text-zinc-200"
+          >
             <ArrowLeft size={16} className="mr-1" />
             Back
           </Button>
@@ -237,9 +270,10 @@ export default function NewPartnerPage() {
         <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-sm">
           <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
           <div>
-            <strong>Warning:</strong> The work role appears to indicate a sponsor/guarantor position.
-            Please verify the partner{"'"}s role does not conflict with Indonesian immigration regulations
-            before proceeding.
+            <strong>Warning:</strong> The work role appears to indicate a
+            sponsor/guarantor position. Please verify the partner{"'"}s role
+            does not conflict with Indonesian immigration regulations before
+            proceeding.
           </div>
         </div>
       )}
@@ -247,8 +281,15 @@ export default function NewPartnerPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section Tabs */}
         <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
-          {(["profile", "fiscal", "payment", "commission"] as FormSection[]).map((s) => (
-            <SectionTab key={s} id={s} active={activeSection === s} onClick={() => setActiveSection(s)} />
+          {(
+            ["profile", "fiscal", "payment", "commission"] as FormSection[]
+          ).map((s) => (
+            <SectionTab
+              key={s}
+              id={s}
+              active={activeSection === s}
+              onClick={() => setActiveSection(s)}
+            />
           ))}
         </div>
 
@@ -258,7 +299,9 @@ export default function NewPartnerPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <User size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Profile</h2>
+                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                  Profile
+                </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Full Name *">
@@ -281,7 +324,9 @@ export default function NewPartnerPage() {
                 <FieldGroup label="Entity Type *">
                   <select
                     value={form.entity_type}
-                    onChange={(e) => setField("entity_type", e.target.value as EntityType)}
+                    onChange={(e) =>
+                      setField("entity_type", e.target.value as EntityType)
+                    }
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
                     <option value="individual">Individual</option>
@@ -335,7 +380,9 @@ export default function NewPartnerPage() {
                   >
                     <option value="">Unassigned</option>
                     {teamMemberOptions.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
                     ))}
                   </select>
                 </FieldGroup>
@@ -357,7 +404,9 @@ export default function NewPartnerPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <CreditCard size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Fiscal</h2>
+                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                  Fiscal
+                </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="NPWP (Tax ID)">
@@ -370,7 +419,12 @@ export default function NewPartnerPage() {
                 <FieldGroup label="Tax Withholding Category">
                   <select
                     value={form.tax_withholding_category}
-                    onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
+                    onChange={(e) =>
+                      setField(
+                        "tax_withholding_category",
+                        e.target.value as TaxWithholdingCategory,
+                      )
+                    }
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
                     {/* CRIT-8: aligned to backend TaxWithholdingCategory enum (pph21/pph23) */}
@@ -382,8 +436,9 @@ export default function NewPartnerPage() {
                 </FieldGroup>
               </div>
               <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-sm">
-                <strong>Note:</strong> Payouts are blocked when tax_withholding_category is &apos;tbd&apos;. Confirm
-                the partner{"'"}s tax status before approving commissions.
+                <strong>Note:</strong> Payouts are blocked when
+                tax_withholding_category is &apos;tbd&apos;. Confirm the partner
+                {"'"}s tax status before approving commissions.
               </div>
             </>
           )}
@@ -393,7 +448,9 @@ export default function NewPartnerPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <Building2 size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Payment</h2>
+                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                  Payment
+                </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Payment Method">
@@ -437,26 +494,43 @@ export default function NewPartnerPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <Briefcase size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Commission Policy</h2>
+                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                  Commission Policy
+                </h2>
               </div>
               {/* CRIT-8: commission_tier replaced by default_commission_type + default_commission_value */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Commission Type">
                   <select
                     value={form.default_commission_type}
-                    onChange={(e) => setField("default_commission_type", e.target.value as 'percentage' | 'flat')}
+                    onChange={(e) =>
+                      setField(
+                        "default_commission_type",
+                        e.target.value as "percentage" | "flat",
+                      )
+                    }
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="flat">Flat (IDR)</option>
                   </select>
                 </FieldGroup>
-                <FieldGroup label={form.default_commission_type === 'percentage' ? "Commission Rate (%)" : "Commission Amount (IDR)"}>
+                <FieldGroup
+                  label={
+                    form.default_commission_type === "percentage"
+                      ? "Commission Rate (%)"
+                      : "Commission Amount (IDR)"
+                  }
+                >
                   <Input
                     value={form.default_commission_value}
                     onChange={(v) => setField("default_commission_value", v)}
                     type="number"
-                    placeholder={form.default_commission_type === 'percentage' ? "e.g. 10" : "e.g. 500000"}
+                    placeholder={
+                      form.default_commission_type === "percentage"
+                        ? "e.g. 10"
+                        : "e.g. 500000"
+                    }
                   />
                 </FieldGroup>
               </div>
@@ -474,13 +548,18 @@ export default function NewPartnerPage() {
               className="mt-0.5 rounded border-zinc-600 text-amber-500"
             />
             <div>
-              <span className="text-sm text-zinc-200 font-medium">PDP Consent (UU No. 27/2022) *</span>
+              <span className="text-sm text-zinc-200 font-medium">
+                PDP Consent (UU No. 27/2022) *
+              </span>
               <p className="text-xs text-zinc-500 mt-0.5">
-                The partner has given explicit consent for their personal data to be processed for commission
-                tracking, payment processing, and related business purposes.
+                The partner has given explicit consent for their personal data
+                to be processed for commission tracking, payment processing, and
+                related business purposes.
               </p>
               {fieldErrors.pdp_consent && (
-                <p className="text-xs text-red-400 mt-1">{fieldErrors.pdp_consent}</p>
+                <p className="text-xs text-red-400 mt-1">
+                  {fieldErrors.pdp_consent}
+                </p>
               )}
             </div>
           </label>
@@ -489,7 +568,11 @@ export default function NewPartnerPage() {
         {/* Actions */}
         <div className="flex items-center justify-between">
           <Link href="/partners">
-            <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-zinc-700 text-zinc-300"
+            >
               Cancel
             </Button>
           </Link>
@@ -501,7 +584,12 @@ export default function NewPartnerPage() {
                 variant="outline"
                 className="border-zinc-700 text-zinc-300"
                 onClick={() => {
-                  const sections: FormSection[] = ["profile", "fiscal", "payment", "commission"];
+                  const sections: FormSection[] = [
+                    "profile",
+                    "fiscal",
+                    "payment",
+                    "commission",
+                  ];
                   const idx = sections.indexOf(activeSection);
                   if (idx > 0) setActiveSection(sections[idx - 1]);
                 }}
@@ -514,9 +602,15 @@ export default function NewPartnerPage() {
                 type="button"
                 className="bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
                 onClick={() => {
-                  const sections: FormSection[] = ["profile", "fiscal", "payment", "commission"];
+                  const sections: FormSection[] = [
+                    "profile",
+                    "fiscal",
+                    "payment",
+                    "commission",
+                  ];
                   const idx = sections.indexOf(activeSection);
-                  if (idx < sections.length - 1) setActiveSection(sections[idx + 1]);
+                  if (idx < sections.length - 1)
+                    setActiveSection(sections[idx + 1]);
                 }}
               >
                 Next

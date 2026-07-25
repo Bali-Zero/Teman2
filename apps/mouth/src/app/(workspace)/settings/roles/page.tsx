@@ -1,11 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Check, X, ArrowLeft, Users, Key, Eye, Edit, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import React, { useState, useEffect } from "react";
+import {
+  Shield,
+  Plus,
+  Check,
+  X,
+  ArrowLeft,
+  Users,
+  Key,
+  Eye,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface Permission {
   id: string;
@@ -24,52 +35,52 @@ interface Role {
 
 const allPermissions: Permission[] = [
   {
-    id: 'dashboard_view',
-    name: 'View Dashboard',
-    description: 'Access to dashboard',
+    id: "dashboard_view",
+    name: "View Dashboard",
+    description: "Access to dashboard",
   },
   {
-    id: 'chat_use',
-    name: 'Use Zantara AI',
-    description: 'Chat with AI assistant',
+    id: "chat_use",
+    name: "Use Zantara AI",
+    description: "Chat with AI assistant",
   },
-  { id: 'clients_view', name: 'View Clients', description: 'View client list' },
+  { id: "clients_view", name: "View Clients", description: "View client list" },
   {
-    id: 'clients_edit',
-    name: 'Edit Clients',
-    description: 'Create and modify clients',
+    id: "clients_edit",
+    name: "Edit Clients",
+    description: "Create and modify clients",
   },
-  { id: 'cases_view', name: 'View Cases', description: 'View case list' },
+  { id: "cases_view", name: "View Cases", description: "View case list" },
   {
-    id: 'cases_edit',
-    name: 'Edit Cases',
-    description: 'Create and modify cases',
-  },
-  {
-    id: 'knowledge_view',
-    name: 'View Knowledge',
-    description: 'Access knowledge base',
+    id: "cases_edit",
+    name: "Edit Cases",
+    description: "Create and modify cases",
   },
   {
-    id: 'knowledge_edit',
-    name: 'Edit Knowledge',
-    description: 'Add/edit knowledge documents',
-  },
-  { id: 'team_view', name: 'View Team', description: 'View team members' },
-  {
-    id: 'analytics_view',
-    name: 'View Analytics',
-    description: 'Access analytics dashboard',
+    id: "knowledge_view",
+    name: "View Knowledge",
+    description: "Access knowledge base",
   },
   {
-    id: 'settings_view',
-    name: 'View Settings',
-    description: 'Access settings',
+    id: "knowledge_edit",
+    name: "Edit Knowledge",
+    description: "Add/edit knowledge documents",
+  },
+  { id: "team_view", name: "View Team", description: "View team members" },
+  {
+    id: "analytics_view",
+    name: "View Analytics",
+    description: "Access analytics dashboard",
   },
   {
-    id: 'settings_admin',
-    name: 'Admin Settings',
-    description: 'Manage users, roles, integrations',
+    id: "settings_view",
+    name: "View Settings",
+    description: "Access settings",
+  },
+  {
+    id: "settings_admin",
+    name: "Admin Settings",
+    description: "Manage users, roles, integrations",
   },
 ];
 
@@ -79,43 +90,48 @@ export default function RolesPermissionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({
-    name: '',
-    description: '',
-    color: '#60A5FA',
+    name: "",
+    description: "",
+    color: "#60A5FA",
     permissions: [] as string[],
   });
 
   const [roles, setRoles] = useState<Role[]>([
     {
-      id: '1',
-      name: 'Admin',
-      description: 'Full system access',
-      color: '#A78BFA',
+      id: "1",
+      name: "Admin",
+      description: "Full system access",
+      color: "#A78BFA",
       userCount: 1,
       permissions: allPermissions.map((p) => p.id),
     },
     {
-      id: '2',
-      name: 'User',
-      description: 'Standard user access',
-      color: '#60A5FA',
+      id: "2",
+      name: "User",
+      description: "Standard user access",
+      color: "#60A5FA",
       userCount: 3,
       permissions: [
-        'dashboard_view',
-        'chat_use',
-        'clients_view',
-        'cases_view',
-        'knowledge_view',
-        'settings_view',
+        "dashboard_view",
+        "chat_use",
+        "clients_view",
+        "cases_view",
+        "knowledge_view",
+        "settings_view",
       ],
     },
     {
-      id: '3',
-      name: 'Viewer',
-      description: 'Read-only access',
-      color: '#34D399',
+      id: "3",
+      name: "Viewer",
+      description: "Read-only access",
+      color: "#34D399",
       userCount: 2,
-      permissions: ['dashboard_view', 'clients_view', 'cases_view', 'knowledge_view'],
+      permissions: [
+        "dashboard_view",
+        "clients_view",
+        "cases_view",
+        "knowledge_view",
+      ],
     },
   ]);
 
@@ -143,10 +159,14 @@ export default function RolesPermissionsPage() {
     if (editingRole) {
       setRoles(roles.map((r) => (r.id === editingRole.id ? editingRole : r)));
       setEditingRole(null);
-      toast.success('Role updated', { description: `"${editingRole.name}" has been updated.` });
+      toast.success("Role updated", {
+        description: `"${editingRole.name}" has been updated.`,
+      });
     } else {
       if (!newRole.name.trim()) {
-        toast.error('Missing name', { description: 'Please enter a role name.' });
+        toast.error("Missing name", {
+          description: "Please enter a role name.",
+        });
         return;
       }
       const role: Role = {
@@ -157,42 +177,46 @@ export default function RolesPermissionsPage() {
       setRoles([...roles, role]);
       setShowCreateModal(false);
       setNewRole({
-        name: '',
-        description: '',
-        color: '#60A5FA',
+        name: "",
+        description: "",
+        color: "#60A5FA",
         permissions: [],
       });
-      toast.success('Role created', { description: `"${role.name}" has been created.` });
+      toast.success("Role created", {
+        description: `"${role.name}" has been created.`,
+      });
     }
   };
 
   const deleteRole = (id: string) => {
-    toast('Delete this role?', {
+    toast("Delete this role?", {
       action: {
-        label: 'Delete',
+        label: "Delete",
         onClick: () => setRoles(roles.filter((r) => r.id !== id)),
       },
-      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
+      cancel: { label: "Cancel", onClick: () => toast.dismiss() },
     });
   };
 
-  const currentPermissions = editingRole ? editingRole.permissions : newRole.permissions;
+  const currentPermissions = editingRole
+    ? editingRole.permissions
+    : newRole.permissions;
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowCreateModal(false);
+      if (e.key === "Escape") setShowCreateModal(false);
     };
-    if (showCreateModal) document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    if (showCreateModal) document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [showCreateModal]);
 
   useEffect(() => {
     if (!api.isAuthenticated()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/chat');
+      router.push("/chat");
       return;
     }
     setIsAuthorized(true);
@@ -207,7 +231,11 @@ export default function RolesPermissionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/settings")}
+          >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
@@ -242,8 +270,12 @@ export default function RolesPermissionsPage() {
                   <Shield className="w-5 h-5" style={{ color: role.color }} />
                 </div>
                 <div>
-                  <h3 className="font-medium text-[var(--foreground)]">{role.name}</h3>
-                  <p className="text-xs text-[var(--foreground-muted)]">{role.description}</p>
+                  <h3 className="font-medium text-[var(--foreground)]">
+                    {role.name}
+                  </h3>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {role.description}
+                  </p>
                 </div>
               </div>
               <div className="flex gap-1">
@@ -253,7 +285,7 @@ export default function RolesPermissionsPage() {
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                {role.name !== 'Admin' && (
+                {role.name !== "Admin" && (
                   <button
                     onClick={() => deleteRole(role.id)}
                     className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
@@ -301,23 +333,33 @@ export default function RolesPermissionsPage() {
 
       {/* Permissions Matrix Info */}
       <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-        <h3 className="font-semibold text-[var(--foreground)] mb-2">Permission Categories</h3>
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">
+          Permission Categories
+        </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div className="flex items-center gap-2">
             <Eye className="w-4 h-4 text-blue-400" />
-            <span className="text-[var(--foreground-muted)]">View = Read access</span>
+            <span className="text-[var(--foreground-muted)]">
+              View = Read access
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Edit className="w-4 h-4 text-amber-400" />
-            <span className="text-[var(--foreground-muted)]">Edit = Write access</span>
+            <span className="text-[var(--foreground-muted)]">
+              Edit = Write access
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-purple-400" />
-            <span className="text-[var(--foreground-muted)]">Admin = Full control</span>
+            <span className="text-[var(--foreground-muted)]">
+              Admin = Full control
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Key className="w-4 h-4 text-green-400" />
-            <span className="text-[var(--foreground-muted)]">Use = Feature access</span>
+            <span className="text-[var(--foreground-muted)]">
+              Use = Feature access
+            </span>
           </div>
         </div>
       </div>
@@ -327,7 +369,7 @@ export default function RolesPermissionsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-              {editingRole ? 'Edit Role' : 'Create New Role'}
+              {editingRole ? "Edit Role" : "Create New Role"}
             </h2>
 
             <div className="space-y-4">
@@ -377,7 +419,9 @@ export default function RolesPermissionsPage() {
                 </label>
                 <input
                   type="text"
-                  value={editingRole ? editingRole.description : newRole.description}
+                  value={
+                    editingRole ? editingRole.description : newRole.description
+                  }
                   onChange={(e) =>
                     editingRole
                       ? setEditingRole({
@@ -404,22 +448,24 @@ export default function RolesPermissionsPage() {
                         onClick={() => togglePermission(perm.id)}
                         className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
                           isChecked
-                            ? 'border-[var(--accent)] bg-[var(--accent)]/10'
-                            : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
+                            ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                            : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]"
                         }`}
                       >
                         <div
                           className={`w-5 h-5 rounded flex items-center justify-center ${
                             isChecked
-                              ? 'bg-[var(--accent)]'
-                              : 'bg-[var(--background-secondary)] border border-[var(--border)]'
+                              ? "bg-[var(--accent)]"
+                              : "bg-[var(--background-secondary)] border border-[var(--border)]"
                           }`}
                         >
-                          {isChecked && <Check className="w-3 h-3 text-white" />}
+                          {isChecked && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
                         </div>
                         <div>
                           <p
-                            className={`text-sm font-medium ${isChecked ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                            className={`text-sm font-medium ${isChecked ? "text-[var(--accent)]" : "text-[var(--foreground)]"}`}
                           >
                             {perm.name}
                           </p>
@@ -444,7 +490,7 @@ export default function RolesPermissionsPage() {
                   Cancel
                 </Button>
                 <Button onClick={handleSaveRole}>
-                  {editingRole ? 'Save Changes' : 'Create Role'}
+                  {editingRole ? "Save Changes" : "Create Role"}
                 </Button>
               </div>
             </div>

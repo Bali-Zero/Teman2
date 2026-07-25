@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { SystemHealthReport } from '@/lib/api/admin/admin.types';
-import { ServiceHealthCard } from '@/components/admin/ServiceHealthCard';
-import { DbExplorer } from '@/components/admin/DbExplorer';
-import { VectorExplorer } from '@/components/admin/VectorExplorer';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { SystemHealthReport } from "@/lib/api/admin/admin.types";
+import { ServiceHealthCard } from "@/components/admin/ServiceHealthCard";
+import { DbExplorer } from "@/components/admin/DbExplorer";
+import { VectorExplorer } from "@/components/admin/VectorExplorer";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Activity,
   Database,
@@ -24,8 +24,8 @@ import {
   Zap,
   Code2,
   Terminal,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SystemDashboardPage() {
   const router = useRouter();
@@ -42,8 +42,8 @@ export default function SystemDashboardPage() {
       setReport(data);
       setLastUpdated(new Date());
     } catch (err) {
-      logger.error('Failed to fetch system health', {}, err as Error);
-      setError('System unreachable');
+      logger.error("Failed to fetch system health", {}, err as Error);
+      setError("System unreachable");
     } finally {
       setIsLoading(false);
     }
@@ -53,11 +53,11 @@ export default function SystemDashboardPage() {
     // admin-only surface: DbExplorer (Postgres browser) + VectorExplorer (Qdrant) —
     // backend admin/system routes aren't mounted yet, so this frontend gate is the only guard today
     if (!api.isAuthenticated()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/chat');
+      router.push("/chat");
       return;
     }
     setIsAuthorized(true);
@@ -97,11 +97,12 @@ export default function SystemDashboardPage() {
   // Helper to map check names to icons
   const getIconForCheck = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower.includes('database') || lower.includes('postgres')) return Database;
-    if (lower.includes('redis')) return Zap;
-    if (lower.includes('qdrant') || lower.includes('vector')) return Layers;
-    if (lower.includes('api')) return Server;
-    if (lower.includes('auth') || lower.includes('guard')) return Shield;
+    if (lower.includes("database") || lower.includes("postgres"))
+      return Database;
+    if (lower.includes("redis")) return Zap;
+    if (lower.includes("qdrant") || lower.includes("vector")) return Layers;
+    if (lower.includes("api")) return Server;
+    if (lower.includes("auth") || lower.includes("guard")) return Shield;
     return Activity;
   };
 
@@ -114,12 +115,16 @@ export default function SystemDashboardPage() {
             <Activity className="w-6 h-6" />
             SYSTEM CONTROL ROOM
           </h1>
-          <p className="text-xs text-green-500/60 mt-1">LIVE REMOTE TELEMETRY // FLY.IO</p>
+          <p className="text-xs text-green-500/60 mt-1">
+            LIVE REMOTE TELEMETRY // FLY.IO
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-xs text-green-500/60">LAST UPDATE</p>
-            <p className="text-sm font-bold text-green-500">{lastUpdated.toLocaleTimeString('en-US')}</p>
+            <p className="text-sm font-bold text-green-500">
+              {lastUpdated.toLocaleTimeString("en-US")}
+            </p>
           </div>
           <Button
             variant="outline"
@@ -231,7 +236,9 @@ export default function SystemDashboardPage() {
                   <div className="text-2xl font-bold text-green-400">
                     {(metrics.uptime / 3600).toFixed(1)}h
                   </div>
-                  <p className="text-xs text-green-500/40 mt-1">running smooth</p>
+                  <p className="text-xs text-green-500/40 mt-1">
+                    running smooth
+                  </p>
                 </CardContent>
               </Card>
             </div>

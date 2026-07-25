@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,28 +12,32 @@ import {
   Plus,
   Users,
   Calendar,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import * as hrApi from '@/lib/api/hr/hr';
-import { isHRAdmin } from '@/lib/hr/admin';
-import type { LeaveRequest, LeaveBalance, TeamLeaveSummaryRow } from '@/types/hr';
+} from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import * as hrApi from "@/lib/api/hr/hr";
+import { isHRAdmin } from "@/lib/hr/admin";
+import type {
+  LeaveRequest,
+  LeaveBalance,
+  TeamLeaveSummaryRow,
+} from "@/types/hr";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const statusIcons: Record<string, LucideIcon> = {
@@ -44,24 +48,26 @@ const statusIcons: Record<string, LucideIcon> = {
 };
 
 const statusColors: Record<string, string> = {
-  pending: 'text-amber-400',
-  approved: 'text-emerald-400',
-  rejected: 'text-red-400',
-  cancelled: 'text-zinc-500',
+  pending: "text-amber-400",
+  approved: "text-emerald-400",
+  rejected: "text-red-400",
+  cancelled: "text-zinc-500",
 };
 
 const statusBg: Record<string, string> = {
-  pending: 'bg-amber-500/10',
-  approved: 'bg-emerald-500/10',
-  rejected: 'bg-zinc-900',
-  cancelled: 'bg-zinc-900',
+  pending: "bg-amber-500/10",
+  approved: "bg-emerald-500/10",
+  rejected: "bg-zinc-900",
+  cancelled: "bg-zinc-900",
 };
 
 // ── Mini Calendar ─────────────────────────────────────────────────────────────
 
 function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
   const today = new Date();
-  const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [current, setCurrent] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -72,7 +78,7 @@ function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
   const dayMap = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const req of requests) {
-      if (req.status === 'rejected' || req.status === 'cancelled') continue;
+      if (req.status === "rejected" || req.status === "cancelled") continue;
       const start = new Date(req.start_date);
       const end = new Date(req.end_date);
       const cursor = new Date(start);
@@ -95,20 +101,20 @@ function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
   while (cells.length % 7 !== 0) cells.push(null);
 
   function cellKey(day: number) {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
 
   function dayClass(day: number): string {
     const key = cellKey(day);
     const statuses = dayMap[key] ?? [];
     const isToday = key === todayStr;
-    if (statuses.includes('approved'))
-      return 'bg-emerald-500/25 text-emerald-300 rounded-md font-semibold';
-    if (statuses.includes('pending'))
-      return 'bg-amber-500/20 text-amber-300 rounded-md font-semibold';
+    if (statuses.includes("approved"))
+      return "bg-emerald-500/25 text-emerald-300 rounded-md font-semibold";
+    if (statuses.includes("pending"))
+      return "bg-amber-500/20 text-amber-300 rounded-md font-semibold";
     if (isToday)
-      return 'bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] rounded-md font-bold ring-1 ring-[var(--bz-accent)]/40';
-    return 'text-zinc-400 hover:bg-zinc-800 rounded-md';
+      return "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] rounded-md font-bold ring-1 ring-[var(--bz-accent)]/40";
+    return "text-zinc-400 hover:bg-zinc-800 rounded-md";
   }
 
   return (
@@ -132,8 +138,11 @@ function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
       </div>
 
       <div className="grid grid-cols-7 mb-1">
-        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => (
-          <div key={d} className="text-center text-xs text-zinc-600 font-medium py-1">
+        {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+          <div
+            key={d}
+            className="text-center text-xs text-zinc-600 font-medium py-1"
+          >
             {d}
           </div>
         ))}
@@ -150,7 +159,7 @@ function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
             >
               {day}
             </div>
-          )
+          ),
         )}
       </div>
 
@@ -175,11 +184,16 @@ function MiniCalendar({ requests }: { requests: LeaveRequest[] }) {
 // ── Balance Cards ─────────────────────────────────────────────────────────────
 
 function BalanceCards({ balances }: { balances: LeaveBalance[] }) {
-  const annual = balances.find((b) => b.code === 'annual' || b.leave_type_name === 'Annual Leave');
+  const annual = balances.find(
+    (b) => b.code === "annual" || b.leave_type_name === "Annual Leave",
+  );
   if (!annual) return null;
 
   const remaining =
-    annual.allocated_days + (annual.carried_over ?? 0) - annual.used_days - annual.pending_days;
+    annual.allocated_days +
+    (annual.carried_over ?? 0) -
+    annual.used_days -
+    annual.pending_days;
   const pct =
     annual.allocated_days > 0
       ? Math.max(0, Math.round((remaining / annual.allocated_days) * 100))
@@ -189,22 +203,30 @@ function BalanceCards({ balances }: { balances: LeaveBalance[] }) {
     <div className="grid grid-cols-3 gap-3">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <div className="text-xs text-zinc-500 mb-1">Allocated</div>
-        <div className="text-2xl font-bold text-zinc-100">{annual.allocated_days}</div>
+        <div className="text-2xl font-bold text-zinc-100">
+          {annual.allocated_days}
+        </div>
         <div className="text-xs text-zinc-600 mt-0.5">days / year</div>
       </div>
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <div className="text-xs text-zinc-500 mb-1">Used</div>
         <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold text-zinc-300">{annual.used_days}</span>
+          <span className="text-2xl font-bold text-zinc-300">
+            {annual.used_days}
+          </span>
           {annual.pending_days > 0 && (
-            <span className="text-xs text-amber-400">+{annual.pending_days} pending</span>
+            <span className="text-xs text-amber-400">
+              +{annual.pending_days} pending
+            </span>
           )}
         </div>
         <div className="text-xs text-zinc-600 mt-0.5">days taken</div>
       </div>
       <div className="bg-zinc-900 border border-[var(--bz-accent)]/20 rounded-xl p-4">
         <div className="text-xs text-zinc-500 mb-1">Remaining</div>
-        <div className="text-2xl font-bold text-[var(--bz-accent)]">{remaining}</div>
+        <div className="text-2xl font-bold text-[var(--bz-accent)]">
+          {remaining}
+        </div>
         <div className="w-full bg-zinc-800 rounded-full h-1 mt-2">
           <div
             className="bg-[var(--bz-accent)] h-1 rounded-full transition-all duration-300"
@@ -241,16 +263,17 @@ function RequestRow({
 }) {
   const StatusIcon = statusIcons[req.status] ?? Clock;
 
-  const start = new Date(req.start_date).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
+  const start = new Date(req.start_date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
   });
-  const end = new Date(req.end_date).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+  const end = new Date(req.end_date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
-  const dateLabel = req.start_date === req.end_date ? start : `${start} → ${end}`;
+  const dateLabel =
+    req.start_date === req.end_date ? start : `${start} → ${end}`;
 
   return (
     <div>
@@ -258,17 +281,23 @@ function RequestRow({
         className={`border border-zinc-800 rounded-lg p-4 flex items-center justify-between ${statusBg[req.status]}`}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <StatusIcon size={17} className={`shrink-0 ${statusColors[req.status]}`} />
+          <StatusIcon
+            size={17}
+            className={`shrink-0 ${statusColors[req.status]}`}
+          />
           <div className="min-w-0">
             <div className="font-medium text-zinc-200 text-sm">
-              {req.leave_type_name} — {req.total_days} day{req.total_days > 1 ? 's' : ''}
+              {req.leave_type_name} — {req.total_days} day
+              {req.total_days > 1 ? "s" : ""}
             </div>
             <div className="text-xs text-zinc-500 mt-0.5">
               {isAdmin && req.employee_name && (
-                <span className="font-medium text-zinc-400 mr-1">{req.employee_name} ·</span>
+                <span className="font-medium text-zinc-400 mr-1">
+                  {req.employee_name} ·
+                </span>
               )}
               {dateLabel}
-              {req.reason ? ` · "${req.reason}"` : ''}
+              {req.reason ? ` · "${req.reason}"` : ""}
             </div>
           </div>
         </div>
@@ -279,7 +308,7 @@ function RequestRow({
           >
             {req.status}
           </span>
-          {isAdmin && req.status === 'pending' && (
+          {isAdmin && req.status === "pending" && (
             <>
               <button
                 onClick={() => onApprove(req.id)}
@@ -307,8 +336,8 @@ function RequestRow({
             value={rejectReason}
             onChange={(e) => onRejectReasonChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') onRejectConfirm(req.id);
-              if (e.key === 'Escape') onRejectCancel();
+              if (e.key === "Enter") onRejectConfirm(req.id);
+              if (e.key === "Escape") onRejectCancel();
             }}
             placeholder="Rejection reason..."
             className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
@@ -336,7 +365,7 @@ function RequestRow({
 
 function TeamSummaryTable({ summary }: { summary: TeamLeaveSummaryRow[] }) {
   // Group by employee, show annual leave only (main metric)
-  const annual = summary.filter((s) => s.leave_type === 'annual');
+  const annual = summary.filter((s) => s.leave_type === "annual");
 
   if (annual.length === 0) {
     return (
@@ -348,7 +377,7 @@ function TeamSummaryTable({ summary }: { summary: TeamLeaveSummaryRow[] }) {
 
   // Sort by used_days descending (most leave taken first)
   const sorted = [...annual].sort(
-    (a, b) => b.used_days + b.pending_days - (a.used_days + a.pending_days)
+    (a, b) => b.used_days + b.pending_days - (a.used_days + a.pending_days),
   );
 
   return (
@@ -380,9 +409,15 @@ function TeamSummaryTable({ summary }: { summary: TeamLeaveSummaryRow[] }) {
           {sorted.map((row) => {
             const total = row.allocated_days + (row.carried_over ?? 0);
             const usedPct =
-              total > 0 ? Math.round(((row.used_days + row.pending_days) / total) * 100) : 0;
+              total > 0
+                ? Math.round(((row.used_days + row.pending_days) / total) * 100)
+                : 0;
             const barColor =
-              usedPct > 75 ? 'bg-red-500' : usedPct > 50 ? 'bg-amber-500' : 'bg-emerald-500';
+              usedPct > 75
+                ? "bg-red-500"
+                : usedPct > 50
+                  ? "bg-amber-500"
+                  : "bg-emerald-500";
 
             return (
               <tr
@@ -390,26 +425,36 @@ function TeamSummaryTable({ summary }: { summary: TeamLeaveSummaryRow[] }) {
                 className="border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/30 transition-colors"
               >
                 <td className="px-4 py-3">
-                  <div className="font-medium text-zinc-200">{row.employee_name}</div>
+                  <div className="font-medium text-zinc-200">
+                    {row.employee_name}
+                  </div>
                 </td>
-                <td className="text-center px-3 py-3 text-zinc-400">{row.allocated_days}</td>
+                <td className="text-center px-3 py-3 text-zinc-400">
+                  {row.allocated_days}
+                </td>
                 <td className="text-center px-3 py-3">
                   <span
-                    className={row.used_days > 0 ? 'text-zinc-200 font-medium' : 'text-zinc-500'}
+                    className={
+                      row.used_days > 0
+                        ? "text-zinc-200 font-medium"
+                        : "text-zinc-500"
+                    }
                   >
                     {row.used_days}
                   </span>
                 </td>
                 <td className="text-center px-3 py-3">
                   {row.pending_days > 0 ? (
-                    <span className="text-amber-400 font-medium">{row.pending_days}</span>
+                    <span className="text-amber-400 font-medium">
+                      {row.pending_days}
+                    </span>
                   ) : (
                     <span className="text-zinc-600">0</span>
                   )}
                 </td>
                 <td className="text-center px-3 py-3">
                   <span
-                    className={`font-semibold ${row.remaining_days <= 3 ? 'text-red-400' : 'text-[var(--bz-accent)]'}`}
+                    className={`font-semibold ${row.remaining_days <= 3 ? "text-red-400" : "text-[var(--bz-accent)]"}`}
                   >
                     {row.remaining_days}
                   </span>
@@ -422,7 +467,9 @@ function TeamSummaryTable({ summary }: { summary: TeamLeaveSummaryRow[] }) {
                         style={{ width: `${Math.min(usedPct, 100)}%` }}
                       />
                     </div>
-                    <span className="text-xs text-zinc-500 w-8 text-right">{usedPct}%</span>
+                    <span className="text-xs text-zinc-500 w-8 text-right">
+                      {usedPct}%
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -441,26 +488,34 @@ function TeamRequestsGrouped({ requests }: { requests: LeaveRequest[] }) {
   const grouped = useMemo(() => {
     const map = new Map<string, LeaveRequest[]>();
     for (const req of requests) {
-      const name = req.employee_name ?? 'Unknown';
+      const name = req.employee_name ?? "Unknown";
       if (!map.has(name)) map.set(name, []);
       map.get(name)!.push(req);
     }
     // Sort groups by total days used (desc)
     return Array.from(map.entries()).sort(
       (a, b) =>
-        b[1].reduce((s, r) => s + r.total_days, 0) - a[1].reduce((s, r) => s + r.total_days, 0)
+        b[1].reduce((s, r) => s + r.total_days, 0) -
+        a[1].reduce((s, r) => s + r.total_days, 0),
     );
   }, [requests]);
 
   function formatDate(d: string) {
-    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return new Date(d).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    });
   }
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800/50">
       {grouped.map(([name, reqs]) => {
-        const sickReqs = reqs.filter((r) => r.leave_type_name?.includes('Sick'));
-        const leaveReqs = reqs.filter((r) => !r.leave_type_name?.includes('Sick'));
+        const sickReqs = reqs.filter((r) =>
+          r.leave_type_name?.includes("Sick"),
+        );
+        const leaveReqs = reqs.filter(
+          (r) => !r.leave_type_name?.includes("Sick"),
+        );
         const totalDays = reqs.reduce((s, r) => s + r.total_days, 0);
 
         return (
@@ -468,20 +523,22 @@ function TeamRequestsGrouped({ requests }: { requests: LeaveRequest[] }) {
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-medium text-zinc-200 text-sm">{name}</span>
               <span className="text-xs text-zinc-500">
-                {totalDays} day{totalDays !== 1 ? 's' : ''} total
+                {totalDays} day{totalDays !== 1 ? "s" : ""} total
               </span>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {leaveReqs.length > 0 && (
                 <div className="text-xs text-zinc-400">
-                  <span className="text-emerald-400/70 font-medium">Leave:</span>{' '}
-                  {leaveReqs.map((r) => formatDate(r.start_date)).join(', ')}
+                  <span className="text-emerald-400/70 font-medium">
+                    Leave:
+                  </span>{" "}
+                  {leaveReqs.map((r) => formatDate(r.start_date)).join(", ")}
                 </div>
               )}
               {sickReqs.length > 0 && (
                 <div className="text-xs text-zinc-400">
-                  <span className="text-amber-400/70 font-medium">Sick:</span>{' '}
-                  {sickReqs.map((r) => formatDate(r.start_date)).join(', ')}
+                  <span className="text-amber-400/70 font-medium">Sick:</span>{" "}
+                  {sickReqs.map((r) => formatDate(r.start_date)).join(", ")}
                 </div>
               )}
             </div>
@@ -500,9 +557,9 @@ export default function LeavePage() {
   const [teamSummary, setTeamSummary] = useState<TeamLeaveSummaryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminTab, setAdminTab] = useState<'team' | 'mine'>('team');
+  const [adminTab, setAdminTab] = useState<"team" | "mine">("team");
   const [rejectingId, setRejectingId] = useState<number | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -520,31 +577,35 @@ export default function LeavePage() {
     });
   }, []);
 
-  const pendingTeam = requests.filter((r) => r.status === 'pending');
+  const pendingTeam = requests.filter((r) => r.status === "pending");
 
   const handleApprove = async (id: number) => {
     try {
       await hrApi.approveLeave(id);
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'approved' } : r)));
-      toast.success('Leave request approved');
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "approved" } : r)),
+      );
+      toast.success("Leave request approved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve');
+      toast.error(err instanceof Error ? err.message : "Failed to approve");
     }
   };
 
   const handleReject = async (id: number) => {
     if (!rejectReason.trim()) {
-      toast.error('Please enter a rejection reason');
+      toast.error("Please enter a rejection reason");
       return;
     }
     try {
       await hrApi.rejectLeave(id, rejectReason);
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'rejected' } : r)));
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "rejected" } : r)),
+      );
       setRejectingId(null);
-      setRejectReason('');
-      toast.success('Leave request rejected');
+      setRejectReason("");
+      toast.success("Leave request rejected");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reject');
+      toast.error(err instanceof Error ? err.message : "Failed to reject");
     }
   };
 
@@ -554,12 +615,12 @@ export default function LeavePage() {
     onApprove: handleApprove,
     onRejectOpen: (id: number) => {
       setRejectingId(rejectingId === id ? null : id);
-      setRejectReason('');
+      setRejectReason("");
     },
     onRejectConfirm: handleReject,
     onRejectCancel: () => {
       setRejectingId(null);
-      setRejectReason('');
+      setRejectReason("");
     },
     onRejectReasonChange: setRejectReason,
   };
@@ -595,11 +656,11 @@ export default function LeavePage() {
       {isAdmin && (
         <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 w-fit">
           <button
-            onClick={() => setAdminTab('team')}
+            onClick={() => setAdminTab("team")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              adminTab === 'team'
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
+              adminTab === "team"
+                ? "bg-zinc-800 text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Users size={14} />
@@ -611,11 +672,11 @@ export default function LeavePage() {
             )}
           </button>
           <button
-            onClick={() => setAdminTab('mine')}
+            onClick={() => setAdminTab("mine")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              adminTab === 'mine'
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
+              adminTab === "mine"
+                ? "bg-zinc-800 text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Calendar size={14} />
@@ -625,7 +686,7 @@ export default function LeavePage() {
       )}
 
       {/* TEAM VIEW */}
-      {isAdmin && adminTab === 'team' ? (
+      {isAdmin && adminTab === "team" ? (
         <div className="space-y-6">
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
@@ -658,12 +719,14 @@ export default function LeavePage() {
             )}
           </div>
 
-          {requests.filter((r) => r.status !== 'pending').length > 0 && (
+          {requests.filter((r) => r.status !== "pending").length > 0 && (
             <div>
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
                 Recent History
               </p>
-              <TeamRequestsGrouped requests={requests.filter((r) => r.status !== 'pending')} />
+              <TeamRequestsGrouped
+                requests={requests.filter((r) => r.status !== "pending")}
+              />
             </div>
           )}
         </div>
@@ -685,15 +748,23 @@ export default function LeavePage() {
             </p>
             {requests.length === 0 ? (
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center text-zinc-500 text-sm">
-                No leave requests yet.{' '}
-                <Link href="/hr/leave/request" className="text-[var(--bz-accent)] hover:underline">
+                No leave requests yet.{" "}
+                <Link
+                  href="/hr/leave/request"
+                  className="text-[var(--bz-accent)] hover:underline"
+                >
                   Submit your first request →
                 </Link>
               </div>
             ) : (
               <div className="space-y-2">
                 {requests.map((req) => (
-                  <RequestRow key={req.id} req={req} isAdmin={false} {...rejectProps} />
+                  <RequestRow
+                    key={req.id}
+                    req={req}
+                    isAdmin={false}
+                    {...rejectProps}
+                  />
                 ))}
               </div>
             )}
