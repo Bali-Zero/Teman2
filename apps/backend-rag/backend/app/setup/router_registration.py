@@ -525,6 +525,7 @@ def include_light_routers(api: FastAPI) -> None:
         crm_tax_pilot,
         debug,
         documents_proxy,
+        dynamic_pricing,  # public price lookup (/api/pricing/service) — _API
         event_bus,
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
@@ -744,6 +745,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(zoho_email.router)
     api.include_router(google_drive.router)
     api.include_router(documents_proxy.router)
+    api.include_router(dynamic_pricing.router)
     api.include_router(team_drive.router)
     api.include_router(sheets.router)
 
