@@ -351,7 +351,7 @@ jobs:
           npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
           python3 - "$RUNNER_TEMP/audit.json" <<'PY'
           import json, sys
-          WAIVE = {"GHSA-frvp-7c67-39w9", "GHSA-9mqv-5hh9-4cgg", "GHSA-c96f-x56v-gq3h", "GHSA-mh99-v99m-4gvg"}
+          WAIVE = {"GHSA-frvp-7c67-39w9", "GHSA-9mqv-5hh9-4cgg", "GHSA-c96f-x56v-gq3h"}
           data = json.load(open(sys.argv[1]))
           bad = []
           for name, vuln in (data.get("vulnerabilities") or {}).items():
