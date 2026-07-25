@@ -104,7 +104,6 @@
     "scripts/cost_breaker.py",
     "scripts/cost_breaker_deadman.sh",
     "scripts/coverage_trend.py",
-    "scripts/cron-agent-python/curiosity_batch.py",
     "scripts/dropbox_intake_sync.sh",
     "scripts/escalations_suppressed_digest.py",
     "scripts/expiry_alerter.py",
