@@ -169,8 +169,90 @@ class TestPromptManagerVersionSelection:
         assert isinstance(result, str)
         assert "WITA" in result
 
+    def test_v5_env_var_resolves_v5_client_template(self, monkeypatch):
+        """ZANTARA_PROMPT_VERSION=v5 selects zantara_core_v5's audience-
+        composed build through this door, bound (for the legacy flat-string
+        name) to the "client" audience — the most-restricted, fail-safe
+        default."""
+        pm = self._reload_with_version(monkeypatch, "v5")
+        from backend.prompts.zantara_core_v5 import (
+            build_master_template as build_v5,
+        )
+
+        assert pm.PROMPT_VERSION_ACTIVE == "v5"
+        assert pm.ZANTARA_MASTER_TEMPLATE == build_v5("client")
+        assert pm.ZANTARA_MASTER_TEMPLATE != pm._TEMPLATE_V1
+        assert "{today_wita}" in pm.ZANTARA_MASTER_TEMPLATE
+
+    def test_v5_get_today_wita_is_bound_and_callable(self, monkeypatch):
+        pm = self._reload_with_version(monkeypatch, "v5")
+        result = pm.get_today_wita()
+        assert isinstance(result, str)
+        assert "WITA" in result
+
     def test_unrecognized_version_falls_back_to_v1(self, monkeypatch):
         """An unknown value (typo, e.g. 'v9') is not one of the explicit
         branches — falls to the `else` clause, same as no env var set."""
         pm = self._reload_with_version(monkeypatch, "v9")
         assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
+        assert pm.PROMPT_VERSION_ACTIVE == "v1"
+
+
+class TestPromptManagerFailLoudOnUnknownVersion:
+    """Task: an EXPLICITLY-SET, non-empty ZANTARA_PROMPT_VERSION that isn't a
+    known version (typo'd Fly secret) must fail LOUD — a logger.error naming
+    the bad value and the available versions — instead of silently serving
+    v1 with zero signal. An UNSET variable must keep today's meaning exactly
+    unchanged: silent default to v1, no log at all."""
+
+    @pytest.fixture(autouse=True)
+    def _restore_default_version(self, monkeypatch):
+        import backend.llm.prompt_manager as pm
+
+        monkeypatch.delenv("ZANTARA_PROMPT_VERSION", raising=False)
+        importlib.reload(pm)
+        yield
+        monkeypatch.delenv("ZANTARA_PROMPT_VERSION", raising=False)
+        importlib.reload(pm)
+
+    def test_unrecognized_explicit_value_logs_error(self, monkeypatch, caplog):
+        import backend.llm.prompt_manager as pm
+
+        monkeypatch.setenv("ZANTARA_PROMPT_VERSION", "v9")
+        with caplog.at_level("ERROR", logger="backend.llm.prompt_manager"):
+            importlib.reload(pm)
+
+        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert error_records, "Expected a logger.error for an unrecognised ZANTARA_PROMPT_VERSION"
+        assert any("v9" in r.getMessage() for r in error_records)
+        assert any("v1" in r.getMessage() for r in error_records)
+        # Still serves v1 — loud, not a crash.
+        assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
+
+    def test_unset_version_stays_silent_and_identical_to_today(self, monkeypatch, caplog):
+        import backend.llm.prompt_manager as pm
+
+        monkeypatch.delenv("ZANTARA_PROMPT_VERSION", raising=False)
+        with caplog.at_level("ERROR", logger="backend.llm.prompt_manager"):
+            importlib.reload(pm)
+
+        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert error_records == [], (
+            "Unset ZANTARA_PROMPT_VERSION must never log an error — this is "
+            "today's default path, not a misconfiguration."
+        )
+        assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
+        assert pm.PROMPT_VERSION_ACTIVE == "v1"
+
+    def test_known_versions_never_log_the_unrecognised_error(self, monkeypatch, caplog):
+        import backend.llm.prompt_manager as pm
+
+        for version in ("v1", "v2", "v3", "v4", "v5"):
+            monkeypatch.setenv("ZANTARA_PROMPT_VERSION", version)
+            caplog.clear()
+            with caplog.at_level("ERROR", logger="backend.llm.prompt_manager"):
+                importlib.reload(pm)
+            unrecognised_errors = [
+                r for r in caplog.records if "not a recognised version" in r.getMessage()
+            ]
+            assert unrecognised_errors == [], f"version={version} should not trip the fail-loud path"
