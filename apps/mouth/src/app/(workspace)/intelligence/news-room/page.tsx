@@ -341,10 +341,10 @@ export default function NewsRoomPage() {
       <div
         className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
         style={{
-          background: "rgba(255,255,255,0.03)",
+          background: "rgba(35,35,40,0.65)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderColor: "rgba(255,255,255,0.07)",
+          borderColor: "var(--bz-border)",
         }}
       >
         {/* Search input */}
@@ -360,8 +360,8 @@ export default function NewsRoomPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              border: "1px solid var(--bz-border)",
               color: "var(--bz-text-1)",
             }}
           />
@@ -375,8 +375,8 @@ export default function NewsRoomPage() {
           <SelectTrigger
             className="w-[130px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
           >
@@ -402,8 +402,8 @@ export default function NewsRoomPage() {
           <SelectTrigger
             className="w-[140px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
           >
@@ -427,7 +427,7 @@ export default function NewsRoomPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.04]"
           style={{
             color: "var(--bz-text-2)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid var(--bz-border)",
           }}
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -450,15 +450,17 @@ export default function NewsRoomPage() {
         <div
           className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
           style={{
-            borderColor: "rgba(255,255,255,0.07)",
+            borderColor: "var(--bz-border)",
             background: "rgba(255,255,255,0.01)",
           }}
         >
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
             style={{
-              background: "rgba(212,132,90,0.08)",
-              border: "1px solid rgba(212,132,90,0.15)",
+              background:
+                "color-mix(in srgb, var(--bz-accent) 8%, transparent)",
+              border:
+                "1px solid color-mix(in srgb, var(--bz-accent) 15%, transparent)",
             }}
           >
             <Sparkles
@@ -485,7 +487,7 @@ export default function NewsRoomPage() {
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
             style={{
               color: "var(--bz-text-2)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              border: "1px solid var(--bz-border)",
             }}
           >
             <RefreshCw className="w-3.5 h-3.5" /> Check Again
@@ -535,15 +537,17 @@ export default function NewsRoomPage() {
                   }}
                 />
 
-                {/* Critical ribbon */}
+                {/* Critical ribbon — --status-critical is spec-sanctioned
+                    as a fill with white text (semantic.css usage constraint) */}
                 {item.is_critical && (
                   <div className="absolute top-1 right-0 z-10">
                     <div
                       className="flex items-center gap-1 px-2 py-0.5 text-[7px] font-bold tracking-wider rounded-bl-xl rounded-tr-[18px]"
                       style={{
-                        background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                        color: "#fff",
-                        boxShadow: "0 2px 12px rgba(239,68,68,0.4)",
+                        background: "var(--status-critical)",
+                        color: "var(--bz-text-pure)",
+                        boxShadow:
+                          "0 2px 12px color-mix(in srgb, var(--state-danger) 40%, transparent)",
                       }}
                     >
                       <Flame className="w-2 h-2" /> CRITICAL
@@ -561,16 +565,17 @@ export default function NewsRoomPage() {
                       width: 120,
                       transform: "rotate(45deg)",
                       background:
-                        "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85))",
+                        "linear-gradient(135deg, color-mix(in srgb, var(--state-success) 85%, transparent), color-mix(in srgb, var(--state-success) 65%, transparent))",
                       backdropFilter: "blur(8px)",
                       textAlign: "center",
                       padding: "2px 0",
-                      boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+                      boxShadow:
+                        "0 2px 8px color-mix(in srgb, var(--state-success) 30%, transparent)",
                     }}
                   >
                     <span
                       style={{
-                        color: "#fff",
+                        color: "var(--bz-text-pure)",
                         fontSize: 7,
                         fontWeight: 700,
                         letterSpacing: "0.1em",
@@ -594,7 +599,7 @@ export default function NewsRoomPage() {
                       backdropFilter: "blur(12px)",
                       border: selectedItems.has(item.id)
                         ? `1.5px solid ${pal.accent}`
-                        : "1px solid rgba(255,255,255,0.12)",
+                        : "1px solid var(--bz-glass-highlight)",
                       boxShadow: selectedItems.has(item.id)
                         ? `0 0 10px ${pal.glow}`
                         : "none",
@@ -609,7 +614,7 @@ export default function NewsRoomPage() {
                     ) : (
                       <Square
                         className="w-3 h-3 opacity-40"
-                        style={{ color: "#fff" }}
+                        style={{ color: "var(--bz-text-pure)" }}
                       />
                     )}
                   </button>
@@ -655,7 +660,7 @@ export default function NewsRoomPage() {
                   {/* Title — big and visible */}
                   <h3
                     className="text-[13px] font-bold leading-snug line-clamp-3"
-                    style={{ color: "#fff" }}
+                    style={{ color: "var(--bz-text-pure)" }}
                   >
                     {item.title}
                   </h3>
@@ -667,7 +672,7 @@ export default function NewsRoomPage() {
                       style={{
                         background: "rgba(255,255,255,0.06)",
                         color: "var(--bz-text-3)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid var(--bz-border)",
                       }}
                     >
                       {item.type}
@@ -682,7 +687,7 @@ export default function NewsRoomPage() {
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
                       background: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <Eye className="w-3 h-3 text-white/70" />
@@ -692,7 +697,7 @@ export default function NewsRoomPage() {
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
                       background: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <Edit className="w-3 h-3 text-white/70" />
@@ -702,7 +707,7 @@ export default function NewsRoomPage() {
                     className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
                       background: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <ImageIcon className="w-3 h-3 text-white/70" />
@@ -715,9 +720,11 @@ export default function NewsRoomPage() {
                     <div
                       className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold tracking-wide"
                       style={{
-                        background: "rgba(16,185,129,0.1)",
-                        color: "rgba(52,211,153,0.8)",
-                        border: "1px solid rgba(16,185,129,0.2)",
+                        background:
+                          "color-mix(in srgb, var(--state-success) 10%, transparent)",
+                        color: "var(--state-success)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--state-success) 20%, transparent)",
                       }}
                     >
                       <Check className="w-3 h-3" /> Published
@@ -736,8 +743,8 @@ export default function NewsRoomPage() {
                         <SelectTrigger
                           className="h-7 text-[10px] rounded-lg font-medium"
                           style={{
-                            background: "rgba(20,20,24,0.9)",
-                            borderColor: "rgba(255,255,255,0.1)",
+                            background: "rgba(35,35,40,0.65)",
+                            borderColor: "var(--bz-border)",
                             color: "var(--bz-text-1)",
                           }}
                         >
@@ -750,8 +757,8 @@ export default function NewsRoomPage() {
                         <SelectContent
                           className="rounded-xl"
                           style={{
-                            background: "rgba(20,20,24,0.98)",
-                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(35,35,40,0.95)",
+                            border: "1px solid var(--bz-glass-highlight)",
                             backdropFilter: "blur(20px)",
                           }}
                         >
@@ -771,7 +778,7 @@ export default function NewsRoomPage() {
                         disabled={publishingIds.has(item.id)}
                         className="w-full flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 disabled:opacity-50"
                         style={{
-                          background: `linear-gradient(135deg, ${pal.accent}30, ${pal.accent}15)`,
+                          background: `linear-gradient(135deg, ${pal.accentSoft}, ${pal.glow})`,
                           color: pal.accent,
                           border: `1px solid ${pal.border}`,
                           boxShadow: `0 2px 12px -2px ${pal.glow}`,
@@ -802,11 +809,10 @@ export default function NewsRoomPage() {
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-2xl z-50 animate-in slide-in-from-bottom-4 duration-300"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(18,18,22,0.85) 0%, rgba(30,30,36,0.8) 100%)",
+            background: "rgba(35,35,40,0.65)",
             backdropFilter: "blur(32px) saturate(1.5)",
             WebkitBackdropFilter: "blur(32px) saturate(1.5)",
-            border: "1px solid rgba(255,255,255,0.1)",
+            border: "1px solid var(--bz-border)",
             boxShadow:
               "0 20px 60px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)",
           }}
@@ -814,7 +820,8 @@ export default function NewsRoomPage() {
           <span
             className="text-[12px] font-bold tabular-nums"
             style={{
-              background: "linear-gradient(135deg, #f0ede8 0%, #d4845a 100%)",
+              background:
+                "linear-gradient(135deg, var(--bz-text-1) 0%, var(--bz-accent) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -828,12 +835,13 @@ export default function NewsRoomPage() {
           />
           <button
             onClick={handleBulkPublish}
-            className="text-[11px] font-bold px-4 py-1.5 rounded-xl transition-all duration-300 hover:shadow-[0_4px_20px_-4px_rgba(212,132,90,0.4)]"
+            className="text-[11px] font-bold px-4 py-1.5 rounded-xl transition-all duration-300 hover:shadow-[0_4px_20px_-4px_var(--bz-accent-glow)]"
             style={{
               background:
-                "linear-gradient(135deg, rgba(212,132,90,0.2) 0%, rgba(212,132,90,0.1) 100%)",
+                "linear-gradient(135deg, color-mix(in srgb, var(--bz-accent) 20%, transparent) 0%, color-mix(in srgb, var(--bz-accent) 10%, transparent) 100%)",
               color: "var(--bz-accent)",
-              border: "1px solid rgba(212,132,90,0.25)",
+              border:
+                "1px solid color-mix(in srgb, var(--bz-accent) 25%, transparent)",
             }}
           >
             Publish all
@@ -920,8 +928,8 @@ export default function NewsRoomPage() {
               <SelectTrigger
                 className="w-[160px] rounded-xl"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  borderColor: "rgba(255,255,255,0.07)",
+                  background: "rgba(35,35,40,0.6)",
+                  borderColor: "var(--bz-border)",
                   color: "var(--bz-text-2)",
                 }}
               >
