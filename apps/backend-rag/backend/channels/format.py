@@ -72,14 +72,23 @@ def get_capabilities(channel: str) -> ChannelCapabilities:
 # per the CITATION_RULES prompt convention (zantara_core.py). No plain-text
 # or WhatsApp channel ever renders an accompanying footnote/source list, so
 # these are dangling noise on those surfaces. Digits-only inside the
-# brackets is a deliberately narrow match (entity: a numeric citation
-# index), NOT a loose "contains a bracket" substring guard — a real
-# regulation/entity reference in this corpus is always named text
-# ("[PP 48/2021]", "[Art. 26]", "[KBLI 70100]"), never a bare digit list,
-# so this cannot collide with legitimate bracketed content. See
-# .claude/rules/cicatrix-superscar.md family #3 (guard-over-match) for why
-# that distinction matters.
-_BARE_CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
+# brackets is a deliberately narrow match on the bracket CONTENT (entity: a
+# numeric citation index), but content alone is not enough: Indonesian
+# statutes cite sub-articles the same shape, e.g. "Pasal 19 [2]," or
+# "Pasal 6 [1] dan [3] berlaku." — an earlier version of this regex had no
+# positional anchor and stripped those mid-sentence, corrupting the legal
+# citation ("Pasal 6 dan berlaku." — meaning-changing). The entity this
+# guard actually targets is a TRAILING RAG source-index marker, so the
+# match is anchored to a trailing position: end-of-text, immediately
+# before a newline, or immediately before a single sentence-terminal mark
+# (./!/?) that itself sits at end-of-text/end-of-line. A bracket followed
+# by more prose (a comma, "dan", any word) is never trailing and survives
+# untouched. See .claude/rules/cicatrix-superscar.md family #3
+# (guard-over-match) for why that distinction matters.
+_BARE_CITATION_RE = re.compile(
+    r"\s*\[\d+(?:,\s*\d+)*\]"
+    r"(?=[.!?]?\s*(?:\n|\Z))"
+)
 
 
 def format_rich_text(text: str, channel: str) -> str:

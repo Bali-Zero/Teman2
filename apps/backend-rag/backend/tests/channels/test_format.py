@@ -113,8 +113,62 @@ def test_whatsapp_strips_single_bare_citation_marker():
 
 
 def test_whatsapp_strips_multi_bare_citation_marker():
-    result = format_rich_text("As stated [1, 5] in the regulation.", "whatsapp")
+    """The marker must be TRAILING (immediately before the sentence-final
+    period) to strip — see the anchor-fix note on _BARE_CITATION_RE. This
+    case was previously mid-sentence ("[1, 5] in the regulation.") and
+    stripped anywhere; that shape is now covered by the mid-sentence
+    INNOCENCE tests below, which prove it must survive untouched."""
+    result = format_rich_text("As stated in the regulation [1, 5].", "whatsapp")
     assert result == "As stated in the regulation."
+
+
+def test_whatsapp_strips_trailing_single_citation_at_end_of_text():
+    """Guilt: a trailing single-index marker at true end-of-text strips."""
+    result = format_rich_text("Sumber: BKPM 5/2025 [1]", "whatsapp")
+    assert result == "Sumber: BKPM 5/2025"
+
+
+def test_whatsapp_strips_trailing_multi_citation_at_end_of_text():
+    """Guilt: a trailing multi-index marker at true end-of-text strips."""
+    result = format_rich_text("Sumber: BKPM 5/2025 [1, 2]", "whatsapp")
+    assert result == "Sumber: BKPM 5/2025"
+
+
+def test_whatsapp_strips_trailing_single_citation_at_end_of_line():
+    """Guilt: a trailing single-index marker immediately before a newline
+    strips (the newline itself is preserved, not swallowed)."""
+    result = format_rich_text("Line one [1]\nLine two", "whatsapp")
+    assert result == "Line one\nLine two"
+
+
+def test_whatsapp_strips_trailing_multi_citation_at_end_of_line():
+    """Guilt: a trailing multi-index marker immediately before a newline
+    strips (the newline itself is preserved, not swallowed)."""
+    result = format_rich_text("Line one [1, 2]\nLine two", "whatsapp")
+    assert result == "Line one\nLine two"
+
+
+def test_whatsapp_preserves_indonesian_subarticle_marker_mid_sentence():
+    """Innocence — scar pin (cicatrix family #3): Indonesian statutes cite
+    sub-articles as 'Pasal 19 [2]'. Measured production defect: the old
+    unanchored _BARE_CITATION_RE turned this into 'Pasal 19, izin
+    tinggal...', destroying the sub-article marker. A bracket-digit group
+    followed by a comma and more prose is never a trailing RAG citation
+    and must survive byte-identical."""
+    text = "Berdasarkan PP 34/2021 Pasal 19 [2], izin tinggal berlaku hingga masa tertentu."
+    assert format_rich_text(text, "whatsapp") == text
+
+
+def test_whatsapp_preserves_indonesian_multi_subarticle_marker_mid_sentence():
+    """Innocence — scar pin (cicatrix family #3): two mid-sentence
+    sub-article refs joined by 'dan'. Measured production defect: the old
+    unanchored _BARE_CITATION_RE turned 'Pasal 6 [1] dan [3] berlaku.'
+    into 'Pasal 6 dan berlaku.' — a meaning-changing corruption of a legal
+    citation sent to a paying client. Both brackets must survive
+    byte-identical: neither is immediately before end-of-text, a newline,
+    or a lone sentence-terminal mark at end-of-text/end-of-line."""
+    text = "Perpres 10/2021 Pasal 6 [1] dan [3] berlaku."
+    assert format_rich_text(text, "whatsapp") == text
 
 
 def test_whatsapp_preserves_named_regulation_citation():
