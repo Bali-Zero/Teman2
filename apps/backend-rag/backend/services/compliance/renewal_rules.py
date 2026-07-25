@@ -291,6 +291,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
             "valid_passport",
             "current_itas_card",
             "deposit_proof_usd_50k_own_name_bumn_bank",
+            "bank_statement_3m_usd_2k_own_name",
             "passive_income_proof_usd_3k_per_month",
             "domicile_letter",
         ),
@@ -298,9 +299,12 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         notes="E33E senior (55+) 5-year route. The permit carries NO extension "
         "(catalogue extensions=(0,0)) — at expiry this is a fresh application, "
         "hence the long lead time and the new-application onshore pricing key. "
-        "Financial gate is USD 50,000 own-name BUMN deposit PLUS USD 3,000/month "
-        "passive income — NOT the main-route USD 130k deposit, and there is no "
-        "property alternative on this route.",
+        "Financial gate is CUMULATIVE, not alternative: USD 50,000 own-name BUMN "
+        "deposit AND a 3-month personal rekening koran of at least USD 2,000 AND "
+        "USD 3,000/month passive income. NOT the main-route USD 130k deposit, and "
+        "there is no property alternative on this route. NO sponsor — the page "
+        "states it outright ('Anda tidak membutuhkan penjamin/sponsor'), which is "
+        "the axis that separates this route from E33F.",
     ),
     "e33f_senior_renewal": RenewalRule(
         rule_id="e33f_senior_renewal",
@@ -313,14 +317,19 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         required_docs=(
             "valid_passport",
             "current_itas_card",
+            "sponsor_penjamin_documents",
+            "bank_statement_3m_usd_2k_own_or_sponsor",
             "passive_income_proof_usd_3k_per_month",
             "domicile_letter",
         ),
         complexity=1.0,
-        notes="E33F senior (55+) 1-year income-only route, annually renewable. "
-        "NO deposit exists on this route — never request a bank guarantee letter. "
-        "Only the USD 3,000/month passive income proof is re-validated at each "
-        "extension.",
+        notes="E33F senior 1-year route, annually renewable. NO deposit exists "
+        "here — never request a bank guarantee letter. But 'no deposit' does not "
+        "mean 'income only': the route REQUIRES a penjamin/sponsor ('Anda "
+        "membutuhkan penjamin/sponsor', the exact opposite of E33E) plus a "
+        "3-month rekening koran of at least USD 2,000, which may be held in the "
+        "foreigner's OR the sponsor's name, plus USD 3,000/month income. The "
+        "official page publishes no minimum age for E33F.",
     ),
     "e33_senior_route_unspecified": RenewalRule(
         rule_id="e33_senior_route_unspecified",
@@ -333,16 +342,20 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         required_docs=(
             "valid_passport",
             "current_itas_card",
+            "bank_statement_3m_usd_2k",
             "passive_income_proof_usd_3k_per_month",
             "domicile_letter",
-            "route_confirmation_e33e_deposit_or_e33f_income_only",
+            "route_confirmation_e33e_deposit_no_sponsor_or_e33f_sponsor_no_deposit",
         ),
         complexity=2.0,
         notes="Senior second-home client whose record does not carry the E33E/E33F "
-        "code. Income proof is required on both senior routes, so it is safe to ask "
-        "for; the deposit is NOT — confirm the route before requesting documents or "
-        "quoting. Lead time is the conservative (E33E) one: contacting early is "
-        "recoverable, contacting late is not.",
+        "code. Ask only for what BOTH routes require — the USD 2,000 3-month "
+        "rekening koran and the USD 3,000/month income. The two things that "
+        "actually diverge are asked for by neither: E33E wants a USD 50,000 "
+        "deposit and NO sponsor, E33F wants a sponsor and NO deposit. Requesting "
+        "either before the route is known sends the client after a document their "
+        "route does not have. Lead time is the conservative (E33E) one: contacting "
+        "early is recoverable, contacting late is not.",
     ),
     # ── E33 Second Home main route (5y permit — guarantee must be maintained) ──
     "e33_second_home_renewal": RenewalRule(

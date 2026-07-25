@@ -229,10 +229,51 @@ class TestE33SeniorRoutes:
     def test_e33f_never_asks_for_a_deposit_or_guarantee(self) -> None:
         docs = RENEWAL_RULES["e33f_senior_renewal"].required_docs
         for doc in docs:
-            assert "deposit" not in doc, f"E33F is income-only; {doc!r} asks for a deposit"
-            assert "guarantee" not in doc, f"E33F is income-only; {doc!r} asks for a guarantee"
+            assert "deposit" not in doc, f"E33F has no deposit; {doc!r} asks for one"
+            assert "guarantee" not in doc, f"E33F has no deposit; {doc!r} asks for a guarantee"
             assert "property_title" not in doc, f"E33F has no property route; {doc!r}"
         assert "passive_income_proof_usd_3k_per_month" in docs
+
+    def test_the_two_routes_diverge_on_sponsor_as_well_as_deposit(self) -> None:
+        """The axes are CROSSED, and that is the whole reason for two rules.
+
+        imigrasi.go.id states each one outright and in opposite terms:
+        E33E "Anda TIDAK membutuhkan penjamin/sponsor" + USD 50,000 deposit;
+        E33F "Anda membutuhkan penjamin/sponsor" + no deposit at all.
+
+        Reading only the deposit axis is what produces the plausible-and-wrong
+        summary "E33F is the income-only route" — it is not: it trades the
+        deposit for a sponsor. A client sent away to prepare the wrong one of
+        these two loses the same weeks either way.
+        """
+        e33e = RENEWAL_RULES["e33e_senior_renewal"].required_docs
+        e33f = RENEWAL_RULES["e33f_senior_renewal"].required_docs
+
+        assert "deposit_proof_usd_50k_own_name_bumn_bank" in e33e
+        assert not [d for d in e33e if "sponsor" in d or "penjamin" in d], (
+            "E33E requires no sponsor — asking for one sends the client after a "
+            "document their route does not have"
+        )
+
+        assert [d for d in e33f if "sponsor" in d or "penjamin" in d], (
+            "E33F requires a penjamin/sponsor — omitting it is how a renewal "
+            "gets filed incomplete"
+        )
+        assert not [d for d in e33f if "deposit" in d]
+
+    def test_both_senior_routes_ask_for_the_3_month_2k_statement(self) -> None:
+        """Published on BOTH pages, so it is the one financial document that is
+        safe to request before the route is even known."""
+        for rule_id in (
+            "e33e_senior_renewal",
+            "e33f_senior_renewal",
+            "e33_senior_route_unspecified",
+        ):
+            docs = RENEWAL_RULES[rule_id].required_docs
+            assert [d for d in docs if d.startswith("bank_statement_3m_usd_2k")], (
+                f"{rule_id} omits the USD 2,000 3-month rekening koran that "
+                "imigrasi.go.id publishes for both senior routes"
+            )
 
     def test_e33e_asks_for_its_own_50k_deposit_not_the_main_route_one(self) -> None:
         docs = RENEWAL_RULES["e33e_senior_renewal"].required_docs
@@ -247,11 +288,15 @@ class TestE33SeniorRoutes:
 
     def test_unspecified_route_asks_to_confirm_the_route_before_documents(self) -> None:
         rule = RENEWAL_RULES["e33_senior_route_unspecified"]
-        assert "route_confirmation_e33e_deposit_or_e33f_income_only" in rule.required_docs
-        # Income proof is safe on both senior routes; a deposit is not.
+        assert (
+            "route_confirmation_e33e_deposit_no_sponsor_or_e33f_sponsor_no_deposit"
+            in rule.required_docs
+        )
+        # Safe on both senior routes; the two DIVERGENT documents are not.
         assert "passive_income_proof_usd_3k_per_month" in rule.required_docs
         for doc in rule.required_docs:
             assert "deposit_proof" not in doc, f"route unknown — {doc!r} presumes E33E"
+            assert "sponsor_penjamin" not in doc, f"route unknown — {doc!r} presumes E33F"
         # Quoting a price would presume the route.
         assert rule.renewal_pricing_key is None
 
