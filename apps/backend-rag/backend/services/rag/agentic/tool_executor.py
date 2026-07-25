@@ -90,9 +90,11 @@ def _denial_observation(agent_role: Any | None, detail: str) -> str:
     bitten before by a fix applied to 1 of N equivalent paths (cicatrix
     #3, guard-over/under-match family).
 
-    Server-side fidelity is untouched: `metrics_collector.record_tool_call`
-    and the `logger.warning`/`logger.info` calls at each site still log the
-    full detail — only the string handed back to the LLM is redacted here.
+    Server-side fidelity is preserved: `metrics_collector.record_tool_call`
+    and a `logger.warning`/`logger.info` call at every denial-shaped site
+    (including `is_denied`, which previously had none) still log the full
+    reason, PII-free — only the string handed back to the LLM is redacted
+    here.
     """
     if agent_role is None:
         return _ANONYMOUS_DENIAL_OBSERVATION
@@ -341,6 +343,22 @@ async def execute_tool(
     )
     if auth_result.is_denied:
         metrics_collector.record_tool_call(tool_name, "denied")
+        # P0-DENY audit (2026-07-25): this is the most common denial path —
+        # SENSITIVE_TOOLS hit anonymously — and this chokepoint had no
+        # logger call of its own (ToolAuthorizer._audit() does log the deny
+        # decision one layer down, but a second explicit trace here, scoped
+        # to exactly what reaches the model, is worth the redundancy — and
+        # keeps the docstring above true regardless of which authorizer is
+        # wired in). NEVER log `user_id`/`user_email` here — on the
+        # WhatsApp path it's `whatsapp_<phone>`, which is PII (UU PDP /
+        # SYMBIOSIS Law 2); `agent_role is not None` is a safe role-shape
+        # boolean, not an identifier.
+        logger.warning(
+            "tool_authz: denied %s (principal_present=%s): %s",
+            tool_name,
+            agent_role is not None,
+            auth_result.reason,
+        )
         return (
             _denial_observation(agent_role, auth_result.reason),
             time.time() - start_time,

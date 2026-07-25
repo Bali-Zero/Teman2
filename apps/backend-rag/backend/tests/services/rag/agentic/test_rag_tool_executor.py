@@ -244,6 +244,48 @@ async def test_execute_tool_denies_anonymous_caller_with_neutral_observation(
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_denies_anonymous_caller_logs_full_reason_pii_free(
+    reset_tool_executor: FakeMetricsCollector,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """P0-DENY audit restore: the client-facing observation for a
+    no-principal caller is neutral (see the GUILT test above), but the
+    denial reason must still be recoverable server-side for security
+    review — this is the audit trail the fix must not remove along with
+    the narration leak. GUILT: the reason text IS present in the log.
+    INNOCENCE: the WhatsApp-shaped `user_id` (`whatsapp_<phone>`, PII under
+    UU PDP / SYMBIOSIS Law 2) never reaches the log line, mirroring the
+    `no @ / no phone` contract already enforced for the team-principal
+    lane's degrade logs."""
+    tool = FakeTool()
+    tool_executor.configure_tool_executor(
+        DenyAuthorizer(deny_reason="This action needs an authenticated Bali Zero staff account."),
+    )
+
+    with caplog.at_level("WARNING", logger="backend.services.rag.agentic.tool_executor"):
+        result, _duration = await tool_executor.execute_tool(
+            tool_map={"crm_query": tool},
+            tool_name="crm_query",
+            arguments={"query": "quanti clienti attivi abbiamo adesso?"},
+            user_id="whatsapp_+6281234567890",
+            agent_role=None,
+        )
+
+    # Client-facing string stays neutral (unchanged by this test's scope).
+    assert "authenticated Bali Zero staff account" not in result
+
+    records = [r for r in caplog.records if "tool_authz" in r.getMessage()]
+    assert records, "expected a tool_authz audit line for the denied call"
+    msg = records[-1].getMessage()
+    assert "This action needs an authenticated Bali Zero staff account." in msg
+    assert "crm_query" in msg
+    assert "principal_present=False" in msg
+    assert "@" not in msg
+    assert "6281234567890" not in msg
+    assert "whatsapp_" not in msg
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_fails_closed_when_confirmation_service_missing(
     reset_tool_executor: FakeMetricsCollector,
 ) -> None:
