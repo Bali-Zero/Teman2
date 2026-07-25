@@ -20,8 +20,158 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-20 ~02:45 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-25 — keep current)
 
+- **📐 THE SPEC IS NOW THE PLAN OF RECORD — and it is being EXECUTED (2026-07-25, Fable/M5).**
+  `research/operations/2026-07-24-zantara-bot-consultant-assistant-spec.md` (added by this PR) is
+  FINAL: TAC over a 12-lane workflow, 3-seat cross-family council (Codex red-team / Gemini
+  costruttivo / Kimi refuter), every P0 disk-re-verified, **9 Zero rulings ratified in §12/§14**.
+  It defines two meta-patterns (A: _Esiste≠Armato_ — capabilities wired to the DEAD legacy path;
+  B: broken identity/data-contract boundaries) and the sequenced workstreams
+  **W-1 → W0 → W1 → W2 → W3 → W4 → W5 → W6 → W7**. W-1 (P0-MEM #3036, P0-ID/P0-ARG #3062) is
+  SHIPPED. Execution of W0/W1/W2/W3 started 2026-07-25.
+- **📊 TRAFFIC MEASURED (answers Zero ruling #4, "quantify the weekly client drop first")**:
+  over 30 days the Meta number's ledger holds **28 inbound customer messages across 4 threads**;
+  22 bot replies sent and `read`. Of 89 `failed` outbox rows, **78 are `24h_window_closed`** and
+  they concentrate on a handful of dormant / outbound-initiated threads (one has 0 inbound ever).
+  ⇒ **essentially zero real clients are being dropped by the 24h window** — the "81% failure"
+  headline is an artifact, not a business problem, and does not justify a paid Meta template.
+  ⇒ Strategic consequence: **production traffic is far too thin to be the feedback loop.** The
+  golden multi-turn eval is not a nice-to-have, it is the bot's only sensor (spec W-1, in build).
+- **First real multi-turn golden baseline, run against LIVE prod (`eval-baseline` lane, Fly `rag`
+  machine, 2026-07-25)**: `pass_rate 0.7619 (16/21), n_errors 0, must_not_assert_violations 0` —
+  but `mean_key_facts_coverage` came back exactly **0.0**: coverage substring-tested whole prose
+  sentences that no answer echoes verbatim. Cured with short anchors (`fix-eval-keyfacts` lane,
+  committed in worktree — NOT merged, NOT deployed); 5 of 23 facts remain un-anchored **by
+  design** (they describe bot BEHAVIOUR, not answer content) and still score 0 — a disclosed
+  limitation, not a tuned-away one. **Read the 76% narrowly: it does NOT measure whether the
+  right facts appeared in the answer.**
+- **🔴 NEW client-facing defects, found by probing the REAL prod path (not in the spec's C-matrix)**:
+  a synthetic client question through `POST /api/agentic-rag/query` (`channel=whatsapp`) returned,
+  verbatim, to a _client-role_ caller:
+  - **C17 — Path B ships the RAW answer.** `wa_inbox_bot.generate_bot_reply` applies ONLY
+    `answer.replace("[ESCALATE]","")`. `channels/format.py::format_rich_text` (which does
+    `_strip_markdown` + channel handling, and is fully tested) has **ZERO non-test callers in the
+    whole codebase** — dead code. So `###` headings, `**bold**` and `[1, 5]` citation markers reach
+    WhatsApp raw. Purest Pattern-A instance found so far.
+  - **C18 — internal scaffolding delivered to clients.** The KG block appended by
+    `orchestrator_core.py:~816` — `## SUGGESTED WORKFLOW (from visa_subgraph, confidence: 78%)`,
+    `**Confidence**: medium — 3 source(s), relationship strength 90%`, `IMPORTANT: ... verify with
+the user` — is sent verbatim. Worse, it can CONTRADICT the answer: an E33G remote-worker answer
+    (which forbids local employment) arrived with the IMTA/TKA **local work-permit** workflow attached.
+  - **C19/C20 — the persona is ADDITIVE, not composed.** `prompt_builder.py:549-552` merely
+    _prepends_ `CREATOR_PERSONA`/`TEAM_PERSONA` to the master prompt; **there is no CLIENT_PERSONA**
+    and nothing is removed for clients. So the client is the _default_ case while the base prompt is
+    written in an internal register ("a client asks…", "check with the team") — the live answer
+    literally said _"You can pass this information directly to the client"_ to a client-role caller —
+    and it carries the full **`crm_query` playbook** (`client_stats`, `search_clients`, …) in every
+    anonymous caller's system prompt. Tool-schema minimisation (T-VIS) does not cover the PROMPT layer.
+    ⇒ Cure = audience-COMPOSED prompt (client/team/creator) as `zantara_core_v5`, additive behind the
+    versioned door, never editing v4 in place.
+  - **Near-miss caught before ship**: a first-draft `client-voice` regex (`_BARE_CITATION_RE`),
+    meant to strip the internal `[1]`/`[3]` citation markers from C17/C18, would have CORRUPTED
+    Indonesian legal citations — measured `'Perpres 10/2021 Pasal 6 [1] dan [3] berlaku.'` →
+    `'Perpres 10/2021 Pasal 6 dan berlaku.'` (bracketed Pasal numbers read as citation markers).
+    Caught by adversarial review BEFORE ship; cured by anchoring the strip to trailing source
+    markers only. Cicatrix family #3 (guard over-match). State: committed in
+    `client-voice`/`fix-client-voice` worktree lanes — NOT merged, NOT deployed.
+  - **The denial oracle survives paraphrase, and is worse than the literal string.** Asked
+    (client-role) _"quanti clienti attivi abbiamo?"_, the bot never said "denied": it invented
+    _"problema tecnico … sistemi di accesso al CRM … account staff autenticato … ti do il numero
+    esatto dei clienti dal database live"_ — disclosing the CRM's existence, disguising the
+    security control as an outage, leaking the auth model, and promising a stranger the client
+    count. A guard that greps for "denied"/a literal refusal string is UNDER-match (cicatrix
+    family #3 twin): assert on the FACT disclosed, never the sentence form. State: bug LIVE in
+    prod (measured today); cure in flight (`deny-narration` finding → `fix-deny-audit` lane) —
+    NOT merged, NOT deployed.
+  - **`zantara_core_v5` is built and execution-verified, but the door does not know it yet.**
+    Client prompt measured ZERO `crm_query`/`timesheet`/`team_knowledge` and zero third-person
+    "the client"; team/creator keep the CRM playbook (`build-prompt-v5` lane). But setting
+    `ZANTARA_PROMPT_VERSION=v5` today serves **v1** (22,638 chars) instead of v5 — a silent
+    REGRESSION from the v4 armed in prod (36,106 chars) — because the versioned door doesn't
+    recognize `"v5"` and falls back silently. `wire-v5-door` lane is wiring the door + making
+    unknown versions fail loud instead of silently serving v1. State: v5 built in a worktree,
+    NOT merged, NOT deployed; prod is still v4. **DO NOT flip the flag to v5 before that lands.**
+- **🔴 P0 — PII log leak, WhatsApp phone numbers in cleartext prod logs (pre-existing, proven by
+  execution today, cure in flight — `fix-authz-pii-log` lane).** `tool_authorizer.py:381-389
+_audit()` logs `user=%s` from `user_email`, and `tool_executor.py:296` passes `user_id` as
+  `user_email`; on WhatsApp `user_id = whatsapp_<phone>`. So a client's phone number is written to
+  production logs in cleartext — on the **ALLOW path too**, i.e. every tool call, not just
+  denials. UU PDP Art. 67-68 / SYMBIOSIS Law 2. State: bug LIVE in prod; fix NOT merged, NOT
+  deployed.
+- **🔑 T4 keystone: the bridge already exists, one hop is missing.**
+  `whatsapp_identity.resolve_sender_identity` already returns `team_member_email` (DB branch), and
+  `_resolve_trusted_wa_profile` already calls it server-side behind the dedicated
+  `X-WA-Bot-Profile-Key`. It is simply never fed to `get_agent_role(email)`
+  (`team_agent_config.py:498`) — which is why `agent_role` is always `None` on WA and
+  `SENSITIVE_TOOLS={crm_query,timesheet,team_knowledge}` hard-deny every team member.
+  **T8 measured**: `team_members` with WhatsApp = **17**, VASSAL `TEAM_AGENTS` = **16**, in BOTH =
+  **15** → 15/17 get a working principal on day one; 2 have WA but no role, 1 the reverse (the
+  env-only branch returns no email at all and must degrade observably).
+- **🧰 TOOL-SEAT LIVENESS (probed live 2026-07-25 — Esiste≠Armato applies to our own instruments)**:
+  `kimi -m kimi-code/k3` ✅ · `agy` ✅ · **`codex` ❌ 401 Unauthorized** (OAuth revoked → interactive
+  `codex login`, `operator[GUI]`) · **`wa-tester` ❌ `PAIRED_BUT_CONNECT_FAILED — logged out`**
+  (device unlinked; re-pair needs a QR scan from Zero's phone → `operator[physical]`) — the
+  end-to-end channel probe is DOWN, so prove-live currently runs through the in-container brain
+  probe + the outbox/ledger state delta. **`flyctl` auth lives ONLY on Mini** (Pro's `FLY_API_TOKEN`
+  is unauthorized and `~/.fly/config.yml` has no usable token) — the M5 `fly` shell wrapper, which
+  ssh's to Pro, is dead; deploy/secrets/logs must go `ssh mini`.
+- **Operational traps that cost hours 2026-07-25 — read before repeating them**:
+  - M5 lacked the Postgres role `nuzantara` (hardcoded `backend/tests/conftest.py:28`), so 7
+    tests in `test_migration_113.py` ERRORED (not skipped) and killed EVERY full-suite pre-push
+    from this machine. Cure: `CREATE ROLE nuzantara LOGIN SUPERUSER` locally.
+  - A pre-push suite longer than GitHub's HTTPS idle timeout leaves `git push` HANGING FOREVER on
+    a `(CLOSED)` socket AFTER the gate already passed — green gate, no push, no error. Cure:
+    batch every ready branch into ONE push (the hook unions all refs, so N branches cost 1 suite)
+    plus `-c http.lowSpeedTime=120` so a dead socket errors instead of hanging.
+  - `kill -TERM` on a `git push` does NOT kill its pre-push hook subtree; orphaned hooks kept two
+    full suites running for 44 minutes. Sweep orphaned ANCESTORS (`ps -eo pid,ppid | awk
+'$2==1'`), and kill CHILDREN FIRST or init re-adopts them.
+- **P0-ID WA persona-override forgery — SHIPPED+DEPLOYED+PROVEN (PR #3062, 2026-07-24)**: the
+  trusted "creator/team" persona override in `agentic_rag.py` was forgeable — a first server-side
+  fix (re-resolving the WA sender phone instead of trusting a client-declared `profile` field) was
+  still bypassable, because the phone came from the client-controlled `user_id` field and the
+  owner's WA number is documented-public: any holder of the widely-shared `X-Internal-Key` could
+  send `user_id="whatsapp_<owner's public number>"` and get the creator persona. Caught by an
+  independent adversarial review dispatched specifically to try to break the design. Fixed with a
+  SECOND, dedicated secret exclusive to `wa_inbox_bot.py` (`X-WA-Bot-Profile-Key` /
+  `WA_INBOX_BOT_PROFILE_KEY`), modeled on the existing `wa_mirror_crm_write_key` precedent — the
+  override now requires the dedicated key AND `resolve_sender_identity` resolving to owner/team; no
+  request body field can influence the outcome. A second fresh review of the v2 design (not the
+  same reviewer, no context on v1's failure) gave SHIP, independently re-verified on disk before
+  trusting it. Also closed **P0-ARG** in the same PR: `tool_executor.execute_tool` stripped
+  LLM-injected reserved arg keys (`_caller_profile`, `_user_id`) so a forged tool-call argument
+  can never survive to override the server's real profile. Merged (squash `5d689084d1`), deployed,
+  prove-live: container content-verified (grepped the running machine's actual deployed source),
+  secret confirmed present in prod env, zero errors in prod logs post-deploy. Detail: memory
+  `discovery_p0id_narrow_first_fix_insufficient_2026_07_24`. **This is the security prerequisite
+  team-assistant V1 (§1 below) relies on for a safe owner/team persona — it was hardened, not
+  newly built, by this PR.**
+- **GEMINI PREPAY DEPLETION P0 (2026-07-22) — RESOLVED via top-up + verifier revival PROVEN LIVE**:
+  while carrying the RAG verifier revival to prove-live, live prod logs revealed the WHOLE bot was
+  degraded — NOT by the verifier but by `429 RESOURCE_EXHAUSTED "prepayment credits are depleted"`
+  on BOTH `gemini-3.5-flash` (primary) AND `gemini-2.5-flash` (fallback): the prepay Gemini key's
+  balance hit zero (the `discovery_gemini_api_key...2026_07_19` risk realized). Symptom: agentic LLM
+  dead → can't drive tool-retrieval → `Chunks retrieved: 0` → **abstain on EVERYTHING** (visa/tax/
+  company all `confidence:0.0`); verifier can't run either (also Gemini). Only verbatim FAQ cache
+  still served (no Gemini). Embeddings + Qdrant were fine — Gemini-only outage. Zero topped up the
+  prepay on project `nuzantara` (AI Studio, operator/billing). **Post-top-up prove-live (fly logs,
+  this turn)**: 0× 429, retrieval alive (`Chunks retrieved: 13`, confidence 0.85, real E35/E28
+  sources), and the **verifier producing real parsed verdicts** — `🛡️ [Verifier] Status:
+PARTIALLY_VERIFIED | Score: 0.75`, `[VerificationStage] ... verdict_available=True`,
+  `[self-correct] verify=24.11s` (self-correction fires). **Verifier revival (PR #2973, fence-parse
+  → `generate_structured`) = DONE + PROVEN LIVE.** The pre-topup "intermittent ~1/3 schema-fails" was
+  the depletion front, NOT strict schema (anyOf/bounds refuted on real Gemini). **OPEN follow-ups
+  (non-blocking)**: (a) enable prepay **auto-recharge / low-balance alert** (billing, operator) — the
+  only structural cure while Fly arch is "Gemini always"; (b) verifier robustness (round-3
+  schema-loosen held unpushed at `8604d7ae96`, ship only with a real before/after schema-fail
+  measurement); (c) architectural non-Gemini fallback on Fly so a 429-Gemini never zeroes the bot.
+  Detail: memory `discovery_prod_verifier_dead_fence_parse_not_leaked_key_2026_07_21` +
+  `discovery_gemini_api_key_project_orphan_ledger_undercount_2026_07_19` (§RESOLVED).
+- **🔒 P0 SECURITY — CRM/PII public exposure FIXED + DEPLOYED + PROVEN (PR #2962, 2026-07-21)**: `/api/blog/ask` (+ WA-unknown ReAct) could exfiltrate CRM whole-book PII (`crm_query`) and the full staff roster incl. pin/religion (`team_knowledge`); `/api/team/clock-in`+`/clock-out`+`/my-status` allowed impersonation (identity from body, no auth). Tourniquet (2 Codex red-team rounds, generator≠grader): `SENSITIVE_TOOLS={crm_query,timesheet,team_knowledge}` denied for `agent_role=None` in `tool_authorizer.py`; `_resolve_actor_identity` in `team_activity.py` ignores body identity for non-admin (closes email+user_id); `Depends(get_current_user)` on clock-in/out/my-status. PROVE-LIVE prod: blog/ask → `tool_authz decision=deny role=none tool=team_knowledge` (log) + graceful 0-PII answer; clock-in/out/my-status no-auth → 401; health 200. Staff no-regression + non-admin→own-identity verified by red-team + 13 unit tests (`test_team_activity_clock_identity_tourniquet.py`). Full principal-based rework (unified server-side principal, unconditional reserved-arg strip, clamp `CRMTool.limit`, timesheet email from principal, remove legacy `agent_role=None→allow`) is a SEPARATE non-P0 follow-up. Memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
+- **🎫 Collateral finding (open ticket): JWT expiry NOT enforced in prod**: `jwt_enforce_expiry=False` default (`config.py:501`, "Phase 1 audit mode"), no prod override (`JWT_ENFORCE_EXPIRY` absent from fly secrets) → expired JWTs accepted app-wide (`verify_exp` in hybrid_auth.py:473/517, auth.py:126, websocket.py:93, deps/auth.py:70). Flip = ops decision (verify refresh-token works first, blind flip logs out live sessions). Memory `discovery_crm_pii_public_exposure_blog_ask_timesheet_2026_07_21`.
+- **🎫 Collateral finding (open ticket): orphan test tree**: `apps/backend-rag/tests/` (top-level, 1189+ lines) is NOT collected by any CI workflow nor the pre-push (both scope `backend/tests/`; `pytest.ini testpaths=backend/tests`) → false coverage (scar #2). Tests there never run in gate.
+- **🎚️ VERBATIM FAQ → JELAS-only (Zero 2026-07-21) — DONE+VERIFIED**: refined the 19/7 "all verbatim"; deleted 215 non-JELAS from Redis `notebooklm:qa:*` (AFTER = 139 = 103 JELAS + 36 E33, non-JELAS=0); Qdrant `curated_qa` 808 pts intact (grounding preserved). This PR retires the `--verbatim-all` override so a re-harvest can't undo it. Memory `ops_verbatim_rollback_jelas_only_2026_07_21`.
 - **WA OUTBOX P0 (2026-07-19) — FIXED #2812 + DEPLOYED 12:45 UTC + VERIFIED**: the per-thread
   advisory lock passed raw `int thread_id` into `hashtext('wa_outbox_thread_' || $1::text)` —
   asyncpg types `$1` TEXT from the cast and refuses int (`DataError: expected str, got int`),
@@ -62,15 +212,15 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **GARUDA-E23 law_refs delta-harvest LIVE**: Perpres 20/2018 (revoked in full by PP 34/2021)
   re-cited to PP 34/2021 Pasal 19/6 on 2 prod points (Q2/Q6), answers untouched, neighbors
   no-drift.
-- **Team-assistant V1 IN FLIGHT (task #29)**: sender-identity wiring into the live meta-inbox
-  path (resolve team/owner from `team_members.whatsapp` + env, profile.role into RAG payload →
-  TEAM/CREATOR persona finally reachable). Innocence contract: clients/unknown byte-identical.
-  Phase 2 (CRM scoped tools per assigned_to) parked pending Zero GO.
-- **wa-tester LID under-match (task #26, low-pri)**: isPaired fix PR #2820 live on Pro; the
-  battery's receive matcher `remoteJid !== BOT_JID` drops replies syncing under `@lid`
-  (WhatsApp LID rollout) → `reply_count:0` false negative even though the bot answered (ground
-  truth via Postgres — see the P0 prove-live above). Instrumentation-only, not a bot-behavior
-  bug.
+- **Team-assistant V1 — MERGED, NOT "in flight" (PR #2872, 2026-07-20)** _(corrected 2026-07-25 —
+  this line and §6 both claimed IN FLIGHT for five days)_: sender-identity wiring into the live
+  meta-inbox path landed. **Phase 2 (4 read-only CRM scoped tools) is ALSO MERGED (PR #2890)** —
+  it is not "parked pending Zero GO". What is actually missing is ARMING + a principal:
+  `WA_TEAM_CRM_TOOLS_ENABLED` is UNSET in prod (default false), and even armed it would deny,
+  because `agent_role` is never derived on the WA path (see the T4 keystone in §1). Merged ≠ live.
+- **wa-tester LID under-match (task #26) — FIXED (#2903)**. Superseded by a NEW problem: the
+  wa-tester session itself is **logged out** (`PAIRED_BUT_CONNECT_FAILED`), so the end-to-end
+  channel probe is down until someone re-pairs it by QR (`operator[physical]`).
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
   per-thread advisory lock, claim-token fencing, lease heartbeat, burst coalescing, K workers
@@ -87,8 +237,11 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   `start_as_current_observation(..., as_type="span")` — the old name doesn't exist in v4 at all.
   `_process_query_traced` in `agentic_rag.py` called the v3 name unguarded, so every
   `/api/agentic-rag/query` call raised `AttributeError` before the orchestrator ever ran. Outbox
-  outcome: 61 failed sends vs 1 success. Emergency mitigation (still active): Fly secret
-  `LANGFUSE_ENABLED=false` (kill-switch in `observability.py::is_enabled`). **Durable fix**: this
+  outcome: 61 failed sends vs 1 success. Emergency mitigation was the Fly secret
+  `LANGFUSE_ENABLED=false` (kill-switch in `observability.py::is_enabled`) — **NO LONGER ACTIVE
+  (corrected 2026-07-25)**: `flyctl secrets list -a nuzantara-rag` shows no `LANGFUSE_ENABLED`
+  entry and the Langfuse keys are deployed, so `observability.py`'s default `"true"` applies and
+  **tracing is ON in prod**. The "still active" framing below is historical. **Durable fix**: this
   PR — `backend/core/observability.py::start_traced_span()` resolves v4-first/v3-fallback via
   `hasattr` and fails open (no-op span + WARNING log) on any mismatch, applied at both real call
   sites (`agentic_rag.py`, `tone_council.py`). Re-enabling tracing in prod (`fly secrets unset
@@ -209,12 +362,16 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   `WA_BOT_MAX_CONCURRENT_GENERATIONS`, `ZANTARA_PROMPT_VERSION`, `CURATED_QA_INJECTION_ENABLED`,
   `DOMAIN_ABSTAIN_THRESHOLDS`.
 - **Corpora**: `data/curated_qa/*.jsonl` (E33 216 via `curated_qa_convert_e33.py`; golden 28).
-- **Team phone SSOT**: `team_members.whatsapp` (F2 detection key).
-- **Team-assistant V1 (task #29) IN FLIGHT since 2026-07-19**: upstream identity plumbing for
-  F2 (team check-in) — sender-identity resolution into the live meta-inbox path (see §1). A PR
-  for this track may already be open (or merging) by the time this note is read — a sibling
-  recovery lane was pushing it in parallel; check `gh pr list` for the current state rather
-  than trusting this line's snapshot.
+- **Team phone SSOT**: `team_members.whatsapp` (F2 detection key). **Coverage measured
+  2026-07-25**: 17 rows carry a WhatsApp number; `TEAM_AGENTS` (VASSAL roles,
+  `team_agent_config.py`) has 16 entries; **15 appear in both** → 15/17 team members get a real
+  principal once T4 lands. 2 have WhatsApp but no VASSAL role, 1 the reverse. Note the env branch
+  (`WHATSAPP_TEAM_NUMBERS`) resolves a team member WITHOUT an email, so those senders can never
+  obtain an `agent_role` — that path must degrade observably, not silently.
+- **Team-assistant V1 (task #29) — CLOSED/MERGED (#2872 + #2890, 2026-07-20)**, corrected
+  2026-07-25. The remaining work is not "plumbing identity" but **T4** (derive `agent_role` from
+  the already-resolved `team_member_email`) + **T-VIS** (per-request tool minimisation) + arming
+  the flag. See §1.
 
 ## 7. Collaboration protocol (the TRACK)
 
