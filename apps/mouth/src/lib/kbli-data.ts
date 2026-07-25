@@ -4,6 +4,10 @@
 // Runs server-side at build time (Next.js static generation).
 // =============================================================================
 
+import {
+  humanizeInternalEnums,
+  humanizeIntelBlock,
+} from "@/lib/kbli-status-labels";
 import fs from "fs";
 import path from "path";
 import type {
@@ -452,14 +456,24 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     transition,
     tier: assignTier(code),
     keywords: extractKeywords(raw.judul, raw.uraian),
-    intel_2026: raw.intel_2026,
+    // Internal pipeline symbols (OK_or_HIGHER_RISK, BPS_ONLY, …) are resolved to
+    // the labels the KBLI badges use, at the loader, so no reader-facing surface
+    // can leak one by being the surface nobody remembered to wrap. Presentation
+    // only — the verdict itself is untouched. See @/lib/kbli-status-labels.
+    intel_2026: humanizeIntelBlock(raw.intel_2026),
     // L4 — Bali sovereign-local status (national PMA openness != Bali registrability).
     // Mirrors the transform in kbli-data.server.ts; this is the module the
     // /kbli/[code] page actually consumes via getCode()/getAllCodes().
     baliL4: raw.l4_bali?.status
       ? {
           status: raw.l4_bali.status,
-          reason: raw.l4_bali.reason || "",
+          // Reader-facing prose: it is the badge tooltip AND is embedded verbatim
+          // into the generated FAQ answer (kbli-faq.ts). 8 codes narrate
+          // "Previous status: OK_or_HIGHER_RISK" — same cure as the editorial layer.
+          // NOTE the deliberate asymmetry with `_data_note`, which is NOT humanised:
+          // there the symbol is a verbatim CITATION of the canonical record used as
+          // divergence evidence, and rewriting evidence would corrupt the audit trail.
+          reason: humanizeInternalEnums(raw.l4_bali.reason || ""),
           confidence: raw.l4_bali.confidence || "MEDIUM",
           needsReview: !!raw.l4_bali.needs_review,
           blocked: !!raw.l4_bali.blocked,
