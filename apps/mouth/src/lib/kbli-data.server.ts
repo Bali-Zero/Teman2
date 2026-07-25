@@ -300,6 +300,15 @@ function transformCode(
       previousCodes: raw.pp28_sources || [],
       mappingNote: raw.mapping_note || undefined,
       aggregationNote: raw.aggregation_note || undefined,
+      bpsCrosswalk: raw.bps_2020_ancestors
+        ? {
+            codes: raw.bps_2020_ancestors.codes || [],
+            adjudicationStatus:
+              raw.bps_2020_ancestors.adjudication_status || "mechanical-only",
+            inheritanceVerdict:
+              raw.bps_2020_ancestors.inheritance_verdict || "not-adjudicated",
+          }
+        : undefined,
     },
     intel,
     // L4 — Bali sovereign-local status (national PMA openness != Bali registrability)

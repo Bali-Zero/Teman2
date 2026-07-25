@@ -2,6 +2,14 @@
 
 /**
  * Portal notification preferences — channel opt-in (email, WhatsApp).
+ *
+ * WS3 slice 9 (GARUDA Day Edition, 2026-07-24): masthead = copper rule +
+ * Cormorant serif (--font-serif) in --tx-pure; channel rows and the phone
+ * input read the warm-paper surface tokens (--bz-card / --bz-border /
+ * --glass-rim) with a copper focus ring and copper-accented checkboxes
+ * (slice-7 settings pattern); saved/error feedback reads the semantic
+ * --state-* tokens instead of the legacy --neon-* aliases (success 4.80 /
+ * danger 5.74 :1 on paper).
  */
 
 import { FormEvent, useEffect, useState } from "react";
@@ -106,8 +114,16 @@ export default function NotificationsSettingsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-xl">
+      {/* Day masthead: copper rule + Cormorant serif headline per concept. */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight lux-text-gradient">
+        <div
+          aria-hidden="true"
+          className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+        />
+        <h1
+          className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
           Notification preferences
         </h1>
         <p className="text-sm text-[var(--tx-secondary)] mt-1">
@@ -116,7 +132,14 @@ export default function NotificationsSettingsPage() {
       </section>
 
       <form onSubmit={onSubmit} className="space-y-5">
-        <label className="flex items-center justify-between gap-4 p-4 rounded-lg border border-[var(--glass-rim)]">
+        <label
+          className="flex items-center justify-between gap-4 p-4 rounded-lg border"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+            boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+          }}
+        >
           <div>
             <div className="font-medium text-[var(--tx-primary)]">Email</div>
             <div className="text-xs text-[var(--tx-secondary)]">
@@ -127,11 +150,18 @@ export default function NotificationsSettingsPage() {
             type="checkbox"
             checked={emailEnabled}
             onChange={(e) => setEmailEnabled(e.target.checked)}
-            className="w-5 h-5"
+            className="w-5 h-5 accent-[var(--bz-copper)]"
           />
         </label>
 
-        <label className="flex items-center justify-between gap-4 p-4 rounded-lg border border-[var(--glass-rim)]">
+        <label
+          className="flex items-center justify-between gap-4 p-4 rounded-lg border"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+            boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+          }}
+        >
           <div>
             <div className="font-medium text-[var(--tx-primary)]">WhatsApp</div>
             <div className="text-xs text-[var(--tx-secondary)]">
@@ -142,7 +172,7 @@ export default function NotificationsSettingsPage() {
             type="checkbox"
             checked={waEnabled}
             onChange={(e) => setWaEnabled(e.target.checked)}
-            className="w-5 h-5"
+            className="w-5 h-5 accent-[var(--bz-copper)]"
           />
         </label>
 
@@ -158,10 +188,15 @@ export default function NotificationsSettingsPage() {
               value={waPhone}
               onChange={(e) => setWaPhone(e.target.value)}
               placeholder="628123456789"
-              className="w-full px-3 py-2 rounded-lg border border-[var(--glass-rim)] bg-transparent text-[var(--tx-primary)]"
+              className="w-full px-3 py-2 rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+              style={{
+                background: "var(--bz-card)",
+                borderColor: "var(--bz-border)",
+                color: "var(--tx-primary)",
+              }}
             />
             {phoneError && (
-              <p className="text-xs text-[var(--neon-rose)]">{phoneError}</p>
+              <p className="text-xs text-[var(--state-danger)]">{phoneError}</p>
             )}
           </div>
         )}
@@ -171,12 +206,12 @@ export default function NotificationsSettingsPage() {
             {mutation.isPending ? "Saving…" : "Save"}
           </Button>
           {mutation.isSuccess && (
-            <span className="text-sm text-[var(--neon-emerald)] inline-flex items-center gap-1">
+            <span className="text-sm text-[var(--state-success)] inline-flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4" /> Saved
             </span>
           )}
           {mutation.isError && (
-            <span className="text-sm text-[var(--neon-rose)]">
+            <span className="text-sm text-[var(--state-danger)]">
               {mutation.error instanceof Error
                 ? mutation.error.message
                 : "Could not save"}

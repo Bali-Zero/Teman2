@@ -1,5 +1,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Day skeleton surfaces (WS3 slice 8): token card + hairline border, not the
+// old dark rgba(30,30,35,0.7) glass.
+const SKELETON_SECTION_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+} as const;
+
 export default function LkpmSubmitLoading() {
   return (
     <div className="space-y-6 p-2 max-w-2xl mx-auto">
@@ -15,10 +22,7 @@ export default function LkpmSubmitLoading() {
       {/* Period Selection */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-        }}
+        style={SKELETON_SECTION_STYLE}
       >
         <Skeleton variant="text" width={160} height={20} />
         <div className="grid grid-cols-2 gap-4">
@@ -30,10 +34,7 @@ export default function LkpmSubmitLoading() {
       {/* Capital Table */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-        }}
+        style={SKELETON_SECTION_STYLE}
       >
         <Skeleton variant="text" width={220} height={20} />
         <div className="space-y-3">
@@ -50,10 +51,7 @@ export default function LkpmSubmitLoading() {
       {/* Employment */}
       <div
         className="rounded-xl border p-6 space-y-4"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-        }}
+        style={SKELETON_SECTION_STYLE}
       >
         <Skeleton variant="text" width={180} height={20} />
         <div className="grid grid-cols-2 gap-4">

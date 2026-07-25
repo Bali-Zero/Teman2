@@ -23,11 +23,14 @@ export default function LkpmQuarterError({
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-6 text-center">
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: "rgba(244,63,94,0.1)" }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+        }}
       >
         <FileBarChart
           className="h-8 w-8"
-          style={{ color: "var(--neon-rose)" }}
+          style={{ color: "var(--state-danger)" }}
         />
       </div>
       <div className="space-y-2 max-w-sm">

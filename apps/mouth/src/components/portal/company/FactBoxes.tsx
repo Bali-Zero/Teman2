@@ -36,7 +36,9 @@ export function FactBoxes({
       >
         <span
           className="text-[28px] font-[800] tracking-[-0.03em] tabular-nums leading-none"
-          style={{ color: "var(--kbli-accent)" }}
+          /* WS3 slice 9: 28px numerals are large text (≥3:1 floor) — theme
+             copper reads 3.87:1 on paper; --kbli-accent was 2.57:1. */
+          style={{ color: "var(--bz-copper)" }}
         >
           {capital || "—"}
         </span>
@@ -59,7 +61,7 @@ export function FactBoxes({
       >
         <span
           className="text-[28px] font-[800] tracking-[-0.03em] tabular-nums leading-none"
-          style={{ color: "var(--kbli-pma-open)" }}
+          style={{ color: "var(--state-success)" }}
         >
           {age ? age.label : "—"}
         </span>
@@ -80,7 +82,7 @@ export function FactBoxes({
       >
         <span
           className="text-[28px] font-[800] tracking-[-0.03em] tabular-nums leading-none"
-          style={{ color: "var(--kbli-amber)" }}
+          style={{ color: "var(--state-warning)" }}
         >
           {documentCount}
         </span>

@@ -289,5 +289,107 @@
     "errors": {
       "network": "Network error"
     }
+  },
+  "secondHome": {
+    "hero": {
+      "eyebrow": "E33 — Second Home Visa",
+      "title": "Live in Indonesia for up to 5 years — on your own funds",
+      "subtitle": "The Second Home Visa is a long-term residence permit for financially established applicants. No sponsor, no employer — your own financial commitment is the basis. Start with a free fit memo.",
+      "stat1v": "5 years",
+      "stat1l": "First grant, renewable",
+      "stat2v": "USD 130,000",
+      "stat2l": "Own-name BUMN deposit",
+      "stat3v": "Free",
+      "stat3l": "Fit memo assessment"
+    },
+    "routes": {
+      "eyebrow": "Qualifying",
+      "title": "Two ways to qualify",
+      "a": {
+        "title": "Route A — Bank deposit",
+        "amount": "USD 130,000",
+        "body": "A deposit in your own name at a state-owned (BUMN) Indonesian bank. The funds stay yours — the deposit is the evidence of financial commitment.",
+        "note": "We prepare the evidence file in the format imigrasi expects, and coordinate the bank confirmation with you."
+      },
+      "b": {
+        "title": "Route B — Property",
+        "amount": "USD 1,000,000",
+        "body": "A completed strata-title property (hak milik atas satuan rumah susun) worth at least USD 1,000,000.",
+        "note": "Completed strata-title only — off-plan purchases and leasehold do not qualify."
+      }
+    },
+    "who": {
+      "eyebrow": "Who it's for",
+      "title": "Three tracks, one residence",
+      "base": {
+        "title": "E33 — Base (up to 5 years)",
+        "body": "For financially established individuals and families. First grant up to 5 years, renewable — up to 10 years of cumulative stay."
+      },
+      "e33e": {
+        "title": "E33E — Senior, 5 years",
+        "body": "Age 55+. USD 50,000 deposit at a state-owned bank plus USD 3,000/month income. Five-year validity."
+      },
+      "e33f": {
+        "title": "E33F — Senior, 1 year",
+        "body": "Age 55+. USD 3,000/month income only — no deposit required. One-year validity."
+      },
+      "family": {
+        "title": "Bringing family",
+        "body": "A family add-on is available: eligible family members can join through dependent routes. We confirm the current dependent rules and costs in your fit memo."
+      },
+      "nowork": {
+        "title": "No work rights",
+        "body": "The E33 is a residence permit — it does not authorize employment in Indonesia. Paid work requires a separate work permit/KITAS."
+      },
+      "ageNote": "Senior age threshold: we operate on 55+ per Permenkumham 11/2024 and the live imigrasi guidance. One provision of the regulation still reads 60 — for ages 55–59 we confirm eligibility individually before filing."
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "What Bali Zero does",
+      "step1": {
+        "label": "Step 1 — Free",
+        "title": "Fit memo",
+        "body": "Message us on WhatsApp. We assess which route and track actually fits your situation — free, no obligation."
+      },
+      "step2": {
+        "label": "Step 2",
+        "title": "Evidence review",
+        "body": "We review your deposit or property evidence against what imigrasi actually asks for — before anything is filed."
+      },
+      "step3": {
+        "label": "Step 3",
+        "title": "Filing",
+        "body": "We prepare and file the application, coordinate with imigrasi, and track it through to the grant."
+      },
+      "priceLabel": "Base E33 — all-inclusive",
+      "priceNote": "One figure, everything included. Senior tracks and family add-ons are priced in your free fit memo."
+    },
+    "duty": {
+      "eyebrow": "After the grant",
+      "title": "The 90-day evidence duty",
+      "body": "Once your permit is granted, you have 90 days to evidence that the commitment is real: the deposit placed in your own name, or the qualifying property secured. We track this deadline with you from day one, so the permit stays clean."
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Frequently asked questions",
+      "q1": "What is the E33 Second Home Visa for Indonesia?",
+      "a1": "The E33 Second Home Visa is a long-term residence permit for financially established applicants. The first grant is up to 5 years and it is renewable, with a 10-year cumulative cap. It is a pure residence permit and does not authorize employment in Indonesia.",
+      "q2": "How do I qualify for the Second Home Visa?",
+      "a2": "Two qualifying routes: a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata-title property (hak milik atas satuan rumah susun). Off-plan and leasehold property do not qualify.",
+      "q3": "Can I work in Indonesia on a Second Home Visa?",
+      "a3": "No. The E33 is a residence permit only — it does not authorize employment. Paid work in Indonesia requires a separate work permit/KITAS.",
+      "q4": "Is there a senior option for the Second Home Visa?",
+      "a4": "Yes. E33E (age 55+, 5 years) requires a USD 50,000 deposit at a state-owned bank plus USD 3,000/month income. E33F (age 55+, 1 year) requires USD 3,000/month income only, with no deposit.",
+      "q5": "Can my family join me on a Second Home Visa?",
+      "a5": "A family add-on is available — eligible family members can join through dependent routes. The current dependent rules and costs are confirmed individually during the free fit memo.",
+      "q6": "How much does the Second Home Visa cost with Bali Zero?",
+      "a6": "IDR 39,000,000 all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
+    },
+    "cta": {
+      "title": "Start with a free fit memo",
+      "body": "Tell us your situation on WhatsApp. We reply with an honest read: which route fits, what evidence you'll need, and the exact price for your case. No obligation.",
+      "button": "Get my free Fit Memo →",
+      "note": "Typical first reply on WhatsApp in under 5 hours."
+    }
   }
 }

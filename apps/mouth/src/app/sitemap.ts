@@ -141,7 +141,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 6. Visa funnel pages (balizero.com/visa — consolidated 2026-04-21,
   // was previously at visa.balizero.com; the subdomain now 302-redirects
   // to these canonical paths via middleware.ts).
-  const visaPaths = ["/visa", "/visa/match", "/visa/clock"];
+  const visaPaths = [
+    "/visa",
+    "/visa/match",
+    "/visa/clock",
+    "/visa/second-home",
+  ];
   routes.push(...visaPaths.map((p) => ({ url: `${baseUrl}${p}` })));
 
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
