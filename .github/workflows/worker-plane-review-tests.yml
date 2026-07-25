@@ -3,12 +3,18 @@ name: worker-plane review panel tests
 # Runs the worker-plane multi-LLM review-panel tool's own test suite: the
 # three pre-existing files (test_check_worker_plane_review.py,
 # test_launch_worker_plane_review_panel.py,
-# test_worker_plane_review_packet.py) plus the new v3-final-gate parity
-# tripwire (test_v3_final_gate_parity.py). Before this workflow, NO CI job
-# anywhere referenced any of these files by name or by directory — grepped
-# every workflow in this repo for "worker_plane"/"worker-plane" and found
-# zero matches. "167 passed / 2 skipped" was a local-only claim; this
-# workflow is what turns it into a CI fact.
+# test_worker_plane_review_packet.py), the v3-final-gate parity tripwire
+# (test_v3_final_gate_parity.py), and (PR #3127) the guilt+innocence corpus
+# for scripts/detect_secrets_auto_triage.py's CONTENT_KEYED_RULES
+# (test_detect_secrets_auto_triage.py) — the auto-triage rule that approves
+# the executable code-signing identity pins (sha256/cdhash) these two review
+# files carry, without blanket-approving the whole file (cicatrix-superscar
+# #3, registered in infra/guard-conformance/registry.json). Before this
+# workflow, NO CI job anywhere referenced any of these files by name or by
+# directory — grepped every workflow in this repo for
+# "worker_plane"/"worker-plane" and found zero matches. "167 passed / 2
+# skipped" was a local-only claim; this workflow is what turns it into a CI
+# fact.
 #
 # NOT a required check on main yet (branch-protection is operator-only,
 # adding it there is a separate, deliberate step, see PENDING-ARMS). A red
@@ -40,10 +46,12 @@ on:
       - "scripts/check_worker_plane_review.py"
       - "scripts/launch_worker_plane_review_panel.py"
       - "scripts/freeze_worker_plane_review.py"
+      - "scripts/detect_secrets_auto_triage.py"
       - "scripts/tests/test_check_worker_plane_review.py"
       - "scripts/tests/test_launch_worker_plane_review_panel.py"
       - "scripts/tests/test_worker_plane_review_packet.py"
       - "scripts/tests/test_v3_final_gate_parity.py"
+      - "scripts/tests/test_detect_secrets_auto_triage.py"
       - ".github/workflows/worker-plane-review-tests.yml"
 
 permissions:
@@ -74,7 +82,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
+            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -107,6 +115,7 @@ jobs:
             scripts/tests/test_launch_worker_plane_review_panel.py \
             scripts/tests/test_worker_plane_review_packet.py \
             scripts/tests/test_v3_final_gate_parity.py \
+            scripts/tests/test_detect_secrets_auto_triage.py \
             -q
 
       - name: Sentinel success (no worker-plane review surface changed)
