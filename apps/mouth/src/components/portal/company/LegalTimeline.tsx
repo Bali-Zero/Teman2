@@ -59,7 +59,7 @@ export function LegalTimeline({
         ? `Notarial deed of amendment (akta perubahan) no. ${aktaPerubahanNo} — authorized capital updated to ${capital}.`
         : `Notarial deed of amendment (akta perubahan) no. ${aktaPerubahanNo} filed with Kemenkumham.`,
       refText: `Akta Perubahan #${aktaPerubahanNo} \u00B7 ${formatDate(aktaPerubahanDate)}`,
-      refColor: "var(--kbli-amber)",
+      refColor: "var(--state-warning)",
       accentYear: true,
     });
   }
@@ -77,7 +77,7 @@ export function LegalTimeline({
       title: "NIB Issued & OSS Platform Verified",
       body: `Registered on the Online Single Submission (OSS) platform. NIB ${nib} issued.${npwp ? ` NPWP tax registration ${npwp} completed.` : ""}`,
       refText: `NIB ${nib}${npwp ? ` \u00B7 NPWP ${npwp}` : ""}`,
-      refColor: "var(--kbli-pma-open)",
+      refColor: "var(--state-success)",
     });
   }
 
@@ -92,7 +92,7 @@ export function LegalTimeline({
       refText: skNo
         ? `${skNo} \u00B7 ${formatDate(aktaPendirianDate)}`
         : formatDate(aktaPendirianDate),
-      refColor: "var(--kbli-accent)",
+      refColor: "var(--bz-copper)",
     });
   } else if (skNo && skDate) {
     // Fallback: use SK as founding event
@@ -103,7 +103,7 @@ export function LegalTimeline({
       title: `${companyName} Established`,
       body: `Company incorporated and approved by Kemenkumham.`,
       refText: `${skNo} \u00B7 ${formatDate(skDate)}`,
-      refColor: "var(--kbli-accent)",
+      refColor: "var(--bz-copper)",
     });
   }
 
@@ -123,8 +123,10 @@ export function LegalTimeline({
             <div
               className="text-[20px] font-[800] leading-none tracking-[-0.02em] tabular-nums"
               style={{
+                /* WS3 slice 9: 20px extrabold year = large text — theme
+                   copper (3.87:1 on paper) instead of --kbli-accent (2.57:1). */
                 color: entry.accentYear
-                  ? "var(--kbli-accent)"
+                  ? "var(--bz-copper)"
                   : "var(--kbli-text-muted)",
                 opacity: entry.accentYear ? 1 : undefined,
               }}

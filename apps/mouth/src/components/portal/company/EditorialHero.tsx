@@ -97,16 +97,18 @@ export function EditorialHero({
 
   return (
     <div className="pt-14 pb-10">
-      {/* Eyebrow */}
+      {/* Eyebrow — WS3 slice 9: small copper text reads the AA daylight
+          step (--bz-copper-text, 5.05:1 on paper); the decorative rule keeps
+          the theme copper (non-text, ≥3:1 floor). */}
       <div className="flex items-center gap-2.5 mb-5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-accent)]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--bz-copper-text,var(--kbli-accent))]">
           Company Profile
         </span>
-        <span className="w-8 h-px bg-[var(--kbli-accent)] opacity-50" />
+        <span className="w-8 h-px bg-[var(--bz-copper)] opacity-50" />
         {companyId && onEdit && (
           <button
             onClick={onEdit}
-            className="ml-auto p-1.5 rounded-lg hover:bg-white/10 text-[var(--kbli-text-muted)] transition-colors"
+            className="ml-auto p-1.5 rounded-lg hover:bg-[var(--glass-highlight)] text-[var(--kbli-text-muted)] transition-colors"
             title="Edit company"
             aria-label="Edit company"
           >
@@ -136,7 +138,7 @@ export function EditorialHero({
             label="Active"
             variant="green"
             icon={
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--kbli-pma-open)] shadow-[0_0_6px_var(--kbli-pma-open)]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--state-success)] shadow-[0_0_6px_var(--state-success)]" />
             }
           />
         )}
