@@ -767,7 +767,11 @@ async def run_job(job: AgentJob, send_alerts: bool = True) -> int:
             # p0: a job that stopped working is actionable. Keyed on the job name
             # so a job that fails every 5 minutes costs ONE alert plus a counter.
             await job.send_telegram(
-                f"❌ <b>{job.name}</b> {result.status} ({result.duration_s:.1f}s)\n"
+                # Gateway sends plain text (no parse_mode) — HTML here would
+                # render literally, the same live defect this branch strips
+                # from log_anomaly_detector.py / intel_radar_daily_digest.py,
+                # except this path fires on ANY job's failure fleet-wide.
+                f"❌ {job.name} {result.status} ({result.duration_s:.1f}s)\n"
                 f"{result.error or 'no error details'}",
                 tier="p0",
                 dedup_key=f"cron-job-failed:{job.name}",
