@@ -4,6 +4,15 @@ import os
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
+
+# Both probes below import `backend` inside a CHILD interpreter. `python -c` puts the
+# child's CWD on sys.path, so whether `backend` resolves depended on the directory pytest
+# happened to be invoked from: green from apps/backend-rag, ModuleNotFoundError from the
+# repo root — which is how CI runs it. The result was a job red on every PR for so long
+# that nobody read it any more. Anchor the child to this package instead of inheriting
+# the caller's cwd: a probe must answer about the system, not about its invocation.
+_BACKEND_RAG_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
@@ -32,6 +41,7 @@ def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
         [sys.executable, "-c", script],
         check=False,
         env=env,
+        cwd=_BACKEND_RAG_ROOT,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
@@ -74,6 +84,7 @@ def test_init_sentry_with_dsn_does_not_block_startup() -> None:
         [sys.executable, "-c", script],
         check=False,
         env=env,
+        cwd=_BACKEND_RAG_ROOT,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
