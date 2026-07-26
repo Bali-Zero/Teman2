@@ -47,5 +47,12 @@ jobs:
           # them the file below would ImportError, not merely "not run" (a
           # loud CI failure, not a silent one, but still worth being explicit
           # about why a Telegram-gateway CI job installs two extra packages).
-          python3 -m pip -q install pytest httpx structlog
+          # asyncpg: same reason, one module further out. #3147 added
+          # test_curiosity_batch_send_telegram_batch_reaches_dry_run_delivery,
+          # which imports curiosity_batch.py, which imports asyncpg at module
+          # level — but this line was not updated with it. The test landed, the
+          # dependency did not, and `gateway` (a required check) went red on
+          # every open PR for a file none of them had touched. When a test is
+          # added here, its import chain has to be added here too.
+          python3 -m pip -q install pytest httpx structlog asyncpg
           python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py -q

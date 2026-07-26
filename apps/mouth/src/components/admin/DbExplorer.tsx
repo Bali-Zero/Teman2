@@ -69,18 +69,18 @@ export function DbExplorer() {
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center gap-4 bg-black/40 p-4 rounded-lg border border-white/10">
-        <Database className="text-blue-500 w-5 h-5" />
+      <div className="flex items-center gap-4 bg-[rgba(35,35,40,0.65)] backdrop-blur-sm p-4 rounded-lg border border-[var(--bz-border)]">
+        <Database className="text-[var(--bz-chart-1)] w-5 h-5" />
         <Select value={selectedTable} onValueChange={handleTableChange}>
-          <SelectTrigger className="w-[300px] bg-black border-white/20 text-white">
+          <SelectTrigger className="w-[300px] bg-[var(--bz-bg-input)] border-[var(--bz-border)] text-white">
             <SelectValue placeholder="Select Table" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+          <SelectContent className="bg-[var(--bz-bg-elevated)] border-[var(--bz-border)] text-white">
             {tables.map((t) => (
               <SelectItem
                 key={t}
                 value={t}
-                className="focus:bg-zinc-800 focus:text-white cursor-pointer"
+                className="focus:bg-[var(--bz-bg-surface-hover)] focus:text-white cursor-pointer"
               >
                 {t}
               </SelectItem>
@@ -137,7 +137,7 @@ export function DbExplorer() {
                   {tableData.columns.map((col) => (
                     <TableHead
                       key={col}
-                      className="text-blue-400 font-mono text-xs whitespace-nowrap"
+                      className="text-[var(--bz-chart-1)] font-mono text-xs whitespace-nowrap"
                     >
                       {col}
                     </TableHead>
@@ -165,10 +165,12 @@ export function DbExplorer() {
                         return (
                           <TableCell
                             key={`${i}-${col}`}
-                            className="font-mono text-xs max-w-[200px] truncate text-zinc-300"
+                            className="font-mono text-xs max-w-[200px] truncate text-[var(--bz-text-secondary)]"
                           >
                             {val === null ? (
-                              <span className="text-zinc-600">NULL</span>
+                              <span className="text-[var(--bz-text-muted)]">
+                                NULL
+                              </span>
                             ) : (
                               String(val)
                             )}
