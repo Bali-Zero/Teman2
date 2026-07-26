@@ -45,7 +45,7 @@ case "$SENTINEL_JOB_KEY" in
     # 2026-07-26: was 900. This is the OUTER cap and it covers dump + SFTP + Tigris
     # upload + verify, so it must exceed fly-pg-backup.sh's own DUMP_TIMEOUT (2400) plus
     # its SFTP_TIMEOUT (900) — raising only the inner cap would have changed nothing,
-    # because this one fires first. Measured that day: the dump alone took ~815s (vs ~90s
+    # because this one fires first. Timed that day: the dump alone took ~1150s (vs ~90s
     # the day before) on an unchanged 2749MB database, with the primary's `cpu` health
     # check failing. See the comment block in fly-pg-backup.sh.
     fly_pg_backup)      _job_default=3600 ;;  # PG dump+gzip+upload Tigris

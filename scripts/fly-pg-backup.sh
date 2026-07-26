@@ -39,16 +39,17 @@ KEEP_LOCAL=7
 KEEP_REMOTE=30
 MAX_RETRIES=3
 # A timeout is a CEILING for a hung job, not a claim about how long the work takes.
-# Both of these were sized against a ~90s dump; on 2026-07-26 the same dump of the same
-# 2749MB database on the same shared-cpu-2x machine ran at ~570-660 KB/s — ~815s — with
-# exactly one pg_dump alive (counted on the machine, so the rate is not self-contention)
-# and the primary's own `cpu` health check failing ("system spent 3.13s of the last 10
-# seconds waiting on cpu"). 900s would have left ~85s for SFTP + Tigris upload + gunzip
-# verify, which historically need ~90s: the nightly would have died at ~97% of the work.
-# Raised to ~3x the slow-day observation so a bad-CPU-neighbour day cannot silently eat
-# the backup. If the machine is healthy the job simply finishes early — a ceiling costs
-# nothing when it is not reached. The slowness itself is a separate, unexplained finding.
-DUMP_TIMEOUT=2400  # in-machine pg_dump+gzip wall-clock cap (~815s observed 2026-07-26)
+# Both of these were sized against a ~90s dump. Timed end-to-end on 2026-07-26 (one dump
+# alive, counted on the machine, so the rate is not self-contention): the SAME dump of the
+# SAME 2749MB database on the SAME shared-cpu-2x machine took ~1150s to produce a complete
+# 385,503,996-byte file — rate swinging between ~660 and ~130 KB/s within the single run,
+# while the primary's own `cpu` health check was failing ("system spent 3.13s of the last
+# 10 seconds waiting on cpu"; vm check 2/3, replica 3/3 and idle). The old 900s cap would
+# have killed it at ~78% of the work — and the OUTER wrapper cap, also 900s, would have
+# fired sooner still. Raised to ~2x the measured slow run so a worse CPU-neighbour day
+# cannot silently eat the backup. If the machine is healthy the job finishes early: a
+# ceiling costs nothing when it is not reached. The slowness itself is NOT diagnosed here.
+DUMP_TIMEOUT=2400  # in-machine pg_dump+gzip wall-clock cap (~1150s measured 2026-07-26)
 SFTP_TIMEOUT=900   # SFTP transfer wall-clock cap (~5min observed for ~360MB over DERP)
 
 # Tigris credentials (set by fly storage create)
