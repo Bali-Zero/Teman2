@@ -170,6 +170,88 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Case 8 (guilt, task #45, 2026-07-26): the pytest-verdict block used to be
+# `elif ! ( subshell ); then FAILED; fi` — a bare boolean negation that
+# collapses EVERY non-zero exit into one branch, always printed as "Python
+# tests FAILED". Measured live (cache-untrack, same night): a push ran clean
+# through 97% of the suite then took `Terminated: 15` (SIGTERM) with 3% left
+# — an external kill, not a failing assertion — and still printed "FAILED",
+# sending the lane hunting a regression that did not exist.
+#
+# This proves the FIX's classification logic (mirrored from .husky/pre-push)
+# against a REAL SIGTERM'd child process, not a synthetic exit code: a
+# synthetic `exit 143` would test the arithmetic below, not the actual bug —
+# the actual bug is that shells report a signal-terminated child's status as
+# 128+N, and the OLD code threw that bit away. A real kill is the only thing
+# that proves the classification survives the real mechanism.
+# ---------------------------------------------------------------------------
+classify_verdict() {
+    # Exact mirror of the 3-way branch added to .husky/pre-push.
+    TEST_RC="$1"
+    if [ "$TEST_RC" -eq 0 ]; then
+        echo "VERDICT=PASS"
+    elif [ "$TEST_RC" -ge 128 ]; then
+        echo "VERDICT=TERMINATED signal=$((TEST_RC - 128))"
+    else
+        echo "VERDICT=FAILED"
+    fi
+}
+
+sleep 30 >/dev/null 2>&1 &
+CHILD8=$!
+sleep 0.3
+kill -TERM "$CHILD8" 2>/dev/null
+wait "$CHILD8" 2>/dev/null
+rc8=$?
+out8="$(classify_verdict "$rc8")"
+if [ "$out8" = "VERDICT=TERMINATED signal=15" ]; then
+    note_pass "guilt (task #45) — a REAL SIGTERM'd child (rc=$rc8) classifies as TERMINATED, never FAILED"
+else
+    note_fail "guilt (task #45) — expected VERDICT=TERMINATED signal=15, got rc=$rc8 out='$out8'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 9 (innocence, task #45): a REAL genuinely-failing command (a plain
+# non-zero exit, no signal involved) must still classify as FAILED — the fix
+# must not swallow real test failures while fixing the signal misreport.
+# ---------------------------------------------------------------------------
+sh -c 'exit 3'
+rc9=$?
+out9="$(classify_verdict "$rc9")"
+if [ "$out9" = "VERDICT=FAILED" ]; then
+    note_pass "innocence (task #45) — a REAL non-signal failure (rc=$rc9) still classifies as FAILED"
+else
+    note_fail "innocence (task #45) — expected VERDICT=FAILED, got rc=$rc9 out='$out9'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 10 (innocence, task #45): a REAL succeeding command must classify as
+# PASS — the fix must not perturb the happy path.
+# ---------------------------------------------------------------------------
+sh -c 'exit 0'
+rc10=$?
+out10="$(classify_verdict "$rc10")"
+if [ "$out10" = "VERDICT=PASS" ]; then
+    note_pass "innocence (task #45) — a REAL success (rc=$rc10) still classifies as PASS"
+else
+    note_fail "innocence (task #45) — expected VERDICT=PASS, got rc=$rc10 out='$out10'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 11 (tripwire, task #45): the LIVE hook must capture the pytest
+# subshell's raw exit code into a variable (never re-collapse it through a
+# bare `! ( ... )` boolean) and classify signal-range exits (>=128)
+# separately from a plain non-zero failure.
+# ---------------------------------------------------------------------------
+if grep -q 'TEST_RC=\$?' "$HOOK_FILE" \
+   && grep -q '\[ "\$TEST_RC" -ge 128 \]' "$HOOK_FILE" \
+   && grep -q 'TERMINATED by signal' "$HOOK_FILE"; then
+    note_pass "tripwire (task #45) — pytest verdict is captured and classified 3-way in $HOOK_FILE"
+else
+    note_fail "tripwire (task #45) — 3-way TEST_RC classification missing or reverted in $HOOK_FILE"
+fi
+
 echo "---"
 echo "$pass passed, $fail failed"
 
