@@ -77,15 +77,36 @@ def test_recovered_codex_401_string_classifies_auth_dead():
     assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
 
 
-def test_oauth_token_expired_invalid_revoked_classify_auth_dead():
-    # guilt: the tightened alternative still catches genuine failures phrased
-    # as "oauth token <failure-word>" (#34) — mirrors the already-correct
-    # claude-cascade.sh RAW_RETRYABLE_PATTERN shape.
-    for word in ["expired", "invalid", "revoked"]:
-        ev = f"oauth token {word}, please re-authenticate"
+def test_real_observed_oauth_token_silently_revoked_classifies_auth_dead():
+    # guilt, ROUND 2 (#34, 2026-07-26): the first version of this test used
+    # "oauth token expired"/"invalid"/"revoked" — authored to fit the regex,
+    # vacuous by construction (a strict-adjacent pattern trivially matches a
+    # string built to be strict-adjacent). This is the real exemplar that
+    # replaces it: Pro's logs/cron-agent/learning-pipeline.log:701, an actual
+    # observed incident ("Tier-3 OAuth token silently revoked mid-cron, caught
+    # post-facto"). It is an AI-summarized retrospective line, not a raw
+    # captured stderr string — no raw exemplar for this shape was found on any
+    # of the three machines — but it is a genuine description of a real event,
+    # not text written to satisfy this test. The interposed "silently" is
+    # exactly the failure-direction risk: under strict adjacency this seat
+    # would have read as alive through a real auth death.
+    ev = "Tier-3 OAuth token silently revoked mid-cron, caught post-facto"
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
+
+
+def test_oauth_token_interposed_verb_shapes_classify_auth_dead():
+    # guilt: bounded-proximity (not strict-adjacent) survives the verb a real
+    # failure message routinely interposes between "oauth token" and the
+    # failure word — "has expired", "is invalid", "was revoked". These three
+    # are representative phrasings, not captured exemplars (the one real
+    # exemplar we have is pinned separately above); kept as their own test so
+    # a future regression to strict adjacency fails on the general shape too,
+    # not only on the one sentence we happened to observe.
+    for phrase in ["oauth token has expired", "oauth token is invalid", "oauth token was revoked"]:
         assert (
-            ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
-        ), f"failed on: {ev}"
+            ap.classify_generic(phrase, live_signal=False, seat="codex", ssh_context=False)
+            == ap.AUTH_DEAD
+        ), f"failed on: {phrase}"
 
 
 def test_benign_oauth_token_mention_is_not_auth_dead():
