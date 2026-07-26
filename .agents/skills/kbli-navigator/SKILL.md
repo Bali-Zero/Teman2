@@ -26,7 +26,54 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-26 — keep current)
+## 1. LIVE STATE (last update 2026-07-27 — keep current)
+
+**L2.10 — THE BLOCK-CAUSE WAS A CONSTANT ON FOUR RENDER SITES (2026-07-27, branch
+`agent/air-m5/ops/l210-gap-disclosure`).** Every Bali-blocked page names WHY it is blocked.
+The dataset carries **six** distinct blocking statuses (372 `BLOCCATO_CLASSE_RISCHIO` · 68
+`TERTUTUP` · 39 `CHIUSO_PMA_NO_BESAR` · 35 `CHIUSO_MORATORIA_BALI` · 2
+`CHIUSO_REGOLATORE_SETTORIALE` · 1 `CHIUSO_BALI` · 1 `CHIUSO_BALI_PROPOSTO`), and **not one
+render site read the status.** Cured by one total function, `apps/mouth/src/lib/kbli-bali-block.ts`:
+
+| Site                                                      | What it asserted for EVERY blocked code             | Wrong on                                                                                                                     |
+| --------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `page.tsx` PMA verdict banner (above the fold, 456 pages) | "reserved for MSMEs"                                | **417**                                                                                                                      |
+| `LicensingSection` national-vs-Bali frame (gold layout)   | "under the 13 May 2026 moratorium"                  | **72** (58 of them next to a spliced reason ending `→ not blocked by moratorium` — the cause and its denial in one sentence) |
+| `rewritePmaLineForBali()`                                 | "(reserved UMKM / moratorium)" — two causes at once | now **cause-free**: it never receives the status, so it asserts nothing                                                      |
+| `page.tsx` assistant opening line                         | "(reserved UMKM / 2026 moratorium)"                 | seeds the CHAT context → a wrong cause here becomes a wrong cause in the answer                                              |
+
+Also cured: Italian reaching client pages (`69104` served _"Notaio/PPAT è ufficio personale e
+statale … PMA impossibile"_; marker list **validated against all 518 blocked reasons**, flags
+exactly 2 — the first draft included `solo` and would have eaten `86201`/`86202`'s English
+"cannot open a **solo** practice"); a proposed closure stated as in force (`79110`, travel
+agency); and **8** zero-row pages that walk a client through a licensing route the same page
+declares to have "No verified basis" (`72101`, `75001`, `75002`, `75009`, `86109`, `86202`,
+`86203`, `91222`).
+
+> **METHOD NOTE, worth more than the fix.** Sites 1, 3 and 4 were found only because the
+> PROVE-LIVE probe was run **before** the merge and its CONTROL came back silent: `01192`
+> (`BLOCCATO_CLASSE_RISCHIO`) rendered no licensing frame at all — because it has no gold entry
+> and takes a different layout. Chasing the control's silence, not the fix's success, exposed
+> 417 pages. A control that cannot see what it certifies is worth nothing; **an empty probe
+> accuses the selector.** (The probe itself lied twice first: a literal anchor that could never
+> match because tag-stripping turns `Bali</strong>,` into `Bali ,`.)
+
+**RESIDUALS — recorded, NOT built (per Zero 2026-07-25: findings + options into the corner, no
+blocking question):**
+
+- **4 codes claim openness while `pma_status=TERTUTUP`** — `59111`, `59121`, `86101`, `91221`.
+  Needs per-code adjudication; for the two film codes the vintage-2020 `pma_status` may itself
+  be the wrong side of the contradiction. **AWAITS ZERO** (Legge 5 — it is a verdict change).
+- **Italian still in the DATA** (`l4_bali.reason` for `69104`, `79110`). The render now
+  suppresses it, so no client sees it, but the field is still wrong at the source — a
+  data-plane repair for a `scripts/kbli_filiera/` compiler, not a frontend one.
+- **`49213`'s canonical prose declares a gap that was resolved 2026-07-18**, and canonical is
+  what feeds WhatsApp/RAG, where **no frame exists**. The frontend cure does not reach that
+  surface (consumer-map rule).
+- **`apps/mouth` is not on the pre-push allowlist** (`scripts/prepush_classify.py`, 9 entries,
+  zero mention of `apps/mouth`), so every frontend PR runs the full ~40-min backend suite and,
+  under fleet contention, gets SIGTERM'd mid-push. Innocence already measured: no backend test
+  reads a frontend file. Guard change → auto-merge OFF. No lane owns it.
 
 **L2 EDITORIAL-HONESTY SWEEP — 2026-07-26. The claims were cured by W1; this lane cures the
 LANGUAGE the claims are written in.** Four lots, all driven by `scripts/kbli_filiera/` compilers
