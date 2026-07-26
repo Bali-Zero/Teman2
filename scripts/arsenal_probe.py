@@ -159,8 +159,16 @@ def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
 
 
 def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: int = 160) -> str:
+    """The tail, not the head — the name is a promise the old slice broke.
+
+    Errors live at the tail (a stack trace's cause, an HTTP status line, a CLI's
+    final message); a head-truncation keeps the greeting and drops the diagnosis.
+    #29 (2026-07-26): a real AUTH_DEAD verdict was only recoverable because an
+    external Codex rollout log happened to still be on disk — this field alone,
+    head-truncated at 160 chars, cut off before reaching the actual error.
+    """
     scrubbed = scrub((text or "").strip().replace("\n", " "), extra_secrets)
-    return scrubbed[:limit]
+    return scrubbed[-limit:]
 
 
 # ---------------------------------------------------------------- classification
@@ -175,8 +183,33 @@ def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: i
 # request id minted at 12:11 (`...0706**1211**...`). \b between digits does not
 # split a digit run, so ids stay innocent while bracketed/spaced codes still match
 # (scar #3: match the entity, not the substring).
+# The bare phrase "oauth token" (no failure word) is the same over-match risk one
+# level up: a benign sentence merely mentioning it — "checking oauth token cache
+# for refresh eligibility" — used to classify AUTH_DEAD with no error present at
+# all. #34 (2026-07-26, round 2): first attempt required "expired|invalid|revoked"
+# immediately adjacent to "oauth token" — too strict. Real failure text routinely
+# interposes a verb/adverb: Pro's cron-agent learning-pipeline log recorded a real
+# incident as "OAuth token silently revoked mid-cron" (logs/cron-agent/
+# learning-pipeline.log:701 — an AI-summarized retrospective, not a raw captured
+# stderr string, but a genuine observed event, not authored to fit a regex). Strict
+# adjacency would have read that seat as alive through a real auth death — the
+# exact failure direction this classifier must never create. Bounded proximity
+# (up to 40 chars) survives the interposed word while still requiring failure
+# context, so the bare-mention over-match stays fixed. This also corrects the
+# precedent this pattern claimed the first time: `claude-cascade.sh` actually
+# carries the adjacent-only form only in RAW_RETRYABLE_PATTERN, used solely for
+# a whole-payload anchored envelope check (^...$) — a stricter context than this
+# classifier's substring search. The role that matches THIS classifier's own —
+# scanning a diagnostic text blob, not anchoring a whole payload — is
+# claude-cascade.sh's AUTH_PATTERN (checked against stderr), which is unbounded
+# (`oauth token.*(expired|invalid|revoked)`). Bounded-40 sits between the two:
+# tighter than AUTH_PATTERN's unbounded form, looser than RAW_RETRYABLE_PATTERN's
+# bare adjacency. The other alternatives (401/token_revoked/refresh_token_reused/
+# authentication failed) are already failure-shaped and untouched.
 _AUTH_DEAD_PAT = re.compile(
-    r"\b401\b|authentication failed|token_revoked|refresh_token_reused|oauth token", re.IGNORECASE
+    r"\b401\b|authentication failed|token_revoked|refresh_token_reused|"
+    r"oauth token\b.{0,40}(expired|invalid|revoked)",
+    re.IGNORECASE,
 )
 _QUOTA_DEAD_PAT = re.compile(
     r"out of extra usage|usage limit|weekly limit|quota|\b429\b|rate.?limit|exhausted",
