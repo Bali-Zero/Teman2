@@ -354,6 +354,19 @@ else
         # — a synthetic exit code would test the arithmetic below, not the bug,
         # so guilt/innocence in scripts/tests/test_prepush_failclosed.sh use a
         # REAL `kill -TERM` on a real child process for the signal case.
+        #
+        # #45 round 2: this hook runs live under `sh -e` (production invocation,
+        # confirmed in the process table). Under `-e`, a BARE compound command
+        # aborts the shell on non-zero before the next line ever runs — only a
+        # command in a TESTED context (`if`, `!`, `&&`, `||`) is exempt. The
+        # first cut of this fix removed the `!` that made the old code -e-safe
+        # and left the subshell bare, so `TEST_RC=$?` below never executed: the
+        # three-way classification was correct and completely unreachable.
+        # Fixed the same way line 319's TEMPLATE_OWNER assignment already is —
+        # `|| TEST_RC=$?` puts the subshell in a tested context, so `-e` is
+        # exempt and TEST_RC still gets the real code (verified: exit 3 -> 3,
+        # a real `kill -TERM` on a real child -> 143).
+        TEST_RC=0
         ( cd apps/backend-rag \
             && rm -rf .pytest_cache backend/.pytest_cache \
             && source .venv/bin/activate 2>/dev/null \
@@ -362,8 +375,7 @@ else
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
                OLLAMA_URL="http://127.0.0.1:9" \
-               PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q )
-        TEST_RC=$?
+               PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
         if [ "$TEST_RC" -eq 0 ]; then
             : # pass — fall through silently, same as the old happy path
         elif [ "$TEST_RC" -ge 128 ]; then
