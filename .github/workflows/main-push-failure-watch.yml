@@ -120,6 +120,7 @@ on:
       - Monthly PG Restore Drill
       - Root Guard
       - SBOM (Software Bill of Materials)
+      - scripts/tests/ sweep (report-only)
       - Security Scanning
       - SAST — Bandit + ESLint Security
       - SonarQube Analysis

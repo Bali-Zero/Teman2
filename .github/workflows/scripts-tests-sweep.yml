@@ -149,10 +149,24 @@ jobs:
             --continue-on-collection-errors \
             --junit-xml=scripts-tests-report.xml
 
+      - name: Sweep infrastructure liveness (the ONE step allowed to fail)
+        # NOT continue-on-error, deliberately — see
+        # scripts/ci/check_sweep_junit_liveness.py's own docstring. A job
+        # where every step tolerates its own failure can never report
+        # anything but success to GitHub, which means the reactive
+        # workflow_run watcher (main-push-failure-watch.yml, once this
+        # workflow's name is in its `workflows:` list — same PR) would
+        # have nothing to ever catch. This check only fails on an
+        # infra-dead run (no/near-zero tests collected), never on
+        # individual test failures among the 235 files — those are
+        # Stage-2 triage material, not a nightly-alert condition.
+        if: always()
+        run: python3 scripts/ci/check_sweep_junit_liveness.py scripts-tests-report.xml
+
       - name: Report-only reminder
         if: always()
         run: |
-          echo "::notice title=REPORT-ONLY::This job never blocks a PR. Step outcome: ${{ steps.sweep.outcome }}. See the artifact / log above for real pass/fail counts. Do NOT add this workflow to required_status_checks until the failures above have been triaged (task #16)."
+          echo "::notice title=REPORT-ONLY::This job never blocks a PR (not in required_status_checks). Step outcome: ${{ steps.sweep.outcome }}. See the artifact / log above for real pass/fail counts. Do NOT add this workflow to required_status_checks until the failures above have been triaged (task #16)."
 
       - name: Upload report
         if: always()
