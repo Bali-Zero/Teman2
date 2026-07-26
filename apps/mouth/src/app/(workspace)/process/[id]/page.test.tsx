@@ -108,10 +108,24 @@ vi.mock("./RequiredDocumentsCard", () => ({
   ),
 }));
 
-vi.mock("@balizero/core/utils", () => ({
-  formatIDR: (amount: number) => `IDR ${amount}`,
-}));
-
+// NOTE (task #74): page.tsx does not import from "@balizero/core/utils" at
+// all — it only imports the <Money> component from "@balizero/core". Money
+// (packages/core/components/Money.tsx) calls the real `formatIDR` via a
+// direct relative import ("../utils/currency"), bypassing the
+// "@balizero/core/utils" barrel entirely. A vi.mock() on that barrel is
+// therefore a no-op for anything this page renders — it never touched
+// Money's real formatter, so this test was asserting against a value
+// ("IDR 1750000") the DOM never produced, while the real, correct,
+// unchanged production output ("Rp 1.750.000", the id-ID Intl.NumberFormat
+// currency string) went unverified. Root-caused via git log (page.tsx and
+// Money.tsx both predate this test, neither has since changed) + a local
+// vitest run with the real DOM dumped (confirmed "Rp 1.750.000" /
+// "Rp 2.000.000" actually render). Matches the working pattern already
+// used elsewhere in this codebase for the same formatter — see
+// TeamActivityPanel.test.tsx asserting on real "Rp 45M" output with no
+// mock at all. Fix is to assert on the real formatted string, not to make
+// the mock finally "work" — Money is the ONE canonical price renderer and
+// its real output is exactly what a client-facing price test should prove.
 import CaseDetailPage from "./page";
 
 const profile = {
@@ -253,7 +267,7 @@ describe("CaseDetailPage", () => {
       "https://wa.me/62812345",
     );
     expect(screen.getByText("Zero Tester")).toBeInTheDocument();
-    expect(screen.getAllByText("IDR 1750000")).toHaveLength(2);
+    expect(screen.getAllByText("Rp 1.750.000")).toHaveLength(2);
     expect(screen.getByTestId("required-documents")).toHaveTextContent(
       "Documents for 42",
     );
@@ -402,7 +416,7 @@ describe("CaseDetailPage", () => {
         quoted_price: 2_000_000,
       });
     });
-    expect(await screen.findByText("IDR 2000000")).toBeInTheDocument();
+    expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
   it("closes an unchanged edit and submits changed fields with a reload", async () => {
