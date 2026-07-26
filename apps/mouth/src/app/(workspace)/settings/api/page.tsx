@@ -124,7 +124,7 @@ export default function ApiKeysSettingsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-              <Key className="w-6 h-6 text-amber-400" />
+              <Key className="w-6 h-6 text-[var(--bz-accent)]" />
               API Keys
             </h1>
             <p className="text-sm text-[var(--foreground-muted)]">
@@ -139,14 +139,14 @@ export default function ApiKeysSettingsPage() {
       </div>
 
       {/* Warning */}
-      <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+      <div className="rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 p-4">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-[var(--state-warning)] mt-0.5" />
           <div>
-            <h3 className="font-medium text-yellow-500">
+            <h3 className="font-medium text-[var(--state-warning)]">
               Keep your API keys secure
             </h3>
-            <p className="text-sm text-yellow-500/80">
+            <p className="text-sm text-[var(--state-warning)]/80">
               Never share your API keys or commit them to version control. Treat
               them like passwords.
             </p>
@@ -183,8 +183,8 @@ export default function ApiKeysSettingsPage() {
                         key={perm}
                         className={`text-xs px-2 py-0.5 rounded-full ${
                           perm === "write"
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "bg-blue-500/20 text-blue-400"
+                            ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
+                            : "bg-[var(--state-info)]/15 text-[var(--state-info)]"
                         }`}
                       >
                         {perm}
@@ -222,14 +222,14 @@ export default function ApiKeysSettingsPage() {
                     aria-label="Copy API key"
                   >
                     {copiedKey === apiKey.id ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--state-success)]" />
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
                   </button>
                   <button
                     onClick={() => deleteKey(apiKey.id)}
-                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
+                    className="p-1.5 rounded hover:bg-[var(--state-danger)]/15 text-[var(--state-danger)]"
                     title="Delete"
                     aria-label="Delete API key"
                   >
@@ -264,7 +264,7 @@ export default function ApiKeysSettingsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--surface-overlay)]">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
               Create New API Key
