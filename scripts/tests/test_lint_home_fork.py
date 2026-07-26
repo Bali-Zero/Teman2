@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import plistlib
 import subprocess
 from pathlib import Path
@@ -104,6 +105,180 @@ def test_merge_pairs_dedupes() -> None:
     merged = lhf.merge_pairs(a, b)
     assert len(merged) == 2
     assert merged[0]["machines"] == ["all"]  # first source wins
+
+
+# ------------------------------------------------- check arm: origin/main (task #70)
+#
+# The section above (test_check_guilt_diverged / test_check_innocence_identical_
+# and_symlink / etc.) exercises the deliberate non-git fallback path: repo_root
+# has no `.git` at all, so check_pairs reads the file straight off disk — that
+# is how these fixtures are built, and it must stay unchanged. Everything below
+# exercises the REAL path: repo_root is an actual git working tree, so the repo
+# side of the comparison must come from `git show origin/main:<path>` after an
+# explicit fetch, never from repo_root's own working-tree copy of the file.
+
+
+_GIT_ENV = {
+    **os.environ,
+    "GIT_AUTHOR_NAME": "lint-home-fork-test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "lint-home-fork-test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
+}
+
+
+def _git(cwd: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args], cwd=str(cwd), capture_output=True, text=True,
+        check=True, env=_GIT_ENV,
+    )
+
+
+def _make_stale_checkout_fixture(tmp_path: Path) -> tuple[Path, Path]:
+    """A local (file:// — no GitHub, fully offline/deterministic) origin plus
+    a clone that stands in for `~/nuzantara`: a real git working tree whose
+    `origin/main` and working-tree file both currently read "old".
+
+    Returns (repo_root, origin_work). Advancing origin_work past "old" and
+    pushing simulates origin/main moving on while repo_root — the machine's
+    local main checkout, never interactively pulled from an agent session —
+    stays behind, unfetched. That is the exact "15 behind origin/main" shape
+    task #70 was found from.
+    """
+    remote_bare = tmp_path / "remote.git"
+    _git(tmp_path, "init", "--bare", "-b", "main", str(remote_bare))
+
+    origin_work = tmp_path / "origin_work"
+    _git(tmp_path, "init", "-b", "main", str(origin_work))
+    (origin_work / "scripts").mkdir(parents=True)
+    (origin_work / "scripts" / "run.sh").write_text("old\n")
+    _git(origin_work, "add", "-A")
+    _git(origin_work, "commit", "-m", "old")
+    _git(origin_work, "remote", "add", "origin", str(remote_bare))
+    _git(origin_work, "push", "origin", "main")
+
+    repo_root = tmp_path / "local_checkout"
+    _git(tmp_path, "clone", "--quiet", str(remote_bare), str(repo_root))
+
+    return repo_root, origin_work
+
+
+def test_check_guilt_stale_local_checkout_no_longer_certifies_clean(tmp_path: Path) -> None:
+    repo_root, origin_work = _make_stale_checkout_fixture(tmp_path)
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    # The live copy matches the STALE local checkout — genuinely behind true
+    # origin/main, but indistinguishable from a naive disk-vs-disk read.
+    (home / "scripts" / "run.sh").write_text("old\n")
+
+    # Vacuous-guilt-test guard (task #66): prove the bug this replaces is
+    # real, not assumed. Reading repo_root's own working-tree file (the
+    # pre-#70 comparison) sees NO divergence — the exact false "clean" the
+    # task describes. If this assertion ever fails, the fixture stopped
+    # reproducing the disease and the guilt test below is no longer testing
+    # anything.
+    assert lhf.sha256_file(home / "scripts" / "run.sh") == lhf.sha256_file(
+        repo_root / "scripts" / "run.sh"
+    )
+
+    # Now origin/main genuinely moves on, unbeknownst to repo_root (no fetch yet).
+    (origin_work / "scripts" / "run.sh").write_text("new\n")
+    _git(origin_work, "add", "-A")
+    _git(origin_work, "commit", "-m", "advance")
+    _git(origin_work, "push", "origin", "main")
+
+    pairs = [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh", "machines": ["all"]}]
+    errors: list[str] = []
+    breaches = lhf.check_pairs(pairs, repo_root, home, "mini", errors=errors, fetch=True)
+    assert errors == []
+    assert len(breaches) == 1 and "DIVERGED" in breaches[0]
+
+
+def test_check_innocence_git_repo_genuinely_in_sync(tmp_path: Path) -> None:
+    repo_root, _origin_work = _make_stale_checkout_fixture(tmp_path)
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "run.sh").write_text("old\n")  # matches true origin/main too
+
+    pairs = [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh", "machines": ["all"]}]
+    errors: list[str] = []
+    breaches = lhf.check_pairs(pairs, repo_root, home, "mini", errors=errors, fetch=True)
+    assert breaches == []
+    assert errors == []
+
+
+def test_check_guilt_no_repo_twin_via_git_show(tmp_path: Path) -> None:
+    repo_root, _origin_work = _make_stale_checkout_fixture(tmp_path)
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "orphan.sh").write_text("live only\n")
+
+    pairs = [{"live": "~/scripts/orphan.sh", "repo": "scripts/orphan.sh", "machines": ["all"]}]
+    errors: list[str] = []
+    breaches = lhf.check_pairs(pairs, repo_root, home, "mini", errors=errors, fetch=True)
+    assert len(breaches) == 1 and "NO-REPO-TWIN" in breaches[0]
+    assert errors == []
+
+
+def test_check_guilt_fetch_failure_is_operational_error_not_clean(tmp_path: Path) -> None:
+    # A git repo whose origin points at a path that does not exist — the
+    # fetch is guaranteed to fail, deterministically, with no network.
+    repo_root = tmp_path / "local_checkout"
+    _git(tmp_path, "init", "-b", "main", str(repo_root))
+    (repo_root / "scripts").mkdir(parents=True)
+    (repo_root / "scripts" / "run.sh").write_text("whatever\n")
+    _git(repo_root, "add", "-A")
+    _git(repo_root, "commit", "-m", "init")
+    _git(repo_root, "remote", "add", "origin", str(tmp_path / "does-not-exist.git"))
+
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "run.sh").write_text("whatever\n")  # exact match — irrelevant here
+
+    pairs = [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh", "machines": ["all"]}]
+    errors: list[str] = []
+    breaches = lhf.check_pairs(pairs, repo_root, home, "mini", errors=errors, fetch=True)
+    # An unverifiable reference must NEVER be reported clean, even though the
+    # live copy happens to match the (unverified) disk file byte-for-byte.
+    assert breaches == []
+    assert len(errors) == 1 and "fetch" in errors[0].lower()
+
+
+def test_check_innocence_no_fetch_flag_still_resolves_via_git(tmp_path: Path) -> None:
+    """--no-fetch skips the network round-trip but must still verify via git
+    show against whatever origin/main ref is already cached — never a silent
+    disk-read fallback for a real git working tree."""
+    repo_root, _origin_work = _make_stale_checkout_fixture(tmp_path)
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "run.sh").write_text("old\n")
+
+    pairs = [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh", "machines": ["all"]}]
+    errors: list[str] = []
+    breaches = lhf.check_pairs(pairs, repo_root, home, "mini", errors=errors, fetch=False)
+    assert breaches == []
+    assert errors == []
+
+
+def test_main_check_only_uses_git_show_not_stale_working_tree(tmp_path: Path) -> None:
+    """End-to-end through main(): --check alone (no --discover, so no crontab
+    call to fake) against a real stale git checkout must report DIVERGED
+    (exit 1), never the false 0-clean the pre-#70 disk comparison gave."""
+    repo_root, origin_work = _make_stale_checkout_fixture(tmp_path)
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "run.sh").write_text("old\n")
+    (origin_work / "scripts" / "run.sh").write_text("new\n")
+    _git(origin_work, "add", "-A")
+    _git(origin_work, "commit", "-m", "advance")
+    _git(origin_work, "push", "origin", "main")
+
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    rc = lhf.main([
+        "--check", "--config", str(cfg), "--home", str(home),
+        "--repo-root", str(repo_root), "--json",
+    ])
+    assert rc == 1
 
 
 # ---------------------------------------------------------------- discover arm

@@ -16,7 +16,22 @@ This lint is that rule with an exit contract, in two arms:
   --check     For every DECLARED pair (infra/home-fork/declared-pairs.json,
               merged at runtime with proprioception's own pair list so the two
               SSOTs cannot silently drift): sha256(live) vs sha256(repo twin).
-              Divergence or missing repo twin => breach.
+              Divergence or missing repo twin => breach. The repo-side
+              reference is `git show origin/main:<path>` after an explicit
+              `git fetch origin main` (task #70) — NEVER a plain read of the
+              working-tree file under repo_root. A machine's local main
+              checkout is not interactively pulled from an agent session (it
+              races ~45 worktrees) and can sit behind origin/main for days;
+              trusting it as ground truth is not merely a false-positive
+              risk — the dangerous direction is silent: a live copy that
+              matches the STALE checkout while origin/main moved on gets
+              certified CLEAN, which is this lint's own failure mode one
+              level up. If the fetch or the origin/main lookup fails, --check
+              refuses to guess: it reports an operational error instead of a
+              verdict (see exit 4 below), never falling back to the possibly-
+              stale disk copy. (The one legitimate disk-read fallback is a
+              repo_root with no `.git` at all — the synthetic fixtures the
+              unit tests build; unchanged, and never the live path.)
   --discover  Parse ~/Library/LaunchAgents/*.plist (Program/ProgramArguments)
               and `crontab -l`: every HOME-rooted payload path that is not
               inside the repo checkout, not a declared pair, and not
@@ -25,8 +40,9 @@ This lint is that rule with an exit contract, in two arms:
 
 Default (no flag) runs both arms. Exit code is a bitmask:
     0 = clean · 1 = --check divergence · 2 = --discover undeclared ·
-    4 = operational error (unreadable plist/dir, crontab failure, TCC denial —
-        a scan that cannot see is NOT clean; fail-visible, W84 discipline).
+    4 = operational error (unreadable plist/dir, crontab failure, TCC denial,
+        failed fetch/origin-main-lookup for --check — a scan that cannot see
+        is NOT clean; fail-visible, W84 discipline).
 Machine-aware: ~ expands per-machine (balizero on M5, nuzantara on Pro/Mini);
 pairs carry a "machines" scope (m5|pro|mini|all). A live copy absent on this
 machine is NOT a breach (the machine may simply not run that job).
@@ -114,6 +130,54 @@ def sha256_file(path: Path) -> Optional[str]:
         return None
 
 
+# ------------------------------------------------------ canonical (task #70)
+
+
+def _run_git(
+    repo_root: Path, args: list[str], timeout: int = 15
+) -> "subprocess.CompletedProcess[bytes]":
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *args], capture_output=True, timeout=timeout
+    )
+
+
+def is_git_worktree(repo_root: Path) -> bool:
+    """True iff repo_root is a real git working tree (has a .git entry — a
+    directory for a normal checkout, a file for a linked worktree). False for
+    the plain filesystem directories the unit tests build as fixtures — that
+    is the deliberate, unchanged fallback to a direct on-disk read below."""
+    return (repo_root / ".git").exists()
+
+
+def fetch_origin_main(repo_root: Path) -> bool:
+    """Best-effort `git fetch origin main` — refs-only, never touches the
+    working tree, safe to run against the shared object store from any
+    worktree of this repo. Returns whether the fetch itself succeeded; a
+    failure here must NEVER be papered over by trusting whatever
+    remote-tracking ref happens to already be on disk (that ref can be just
+    as stale as the working tree it's meant to correct)."""
+    try:
+        proc = _run_git(repo_root, ["fetch", "--quiet", "origin", "main"], timeout=30)
+        return proc.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def git_show_origin_main(repo_root: Path, rel_path: str) -> Optional[bytes]:
+    """Content of rel_path AS IT EXISTS ON origin/main. None if the path is
+    not tracked there (a real NO-REPO-TWIN, not an operational error) or on
+    any git failure (also None here — the caller distinguishes "doesn't
+    exist" from "git itself failed" by checking the process rc separately
+    when it needs to)."""
+    try:
+        proc = _run_git(repo_root, ["show", f"origin/main:{rel_path}"])
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
 # ---------------------------------------------------------------- pairs
 
 
@@ -176,24 +240,82 @@ def pair_applies(pair: dict[str, Any], label: str) -> bool:
 
 
 def check_pairs(
-    pairs: list[dict[str, Any]], repo_root: Path, home: Path, label: str
+    pairs: list[dict[str, Any]],
+    repo_root: Path,
+    home: Path,
+    label: str,
+    errors: Optional[list[str]] = None,
+    fetch: bool = True,
 ) -> list[str]:
-    """The --check arm: sha256 live vs repo twin for machine-applicable pairs."""
+    """The --check arm: sha256 live vs the TRUE repo twin, for machine-
+    applicable pairs.
+
+    Task #70: the repo-side reference is `origin/main` (after an explicit
+    fetch), NEVER the working-tree file under repo_root read straight off
+    disk. A machine's local main checkout is not interactively pulled from an
+    agent session (it races ~45 worktrees) and can sit behind origin/main for
+    days; trusting it as ground truth has two failure directions and the
+    dangerous one is silent — a live copy that matches the STALE checkout
+    while origin/main has moved on gets certified CLEAN, which is the exact
+    HOME-fork failure this lint exists to catch, one level up.
+
+    When repo_root is not a real git working tree at all (the plain
+    filesystem directories the unit tests build as fixtures), this falls
+    back to a direct on-disk read — unchanged prior behavior, no git
+    involved, no error possible.
+
+    When repo_root IS a git working tree and the fetch or the origin/main
+    lookup fails, this refuses to guess: it appends to `errors` (driving the
+    operational-error exit bit) and returns zero breaches for the whole call
+    — a "clean" verdict built on an unverifiable reference is worse than an
+    honest "could not verify" (fail-visible beats fail-quiet, W84).
+    """
+    if errors is None:
+        errors = []
     breaches: list[str] = []
+    git_repo = is_git_worktree(repo_root)
+
+    if git_repo:
+        if fetch and not fetch_origin_main(repo_root):
+            errors.append(
+                f"git fetch origin main failed in {repo_root} — cannot verify "
+                f"any declared pair against true origin/main (network/auth?); "
+                f"refusing to fall back to this checkout's possibly-stale "
+                f"working tree"
+            )
+            return breaches
+        verify = _run_git(repo_root, ["rev-parse", "--verify", "origin/main"])
+        if verify.returncode != 0:
+            errors.append(
+                f"origin/main is not resolvable in {repo_root} — no "
+                f"remote-tracking ref to verify declared pairs against"
+            )
+            return breaches
+
     for pair in pairs:
         if not pair_applies(pair, label):
             continue
         live = expand_home(pair["live"], home)
-        repo = repo_root / pair["repo"]
         if not live.exists():
             continue  # this machine does not run that copy — not a breach
-        if not repo.exists():
+        live_sha = sha256_file(live)
+
+        if git_repo:
+            repo_bytes = git_show_origin_main(repo_root, pair["repo"])
+        else:
+            repo_path = repo_root / pair["repo"]
+            try:
+                repo_bytes = repo_path.read_bytes()
+            except OSError:
+                repo_bytes = None
+
+        if repo_bytes is None:
             breaches.append(
                 f"NO-REPO-TWIN: {pair['live']} executes live but {pair['repo']} "
-                f"is not in the repo — the live copy has no source of truth"
+                f"is not on origin/main — the live copy has no source of truth"
             )
             continue
-        if sha256_file(live) != sha256_file(repo):
+        if live_sha != hashlib.sha256(repo_bytes).hexdigest():
             breaches.append(
                 f"DIVERGED: {pair['live']} != {pair['repo']} — a fix is stranded "
                 f"on one side (port the newer content, then realign live from repo)"
@@ -396,6 +518,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
     parser.add_argument("--plist-dir", type=Path, default=None, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--no-fetch", action="store_true",
+        help="skip `git fetch origin main` before --check and verify against "
+             "whatever origin/main ref is already cached locally (task #70 default "
+             "is to fetch; this is an explicit offline opt-out, not a silent "
+             "stale-disk fallback — origin/main still resolves via git, never via "
+             "a plain file read)",
+    )
     args = parser.parse_args(argv)
 
     run_check = args.check or not args.discover
@@ -411,7 +541,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     errors: list[str] = []
 
     if run_check:
-        breaches = check_pairs(pairs, args.repo_root, args.home, label)
+        breaches = check_pairs(
+            pairs, args.repo_root, args.home, label,
+            errors=errors, fetch=not args.no_fetch,
+        )
 
     if run_discover:
         plist_dirs = [args.plist_dir or (args.home / "Library" / "LaunchAgents")]
