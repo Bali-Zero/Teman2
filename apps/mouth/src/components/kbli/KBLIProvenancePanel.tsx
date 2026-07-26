@@ -1,4 +1,5 @@
 import type { KBLICode, KBLIProvenance } from "@/lib/kbli-types";
+import { baliBlockClause, isMoratoriumBasis } from "@/lib/kbli-bali-block";
 
 // =============================================================================
 // TRACK-P — "Sources & Verification" panel
@@ -39,7 +40,9 @@ interface SourceRow {
   locator?: string | null;
 }
 
-function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
+/** Exported for test: this panel had no test at all, which is how the Bali row
+ * came to cite a rule that did not produce the verdict it was describing. */
+export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
   const rows: SourceRow[] = [];
 
   rows.push({
@@ -133,16 +136,29 @@ function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
   if (kbli.baliL4) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
+    // This row is the honesty surface for the Bali layer, so it must not
+    // attribute the verdict to a rule that did not produce it. `m.rule` is a
+    // constant on every record, not per-code evidence — citing it for the 111
+    // codes blocked by an activity-level restriction told a reader the block
+    // was the risk-tier moratorium when it was not.
+    const moratoriumBasis = isMoratoriumBasis(
+      kbli.baliL4.blocked,
+      kbli.baliL4.status,
+    );
     rows.push({
       layer: "Bali status",
-      source: m?.rule
-        ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
-        : "Bali moratorium overlay (Gubernur letter B.27.000/642)",
+      source: moratoriumBasis
+        ? m?.rule
+          ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
+          : "Bali moratorium overlay (Gubernur letter B.27.000/642)"
+        : "Activity-level restriction — not the risk-tier moratorium overlay",
       vintage: "2026 overlay",
       verdict: isNonClassifiable ? "gap" : "pending",
       detail: isNonClassifiable
         ? "Not classifiable until the true risk tier is re-derived — the tier this verdict depended on was detached."
-        : `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`,
+        : moratoriumBasis
+          ? `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`
+          : `This activity is ${baliBlockClause(kbli.baliL4.status)} · confidence ${kbli.baliL4.confidence}.`,
     });
   }
 
