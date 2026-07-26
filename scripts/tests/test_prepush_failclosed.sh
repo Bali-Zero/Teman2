@@ -93,6 +93,83 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Case 5 (guilt, RANGE_FROM NEW pattern, task #39, 2026-07-26): the sibling
+# bug on line 133 — a failing `git merge-base` must degrade cleanly to
+# DIFF_ERROR=1 instead of aborting the script before that check runs. Uses a
+# REAL `git merge-base` failure (bogus ref, no valid object) rather than a
+# synthetic `exit 2`, so this pins the actual command that was broken, not
+# just the general shell-semantics shape already covered by Case 1.
+# `git merge-base HEAD <bogus>` fails purely on local ref resolution — no
+# network, no dependency on an `origin` remote existing.
+# ---------------------------------------------------------------------------
+out5="$(sh -e -c '
+    RANGE_FROM="$(git merge-base HEAD definitely-not-a-valid-ref-xyz123 2>/dev/null)" || RANGE_FROM=""
+    if [ -z "$RANGE_FROM" ]; then
+        echo "DIFF_ERROR=1"
+    else
+        echo "DIFF_ERROR=0"
+    fi
+    echo "reached-end"
+' 2>/dev/null)"
+if [ "$out5" = "$(printf 'DIFF_ERROR=1\nreached-end')" ]; then
+    note_pass "guilt (RANGE_FROM NEW pattern) — failing merge-base degrades to DIFF_ERROR=1 and script continues"
+else
+    note_fail "guilt (RANGE_FROM NEW pattern) — expected DIFF_ERROR=1 + reached-end, got: $out5"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 6 (innocence, RANGE_FROM NEW pattern): a SUCCEEDING merge-base (the
+# ordinary case — a normal push whose branch has a real common ancestor)
+# must behave exactly as before the fix — RANGE_FROM gets a real value,
+# DIFF_ERROR stays unset, and execution reaches the classifier. Uses
+# `git merge-base HEAD HEAD` — always succeeds, returns HEAD's own sha, zero
+# dependency on any particular branch topology or fetched remote.
+# ---------------------------------------------------------------------------
+out6="$(sh -e -c '
+    RANGE_FROM="$(git merge-base HEAD HEAD 2>/dev/null)" || RANGE_FROM=""
+    if [ -z "$RANGE_FROM" ]; then
+        echo "DIFF_ERROR=1"
+    else
+        echo "DIFF_ERROR=0 reached-classifier"
+    fi
+' 2>/dev/null)"
+if [ "$out6" = "DIFF_ERROR=0 reached-classifier" ]; then
+    note_pass "innocence (RANGE_FROM NEW pattern) — a normal successful merge-base still reaches the classifier"
+else
+    note_fail "innocence (RANGE_FROM NEW pattern) — expected DIFF_ERROR=0 reached-classifier, got: $out6"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 7 (tripwire, task #39): grep the LIVE hook file — a bare unguarded
+# RANGE_FROM="$( ... )" (no "|| RANGE_FROM=" on the same line) must never
+# reappear. Mirrors Case 4's method for the sibling variable.
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire (RANGE_FROM) — $HOOK_FILE not found (cannot verify)"
+else
+    bad_lines5="$(grep -n 'RANGE_FROM="\$(' "$HOOK_FILE" | grep -v '|| RANGE_FROM=' || true)"
+    if [ -z "$bad_lines5" ]; then
+        note_pass "tripwire (RANGE_FROM) — no bare unguarded RANGE_FROM=\"\$(...)\" in $HOOK_FILE"
+    else
+        note_fail "tripwire (RANGE_FROM) — bare unguarded RANGE_FROM assignment reintroduced in $HOOK_FILE: $bad_lines5"
+    fi
+
+    # TEMPLATE_OWNER's assignment is a line-continued (\) statement — the
+    # opening "TEMPLATE_OWNER=\"$(" and the closing "|| TEMPLATE_OWNER=..."
+    # guard live on DIFFERENT physical lines, so (unlike Cases 4/7's single-
+    # line assignments) a same-line grep would false-positive FAIL even when
+    # the guard is present. Widen the window: -A2 pulls the assignment line
+    # plus its two continuation lines, then check the guard is anywhere in
+    # that block.
+    owner_block="$(grep -A2 'TEMPLATE_OWNER="\$(' "$HOOK_FILE" || true)"
+    if [ -n "$owner_block" ] && printf '%s' "$owner_block" | grep -q '|| TEMPLATE_OWNER='; then
+        note_pass "tripwire (TEMPLATE_OWNER) — no bare unguarded TEMPLATE_OWNER=\"\$(...)\" in $HOOK_FILE"
+    else
+        note_fail "tripwire (TEMPLATE_OWNER) — bare unguarded TEMPLATE_OWNER assignment reintroduced in $HOOK_FILE: $owner_block"
+    fi
+fi
+
 echo "---"
 echo "$pass passed, $fail failed"
 

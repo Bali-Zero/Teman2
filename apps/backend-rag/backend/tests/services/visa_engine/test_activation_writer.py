@@ -1044,7 +1044,15 @@ async def test_function_not_executable_by_unprivileged_role(repo: VisaEngineRepo
     PUBLIC by default at CREATE FUNCTION time; migration 251 explicitly
     revokes it. Proven by creating a throwaway, privilege-free role and
     confirming it (and therefore PUBLIC) has no EXECUTE grant."""
-    probe_role = "visa_test_probe_norights"
+    # Unique per run, like the provisioning test below (`suffix = uuid4().hex[:10]`).
+    # A ROLE is CLUSTER-scope: it lives in `pg_authid`, shared by every database in
+    # the instance. The pre-push hook isolates runs by cloning the DATABASE
+    # (`nuzantara_test_run_$$`), which gives this test no protection at all — two
+    # concurrent pushes both ran `CREATE ROLE visa_test_probe_norights` and the
+    # second died on `pg_authid_rolname_index`, blocking a push over a diff that
+    # never touched visa_engine. A crash between CREATE and DROP also used to strand
+    # the fixed name and fail every later run until someone dropped it by hand.
+    probe_role = f"visa_test_probe_norights_{uuid.uuid4().hex[:10]}"
     async with repo.db_pool.acquire() as conn:
         try:
             await conn.execute(f"CREATE ROLE {probe_role} NOLOGIN")
@@ -1058,7 +1066,7 @@ async def test_function_not_executable_by_unprivileged_role(repo: VisaEngineRepo
             )
             assert has_exec is False
         finally:
-            await conn.execute(f"DROP ROLE {probe_role}")
+            await conn.execute(f"DROP ROLE IF EXISTS {probe_role}")
 
 
 # --------------------------------------------------------------------------
