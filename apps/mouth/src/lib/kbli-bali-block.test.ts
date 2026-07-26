@@ -4,8 +4,10 @@ import {
   shouldShowReason,
   containsItalian,
   isProposalOnly,
+  narratesUnverifiedRoute,
 } from "./kbli-bali-block";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
+import goldData from "../../data/kbli-gold-all.json";
 
 interface RawL4 {
   blocked?: boolean;
@@ -15,9 +17,11 @@ interface RawL4 {
 interface RawRecord {
   kode_kbli_2025: string;
   l4_bali?: RawL4;
+  per_skala?: unknown[];
 }
 const RECORDS = (rawData as { data: RawRecord[] }).data;
 const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
+const GOLD = goldData as unknown as Record<string, { whatYouNeed?: string }>;
 
 const MORATORIUM_SENTENCE = "under the 13 May 2026 moratorium";
 
@@ -156,5 +160,77 @@ describe("the real dataset — the invariant that was broken on prod", () => {
       shouldShowReason(r.l4_bali?.status, r.l4_bali?.reason ?? ""),
     ).filter((r) => containsItalian(r.l4_bali?.reason ?? ""));
     expect(italian.map((r) => r.kode_kbli_2025)).toEqual([]);
+  });
+});
+
+describe("narratesUnverifiedRoute — a route the page says has no basis", () => {
+  // Verbatim from /kbli/86202's gold walkthrough, step 3, on prod today.
+  const REAL_ROUTE =
+    "3. **NIB + Standard Certificate** (Micro / Small / Medium / Large, Medium-High risk) — Authority: Bupati/Walikota — 25 Hari";
+
+  it("GUILT: zero served rows + a tier and an authority = framed", () => {
+    expect(narratesUnverifiedRoute(0, REAL_ROUTE)).toBe(true);
+  });
+
+  it("INNOCENCE: the same text is fine when rows actually survive", () => {
+    // 49213 and 93191 assert tiers their surviving rows still support. The
+    // frame must not accuse a page whose basis is intact.
+    expect(narratesUnverifiedRoute(12, REAL_ROUTE)).toBe(false);
+    expect(narratesUnverifiedRoute(1, REAL_ROUTE)).toBe(false);
+  });
+
+  it("INNOCENCE: an honest-gap walkthrough is not framed twice", () => {
+    // 36 of the 44 zero-row gold entries already read as declared gaps. A tier
+    // NAME appearing inside such a sentence must not trip the frame on its own.
+    expect(
+      narratesUnverifiedRoute(
+        0,
+        "**Licensing:** not yet reliably defined for this code. The risk tier and licensing procedure shown here earlier were carried over from an unrelated served record, so they have been removed from this page.",
+      ),
+    ).toBe(false);
+  });
+
+  it("INNOCENCE: an authority with no tier is not a route", () => {
+    expect(
+      narratesUnverifiedRoute(
+        0,
+        "Sectoral oversight sits with the Menteri; the risk classification is not yet published for this code.",
+      ),
+    ).toBe(false);
+  });
+
+  it("an empty or missing walkthrough is never framed", () => {
+    expect(narratesUnverifiedRoute(0, "")).toBe(false);
+    expect(narratesUnverifiedRoute(0, null)).toBe(false);
+    expect(narratesUnverifiedRoute(0, undefined)).toBe(false);
+  });
+
+  it("pins the live population: 8 of the 44 zero-row gold pages", () => {
+    // Measured on the canonical + gold of 2026-07-27. Pinned so that widening
+    // or narrowing the frame is a visible, deliberate change rather than a
+    // silent one — the same discipline as the untraceable-PMA pin.
+    const goldMap = GOLD as Record<
+      string,
+      { whatYouNeed?: string } | undefined
+    >;
+    const zeroRow = RECORDS.filter(
+      (r) =>
+        (r.per_skala ?? []).length === 0 &&
+        !!goldMap[r.kode_kbli_2025]?.whatYouNeed,
+    );
+    const framed = zeroRow.filter((r) =>
+      narratesUnverifiedRoute(0, goldMap[r.kode_kbli_2025]?.whatYouNeed),
+    );
+    expect(zeroRow.length).toBe(44);
+    expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual([
+      "72101",
+      "75001",
+      "75002",
+      "75009",
+      "86109",
+      "86202",
+      "86203",
+      "91222",
+    ]);
   });
 });

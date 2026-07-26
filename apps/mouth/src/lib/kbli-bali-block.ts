@@ -137,3 +137,51 @@ const ITALIAN_MARKER_RE =
 export function containsItalian(text: string): boolean {
   return ITALIAN_MARKER_RE.test(text);
 }
+
+// =============================================================================
+// A walkthrough that narrates a licensing route the page says has no basis
+//
+// When a collision cure detaches a code's licensing rows, `KeyFacts` says so —
+// "Licensing Route: No verified basis — divergence documented". The gold
+// editorial walkthrough rendered below it was never given the same knowledge, so
+// `/kbli/86202` (specialist medical practice) serves, today, "Licensing Route:
+// No verified basis" and then, further down: "NIB + Standard Certificate (Micro
+// / Small / Medium / Large, Medium-High risk) — Authority: Bupati/Walikota — 25
+// Hari". The tier, the issuing authority and the timeline all come from the row
+// the cure disowned. Step 1 of that same walkthrough was already corrected to
+// "local, WNI"; step 3 was not.
+//
+// Measured: 217 records serve ZERO licensing rows, 44 of them are masked by a
+// gold walkthrough, and 8 of those 44 narrate a concrete route anyway — 72101,
+// 75001, 75002, 75009 (veterinary), 86109, 86202, 86203 (medical), 91222. The
+// other 36 already read as honest gaps, which is why this fires on the NARRATION
+// and not merely on "no rows": framing all 44 would paste a redundant warning
+// onto 36 pages that are already right.
+// =============================================================================
+
+/** An OSS risk-tier NAME, in either language the corpus uses. */
+const TIER_NAME_RE =
+  /\b(Menengah\s+(Tinggi|Rendah)|Medium[- ](High|Low)\s+risk|High\s+risk|Low\s+risk|Risiko\s+\w+)\b/i;
+
+/** A procedural specific: who issues it, or how long it takes. */
+const ROUTE_SPECIFIC_RE =
+  /\bAuthority:|\bBupati\b|\bWali\s*ko?ta\b|\bMenteri\b|\bGubernur\b|\d+\s*Hari\b/i;
+
+/**
+ * Does this gold walkthrough state a licensing route while the page serves no
+ * verified row to support it?
+ *
+ * Both halves are required. A tier name alone can appear in an honest sentence
+ * ("the correct risk tier is not yet defined"), and an authority alone can
+ * belong to a sectoral note. It is the PAIR — a tier plus who issues it or how
+ * long it takes — that reads as a route a client can follow.
+ */
+export function narratesUnverifiedRoute(
+  servedLicensingRows: number,
+  goldWhatYouNeed?: string | null,
+): boolean {
+  if (servedLicensingRows > 0) return false;
+  const text = (goldWhatYouNeed ?? "").trim();
+  if (!text) return false;
+  return TIER_NAME_RE.test(text) && ROUTE_SPECIFIC_RE.test(text);
+}

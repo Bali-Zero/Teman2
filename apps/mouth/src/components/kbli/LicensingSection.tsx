@@ -11,7 +11,11 @@ import type {
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
-import { baliBlockClause, shouldShowReason } from "@/lib/kbli-bali-block";
+import {
+  baliBlockClause,
+  shouldShowReason,
+  narratesUnverifiedRoute,
+} from "@/lib/kbli-bali-block";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -1088,6 +1092,42 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
       {/* ── EDITORIAL CONTENT SECTIONS ── */}
       {parsed && parsed.sections.length > 0 && (
         <div className="space-y-6">
+          {/* The walkthrough predates the cure that detached this code's rows,
+              so it can still name a tier, an issuing authority and a timeline
+              that KeyFacts above has already declared unsupported. Frame it —
+              the steps stay (they are the editorial record) but nobody reads
+              them as a route they can follow today. */}
+          {narratesUnverifiedRoute(
+            kbli.licensing.length,
+            gold?.whatYouNeed,
+          ) && (
+            <div
+              className="rounded-xl border px-5 py-4"
+              style={{
+                background: "rgba(232, 168, 73, 0.06)",
+                borderColor: "rgba(232, 168, 73, 0.25)",
+              }}
+            >
+              <div className="mb-1.5 flex items-center gap-2">
+                <span aria-hidden="true">⚠️</span>
+                <span
+                  className="text-xs font-bold uppercase tracking-[0.12em]"
+                  style={{ color: "var(--kbli-pma-restricted)" }}
+                >
+                  Steps below predate this code&rsquo;s licensing review
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                The walkthrough that follows was written against licensing rows
+                we have since been unable to verify for this activity — which is
+                why no risk tier or licensing route is shown above. Treat any
+                risk level, issuing authority or processing time in these steps
+                as <strong>provisional</strong>, and confirm the current
+                requirements at oss.go.id or with the Bali Zero team before
+                acting on them.
+              </p>
+            </div>
+          )}
           {parsed.sections.map((sec, i) => (
             <ContentSection
               key={i}
