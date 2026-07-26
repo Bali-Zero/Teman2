@@ -2,8 +2,8 @@
 name: companion-mode-spec
 description: Voice register, hook patterns, and example translations for the wr3-design-architect `companion_from_carousel` mode. Read this when WR3 is dispatched on the `wr2_episode_published` channel.
 mode: companion_from_carousel
-sub_modes: [story_15s, reel_60s, comment_interactive]
-version: 1.0.0
+sub_modes: [episode, story_15s, comment_interactive]
+version: 1.1.0
 status: active
 ---
 
@@ -23,46 +23,30 @@ Companion content is the **echo** of the carousel, not its rerun. The carousel a
 > Carosello = la spiegazione.
 > Companion = il gancio che riporta alla spiegazione.
 
-## Sub-mode 1 — `story_15s` (default)
-
-### Voice register: **ironico**
-
-Single rhetorical question + visual proof + soft CTA. Never lecture. Never read out a number Zantara has not earned. The 15s window is too short for context — assume the viewer has not seen the carousel yet.
-
-### Structure (15s = 3 beats × 5s)
-
-| Beat | Seconds | Element | Brand cortex anchor |
-|---|---|---|---|
-| Hook | 0-5s | One question. Ironic, with a number. | `voice/registers/ironico.md` |
-| Proof | 5-10s | One visual fact, vertical-animated number, no voiceover at peak | `tokens.json` (palette + typography) |
-| CTA | 10-15s | "Carosello completo nel link in bio" / "Swipe-up al carosello" | `voice/cta-soft.md` |
-
-### Examples (concrete carousels)
-
-#### KEP-71 SPT (carosello tax 2026-05)
-- **Hook (5s)**: *"Sai cosa è il KEP-71?"* (close-up Zantara, eyebrow raised)
-- **Proof (5s)**: "21 giorni" + "IDR 18 milioni" animati in verticale, palette `accent-yellow`
-- **CTA (5s)**: *"Carosello completo nel link in bio."* (small Zantara wave)
-
-#### KITAS investor 2026 (carosello visa)
-- **Hook**: *"Investor KITAS senza PMA? Spoiler: no."*
-- **Proof**: "PMA min IDR 10 mld" verticale, citazione `BKPM PerKBPM 4/2024` slide-anchor
-- **CTA**: *"Sai perché? Carosello in bio."*
-
-### Critic gate (Lane 1 + Lane 3 only)
-
-- Lane 1 (Identity ArcFace ≥ 0.6): Zantara must be recognizable in the hook close-up — fail = re-render the hook clip only, never the proof clip.
-- Lane 3 (Brand voice): scan VO + on-screen text against `voice/taboo.md`. Forbidden in companion mode: "guida completa", "tutto quello che devi sapere", "ecco i 5 step" (carousel-style cliches that signal not-companion).
-
-## Sub-mode 2 — `reel_60s` (opt-in `--expand`)
+## Sub-mode 1 — `episode` (automatic on every publish)
 
 ### Voice register: **analitico**
 
-Reel is a **first-class WR3 episode** that happens to share claim_ids with the carousel. Full investigative-journalistic voice — same register as a standalone WR3 episode. The carousel is the source, but the Reel is autonomous.
+The episode is a **first-class WR3 artifact** that happens to share claim_ids with the carousel. Full investigative-journalistic voice — same register as a standalone WR3 episode. The carousel is the source, but the episode is autonomous.
 
-### Structure (60s = standard WR3 8-clip arc)
+It runs on **every** published carousel. There is no flag that turns it on; `companion_skip: true` in the WR2 brief is the only escape hatch. (Zero, 2026-07-26: _"la wr3 è prestabilita e crea il video del carosello della wr2"_.)
 
-Same 8-clip pacing as a regular `wr3-script-editor` output:
+### Duration: 60–150 s
+
+`[60,150]` is WR3's native envelope — the same range `brief-interpreter` enforces as `hard_fail`, `shot-director` maps to clips (60s→8 … 150s→19), `script-editor` sizes at ~3 words/second, and the `pre-render-gatekeeper` prices at 80/120/150/190 credits. Companion mode skips `brief-interpreter`, so `wr3_companion_dispatcher._assert_duration_envelope` enforces the range itself. Default target: 60 s. Longer is a deliberate editorial choice for a topic that earns it, never a drift.
+
+### Two language cuts, identical in edit
+
+Every episode ships **twice**: `en` and `id`. Same picture, same cuts, same timing — only the audio track and the subtitle text differ.
+
+- **EN cut**: English voice-over, English subtitles.
+- **ID cut**: a **real Indonesian voice-over** (Zero's ruling — never the English audio under Indonesian subtitles), Indonesian subtitles.
+
+The visual layer is rendered once and shared between the two cuts. A subtitle language that does not match its voice track is a Lane 2 failure, not a cosmetic one: it tells an Indonesian viewer the video was not made for them.
+
+### Structure (the standard WR3 arc, scaled to the target)
+
+At the 60 s default this is the familiar 8-clip pacing from `wr3-script-editor`:
 
 1. Cold open (8s) — hook with the strongest claim from the carousel
 2. Stakes (8s) — what happens if reader ignores
@@ -73,20 +57,60 @@ Same 8-clip pacing as a regular `wr3-script-editor` output:
 7. Synthesis (8s) — the "what to do" line
 8. CTA (4s, trimmed) — "Carosello con tutti i 10 punti nel link in bio"
 
+Above 60 s the arc does not gain new _kinds_ of beat — it gains more Proof and more Context. A longer episode that pads Stakes or repeats the Pivot is a script failure; the extra seconds must buy the viewer another number or another piece of regulatory ground.
+
 ### Critic gate (full 4-lane)
 
-Reel is first-class — full critic pass identical to a standalone WR3 episode. No shortcuts.
+First-class artifact, full critic pass identical to a standalone WR3 episode. No shortcuts — and unlike the opt-in cuts, this is the path that ships **without a human in the loop**, which is also why its cost ceiling is a hard halt rather than a warning.
 
-### Example arc (KEP-71 SPT, expanded)
+### Example arc (KEP-71 SPT)
 
-1. *"Marta ha pagato IDR 18 milioni a marzo. Il suo errore costa 2 mesi di affitto."*
-2. *"L'80% degli expat che vediamo non sa che esiste un'opzione legale per evitarlo."*
-3. *"La regola è dentro un decreto del 2018. KEP-71. Nessuno lo cita."*
-4. *"Eppure cambia tutto: 21 giorni, non 30. E la sanzione non si applica."*
-5. *"IDR 18 milioni evitabili."*
-6. *"21 giorni dalla data dell'errore."*
-7. *"Devi solo sapere che il KEP-71 esiste. E che si applica al tuo caso."*
-8. *"Carosello completo con i 10 step nel link in bio."*
+1. _"Marta ha pagato IDR 18 milioni a marzo. Il suo errore costa 2 mesi di affitto."_
+2. _"L'80% degli expat che vediamo non sa che esiste un'opzione legale per evitarlo."_
+3. _"La regola è dentro un decreto del 2018. KEP-71. Nessuno lo cita."_
+4. _"Eppure cambia tutto: 21 giorni, non 30. E la sanzione non si applica."_
+5. _"IDR 18 milioni evitabili."_
+6. _"21 giorni dalla data dell'errore."_
+7. _"Devi solo sapere che il KEP-71 esiste. E che si applica al tuo caso."_
+8. _"Carosello completo con i 10 step nel link in bio."_
+
+## Sub-mode 2 — `story_15s` (opt-in `--story`)
+
+> Was the automatic default until 2026-07-26. Demoted, not deleted — the format
+> still works, but it must be a deliberate choice. 15 s sits **below** WR3's
+> declared minimum and is exempt from the envelope for exactly that reason:
+> a human asked for it.
+
+### Voice register: **ironico**
+
+Single rhetorical question + visual proof + soft CTA. Never lecture. Never read out a number Zantara has not earned. The 15s window is too short for context — assume the viewer has not seen the carousel yet.
+
+### Structure (15s = 3 beats × 5s)
+
+| Beat  | Seconds | Element                                                         | Brand cortex anchor                  |
+| ----- | ------- | --------------------------------------------------------------- | ------------------------------------ |
+| Hook  | 0-5s    | One question. Ironic, with a number.                            | `voice/registers/ironico.md`         |
+| Proof | 5-10s   | One visual fact, vertical-animated number, no voiceover at peak | `tokens.json` (palette + typography) |
+| CTA   | 10-15s  | "Carosello completo nel link in bio" / "Swipe-up al carosello"  | `voice/cta-soft.md`                  |
+
+### Examples (concrete carousels)
+
+#### KEP-71 SPT (carosello tax 2026-05)
+
+- **Hook (5s)**: _"Sai cosa è il KEP-71?"_ (close-up Zantara, eyebrow raised)
+- **Proof (5s)**: "21 giorni" + "IDR 18 milioni" animati in verticale, palette `accent-yellow`
+- **CTA (5s)**: _"Carosello completo nel link in bio."_ (small Zantara wave)
+
+#### KITAS investor 2026 (carosello visa)
+
+- **Hook**: _"Investor KITAS senza PMA? Spoiler: no."_
+- **Proof**: "PMA min IDR 10 mld" verticale, citazione `BKPM PerKBPM 4/2024` slide-anchor
+- **CTA**: _"Sai perché? Carosello in bio."_
+
+### Critic gate (Lane 1 + Lane 3 only)
+
+- Lane 1 (Identity ArcFace ≥ 0.6): Zantara must be recognizable in the hook close-up — fail = re-render the hook clip only, never the proof clip.
+- Lane 3 (Brand voice): scan VO + on-screen text against `voice/taboo.md`. Forbidden in companion mode: "guida completa", "tutto quello che devi sapere", "ecco i 5 step" (carousel-style cliches that signal not-companion).
 
 ## Sub-mode 3 — `comment_interactive` (opt-in `--engage`)
 
@@ -139,10 +163,12 @@ No video. No voiceover. Output is structured JSON for manual review by Antonello
 ### Examples (concrete)
 
 #### KEP-71 carousel IG comment
-*"Quanti di voi hanno già pagato la sanzione senza sapere del KEP-71? (Curiosità onesta — non giudicante.)"*
+
+_"Quanti di voi hanno già pagato la sanzione senza sapere del KEP-71? (Curiosità onesta — non giudicante.)"_
 
 #### Visa investor carousel IG comment
-*"Domanda da expat: avete mai trovato un agente che vi ha detto NO a un Investor KITAS senza PMA? Se sì, fategli un regalo."*
+
+_"Domanda da expat: avete mai trovato un agente che vi ha detto NO a un Investor KITAS senza PMA? Se sì, fategli un regalo."_
 
 ### Manual review checkpoint (Law 5)
 
@@ -159,4 +185,4 @@ No video. No voiceover. Output is structured JSON for manual review by Antonello
 
 ## Identity tokens
 
-All visual sub-modes (`story_15s` + `reel_60s`) use the standard Zantara anchor A007. ArcFace cosine threshold inherited from `wr3-clip-renderer` contract (≥ 0.6, not relaxed for companion mode — face recognizability matters MORE on Story format where the viewer has 5s to recognize her).
+All visual sub-modes (`episode` + `story_15s`) use the standard Zantara anchor A007. ArcFace cosine threshold inherited from `wr3-clip-renderer` contract (≥ 0.6, not relaxed for companion mode — face recognizability matters MORE on Story format where the viewer has 5s to recognize her). Both language cuts of an `episode` share one rendered visual layer, so identity is verified once and inherited by both.
