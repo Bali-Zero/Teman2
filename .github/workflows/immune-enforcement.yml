@@ -71,6 +71,8 @@ jobs:
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
+              scripts/lint_worktree_husky_symlink.py|\
+              scripts/tests/test_lint_worktree_husky_symlink.py|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -128,6 +130,7 @@ jobs:
             scripts/tests/test_codex_autofix_selector.py \
             scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
+            scripts/tests/test_lint_worktree_husky_symlink.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
