@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
   baliBlockClause,
@@ -18,6 +21,9 @@ interface RawRecord {
   kode_kbli_2025: string;
   l4_bali?: RawL4;
   per_skala?: unknown[];
+  pma_status?: string;
+  pma_max_asing?: number;
+  pma_cap_special?: boolean;
 }
 const RECORDS = (rawData as { data: RawRecord[] }).data;
 const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
@@ -206,6 +212,7 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
   });
 
   it("pins the live population: 8 of the 44 zero-row gold pages", () => {
+    // (see the PMA-verdict-banner block below for the second render site)
     // Measured on the canonical + gold of 2026-07-27. Pinned so that widening
     // or narrowing the frame is a visible, deliberate change rather than a
     // silent one — the same discipline as the untraceable-PMA pin.
@@ -232,5 +239,52 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
       "86203",
       "91222",
     ]);
+  });
+});
+
+describe("the PMA verdict banner — the SECOND render site", () => {
+  // Found only because the prove-live control (01192, BLOCCATO_CLASSE_RISCHIO)
+  // showed no licensing frame at all: it renders a different notice, at the top
+  // of the page, with its own hardcoded copy. That copy asserted ONE cause —
+  // "reserved for MSMEs" — for every blocked code, while the Bali badge a few
+  // lines below derived the real one. 01192 said "reserved for MSMEs" and
+  // "Blocked in Bali (risk-class moratorium)" in the same viewport.
+  const HERE = dirname(fileURLToPath(import.meta.url));
+  const PAGE = readFileSync(
+    join(HERE, "..", "app", "kbli", "[code]", "page.tsx"),
+    "utf8",
+  );
+
+  it("GUILT: the banner no longer hardcodes a single cause", () => {
+    expect(PAGE).not.toContain("reserved for MSMEs; a PT PMA");
+  });
+
+  it("the banner derives its cause from the same total function", () => {
+    expect(PAGE).toContain("baliBlockClause(kbli.baliL4?.status)");
+  });
+
+  it("pins the population: 456 render the notice, only 39 are MSME-reserved", () => {
+    // Mirrors the component's own guard: baliBlocked && !nationallyClosed.
+    const nationallyClosed = (r: RawRecord) =>
+      r.pma_cap_special !== true &&
+      ((r.pma_status ?? "").toUpperCase() === "TERTUTUP" ||
+        (r.pma_max_asing ?? 0) === 0);
+    const notice = RECORDS.filter(
+      (r) => r.l4_bali?.blocked === true && !nationallyClosed(r),
+    );
+    const msme = notice.filter(
+      (r) => r.l4_bali?.status === "CHIUSO_PMA_NO_BESAR",
+    );
+    expect(notice.length).toBe(456);
+    expect(msme.length).toBe(39);
+    // 417 pages were being told a cause that was not theirs — 5.8x the
+    // licensing-frame defect, and above the fold rather than deep in the page.
+    expect(notice.length - msme.length).toBe(417);
+  });
+
+  it("INNOCENCE: the 39 MSME-reserved codes keep their original meaning", () => {
+    expect(baliBlockClause("CHIUSO_PMA_NO_BESAR")).toContain(
+      "reserved for micro/small/medium enterprises",
+    );
   });
 });

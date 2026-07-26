@@ -13,6 +13,7 @@ import {
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
+import { baliBlockClause } from "@/lib/kbli-bali-block";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
@@ -319,9 +320,16 @@ export default async function KBLICodePage({
                           National procedure — does not apply to a PT PMA in
                           Bali
                         </p>
+                        {/* This sentence used to assert ONE cause — "reserved
+                            for MSMEs" — for every blocked code, while the Bali
+                            badge a few lines below derived the real one from
+                            the status. 456 pages render this notice and only
+                            39 are MSME-reserved, so 417 contradicted their own
+                            badge above the fold. The cause is now derived from
+                            the same total function the licensing frame uses. */}
                         <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
-                          In Bali this activity is reserved for MSMEs; a PT PMA
-                          (large enterprise) cannot register it. The national
+                          In Bali this activity is{" "}
+                          {baliBlockClause(kbli.baliL4?.status)}. The national
                           procedure below applies only to non-PMA operators.
                         </p>
                       </div>
