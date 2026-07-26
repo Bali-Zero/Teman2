@@ -104,6 +104,7 @@ coverage.xml
 *.cover
 .hypothesis/
 test-results/
+test-results-*.xml
 test_results/
 testsprite_tests/tmp/
 
@@ -725,6 +726,7 @@ apps/evaluator/nlm_nb*_*.jsonl
 apps/evaluator/nlm_deep_research/*_state.json
 apps/evaluator/nlm_deep_research/coverage_matrix.json
 apps/evaluator/nlm_deep_research/*.lock
+apps/evaluator/nlm_deep_research/output/
 apps/mouth/scripts/kbli_data_backup.json
 apps/mouth/scripts/kbli_english_keywords.json
 scripts/.rag_canary/

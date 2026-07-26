@@ -202,6 +202,12 @@ class NLMPipeline:
                 summary["halt_reason"] = getattr(self, "_halt_reason", None)
                 return summary
 
+            if not self.circuit_breakers.nlm.should_allow_request():
+                self._degradation = DegradationLevel.DEGRADED_L1
+                summary["halted_at"] = "l1_circuit_open"
+                self._phase = PipelinePhase.HALTED
+                return summary
+
             # Determine today's cluster
             cluster_letter, cluster_name = self._today_cluster()
             summary["cluster"] = cluster_letter
@@ -267,6 +273,7 @@ class NLMPipeline:
             self._increment_budget(queries_used)
 
         except Exception as e:
+            self.circuit_breakers.nlm.record_probe_failure_if_in_flight()
             logger.error("Pipeline error: %s", e, exc_info=True)
             self._phase = PipelinePhase.HALTED
             self._degradation = DegradationLevel.DEGRADED_L2
