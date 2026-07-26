@@ -1,0 +1,40 @@
+name: Watcher coverage (main-push-failure-watch self-conformance)
+
+# Task #23. Non-required at first, matching this repo's established
+# brand-new-signal convention (check-kbli-dataset-sync.yml, task #15): a
+# fresh gate observes for a review cycle before it can block a PR. Unlike
+# that gate, this check has no plausible false-positive mode — it is pure
+# set-equality between "every workflow's name:" and the watcher's declared
+# list, not a content diff — so promotion to required can reasonably happen
+# sooner. That is still a human/team judgment call, not made here.
+#
+# The `paths:` filter below is trigger-scoped (like check-kbli-dataset-
+# sync.yml today), which is fine while this is non-required — but carries
+# the SAME trap task #15 flagged for that workflow: if this is later made
+# required as-is, a PR that never touches .github/workflows/*.yml would
+# never get this required context at all, and required-but-never-created =
+# blocked forever (discovery_a_pr_already_conflicting_at_push_gets_zero_
+# checks_forever's sibling: a check absent from a paths-filtered trigger,
+# not from a merge-conflict). Promotion must move this filter inside the
+# job as a step condition first, exactly as recommended for check-kbli-
+# dataset-sync.yml.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/*.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/*.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - run: python3 scripts/check_watcher_coverage.py

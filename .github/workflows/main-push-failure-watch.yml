@@ -1,0 +1,202 @@
+name: Main-push Failure Watch
+
+# Task #23 (superscar #2, "Esiste ≠ Armato" — cicatrix-superscar.md #2). One
+# generic watcher for every workflow's completion, replacing the pattern this
+# repo independently reinvented three times: fly-deploy.yml's own dedicated
+# alert job, and two narrowly-scoped scripts
+# (scripts/docs_inventory_refresh_liveness.py, scripts/merge_train.py) each
+# hardcoded to one or two workflow names. GitHub aggregates the whole job
+# graph into `workflow_run.conclusion`, correctly folding in a skip-cascade
+# from an upstream job failure — the exact `needs:`-completeness trap that
+# bit fly-deploy.yml's own alert job (`deploy-failure-alert` watches only 2
+# of up to 6 fail-prone jobs; task #19). One artifact instead of N hand-rolled
+# ones means it cannot be individually forgotten on a new workflow — enforced
+# by watcher-conformance.yml, which fails CI if this file's `workflows:` list
+# drifts from the live workflow census.
+#
+# SCOPE: alerts ONLY for a push-triggered run on `main` — not for
+# pull_request runs (already visible on the PR itself) and not for
+# schedule/workflow_dispatch runs on other branches. The `workflows:` list
+# below is DELIBERATELY over-inclusive (every workflow in the repo, this
+# file's own name excluded) so listing it never requires a push:main
+# judgment call — real filtering happens in the job `if:` below, on the
+# actual event + branch of the run that just completed.
+#
+# GOTCHAS (verified 2026-07-26 against GitHub's docs + this repo's live API,
+# not assumed):
+#  - `workflow_run` only activates once this file is ON THE DEFAULT BRANCH —
+#    it cannot be exercised from a branch or PR. First-fire proof has to
+#    happen post-merge: re-run (or wait for) a real failure on a workflow in
+#    the list, or use workflow_dispatch on a target workflow to force one.
+#  - `workflow_run` chaining is capped at 3 levels by GitHub — this file
+#    deliberately does NOT include its own `name:` (above) in `workflows:`
+#    below, so it can never watch its own completion (self-trigger loop).
+#    Confirmed empirically: `workflows:` matches by a workflow's `name:`
+#    field, not its filename (this repo has exactly 1 name per file, 82/82,
+#    zero collisions — re-verified against the live file set before writing
+#    this list, including this file and watcher-coverage.yml itself).
+#  - `cancelled` is deliberately excluded from the alert condition below: THIS
+#    job's own concurrency group cancels its own earlier in-flight instance on
+#    every new event in a burst (see below), and a normal supersede-cancel of
+#    a WATCHED workflow (a newer push lands mid-run) is routine, not a silent
+#    failure — alerting on it would itself be the noise this design exists to
+#    avoid.
+
+on:
+  workflow_run:
+    # 2 entries below ("Guard conformance (superscar", "Golden Rule") look
+    # truncated — they are not a transcription error here. Their SOURCE
+    # files have an unquoted `#` in `name:`, which YAML (and GitHub's own
+    # registration, confirmed live via `gh api .../actions/workflows`)
+    # reads as a comment start. This list intentionally matches what
+    # GitHub actually registered, not what the source file's author meant
+    # — see scripts/check_watcher_coverage.py's docstring for the full
+    # note and why fixing the two source name: lines is a separate PR.
+    workflows:
+      - actionlint
+      - adversarial-review-gate
+      - AI PR review (advisory)
+      - asyncpg-lint
+      - Auto-merge whitelist
+      - Agent worktree broker hygiene
+      - catA-channel-count-pin
+      - "catB: LaunchAgent daemon|cron XOR + W67 crash-loop guard"
+      - catC — canary tautology lint (non-required, observability)
+      - catD-backend-data-invariants
+      - catE-sovereignty-lint
+      - "catF: WA bridge guard-chain + HOME-fork notice"
+      - check-kbli-dataset-sync
+      - cron - codex autofix reaper (autonomous reap every 48h)
+      - Contract Tests (Schemathesis)
+      - cron - cert monitor (daily 07:00 WITA)
+      - cron - drive poll monitor
+      - cron - fly cost alert (weekly Mon 09:00 WITA)
+      - cron - fly restart loop detector (every 15 min)
+      - cron - fly watcher (every 15 min)
+      - Cron — KG staging promotion
+      - cron - notifiers all (daily 00:00 WITA)
+      - cron - notifiers birthday (DISARMED 2026-07-12 — manual only)
+      - cron - notifiers compliance-forecast (daily 06:30 WITA)
+      - cron - notifiers e33-guarantee-scan (daily 07:10 WITA)
+      - cron - notifiers email-health (every 30 min)
+      - cron - notifiers lkpm-deadlines (daily 23:00 WITA)
+      - cron - notifiers welcome-pending (every 15 min)
+      - cron - practice auto-create (daily 07:30 WITA)
+      - cron - sentry quota check (daily 09:00 WITA)
+      - Doc Freshness Report
+      - Docs Guardian
+      - cron - docs-inventory-refresh liveness (every 6h)
+      - Docs Inventory Refresh
+      - Docs Sync Check
+      - manual - fly api diagnostics
+      - Deploy Backend to Fly.io
+      - Fly.io Secrets Health Check
+      - Guard conformance (superscar
+      - Hook innocence gate (vaccine)
+      - hot-zone-enforcement
+      - Immune enforcement (superscar antidotes)
+      - Insight cover cards — no article may wear another article's card
+      - Intel Router Tests
+      - kbli-68112-collision-regression
+      - kbli-filiera-vault-compilers
+      - Lighthouse CI (mouth)
+      - Content lint — reasoning-leak in published MDX
+      - Lint Cross-Import
+      - Golden Rule
+      - Lint i18n providers
+      - Migration number uniqueness lint
+      - Migration ROLLBACK marker lint
+      - Magazine auto-assets contract
+      - Migration Lint (Squawk)
+      - npm lock sync
+      - Nuz Status Control
+      - Organ conformance (DNA genome — genes at birth)
+      - P1 STRATO-2 incremental mutation gate
+      - P3 Sandbox Gates
+      - P6 federation parallelize-hypothesis gate
+      - P7 LEARN Shadow Harvester Gate
+      - P8 Brand-API Gate
+      - P9 Cost Breaker (GOVERN)
+      - Monthly PG Restore Drill
+      - Root Guard
+      - SBOM (Software Bill of Materials)
+      - Security Scanning
+      - SAST — Bandit + ESLint Security
+      - SonarQube Analysis
+      - SYMBIOSIS Promise Lint
+      - telegram-secret-healthcheck
+      - Tests & Coverage
+      - tg-gateway
+      - token-lint
+      - Vercel Build Guard
+      - Verify the Verifiers (meta-gate)
+      - Watcher coverage (main-push-failure-watch self-conformance)
+      - worker-plane review panel tests
+      - WR2 master template guard
+      - wr2-queue-tests
+    types: [completed]
+
+concurrency:
+  # One in-flight job per commit — the coalescing mechanism. When several
+  # watched workflows fail for the same push within the debounce window
+  # below, GitHub cancels every earlier queued/running instance of THIS job
+  # for that SHA and only the last one survives to send. It re-derives the
+  # failing set fresh from the API at send-time (next step), so correctness
+  # never depends on which specific triggering event happened to win.
+  group: main-push-failure-watch-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  alert:
+    # Scope to an actual push-to-main run, not a pull_request/schedule/
+    # workflow_dispatch run on some other branch (those are either already
+    # visible on the PR, or not the "landed silently broken" disease this
+    # exists for). `cancelled` is excluded deliberately — see header comment.
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debounce — let concurrent failures on the same commit settle
+        # Heuristic, not a guarantee (cicatrix note: a fixed sleep is a
+        # ceiling here, never a performance assertion — see
+        # discovery_prepush_fixed_wallclock_budgets_fail_under_fleet_contention).
+        # If a burst spans longer than this, worst case is >1 aggregated
+        # message instead of exactly 1 — degraded, never silent.
+        run: sleep 90
+
+      - name: Aggregate every currently-failing push-to-main run on this commit
+        id: agg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${REPO}/actions/runs?head_sha=${SHA}&event=push&status=completed" \
+            --paginate --jq '.workflow_runs[] | select(.conclusion=="failure" or .conclusion=="timed_out") | .name' \
+            | sort -u > /tmp/failing.txt
+          COUNT=$(wc -l < /tmp/failing.txt | tr -d ' ')
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram alert — one message per commit, not per workflow
+        if: steps.agg.outputs.count != '0'
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT}" ] || [ -z "${CHAT}" ]; then
+            echo "::warning::Telegram secrets missing — cannot alert"
+            exit 0
+          fi
+          SHORT_SHA="${SHA:0:7}"
+          LIST=$(paste -sd, /tmp/failing.txt)
+          TEXT="main push failing (${SHORT_SHA}): ${LIST} -- https://github.com/${REPO}/commits/${SHA}"
+          curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}"

@@ -129,7 +129,13 @@ class TestCoverage:
         "SYSTEM_INSTRUCTIONS": v4.SYSTEM_INSTRUCTIONS,
         "KNOWLEDGE_GOVERNANCE": v4.KNOWLEDGE_GOVERNANCE,
         "LANGUAGE_PROTOCOL": v4.LANGUAGE_PROTOCOL,
-        "GREETING_RULES": v4.GREETING_RULES,
+        # GREETING_RULES is NO LONGER byte-identical: its four worked flows
+        # hardcoded the founder's codename as the example name for greeting
+        # ANY user, which reached anonymous callers live ("Salut Zero, ...").
+        # It is now name-neutralized, so it belongs to the round-trip contract
+        # below (same treatment as TOOL_USAGE_POLICY and INTERNAL_MONOLOGUE),
+        # NOT to the verbatim set. Moving it here rather than deleting the
+        # assertion keeps the "a dropped block must fail CI" guarantee intact.
         "CITATION_RULES": v4.CITATION_RULES,
         "ESCALATION_PROTOCOL": v4.ESCALATION_PROTOCOL,
         "CRASH_PROTOCOL": v4.CRASH_PROTOCOL,
@@ -213,6 +219,24 @@ class TestRoundTrip:
             + v5._TOOL_USAGE_POLICY_CLOSE_TAG
         )
         assert reconstructed == v4.TOOL_USAGE_POLICY
+
+    def test_undoing_greeting_name_neutralization_reconstructs_v4(self) -> None:
+        """GREETING_RULES left the verbatim-coverage set, so it must earn its
+        place in the round-trip set: undoing the four name replacements has to
+        rebuild v4's block byte-for-byte. This is what proves the edit touched
+        the name sites and NOTHING else in 1667 characters."""
+        reconstructed = v5.GREETING_RULES_NEUTRAL
+        for old_text, new_text in v5.GREETING_NAME_NEUTRALIZATIONS:
+            assert new_text in reconstructed, new_text
+            reconstructed = reconstructed.replace(new_text, old_text, 1)
+        assert reconstructed == v4.GREETING_RULES
+
+    def test_neutral_greeting_block_is_the_one_actually_composed(self) -> None:
+        """Guard against the cure existing but never being wired: the built
+        prompt must contain the NEUTRAL block, not v4's original."""
+        built = v5.build_master_template("client")
+        assert v5.GREETING_RULES_NEUTRAL in built
+        assert v4.GREETING_RULES not in built
 
     def test_undoing_internal_monologue_neutralization_reconstructs_v4(self) -> None:
         old, new = v5.INTERNAL_MONOLOGUE_NEUTRALIZATION
@@ -529,3 +553,103 @@ class TestComposedHeaderVersion:
             built = v5.build_master_template(audience)
             assert "ZANTARA V5 SYSTEM PROMPT" in built
             assert "V6" not in built
+
+
+# ---------------------------------------------------------------------------
+# 7. GREETING NAME — the founder's codename was the worked example for how to
+# greet ANY user.
+#
+# Found live on 2026-07-26: an anonymous caller (synthetic phone) got back
+# "Salut Zero, ...". Ruled OUT as a memory bleed by measurement, not by
+# argument -- for that user id `memory_facts` = 0 rows, `episodic_memories`
+# = 0 rows, and the collective-fact table the code actually reads
+# (`collective_memories`) = 0 rows in production. The name came from the
+# prompt: v4's GREETING_RULES hardcodes it in four worked flows, so the model
+# copied the example exactly as instructed.
+#
+# Rule 1 of the SAME block already does this correctly ("Hi [Name]!",
+# "Ciao [Name]!", "Halo [Name]!"). The flows underneath it contradicted rule 1
+# with a specific person's name.
+# ---------------------------------------------------------------------------
+
+
+class TestGreetingNameNeutralization:
+    """GUILT: no audience may be taught to greet a user by the founder's name."""
+
+    @pytest.mark.parametrize("audience", ["client", "team", "creator"])
+    def test_no_audience_is_taught_to_greet_by_the_founder_name(self, audience: str) -> None:
+        built = v5.build_master_template(audience)
+        assert not re.search(r"Zero[!,]", built), (
+            f"{audience} build still teaches a name-specific greeting"
+        )
+
+    @pytest.mark.parametrize("audience", ["client", "team", "creator"])
+    def test_placeholder_survives_in_every_audience(self, audience: str) -> None:
+        """Removing the name must not remove the greeting example — the model
+        still needs to be shown that a name goes there."""
+        built = v5.build_master_template(audience)
+        assert built.count("[Name]") >= 4, built.count("[Name]")
+
+    @pytest.mark.parametrize(
+        "flow",
+        [
+            'You: "Ciao [Name]! Come posso aiutarti?"',
+            'You: "Hi [Name]! How can I help?"',
+            'You: "Halo [Name]! Ada yang bisa saya bantu?"',
+        ],
+    )
+    def test_each_worked_flow_now_uses_the_placeholder(self, flow: str) -> None:
+        assert flow in v5.build_master_template("client")
+
+    def test_italian_bridge_phrase_is_nameless_like_its_siblings(self) -> None:
+        """`en` lists "Sure"/"Got it" and `id` lists "Tentu," — nameless. Only
+        `it` carried a person's name; the asymmetry WAS the bug."""
+        built = v5.build_master_template("client")
+        assert '"Certamente,"' in built
+        assert "Certamente Zero" not in built
+
+
+class TestGreetingNameInnocence:
+    """The neutralization must be surgical, fail-loud, and non-destructive."""
+
+    def test_v4_greeting_rules_are_not_mutated_in_place(self) -> None:
+        """v5 is additive by contract — it reads v4, never edits it."""
+        assert "Certamente Zero," in v4.GREETING_RULES
+        assert v5.GREETING_RULES_NEUTRAL != v4.GREETING_RULES
+
+    def test_only_the_four_name_sites_changed(self) -> None:
+        """Length delta must equal exactly the four replacements, so nothing
+        else in a 1667-char block was disturbed."""
+        delta = len(v4.GREETING_RULES) - len(v5.GREETING_RULES_NEUTRAL)
+        expected = sum(
+            len(old) - len(new) for old, new in v5.GREETING_NAME_NEUTRALIZATIONS
+        )
+        assert delta == expected, (delta, expected)
+
+    def test_greeting_policy_semantics_survive(self) -> None:
+        built = v5.build_master_template("client")
+        assert "GREETING POLICY" in built
+        assert "FIRST MESSAGE" in built
+        assert "DO NOT BE ROBOTIC" in built
+
+    def test_neutralization_is_fail_loud_not_silent(self) -> None:
+        """If a future v4 edit moves this text, v5 must raise at import rather
+        than quietly stop covering it — a stale replacement looks like a live
+        fix. This is the same contract REFERENT_NEUTRALIZATIONS relies on."""
+        with pytest.raises(ValueError, match="Expected exactly 1 occurrence"):
+            v5._apply_neutralizations(
+                v4.GREETING_RULES, (("a phrase that is not in the greeting block", "x"),)
+            )
+
+    def test_every_replacement_is_anchored_not_bare(self) -> None:
+        """A bare `Zero` -> `[Name]` sweep would also hit "Bali Zero", the
+        company name, in the same block. Each pattern must carry surrounding
+        context so it can only match the greeting site."""
+        for old, _new in v5.GREETING_NAME_NEUTRALIZATIONS:
+            assert old.strip() != "Zero"
+            assert len(old) > len("Zero") + 4, old
+
+    def test_company_name_is_untouched(self) -> None:
+        """The company is called Bali Zero — the cure must not damage it."""
+        for audience in v5.VALID_AUDIENCES:
+            assert "Bali Zero" in v5.build_master_template(audience)
