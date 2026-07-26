@@ -429,6 +429,18 @@
       "repo": "infra/launchagents/wrappers/garuda-gap-detector.sh",
       "_note": "W104 class-audit (2026-07-25): same decorative `redis-cli ping` gate as garuda-consumer.sh, armed by com.garuda.gap-detector.twice-daily. Same cure, same 3/3 proof.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-backup.sh",
+      "repo": "infra/scripts/fly-backup.sh",
+      "_note": "2026-07-27: the live copy had DIVERGED — 13 extra lines sourcing ~/Desktop/secretkey.env as a secondary credentials location, added 2026-05-27. That file no longer exists, so the block could never fire; realigned to a symlink after the nightly run completed. Declared so the next divergence is caught instead of discovered.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-pg-backup.sh",
+      "repo": "scripts/fly-pg-backup.sh",
+      "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup — the W106 shape.",
+      "machines": ["pro"]
     }
   ],
   "allow": [
