@@ -8,6 +8,16 @@ definitionally non-sensitive (example env files, test fixtures, planning
 documents, etc.). Everything else is left `unaudited` so a human can
 inspect the residue.
 
+A second, narrower rule class (CONTENT_KEYED_RULES) exists for files that are
+NOT definitionally non-sensitive as a whole — e.g. a script that legitimately
+holds executable code-signing identity pins (sha256/cdhash) alongside other
+code. A plain path-based rule on such a file would blanket-approve ANY future
+finding in it, including a real secret added on an unrelated line later
+(cicatrix-superscar #3, guard-over-match: match entity/intent, never bare
+path/substring). CONTENT_KEYED_RULES require the exact source line at the
+finding's line_number to also match a narrow content pattern (the assignment
+target's name), so only the specific pinned-identity lines are approved.
+
 Usage:
     python3 scripts/detect_secrets_auto_triage.py             # dry-run
     python3 scripts/detect_secrets_auto_triage.py --apply     # write back
@@ -30,6 +40,60 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASELINE = REPO_ROOT / ".secrets.baseline"
+
+# Each rule is (path_pattern, content_pattern, reason). The path_pattern
+# scopes the rule to specific known files; the content_pattern must ALSO
+# match the actual source line at the finding's line_number (read live off
+# disk — these files are always present in the checkout when this script
+# runs, per .github/workflows/security.yml's checkout-then-scan-then-triage
+# order). Approval requires BOTH to match, so an unrelated secret added
+# later to one of these files (on a line whose assignment target isn't in
+# the content_pattern) is still left unaudited for human review.
+CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
+    # worker-plane review panel: executable code-signing identity pins
+    # (sha256/cdhash of production CLI binaries — Claude Code, Gemini/agy,
+    # Codex, Kimi, sandbox-exec) used to VERIFY supply-chain integrity
+    # before spawning a reviewer process, plus a PRODUCTION_ARTIFACT_SHA256
+    # dict of wrapper/package content hashes for the same purpose. These are
+    # public integrity anchors — anyone can recompute them from the signed
+    # binary — never credentials; removing them would weaken the check they
+    # implement, not improve security.
+    #
+    # Content-keyed on assignment target NAME *and* VALUE SHAPE, with the
+    # match anchored to end-of-line (optional trailing comma): the whole
+    # line must be exactly `<key><:|=> "<hex>"[,]`. This closes two holes a
+    # target-name-only version had (found in review, 2026-07-26):
+    #   1. `sha256="ghp_<realtoken>"` — a real credential assigned to a pin
+    #      name would have been approved on name alone; the value must now
+    #      be exactly 64 (sha256/codex_wrapper/codex_package) or 40 (cdhash)
+    #      lowercase hex characters.
+    #   2. `sha256="<hash>"; api_key="<realsecret>"` — Python allows
+    #      `;`-separated statements on one line, so a second assignment
+    #      after a legitimate pin used to ride along under the same
+    #      line_number/key-name match. The end-anchor breaks this: anything
+    #      after the pin's closing quote+comma fails the match.
+    #
+    # HONEST LIMIT (not closed by this rule, not closeable by any regex):
+    # a live 64-hex or 40-hex credential pasted directly into a pin's value
+    # slot is byte-indistinguishable from a real digest — no shape check can
+    # tell them apart. This rule narrows the approved surface from "any
+    # secret on a pin-named line" to "only a value that is exactly the
+    # digest length/alphabet", it does not make forgery structurally
+    # impossible.
+    (
+        re.compile(
+            r"^scripts/(check_worker_plane_review|launch_worker_plane_review_panel)\.py$"
+        ),
+        re.compile(
+            r'^\s*"?(?:sha256|codex_wrapper|codex_package)"?\s*[:=]\s*"[0-9a-f]{64}"\s*,?\s*$'
+            r'|^\s*"?cdhash"?\s*[:=]\s*"[0-9a-f]{40}"\s*,?\s*$'
+        ),
+        "worker-plane review panel: sha256/cdhash code-signing identity pins "
+        "and PRODUCTION_ARTIFACT_SHA256 content hashes for production CLI "
+        "binaries — public integrity anchors, not credentials (value must be "
+        "exactly the digest's hex shape, end-anchored to the line)",
+    ),
+]
 
 # Each rule is (pattern, reason). The pattern matches the file path
 # relative to the repo root. A finding is auto-approved if ANY rule matches.
@@ -702,11 +766,29 @@ HARD_BLOCK_RULES: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
-def classify(file_path: str) -> tuple[bool, str]:
+def _line_text(file_path: str, line_number: int) -> str | None:
+    """Best-effort read of one 1-indexed source line from a repo file."""
+    try:
+        full = REPO_ROOT / file_path
+        with full.open("r", encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f, start=1):
+                if i == line_number:
+                    return line
+    except OSError:
+        return None
+    return None
+
+
+def classify(file_path: str, line_number: int | None = None) -> tuple[bool, str]:
     """Return (auto_approve, reason)."""
     for pat, reason in HARD_BLOCK_RULES:
         if pat.search(file_path):
             return False, f"HARD BLOCK: {reason}"
+    for path_pat, content_pat, reason in CONTENT_KEYED_RULES:
+        if path_pat.search(file_path) and line_number:
+            text = _line_text(file_path, line_number)
+            if text is not None and content_pat.search(text):
+                return True, reason
     for pat, reason in AUTO_APPROVE_RULES:
         if pat.search(file_path):
             return True, reason
@@ -731,7 +813,7 @@ def triage(
     for file_path, hits in results.items():
         for hit in hits:
             stats["total"] += 1
-            auto, reason = classify(file_path)
+            auto, reason = classify(file_path, hit.get("line_number"))
             if auto:
                 stats["auto_approved"] += 1
                 if apply:

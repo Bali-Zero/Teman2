@@ -307,8 +307,10 @@ export default function TeamActivityPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="p-4 bg-red-500/10 border-b border-red-500/20">
-          <p className="text-sm text-red-500 text-center">{error}</p>
+        <div className="p-4 bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] border-b border-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]">
+          <p className="text-sm text-[var(--state-danger)] text-center">
+            {error}
+          </p>
         </div>
       )}
 
@@ -316,48 +318,50 @@ export default function TeamActivityPage() {
       {stats && (
         <div className="p-6 grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard
-            icon={<MessageSquare className="w-5 h-5 text-blue-500" />}
+            icon={
+              <MessageSquare className="w-5 h-5 text-[var(--bz-chart-1)]" />
+            }
             label="Total Messages"
             value={stats.total_messages.toLocaleString("en-US")}
-            bgColor="bg-blue-500/10"
+            bgColor="bg-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)]"
           />
           <StatCard
-            icon={<Users className="w-5 h-5 text-green-500" />}
+            icon={<Users className="w-5 h-5 text-[var(--bz-chart-2)]" />}
             label="Team Members"
             value={stats.total_team_members.toString()}
-            bgColor="bg-green-500/10"
+            bgColor="bg-[color-mix(in_srgb,var(--bz-chart-2)_10%,transparent)]"
           />
           <StatCard
-            icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
+            icon={<TrendingUp className="w-5 h-5 text-[var(--bz-chart-4)]" />}
             label="Conversations"
             value={stats.total_conversations.toLocaleString("en-US")}
-            bgColor="bg-purple-500/10"
+            bgColor="bg-[color-mix(in_srgb,var(--bz-chart-4)_10%,transparent)]"
           />
           <StatCard
-            icon={<Clock className="w-5 h-5 text-orange-500" />}
+            icon={<Clock className="w-5 h-5 text-[var(--bz-chart-5)]" />}
             label="Active Today"
             value={stats.active_today.toString()}
-            bgColor="bg-orange-500/10"
+            bgColor="bg-[color-mix(in_srgb,var(--bz-chart-5)_10%,transparent)]"
           />
           <StatCard
-            icon={<Calendar className="w-5 h-5 text-cyan-500" />}
+            icon={<Calendar className="w-5 h-5 text-[var(--bz-chart-6)]" />}
             label="Messages Today"
             value={stats.messages_today.toString()}
-            bgColor="bg-cyan-500/10"
+            bgColor="bg-[color-mix(in_srgb,var(--bz-chart-6)_10%,transparent)]"
           />
           {stats.total_kg_nodes !== undefined && (
             <>
               <StatCard
-                icon={<BookOpen className="w-5 h-5 text-amber-500" />}
+                icon={<BookOpen className="w-5 h-5 text-[var(--bz-chart-3)]" />}
                 label="Knowledge Nodes"
                 value={stats.total_kg_nodes.toLocaleString("en-US")}
-                bgColor="bg-amber-500/10"
+                bgColor="bg-[color-mix(in_srgb,var(--bz-chart-3)_10%,transparent)]"
               />
               <StatCard
-                icon={<Layers className="w-5 h-5 text-orange-500" />}
+                icon={<Layers className="w-5 h-5 text-[var(--bz-chart-5)]" />}
                 label="Knowledge Edges"
                 value={stats.total_kg_edges?.toLocaleString("en-US") || "0"}
-                bgColor="bg-orange-500/10"
+                bgColor="bg-[color-mix(in_srgb,var(--bz-chart-5)_10%,transparent)]"
               />
             </>
           )}
@@ -450,7 +454,7 @@ export default function TeamActivityPage() {
                             title="Emails Sent"
                             aria-label="Emails Sent"
                           >
-                            <Mail className="w-4 h-4 inline text-blue-400" />{" "}
+                            <Mail className="w-4 h-4 inline text-[var(--bz-chart-1)]" />{" "}
                             Sent
                           </th>
                           <th
@@ -458,7 +462,7 @@ export default function TeamActivityPage() {
                             title="Emails Received"
                             aria-label="Emails Received"
                           >
-                            <Mail className="w-4 h-4 inline text-green-400" />{" "}
+                            <Mail className="w-4 h-4 inline text-[var(--bz-chart-2)]" />{" "}
                             Rcvd
                           </th>
                           <th
@@ -466,7 +470,7 @@ export default function TeamActivityPage() {
                             title="Knowledge Base Views"
                             aria-label="Knowledge Base Views"
                           >
-                            <Eye className="w-4 h-4 inline text-purple-400" />{" "}
+                            <Eye className="w-4 h-4 inline text-[var(--bz-chart-4)]" />{" "}
                             Views
                           </th>
                           <th
@@ -474,7 +478,7 @@ export default function TeamActivityPage() {
                             title="Knowledge Base Downloads"
                             aria-label="Knowledge Base Downloads"
                           >
-                            <Download className="w-4 h-4 inline text-orange-400" />{" "}
+                            <Download className="w-4 h-4 inline text-[var(--bz-chart-5)]" />{" "}
                             DL
                           </th>
                           <th className="px-3 py-2 text-left">Last Active</th>
@@ -507,16 +511,16 @@ export default function TeamActivityPage() {
                             <td className="px-3 py-2 text-right">
                               {member.crm_actions}
                             </td>
-                            <td className="px-3 py-2 text-right text-blue-400">
+                            <td className="px-3 py-2 text-right text-[var(--bz-chart-1)]">
                               {member.emails_sent}
                             </td>
-                            <td className="px-3 py-2 text-right text-green-400">
+                            <td className="px-3 py-2 text-right text-[var(--bz-chart-2)]">
                               {member.emails_received}
                             </td>
-                            <td className="px-3 py-2 text-right text-purple-400">
+                            <td className="px-3 py-2 text-right text-[var(--bz-chart-4)]">
                               {member.kb_views}
                             </td>
-                            <td className="px-3 py-2 text-right text-orange-400">
+                            <td className="px-3 py-2 text-right text-[var(--bz-chart-5)]">
                               {member.kb_downloads}
                             </td>
                             <td className="px-3 py-2 text-xs">
@@ -605,8 +609,8 @@ export default function TeamActivityPage() {
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
                               msg.role === "user"
-                                ? "bg-blue-500/20 text-blue-400"
-                                : "bg-green-500/20 text-green-400"
+                                ? "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)]"
+                                : "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)]"
                             }`}
                           >
                             {msg.role}
@@ -687,8 +691,8 @@ export default function TeamActivityPage() {
                               <span
                                 className={`px-2 py-0.5 rounded text-xs ${
                                   record.action_type === "clock_in"
-                                    ? "bg-green-500/20 text-green-400"
-                                    : "bg-red-500/20 text-red-400"
+                                    ? "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)]"
+                                    : "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
                                 }`}
                               >
                                 {record.action_type}

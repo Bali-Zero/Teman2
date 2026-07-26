@@ -57,6 +57,26 @@ type LeaderboardMetric = "revenue" | "clients" | "conversion" | "completed";
 // COMPONENTS
 // ================================================
 
+const STAT_COLOR_CLASSES: Record<string, string> = {
+  green:
+    "bg-[color-mix(in_srgb,var(--bz-chart-2)_5%,transparent)] border-[color-mix(in_srgb,var(--bz-chart-2)_20%,transparent)]",
+  blue: "bg-[color-mix(in_srgb,var(--bz-chart-1)_5%,transparent)] border-[color-mix(in_srgb,var(--bz-chart-1)_20%,transparent)]",
+  purple:
+    "bg-[color-mix(in_srgb,var(--bz-chart-4)_5%,transparent)] border-[color-mix(in_srgb,var(--bz-chart-4)_20%,transparent)]",
+  amber:
+    "bg-[color-mix(in_srgb,var(--bz-chart-3)_5%,transparent)] border-[color-mix(in_srgb,var(--bz-chart-3)_20%,transparent)]",
+};
+
+const STAT_ICON_CLASSES: Record<string, string> = {
+  green:
+    "bg-[color-mix(in_srgb,var(--bz-chart-2)_10%,transparent)] text-[var(--bz-chart-2)]",
+  blue: "bg-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)] text-[var(--bz-chart-1)]",
+  purple:
+    "bg-[color-mix(in_srgb,var(--bz-chart-4)_10%,transparent)] text-[var(--bz-chart-4)]",
+  amber:
+    "bg-[color-mix(in_srgb,var(--bz-chart-3)_10%,transparent)] text-[var(--bz-chart-3)]",
+};
+
 const StatCard = ({
   title,
   value,
@@ -73,7 +93,7 @@ const StatCard = ({
   loading?: boolean;
 }) => (
   <div
-    className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}
+    className={`rounded-xl border p-4 sm:p-6 ${STAT_COLOR_CLASSES[color] ?? STAT_COLOR_CLASSES.blue}`}
   >
     <div className="flex items-start justify-between">
       <div>
@@ -89,8 +109,10 @@ const StatCard = ({
           </>
         )}
       </div>
-      <div className={`p-2 sm:p-3 rounded-lg bg-${color}-500/10`}>
-        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${color}-500`} />
+      <div
+        className={`p-2 sm:p-3 rounded-lg ${STAT_ICON_CLASSES[color] ?? STAT_ICON_CLASSES.blue}`}
+      >
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       </div>
     </div>
   </div>
@@ -114,7 +136,7 @@ const LeaderboardRow = ({
       <div className="w-8 text-center font-bold text-lg">
         {rank < 3 ? medals[rank] : rank + 1}
       </div>
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--bz-chart-1)] to-[var(--bz-chart-4)] flex items-center justify-center text-white font-medium">
         {member.member_email.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
@@ -177,7 +199,7 @@ const ProgressRing = ({
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className="text-blue-500 transition-all duration-1000"
+            className="text-[var(--bz-chart-1)] transition-all duration-1000"
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">

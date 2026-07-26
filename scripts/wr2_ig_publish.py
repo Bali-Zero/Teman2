@@ -665,9 +665,156 @@ async def _run(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001
         logger.error("queue publish-mark failed (publish OK): %s", exc)
 
+    # WR2 → WR3 companion handoff. Last, so it only ever fires for a carousel
+    # that is fully published and fully recorded.
+    await _emit_wr3_handoff(slug)
+
     # The app parses this exact stdout line.
     print(f"IG_URL={permalink}")  # noqa: T201 - stdout contract line
     return 0
+
+
+# ── WR2 → WR3 companion handoff (migration 186) ──────────────────────────
+#
+# The `wr2_episode_published` channel, its SQL helper
+# `publish_wr2_episode_published_event()`, the WR3 supervisor's LISTEN and the
+# `wr3-design-architect` route have all existed since 2026-05-22. Nothing has
+# ever emitted the event, so WR3 has produced zero episodes in 57 days: the
+# nerve was connected at neither end. This is the emitting end.
+#
+# It fires at the TRUE publish point — after Meta confirms the post — and not
+# at the `rendered` transition, so a carousel that never leaves the review
+# queue never spends a Veo credit.
+#
+# DEFAULT OFF, and that is a deliberate firebreak, not an oversight. The live
+# WR3 supervisor runs with WR3_DRY_RUN=false, so emitting dispatches
+# wr3-design-architect for real. Two contract gaps must close before arming:
+#
+#   1. `primary_claim_ids` exists in 0 of 23 WR2 briefs on disk. Empty makes
+#      companion-mode.yaml fall back to sub-mode `story_15s`.
+#   2. `story_15s` renders 15 s under a 20-credit ceiling — the opposite of the
+#      ruled contract of 60 s ≤ duration ≤ 150 s (~80-190 credits, two language
+#      cuts). Arming today would ship 15-second stories against that ruling.
+#
+# Tracked in the modus PENDING-ARMS ledger with those two conditions.
+_WR3_HANDOFF_ENV = "WR2_WR3_HANDOFF_ENABLED"
+
+# Repo-relative prefix the WR3 dispatcher already assumes for WR2 sidecars
+# (scripts/wr3_companion_dispatcher.py builds the same shape for backfill).
+_WR2_OUTPUT_PREFIX = "apps/war-room/output/carousel"
+
+
+def _build_wr3_handoff_payload(slug: str) -> dict[str, Any] | None:
+    """Assemble the `wr2_episode_published` payload for one published carousel.
+
+    Returns None when the carousel cannot satisfy the payload contract, so the
+    caller skips the handoff instead of emitting a payload the dispatcher would
+    reject. Every rejection is logged with the reason — a silent skip here would
+    be indistinguishable from "the feature is off".
+    """
+    slug_dir = _carousel_root() / slug
+    brief_file = slug_dir / "brief.json"
+    slides_file = slug_dir / "slides.json"
+
+    try:
+        brief = json.loads(brief_file.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        logger.error("wr3-handoff skip: brief.json unreadable for %s: %s", slug, exc)
+        return None
+
+    domain = str(brief.get("domain") or "").strip()
+    audience_segment = str(brief.get("audience_segment") or "").strip()
+    if not domain or not audience_segment:
+        # 2 of 23 briefs on disk lack one of these. The SQL helper and the
+        # dispatcher both treat them as required, so an incomplete payload
+        # would raise downstream rather than degrade.
+        logger.error(
+            "wr3-handoff skip: %s brief missing domain=%r audience_segment=%r",
+            slug, domain or None, audience_segment or None,
+        )
+        return None
+
+    try:
+        png_paths = _discover_slide_pngs(slug_dir)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("wr3-handoff skip: cannot list slides for %s: %s", slug, exc)
+        return None
+    if not png_paths:
+        logger.error("wr3-handoff skip: no slide PNGs for %s", slug)
+        return None
+
+    # WR2 briefs carry `regulatory_citations_verbatim`, never `claim_ids`. The
+    # companion contract inherits claim ids verbatim precisely so WR3 never
+    # re-queries NotebookLM (Law 2), so an empty list is a real degradation and
+    # is logged as such rather than passed off as normal.
+    claim_ids = brief.get("primary_claim_ids") or brief.get("claim_ids") or []
+    if not claim_ids:
+        logger.warning(
+            "wr3-handoff: %s has no claim ids — WR3 will fall back to sub-mode "
+            "story_15s (companion-mode.yaml). WR2 does not yet emit claim ids.",
+            slug,
+        )
+
+    return {
+        "slug": slug,
+        "slides_count": len(png_paths),
+        "hero_image_path": f"{_WR2_OUTPUT_PREFIX}/{slug}/slides/{png_paths[0].name}",
+        "primary_claim_ids": list(claim_ids),
+        "domain": domain,
+        "audience_segment": audience_segment,
+        "brief_path": f"{_WR2_OUTPUT_PREFIX}/{slug}/{brief_file.name}",
+        "slides_path": f"{_WR2_OUTPUT_PREFIX}/{slug}/{slides_file.name}",
+    }
+
+
+def _pg_dsn_for_handoff() -> str | None:
+    """Resolve the DSN. Separate seam so the emitter is testable without a DB."""
+    from backend.app.core.config import settings
+
+    return settings.database_url or os.environ.get("DATABASE_URL")
+
+
+def _connect_for_handoff(dsn: str) -> Any:
+    """Return the asyncpg connect coroutine. Seam, as above."""
+    import asyncpg
+
+    return asyncpg.connect(dsn)
+
+
+async def _emit_wr3_handoff(slug: str) -> None:
+    """Fire `wr2_episode_published` for a carousel that just went live.
+
+    Best-effort by construction: the post already exists on Instagram, so no
+    failure in here may turn a successful publish into a failed run. Mirrors
+    the contract of :func:`_ledger_record_result`.
+    """
+    if os.environ.get(_WR3_HANDOFF_ENV, "").strip().lower() not in ("1", "true", "yes"):
+        logger.info("wr3-handoff disabled (%s unset) — not emitting", _WR3_HANDOFF_ENV)
+        return
+
+    payload = _build_wr3_handoff_payload(slug)
+    if payload is None:
+        return
+
+    try:
+        dsn = _pg_dsn_for_handoff()
+        if not dsn:
+            logger.error("wr3-handoff skip: no DSN")
+            return
+        conn = await _connect_for_handoff(dsn)
+        try:
+            outbox_id = await conn.fetchval(
+                "SELECT publish_wr2_episode_published_event($1::jsonb)",
+                json.dumps(payload),
+            )
+        finally:
+            await conn.close()
+        logger.info(
+            "wr3-handoff emitted: slug=%s outbox_id=%s claims=%d",
+            slug, outbox_id, len(payload["primary_claim_ids"]),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("wr3-handoff emit failed (publish OK): %s", exc)
 
 
 def _read_meta_draft_id(slug: str) -> str | None:

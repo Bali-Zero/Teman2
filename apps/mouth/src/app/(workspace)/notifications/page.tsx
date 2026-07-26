@@ -147,13 +147,13 @@ export default function NotificationsDashboardPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "sent":
-        return "text-green-600 bg-green-50";
+        return "text-[var(--state-success)] bg-[color-mix(in_srgb,var(--state-success)_12%,transparent)]";
       case "pending":
-        return "text-amber-600 bg-amber-50";
+        return "text-[var(--state-warning)] bg-[color-mix(in_srgb,var(--state-warning)_12%,transparent)]";
       case "failed":
-        return "text-red-600 bg-red-50";
+        return "text-[var(--state-danger)] bg-[color-mix(in_srgb,var(--state-danger)_12%,transparent)]";
       default:
-        return "text-gray-600 bg-gray-50";
+        return "text-[var(--bz-text-secondary)] bg-[rgba(255,255,255,0.05)]";
     }
   };
 
@@ -211,20 +211,20 @@ export default function NotificationsDashboardPage() {
         className={cn(
           "rounded-lg border p-4 flex items-center gap-3",
           systemStatus === "healthy"
-            ? "border-green-200 bg-green-50"
+            ? "border-[color-mix(in_srgb,var(--state-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)]"
             : systemStatus === "degraded"
-              ? "border-red-200 bg-red-50"
-              : "border-amber-200 bg-amber-50",
+              ? "border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)]"
+              : "border-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)]",
         )}
       >
         <div
           className={cn(
             "w-3 h-3 rounded-full",
             systemStatus === "healthy"
-              ? "bg-green-500"
+              ? "bg-[var(--state-success)]"
               : systemStatus === "degraded"
-                ? "bg-red-500"
-                : "bg-amber-500",
+                ? "bg-[var(--state-danger)]"
+                : "bg-[var(--state-warning)]",
           )}
         />
         <div>
@@ -451,10 +451,10 @@ export default function NotificationsDashboardPage() {
                           <p className="text-sm">{alert.email_subject}</p>
                           {alert.error_message && (
                             <>
-                              <p className="text-sm font-medium text-red-600 mt-2">
+                              <p className="text-sm font-medium text-[var(--state-danger)] mt-2">
                                 Error:
                               </p>
-                              <p className="text-sm text-red-600">
+                              <p className="text-sm text-[var(--state-danger)]">
                                 {alert.error_message}
                               </p>
                             </>
@@ -541,17 +541,19 @@ function StatCard({
   color: string;
 }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    amber: "bg-amber-50 text-amber-600",
-    red: "bg-red-50 text-red-600",
-    gray: "bg-gray-50 text-gray-600",
+    blue: "bg-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)] text-[var(--bz-chart-1)]",
+    green:
+      "bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]",
+    amber:
+      "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] text-[var(--state-warning)]",
+    red: "bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] text-[var(--state-danger)]",
+    gray: "bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-secondary)]",
   };
 
   return (
     <div className={cn("rounded-xl border p-4", colorClasses[color])}>
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-white/50">
+        <div className="p-2 rounded-lg bg-[rgba(255,255,255,0.08)]">
           <Icon className="w-5 h-5" />
         </div>
         <div>

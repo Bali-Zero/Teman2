@@ -57,21 +57,23 @@ export function VectorExplorer() {
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center gap-4 bg-black/40 p-4 rounded-lg border border-white/10">
-        <Layers className="text-purple-500 w-5 h-5" />
+      <div className="flex items-center gap-4 bg-[rgba(35,35,40,0.65)] backdrop-blur-sm p-4 rounded-lg border border-[var(--bz-border)]">
+        <Layers className="text-[var(--bz-neon-purple)] w-5 h-5" />
         <Select value={selectedCol} onValueChange={handleCollectionChange}>
-          <SelectTrigger className="w-[300px] bg-black border-white/20 text-white">
+          <SelectTrigger className="w-[300px] bg-[var(--bz-bg-input)] border-[var(--bz-border)] text-white">
             <SelectValue placeholder="Select Vector Collection" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+          <SelectContent className="bg-[var(--bz-bg-elevated)] border-[var(--bz-border)] text-white">
             {collections.map((c) => (
               <SelectItem
                 key={c.name}
                 value={c.name}
-                className="focus:bg-zinc-800 focus:text-white cursor-pointer"
+                className="focus:bg-[var(--bz-bg-surface-hover)] focus:text-white cursor-pointer"
               >
                 {c.name}{" "}
-                <span className="text-zinc-500 ml-2">({c.status})</span>
+                <span className="text-[var(--bz-text-muted)] ml-2">
+                  ({c.status})
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -94,20 +96,20 @@ export function VectorExplorer() {
           points.map((point) => (
             <Card
               key={point.id}
-              className="bg-black/40 border-white/10 p-4 font-mono text-xs overflow-hidden"
+              className="bg-[rgba(35,35,40,0.65)] backdrop-blur-sm border-[var(--bz-border)] p-4 font-mono text-xs overflow-hidden"
             >
               <div className="flex justify-between items-center mb-2 border-b border-white/5 pb-2">
-                <span className="text-purple-400 font-bold">
+                <span className="text-[var(--bz-neon-purple)] font-bold">
                   ID: {point.id}
                 </span>
                 {point.score && (
-                  <span className="text-zinc-500">
+                  <span className="text-[var(--bz-text-muted)]">
                     Score: {point.score.toFixed(4)}
                   </span>
                 )}
               </div>
               <ScrollArea className="h-[200px]">
-                <pre className="text-zinc-300 whitespace-pre-wrap">
+                <pre className="text-[var(--bz-text-secondary)] whitespace-pre-wrap">
                   {JSON.stringify(point.payload, null, 2)}
                 </pre>
               </ScrollArea>

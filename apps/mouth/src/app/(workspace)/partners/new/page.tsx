@@ -25,6 +25,28 @@ import type {
 } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Form controls on the panel surface. */
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+};
+
+/** State-tinted inline strip (guardrail warnings, fiscal notes). */
+function stateStrip(state: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, ${state} 12%, transparent)`,
+    borderColor: `color-mix(in srgb, ${state} 30%, transparent)`,
+    color: state,
+  };
+}
+
 // NB-2 guardrail: warn if work_role matches sponsor/guarantor patterns
 const SPONSOR_ROLE_RE = /sponsor|garante|penjamin/i;
 
@@ -101,8 +123,8 @@ function SectionTab({
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
-          ? "bg-amber-600 text-white"
-          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+          ? "bg-[var(--surface-selected)] text-[var(--bz-text-1)]"
+          : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
       }`}
     >
       {SECTION_LABELS[id]}
@@ -119,7 +141,9 @@ function FieldGroup({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-zinc-300">{label}</label>
+      <label className="block text-sm font-medium text-[var(--bz-text-1)]">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -145,11 +169,16 @@ function Input({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 ${
-          error ? "border-red-500" : "border-zinc-700"
-        }`}
+        className="w-full px-3 py-2 border rounded-lg text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-accent)]"
+        style={{
+          ...INPUT_STYLE,
+          // inline wins over the focus class; error rim must live here
+          ...(error ? { borderColor: "var(--state-danger)" } : {}),
+        }}
       />
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {error && (
+        <p className="text-xs text-[var(--state-danger)] mt-1">{error}</p>
+      )}
     </div>
   );
 }
@@ -256,18 +285,23 @@ export default function NewPartnerPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-zinc-400 hover:text-zinc-200"
+            className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
           >
             <ArrowLeft size={16} className="mr-1" />
             Back
           </Button>
         </Link>
-        <h1 className="text-xl font-bold text-zinc-100">New Partner</h1>
+        <h1 className="text-xl font-bold text-[var(--bz-text-1)]">
+          New Partner
+        </h1>
       </div>
 
       {/* NB-2 Sponsor Guardrail */}
       {showSponsorWarning && (
-        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-sm">
+        <div
+          className="flex items-start gap-3 p-4 border rounded-xl text-sm"
+          style={stateStrip("var(--state-warning)")}
+        >
           <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
           <div>
             <strong>Warning:</strong> The work role appears to indicate a
@@ -280,7 +314,7 @@ export default function NewPartnerPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section Tabs */}
-        <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
+        <div className="flex gap-1 border rounded-xl p-1" style={PANEL}>
           {(
             ["profile", "fiscal", "payment", "commission"] as FormSection[]
           ).map((s) => (
@@ -293,13 +327,13 @@ export default function NewPartnerPage() {
           ))}
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+        <div className="border rounded-xl p-6 space-y-4" style={PANEL}>
           {/* Profile Section */}
           {activeSection === "profile" && (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <User size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                <User size={16} className="text-[var(--bz-accent)]" />
+                <h2 className="text-sm font-semibold text-[var(--bz-text-1)] uppercase tracking-wide">
                   Profile
                 </h2>
               </div>
@@ -327,7 +361,8 @@ export default function NewPartnerPage() {
                     onChange={(e) =>
                       setField("entity_type", e.target.value as EntityType)
                     }
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                    style={INPUT_STYLE}
                   >
                     <option value="individual">Individual</option>
                     <option value="corporate_pt">Corporate PT</option>
@@ -376,7 +411,8 @@ export default function NewPartnerPage() {
                   <select
                     value={form.assigned_to}
                     onChange={(e) => setField("assigned_to", e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                    style={INPUT_STYLE}
                   >
                     <option value="">Unassigned</option>
                     {teamMemberOptions.map((m) => (
@@ -393,7 +429,8 @@ export default function NewPartnerPage() {
                   onChange={(e) => setField("notes", e.target.value)}
                   rows={3}
                   placeholder="Internal notes about this partner..."
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
+                  className="w-full px-3 py-2 border rounded-lg text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-accent)] resize-none"
+                  style={INPUT_STYLE}
                 />
               </FieldGroup>
             </>
@@ -403,8 +440,8 @@ export default function NewPartnerPage() {
           {activeSection === "fiscal" && (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <CreditCard size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                <CreditCard size={16} className="text-[var(--bz-accent)]" />
+                <h2 className="text-sm font-semibold text-[var(--bz-text-1)] uppercase tracking-wide">
                   Fiscal
                 </h2>
               </div>
@@ -425,7 +462,8 @@ export default function NewPartnerPage() {
                         e.target.value as TaxWithholdingCategory,
                       )
                     }
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                    style={INPUT_STYLE}
                   >
                     {/* CRIT-8: aligned to backend TaxWithholdingCategory enum (pph21/pph23) */}
                     <option value="tbd">TBD (not yet determined)</option>
@@ -435,7 +473,10 @@ export default function NewPartnerPage() {
                   </select>
                 </FieldGroup>
               </div>
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-sm">
+              <div
+                className="p-3 border rounded-lg text-sm"
+                style={stateStrip("var(--state-info)")}
+              >
                 <strong>Note:</strong> Payouts are blocked when
                 tax_withholding_category is &apos;tbd&apos;. Confirm the partner
                 {"'"}s tax status before approving commissions.
@@ -447,8 +488,8 @@ export default function NewPartnerPage() {
           {activeSection === "payment" && (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <Building2 size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                <Building2 size={16} className="text-[var(--bz-accent)]" />
+                <h2 className="text-sm font-semibold text-[var(--bz-text-1)] uppercase tracking-wide">
                   Payment
                 </h2>
               </div>
@@ -457,7 +498,8 @@ export default function NewPartnerPage() {
                   <select
                     value={form.payment_method}
                     onChange={(e) => setField("payment_method", e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                    style={INPUT_STYLE}
                   >
                     <option value="bank_transfer">Bank Transfer</option>
                     <option value="cash">Cash</option>
@@ -493,8 +535,8 @@ export default function NewPartnerPage() {
           {activeSection === "commission" && (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <Briefcase size={16} className="text-amber-400" />
-                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                <Briefcase size={16} className="text-[var(--bz-accent)]" />
+                <h2 className="text-sm font-semibold text-[var(--bz-text-1)] uppercase tracking-wide">
                   Commission Policy
                 </h2>
               </div>
@@ -509,7 +551,8 @@ export default function NewPartnerPage() {
                         e.target.value as "percentage" | "flat",
                       )
                     }
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+                    style={INPUT_STYLE}
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="flat">Flat (IDR)</option>
@@ -539,25 +582,25 @@ export default function NewPartnerPage() {
         </div>
 
         {/* PDP Consent — always visible */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div className="border rounded-xl p-4" style={PANEL}>
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={form.pdp_consent}
               onChange={(e) => setField("pdp_consent", e.target.checked)}
-              className="mt-0.5 rounded border-zinc-600 text-amber-500"
+              className="mt-0.5 rounded border-[var(--bz-border-hover)] text-[var(--bz-accent)]"
             />
             <div>
-              <span className="text-sm text-zinc-200 font-medium">
+              <span className="text-sm text-[var(--bz-text-1)] font-medium">
                 PDP Consent (UU No. 27/2022) *
               </span>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-[var(--bz-text-3)] mt-0.5">
                 The partner has given explicit consent for their personal data
                 to be processed for commission tracking, payment processing, and
                 related business purposes.
               </p>
               {fieldErrors.pdp_consent && (
-                <p className="text-xs text-red-400 mt-1">
+                <p className="text-xs text-[var(--state-danger)] mt-1">
                   {fieldErrors.pdp_consent}
                 </p>
               )}
@@ -568,11 +611,7 @@ export default function NewPartnerPage() {
         {/* Actions */}
         <div className="flex items-center justify-between">
           <Link href="/partners">
-            <Button
-              type="button"
-              variant="outline"
-              className="border-zinc-700 text-zinc-300"
-            >
+            <Button type="button" variant="outline">
               Cancel
             </Button>
           </Link>
@@ -582,7 +621,6 @@ export default function NewPartnerPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="border-zinc-700 text-zinc-300"
                 onClick={() => {
                   const sections: FormSection[] = [
                     "profile",
@@ -600,7 +638,7 @@ export default function NewPartnerPage() {
             {activeSection !== "commission" ? (
               <Button
                 type="button"
-                className="bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
+                variant="outline"
                 onClick={() => {
                   const sections: FormSection[] = [
                     "profile",
@@ -616,11 +654,7 @@ export default function NewPartnerPage() {
                 Next
               </Button>
             ) : (
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-              >
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 size={14} className="mr-2 animate-spin" />
