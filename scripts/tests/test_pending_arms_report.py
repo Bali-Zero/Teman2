@@ -773,6 +773,268 @@ def test_real_ledger_secrets_audit_owner_not_shifted_by_trailing_pipe():
     assert e.cls == par.CLASS_OPERATOR_GATED
 
 
+# ---------------------------------------------------------------------------
+# Stray conflict-marker corruption (found live 2026-07-26: `||||||| ebfbd71019`
+# baked as origin/main's own committed last line silently blanked the owner of
+# the entry above it — TECH-DEBT/FRESH, invisible to both --strict and
+# --strict-phantom, because an unparseable owner never tripped the pipe-count
+# malformed check (still >=3 fields, just mostly empty) and never contained
+# the substring "operator"). Two-layer cure: (1) extract_open_entries refuses
+# to absorb a conflict-marker-shaped line into the entry being built, and
+# instead surfaces the marker as its own MALFORMED entry; (2) parse_entry
+# flags ANY empty/unparseable owner as MALFORMED regardless of how it got
+# that way — a backstop for corruption vectors other than this exact marker.
+# Both --strict and --strict-phantom now exit 1 on >=1 MALFORMED entry.
+#
+# Cross-family review (2026-07-26, same day) found two more gaps in the
+# first pass of this fix. (P1) a 4-field entry with NO owner segment at all
+# (`| artifact | missing step | proof`) silently assigns the missing_step
+# text as owner instead of being flagged malformed — raising the pipe-count
+# floor from `< 3` to `< 5` would catch it, but measured against the real
+# ledger that floor flagged 45/225 (20%) legitimate entries that use a
+# DIFFERENT 4-field shape (artifact + owner + proof, no missing_step —
+# mostly FIREBREAK-style) with correctly-extracted real owners. That
+# regression is worse than the gap it would close, so the floor fix was
+# REJECTED and the gap is deliberately left open and pinned by a test below
+# (test_known_gap_four_field_entry_missing_owner_segment_not_caught). (P2,
+# FIXED) CONFLICT_MARKER_RE alone could not tell a REAL orphaned marker from
+# one deliberately quoted inside a ``` fenced code block to illustrate it —
+# extract_open_entries now tracks fence state and treats everything between
+# a ``` pair as opaque literal content, exempt from every structural check.
+# Also narrowed the marker set from 4 shapes to 3 (dropped bare `=======`,
+# which is also valid Markdown Setext-underline/divider syntax and was never
+# the shape either live orphaned marker actually took).
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_empty_owner_field_is_malformed_not_tech_debt(tmp_path):
+    # Directly exercises the parse_entry-level backstop, independent of the
+    # extract-level marker guard: an explicitly empty owner field between two
+    # real pipes must never resolve to ordinary TECH-DEBT.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | empty owner artifact | some step | | some proof",
+    )
+    assert e.cls == par.CLASS_MALFORMED
+    assert e.bucket == par.CLASS_MALFORMED
+    assert any("owner" in r.lower() for r in e.malformed_reasons)
+
+
+def test_guilt_trailing_conflict_marker_becomes_its_own_malformed_entry(tmp_path):
+    # The exact live shape: a well-formed entry immediately followed (no
+    # blank line) by a stray `|||||||` marker with no matching
+    # <<<<<<</=======/>>>>>>> anywhere in the file.
+    ledger = (
+        "- opened 2026-07-05 | marker artifact | some step | me (session) | some proof\n"
+        "||||||| ebfbd71019\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    now = par._parse_now(NOW)
+    entries = par.load_entries(p, now)
+    assert len(entries) == 2
+
+    real = next(e for e in entries if e.artifact == "marker artifact")
+    assert real.owner == "me (session)"
+    assert real.proof == "some proof"
+    assert real.cls == par.CLASS_TECH_DEBT  # protected from corruption, not malformed
+
+    marker = next(e for e in entries if e is not real)
+    assert marker.cls == par.CLASS_MALFORMED
+    assert "ebfbd71019" in marker.raw
+
+
+@pytest.mark.parametrize("marker", ["<<<<<<<", ">>>>>>>", "|||||||"])
+def test_guilt_all_three_detected_conflict_marker_shapes_are_malformed(tmp_path, marker):
+    ledger = (
+        "- opened 2026-07-05 | pre-marker artifact | some step | me | some proof\n"
+        f"{marker} some-ref-or-hash\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    now = par._parse_now(NOW)
+    entries = par.load_entries(p, now)
+    assert len(entries) == 2
+    real = next(e for e in entries if e.artifact == "pre-marker artifact")
+    assert real.owner == "me"
+    assert real.cls == par.CLASS_TECH_DEBT
+    marker_entry = next(e for e in entries if e is not real)
+    assert marker_entry.cls == par.CLASS_MALFORMED
+
+
+def test_guilt_strict_phantom_exits_1_on_conflict_marker_alone(tmp_path, capsys):
+    ledger = (
+        "- opened 2026-07-05 | marker-only artifact | some step | me | some proof\n"
+        "||||||| deadbeef1234\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict-phantom"]) == 1
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 1
+
+
+def test_innocence_clean_ledger_strict_phantom_exits_0(tmp_path, capsys):
+    ledger = "- opened 2026-07-05 | clean artifact | some step | me | some proof\n\n## closed\n"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict-phantom"]) == 0
+
+
+def test_innocence_short_equals_run_not_treated_as_marker(tmp_path):
+    # 4 '=' characters, well under the 7-char conflict-marker threshold — a
+    # legitimate continuation line using '====' as a text divider must still
+    # concatenate normally, not be mistaken for a stray '=======' marker.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | divider artifact | first step part\n"
+        "==== continued after a short divider ==== | me | proof",
+    )
+    assert "continued after a short divider" in e.missing_step
+    assert e.owner == "me"
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_bare_seven_equals_not_treated_as_marker(tmp_path):
+    # Deliberate design choice (cross-family review, 2026-07-26): a bare
+    # `=======` run is ALSO valid Markdown Setext-heading-underline/divider
+    # syntax, and neither live orphaned marker found in this ledger was ever
+    # this shape (both were `|||||||`) — excluded from CONFLICT_MARKER_RE, so
+    # a continuation line using it as a divider must still concatenate.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | equals divider artifact | first step part\n"
+        "======= continued after a bare divider | me | proof",
+    )
+    assert "continued after a bare divider" in e.missing_step
+    assert e.owner == "me"
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_known_gap_four_field_entry_missing_owner_segment_not_caught(tmp_path):
+    # P1 raised by cross-family review (2026-07-26), then DELIBERATELY NOT
+    # fixed the way first proposed. A 4-field entry omitting the owner
+    # segment entirely (`| artifact | missing step | proof`, no separate
+    # owner) back-anchors the missing_step TEXT into owner instead of being
+    # flagged. Raising the pipe-count floor from `< 3` to `< 5` WOULD catch
+    # this shape — but measured against the real ledger, 45/225 open entries
+    # (20%) use a DIFFERENT, legitimate 4-field shape (artifact + owner +
+    # proof, no separate missing_step — mostly FIREBREAK-style), every one
+    # with a correctly-extracted real owner; a `< 5` floor flagged all 45 as
+    # MALFORMED. That regression is far worse than this narrower, unobserved
+    # gap, so the floor stays at `< 3` and this shape is a documented,
+    # accepted miss — pinned here so it isn't silently "fixed" again without
+    # re-checking against the real corpus first.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | four field artifact | missing step | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT  # known gap: NOT malformed
+    assert e.owner == "missing step"  # wrong, but this is the accepted trade-off
+
+
+def test_innocence_marker_example_inside_code_fence_not_treated_as_real(tmp_path):
+    # P2 found by cross-family review (2026-07-26): a marker-shaped line
+    # deliberately quoted inside a fenced code block to ILLUSTRATE a marker
+    # (e.g. documentation of this very fix) must not be mistaken for a real
+    # orphaned one — and, more importantly, must not silently truncate the
+    # entry and drop everything after the fence with no trace.
+    ledger = (
+        "- opened 2026-07-05 | fenced example artifact | see below for an example\n"
+        "```text\n"
+        "||||||| deadbeef1234\n"
+        "```\n"
+        "continued after the fence | me (session) | real proof survives\n\n"
+        "## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    now = par._parse_now(NOW)
+    entries = par.load_entries(p, now)
+    assert len(entries) == 1
+    e = entries[0]
+    assert e.artifact == "fenced example artifact"
+    assert "deadbeef1234" in e.missing_step  # preserved as literal fenced content
+    assert "continued after the fence" in e.missing_step
+    assert e.owner == "me (session)"
+    assert e.proof == "real proof survives"
+
+
+def test_innocence_unclosed_fence_does_not_swallow_the_rest_of_the_ledger(tmp_path):
+    # Round-2 finding (cross-family review, 2026-07-26): an EARLIER draft of
+    # the fence guard exempted ALL structural checks while in_fence, not just
+    # the marker check — a fence that never closes (a stray lone ``` line, or
+    # any odd fence-delimiter count anywhere below it) would then silently
+    # absorb every subsequent line, including every later real entry, until
+    # EOF, with zero MALFORMED signal (--strict-phantom stays green while the
+    # rest of the ledger vanishes from the parse). The shipped design only
+    # exempts the MARKER check while fenced — entry-start/list-item/blank/
+    # heading detection stay active regardless, so an unclosed fence degrades
+    # safely: later entries still parse correctly.
+    ledger = (
+        "- opened 2026-07-05 | before fence artifact | step one\n"
+        "```text\n"
+        "an accidentally-unclosed fence starts here, never closes\n"
+        "- opened 2026-07-06 | after unclosed fence artifact | step two | me | proof two\n"
+        "\n## closed\n"
+    )
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    now = par._parse_now(NOW)
+    entries = par.load_entries(p, now)
+    after = next(
+        (e for e in entries if e.artifact == "after unclosed fence artifact"), None
+    )
+    assert after is not None, (
+        "the second real entry must still be recognized even though the "
+        "fence above it never closed — got entries: "
+        + "; ".join(e.artifact or e.raw[:60] for e in entries)
+    )
+    assert after.owner == "me"
+    assert after.proof == "proof two"
+    assert after.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_multiline_entry_still_concatenates_after_marker_guard(entries):
+    # Regression for the pre-existing continuation-line feature: the
+    # conflict-marker guard must not disturb ordinary multi-line wrapping.
+    e = _by_artifact(entries, "wrapped artifact")
+    assert "continuing artifact description" in e.artifact
+    assert "missing step first part" in e.missing_step
+    assert "missing step continued" in e.missing_step
+    assert e.owner == "me"
+    assert e.proof.startswith("proof text starts")
+    assert "proof continues here" in e.proof
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_has_zero_malformed_after_conflict_marker_cure():
+    """The live defect this fix closes: origin/main's own PENDING-ARMS.md
+    carried a stray `||||||| ebfbd71019` last line that blanked the owner of
+    the 'Bali disclosure is hover-only' entry (measured before this fix:
+    owner='', proof='ebfbd71019', cls=TECH-DEBT, bucket=FRESH — invisible to
+    both --strict and --strict-phantom). After curing the marker off the
+    ledger AND landing the structural fix, the real ledger must carry zero
+    MALFORMED entries and --strict-phantom must exit 0.
+    """
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    malformed = [e for e in entries if e.cls == par.CLASS_MALFORMED]
+    assert not malformed, (
+        "unexpected MALFORMED entries in the real ledger: "
+        + "; ".join(e.raw[:80] for e in malformed)
+    )
+    disclosure = next(
+        e for e in entries if "Bali disclosure is hover-only" in e.artifact
+    )
+    assert disclosure.owner == "me (apps/mouth lane)"
+    assert disclosure.cls == par.CLASS_TECH_DEBT
+    assert par.main(["--ledger", str(REAL_LEDGER_PATH), "--now", NOW, "--strict-phantom"]) == 0
 # -----------------------------------------------------------------------------
 # Ledger freshness — guilt AND innocence
 # -----------------------------------------------------------------------------

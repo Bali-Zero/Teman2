@@ -1,3 +1,24 @@
+// ============================================================================================
+// SUPERSEDED (2026-07-18) — DO NOT DISPATCH FOR A NEW RUN.
+// This script's D5 refutation seat is NOT blind: d5Prompt(code, d1Result) below
+// embeds D1's own proposal (`JSON.stringify(d1Result)`) directly in the refuter's prompt, so its
+// "re-derive BEFORE reading the proposal" instruction is anchoring theater, not an independent
+// verification (conductor verification finding, 2026-07-18 — see infra/workflows/kbli-batch-a-
+// lot.js's own "D5 BLIND-REFUTATION FIX" comment, which names this exact file/defect verbatim).
+// This script's measured m1 blind-concordance baseline (0.917, pinned in
+// data/kbli-filiera/batch-reports/batchA-calibration.md) is therefore INVALID as a calibration
+// figure — it measures agreement with an anchored refuter, not independent concordance. See
+// research/operations/2026-07-18-kbli-batch-a-plan.md §8 amendment A-4 (m1 BREACH on Lot 1 root-
+// caused to exactly this same-family/anchored-pair blindness: true blind concordance measured
+// 5/13 = 0.385, far below the 0.917 this file produced).
+// USE infra/workflows/kbli-batch-a-lot.js INSTEAD — it has a truly blind d5Prompt(code) (no D1
+// parameter, no reference to D1's output) plus a deterministic diffD1D5() compiler, and is the
+// calibration-enforced runner for all Batch A lots going forward.
+// This file remains on main ONLY as a historical/archaeology artifact (the validated 15-code
+// method pilot whose STRUCTURE the batch runner adapted) and carries a hard entry guard below so
+// it cannot be re-dispatched by accident and its anchored numbers mistaken for a valid baseline.
+// ============================================================================================
+//
 // kbli-pilot-a1.js — GARUDA-FILIERA pilot A1 per-code adjudication (D1 -> D5 -> D2).
 //
 // Companion docs: research/operations/2026-07-16-kbli-garuda-filiera-workflow.md (§2 seats,
@@ -64,6 +85,24 @@ export const meta = {
 // ----- input (args) — defensive parse, matching modus-bench.js's lesson (run wf_b0ad36b1-80d:
 // the harness can deliver `args` as a JSON-encoded STRING) -----------------------------------
 const A = (typeof args === "string" ? JSON.parse(args) : args) || {};
+
+// ----- SUPERSEDED entry guard (2026-07-18) — see the file-header block above. This script's D5
+// seat is anchored (d5Prompt(code, d1Result) below embeds D1's own proposal), so it must never be
+// dispatched as a fresh run whose numbers could be mistaken for a valid calibration baseline. The
+// escape hatch exists ONLY for archaeology/resume of the already-measured historical pilot run
+// itself — never flip it on for new codes. New runs MUST use infra/workflows/kbli-batch-a-lot.js.
+if (A.allowAnchoredPilot !== true) {
+  throw new Error(
+    "kbli-pilot-a1.js is SUPERSEDED (2026-07-18): its D5 seat is anchored -- d5Prompt(code, " +
+      "d1Result) embeds D1's own proposal in the refuter's prompt, so 're-derive before reading " +
+      "the proposal' is anchoring theater, not a blind refutation. Its measured m1 concordance " +
+      "(0.917) is invalid as a calibration baseline (see research/operations/2026-07-18-kbli-" +
+      "batch-a-plan.md §8 amendment A-4). Use infra/workflows/kbli-batch-a-lot.js (blind " +
+      "d5Prompt(code) + deterministic diffD1D5() compiler) for any new run. Pass " +
+      "args.allowAnchoredPilot === true ONLY to resume or archive the historical pilot run itself.",
+  );
+}
+
 const evidenceRoot = A.evidenceRoot;
 if (!evidenceRoot || typeof evidenceRoot !== "string") {
   throw new Error(

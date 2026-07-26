@@ -267,7 +267,7 @@ automation snapshot.
 | `fly_cost_alert`      | Mon 9:00 UTC              | 2026-07-20 09:00 | ? check   | ✅ CLOSED/T0 | LOCAL |          | [2026-07-20 09:00:14] Cost within budget ✅        |
 | `ollama_warm_pin`     | Sun 5:00 UTC              | 2026-07-19 05:01 | ✅ OK     | —            | —     |          | [2026-07-19T05:01:23] Warm-pin complete on Nuzanta |
 | `peraturan_ingestion` | 6 21:30 UTC               |                  | ⚠️ NO LOG | —            | —     |          |                                                    |
-| `pro_heartbeat`       | 0 * * * *                 |                  |           | ✅ CLOSED/T0 | LOCAL |          |                                                    |
+| `pro_heartbeat`       | 0 \* \* \* \*             |                  |           | ✅ CLOSED/T0 | LOCAL |          |                                                    |
 | `run`                 | every 15m (+14 more)      | 2026-07-25 23:15 | ❌ FAIL   | —            | —     |          | 2026-07-25 23:15:02 [info ] check_now_done         |
 
 ---

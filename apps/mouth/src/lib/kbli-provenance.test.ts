@@ -289,3 +289,97 @@ describe("deriveProvenance — real dataset partition invariants", () => {
     }
   });
 });
+
+describe("deriveProvenance — PMA basis traceability (guilt + innocence)", () => {
+  // The PMA layer used to be a CONSTANT: `vintage: "2020"`, `status:
+  // "pending_crosswalk"` as literal types, so every one of the 1,559 codes carried
+  // the same provenance verdict and no other answer was even representable. That
+  // reads as honest ("crosswalk audit in progress") and is honest — for a code with
+  // a recorded KBLI-2020 origin. For a code with none it promises an audit that has
+  // nothing to run on.
+  it("GUILT: no recorded 2020 ancestry ⇒ untraceable_basis, no vintage", () => {
+    const prov = deriveProvenance(
+      makeRaw({ pp28_sources: [], bps_2020_ancestors: undefined }),
+    );
+    expect(prov.pma.status).toBe("untraceable_basis");
+    expect(prov.pma.vintage).toBeNull();
+    // The verdict VALUE is still served — this layer describes provenance, it
+    // never claims the ownership status is wrong.
+    expect(prov.pma.source).toBe("Perpres 10/2021, 49/2021");
+  });
+
+  it("GUILT: an ancestry object with an EMPTY code list is not ancestry", () => {
+    // `bps_2020_ancestors` is an object, so `if (raw.bps_2020_ancestors)` reads
+    // `{codes: []}` as "has ancestry" — form lying about entity, the error this
+    // lane keeps paying for. The predicate must look at the codes.
+    const prov = deriveProvenance(
+      makeRaw({
+        pp28_sources: [],
+        bps_2020_ancestors: {
+          codes: [],
+          adjudication_status: "not-adjudicated",
+          inheritance_verdict: "not-adjudicated",
+        },
+      }),
+    );
+    expect(prov.pma.status).toBe("untraceable_basis");
+  });
+
+  it("INNOCENCE: BPS ancestry ⇒ unchanged pending_crosswalk at vintage 2020", () => {
+    const prov = deriveProvenance(
+      makeRaw({
+        pp28_sources: [],
+        bps_2020_ancestors: {
+          codes: ["01111"],
+          adjudication_status: "not-adjudicated",
+          inheritance_verdict: "not-adjudicated",
+        },
+      }),
+    );
+    expect(prov.pma.status).toBe("pending_crosswalk");
+    expect(prov.pma.vintage).toBe("2020");
+  });
+
+  it("INNOCENCE: pp28-only ancestry still counts — the two layers are independent", () => {
+    // 1,338 of 1,559 are traceable through BPS; a further 121 only through
+    // pp28_sources. Requiring BPS alone would flag those 121 as untraceable and
+    // put a declared gap on pages that have a recorded origin.
+    const prov = deriveProvenance(
+      makeRaw({ pp28_sources: ["01111"], bps_2020_ancestors: undefined }),
+    );
+    expect(prov.pma.status).toBe("pending_crosswalk");
+    expect(prov.pma.vintage).toBe("2020");
+  });
+});
+
+describe("deriveProvenance — PMA traceability on the real dataset", () => {
+  const DATA_PATH = path.join(
+    process.cwd(),
+    "data",
+    "KBLI_2025_FINAL_CLEAN.json",
+  );
+  const parsed = JSON.parse(
+    fs.readFileSync(DATA_PATH, "utf-8"),
+  ) as KBLIRawDataFile;
+
+  it("pins the untraceable population and its shape", () => {
+    const untraceable = parsed.data.filter(
+      (r) => deriveProvenance(r).pma.status === "untraceable_basis",
+    );
+    // Pinned so a change that silently widens or narrows this set fails loudly
+    // rather than quietly re-labelling pages. Measured 2026-07-26.
+    expect(untraceable.length).toBe(100);
+    // Every one of them is BPS_ONLY — the status says "BPS crosswalk" while the
+    // ancestor list is empty, which is exactly why the basis cannot be traced.
+    for (const r of untraceable) {
+      expect(r.status_mapping, `code ${r.kode_kbli_2025}`).toBe("BPS_ONLY");
+    }
+    // And the rest of the catalog is unaffected: no code loses its vintage.
+    for (const r of parsed.data) {
+      const prov = deriveProvenance(r);
+      if (prov.pma.status === "pending_crosswalk") {
+        expect(prov.pma.vintage, `code ${r.kode_kbli_2025}`).toBe("2020");
+      }
+    }
+  });
+});
