@@ -108,10 +108,12 @@ vi.mock("./RequiredDocumentsCard", () => ({
   ),
 }));
 
-vi.mock("@balizero/core/utils", () => ({
-  formatIDR: (amount: number) => `IDR ${amount}`,
-}));
-
+// Money is deliberately NOT mocked. An earlier draft stubbed "@balizero/core/utils"
+// with `formatIDR: (n) => `IDR ${n}`` and asserted "IDR 1750000" — but the page renders
+// <Money>, and Money.tsx imports formatIDR from "../utils/currency", a different module
+// than the "./utils/index.ts" barrel that specifier resolves to. The stub bound to
+// nothing, the real formatter ran, and both assertions failed in CI. Assert the text the
+// user actually sees instead; hr/bonuses/page.test.tsx exercises <Money> the same way.
 import CaseDetailPage from "./page";
 
 const profile = {
@@ -253,7 +255,7 @@ describe("CaseDetailPage", () => {
       "https://wa.me/62812345",
     );
     expect(screen.getByText("Zero Tester")).toBeInTheDocument();
-    expect(screen.getAllByText("IDR 1750000")).toHaveLength(2);
+    expect(screen.getAllByText("Rp 1.750.000")).toHaveLength(2);
     expect(screen.getByTestId("required-documents")).toHaveTextContent(
       "Documents for 42",
     );
@@ -402,7 +404,7 @@ describe("CaseDetailPage", () => {
         quoted_price: 2_000_000,
       });
     });
-    expect(await screen.findByText("IDR 2000000")).toBeInTheDocument();
+    expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
   it("closes an unchanged edit and submits changed fields with a reload", async () => {
