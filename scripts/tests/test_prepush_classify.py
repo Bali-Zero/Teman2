@@ -955,3 +955,113 @@ def test_allowlist_version_bumped_for_the_new_entry() -> None:
     rules change that does not bump it makes the log line unattributable."""
     assert pc.ALLOWLIST_VERSION >= 4
     assert ("apps/mouth/src", (".ts", ".tsx", ".css")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+# ---------------------------------------------------------------------------
+# The gate's INPUT, not its rules: `.husky/pre-push` must enumerate changed
+# files against the MERGE-BASE with origin/main, never against $remote_sha.
+#
+# The hook used to branch: merge-base for a brand-new branch, `$remote_sha`
+# ("only the NEW commits") for one already on the remote. That asymmetry meant
+# a branch that merged origin/main in — the normal way to resolve a conflict —
+# handed this classifier every file MAIN had gained since the last push, and
+# the verdict came back `full` on files already merged and already tested.
+# Measured 2026-07-26: a two-file diff whose files are BOTH on the allowlist
+# was reported as "11/20 changed file(s) are NOT on the innocent allowlist",
+# naming .gitignore, published_articles.json, escalations_pro.jsonl … Three
+# ~40-minute full-suite runs; the same delta re-cut from main passed in
+# seconds. The RULES were right — the INPUT lied. W102's shape, in the
+# pre-push gate rather than in CI.
+#
+# These live here (and not in test_prepush_failclosed.sh, the other pre-push
+# test) because `.github/workflows/immune-enforcement.yml` names THIS file on a
+# real pytest line, and names that one nowhere: a guard no workflow runs is
+# written, not armed (superscar #2).
+# ---------------------------------------------------------------------------
+
+HOOK_PATH = Path(__file__).resolve().parents[2] / ".husky" / "pre-push"
+
+
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=cwd, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def _hook_source() -> str:
+    """Fails loudly if the hook is missing rather than vacuously passing on ''."""
+    assert HOOK_PATH.is_file(), f"{HOOK_PATH} not found — re-anchor this pin, do not delete it"
+    return HOOK_PATH.read_text(encoding="utf-8")
+
+
+def test_hook_anchors_the_diff_range_to_the_merge_base() -> None:
+    """INNOCENCE: the live hook computes RANGE_FROM from `git merge-base origin/main`."""
+    src = _hook_source()
+    assert 'RANGE_FROM="$(git merge-base origin/main "$local_sha"' in src, (
+        "the pre-push diff range is no longer anchored to the merge-base with "
+        "origin/main; a branch that merges main in will hand the classifier "
+        "MAIN's files and force the full suite on already-tested work"
+    )
+
+
+def test_hook_never_anchors_the_range_to_remote_sha() -> None:
+    """GUILT: the exact form that caused the defect must not come back.
+
+    Without this half, the innocence test above would still pass if someone
+    re-added the `$remote_sha` branch alongside the merge-base one.
+    """
+    src = _hook_source()
+    assert 'RANGE_FROM="$remote_sha"' not in src, (
+        "RANGE_FROM=$remote_sha is back: for a branch that merged origin/main, "
+        "$remote_sha..$local_sha spans every commit main gained since the last "
+        "push, so MAIN's files get attributed to this push"
+    )
+
+
+def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
+    tmp_path: Path,
+) -> None:
+    """The git-level REASON, proved on a real repo rather than asserted in prose.
+
+    Reproduces the exact shape: branch forks from main, main moves on, branch
+    merges main in, then a push computes its range. `$remote_sha..HEAD` sees
+    main's file; the merge-base range sees only the branch's own.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+
+    (repo / "base.txt").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+
+    # The branch forks here, and this is also what the remote already has.
+    _git(repo, "branch", "feature")
+    remote_sha = _git(repo, "rev-parse", "HEAD")
+
+    # main moves on with a file that has nothing to do with the branch.
+    (repo / "mains_file.txt").write_text("main moved on\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "main moves")
+
+    # The branch adds its own file, then merges main in (conflict resolution).
+    _git(repo, "checkout", "-q", "feature")
+    (repo / "branch_file.txt").write_text("mine\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "branch work")
+    _git(repo, "merge", "-q", "--no-edit", "main")
+    local_sha = _git(repo, "rev-parse", "HEAD")
+
+    def changed(range_from: str) -> set[str]:
+        out = _git(
+            repo, "diff", "--no-ext-diff", "--no-renames", "--name-only",
+            range_from, local_sha,
+        )
+        return set(out.splitlines()) - {""}
+
+    merge_base = _git(repo, "merge-base", "main", local_sha)
+
+    # GUILT: the old anchor attributes main's file to this push.
+    assert "mains_file.txt" in changed(remote_sha)
+    # INNOCENCE: the merge-base anchor sees only what the branch contributes.
+    assert changed(merge_base) == {"branch_file.txt"}

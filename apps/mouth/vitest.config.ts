@@ -49,6 +49,18 @@ export default defineConfig({
     },
   },
   resolve: {
+    // One `next`, always. packages/core pins `next` exactly (16.2.9) while the
+    // root resolves a newer 16.2.x, so npm installs a second copy under
+    // packages/core/node_modules. Two copies means two module identities: the
+    // `vi.mock("next/font/google")` in src/test/setup.tsx binds to the root one,
+    // packages/core/fonts/inter.ts imports the nested one, the mock never
+    // applies, and `Inter(...)` throws "Inter is not a function" at import time
+    // — taking down every test file that touches the @balizero/core barrel
+    // (11 files here, before a single assertion runs). Measured both ways: with
+    // the nested copy moved aside, hr/bonuses/page.test.tsx goes 0 -> 17 passing.
+    // Deduping here fixes it wherever npm happens to hoist, which is not the
+    // same on every machine — CI hoists one `next` today and does not hit this.
+    dedupe: ["next"],
     // Array form (ordered) so the wildcard subpath rule mirrors tsconfig's
     // "@balizero/core/*": ["../../packages/core/*"]. The istanbul coverage
     // provider eagerly imports *uncovered* source files (e.g. src/app/layout.tsx)
