@@ -4,6 +4,15 @@ import os
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
+
+# `apps/backend-rag` — the only directory from which `import backend` resolves.
+# Both probes below pin `cwd` to it explicitly instead of inheriting the pytest
+# session's ambient cwd: these tests assert something about the IMPORT GRAPH, and
+# they must not be able to fail for a reason that has nothing to do with it. A
+# module-level `os.chdir` in an unrelated test file used to move the session cwd
+# at collection time and made both of them fail with `No module named 'backend'`.
+_BACKEND_RAG_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
@@ -32,6 +41,7 @@ def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
         [sys.executable, "-c", script],
         check=False,
         env=env,
+        cwd=_BACKEND_RAG_ROOT,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
@@ -74,6 +84,7 @@ def test_init_sentry_with_dsn_does_not_block_startup() -> None:
         [sys.executable, "-c", script],
         check=False,
         env=env,
+        cwd=_BACKEND_RAG_ROOT,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
