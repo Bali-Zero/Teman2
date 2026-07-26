@@ -90,6 +90,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
+import wr2_claims  # noqa: E402  (the claim contract WR3 inherits without re-verifying)
 
 # Carousel output root. Matches wr2_rerender_local.py convention: defaults to the
 # M5 app-machine Desktop path, overridable via WR2_CAROUSEL_ROOT for Pro/Mini.
@@ -704,6 +705,15 @@ _WR3_HANDOFF_ENV = "WR2_WR3_HANDOFF_ENABLED"
 _WR2_OUTPUT_PREFIX = "apps/war-room/output/carousel"
 
 
+def _resolve_claim_ids(brief: dict[str, Any]) -> tuple[list[str], Any]:
+    """Named seam over the claim contract, so the publisher never open-codes it.
+
+    One place decides what counts as a claim; a second implementation drifting
+    from `wr2_claims` is exactly how a fabricated id would reach WR3.
+    """
+    return wr2_claims.resolve_primary_claim_ids(brief)
+
+
 def _build_wr3_handoff_payload(slug: str) -> dict[str, Any] | None:
     """Assemble the `wr2_episode_published` payload for one published carousel.
 
@@ -743,16 +753,23 @@ def _build_wr3_handoff_payload(slug: str) -> dict[str, Any] | None:
         logger.error("wr3-handoff skip: no slide PNGs for %s", slug)
         return None
 
-    # WR2 briefs carry `regulatory_citations_verbatim`, never `claim_ids`. The
-    # companion contract inherits claim ids verbatim precisely so WR3 never
-    # re-queries NotebookLM (Law 2), so an empty list is a real degradation and
-    # is logged as such rather than passed off as normal.
-    claim_ids = brief.get("primary_claim_ids") or brief.get("claim_ids") or []
-    if not claim_ids:
+    # WR2 has no `primary_claim_ids` field — measured 2026-07-26, the concept
+    # does not exist in any of the 23 briefs on disk. `wr2_claims` derives the
+    # ids from the structured, sourced, status-verified records the brief DOES
+    # sometimes carry, and mints nothing where that structure is absent: WR3
+    # inherits these ids without re-verifying them (Law 2), so a fabricated one
+    # would put an unchecked sentence in a published video and spend Veo credits
+    # doing it. An empty list is the honest outcome, and the companion skips.
+    claim_ids, extraction = _resolve_claim_ids(brief)
+    if claim_ids:
+        logger.info("wr3-handoff: %s — %s", slug, wr2_claims.format_extraction(extraction))
+    else:
         logger.warning(
-            "wr3-handoff: %s has no claim ids — WR3 will fall back to sub-mode "
-            "story_15s (companion-mode.yaml). WR2 does not yet emit claim ids.",
+            "wr3-handoff: %s has no verified claims — %s. The companion will be "
+            "skipped (no Veo spend). Run `python scripts/wr2_claims.py --scan` to "
+            "see how much of the corpus satisfies the contract.",
             slug,
+            wr2_claims.format_extraction(extraction),
         )
 
     return {
