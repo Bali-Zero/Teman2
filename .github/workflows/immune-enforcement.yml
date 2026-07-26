@@ -101,6 +101,8 @@ jobs:
               scripts/fly-pg-backup.sh|\
               scripts/wr2-cron-wrapper.sh|\
               scripts/cron-wrapper.sh|\
+              scripts/cron-state.sh|\
+              scripts/test_cron_state_alert.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
@@ -169,6 +171,14 @@ jobs:
           # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
           # last line. Named here at birth, for the same reason as the corpus above.
           bash scripts/test_offsite_verify.sh
+
+      - name: cron-state failure alert corpus (guilt + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # cron-state.sh wrote a receipt and never spoke. The 03:00 Postgres backup runs
+          # under it, so its failure was silent while the 03:20 twin alerted. Named here at
+          # birth: an alarm nobody exercises is the thing it was built to prevent.
+          bash scripts/test_cron_state_alert.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
