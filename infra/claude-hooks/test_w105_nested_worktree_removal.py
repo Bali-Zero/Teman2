@@ -118,6 +118,53 @@ def _degraded_registry_case(root: pathlib.Path) -> list[str]:
     return fails
 
 
+def _degraded_registry_round2(root: pathlib.Path) -> list[str]:
+    """Round-2 findings #1 and #6: what a DEAD registry does to the resolver.
+
+    #1 is the W105 defect itself, resurrected: with no registry to name the innermost
+    worktree, the legacy truncation names the OUTER one and judges ITS cleanliness.
+    #6 is that same truncation's other end — an ordinary directory under `.worktrees/`
+    is not a worktree, and `git -C <it> status` answers for the MAIN checkout, which
+    is never clean.
+    """
+    import importlib.util
+    fails: list[str] = []
+    os.environ["NUZ_REPO_ROOT"] = str(root)
+    try:
+        # main must really be dirty, else #6 proves nothing.
+        (root / "DIRT.txt").write_text("main checkout's own uncommitted work\n")
+        st = _git(["status", "--porcelain"], root)
+        if not any(ln.strip() for ln in st.stdout.splitlines()):
+            fails.append("PREMISE BROKEN: main checkout is not dirty — the "
+                         "ordinary-directory case cannot prove what it claims")
+        plain = root / ".worktrees" / "leftover_husk"   # a dir, NOT a worktree
+        plain.mkdir(exist_ok=True)
+        (plain / "junk.txt").write_text("nothing git tracks\n")
+
+        spec = importlib.util.spec_from_file_location(
+            "wt_iso_degraded2", str(root / "infra" / "claude-hooks" / "worktree_isolation.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod._git_worktree_list = lambda: []          # the dead probe
+        mod._WT_LIST_CACHE = None
+
+        # [#1] the nested worktree is the target and it is dirty; the outer is clean.
+        dirty_nested = root / ".worktrees" / "clean_outer" / ".worktrees" / "dn"
+        if mod._unarmed_dirty_removal_target(f"rm -rf {dirty_nested}", str(root)) is None:
+            fails.append("WENT-BLIND (dead registry): rm -rf a DIRTY NESTED worktree "
+                         "resolved to its CLEAN outer → expected BLOCK")
+        # [#6] an ordinary directory under `.worktrees/` owns nothing git can lose.
+        if mod._unarmed_dirty_removal_target(f"rm -rf {plain}", str(root)) is not None:
+            fails.append("BIT-INNOCENT (dead registry): rm -rf an ordinary directory under "
+                         ".worktrees/ blocked by the MAIN checkout's dirtiness → expected "
+                         "ALLOW (git answered for the enclosing checkout, not for a victim)")
+    except Exception as exc:  # a broken probe must not read as a pass
+        fails.append(f"PROBE BROKEN (dead registry round 2): {exc!r}")
+    finally:
+        os.environ.pop("NUZ_REPO_ROOT", None)
+    return fails
+
+
 def evaluate() -> list[str]:
     if not shutil.which("git"):
         return []  # no git → skip (treated as pass)
@@ -244,6 +291,38 @@ def evaluate() -> list[str]:
         # to replace it. Without the filesystem fallback a slow git turns
         # `rm -rf .worktrees` into a pass.
         fails += _degraded_registry_case(root)
+
+        # ---- ADVERSARIAL ROUND 2 (same seat, re-run on the round-1 fix: REFUTED, 7
+        # findings). Round 1's fix answered the shape of the *token*; these are the
+        # places it still answered a shape rather than an entity.
+
+        # [r2 #3] `<root>/*/` — the same glob one keystroke different. The round-1
+        # normalization only knew `/*`, so this fell to the metacharacter gate and
+        # wiped every worktree unseen.
+        if _run_hook(hook, f"rm -rf {root}/.worktrees/*/", rr, rr) != 2:
+            fails.append("WENT-BLIND (glob /*/): rm -rf <repo>/.worktrees/*/ with a DIRTY "
+                         "unarmed worktree inside → expected BLOCK")
+
+        # [r2 #2] the same, THROUGH a symlink. `rm -rf <link>` is innocent (it removes
+        # the link) but `rm -rf <link>/*` removes the referent's contents — the
+        # normalization strips the glob, and the terminal-symlink refusal must not
+        # then treat what is left as a bare link.
+        if _run_hook(hook, f"rm -rf {link}/*", rr, rr) != 2:
+            fails.append("WENT-BLIND (symlink glob): rm -rf <symlink>/* reaches the dirty "
+                         "worktree behind the link → expected BLOCK")
+
+        # [r2 #4] `.worktrees` is a legal NAME for a worktree. Judging it by the name
+        # alone reads it as a folder-of-worktrees and asks only about its children —
+        # so its own uncommitted work is waved through.
+        wt_named_worktrees = _add_worktree(root, root / ".worktrees" / ".worktrees", "b/wnw")
+        (wt_named_worktrees / "UNTRACKED.txt").write_text("work inside a worktree NAMED .worktrees\n")
+        if _run_hook(hook, f"rm -rf {wt_named_worktrees}", rr, rr) != 2:
+            fails.append("WENT-BLIND (name vs entity): rm -rf a DIRTY worktree literally "
+                         "NAMED `.worktrees` → expected BLOCK (it is a worktree, not a "
+                         "container, and it was judged by its children)")
+
+        # [r2 #1 + #6] both halves of the dead-registry case, in-process.
+        fails += _degraded_registry_round2(root)
 
         # ---- INNOCENCE for that same target ------------------------------------
         # …but with nothing dirty under it, wiping the dir loses nothing. Built in
