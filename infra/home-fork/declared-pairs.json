@@ -447,6 +447,12 @@
       "repo": "scripts/cron-state.sh",
       "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day — the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-qdrant-backup.sh",
+      "repo": "scripts/fly-qdrant-backup.sh",
+      "_note": "2026-07-27: the third payload of the nightly backup chain and the last one undeclared — a real file, byte-identical that day, while its two siblings (fly-backup.sh, fly-pg-backup.sh) are symlinks. Found by following the exit code out of fly-backup.sh, not by looking for forks.",
+      "machines": ["pro"]
     }
   ],
   "allow": [

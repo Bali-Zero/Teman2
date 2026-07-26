@@ -103,6 +103,8 @@ jobs:
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
+              infra/scripts/fly-backup.sh|\
+              scripts/test_fly_backup_phases.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
@@ -179,6 +181,14 @@ jobs:
           # under it, so its failure was silent while the 03:20 twin alerted. Named here at
           # birth: an alarm nobody exercises is the thing it was built to prevent.
           bash scripts/test_cron_state_alert.sh
+
+      - name: Backup phase composition corpus (one dead phase must not kill the other)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # `set -e` + a bare pipeline decapitated the PG_EXIT capture, so a failing
+          # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
+          # bucket: the qdrant nightly is missing for exactly the night PG failed.
+          bash scripts/test_fly_backup_phases.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
