@@ -141,6 +141,18 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
     expect(kbliMetaTitleSuffix(kbli)).toBe("100% Foreign Ownership");
   });
 
+  it("fails CLOSED — not by throwing — on a malformed provenance block", () => {
+    // Adversarial review finding 2: `provenance?.licensing.status` guards a
+    // null provenance and then throws on a non-null one with no `licensing`
+    // key. A crash is not fail-closed, it is a 500 on an indexed page.
+    const kbli = makeCode({ provenance: {} as never });
+
+    expect(() => isLicensingVerifiedForBareClaim(kbli)).not.toThrow();
+    expect(isLicensingVerifiedForBareClaim(kbli)).toBe(false);
+    expect(kbliMetaTitle(kbli, kbli.titleEn)).not.toMatch(/Risk/);
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).not.toMatch(/license:/);
+  });
+
   it("fails CLOSED when the provenance block is missing entirely", () => {
     // The whole point of the positive gate: absence of evidence is not evidence
     // of verification. A negative gate (`!isLicensingVerificationPending`) would
@@ -150,6 +162,11 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
     expect(isLicensingVerifiedForBareClaim(kbli)).toBe(false);
     expect(verifiedRiskLabel(kbli)).toBeNull();
     expect(verifiedLicenseType(kbli)).toBeNull();
+    // …and through the COMPOSERS, not only the helpers. Adversarial review
+    // finding 3: asserting on the helpers alone lets a leak introduced in
+    // kbliMetaTitle/kbliMetaDescription pass a test named "fails CLOSED".
+    expect(kbliMetaTitle(kbli, kbli.titleEn)).not.toMatch(/Risk/);
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).not.toMatch(/license:/);
   });
 
   it("drops the license type whenever the risk tier is dropped", () => {
@@ -295,9 +312,68 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     expect(offenders.map((c) => c.code)).toEqual([]);
   });
 
-  it("produces more than one distinct suffix (v2 produced exactly one)", () => {
-    const suffixes = new Set(getAllCodes().map(kbliMetaTitleSuffix));
+  // Was: "produces more than one distinct suffix". Struck by adversarial review
+  // as vacuous — v2's four suffixes survive complete removal of the gate, so the
+  // assertion passed either way and read like coverage. Replaced with the claim
+  // that actually depends on the gate existing: on the real dataset the neutral
+  // degradations must be REACHED, i.e. some records really do fail verification.
+  it("actually degrades on the real dataset (the gate is not a no-op here)", () => {
+    const suffixes = getAllCodes().map(kbliMetaTitleSuffix);
+    const openUnverified = suffixes.filter(
+      (s) => s === "100% Foreign Ownership",
+    ).length;
+    const restrictedUnverified = suffixes.filter(
+      (s) => s === "Foreign Ownership Restricted",
+    ).length;
 
-    expect(suffixes.size).toBeGreaterThan(4);
+    // 422 open codes carry an unverified Bali block today (measured). If this
+    // ever hits zero the gate has stopped selecting and the test is lying.
+    expect(openUnverified).toBeGreaterThan(0);
+    expect(openUnverified + restrictedUnverified).toBeGreaterThan(0);
+  });
+
+  it("degrades the cap in the DESCRIPTION when capVerified is false", () => {
+    // The dataset-wide check below cannot see this today (measured: zero live
+    // records are restricted + !capVerified + !capSpecial), so the synthetic
+    // record is the ONLY thing constraining this branch. Without it the leak
+    // Codex found would have been "fixed" with a test that passes either way.
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: false,
+      },
+    });
+
+    const description = kbliMetaDescription(kbli, kbli.titleEn);
+    expect(description).not.toMatch(/67/);
+    expect(description).toMatch(/Restricted for foreign ownership/);
+  });
+
+  it("keeps the cap in the DESCRIPTION when capVerified is true", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: 67,
+        capVerified: true,
+      },
+    });
+
+    expect(kbliMetaDescription(kbli, kbli.titleEn)).toMatch(/max 67% foreign/);
+  });
+
+  it("never prints an unverified cap percentage in the DESCRIPTION either", () => {
+    // Finding 1 of the adversarial pass: the title gated `maxForeign` on
+    // capVerified and the description did not, so the same page refused the
+    // number in one surface and printed it in the other.
+    const offenders = getAllCodes().filter((c) => {
+      if (c.pma.status !== "restricted" || c.pma.capVerified) return false;
+      if (c.pma.capSpecial) return false;
+      return /max \d+% foreign/.test(kbliMetaDescription(c, c.titleEn));
+    });
+
+    expect(offenders.map((c) => c.code)).toEqual([]);
   });
 });

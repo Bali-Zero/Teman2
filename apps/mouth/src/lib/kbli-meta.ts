@@ -46,15 +46,25 @@ export function verifiedLicenseType(kbli: KBLICode): string | null {
 }
 
 /**
- * Human PMA label used in the description. Unchanged from v2 — `capSpecial`
- * and the cap % were already provenance-aware upstream.
+ * Human PMA label used in the description.
+ *
+ * The v2 comment here claimed "the cap % was already provenance-aware
+ * upstream". It was not, and the claim is the interesting part: the title path
+ * gates `maxForeign` on `capVerified` and this one did not, so the same
+ * unverified percentage that the title refused to state was printed in the
+ * description of the same page. An adversarial pass found it; a sentence
+ * asserting a surface is safe is not a check on that surface.
+ *
+ * Both surfaces now degrade identically when the cap is unverified.
  */
 export function kbliPmaLabel(kbli: KBLICode): string {
   if (kbli.pma.status === "open") return "100% Foreign Ownership";
   if (kbli.pma.status !== "restricted") return "Closed to Foreign Investment";
-  return kbli.pma.capSpecial
-    ? "Restricted (special distribution conditions)"
-    : `Restricted (max ${kbli.pma.maxForeign}% foreign)`;
+  if (kbli.pma.capSpecial)
+    return "Restricted (special distribution conditions)";
+  return kbli.pma.capVerified
+    ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
+    : "Restricted for foreign ownership";
 }
 
 /**
