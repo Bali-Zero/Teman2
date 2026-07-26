@@ -109,7 +109,7 @@ export default function NotificationsSettingsPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Bell className="w-6 h-6 text-yellow-400" />
+            <Bell className="w-6 h-6 text-[var(--bz-accent)]" />
             Notification Settings
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -122,15 +122,15 @@ export default function NotificationsSettingsPage() {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
         <div className="flex gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-blue-400" />
+            <Mail className="w-4 h-4 text-[var(--state-info)]" />
             <span className="text-[var(--foreground-muted)]">Email</span>
           </div>
           <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-purple-400" />
+            <Bell className="w-4 h-4 text-[var(--bz-neon-purple)]" />
             <span className="text-[var(--foreground-muted)]">Push</span>
           </div>
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-green-400" />
+            <MessageSquare className="w-4 h-4 text-[var(--state-success)]" />
             <span className="text-[var(--foreground-muted)]">In-App</span>
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function NotificationsSettingsPage() {
                   onClick={() => toggleSetting(setting.id, "email")}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                     setting.email
-                      ? "bg-blue-500/20 text-blue-400"
+                      ? "bg-[var(--state-info)]/15 text-[var(--state-info)]"
                       : "bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]"
                   }`}
                   title="Email notifications"
@@ -171,7 +171,7 @@ export default function NotificationsSettingsPage() {
                   onClick={() => toggleSetting(setting.id, "push")}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                     setting.push
-                      ? "bg-purple-500/20 text-purple-400"
+                      ? "bg-[var(--bz-neon-purple)]/15 text-[var(--bz-neon-purple)]"
                       : "bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]"
                   }`}
                   title="Push notifications"
@@ -184,7 +184,7 @@ export default function NotificationsSettingsPage() {
                   onClick={() => toggleSetting(setting.id, "inApp")}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                     setting.inApp
-                      ? "bg-green-500/20 text-green-400"
+                      ? "bg-[var(--state-success)]/15 text-[var(--state-success)]"
                       : "bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]"
                   }`}
                   title="In-app notifications"
@@ -214,7 +214,7 @@ export default function NotificationsSettingsPage() {
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--bz-border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
           </label>
         </div>
         <div className="grid grid-cols-2 gap-4">

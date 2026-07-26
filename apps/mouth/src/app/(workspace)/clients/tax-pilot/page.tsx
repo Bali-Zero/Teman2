@@ -64,7 +64,7 @@ export default function TaxCompanyPilotPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0b1020] text-white">
+      <main className="flex min-h-screen items-center justify-center text-[var(--bz-text-1)]">
         <Loader2 className="mr-2 animate-spin" size={18} />
         Loading evidence dossiers
       </main>
@@ -73,8 +73,8 @@ export default function TaxCompanyPilotPage() {
 
   if (error || !data) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0b1020] px-4 text-white">
-        <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
+      <main className="flex min-h-screen items-center justify-center px-4 text-[var(--bz-text-1)]">
+        <div className="rounded-lg border border-[var(--state-danger)]/30 bg-[var(--state-danger)]/10 p-4 text-sm text-[var(--state-danger)]">
           Evidence dossiers are unavailable.
         </div>
       </main>

@@ -23,13 +23,15 @@ const themes: { id: Theme; label: string; icon: typeof Sun }[] = [
   { id: "system", label: "System", icon: Monitor },
 ];
 
+// Swatch previews read the neon accent token family (same hues as the legacy
+// hardcoded palette, now theme-aware via the token SSOT).
 const accentColors: { id: AccentColor; label: string; color: string }[] = [
-  { id: "cyan", label: "Cyan", color: "#22D3EE" },
-  { id: "purple", label: "Purple", color: "#A78BFA" },
-  { id: "blue", label: "Blue", color: "#60A5FA" },
-  { id: "green", label: "Green", color: "#34D399" },
-  { id: "amber", label: "Amber", color: "#FBBF24" },
-  { id: "pink", label: "Pink", color: "#F472B6" },
+  { id: "cyan", label: "Cyan", color: "var(--bz-neon-cyan)" },
+  { id: "purple", label: "Purple", color: "var(--bz-neon-purple)" },
+  { id: "blue", label: "Blue", color: "var(--bz-neon-blue)" },
+  { id: "green", label: "Green", color: "var(--bz-neon-emerald)" },
+  { id: "amber", label: "Amber", color: "var(--bz-neon-amber)" },
+  { id: "pink", label: "Pink", color: "var(--bz-neon-rose)" },
 ];
 
 export default function AppearanceSettingsPage() {
@@ -92,7 +94,7 @@ export default function AppearanceSettingsPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Palette className="w-6 h-6 text-pink-400" />
+            <Palette className="w-6 h-6 text-[var(--bz-accent)]" />
             Appearance Settings
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -199,7 +201,7 @@ export default function AppearanceSettingsPage() {
               checked={compactMode}
               onChange={() => setCompactMode(!compactMode)}
             />
-            <div className="w-11 h-6 bg-[var(--background-secondary)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+            <div className="w-11 h-6 bg-[var(--background-secondary)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--bz-border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
           </label>
         </div>
 
@@ -218,7 +220,7 @@ export default function AppearanceSettingsPage() {
               checked={animationsEnabled}
               onChange={() => setAnimationsEnabled(!animationsEnabled)}
             />
-            <div className="w-11 h-6 bg-[var(--background-secondary)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+            <div className="w-11 h-6 bg-[var(--background-secondary)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--bz-border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
           </label>
         </div>
       </div>
