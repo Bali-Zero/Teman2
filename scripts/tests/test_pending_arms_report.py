@@ -771,3 +771,115 @@ def test_real_ledger_secrets_audit_owner_not_shifted_by_trailing_pipe():
     e = next(x for x in entries if "secrets audit Pro enrichment" in x.artifact)
     assert "operator[secret]" in e.owner
     assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+# -----------------------------------------------------------------------------
+# Ledger freshness — guilt AND innocence
+# -----------------------------------------------------------------------------
+#
+# The defect this cures was found by using the tool: the reporter was run in a
+# checkout 64 commits behind origin/main and read out rows as "open" that main
+# had closed days earlier. It reported a stale world with no hint that it had.
+# Guilt: a behind checkout must say STALE. Innocence: an ordinary PR branch that
+# ADDS a ledger line is ahead, not behind, and must NOT be accused — otherwise
+# the banner cries wolf on every ledger PR and stops being read.
+
+
+def _git(repo: Path, *args: str) -> str:
+    import subprocess
+
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+
+
+def _make_repo_with_origin(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """origin (bare) + a clone. Returns (clone, ledger_path_in_clone, origin)."""
+    import subprocess
+
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    subprocess.run(["git", "init", "--bare", "-b", "main", str(origin)], check=True, capture_output=True)
+    subprocess.run(["git", "init", "-b", "main", str(seed)], check=True, capture_output=True)
+    _git(seed, "config", "user.email", "t@t.t")
+    _git(seed, "config", "user.name", "t")
+    led = seed / "PENDING-ARMS.md"
+    led.write_text("- opened 2026-07-01 | seed | step | me | proof\n")
+    _git(seed, "add", "-A")
+    _git(seed, "commit", "-m", "seed")
+    _git(seed, "remote", "add", "origin", str(origin))
+    _git(seed, "push", "-u", "origin", "main")
+
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", str(origin), str(clone)], check=True, capture_output=True)
+    _git(clone, "config", "user.email", "t@t.t")
+    _git(clone, "config", "user.name", "t")
+    return clone, clone / "PENDING-ARMS.md", seed
+
+
+def test_guilt_freshness_reports_stale_when_origin_main_is_ahead(tmp_path):
+    """The lived failure: origin/main gained ledger commits this checkout lacks."""
+    clone, led, seed = _make_repo_with_origin(tmp_path)
+    (seed / "PENDING-ARMS.md").write_text(
+        "- opened 2026-07-01 | seed | step | me | proof\n"
+        "- closed 2026-07-26 | seed | landed on main\n"
+    )
+    _git(seed, "commit", "-am", "close it on main")
+    _git(seed, "push")
+    _git(clone, "fetch", "origin")  # ref updated, working tree deliberately NOT pulled
+
+    f = par._ledger_freshness(led)
+    assert f["state"] == "stale", f
+    assert f["behind"] == 1
+    assert "STALE" in par._freshness_line(f)
+
+
+def test_innocence_a_branch_that_adds_a_ledger_line_is_not_accused(tmp_path):
+    """Every ledger PR differs from origin/main on purpose. Ahead != behind."""
+    clone, led, _seed = _make_repo_with_origin(tmp_path)
+    led.write_text(led.read_text() + "- opened 2026-07-27 | my new row | step | me | proof\n")
+    _git(clone, "commit", "-am", "add a row, like every ledger PR does")
+
+    f = par._ledger_freshness(led)
+    assert f["state"] == "current", f
+    assert f["behind"] == 0
+
+
+def test_freshness_unknown_is_not_current_when_it_cannot_look(tmp_path):
+    """A scan that could not look is not a clean scan (W84). No repo -> UNKNOWN."""
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text("- opened 2026-07-01 | x | step | me | proof\n")
+    f = par._ledger_freshness(led)
+    assert f["state"] == "unknown", f
+    assert f["behind"] is None
+    line = par._freshness_line(f)
+    assert "UNKNOWN" in line and "not 'current'" in line
+
+
+def test_strict_fails_on_stale_but_strict_phantom_does_not(tmp_path, capsys):
+    """--strict is 'I rely on this verdict' -> stale must fail it.
+    --strict-phantom is the CI gate -> freshness must never redden an innocent PR."""
+    clone, led, seed = _make_repo_with_origin(tmp_path)
+    (seed / "PENDING-ARMS.md").write_text(
+        "- opened 2026-07-01 | seed | step | me | proof\n- closed 2026-07-26 | seed | done\n"
+    )
+    _git(seed, "commit", "-am", "advance main")
+    _git(seed, "push")
+    _git(clone, "fetch", "origin")
+
+    # The one open row here is fresh at --now and owned by `me`, so neither
+    # overdue-tech-debt nor phantom can be what fails --strict: only staleness.
+    assert par.main(["--ledger", str(led), "--now", "2026-07-01", "--strict"]) == 1
+    assert "STALE" in capsys.readouterr().out
+    assert par.main(["--ledger", str(led), "--now", "2026-07-01", "--strict-phantom"]) == 0
+
+
+def test_freshness_appears_in_json_payload(tmp_path, capsys):
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text("- opened 2026-07-01 | x | step | me | proof\n")
+    assert par.main(["--ledger", str(led), "--now", "2026-07-05", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["freshness"]["state"] in {"current", "stale", "unknown"}

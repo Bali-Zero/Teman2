@@ -61,6 +61,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -388,12 +389,31 @@ def compute_counts(entries: List[Entry]) -> Dict[str, int]:
     }
 
 
-def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
+def _freshness_line(freshness: Optional[Dict[str, Any]]) -> str:
+    """One line, always printed. Silence about freshness is what made this necessary."""
+    if not freshness:
+        return "- ledger-freshness: not checked"
+    state = freshness.get("state")
+    detail = freshness.get("detail", "")
+    if state == "stale":
+        return f"- ⚠️ ledger-freshness: **STALE** — {detail}"
+    if state == "current":
+        return f"- ledger-freshness: current ({detail})"
+    return f"- ledger-freshness: UNKNOWN — {detail} (could not check; this is not 'current')"
+
+
+def render_report(
+    ledger_path: Path,
+    now: date,
+    entries: List[Entry],
+    freshness: Optional[Dict[str, Any]] = None,
+) -> str:
     counts = compute_counts(entries)
     lines: List[str] = []
     lines.append("# PENDING-ARMS reconciliation report")
     lines.append("")
     lines.append(f"- ledger: `{ledger_path}`")
+    lines.append(_freshness_line(freshness))
     lines.append(
         f"- now: {now.isoformat()} (day-precision dates; overdue = age_days >= "
         f"{OVERDUE_AGE_DAYS}, the closest day-precision proxy for >48h)"
@@ -464,10 +484,16 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_json(ledger_path: Path, now: date, entries: List[Entry]) -> Dict[str, Any]:
+def build_json(
+    ledger_path: Path,
+    now: date,
+    entries: List[Entry],
+    freshness: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     return {
         "now": now.isoformat(),
         "ledger": str(ledger_path),
+        "freshness": freshness if freshness is not None else {"state": "unknown", "behind": None, "detail": "not checked"},
         "counts": compute_counts(entries),
         "entries": [
             {
@@ -488,6 +514,91 @@ def _default_ledger_path() -> Path:
     # scripts/pending_arms_report.py -> parent = scripts/, parent.parent = repo root.
     repo_root = Path(__file__).resolve().parent.parent
     return repo_root / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+
+# -----------------------------------------------------------------------------
+# Ledger freshness — the reporter must not present a stale open-set as current
+# -----------------------------------------------------------------------------
+#
+# WHY (2026-07-27, found by using this tool): a session ran this reporter inside
+# a main checkout 64 commits behind origin/main and read out ~68 "open"
+# operator-gated rows. Several had been CLOSED on main days earlier — the local
+# ledger was 492 lines against main's 532. The report was internally correct and
+# externally false: it answered honestly about a world that no longer existed.
+# Nothing in the output hinted at this, because the reporter had no notion of
+# git at all. Same shape as the seat-probe that answers for the invocation
+# rather than the system, and as a GO criterion naming a tool nobody has.
+#
+# WHAT THIS IS *NOT*. This does not ask "has this content already landed on
+# main" — that question demands a CONTENT check, never SHA reachability (W88,
+# and W88 again at the second degree with three-dot diffs). The question here is
+# strictly "does my checkout contain main's commits to this file", and for THAT
+# question commit reachability is the exact semantics, not a proxy for it. The
+# two questions look alike and have opposite correct answers; keep them apart.
+#
+# DIRECTION MATTERS. "Differs from origin/main" is the normal state of every PR
+# branch that adds a ledger line — accusing those would be an over-match (#3)
+# and would train readers to ignore the banner. Only a checkout MISSING main's
+# commits is stale. A branch ahead of main reports `current`.
+#
+# FAIL-VISIBLE. A shallow CI clone has no `origin/main` ref, and a tarball is
+# not a repo at all. Those report UNKNOWN with the reason, never `current`:
+# a scan that could not look is not a clean scan (W84).
+
+
+def _ledger_freshness(ledger_path: Path) -> Dict[str, Any]:
+    """How many commits to THIS file does origin/main have that we do not?
+
+    Returns {"state": current|stale|unknown, "behind": int|None, "detail": str}.
+    Never raises: the reporter degrades to UNKNOWN rather than dying, because a
+    freshness check that can take the report down is worse than no check.
+    """
+    unknown = lambda detail: {"state": "unknown", "behind": None, "detail": detail}
+    try:
+        proc = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(ledger_path.parent),
+                "rev-list",
+                "--count",
+                "HEAD..origin/main",
+                "--",
+                str(ledger_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except FileNotFoundError:
+        return unknown("git not on PATH")
+    except (subprocess.SubprocessError, OSError) as exc:  # timeout, spawn failure
+        return unknown(f"git invocation failed: {type(exc).__name__}")
+
+    # Judge the REPLY, not the exit code (W104) — but here a non-zero rc carries
+    # the only diagnosis we get (unknown revision, not a repository), so surface
+    # it verbatim rather than collapsing it to a bare "unknown".
+    if proc.returncode != 0:
+        reason = (proc.stderr or "").strip().splitlines()
+        return unknown(reason[-1] if reason else f"git exited {proc.returncode}")
+
+    raw = (proc.stdout or "").strip()
+    if not raw.isdigit():
+        # An empty or unparseable count is NOT zero. Zero is a claim.
+        return unknown(f"unparseable rev-list output {raw!r}")
+
+    behind = int(raw)
+    if behind == 0:
+        return {"state": "current", "behind": 0, "detail": "origin/main has no newer commit to this file"}
+    return {
+        "state": "stale",
+        "behind": behind,
+        "detail": (
+            f"origin/main has {behind} commit(s) to this ledger that this checkout lacks — "
+            "rows shown as open may already be closed on main; pull before trusting this report "
+            "(and note origin/main itself is only as fresh as your last fetch)"
+        ),
+    }
 
 
 def _parse_now(value: Optional[str]) -> date:
@@ -565,13 +676,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
     entries = load_entries(ledger_path, now)
+    freshness = _ledger_freshness(ledger_path)
 
     if args.json:
-        print(json.dumps(build_json(ledger_path, now, entries), indent=2))
+        print(json.dumps(build_json(ledger_path, now, entries, freshness), indent=2))
     else:
-        print(render_report(ledger_path, now, entries), end="")
+        print(render_report(ledger_path, now, entries, freshness), end="")
 
     has_phantom = any(e.cls == CLASS_PHANTOM_OPERATOR for e in entries)
+    # --strict is the "I am about to rely on this verdict" mode, so a ledger that
+    # is provably missing main's closures makes the verdict meaningless and must
+    # fail. --strict-phantom is the CI ledger gate and is deliberately NOT wired
+    # to freshness: CI checks out a shallow merge ref with no `origin/main`, so
+    # every innocent PR would report UNKNOWN, and a gate that reddens on "could
+    # not check" teaches everyone to ignore it.
+    if args.strict and freshness.get("state") == "stale":
+        return 1
     if args.strict and (
         has_phantom
         or any(e.cls == CLASS_TECH_DEBT and e.overdue for e in entries)
