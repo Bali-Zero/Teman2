@@ -147,6 +147,11 @@ on:
       - WR2 master template guard
       - wr2-queue-tests
     types: [completed]
+  # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
+  # exists — a reactive workflow_run watcher structurally cannot see the
+  # absence of an event, only events themselves.
+  schedule:
+    - cron: "*/15 * * * *"
 
 concurrency:
   # One in-flight job per commit — the coalescing mechanism. When several
@@ -155,7 +160,17 @@ concurrency:
   # for that SHA and only the last one survives to send. It re-derives the
   # failing set fresh from the API at send-time (next step), so correctness
   # never depends on which specific triggering event happened to win.
-  group: main-push-failure-watch-${{ github.event.workflow_run.head_sha }}
+  #
+  # Task #41 addendum: `github.event.workflow_run.head_sha` doesn't exist
+  # under this workflow's own new `schedule` trigger (no workflow_run
+  # payload on that event at all — it resolves to an empty string, not an
+  # error), which would put every scheduled liveness check into the SAME
+  # degenerate group regardless of when it ran. Give schedule-triggered
+  # runs of THIS workflow their own group instead, independent of
+  # head_sha, so a `verdict-liveness` run in flight yields to a fresher
+  # one rather than colliding with — or hiding behind — the alert job's
+  # per-commit grouping.
+  group: ${{ github.event_name == 'schedule' && 'main-push-failure-watch-verdict-liveness' || format('main-push-failure-watch-{0}', github.event.workflow_run.head_sha) }}
   cancel-in-progress: true
 
 jobs:
@@ -165,7 +180,15 @@ jobs:
     # on the PR, or operator-initiated — see header comment for the
     # 2026-07-26/task #37 widening from push-only to push-or-schedule).
     # `cancelled` is excluded deliberately — see header comment.
+    # `github.event_name == 'workflow_run'` is a defensive, explicit guard
+    # against this job's own workflow now also carrying a `schedule`
+    # trigger (task #41, added below) — the `github.event.workflow_run.*`
+    # comparisons already evaluate to false under a schedule event on
+    # their own (missing-object property access is null, not an error, in
+    # GitHub Actions expressions), but stating it plainly beats relying on
+    # that implicit behavior being remembered correctly by a future editor.
     if: >-
+      github.event_name == 'workflow_run' &&
       (github.event.workflow_run.event == 'push' ||
        github.event.workflow_run.event == 'schedule') &&
       github.event.workflow_run.head_branch == 'main' &&
@@ -216,6 +239,123 @@ jobs:
           SHORT_SHA="${SHA:0:7}"
           LIST=$(paste -sd, /tmp/failing.txt)
           TEXT="main push failing (${SHORT_SHA}): ${LIST} -- https://github.com/${REPO}/commits/${SHA}"
+          curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}"
+
+  verdict-liveness:
+    # Task #41 (2026-07-26). The `alert` job above is REACTIVE — it fires
+    # on a completed workflow_run event, and `cancelled` is deliberately
+    # excluded from its condition (see header comment): a normal
+    # supersede-cancel of ONE run is routine, not a silent failure, and
+    # alerting on every one would be the exact fatigue this watcher exists
+    # to avoid. But that exclusion has a blind spot measured live tonight:
+    # main's tests.yml went from a completed verdict every ~20-25 minutes
+    # to NONE for 75+ minutes, entirely via `cancelled` conclusions
+    # superseding queued runs (task #37's finding — `cancel-in-progress:
+    # false` only protects a run that already started), and `alert` never
+    # said a word — a reactive per-event watcher with `cancelled` excluded
+    # cannot distinguish "one routine supersede" from "main has stopped
+    # producing verdicts at all", because it only ever sees individual
+    # events, never the gap between them.
+    #
+    # This job asks a different question, every 15 minutes: how long
+    # since main's tests.yml last produced a REAL conclusion (success,
+    # failure, or timed_out — not cancelled) on a push or schedule run?
+    # It alerts only once the gap exceeds THRESHOLD_MINUTES, then again
+    # every ESCALATION_MINUTES while the gap keeps growing — "one alert
+    # per outage", not one per 15-minute check, computed purely from
+    # timestamp arithmetic so there is no external state to persist or to
+    # go stale itself.
+    #
+    # THRESHOLD_MINUTES=45 sits clear of the measured healthy gap (~20-25
+    # min) without living on the edge of normal. That number is a design
+    # choice grounded in one night's data, not a claim that a future
+    # outage will last exactly as long — see
+    # discovery_a_cure_pinned_to_todays_world_becomes_tomorrows_bug.
+    #
+    # Known residual gap: if this job's own `gh api` call fails (network
+    # blip, rate limit) the step errors under `set -euo pipefail` and the
+    # job shows red in the Actions UI — but nothing downstream watches
+    # THIS workflow's own runs (workflow_run chaining is deliberately not
+    # self-referential, see header comment), so a failure here is only
+    # visible to whoever looks. Same class of gap as the `alert` job
+    # itself; not solved here, named so it isn't mistaken for solved.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: main-verdict-liveness
+      cancel-in-progress: true
+    steps:
+      - name: Check time since main's last completed tests.yml verdict
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          THRESHOLD_MINUTES=45
+          CHECK_INTERVAL_MINUTES=15
+          ESCALATION_MINUTES=60
+
+          # Lookback of 30 completed runs comfortably covers even a long
+          # cancellation streak (tonight's worst was 15 of 20) while
+          # staying a single cheap API call.
+          LAST_TS=$(gh api "repos/${REPO}/actions/workflows/tests.yml/runs?branch=main&status=completed&per_page=30" \
+            --jq '[.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="success" or .conclusion=="failure" or .conclusion=="timed_out"))] | sort_by(.updated_at) | last | .updated_at // empty')
+
+          NOW_EPOCH=$(date -u +%s)
+          if [ -z "${LAST_TS}" ]; then
+            # No qualifying run at all within the lookback window — treat
+            # as maximally stale rather than silently passing.
+            STALE_MINUTES=999999
+          else
+            LAST_EPOCH=$(date -u -d "${LAST_TS}" +%s)
+            STALE_MINUTES=$(( (NOW_EPOCH - LAST_EPOCH) / 60 ))
+          fi
+
+          echo "stale_minutes=${STALE_MINUTES}" >> "$GITHUB_OUTPUT"
+          echo "last_verdict_at=${LAST_TS}" >> "$GITHUB_OUTPUT"
+
+          # STALE_MINUTES==999999 (no qualifying run found at all) is
+          # handled BEFORE the escalation-boundary math, not through it:
+          # "we don't even know when main last passed" is categorically
+          # worse than a known, bounded staleness, and the boundary
+          # heuristic below is tuned for a value that climbs by roughly
+          # CHECK_INTERVAL_MINUTES every check — a caught-by-its-own-test
+          # bug found the sentinel does NOT reliably land within a
+          # check-interval of an escalation boundary, so it could go
+          # silent on the one input most needing an alert.
+          if [ "${STALE_MINUTES}" -ge 999999 ]; then
+            echo "should_alert=true" >> "$GITHUB_OUTPUT"
+          elif [ "${STALE_MINUTES}" -lt "${THRESHOLD_MINUTES}" ]; then
+            echo "should_alert=false" >> "$GITHUB_OUTPUT"
+          else
+            OVERFLOW=$(( STALE_MINUTES - THRESHOLD_MINUTES ))
+            BOUNDARY=$(( OVERFLOW % ESCALATION_MINUTES ))
+            if [ "${OVERFLOW}" -lt "${CHECK_INTERVAL_MINUTES}" ] || [ "${BOUNDARY}" -lt "${CHECK_INTERVAL_MINUTES}" ]; then
+              echo "should_alert=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_alert=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Telegram alert — main has produced no test verdict in a while
+        if: steps.check.outputs.should_alert == 'true'
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          STALE: ${{ steps.check.outputs.stale_minutes }}
+          LAST: ${{ steps.check.outputs.last_verdict_at }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT}" ] || [ -z "${CHAT}" ]; then
+            echo "::warning::Telegram secrets missing — cannot alert"
+            exit 0
+          fi
+          LAST_DISPLAY="${LAST:-never (no qualifying run found)}"
+          TEXT="main has had no completed tests.yml verdict (success/failure) in ${STALE} min — last: ${LAST_DISPLAY}. Runs may be queued-then-cancelled under load (task #41) -- https://github.com/${REPO}/actions/workflows/tests.yml?query=branch%3Amain"
           curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
             --data-urlencode "chat_id=${CHAT}" \
             --data-urlencode "text=${TEXT}"
