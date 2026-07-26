@@ -36,7 +36,7 @@
     "or a 5-digit code operand) so it CANNOT fire inside a quoted historical label. The innocence",
     "corpus pins this: superscar #3 says match the entity, never the bare substring."
   ],
-  "version": 3,
+  "version": 4,
   "rules": [
     {
       "id": "mapping_codice_rinumerato",
@@ -218,6 +218,30 @@
       "pattern": "\\(BPS_ONLY code",
       "replacement": "(new in KBLI 2025",
       "note": "2 firings, BOTH inside gold 72201.whatYouNeed — 'expect NIB-only for now (BPS_ONLY code)' and 'Authority: TBD (BPS_ONLY code - licensing pathway not fully defined)'. Found by the residue probe, not by the census, and that is the point worth recording: the census counted (record,field) PAIRS while the cure operates on OCCURRENCES. 33 pairs carry exactly one token and one pair carries three, so the true occurrence count is 36, not 34. A unit mismatch between what you measure and what you fix reads as complete when it is not. The pattern intentionally does not close the parenthesis, so it covers both the bare '(BPS_ONLY code)' and the em-dash continuation; it cannot collide with enum_bold_bps_only_code_perskala, which requires ** immediately before the token."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_only",
+      "pattern": "\\s*\\(OK_or_HIGHER_RISK\\)",
+      "replacement": "",
+      "note": "1 firing (canonical 84111.whatYouNeed): 'the activity is not blocked by a local moratorium (OK_or_HIGHER_RISK), but that does not override the national prohibition'. DELETED rather than relabelled because the clause immediately before it already states the fact in plain English — inserting 'Registrable in Bali' would make the sentence say the same thing twice, and would also read as a green light in a sentence whose whole point is that national ownership is CLOSED."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_lead",
+      "pattern": "\\(OK_or_HIGHER_RISK, ",
+      "replacement": "(",
+      "note": "1 firing (canonical 84144.whatYouNeed): '(OK_or_HIGHER_RISK, medium-high risk but verifiable per address)'. The parenthesis keeps its remaining, genuinely informative content; only the symbol leaves."
+    },
+    {
+      "id": "enum_bali_ok_lists_it_as",
+      "pattern": "lists it as OK_or_HIGHER_RISK",
+      "replacement": "lists it as registrable in Bali",
+      "note": "1 firing (canonical 84146.whatYouNeed): 'Bali's current assessment lists it as OK_or_HIGHER_RISK - it is not blocked by the local moratorium but is considered medium-high to high risk'. Here the symbol IS the object of the sentence, so it must be rendered rather than deleted. Wording mirrors BALI_STATUS_CONFIG.OK_or_HIGHER_RISK.label ('Registrable in Bali') in apps/mouth/src/lib/kbli-status-labels.ts, lower-cased to sit mid-sentence, so the prose and the BaliStatusBadge on the same page cannot disagree."
+    },
+    {
+      "id": "enum_bali_blocked_scare_quoted",
+      "pattern": "as 'BLOCCATO_CLASSE_RISCHIO'",
+      "replacement": "as blocked in Bali by the risk-class moratorium",
+      "note": "1 firing (canonical 47249.whatYouNeed): 'classifying this retail trade as BLOCCATO_CLASSE_RISCHIO' with the symbol in single quotes. Those are SCARE-QUOTES around an internal identifier, not an audit citation — a client reads the raw symbol either way. This is the record that proved the probe's quoted-token exemption was hiding a real leak rather than protecting evidence. Wording mirrors BALI_STATUS_CONFIG.BLOCCATO_CLASSE_RISCHIO.label ('Blocked in Bali (risk-class moratorium)')."
     }
   ]
 }

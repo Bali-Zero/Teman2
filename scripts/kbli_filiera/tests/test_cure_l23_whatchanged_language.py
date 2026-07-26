@@ -134,6 +134,30 @@ def cure(mod, rules, text: str) -> str:
             "(new in KBLI 2025)",
             "BPS_ONLY",
         ),
+        # ---- Bali-status symbols. Found only after the probe stopped being
+        # shape-based: OK_or_HIGHER_RISK is not SCREAMING_SNAKE (lower-case
+        # "or"), so a \b[A-Z]{3,}(?:_[A-Z]+)+\b matcher walks straight past the
+        # most common internal symbol in the catalogue.
+        (
+            "the activity is not blocked by a local moratorium (OK_or_HIGHER_RISK), but the ban stands.",
+            "not blocked by a local moratorium, but the ban stands.",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "the moratorium does not block this code (OK_or_HIGHER_RISK, medium-high risk), so there is no extra wall.",
+            "(medium-high risk), so there is no extra wall.",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "Bali's current assessment lists it as OK_or_HIGHER_RISK — it is not blocked by the moratorium.",
+            "lists it as registrable in Bali",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "classifying this retail trade as 'BLOCCATO_CLASSE_RISCHIO'.",
+            "as blocked in Bali by the risk-class moratorium.",
+            "BLOCCATO_CLASSE_RISCHIO",
+        ),
     ],
 )
 def test_guilt_rule_fires_on_the_real_defect(mod, rules, before, must_contain, must_not_contain):
@@ -398,16 +422,76 @@ def test_probe_guilt_a_possessive_apostrophe_no_longer_swallows_the_leak(mod):
     assert mod.enum_residue(text) == ["BPS_ONLY"], "the probe is blind to a leak after a possessive"
 
 
-def test_probe_innocence_a_deliberate_citation_is_still_not_residue(mod):
-    """The over-match the strip exists to prevent must stay prevented.
+def test_probe_innocence_the_italian_citation_is_still_not_residue(mod):
+    """The over-match the Italian strip exists to prevent must stay prevented.
 
-    Fixing the under-match by deleting the strip would corrupt an audit trail:
-    one record CITES the old label as history and that citation is preserved
-    text, not residue. Both signs of superscar #3 in one pair of tests.
+    Deleting that strip to fix the under-match would corrupt an audit trail: a
+    record CITES the old Italian label as history, and that citation is preserved
+    text. Both signs of superscar #3 held by one pair of tests.
+
+    NOTE the asymmetry, which is deliberate and was corrected on measurement:
+    quoting exempts an ITALIAN LABEL from residue_markers, but it does NOT exempt
+    an internal ENUM token from enum_residue — see the next test.
     """
-    assert not mod.enum_residue("the previous 'MATCH_CON_AGGREGAZIONE' label was stale")
-    assert not mod.enum_residue("the field `BPS_ONLY` is an internal marker")
     assert not mod.residue_markers("the previous 'match con aggregazione' label was stale")
+
+
+def test_probe_a_scare_quoted_enum_is_a_leak_not_a_citation(mod):
+    """Quoting does not make an internal symbol client-appropriate.
+
+    The first version of enum_residue skipped any immediately-wrapped token, by
+    analogy with the Italian citation above. Measured across all four cured
+    fields on both surfaces, exactly ONE immediately-quoted enum token existed —
+    canonical 47249.whatYouNeed, "classifying this retail trade as
+    'BLOCCATO_CLASSE_RISCHIO'" — and it was scare-quotes in client prose, not
+    evidence. The exemption protected nothing and hid a real leak.
+    """
+    leak = "classifying this retail trade as 'BLOCCATO_CLASSE_RISCHIO'."
+    assert mod.enum_residue(leak) == ["BLOCCATO_CLASSE_RISCHIO"]
+
+
+def test_probe_sees_symbols_that_are_not_screaming_snake(mod):
+    """OK_or_HIGHER_RISK is the most common internal symbol in the catalogue and
+    a \\b[A-Z]{3,}(?:_[A-Z]+)+\\b matcher cannot see it — the lower-case "or"
+    breaks the shape. Three real prose leaks (84111, 84144, 84146) hid behind
+    exactly that assumption. Shape is not entity; this is the third time in this
+    lane that mistake surfaced."""
+    assert mod.enum_residue("the moratorium does not block it (OK_or_HIGHER_RISK)") == [
+        "OK_or_HIGHER_RISK"
+    ]
+    # ...and the shape catch-all still works for tokens nobody has catalogued
+    assert mod.enum_residue("status is SOME_FUTURE_SYMBOL now") == ["SOME_FUTURE_SYMBOL"]
+
+
+def test_the_probe_agrees_with_the_frontend_about_what_an_internal_symbol_is(mod):
+    """Two tools that must agree should not each invent an answer.
+
+    apps/mouth/src/lib/kbli-status-labels.ts is the AUTHORITY: BaliStatusBadge,
+    TransitionBadge and the render-layer cure all read it. This test parses that
+    file and asserts every symbol it lists is visible to enum_residue, so the
+    Python mirror cannot silently drift from the TypeScript source. Terms of art
+    (TERBUKA/TERTUTUP/TERBATAS) are excluded there by design — they are the
+    official Indonesian vocabulary the product deliberately teaches — so they are
+    excluded here too, and asserted to be SPARED.
+    """
+    import re
+
+    src = (REPO_ROOT / "apps" / "mouth" / "src" / "lib" / "kbli-status-labels.ts").read_text(
+        encoding="utf-8"
+    )
+    block = src[src.index("BALI_STATUS_CONFIG") : src.index("MAPPING_STATUS_LABELS")]
+    terms_of_art = {"TERBUKA", "TERTUTUP", "TERBATAS"}
+    symbols = [k for k in re.findall(r"^\s{2}([A-Za-z0-9_]+):\s*\{", block, re.M)]
+    symbols += ["MATCH_LANGSUNG", "CODICE_RINUMERATO", "MATCH_CON_AGGREGAZIONE", "BPS_ONLY"]
+    watched = [s for s in symbols if s not in terms_of_art]
+    assert len(watched) >= 15, f"parsed too few symbols ({len(watched)}) — the parse broke, not the code"
+
+    blind = [s for s in watched if mod.enum_residue(f"status is {s} today") != [s]]
+    assert not blind, f"enum_residue cannot see these internal symbols: {blind}"
+
+    # INNOCENCE: the terms of art must NOT be flagged — they are vocabulary.
+    for term in terms_of_art:
+        assert mod.enum_residue(f"ownership is {term} at 100%") == []
 
 
 def test_probe_still_sees_italian_residue_after_the_bound(mod):

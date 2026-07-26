@@ -233,8 +233,25 @@ def residue_markers(text: str) -> list[str]:
     return [m for m in _RESIDUE_MARKERS if m.lower() in low]
 
 
-# An internal enum token: SCREAMING_SNAKE with at least one underscore.
-_ENUM_TOKEN_RE = re.compile(r"\b[A-Z]{3,}(?:_[A-Z]+)+\b")
+# Internal symbols that are NOT all-caps, so the shape regex below cannot see
+# them. `OK_or_HIGHER_RISK` is the whole reason this list exists: it is the most
+# common Bali-status symbol in the catalogue, and a SCREAMING_SNAKE matcher walks
+# straight past it because of the lower-case "or".
+#
+# The authority is apps/mouth/src/lib/kbli-status-labels.ts (BALI_STATUS_CONFIG +
+# MAPPING_STATUS_LABELS, minus TERMS_OF_ART). This is a MIRROR of it, and a test
+# parses that file and fails if the two ever disagree — two tools that must agree
+# about "what is an internal symbol" should not each invent an answer.
+_EXTRA_INTERNAL_SYMBOLS = ("OK_or_HIGHER_RISK",)
+
+# The shape catch-all: SCREAMING_SNAKE with at least one underscore. Kept ALONGSIDE
+# the explicit list, not replaced by it, so a symbol nobody has catalogued yet is
+# still caught the day it appears (fail-closed).
+_ENUM_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    + "|".join(sorted(_EXTRA_INTERNAL_SYMBOLS, key=len, reverse=True))
+    + r"|[A-Z]{3,}(?:_[A-Z]+)+)(?![A-Za-z0-9_])"
+)
 
 
 def enum_residue(text: str) -> list[str]:
@@ -243,19 +260,23 @@ def enum_residue(text: str) -> list[str]:
     Independent of the cure's rules by construction — a probe that reused them
     would report zero by definition, the check that cannot fail.
 
-    Citation detection here is by PROXIMITY, not by span: a token counts as a
-    deliberate citation only when it is IMMEDIATELY wrapped ('TOKEN' or `TOKEN`).
-    That predicate cannot scan past the token's own boundaries, so it cannot
-    repeat the swallow described in residue_markers() above.
+    QUOTING DOES NOT EXEMPT, and that is a corrected judgement rather than an
+    oversight. The first version treated an immediately-wrapped token ('TOKEN')
+    as a deliberate citation and skipped it, by analogy with the Italian-label
+    citation residue_markers() protects. Measured across all four cured fields on
+    both surfaces: exactly ONE immediately-quoted enum token exists, and it is not
+    a citation at all — canonical 47249.whatYouNeed says "classifying this retail
+    trade as 'BLOCCATO_CLASSE_RISCHIO'", which is scare-quotes around an internal
+    identifier in client prose. So the exemption protected zero real citations
+    here and hid one real leak: pure liability.
+
+    The legitimate quoted-enum citation does exist, but it lives in `_data_note`
+    ("carries canonical status_mapping='CODICE_RINUMERATO'"), which is evidence
+    rendered verbatim as an audit trail — and `_data_note` is not in FIELDS, so
+    this cure never reaches it. If it is ever added, the right answer is to
+    exclude the FIELD, not to blind the probe everywhere.
     """
-    out = []
-    for m in _ENUM_TOKEN_RE.finditer(text):
-        before = text[m.start() - 1] if m.start() > 0 else ""
-        after = text[m.end()] if m.end() < len(text) else ""
-        if (before == "'" and after == "'") or (before == "`" and after == "`"):
-            continue
-        out.append(m.group(0))
-    return out
+    return [m.group(0) for m in _ENUM_TOKEN_RE.finditer(text)]
 
 
 def _iter_records(payload: Any) -> list[dict[str, Any]]:
