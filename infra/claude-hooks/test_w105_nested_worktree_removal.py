@@ -425,6 +425,70 @@ def _orphan_directory_live_registry_case() -> list[str]:
     return fails
 
 
+def _write_plus_removal_composition_case() -> list[str]:
+    """W105-#68, composition (the shape W94 hid in): a single command line that
+    touches BOTH decision channels at once — the shell file-WRITE guard (W79,
+    intentionally SHAPE-based: any `.worktrees/<x>` is a liberal ALLOW because
+    nothing tracked can live under a gitignored path, so a false ALLOW there is
+    harmless by construction) and the removal guard (W80, intentionally
+    ENTITY-based via `git worktree list`, because a false verdict in EITHER
+    direction is dangerous there — false-block manufactures evasions per the
+    2026-07-25 incident, false-allow destroys real work). Composing them checks
+    that a harmless verdict on one channel never leaks into overriding a real
+    verdict on the other — each of `main()`'s three checks (write, removal,
+    git-verb) can independently BLOCK, and any one trigger blocks the whole
+    command line regardless of what the other channels would have said alone.
+    """
+    if not shutil.which("git"):
+        return []
+    fails: list[str] = []
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="w105_68_composition_"))
+    try:
+        root, hook = _build_repo(tmp)
+        rr = str(root)
+        dirty = _add_worktree(root, root / ".worktrees" / "dirty_real_wt", "b/dirty")
+        (dirty / "UNTRACKED.txt").write_text("uncommitted\n")
+        orphan = root / ".worktrees" / "orphan"
+        orphan.mkdir()
+        orphan2 = root / ".worktrees" / "orphan2"
+        orphan2.mkdir()
+
+        # A: the write half is harmless (orphan, W79 liberal-allow); the removal
+        # half targets a REAL dirty worktree (W80 entity-block). W80 must win.
+        cmd_a = f"cp /tmp/x {orphan}/f.py && rm -rf {dirty}"
+        if _run_hook(hook, cmd_a, rr, rr) != 2:
+            fails.append("WENT-BLIND (composition A): write-to-harmless-orphan "
+                         "combined with rm -rf of a DIRTY unarmed REGISTERED "
+                         "worktree → expected BLOCK (W80 must not be masked by "
+                         "the harmless write half)")
+
+        # B: the write half targets MAIN checkout itself (W79 real block); the
+        # removal half targets a harmless clean orphan (W80 would allow it alone).
+        # W79 must win.
+        cmd_b = f"echo bad > {root}/scripts/hijack.py && rm -rf {orphan}"
+        if _run_hook(hook, cmd_b, rr, rr) != 2:
+            fails.append("WENT-BLIND (composition B): write into MAIN checkout "
+                         "combined with rm -rf of a harmless orphan → expected "
+                         "BLOCK (W79 must not be masked by the harmless removal "
+                         "half)")
+
+        # C: INNOCENCE — both halves genuinely harmless (write to one orphan,
+        # remove a DIFFERENT orphan) → nothing should block.
+        cmd_c = f"cp /tmp/x {orphan}/f.py && rm -rf {orphan2}"
+        if _run_hook(hook, cmd_c, rr, rr) == 2:
+            fails.append("BIT-INNOCENT (composition C): write-to-orphan combined "
+                          "with rm -rf of a DIFFERENT clean orphan → expected "
+                          "ALLOW (neither half touches anything with something to "
+                          "lose)")
+    finally:
+        try:
+            _git(["worktree", "prune"], tmp / "main")
+        except Exception:
+            pass
+        shutil.rmtree(tmp, ignore_errors=True)
+    return fails
+
+
 def test_w105_nested_worktree_removal():
     fails = evaluate()
     assert not fails, "W105 nested-worktree removal regressions:\n" + "\n".join(fails)
@@ -435,13 +499,19 @@ def test_w105_68_orphan_directory_live_registry():
     assert not fails, "W105-#68 orphan-directory regressions:\n" + "\n".join(fails)
 
 
+def test_w105_68_write_plus_removal_composition():
+    fails = _write_plus_removal_composition_case()
+    assert not fails, "W105-#68 composition regressions:\n" + "\n".join(fails)
+
+
 if __name__ == "__main__":
-    f = evaluate() + _orphan_directory_live_registry_case()
+    f = (evaluate() + _orphan_directory_live_registry_case()
+         + _write_plus_removal_composition_case())
     if f:
         print(f"=== {len(f)} FAIL ===")
         for x in f:
             print("  [FAIL] " + x)
         sys.exit(1)
     print("=== W105 OK (nested removal allowed; outer, subdir and dirty-nested still blocked; "
-          "live-registry orphan directory allowed) ===")
+          "live-registry orphan directory allowed; write+removal composition correct) ===")
     sys.exit(0)
