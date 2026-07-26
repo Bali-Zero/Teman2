@@ -708,7 +708,12 @@ function rewritePmaLineForBali(line: string, baliBlocked: boolean): string {
   if (!baliBlocked) return line;
   if (!/\*\*PMA:\*\*/i.test(line) && !/^PMA:/i.test(line)) return line;
   if (!/fully open|100%|foreign ownership/i.test(line)) return line;
-  return "**PMA:** 100% open nationally — but BLOCKED for a PT PMA in Bali (reserved UMKM / moratorium). See Bali status above.";
+  // The parenthetical used to read "(reserved UMKM / moratorium)" — two causes
+  // named at once, of which at most one can be this code's, and neither is for
+  // the 68 TERTUTUP / 2 sector-regulator / 2 Bali-sectoral codes. This helper
+  // only receives `baliBlocked`, not the status, so it states NO cause: the
+  // frame directly above derives the real one from `l4_bali.status`.
+  return "**PMA:** 100% open nationally — but not open to a PT PMA in Bali. See the Bali status above.";
 }
 
 function StepList({

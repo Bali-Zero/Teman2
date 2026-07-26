@@ -287,4 +287,28 @@ describe("the PMA verdict banner — the SECOND render site", () => {
       "reserved for micro/small/medium enterprises",
     );
   });
+
+  it("the assistant's opening line derives its cause too", () => {
+    // This string seeds the chat context on a blocked code, so a wrong cause
+    // here becomes a wrong cause in the ANSWER. It used to hedge two at once:
+    // "(reserved UMKM / 2026 moratorium)".
+    expect(PAGE).not.toContain("reserved UMKM / 2026 moratorium");
+    expect(PAGE).toContain(
+      "in Bali this code is currently ${baliBlockClause(kbli.baliL4?.status)}",
+    );
+  });
+
+  it("the PMA trailing line names NO cause rather than the wrong one", () => {
+    // rewritePmaLineForBali only receives `baliBlocked`, never the status, so
+    // it cannot derive a cause — it must not assert one either. The frame
+    // directly above it does the deriving.
+    const SECTION = readFileSync(
+      join(HERE, "..", "components", "kbli", "LicensingSection.tsx"),
+      "utf8",
+    );
+    expect(SECTION).not.toContain(
+      "BLOCKED for a PT PMA in Bali (reserved UMKM / moratorium)",
+    );
+    expect(SECTION).toContain("but not open to a PT PMA in Bali");
+  });
 });
