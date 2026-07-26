@@ -162,8 +162,170 @@ disclosed count 57 → **152**.
    here because a signed classification being overturned by later evidence is exactly the thing that
    must never happen silently — it belongs in the corner even though nothing awaits a ruling.
 
-**NEXT ON THIS PASS — L2.1, censused read-only 2026-07-25, NOT yet cured (numbers re-measured on
-disk, they correct an earlier under-count):**
+**L2.1 — `whatChanged` PROVENANCE PASS: CURED on both in-repo surfaces (PR #TBD, 2026-07-25).
+The field had THREE live vintages, not one.**
+
+Censused on every surface that serves it, `intel_2026.whatChanged` carried three defects:
+
+|                              | canonical | gold | KG (`kg_nodes.properties`) | `kbli_documents`          | Qdrant                   |
+| ---------------------------- | --------: | ---: | -------------------------: | ------------------------- | ------------------------ |
+| A false renumbering claim    |         4 |    1 |                          4 | —                         | inside the embedded text |
+| B mid-word truncation @216   |        13 |    2 |                         13 | —                         | inside the embedded text |
+| C contradicted predecessor   |         4 |    1 |                          4 | —                         | inside the embedded text |
+| population holding the field |     1,559 |  428 |                      1,554 | **0 — verified negative** | 428 `doc_type=kbli_gold` |
+
+**`apps/mouth/data/kbli-gold-all.json` WINS over canonical on the rendered page.**
+`kbli-data.server.ts::transformCode` takes `whatChanged` (and `whatItMeans`/`whatYouNeed`/
+`zantaraOpener`/`youllAlsoNeed`; `baliContext` only if the code is NOT blocked or the gold text does
+not read as a foreign-ownership go-ahead) from gold whenever an entry exists, and
+`app/kbli/[code]/page.tsx:428` renders `gold.whatChanged` directly. **Curing canonical alone changes
+nothing a client sees for those 428 codes** — and a canonical-only immune organ proves nothing.
+Standing rule for every future editorial cure: say which of the two files you wrote, and put the
+organ on the surface that WINS. The canonical was in the data-plane registry and gold was not — the
+guarded file was the one that loses; `kbli-gold-all.json` is now registered too.
+
+- **C is the shape that inverts a client's decision.** `46415`/`46496` said _"→ KBLI 2025: 46415
+  (confermato). Verifica e aggiornamento NIB"_ — _your code carried over unchanged_ — while
+  `status_mapping` is `CODICE_RINUMERATO` and the layers record a DIFFERENT 2020 origin.
+  `49296`/`64210` named `49299`/`64190` while the layers hold `49424`/`64200`.
+  **Cured by DELETION, never by correction:** on 46415 the layers disagree with each other
+  (pp28/`kbli_2020_source` = 46694, BPS = 46419), so substituting "the right number" would be us
+  picking a winner and publishing it as fact. The replacement names every code our layers DO hold
+  and declares the mapping unconfirmed. **Which layer is true is an open source adjudication** for
+  46415 / 46496 / 49296 / 64210 (PENDING-ARMS).
+- **B cannot restore what was lost.** 13 texts were cut mid-word at exactly 216 chars; the trim drops
+  the fragment only. `46411` and `46631` are left with almost nothing (46631 = its opening sentence
+  alone) — named on every run rather than discovered on the page; restoring prose is editorial.
+- **8 gold codes have no canonical record** (`64921`, `85300`, `85491`, `85499`, `85600`, `86903`,
+  `96120`, `96130`). Inert — `generateStaticParams` iterates canonical and `dynamicParams = false` —
+  but this is the phantom class on a 5th store, so it is pinned by a test.
+- **One decision function** (`scripts/kbli_filiera/_whatchanged_basis.py::plan_text`) serves all three
+  surfaces; gold carries no crosswalk fields, so gold is judged by the CANONICAL record. The KG
+  applier (`backend/scripts/kg_whatchanged_cure.py`) holds NO logic — it consumes a compiler-emitted
+  spec whose entries pin `md5` of the text the decision was made against, and refuses to write on
+  drift.
+- **Innocence measured on real data:** of the 45 KG nodes opening with the template sentence, **28
+  are deliberately untouched and every one really does record a predecessor — 0 misses.**
+
+**NEXT AFTER THIS — L2.2, `whatYouNeed` on gapped codes. RE-MEASURED STRUCTURALLY 2026-07-26 —
+the "~41 from prose" figure is RETIRED, and the finding it was hiding is bigger than the number.**
+
+Re-run with `_l4bali_basis.gap_basis()` as the selector (structural, as this section previously
+demanded) instead of prose matching:
+
+|                                             |                                                                                                                                                                                                         |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| gapped population                           | **218** — not 217. `disputed_key` 116 + `no_oss_scope` 101 + `detached_tier` 1. The 218th is the partial-detach case, which still has surviving rows and so is invisible to a `per_skala == []` filter. |
+| carrying `_data_note` (cured)               | **117**                                                                                                                                                                                                 |
+| cured set vs `disputed_key`+`detached_tier` | **SET-IDENTICAL**                                                                                                                                                                                       |
+| `no_oss_scope` codes ever cured             | **0**                                                                                                                                                                                                   |
+
+**That is the finding.** The `whatYouNeed` cure's scope was the disputed-key class; the **101
+`no_oss_scope` codes were never in it at all** — not partially cured, never selected. Of those 101:
+**43 name a risk tier with no gap language**, 44 are clean descriptive prose, 14 already disclose.
+
+The old "~41" was numerically close to 43 by coincidence, off the wrong population, and its
+approximate-ness masked a scope hole rather than a counting error.
+
+**The worst shape, verified in full on `79909`:** the record carries `_l2_status: no_oss_risk`,
+`_l2_source: null`, `per_skala: []`, `kategori_risiko: null` — OSS returned **no risk scope at
+all** — while the client-facing text says _"its **OSS risk class** at the large-enterprise (Besar)
+scale **is** medium-high or high"_ and concludes _"A PT PMA can pursue this code in Bali, subject to
+the standard licensing for its risk class."_ It attributes to OSS a classification OSS never
+returned, then builds a go-ahead on it. Same family as L1.2.
+
+The 43: `65123 72201 72202 79909 84113 84122 84130 84144 84146 85103 85104 85204 85314 85317 85318
+85581 85582 85583 85584 85586 85587 85589 87101 87102 87202 87302 87991 87992 87993 88101 88902
+88903 88904 88905 91421 91423 94110 94121 94122 94910 94990 97000 98100`.
+
+**META-PATTERN, third sighting — the selector is the disease.** Every cure in this programme has so
+far selected on a MARKER or a PROXY of the state rather than on the STATE: wave 1 on
+`per_skala_disputed_*`, wave 2 on `per_skala == []` (defeated by a PARTIAL detach), and this one on
+the disputed-key class (blind to `no_oss_scope`). Each time the population the tool could _see_ was
+a strict subset of the population that was _sick_. The cure is to re-derive the state with the same
+function that wrote it — which is exactly what `gap_basis()` is for, and what L2.1's
+`_whatchanged_basis.plan_text` does for its own three passes.
+
+**Cure shape is NOT mechanical — and "surgical clause removal" is RULED OUT, measured, not
+assumed.** Unlike L2.1 pass A these are not a template sentence, and a compiler must not author
+replacement prose (the constraint that left `46411`/`46631` thin). The obvious fallback — delete the
+tier-asserting clause and append a recorded gap sentence — was tested against the 43 and does not
+survive: **40 of 43 are WELDED**, i.e. the tier claim shares its sentence with a fact the reader
+still needs (PMA openness, moratorium status, `TERTUTUP`/`TERBUKA`). The 3 the check called
+"separable" are welded too on reading — the predicate just missed them. Structure: 32 records carry
+1 tier-sentence of 2, 9 carry 1 of 3, 2 are a single sentence. Deleting the clause mangles the
+paragraph; deleting the sentence removes facts the page is right to state. Example (`79909`):
+
+> _"Nationally this activity is open to foreign ownership, and in Bali it is NOT blocked by the
+> 13 May 2026 moratorium — **its OSS risk class at the large-enterprise (Besar) scale is medium-high
+> or high**, which the moratorium leaves open."_
+
+**So L2.2 is an EDITORIAL lane, not a compiler lane** — same bucket as the 95 tier-asserting texts
+and the 392 field-name narrations already in PENDING-ARMS, generator≠grader mandatory.
+
+**PROVENANCE VERIFIED — and it hands L2.2 a fully structural selector.** The hypothesis was "the
+tier is an orphan of the detach". Measured against `l4_bali`, the truth is sharper:
+
+| `l4_bali.status`    | n   | confidence / needs_review | `still_certifies()` |
+| ------------------- | --- | ------------------------- | ------------------- |
+| `OK_or_HIGHER_RISK` | 38  | `LOW` / `true`            | **False**           |
+| `TERTUTUP`          | 5   | `HIGH` / `false`          | True                |
+
+For **38 of 43 the L1.2 cure ALREADY RAN**: the structured verdict is disclosed, its `reason`
+literally begins `[derivation under review]`, and the record no longer certifies it. **It is the
+`whatYouNeed` prose that still narrates that same verdict as settled fact.** So this is not an
+orphaned derivation — it is **the cure landing on the field but not on the prose that narrates the
+field**, the same shape as "the rendered surface is not the guarded surface".
+
+That gives L2.2 the structural predicate it was missing, with no prose matching anywhere in the
+selection: **`gap_basis(record) is not None` AND `still_certifies(record["l4_bali"]) is False` AND
+the prose asserts the verdict** — and only that last conjunct needs text, exactly as L2.1's pass A
+uses its template only to LOCATE the sentence, never to decide membership.
+
+It also splits the population honestly: the **5 `TERTUTUP`** records still certify (`HIGH`/`false`)
+and are a different subcase — nationally closed, so the Bali tier is moot rather than unsupported.
+Do not sweep them in with the 38.
+
+Residual editorial need is now much smaller than a rewrite: since `l4_bali.reason` already carries
+the agreed hedge, the prose cure may be an **appended recorded sentence** (the move passes A and C
+already make in L2.1) rather than authored replacement prose — which is what "welded" ruled out.
+Still generator≠grader, and still not started here.
+
+**GROUND CLOSED 2026-07-26 — and it supersedes the 43/38/5 numbers directly above.** Those were a
+slice, measured through an ad-hoc selector. The repo already owns this lane, and reading it changes
+the answer. `python3 scripts/kbli_filiera/emit_l4bali_gap_disclosure_spec.py --census` today reports
+**`IN SCOPE 0` / `already_disclosed 151`**: the FIELD layer is finished catalogue-wide, and that
+emitter's own docstring already draws the boundary — _"this spec does NOT touch editorial prose — it
+only discloses l4_bali"_ — with a `_meta.editorial_residue` counter for exactly this gap. **L2.2 is
+that tool's declared follow-up, not a new discovery. Build on it, not beside it.**
+
+| the population that matters                                | n       |                                                           |
+| ---------------------------------------------------------- | ------- | --------------------------------------------------------- |
+| records whose `l4_bali.reason` carries `DISCLOSURE_PREFIX` | **152** | `disputed_key` 97 · `no_oss_scope` 54 · `detached_tier` 1 |
+
+by `l4_bali.status`: `OK_or_HIGHER_RISK` 90 · `CHIUSO_MORATORIA_BALI` 33 · `CHIUSO_PMA_NO_BESAR` 17 ·
+`APERTO_BALI_RISCHIO_ALTO` 11 · `TERTUTUP` 1. (PENDING-ARMS' "95 of 95" is stale too — the wave grew.)
+
+**And the third conjunct above — "the prose asserts the verdict" — has to go.** No matcher can carry
+it. The emitter's own `_TIER_CLAIM_RE`, run over every `intel_2026` field, flags **152 of 152** — a
+discriminator firing on 100% of its population discriminates nothing, and its author knew, commenting
+it _"Bookkeeping only … NEVER used for selection"_. A strict hand-built matcher over `whatYouNeed`
+flags **19** and demonstrably misses real assertions (`"Bali classifies it as medium-high risk"`,
+`"has a medium-high risk classification"`, `"falls under higher-risk scrutiny"`), while
+over-matching the L1.2 cure text, which itself contains the words "risk tier". Stripping
+disclosure-bearing sentences first does not separate them either. **19 ≤ truth ≤ 152, and no pattern
+closes the gap — so stop trying to select the asserting subset.**
+
+**Design consequence:** append to **all 152, unconditionally**, exactly as the field layer was cured,
+idempotent via a marker the cure writes itself (nothing on a record says "prose already disclosed" —
+`_l3_regen` records how prose was generated, `_data_note` is data-layer). The asymmetry decides it:
+appending a true sentence to a page that never asserted the tier is harmless; missing one that did is
+the client-facing defect. Host = a **new sibling compiler** under `scripts/kbli_filiera/`, NOT
+`cure_l4_editorial.py`, whose contract is spec-authored exact-substring replacement over 8 codes and
+which promises it "NEVER invents a value" — 152 authored old/new pairs is precisely the LLM
+re-authoring this lane rules out.
+
+**SUPERSEDED CENSUS (kept for the correction it records):**
 
 - **4 codes assert a KBLI-2020 renumbering with NO recorded predecessor anywhere.** `64995`, `85691`,
   `85692`, `90113` — `status_mapping: BPS_ONLY`, `pp28_sources: []`, `kbli_2020_source: null` **and
