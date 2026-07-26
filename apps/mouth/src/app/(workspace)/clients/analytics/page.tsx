@@ -132,7 +132,7 @@ const TrendIndicator = ({
   const isPositive = value >= 0;
   return (
     <span
-      className={`flex items-center gap-1 text-xs font-medium ${isPositive ? "text-green-500" : "text-red-500"}`}
+      className={`flex items-center gap-1 text-xs font-medium ${isPositive ? "text-[var(--state-success)]" : "text-[var(--state-danger)]"}`}
     >
       {isPositive ? (
         <ArrowUpRight className="w-3 h-3" />
@@ -171,12 +171,15 @@ const StatCard = ({
   onClick,
 }: StatCardProps) => {
   const colorClasses = {
-    blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    green: "bg-green-500/10 text-green-500 border-green-500/20",
-    amber: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    purple: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-    red: "bg-red-500/10 text-red-500 border-red-500/20",
-    cyan: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+    blue: "bg-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)] text-[var(--bz-chart-1)] border-[color-mix(in_srgb,var(--bz-chart-1)_20%,transparent)]",
+    green:
+      "bg-[color-mix(in_srgb,var(--bz-chart-2)_10%,transparent)] text-[var(--bz-chart-2)] border-[color-mix(in_srgb,var(--bz-chart-2)_20%,transparent)]",
+    amber:
+      "bg-[color-mix(in_srgb,var(--bz-chart-3)_10%,transparent)] text-[var(--bz-chart-3)] border-[color-mix(in_srgb,var(--bz-chart-3)_20%,transparent)]",
+    purple:
+      "bg-[color-mix(in_srgb,var(--bz-chart-4)_10%,transparent)] text-[var(--bz-chart-4)] border-[color-mix(in_srgb,var(--bz-chart-4)_20%,transparent)]",
+    red: "bg-[color-mix(in_srgb,var(--bz-chart-7)_10%,transparent)] text-[var(--bz-chart-7)] border-[color-mix(in_srgb,var(--bz-chart-7)_20%,transparent)]",
+    cyan: "bg-[color-mix(in_srgb,var(--bz-chart-6)_10%,transparent)] text-[var(--bz-chart-6)] border-[color-mix(in_srgb,var(--bz-chart-6)_20%,transparent)]",
   };
 
   return (
@@ -278,7 +281,7 @@ const FunnelChart = ({ data }: { data: FunnelStage[] }) => {
           </div>
           <div className="flex-1 relative">
             <div
-              className="h-6 sm:h-8 rounded-md bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-end pr-2 transition-all duration-500"
+              className="h-6 sm:h-8 rounded-md bg-gradient-to-r from-[var(--bz-chart-1)] to-[var(--bz-chart-6)] flex items-center justify-end pr-2 transition-all duration-500"
               style={{ width: `${(stage.count / maxCount) * 100}%` }}
             >
               <span className="text-xs text-white font-medium">
@@ -312,11 +315,11 @@ const ProgressBar = ({
 }) => {
   const percentage = max > 0 ? (value / max) * 100 : 0;
   const colorMap: Record<string, string> = {
-    blue: "bg-blue-500",
-    green: "bg-green-500",
-    amber: "bg-amber-500",
-    purple: "bg-purple-500",
-    red: "bg-red-500",
+    blue: "bg-[var(--bz-chart-1)]",
+    green: "bg-[var(--bz-chart-2)]",
+    amber: "bg-[var(--bz-chart-3)]",
+    purple: "bg-[var(--bz-chart-4)]",
+    red: "bg-[var(--bz-chart-7)]",
   };
 
   return (
@@ -828,7 +831,7 @@ export default function ClientAnalyticsPage() {
                         <td className="p-3 text-right font-medium">
                           {formatCurrency(month.revenue)}
                         </td>
-                        <td className="p-3 text-right text-green-500">
+                        <td className="p-3 text-right text-[var(--state-success)]">
                           {formatCurrency(month.paid)}
                         </td>
                         <td className="p-3 text-right hidden sm:table-cell">
@@ -888,10 +891,10 @@ export default function ClientAnalyticsPage() {
                               <Award
                                 className={`w-4 h-4 ${
                                   idx === 0
-                                    ? "text-yellow-500"
+                                    ? "text-[var(--bz-gold)]"
                                     : idx === 1
-                                      ? "text-gray-400"
-                                      : "text-amber-600"
+                                      ? "text-[var(--bz-text-secondary)]"
+                                      : "text-[var(--bz-accent)]"
                                 }`}
                               />
                             )}
@@ -903,7 +906,7 @@ export default function ClientAnalyticsPage() {
                         <td className="p-3 text-center">
                           {member.total_clients}
                         </td>
-                        <td className="p-3 text-center text-green-500 hidden sm:table-cell">
+                        <td className="p-3 text-center text-[var(--state-success)] hidden sm:table-cell">
                           {member.active_clients}
                         </td>
                         <td className="p-3 text-center hidden md:table-cell">
@@ -913,10 +916,10 @@ export default function ClientAnalyticsPage() {
                           <span
                             className={`px-2 py-1 rounded-full text-xs ${
                               member.conversion_rate >= 50
-                                ? "bg-green-500/20 text-green-500"
+                                ? "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)]"
                                 : member.conversion_rate >= 30
-                                  ? "bg-amber-500/20 text-amber-500"
-                                  : "bg-red-500/20 text-red-500"
+                                  ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)]"
+                                  : "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
                             }`}
                           >
                             {member.conversion_rate}%

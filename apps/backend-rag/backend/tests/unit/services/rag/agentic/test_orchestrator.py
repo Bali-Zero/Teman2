@@ -165,6 +165,41 @@ class TestProcessQueryProfileForwarding:
         assert kwargs["profile"] is None
 
 
+class TestProcessQueryAgentRoleForwarding:
+    """T4 unified principal (2026-07-25): process_query's new `agent_role`
+    kwarg must reach OrchestratorCore.process_query_core unmodified — the
+    stamp onto state.agent_role is tested at the OrchestratorCore level
+    (test_process_query_core_agent_role_wiring.py). Mirrors
+    TestProcessQueryProfileForwarding above exactly."""
+
+    @pytest.mark.asyncio
+    async def test_forwards_agent_role_to_core(self, orchestrator):
+        from backend.services.agents.team_agent_config import ROLE_ADMIN
+
+        sentinel = CoreResult(answer="ok", model_used="test")
+        orchestrator.core.process_query_core = AsyncMock(return_value=sentinel)
+
+        result = await orchestrator.process_query(
+            query="hello",
+            user_id="anonymous",
+            agent_role=ROLE_ADMIN,
+        )
+
+        assert result is sentinel
+        _, kwargs = orchestrator.core.process_query_core.call_args
+        assert kwargs["agent_role"] is ROLE_ADMIN
+
+    @pytest.mark.asyncio
+    async def test_agent_role_defaults_to_none(self, orchestrator):
+        sentinel = CoreResult(answer="ok", model_used="test")
+        orchestrator.core.process_query_core = AsyncMock(return_value=sentinel)
+
+        await orchestrator.process_query(query="hello", user_id="anonymous")
+
+        _, kwargs = orchestrator.core.process_query_core.call_args
+        assert kwargs["agent_role"] is None
+
+
 class TestOrchestratorHelpers:
     """Tests for orchestrator helper functions"""
 

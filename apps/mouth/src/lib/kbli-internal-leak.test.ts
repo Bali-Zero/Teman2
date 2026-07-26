@@ -187,10 +187,39 @@ describe("internal-leak gate (real canonical)", () => {
     const codes = Object.keys(entries);
     expect(codes.length).toBeGreaterThan(400);
 
+    // GUILT is anchored on a FIXTURE, not on live data — and that change is the
+    // point, not a workaround.
+    //
+    // This assertion used to read `expect(rawLeaking.length).toBeGreaterThan(0)`
+    // against the gold file itself: it proved the render-layer cure was real by
+    // checking the defect still existed upstream. That works only while the DATA
+    // is broken. On 2026-07-26 the data-layer cure (L2.4,
+    // scripts/kbli_filiera/cure_l23_whatchanged_language.py) removed the last 16
+    // enum tokens from gold, and this line went red — not because the render
+    // cure regressed, but because its live guilt subject was fixed.
+    //
+    // A guard whose guilt depends on production still being broken deletes
+    // itself the day you fix production, and takes the protection with it. So
+    // guilt now lives on a synthetic record, where it is permanent, and the live
+    // file carries the stronger claim instead: nothing leaks, before OR after.
+    const [sampleToken] = Object.keys(INTERNAL_ENUM_LABELS);
+    const fixture = { whatYouNeed: `This code is marked ${sampleToken}.` };
+    expect(readerFacingStrings(fixture).some((s) => SYMBOL_RE.test(s))).toBe(
+      true,
+    ); // guilt: the render cure has something to remove
+    expect(
+      readerFacingStrings(humanizeIntelBlock(fixture)).some((s) =>
+        SYMBOL_RE.test(s),
+      ),
+    ).toBe(false); // ...and it removes it
+
+    // Defence in depth: gold is clean at rest (data-layer cure) AND after the
+    // render layer runs (render cure). Either alone would be enough today; both
+    // together mean a regression in one is not a client-facing leak.
     const rawLeaking = codes.filter((c) =>
       readerFacingStrings(entries[c]).some((s) => SYMBOL_RE.test(s)),
     );
-    expect(rawLeaking.length).toBeGreaterThan(0); // guilt: the defect is real
+    expect(rawLeaking).toEqual([]);
 
     const curedLeaking = codes.filter((c) =>
       readerFacingStrings(humanizeIntelBlock(entries[c])).some((s) =>
