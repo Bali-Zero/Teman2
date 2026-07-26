@@ -109,10 +109,10 @@ hash-bound panel.
     the per-seat budget is 120 seconds while the whole fallback chain is capped
     at 300 seconds.
 12. **The latest complete panel is historical only.** Its source
-   `80a05a10…` and packet `7ad5a150…` predate this refreshed source and reviewed
-   evidence, and its roster predates the permanent Gemini + Codex + Kimi
-   external phase followed by the sequential Fable gate. It cannot authorize
-   the current bytes or any migration-number substitution.
+    `80a05a10…` and packet `7ad5a150…` predate this refreshed source and reviewed
+    evidence, and its roster predates the permanent Gemini + Codex + Kimi
+    external phase followed by the sequential Fable gate. It cannot authorize
+    the current bytes or any migration-number substitution.
 
 ## Questions the panel must answer
 

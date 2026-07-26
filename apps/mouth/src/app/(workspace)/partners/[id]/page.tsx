@@ -64,12 +64,7 @@ const NEUTRAL_CHIP: React.CSSProperties = {
 };
 
 type TabId =
-  | "profile"
-  | "fiscal"
-  | "payment"
-  | "referrals"
-  | "commissions"
-  | "audit";
+  "profile" | "fiscal" | "payment" | "referrals" | "commissions" | "audit";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User size={14} /> },
