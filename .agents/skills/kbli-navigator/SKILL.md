@@ -26,7 +26,104 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-25 — keep current)
+## 1. LIVE STATE (last update 2026-07-26 — keep current)
+
+**L2 EDITORIAL-HONESTY SWEEP — 2026-07-26. The claims were cured by W1; this lane cures the
+LANGUAGE the claims are written in.** Four lots, all driven by `scripts/kbli_filiera/` compilers
+with spec-authored exact rules — never a hand-edit, never a regex invented at the keyboard.
+
+- **L2.1** false renumbering / contradicted predecessors / mid-word truncation — PR #3179 MERGED,
+  KG arm APPLIED and re-verified through the read-only role (not the applier's own report).
+- **L2.2** the licensing disclosure, 152 codes — PR #3181 MERGED, **PROVEN-LIVE**: `/kbli/72201`
+  and `/kbli/79909` served 0 occurrences of "Risk tier under review" at the pre-merge baseline and
+  serve it after the rebuild.
+- **L2.3** `whatChanged` spoke Italian and leaked internal enum tokens — PR #3196 MERGED
+  (`9583709d9f`), 576 records (465 canonical + 111 gold), 20 rules, 0 enum tokens on either
+  surface. One residue was DECLARED not hidden: `/kbli/46442` still carried hand-written Italian
+  editorial prose. **That declaration was two-thirds wrong and L2.6 closed it** — the residue was
+  never 1 record (it was 9), and "a template map cannot translate it without inventing it" was a
+  false dichotomy: free prose is translatable by literal rule + an independent grader, which is
+  exactly what L2.6 did.
+- **L2.4** the same leak OUTSIDE `whatChanged` — **38 (record,field) pairs / 40 occurrences** across
+  `whatYouNeed` (30), `baliContext` (6), `zantaraOpener` (2), both surfaces. 14 new rules.
+- **L2.5** `mapping_note` / `aggregation_note` — PR #3201. `whatChanged` **embeds `mapping_note`
+  verbatim**, so L2.3 cured the composed copy and left the SOURCE Italian: ~157 pages rendered an
+  English `whatChanged` block and an Italian crosswalk row about the same fact. 88 records served a
+  raw Python list literal (`Cleaned: removed invalid ['01272']`) — visible AND in the **FAQPage
+  JSON-LD Google indexes**. 443 rewrites, **zero new rules**: every one was already matched by a
+  rule written for `whatChanged`; the work was structural (those fields hang off the RECORD, while
+  `cure_dataset` iterates the `intel_2026` container).
+- **L2.6** the last Italian in `whatChanged` — **9 canonical + 1 gold**, free prose no template could
+  reach, 6 of them visible in a `<p>` on prod. Same four `invariato` records were also **cut
+  mid-word** in storage. 15 new rules. After L2.6, `whatChanged` is the ONLY field that ever carried
+  client-facing Italian and it now carries none.
+
+**L2.6's three findings, none of which are about Italian:**
+
+- **A probe whose vocabulary is smaller than the defect reports a WRONG bound, not a loose one.** The
+  compiler printed `residue: 2`; an independent lexical scan of the same field found **9**. Its
+  11-token list simply did not contain the words the defect used, and `residue: 2` read as _almost
+  done_ for three lots. A bound is only conservative if its vocabulary is at least as large as the
+  thing it bounds.
+- **The fix for an under-match ships an over-match unless you look for the twin in the same edit.**
+  These markers match as SUBSTRINGS and the English word _hereditary_ contains **eredita** — the
+  obvious token would have made the probe fire on ordinary English. Anchored to `eredita parte`,
+  pinned by an innocence test. (Same shape as W94/W105: the cure re-catching the disease it cures.)
+- **Decide per RENDER SITE, and say which of the two you fixed.** 3 of the 9 sit behind a gold record
+  that masks `intel_2026` → cured at rest and for the non-page consumers, NOT visibly. 3 others
+  (10433/60103/60203) quote the old Italian value inside an English correction notice — that is
+  evidence of a correction, pinned as untouched. Same field, same scan, three different verdicts.
+
+**Open (filed, not fixed):** `46411` now reads _"Renumbered/adjusted from KBLI 2020. 46411 is
+unchanged."_ — the lead (derived from `status_mapping`) contradicts the tail. Content defect, needs a
+crosswalk adjudication, deliberately not resolved under a translation PR.
+
+**Four findings from L2.4 that generalise past KBLI — this is the part worth re-reading:**
+
+1. **The two surfaces do not share a field distribution.** The first census measured CANONICAL and
+   extrapolated to gold; gold leaks in `zantaraOpener`, canonical never does. Caught only because a
+   prod baseline curl showed `BPS_ONLY` on `/kbli/72201`, a code absent from the population list.
+   Gold MASKS `intel_2026` on the page (`goldEntry ? {…} : {…}` is a mask, not a merge), so a
+   gold-only leak is a RENDERED leak. Measure each surface; never extrapolate.
+2. **The residue probe was blind twice, in two different ways, and both were self-inflicted.**
+   First it stripped quoted spans with `'[^']*'` — which in English prose is not a quote stripper
+   but a PROSE stripper, because `'` is the possessive apostrophe: in `82400.baliContext` the one in
+   _"Bali's"_ paired with one 468 chars later and swallowed a real leak, reporting CLEAN. Then, once
+   bounded, it still exempted _immediately_-quoted tokens as "citations" — but the single such token
+   in the whole corpus was scare-quotes around an identifier in client prose, not evidence. **How
+   both surfaced: the rules fired more often than the probe had found targets. A firing with no
+   matching finding means the FINDER is blind, not the rule greedy.** Chase that gap; never
+   reconcile it by assumption.
+3. **Shape is not entity — third instance in this lane.** The probe defined an internal symbol as
+   `SCREAMING_SNAKE`, and the catalogue's most common one, **`OK_or_HIGHER_RISK`**, has a lower-case
+   `or`. Three client-facing prose leaks (84111/84144/84146) hid behind that assumption. The probe
+   now recognises symbols by NAME, mirroring `apps/mouth/src/lib/kbli-status-labels.ts`, with the
+   shape kept as a fail-closed catch-all — and a test parses that TS file so the two cannot drift.
+4. **A guard whose GUILT depends on production still being broken deletes itself the day you fix
+   production.** `kbli-internal-leak.test.ts` proved the render-layer cure worked by asserting the
+   raw gold file still leaked. L2.4 fixed the data; the guard went red without any regression. Guilt
+   moved to a fixture; the live file now carries the stronger claim (clean at rest AND after
+   render). The new `zantaraOpener` test made the identical mistake twenty lines below the comment
+   warning against it — recorded because that is how easy it is.
+
+Also: the naive `FIELD` → `FIELDS` widening was **rejected on measurement**. Over all 7,641
+(record,field) pairs of the new fields the rules fire 10 times while `cure_text`'s trailing
+whitespace-collapse mutates **184** records with no leak at all — markdown indentation in
+`whatYouNeed` is structure. Normalisation is now per-field and a record is written back only when a
+rule fired; both pinned by tests that go red under mutation.
+
+**Still open (ledger, not lost):** `kbli_documents` — the 4th surface — never received the L2.2
+disclosure: 152 disclosed / 119 marked / **98 curable**, 54 structurally outside the tool's scope.
+BLOCKED because no machine in the fleet currently holds a Fly credential that can see
+`nuzantara-rag` (M5 none · Pro's token scoped to `nuzantara-postgres` · Mini, the only good one, is
+down and unreachable from both). Also open: Qdrant `whatChanged` re-index needs `--only` on
+`index_kbli_gold_content.py`.
+
+**Method note:** a curl PROVE-LIVE on `/kbli/<code>` proves the DATA, not the RENDER —
+`LicensingSection.tsx:16` loads `react-markdown` with `ssr: false`, so the server HTML carries raw
+markdown and `**bold**` in a curl is expected, not a leak. A visual check needs a browser.
+
+---
 
 **RENDER-TRUTH PASS — 2026-07-25. Two defects found by PROBING THE LIVE PRODUCT, both invisible to
 every existing gate, both measured on the real data before a line was written.**

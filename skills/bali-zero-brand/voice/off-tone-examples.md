@@ -7,18 +7,21 @@
 ## Failure 1 — engagement-bait opener
 
 ### What was written
+
 ```
 ARE YOU THINKING OF MOVING TO BALI?
 HERE ARE 5 THINGS YOU NEED TO KNOW BEFORE YOU GO.
 ```
 
 ### Why it fails
+
 - Question opener = engagement-bait pattern (forbidden-phrases §D).
 - "5 things you need to know" = listicle template, not editorial.
 - "Before you go" assumes audience hasn't moved yet — Bali Zero audience is mostly already-in-Bali expats fixing mistakes, not pre-arrival researchers.
 - No regulatory citation. No concrete number. No sentence-bomb. Could be from any of 100 competitor accounts.
 
 ### How to fix
+
 Rewrite as: "MOST PEOPLE MOVING TO BALI PICK THE WRONG VISA IN THE FIRST MONTH. SIGN A LEASE THAT DOES NOT HOLD UP UNDER PP 18/2021. FIND OUT ONLY AT TAX TIME. WE SPEND OUR DAYS FIXING THAT." (See on-tone Ex 9.)
 
 ---
@@ -26,6 +29,7 @@ Rewrite as: "MOST PEOPLE MOVING TO BALI PICK THE WRONG VISA IN THE FIRST MONTH. 
 ## Failure 2 — corporate-legalese disclaimer
 
 ### What was written
+
 ```
 PLEASE NOTE THAT THIS POST IS FOR INFORMATIONAL PURPOSES ONLY
 AND DOES NOT CONSTITUTE LEGAL ADVICE.
@@ -34,11 +38,13 @@ TERMS AND CONDITIONS APPLY.
 ```
 
 ### Why it fails
+
 - Bali Zero IS the konsultan pajak + PPJK + immigration consultancy. Telling readers to "consult a licensed professional" undermines the brand.
 - "Please note" = empty politeness phrase, not editorial.
 - Disclaimers signal that the brand is afraid of liability. Bali Zero's authority comes from being the lawyers, not from disclaiming itself.
 
 ### How to fix
+
 Delete the slide. If a legal-protection clause is genuinely needed (rare, for tax-strategy carousels), use a single line in IBM Plex Mono 11px in the source-citation footer of the closing slide: "Sources: KEP-71/PJ/2026, NB-4 catalog. For case-specific guidance contact zantara@balizero.com." No "this is not legal advice" — that phrase is banned.
 
 ---
@@ -46,6 +52,7 @@ Delete the slide. If a legal-protection clause is genuinely needed (rare, for ta
 ## Failure 3 — vague feel-good close
 
 ### What was written
+
 ```
 WHATEVER YOUR DREAM, BALI HAS A PATH.
 LET'S BUILD IT TOGETHER.
@@ -54,6 +61,7 @@ LINK IN BIO ➡️
 ```
 
 ### Why it fails
+
 - "Whatever your dream" = boilerplate marketing.
 - "Bali has a path" = empty metaphor.
 - "Let's build it together" / "start your journey" = forbidden phrases (§B, §C of forbidden-phrases.md).
@@ -62,6 +70,7 @@ LINK IN BIO ➡️
 - Fails the closing-slide rule: must be statement-bomb single-line bold centered, NO CTA hard-sell.
 
 ### How to fix
+
 Replace with a register-rituale closing: "EVERY QUARTER, THE PERIMETER TIGHTENS." or register-militante: "PERMITS ARE PERMISSIONS. THEY CAN BE RESCINDED." (See on-tone Ex 1, 2.)
 
 ---
@@ -69,6 +78,7 @@ Replace with a register-rituale closing: "EVERY QUARTER, THE PERIMETER TIGHTENS.
 ## Pattern recognition for wr2-critic
 
 When scoring a slide, mark off-tone if 2+ of these fire:
+
 - Question mark in title or first sentence (D-pattern engagement-bait)
 - "Let's" / "We're here to" / "We're excited to" opener
 - Emoji anywhere
@@ -82,11 +92,18 @@ When scoring a slide, mark off-tone if 2+ of these fire:
 
 3+ markers = hard fail. 2 markers = soft fail (route to human review).
 
-
 ---
 
-*Reflexion 2026-W19*: ## Rejected: marina-tuka-tibubeneng-shutdown (2026-05-08)
+_Reflexion 2026-W19_: ## Rejected: marina-tuka-tibubeneng-shutdown (2026-05-08)
 
 **Reason:** factually-wrong
 
 **Note:** Tibubeneng enforcement/shutdown narratives carry high factual-error risk. Before storyboarding, require explicit NB-INTEL or NB-0 citation for the specific enforcement action claimed. Do not infer shutdown scope from secondary reporting.
+
+---
+
+_Reflexion 2026-W30_: GROUNDING FAILURE (2026-W30, run perkuat-pengawasan-orang-asing-imigrasi-yogyakarta): carousel sourced the orang-asing surveillance story from Imigrasi Yogyakarta while the intended story was Bali (Kanwil Dharma Dewata / APOA reporting duty). A Java-province immigration notice is NOT interchangeable with a Bali one. Rule: brief-interpreter must verify that the primary-source jurisdiction == target locale before the story is greenlit. Rejected as factually-wrong.
+
+---
+
+_Reflexion 2026-W30_: OVERCLAIM FAILURE (2026-W30, run perkuat-pengawasan-orang-asing-imigrasi-yogyakarta): body asserted legal and market claims not traceable to the verified APOA dossier. Investigative authority is not speculation — every legal/market assertion must trace to a verified source line, or be cut, or labelled 'TO VERIFY'. Rejected alongside the geography error.

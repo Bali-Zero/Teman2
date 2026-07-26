@@ -373,6 +373,27 @@ async def test_complete_async_per_seat_timeout_kills_and_reaps(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,
 ) -> None:
+    """Seat 1's per-seat timeout fires, kill+reap runs, and the loop falls
+    through to seat 2, which succeeds.
+
+    Deterministic by construction (2026-07-26 —
+    discovery_prepush_fixed_wallclock_budgets_fail_under_fleet_contention):
+    the original version of this test raced a real 10ms asyncio.wait_for
+    timeout against real event-loop scheduling. It failed on M5 under fleet
+    CPU contention (load average 72.5) — not because complete_async is
+    broken, but because seat 2's "instant" mock also missed its own fresh
+    10ms wall-clock budget when the OS didn't schedule this process's
+    thread in time. A timeout is a ceiling, not an assertion about
+    scheduler latency.
+
+    Fixed by faking asyncio.wait_for itself: seat 1's communicate() call is
+    scripted to raise TimeoutError immediately (proving the real
+    kill+reap+fallthrough control flow — the actual thing under test — not
+    asyncio's own timer), every other wait_for call just awaits its target
+    with no timer racing a scheduler at all. timeout_s/total_timeout_s no
+    longer drive real timing; kept as small/realistic values purely as
+    documentation of intent.
+    """
     from backend.llm import claude_oauth_client as mod
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
@@ -389,6 +410,22 @@ async def test_complete_async_per_seat_timeout_kills_and_reaps(
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
 
+    # wait_for call order for this scenario: (1) launch seat 1, (2)
+    # communicate seat 1 [scripted timeout — the ONLY call that doesn't just
+    # pass through], (3) launch seat 2, (4) communicate seat 2.
+    wait_calls = 0
+
+    async def fake_wait_for(fut: Any, timeout: float) -> Any:
+        nonlocal wait_calls
+        wait_calls += 1
+        if wait_calls == 2:
+            if asyncio.iscoroutine(fut):
+                fut.close()
+            raise asyncio.TimeoutError()
+        return await fut
+
+    monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
+
     resp = await mod.complete_async("ping", timeout_s=0.01, total_timeout_s=0.5)
 
     assert blocked.killed is True
@@ -402,6 +439,52 @@ async def test_complete_async_global_deadline_kills_reaps_and_stops(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,
 ) -> None:
+    """The global deadline (not the per-seat one) fires after seat 1's
+    communicate() times out, so the loop stops instead of trying seat 2.
+
+    total_timeout_s raised from the original 0.01s (2026-07-26, same scar as
+    the per-seat test above —
+    discovery_prepush_fixed_wallclock_budgets_fail_under_fleet_contention):
+    unlike that test, this one's assertion genuinely needs REAL elapsed
+    wall-clock time — it proves `time.monotonic() >= deadline` fires AFTER
+    one real seat's launch+communicate cycle, not before and not after two.
+    A call-scripted fake clock could deliver that, but only by hard-coding
+    how many times complete_async happens to read time.monotonic()
+    internally — more coupled to implementation detail than the bug this is
+    fixing, and silently wrong the next time that internal call count
+    changes. 0.5s (50x the original budget) is the "defensible on a shared
+    workstation" number the scar calls for: a single Python bytecode
+    stretch is never realistically delayed hundreds of ms by OS scheduling,
+    even under the load average 72.5 measured live when the sibling test
+    flaked.
+
+    Guilt-proven manually during review, TWICE (caught undercounting my own
+    first pass — cross-family review flagged it before merge). complete_async
+    sets "global_deadline" at FIVE sites in TWO phases, not three in one:
+    the capability-probe phase (:648 pre-check, :661 TimeoutError handler,
+    guarded by `if supports is None` — only reached when a caller passes
+    json_schema AND the process-wide `_JSON_SCHEMA_SUPPORTED` memo is still
+    unset) and the seat-loop phase this test actually drives (:674 loop-top
+    pre-check, :722 launch-except, :737 communicate-except). This test calls
+    complete_async without json_schema, so only the seat-loop three are live
+    here; neutralizing any one or two of THOSE three alone left this test
+    passing anyway, saved by whichever check was still live — genuine
+    defense-in-depth. Only neutralizing all three together produced the
+    expected RED: `attempts_made == 3`, `last_error == "keychain:
+    launch_timeout"`, `pytest.raises(..., match="global_deadline")`
+    correctly failed to match. Restored and reconfirmed 45/45 green.
+
+    The other two (:648/:661) are NOT verified redundancy — grepped the
+    whole suite (`grep -rn "_JSON_SCHEMA_SUPPORTED" backend/tests/`, then the
+    same for `_cli_supports_json_schema`) and every test that calls
+    complete_async(json_schema=...)
+    monkeypatches `_JSON_SCHEMA_SUPPORTED` straight to True/False via the
+    `force_schema_supported`/`force_schema_unsupported` fixtures — the
+    `supports is None` branch, and both deadline checks inside it, are never
+    entered by any test in this repo. That's a coverage gap wearing the
+    label of defense-in-depth, not a fourth/fifth layer proven to hold;
+    logged separately rather than silently folded into this PR's scope.
+    """
     from backend.llm import claude_oauth_client as mod
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "t1")
@@ -417,7 +500,7 @@ async def test_complete_async_global_deadline_kills_reaps_and_stops(
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
 
     with pytest.raises(mod.ClaudeOAuthError, match="global_deadline"):
-        await mod.complete_async("ping", timeout_s=1, total_timeout_s=0.01)
+        await mod.complete_async("ping", timeout_s=1, total_timeout_s=0.5)
 
     assert calls == 1
     assert blocked.killed is True
