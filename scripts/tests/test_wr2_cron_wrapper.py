@@ -128,3 +128,41 @@ def test_pg_proxy_unreachable_writes_heartbeat_matching_log(tmp_path) -> None:
     hb = _heartbeat(tmp_path, "pro.wr2_wrapper_guard.test.fake.module")
     assert hb["status"] == "error"
     assert "15432" in hb["note"]
+
+
+def test_repo_root_is_exported_before_either_guard_can_exit(tmp_path) -> None:
+    """Regression pin for the 2026-07-27 finding (task #64): REPO_ROOT was
+    resolved for the wrapper's own `cd` but never re-exported, so every
+    python module reading NUZANTARA_REPO_ROOT via os.environ always fell
+    through to its own file-relative guess — confirmed live on
+    m13_weekly.py, which wrote its weekly report to apps/research/... instead
+    of research/... for weeks.
+
+    Both existing guards above (DATABASE_URL_LOCAL missing, pg-proxy down)
+    can exit the wrapper before it ever reaches `exec ... python -m
+    $MODULE`, so there is no way to observe the export by inspecting the
+    child process's environment through a real end-to-end run without a live
+    Postgres proxy. This is a static check instead: the export must appear
+    in the source BEFORE both guard blocks, so the fix holds regardless of
+    which guard (if any) later exits — the exact invariant this fix needs.
+    A guard reordered above the export in the future would fail this test
+    even though every existing behavioral test above would still pass."""
+    lines = _WRAPPER.read_text(encoding="utf-8").splitlines()
+
+    export_idx = next(
+        (i for i, line in enumerate(lines) if line.strip().startswith("export NUZANTARA_REPO_ROOT=")),
+        None,
+    )
+    guard1_idx = next(
+        (i for i, line in enumerate(lines) if "DATABASE_URL_LOCAL not set" in line), None
+    )
+    guard2_idx = next(
+        (i for i, line in enumerate(lines) if "cannot reach 127.0.0.1:15432" in line), None
+    )
+
+    assert export_idx is not None, "export NUZANTARA_REPO_ROOT= line not found in the wrapper"
+    assert guard1_idx is not None and guard2_idx is not None, (
+        "one of the two known guards moved or was renamed — update this test's anchors"
+    )
+    assert export_idx < guard1_idx
+    assert export_idx < guard2_idx
