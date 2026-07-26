@@ -238,11 +238,24 @@ export interface KBLIProvenance {
     /** true when `_l2_status === "no_oss_risk"` (OSS ruang-lingkup 404) */
     noOssScope: boolean;
   };
-  /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage) */
+  /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage).
+   *
+   * `status` used to be the literal `"pending_crosswalk"`, i.e. a CONSTANT the type
+   * made impossible to contradict: all 1,559 codes received the same provenance
+   * verdict. That is right for the 1,459 codes with a recorded KBLI-2020 origin —
+   * the annexes are 2020-vintage and the per-code crosswalk audit is genuinely
+   * pending. It is NOT right for the 100 codes that record no 2020 ancestry at all
+   * (no `bps_2020_ancestors.codes`, no `pp28_sources`): "crosswalk pending" tells a
+   * reader a basis exists and only the mapping is unfinished, which is a stronger
+   * claim than we can support. For those, `untraceable_basis` + `vintage: null`.
+   *
+   * F12 wording: this says our sources record no path to the verdict. It does NOT
+   * assert the regulator published nothing, and it does not call the value wrong.
+   */
   pma: {
     source: string | null;
-    vintage: "2020";
-    status: "pending_crosswalk";
+    vintage: "2020" | null;
+    status: "pending_crosswalk" | "untraceable_basis";
   };
   /** Honest-gap note with verbatim citations (only on cured codes) */
   dataNote: string | null;
