@@ -14,13 +14,25 @@ name: Main-push Failure Watch
 # by watcher-conformance.yml, which fails CI if this file's `workflows:` list
 # drifts from the live workflow census.
 #
-# SCOPE: alerts ONLY for a push-triggered run on `main` — not for
-# pull_request runs (already visible on the PR itself) and not for
-# schedule/workflow_dispatch runs on other branches. The `workflows:` list
-# below is DELIBERATELY over-inclusive (every workflow in the repo, this
-# file's own name excluded) so listing it never requires a push:main
-# judgment call — real filtering happens in the job `if:` below, on the
-# actual event + branch of the run that just completed.
+# SCOPE: alerts for a push-triggered OR schedule-triggered run on `main` —
+# not for pull_request runs (already visible on the PR itself) and not for
+# workflow_dispatch runs (operator-initiated; the operator is already
+# watching). The `workflows:` list below is DELIBERATELY over-inclusive
+# (every workflow in the repo, this file's own name excluded) so listing it
+# never requires a push:main/schedule:main judgment call — real filtering
+# happens in the job `if:` below, on the actual event + branch of the run
+# that just completed.
+#
+# Widened to `schedule` 2026-07-26 (task #37): task #37 added the first
+# schedule-triggered workflow that targets main (`Tests & Coverage`'s
+# hourly run, decoupled from push cadence precisely because push-triggered
+# runs on main were measured spending most of their life queued-then-
+# cancelled — see tests.yml's `on.schedule` comment). Excluding `schedule`
+# here would have meant building a health check whose own failures nobody
+# gets told about — the exact "esiste ≠ armato" disease this watcher exists
+# to cure, just at one more remove. `schedule` always fires against the
+# default branch only, so `head_branch == 'main'` is not a new constraint
+# for it, only `event` needed widening.
 #
 # GOTCHAS (verified 2026-07-26 against GitHub's docs + this repo's live API,
 # not assumed):
@@ -148,12 +160,14 @@ concurrency:
 
 jobs:
   alert:
-    # Scope to an actual push-to-main run, not a pull_request/schedule/
-    # workflow_dispatch run on some other branch (those are either already
-    # visible on the PR, or not the "landed silently broken" disease this
-    # exists for). `cancelled` is excluded deliberately — see header comment.
+    # Scope to an actual push-to-main or schedule-on-main run, not a
+    # pull_request/workflow_dispatch run (those are either already visible
+    # on the PR, or operator-initiated — see header comment for the
+    # 2026-07-26/task #37 widening from push-only to push-or-schedule).
+    # `cancelled` is excluded deliberately — see header comment.
     if: >-
-      github.event.workflow_run.event == 'push' &&
+      (github.event.workflow_run.event == 'push' ||
+       github.event.workflow_run.event == 'schedule') &&
       github.event.workflow_run.head_branch == 'main' &&
       (github.event.workflow_run.conclusion == 'failure' ||
        github.event.workflow_run.conclusion == 'timed_out')
@@ -167,7 +181,7 @@ jobs:
         # message instead of exactly 1 — degraded, never silent.
         run: sleep 90
 
-      - name: Aggregate every currently-failing push-to-main run on this commit
+      - name: Aggregate every currently-failing push-or-schedule main run on this commit
         id: agg
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,8 +189,13 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh api "repos/${REPO}/actions/runs?head_sha=${SHA}&event=push&status=completed" \
-            --paginate --jq '.workflow_runs[] | select(.conclusion=="failure" or .conclusion=="timed_out") | .name' \
+          # No server-side `event=` filter here (task #37 widening): the API
+          # only accepts one `event=` value per call, and this now needs
+          # push OR schedule, so the OR moves into the jq select below
+          # instead of two round-trips. head_sha already scopes this to one
+          # commit, so the extra rows filtered out client-side are cheap.
+          gh api "repos/${REPO}/actions/runs?head_sha=${SHA}&status=completed" \
+            --paginate --jq '.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="failure" or .conclusion=="timed_out")) | .name' \
             | sort -u > /tmp/failing.txt
           COUNT=$(wc -l < /tmp/failing.txt | tr -d ' ')
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"

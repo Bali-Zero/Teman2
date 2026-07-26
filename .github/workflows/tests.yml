@@ -6,15 +6,42 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+  # Task #37 (2026-07-26): main's push-triggered suite is measured to spend
+  # most of its life QUEUED, not running — 28 of 38 recent attempts on this
+  # workflow were cancelled before a runner ever picked them up, because
+  # `cancel-in-progress: false` only protects a run that already started;
+  # a run still waiting for a slot is superseded unconditionally by the next
+  # push to the same concurrency group. Net effect: main can go a long
+  # stretch with no completed test verdict even though every push "ran" a
+  # workflow. This hourly run is independent proof-of-health, decoupled from
+  # push cadence — it runs the exact same job graph as a push/PR run (no
+  # duplicated logic to drift), against whatever is on main at the top of
+  # the hour, and it gets its own concurrency group below so it never
+  # queues behind — or evicts — a push-triggered run. :17 offset dodges the
+  # top-of-hour stampede (same convention as docs-inventory-refresh-liveness.yml).
+  schedule:
+    - cron: "17 * * * *"
 
 # Merge-train spec §10.2 (2026-06-12): cancel-in-progress must NOT apply to
 # main — back-to-back merges were cancelling the in-flight main run, so
 # commits landed on main UNTESTED and a future auto-revert guardian could
 # not attribute a green→red window to a single commit. PR refs keep
 # cancelling (newest push wins); every main push now runs to completion.
+#
+# Task #37 addendum: a schedule-triggered run must NOT share a group with
+# push-triggered main runs. `github.ref` is `refs/heads/main` for BOTH a
+# push-to-main and a schedule run (schedule always fires against the
+# default branch) — grouping on `github.ref` alone would put the hourly
+# run back in direct contention with push-triggered runs for the same
+# runner slot, reproducing the exact starvation this run exists to work
+# around. Scheduled runs get a dedicated, ref-independent group instead;
+# self-collision across two scheduled runs is a non-issue in practice
+# (job timeouts are well under the 1h cadence) but cancel-in-progress
+# stays false for it anyway, for the same reason it stays false for main:
+# a run that started should always get to report its verdict.
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' && github.ref != 'refs/heads/main' }}
 
 jobs:
   backend-tests:
