@@ -2,6 +2,7 @@
 date: 2026-07-26
 domain: operations
 client_case: none
+adversarial_review: glm
 sources:
   - apps/mouth/src/lib/kbli-data.ts:376-380 (commento flip META_EN, su main)
   - .claude/skills/modus/PENDING-ARMS.md:79 (#1967) e :169 (META_EN)
@@ -104,14 +105,22 @@ non esiste.**
 
 ## A1. #1967 è CLOSED — e non per una decisione
 
-`gh pr view 1967` → `state: CLOSED`, `closedAt 2026-07-13T00:57:29Z`. La timeline porta, **allo
-stesso secondo**, l'evento `base_ref_force_pushed`.
+`gh pr view 1967` → `state: CLOSED`, `closedAt 2026-07-13T00:57:29Z`, `mergedAt: null` (chiusa
+NON mergiata, non "mergiata poi chiusa"). La timeline porta, **allo stesso secondo**, l'evento
+`base_ref_force_pushed`. Meccanismo esatto non accertato (correzione da adversarial review, vedi
+in fondo): il comportamento standard di GitHub su un force-push del base è marcare la PR
+"out of date", non chiuderla — la chiusura è più probabilmente l'effetto dell'orfanizzazione
+dell'head-commit per il rewrite `filter-repo`, con `base_ref_force_pushed` co-occorrente ma non
+necessariamente la causa diretta. La conclusione (il PII-purge come causa radice) regge in
+entrambi i casi; il meccanismo preciso no.
 
-Non è un caso isolato: `search/issues type:pr is:unmerged closed:2026-07-13` restituisce 22 PR, di
-cui **20 chiuse nell'intervallo `00:57:28–29Z`** — un solo secondo. È la finestra di force-push del
-PII history-purge (`ops_pii_history_purge_executed_proven_2026_07_13`: `origin/main 2ae5e6fb →
-33120add`, `enforce_admins=false`, filter-repo su 7837 commit). Venti PR non si chiudono per venti
-decisioni indipendenti nello stesso secondo.
+Non è un caso isolato: `gh pr list --state closed --search "closed:>=2026-07-13 closed:<=2026-07-13 is:unmerged"`
+restituisce 22 PR, di cui **21 chiuse nell'intervallo `00:57:28–29Z`** (17 alle :28Z, 4 alle :29Z,
+corretto da adversarial review — vedi in fondo) — un solo secondo. L'unico outlier (#2402, 14:24:32Z)
+è un cleanup manuale successivo del ledger, non parte del cluster. È la finestra di force-push del
+PII history-purge (`ops_pii_history_purge_executed_proven_2026_07_13`, memoria di sessione — non un
+file di questo repo: `origin/main 2ae5e6fb → 33120add`, `enforce_admins=false`, filter-repo su 7837
+commit). Ventuno PR non si chiudono per ventuno decisioni indipendenti nello stesso secondo.
 
 Esito del ripristino, 13 giorni dopo:
 
@@ -176,3 +185,41 @@ Il NO-GO §3 resta, per i motivi (a) e (b) originali, **più** un terzo che li p
 da mergiare. Il lavoro va **risuscitato in draft** (decisione di Zero, 2026-07-26) su un branch
 tagliato dal main corrente, col gate §3.2 agganciato agli helper esistenti. Il merge resta
 subordinato alle 3 condizioni §3, invariate.
+
+## Adversarial review
+
+**Seat:** GLM (`claude-glm`, Zhipu GLM-5.2 su Claude Code CLI, Keychain OAuth token) — seat
+cross-family rispetto a Claude, unico mandato: falsificare o confermare l'affermazione centrale di
+§A1-A2 ("PR #1967 died to a force-push, not a decision"). Dispatch con path del file (non diff
+incollato), sandbox con `gh`/`git` reali, istruito a RI-ESEGUIRE le query invece di fidarsi della
+prosa.
+
+**Verdict: CONFIRMED**, con due correzioni fattuali reali (non un timbro):
+
+1. **Conteggio sbagliato**: il report diceva "20 PR su 22 chiuse nella finestra di un secondo" —
+   il conteggio corretto è **21** (17 alle `:28Z` + 4 alle `:29Z`; il 22° è #2402, cleanup manuale
+   alle 14:24:32Z, eventi confermano nessun `base_ref_force_pushed` associato). Il clustering è
+   ANCORA PIÙ stretto di quanto dichiarato, non più debole — ma il numero citato era sbagliato ed
+   è stato corretto in §A1 sopra.
+2. **Meccanismo non accertato**: GLM ha verificato che il comportamento standard di GitHub su un
+   force-push del base è marcare la PR "out of date" (DIRTY), non chiuderla automaticamente. La
+   causa più probabile della chiusura è l'orfanizzazione dell'head-commit dal rewrite
+   `filter-repo`, con l'evento `base_ref_force_pushed` co-occorrente ma non necessariamente il
+   trigger diretto. Corretto in §A1 sopra — la conclusione causale (PII-purge = causa radice) non
+   ne risulta indebolita, solo il "come" preciso.
+3. **Imprecisione di provenienza**: il report citava
+   `ops_pii_history_purge_executed_proven_2026_07_13` come "referenced elsewhere in this repo" —
+   è uno slug di memoria di sessione (`~/.claude/projects/.../memory/`), non un file di questo
+   repo Teman2. Corretto in §A1 sopra.
+
+**Prove indipendenti aggiunte da GLM, non presenti nel report originale:** `gh pr view 1967
+--json baseRefOid` restituisce `33120add2ac3b6f65c25191856af2c0ee81a77f9` — corrispondenza
+verbatim (40 hex char) con l'SHA post-purge citato dal report, confermata lato server GitHub
+indipendentemente dalla profondità del clone locale (che è shallow e non può verificare
+l'ancestry SHA in profondità — limite d'ambiente dichiarato da GLM, non un buco nella tesi).
+GLM ha anche campionato 4 PR aggiuntive nel cluster (#2368, #2363, #2322, #2295): tutte mostrano
+lo stesso pattern `closed` + `base_ref_force_pushed` co-occorrenti, stesso attore, stesso secondo.
+
+**Cosa NON è stato rivisto** (fuori mandato, dichiarato esplicitamente nel brief): §1-§4 e
+A3-A5 (il gate sui campi non verificati, il verdetto NO-GO, la lista di armamento) — solo la
+claim del force-push in §A1-A2 era in scope per questo seat.
