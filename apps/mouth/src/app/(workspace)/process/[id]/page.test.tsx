@@ -108,10 +108,11 @@ vi.mock("./RequiredDocumentsCard", () => ({
   ),
 }));
 
-vi.mock("@balizero/core/utils", () => ({
-  formatIDR: (amount: number) => `IDR ${amount}`,
-}));
-
+// NOTE: money is rendered by <Money>, which imports formatIDR from
+// "../utils/currency" — a different specifier than "@balizero/core/utils".
+// A vi.mock on the barrel never reached the component, so these assertions
+// must match the real Intl output: "Rp 1.750.000" (id-ID, IDR, 0 decimals).
+// Testing Library's default normalizer collapses the NBSP to a plain space.
 import CaseDetailPage from "./page";
 
 const profile = {
@@ -253,7 +254,7 @@ describe("CaseDetailPage", () => {
       "https://wa.me/62812345",
     );
     expect(screen.getByText("Zero Tester")).toBeInTheDocument();
-    expect(screen.getAllByText("IDR 1750000")).toHaveLength(2);
+    expect(screen.getAllByText("Rp 1.750.000")).toHaveLength(2);
     expect(screen.getByTestId("required-documents")).toHaveTextContent(
       "Documents for 42",
     );
@@ -402,7 +403,7 @@ describe("CaseDetailPage", () => {
         quoted_price: 2_000_000,
       });
     });
-    expect(await screen.findByText("IDR 2000000")).toBeInTheDocument();
+    expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
   it("closes an unchanged edit and submits changed fields with a reload", async () => {
