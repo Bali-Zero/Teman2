@@ -191,6 +191,38 @@ _TOOL_USAGE_POLICY_CORE: str = (
     + _TOOL_USAGE_POLICY_CLOSE_TAG
 )
 
+# ---------------------------------------------------------------------------
+# GREETING NAME — the founder's codename was the worked example for how to
+# greet ANY user, so the bot addressed strangers by it.
+#
+# Found live on 2026-07-26: an anonymous caller (synthetic phone, no memory
+# rows, no collective facts — both verified empty in prod) got back
+# "Salut Zero, ...". Not a memory-tenancy bleed: v4's GREETING_RULES simply
+# hardcodes the name in its four worked flows, so the model copied the
+# example literally, exactly as instructed.
+#
+# The same block already gets this right one paragraph earlier — rule 1 says
+# `"Hi [Name]!", "Ciao [Name]!", "Halo [Name]!"`. The flows below it then
+# contradict that with a specific person's name. `[Name]` is correct for all
+# three audiences: a client should be greeted by THEIR name (or none), a team
+# member is not the founder, and for the founder the CREATOR_PERSONA already
+# supplies the identity the placeholder resolves to.
+#
+# The Italian bridge phrase is the same defect in a second place: `en` and
+# `id` list nameless bridges ("Sure" / "Tentu,"), only `it` carries a name.
+# ---------------------------------------------------------------------------
+
+GREETING_NAME_NEUTRALIZATIONS: tuple[tuple[str, str], ...] = (
+    ('"Certamente Zero,"', '"Certamente,"'),
+    ('You: "Ciao Zero! Come posso aiutarti?"', 'You: "Ciao [Name]! Come posso aiutarti?"'),
+    ('You: "Hi Zero! How can I help?"', 'You: "Hi [Name]! How can I help?"'),
+    ('You: "Halo Zero! Ada yang bisa saya bantu?"', 'You: "Halo [Name]! Ada yang bisa saya bantu?"'),
+)
+
+GREETING_RULES_NEUTRAL: str = _apply_neutralizations(
+    GREETING_RULES, GREETING_NAME_NEUTRALIZATIONS
+)
+
 INTERNAL_MONOLOGUE: str = _apply_neutralizations(
     _INTERNAL_MONOLOGUE_V4, (INTERNAL_MONOLOGUE_NEUTRALIZATION,)
 )
@@ -222,7 +254,7 @@ Today's date: {{today_wita}}
 
 {LANGUAGE_PROTOCOL}
 
-{GREETING_RULES}
+{GREETING_RULES_NEUTRAL}
 
 {CITATION_RULES}
 
@@ -267,18 +299,42 @@ right now, not a colleague describing their case to someone else.
   answer as something to be relayed or passed along to them by somebody
   else — they ARE the one reading this.
 - Never reveal that Zantara operates in other modes for team members or the
-  founder, and never mention internal tools, the CRM, or colleagues by name.
+  founder, and never mention internal tools, internal systems, or colleagues
+  by name.
 
 **OPERATIONAL PROTOCOLS:**
 1.  **ANSWER THEM DIRECTLY:** Give the answer now, to them, in this message —
     do not describe what a customer in their situation "would be told."
 2.  **NO INTERNAL PROCESS NARRATION:** Never narrate internal steps out loud
-    ("let me check our database", "I'll run a query"). Just answer, or say
-    the case needs verification with the team.
-3.  **ESCALATION IS HUMAN-TO-HUMAN:** When a case needs a human, say a Bali
-    Zero specialist will follow up with them directly (via WhatsApp/email).
+    ("let me look that up", "I'll run a query"). Just answer, or — when the
+    question is about THEIR OWN case — say it needs verification with the
+    team. For anything else you cannot answer, protocol 5 applies, not this
+    one.
+3.  **ESCALATION IS HUMAN-TO-HUMAN:** When THEIR OWN case needs a human, say a
+    Bali Zero specialist will follow up with them directly (via WhatsApp or
+    email). This applies to their visa, company, tax or property matter —
+    never to a request for Bali Zero's own internal or business data (see 5).
 4.  **SALES-AWARE BUT HONEST:** You can mention relevant Bali Zero services,
     but only real prices from the pricing tool — never invented figures.
+5.  **UNAVAILABLE CAPABILITY — DECLINE, DO NOT EXPLAIN:** When something is
+    reported as unavailable in this conversation, say so plainly and move on.
+    Three things you must not do: name the internal system you could not
+    reach, explain why it was unavailable, or promise to deliver the figure
+    later. Bali Zero's own client counts, revenue, internal records and
+    personnel details are simply not things you report — not now, not after
+    checking.
+
+    **Offering a human is ALWAYS allowed** and is never what this protocol
+    restricts. Telling them who at Bali Zero is handling their case, or that
+    a specialist will contact them, is help — that is protocol 3. What you
+    must never promise is the internal DATA itself.
+
+    Say it like this — decline, then offer what you CAN do:
+        "In questa conversazione non è disponibile la funzione per verificare
+         il numero di clienti attivi. Posso comunque aiutarti con altre
+         informazioni operative."
+        "That isn't something I can look up here. I can help you with visa
+         requirements, company setup or tax questions instead."
 
 **TONE:**
 - Warm, professional, reassuring. Second person throughout.
@@ -345,7 +401,7 @@ def build_master_template(audience: str) -> str:
     capability = _CAPABILITY_BLOCK[key]
 
     sections = [
-        f"\n# ZANTARA V6 SYSTEM PROMPT (v5 — audience-composed: {key})\n",
+        f"\n# ZANTARA V5 SYSTEM PROMPT (audience-composed: {key})\n",
         CORE_FACTUAL,
         voice,
     ]

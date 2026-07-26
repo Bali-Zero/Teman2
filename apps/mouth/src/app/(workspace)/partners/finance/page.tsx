@@ -20,16 +20,41 @@ import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
 import type { PartnerCommission } from "@/lib/api/partners/partners";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
-const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  approved: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  ready_to_pay: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  paid: { bg: "bg-green-500/20", text: "text-green-400" },
-  clawback_pending: { bg: "bg-orange-500/20", text: "text-orange-400" },
-  clawed_back: { bg: "bg-red-500/20", text: "text-red-400" },
-  waived: { bg: "bg-gray-500/20", text: "text-gray-400" },
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** State-tinted chip (status pills on the dark panel surface). */
+function stateChip(state: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, ${state} 12%, transparent)`,
+    color: state,
+    borderColor: `color-mix(in srgb, ${state} 30%, transparent)`,
+  };
+}
+
+/** Neutral chip for closed/inert statuses. */
+const NEUTRAL_CHIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--bz-text-pure) 6%, transparent)",
+  color: "var(--bz-text-2)",
+  borderColor: "var(--bz-border)",
+};
+
+// Commission pipeline statuses, same mapping as partners/[id]: pending steps
+// -> warning, approved -> info, ready_to_pay -> neon purple (identity hue),
+// paid -> success, clawback steps -> warning/danger, waived -> neutral.
+const STATUS_STYLES: Record<string, React.CSSProperties> = {
+  pending_approval: stateChip("var(--state-warning)"),
+  approved: stateChip("var(--state-info)"),
+  ready_to_pay: stateChip("var(--bz-neon-purple)"),
+  paid: stateChip("var(--state-success)"),
+  clawback_pending: stateChip("var(--state-warning)"),
+  clawed_back: stateChip("var(--state-danger)"),
+  waived: NEUTRAL_CHIP,
 };
 
 interface CommissionRowProps {
@@ -50,34 +75,34 @@ function CommissionRow({
   onWaive,
   actioningId,
 }: CommissionRowProps) {
-  const cs = STATUS_STYLES[c.status] || {
-    bg: "bg-gray-500/20",
-    text: "text-gray-400",
-  };
+  const cs = STATUS_STYLES[c.status] || NEUTRAL_CHIP;
   const isActioning = actioningId === c.id;
 
   return (
-    <tr className="hover:bg-zinc-800/30 transition-colors">
+    <tr className="hover:bg-[var(--bz-glass-rim)] transition-colors">
       <td className="px-4 py-3">
         {/* CRIT-8: partner_id is a UUID string */}
-        <div className="text-sm font-medium text-zinc-100">
+        <div className="text-sm font-medium text-[var(--bz-text-1)]">
           {c.partner_name || `Partner ${c.partner_id.substring(0, 8)}…`}
         </div>
-        <div className="text-xs text-zinc-500">{c.client_name || ""}</div>
+        <div className="text-xs text-[var(--bz-text-3)]">
+          {c.client_name || ""}
+        </div>
       </td>
-      <td className="px-4 py-3 text-sm text-zinc-400 hidden md:table-cell">
+      <td className="px-4 py-3 text-sm text-[var(--bz-text-2)] hidden md:table-cell">
         {c.practice_type_name ||
           (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}
       </td>
-      <td className="px-4 py-3 text-sm text-zinc-300">
-        {formatIDR(c.gross_amount)}
+      <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
+        <Money value={c.gross_amount} />
       </td>
-      <td className="px-4 py-3 text-sm text-zinc-300">
-        {formatIDR(c.net_amount)}
+      <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
+        <Money value={c.net_amount} />
       </td>
       <td className="px-4 py-3">
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}
+          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border"
+          style={cs}
         >
           {c.status.replace(/_/g, " ")}
         </span>
@@ -89,7 +114,7 @@ function CommissionRow({
               size="sm"
               disabled={isActioning}
               onClick={() => onApprove(c.id)}
-              className="bg-green-700 hover:bg-green-600 text-white h-7 text-xs px-2"
+              className="bg-[var(--state-success)]/15 text-[var(--state-success)] hover:bg-[var(--state-success)]/25 h-7 text-xs px-2"
             >
               {isActioning ? (
                 <Loader2 size={10} className="animate-spin" />
@@ -106,7 +131,7 @@ function CommissionRow({
               size="sm"
               disabled={isActioning}
               onClick={() => onMarkPaid(c.id)}
-              className="bg-purple-700 hover:bg-purple-600 text-white h-7 text-xs px-2"
+              className="bg-[var(--bz-neon-purple)]/15 text-[var(--bz-neon-purple)] hover:bg-[var(--bz-neon-purple)]/25 h-7 text-xs px-2"
             >
               {isActioning ? (
                 <Loader2 size={10} className="animate-spin" />
@@ -127,7 +152,7 @@ function CommissionRow({
                 variant="outline"
                 disabled={isActioning}
                 onClick={() => onClawback(c.id)}
-                className="border-red-700 text-red-400 hover:bg-red-900/20 h-7 text-xs px-2"
+                className="border-[var(--state-danger)]/50 text-[var(--state-danger)] hover:bg-[var(--state-danger)]/10 h-7 text-xs px-2"
               >
                 {isActioning ? (
                   <Loader2 size={10} className="animate-spin" />
@@ -145,7 +170,7 @@ function CommissionRow({
               variant="outline"
               disabled={isActioning}
               onClick={() => onWaive(c.id)}
-              className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 h-7 text-xs px-2"
+              className="border-[var(--bz-border)] text-[var(--bz-text-2)] hover:bg-[var(--bz-glass-rim)] h-7 text-xs px-2"
             >
               {isActioning ? (
                 <Loader2 size={10} className="animate-spin" />
@@ -188,10 +213,13 @@ function CommissionSection({
   if (commissions.length === 0) {
     return (
       <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold text-[var(--bz-text-2)] uppercase tracking-wide mb-3">
           {title}
         </h2>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center text-sm text-zinc-600">
+        <div
+          className="border rounded-xl p-6 text-center text-sm text-[var(--bz-text-3)]"
+          style={PANEL}
+        >
           {emptyMessage}
         </div>
       </div>
@@ -203,36 +231,36 @@ function CommissionSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
+        <h2 className="text-sm font-semibold text-[var(--bz-text-2)] uppercase tracking-wide">
           {title}
-          <span className="ml-2 text-zinc-600 font-normal normal-case">
-            ({commissions.length} · {formatIDR(sectionTotal)})
+          <span className="ml-2 text-[var(--bz-text-3)] font-normal normal-case">
+            ({commissions.length} · <Money value={sectionTotal} />)
           </span>
         </h2>
       </div>
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="border rounded-xl overflow-hidden" style={PANEL}>
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <tr className="border-b border-[var(--bz-border)]">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
                 Partner / Client
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase hidden md:table-cell">
                 Practice
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
                 Gross
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
                 Net
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
                 Status
               </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-[var(--bz-border)]">
             {commissions.map((c) => (
               <CommissionRow
                 key={c.id}
@@ -387,15 +415,17 @@ export default function FinanceQueuePage() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-zinc-400 hover:text-zinc-200"
+              className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
             >
               <ArrowLeft size={16} className="mr-1" />
               Partners
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-zinc-100">Finance Queue</h1>
-            <p className="text-sm text-zinc-500">
+            <h1 className="text-xl font-bold text-[var(--bz-text-1)]">
+              Finance Queue
+            </h1>
+            <p className="text-sm text-[var(--bz-text-3)]">
               Partner commission approval and payment tracking
             </p>
           </div>
@@ -405,7 +435,7 @@ export default function FinanceQueuePage() {
             variant="outline"
             size="sm"
             onClick={loadCommissions}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            className="border-[var(--bz-border)] text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
           >
             <RefreshCw size={14} className="mr-1" />
             Refresh
@@ -414,7 +444,7 @@ export default function FinanceQueuePage() {
             <Button
               variant="outline"
               size="sm"
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              className="border-[var(--bz-border)] text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
             >
               <Download size={14} className="mr-1" />
               Export CSV
@@ -425,10 +455,10 @@ export default function FinanceQueuePage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 size={32} className="animate-spin text-amber-400" />
+          <Loader2 size={32} className="animate-spin text-[var(--bz-accent)]" />
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+        <div className="flex items-center gap-3 p-4 bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/30 rounded-xl text-[var(--state-danger)]">
           <AlertCircle size={20} />
           <span>{error}</span>
         </div>

@@ -67,6 +67,8 @@ jobs:
               scripts/tests/test_adversarial_review_gate.py|\
               scripts/tests/test_jules_dispatch.py|\
               scripts/tests/test_codex_autofix_selector.py|\
+              scripts/codex_tri_llm_review.py|\
+              scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
               infra/doc-lint/*|\
@@ -118,6 +120,7 @@ jobs:
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
+            scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \

@@ -148,7 +148,7 @@ export default function BackupExportPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Database className="w-6 h-6 text-emerald-400" />
+            <Database className="w-6 h-6 text-[var(--bz-accent)]" />
             Backup & Export
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -158,12 +158,14 @@ export default function BackupExportPage() {
       </div>
 
       {/* Warning */}
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+      <div className="rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 p-4">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-[var(--state-warning)] mt-0.5" />
           <div>
-            <h3 className="font-medium text-amber-500">Data Export Notice</h3>
-            <p className="text-sm text-amber-500/80">
+            <h3 className="font-medium text-[var(--state-warning)]">
+              Data Export Notice
+            </h3>
+            <p className="text-sm text-[var(--state-warning)]/80">
               Exported data may contain sensitive information. Handle with care
               and store securely.
             </p>
@@ -290,7 +292,7 @@ export default function BackupExportPage() {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-purple-400" />
+            <Clock className="w-5 h-5 text-[var(--bz-neon-purple)]" />
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Backup History
             </h2>
@@ -332,9 +334,9 @@ export default function BackupExportPage() {
                   {backup.size}
                 </span>
                 {backup.status === "completed" ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <CheckCircle2 className="w-4 h-4 text-[var(--state-success)]" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  <AlertTriangle className="w-4 h-4 text-[var(--state-danger)]" />
                 )}
                 <Button
                   variant="ghost"
@@ -370,7 +372,7 @@ export default function BackupExportPage() {
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" defaultChecked />
-            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--bz-border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
           </label>
         </div>
         <div className="flex items-center justify-between">
