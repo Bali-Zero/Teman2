@@ -1,0 +1,339 @@
+{
+  "_doc": "l23_whatchanged_language.json — the rule table for cure_l23_whatchanged_language.py.",
+  "_why": [
+    "intel_2026.whatChanged is rendered to clients at apps/mouth/src/app/kbli/[code]/page.tsx:689",
+    "(and :428 for the gold copy). It is composed by concatenating the record's `mapping_note`",
+    "VERBATIM onto an English lead sentence — and mapping_note is Italian machine output from the",
+    "crosswalk pipeline. The result is an English regulatory page whose 2025-transition section",
+    "speaks Italian. Measured on origin/main 2026-07-26: 346 of 1,559 records (22.2%) contain at",
+    "least one of the literal templates below. Proven live on prod before this cure:",
+    "  /kbli/46442 -> 'Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione...'",
+    "  /kbli/01279 -> 'PP28 usa codice KBLI 2020 01270 (...). Match: 100%'",
+    "  /kbli/10305 -> 'PP28 usa codice KBLI 2020 10311 (...). Match: 100%'"
+  ],
+  "_scope_and_its_limit": [
+    "This cure is DETERMINISTIC and covers the six template classes only. It is NOT a claim that",
+    "whatChanged is now entirely English. A residue of free-prose Italian exists that matches no",
+    "template (e.g. 46442's hand-written 'Il KBLI 2025 mantiene ... rafforzando la distinzione",
+    "regolatorio-ministeriale ...'); the compiler COUNTS and PRINTS that residue every run rather",
+    "than letting it pass as covered. Reporting a bound, not a truth: 346 is a FLOOR derived from",
+    "literal matching; a looser word-list matcher scored ~353, and a looser matcher can also score",
+    "false positives. Never cite either number as 'the number of Italian records'.",
+    "Same discipline the corner already records for the tier-claim matcher (19 <= truth <= 152).",
+    "",
+    "REV 2 (2026-07-26) widens the cure beyond whatChanged to whatYouNeed / baliContext /",
+    "zantaraOpener, where the SAME internal enum tokens were reaching clients. 34 (record,field)",
+    "pairs: 24 need the nine rules added in this revision, 10 were already covered by the rules",
+    "above once they were allowed to run on those fields. The widening is NOT free — see FIELDS in",
+    "the compiler: whitespace normalisation is now per-field, because those three are markdown",
+    "whose indentation is structure, and a record is written back only when a rule actually fired."
+  ],
+  "_the_trap_guarded_here": [
+    "One record carries an ENGLISH audit note that QUOTES the Italian label as history:",
+    "  \"Corrected 2026-07-19 - the previous 'match con aggregazione' status_mapping/label was stale\".",
+    "A bare phrase replacement would rewrite that citation and corrupt an audit trail. Every rule",
+    "below is therefore anchored on its full template context ('KBLI 2020->2025 mapping: ' prefix,",
+    "or a 5-digit code operand) so it CANNOT fire inside a quoted historical label. The innocence",
+    "corpus pins this: superscar #3 says match the entity, never the bare substring."
+  ],
+  "version": 5,
+  "rules": [
+    {
+      "id": "mapping_codice_rinumerato",
+      "pattern": "KBLI 2020→2025 mapping: codice rinumerato\\.",
+      "replacement": "KBLI 2020→2025 mapping: code renumbered.",
+      "note": "181 records. Anchored on the 'mapping: ' prefix so a quoted label is untouched."
+    },
+    {
+      "id": "mapping_match_con_aggregazione",
+      "pattern": "KBLI 2020→2025 mapping: match con aggregazione\\.",
+      "replacement": "KBLI 2020→2025 mapping: matched with aggregation.",
+      "note": "133 records. The 'mapping: ' anchor is what protects the 2026-07-19 audit citation."
+    },
+    {
+      "id": "pp28_usa_codice",
+      "pattern": "PP28 usa codice KBLI 2020 (\\d{5})",
+      "replacement": "PP28 uses KBLI 2020 code \\1",
+      "note": "9 records. The code operand keeps the match anchored to the real template."
+    },
+    {
+      "id": "dati_da_codici_figli",
+      "pattern": "Dati da (\\d{5}) \\+ (\\d+) codici figli PP28",
+      "replacement": "data from \\1 + \\2 PP28 child code(s)",
+      "note": "16 records. Reached as 'Aggregation: Dati da ...' — the lead word is already English."
+    },
+    {
+      "id": "verifica_e_aggiornamento",
+      "pattern": "Verifica e aggiornamento (NIB|OSS) (?:ora richiesti|da eseguire ora) dopo la chiusura della finestra di giugno (\\d{4})\\.",
+      "replacement": "\\1 verification and update are now required following the closure of the June \\2 window.",
+      "note": "7 records across 4 wordings. Both Italian variants ('ora richiesti' / 'da eseguire ora') carry the same obligation, so they render to one English sentence."
+    },
+    {
+      "id": "enum_leak_parenthetical",
+      "pattern": "\\s*\\((MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO)\\)",
+      "replacement": "",
+      "note": "A RAW ENUM leaking onto a public page — the same disease as L1.1 (raw-enum leak in 'By the numbers'), recurring on a different field. Source: build_what_changed's fallback branch, kbli_enrichment_pipeline.py:351 — `STATUS_MAP.get(mapping, f\"Mapping status: {mapping}.\")` prints the identifier verbatim whenever the status is not in STATUS_MAP. Here the enum trails an already-English sentence ('Direct match from KBLI 2020 (MATCH_LANGSUNG).'), so the cure simply DROPS the parenthetical and the sentence stands. The four tokens are enumerated literally, never matched as an ALL-CAPS shape: NIB / OSS / KBLI / PMA are legitimate acronyms on these pages and a shape-matcher would eat them."
+    },
+    {
+      "id": "enum_leak_leading_dash",
+      "pattern": "\\b(?:MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO)\\s+—\\s+(\\w)(\\w*)",
+      "replacement": "",
+      "uppercase_first_group": true,
+      "note": "The same leak in leading position ('MATCH_LANGSUNG — direct match from KBLI 2020.'). Dropping the token would leave the sentence starting lowercase, so the first letter of the surviving clause is re-capitalised — see uppercase_first_group in the compiler for why that is a per-rule flag and not a blanket post-pass."
+    },
+    {
+      "id": "enum_leak_parenthetical_status",
+      "pattern": "\\s*\\((?:MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO) status\\)",
+      "replacement": "",
+      "note": "8 occurrences of the parenthetical carrying a trailing word: \"it didn't exist in 2020 (BPS_ONLY status).\" The first parenthetical rule requires the parens to hold ONLY the token, so this variant slipped it — found by re-running the residue probe after that rule landed, which is the point of having a probe that does not reuse the cure's own rules."
+    },
+    {
+      "id": "enum_leak_leading_from",
+      "pattern": "\\bCODICE_RINUMERATO from KBLI",
+      "replacement": "Renumbered from KBLI",
+      "note": "'CODICE_RINUMERATO from KBLI 2020 code 62012.' — leading token followed by 'from', not an em-dash. The English participle matches STATUS_MAP's own verb for this status."
+    },
+    {
+      "id": "enum_leak_leading_from_aggregazione",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE from KBLI",
+      "replacement": "Consolidated from KBLI",
+      "note": "Same shape for the aggregation status."
+    },
+    {
+      "id": "enum_leak_inline_mapping",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE mapping\\b",
+      "replacement": "aggregated mapping",
+      "note": "'The MATCH_CON_AGGREGAZIONE mapping means some activities...' — the token used as an adjective mid-sentence. Lower-case replacement because the article before it already carries the capital."
+    },
+    {
+      "id": "enum_leak_bare_sentence",
+      "pattern": "\\bMATCH_LANGSUNG\\.",
+      "replacement": "Unchanged from KBLI 2020 — direct match.",
+      "note": "The bare form, where the enum IS the whole sentence and there is no English left to keep. The replacement is NOT authored here: it is STATUS_MAP['MATCH_LANGSUNG'] verbatim from kbli_enrichment_pipeline.py:96 — the pipeline author's own rendering of this exact status. Ordered AFTER the parenthetical/dash rules so it only ever sees what they left."
+    },
+    {
+      "id": "enum_leak_bare_sentence_rinumerato",
+      "pattern": "\\bCODICE_RINUMERATO\\.",
+      "replacement": "Renumbered from KBLI 2020. Your OSS registration may need updating to the new code.",
+      "note": "STATUS_MAP['CODICE_RINUMERATO'] verbatim (kbli_enrichment_pipeline.py:97)."
+    },
+    {
+      "id": "enum_leak_bare_sentence_aggregazione",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE\\.",
+      "replacement": "This code consolidates multiple KBLI 2020 activities into one. Verify your specific activity maps correctly.",
+      "note": "STATUS_MAP['MATCH_CON_AGGREGAZIONE'] verbatim (kbli_enrichment_pipeline.py:98)."
+    },
+    {
+      "id": "enum_leak_bare_sentence_bps_only",
+      "pattern": "\\bBPS_ONLY\\.",
+      "replacement": "New in KBLI 2025 — no equivalent in KBLI 2020. Register fresh on OSS.",
+      "note": "STATUS_MAP['BPS_ONLY'] verbatim (kbli_enrichment_pipeline.py:99)."
+    },
+    {
+      "id": "enum_leak_leading_from_bare_code",
+      "pattern": "\\bCODICE_RINUMERATO from (\\d{5})",
+      "replacement": "Renumbered from KBLI 2020 code \\1",
+      "note": "3 gold records. The leading-token rule required the literal 'from KBLI'; here the token is followed straight by a bare code ('CODICE_RINUMERATO from 68130'). An UNDER-match I introduced by anchoring on the wrong side of the operand — found by the residue probe on the SECOND surface, which is why gold is scanned and not assumed to mirror canonical."
+    },
+    {
+      "id": "enum_leak_bps_only_with_pp28",
+      "pattern": "\\bBPS_ONLY with PP28 data\\b",
+      "replacement": "new in KBLI 2025, with PP28 data",
+      "note": "4 gold records: 'New code in KBLI 2025 (BPS_ONLY with PP28 data).' The parenthetical carries real information (PP28 data exists) so it is rendered, not dropped."
+    },
+    {
+      "id": "enum_leak_bps_only_article",
+      "pattern": "\\ba BPS_ONLY code\\b",
+      "replacement": "a code new in KBLI 2025",
+      "note": "The token used as a noun-adjective: 'This is a BPS_ONLY code — it exists in...'."
+    },
+    {
+      "id": "enum_leak_bps_only_as",
+      "pattern": "\\bas BPS_ONLY\\b",
+      "replacement": "as new in KBLI 2025",
+      "note": "'maintains the classification as BPS_ONLY, meaning...' — same token, adverbial position."
+    },
+    {
+      "id": "cleaned_removed_invalid",
+      "pattern": "Cleaned: removed invalid \\[[^\\]]*\\]\\s*",
+      "replacement": "",
+      "note": "9 records. DELETED, not translated — deliberately. This is internal pipeline bookkeeping about a code the cleaner dropped; it is not information a client can act on, and it was never meant to reach a public page. The fact itself is not lost: which 2020 codes a record does and does not carry is recorded structurally in the crosswalk fields (pp28_sources / kbli_2020_source), which is where an audit trail belongs. This is the one rule that removes rather than renders, and it is called out here so the removal is a recorded decision rather than a silent side effect."
+    },
+    {
+      "id": "enum_bold_bps_only_dash",
+      "pattern": "\\*\\*BPS_ONLY\\*\\* — ",
+      "replacement": "**New in KBLI 2025** — ",
+      "note": "12 (record,field) pairs across whatYouNeed on both surfaces. The bold markers are load-bearing: the page renders this field as markdown, so dropping them would silently de-emphasise the lead sentence. Wording follows STATUS_MAP['BPS_ONLY'] in apps/backend-rag/scripts/kbli_enrichment_pipeline.py:99 ('New in KBLI 2025 ...'), which is where the authentic English for this status already lives — so one page can never say it two ways."
+    },
+    {
+      "id": "enum_bold_marked_as",
+      "pattern": "marked \\*\\*BPS_ONLY\\*\\*",
+      "replacement": "marked **new in KBLI 2025**",
+      "note": "3 pairs (85510, 85579 canonical, 85579 gold). Lower-case here because the token sits mid-sentence ('This code is marked ...'), unlike the sentence-leading form above."
+    },
+    {
+      "id": "enum_bold_bps_only_code_perskala",
+      "pattern": "\\*\\*BPS_ONLY code\\*\\* — no `per_skala` data in KBLI 2025 JSON\\.",
+      "replacement": "**New in KBLI 2025** — no PP28/2025 risk classification is published for this code yet.",
+      "note": "2 pairs (gold 65121, 72201). This one carries a SECOND leak class the rest do not: `per_skala` is our pipeline's column name and 'KBLI 2025 JSON' is our source file, so the client was reading our implementation notes. Replaced with the fact the sentence was trying to convey, in the register the rest of the page uses. Cannot collide with enum_bold_bps_only_dash: that rule needs ** immediately after BPS_ONLY, and here the next characters are ' code**'."
+    },
+    {
+      "id": "enum_since_its_bps_only",
+      "pattern": "Since it's BPS_ONLY \\(",
+      "replacement": "Since it's new in KBLI 2025 (",
+      "note": "1 pair (canonical 96230 baliContext)."
+    },
+    {
+      "id": "enum_the_bps_only_status",
+      "pattern": "The BPS_ONLY status",
+      "replacement": "The new-in-2025 status",
+      "note": "2 pairs (gold 60390 and 82400, both baliContext). 82400 is the record the residue probe was BLIND to before the bounded-strip fix: a possessive apostrophe in \"Bali's\" paired with one 468 characters later and swallowed this leak whole. It was found because the rules fired 24 times while the probe had located only 23 targets — a firing with no matching finding means the finder is blind, not that the rule is greedy."
+    },
+    {
+      "id": "enum_bps_only_means_uncertainty",
+      "pattern": "\\*\\*BPS_ONLY code means uncertainty:\\*\\*",
+      "replacement": "**New code, so licensing is still uncertain:**",
+      "note": "1 pair (gold 72201 baliContext). A bullet heading; the colon and bold are part of the list's structure."
+    },
+    {
+      "id": "enum_bps_only_for_now",
+      "pattern": "\\. BPS_ONLY for now, so expect",
+      "replacement": ". It is new in KBLI 2025, so expect",
+      "note": "1 pair (gold 72201 zantaraOpener). zantaraOpener was recorded as leak-free in the first census, which measured CANONICAL only — gold leaks there and canonical never does. The two surfaces do not share a field distribution; each is measured separately now."
+    },
+    {
+      "id": "enum_the_bps_only_intermediation",
+      "pattern": "the BPS_ONLY intermediation code",
+      "replacement": "the new-in-2025 intermediation code",
+      "note": "1 pair (gold 82400 zantaraOpener)."
+    },
+    {
+      "id": "enum_bloccato_classe_rischio",
+      "pattern": "The local status is BLOCCATO_CLASSE_RISCHIO, meaning",
+      "replacement": "The local status is a risk-class block, meaning",
+      "note": "1 pair (canonical 55300 whatYouNeed) and the only non-BPS_ONLY token in this lot. It appears in NO whatChanged record, which is why curing whatChanged alone could never have surfaced it — and it sits in the LICENSING field, the most consequential one on the page. The trailing ', meaning' is inside the pattern on purpose: the sentence goes on to DEFINE the term ('a moratorium (effective 13 May 2026) prevents ...'), so only the identifier is replaced and the explanation the client actually needs is preserved untouched."
+    },
+    {
+      "id": "enum_paren_bps_only_code",
+      "pattern": "\\(BPS_ONLY code",
+      "replacement": "(new in KBLI 2025",
+      "note": "2 firings, BOTH inside gold 72201.whatYouNeed — 'expect NIB-only for now (BPS_ONLY code)' and 'Authority: TBD (BPS_ONLY code - licensing pathway not fully defined)'. Found by the residue probe, not by the census, and that is the point worth recording: the census counted (record,field) PAIRS while the cure operates on OCCURRENCES. 33 pairs carry exactly one token and one pair carries three, so the true occurrence count is 36, not 34. A unit mismatch between what you measure and what you fix reads as complete when it is not. The pattern intentionally does not close the parenthesis, so it covers both the bare '(BPS_ONLY code)' and the em-dash continuation; it cannot collide with enum_bold_bps_only_code_perskala, which requires ** immediately before the token."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_only",
+      "pattern": "\\s*\\(OK_or_HIGHER_RISK\\)",
+      "replacement": "",
+      "note": "1 firing (canonical 84111.whatYouNeed): 'the activity is not blocked by a local moratorium (OK_or_HIGHER_RISK), but that does not override the national prohibition'. DELETED rather than relabelled because the clause immediately before it already states the fact in plain English — inserting 'Registrable in Bali' would make the sentence say the same thing twice, and would also read as a green light in a sentence whose whole point is that national ownership is CLOSED."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_lead",
+      "pattern": "\\(OK_or_HIGHER_RISK, ",
+      "replacement": "(",
+      "note": "1 firing (canonical 84144.whatYouNeed): '(OK_or_HIGHER_RISK, medium-high risk but verifiable per address)'. The parenthesis keeps its remaining, genuinely informative content; only the symbol leaves."
+    },
+    {
+      "id": "enum_bali_ok_lists_it_as",
+      "pattern": "lists it as OK_or_HIGHER_RISK",
+      "replacement": "lists it as registrable in Bali",
+      "note": "1 firing (canonical 84146.whatYouNeed): 'Bali's current assessment lists it as OK_or_HIGHER_RISK - it is not blocked by the local moratorium but is considered medium-high to high risk'. Here the symbol IS the object of the sentence, so it must be rendered rather than deleted. Wording mirrors BALI_STATUS_CONFIG.OK_or_HIGHER_RISK.label ('Registrable in Bali') in apps/mouth/src/lib/kbli-status-labels.ts, lower-cased to sit mid-sentence, so the prose and the BaliStatusBadge on the same page cannot disagree."
+    },
+    {
+      "id": "enum_bali_blocked_scare_quoted",
+      "pattern": "as 'BLOCCATO_CLASSE_RISCHIO'",
+      "replacement": "as blocked in Bali by the risk-class moratorium",
+      "note": "1 firing (canonical 47249.whatYouNeed): 'classifying this retail trade as BLOCCATO_CLASSE_RISCHIO' with the symbol in single quotes. Those are SCARE-QUOTES around an internal identifier, not an audit citation — a client reads the raw symbol either way. This is the record that proved the probe's quoted-token exemption was hiding a real leak rather than protecting evidence. Wording mirrors BALI_STATUS_CONFIG.BLOCCATO_CLASSE_RISCHIO.label ('Blocked in Bali (risk-class moratorium)')."
+    },
+
+    {
+      "id": "it_code_stabile",
+      "pattern": "(?<![0-9])(\\d{5}) stabile\\.",
+      "replacement": "\\1 is unchanged.",
+      "note": "L2.6. 1 firing (canonical 46411). Parameterised on the code rather than written as a literal, so a future record carrying the same one-word pipeline verdict is cured too. NOTE the pre-existing content defect this does NOT fix and does not hide: 46411's lead sentence says 'Renumbered/adjusted from KBLI 2020' and the tail now says 'is unchanged' — the two contradict. That is a status_mapping/content question, not a language one, and is filed rather than silently resolved here."
+    },
+    {
+      "id": "it_kbli_invariato",
+      "pattern": "KBLI (\\d{5}) invariato 2020→2025",
+      "replacement": "KBLI \\1 is unchanged from 2020 to 2025",
+      "note": "L2.6. 4 firings (canonical 64910, 65121, 66125, 66161) — the one genuinely templated shape in this batch, hence parameterised. These same four records are also the only ones in the catalogue cut mid-word; the truncation rules below finish them."
+    },
+    {
+      "id": "it_46442_separate_from",
+      "pattern": "Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020\\.",
+      "replacement": "KBLI 2025 keeps 46442 separate from 46441, reinforcing the regulatory/ministerial distinction introduced in KBLI 2020.",
+      "note": "L2.6. 1 firing (canonical 46442, VISIBLE on prod). Free prose, so a literal — no template to generalise over."
+    },
+    {
+      "id": "it_46451_split",
+      "pattern": "Eredita parte del vecchio 46421 KBLI 2020\\. In KBLI 2025 scorporato in 46451 \\(alat tulis\\) e 46452 \\(percetakan\\)\\. Verificare mapping NIB per non perdere licenze API-U esistenti\\.",
+      "replacement": "Inherits part of the old KBLI 2020 code 46421. In KBLI 2025 it was split into 46451 (alat tulis — stationery) and 46452 (percetakan — printing). Check your NIB mapping so you do not lose existing API-U licences.",
+      "note": "L2.6. 1 firing (canonical 46451, VISIBLE on prod). The Indonesian terms of art are KEPT and glossed rather than translated away — alat tulis and percetakan are what the client will actually pick on OSS."
+    },
+    {
+      "id": "it_46791_not_optics",
+      "pattern": "Questo è il codice KBLI 2025 per il vecchio 46444 \\(alat kesehatan\\)\\. Non confondere con 46430 \\(ottica consumer\\): lenti correttive e dispositivi diagnostici appartengono qui, non lì\\.",
+      "replacement": "This is the KBLI 2025 code for the old 46444 (alat kesehatan — medical devices). Do not confuse it with 46430 (consumer optics): corrective lenses and diagnostic devices belong here, not there.",
+      "note": "L2.6. 1 firing (canonical 46791). NOT currently visible on the page — gold carries its own English whatChanged for this code and gold MASKS intel_2026 — so this is a cure at rest and for the non-page consumers. Stated rather than claimed as a visible fix."
+    },
+    {
+      "id": "it_64995_brand_new_code",
+      "pattern": "Codice completamente nuovo in KBLI 2025 \\(parte nuova Categoria V — Carbon & Environment\\)\\. Nessuna migrazione da KBLI 2020 necessaria\\. Solo nuova registrazione\\.",
+      "replacement": "An entirely new code in KBLI 2025 (part of the new Category V — Carbon & Environment). No migration from KBLI 2020 is needed — only a fresh registration.",
+      "note": "L2.6. 2 firings — the ONLY record in this batch whose Italian sits on BOTH surfaces (canonical 64995 and gold 64995), and gold does not mask it, so it is visible on prod. Measured per-surface; not extrapolated."
+    },
+    {
+      "id": "it_65121_p2sk_overarching",
+      "pattern": "Transizione puramente amministrativa\\. UU P2SK framework sovraordinato\\.",
+      "replacement": "The transition is purely administrative. The UU P2SK framework is the overarching legal structure.",
+      "note": "L2.6. 1 firing (canonical 65121). 'sovraordinato' was first drafted as 'takes precedence' and the adversarial grader refuted it: precedence asserts an operational conflict-preemption rule the Italian never claimed. 'Overarching legal structure' is what the source says."
+    },
+    {
+      "id": "it_64910_pojk46_reference",
+      "pattern": "POJK 46/2024 è norma di riferimento principale entrata in vigore fine 2024\\.",
+      "replacement": "POJK 46/2024 is the principal reference regulation, in force since late 2024.",
+      "note": "L2.6. 1 firing (canonical 64910, VISIBLE on prod)."
+    },
+    {
+      "id": "it_66161_pojk40_framework",
+      "pattern": "POJK 40/2024 framework attuale \\(sostituisce POJK 10/2022\\)\\. UU P2SK base legislativa\\.",
+      "replacement": "POJK 40/2024 is the current framework, superseding POJK 10/2022, with UU P2SK as the legislative basis.",
+      "note": "L2.6. 1 firing (canonical 66161, VISIBLE on prod)."
+    },
+    {
+      "id": "it_66125_subgroup_6612",
+      "pattern": "\\(sotto categoria 6612 — Aktivitas Perantara Transaksi\\)",
+      "replacement": "(under subgroup 6612 — Aktivitas Perantara Transaksi, transaction intermediary activities)",
+      "note": "L2.6. 1 firing (canonical 66125). 'subgroup', not 'group': in KBLI nomenclature a 4-digit level is the Subgolongan. Corrected by the adversarial grader — the first draft said 'group'."
+    },
+    {
+      "id": "it_66125_bi_sole_regulator",
+      "pattern": "BI regolatore esclusivo tramite PBI 6/2024",
+      "replacement": "Bank Indonesia is the sole regulator, under PBI 6/2024",
+      "note": "L2.6. 1 firing (canonical 66125)."
+    },
+
+    {
+      "id": "trunc_64910_licenze_esistenti",
+      "pattern": " Licenze esistenti v$",
+      "replacement": "",
+      "note": "L2.6 TRUNCATION. The stored value ends mid-word. 'Licenze esistenti' (existing licences) has lost its entire predicate, so nothing survives that asserts anything — DROPPED. We do not know what it said and will not invent it (rule #9). The loss is recorded here and in git history; it is not recoverable from any other field, which was checked before dropping."
+    },
+    {
+      "id": "trunc_65121_verifica_aggiornamento",
+      "pattern": " Verifica aggiornamento l$",
+      "replacement": "",
+      "note": "L2.6 TRUNCATION. Same shape as 64910: predicate lost, nothing assertable survives, DROPPED. The sentence immediately before it already states the OSS verification requirement in English, so no information the client needs is lost."
+    },
+    {
+      "id": "trunc_66125_padg",
+      "pattern": " e PADG cor$",
+      "replacement": ".",
+      "note": "L2.6 TRUNCATION. 'e PADG cor…' has lost the PADG NUMBER, so the citation is unusable — a reader cannot look up a regulation we cannot name. DROPPED, and the sentence is closed with the period the truncation ate. The complete half of the same sentence (PBI 6/2024) is kept and translated above."
+    },
+    {
+      "id": "trunc_66161_pojk3_itsk",
+      "pattern": " POJK 3/2024 \\(ITSK\\) gove$",
+      "replacement": " Also cited for this code: POJK 3/2024 (ITSK — Financial Sector Technology Innovation).",
+      "note": "L2.6 TRUNCATION — the one case where dropping would have been the WRONG call, and the adversarial grader is why it did not happen. Here only the VERB is cut ('gove…'): the regulation number and its acronym are complete and are exactly what a business reader needs. But completing the verb would assert a legal effect the data no longer states, and the grader's own proposed completion ('governs ITSK') invented the object too. So the citation is KEPT in the only form the record still supports — that this regulation is cited for this code — and the lost predicate is not reconstructed. The ITSK expansion is a term gloss, independently given by the grader, not a claim about this code."
+    }
+  ]
+}
