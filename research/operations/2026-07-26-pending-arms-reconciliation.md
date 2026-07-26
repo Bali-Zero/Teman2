@@ -2,6 +2,7 @@
 date: 2026-07-26
 domain: operations
 client_case: none
+adversarial_review: codex
 sources:
   - .claude/skills/modus/PENDING-ARMS.md (ledger under reconciliation)
   - scripts/pending_arms_report.py (run 2026-07-26, counts)
@@ -189,14 +190,26 @@ it thirteen days later on the strength of a purchase recommendation.
 ## §Solo-operatore
 
 1. **`backend_rag_v2` password rotation** (`operator[secret]`). Everything else on that P0 is
-   verified done. Atomic sequence, so no consumer sees a half-rotated credential:
+   verified done. **Correction (adversarial review, 2026-07-26): the sequence below is NOT
+   atomic and the original wording overclaimed it.** `ALTER ROLE` at step 2 invalidates the
+   old password the instant it runs; any running instance still holding the old
+   `DATABASE_URL` — which is every instance until step 3's rollout replaces it, and BOTH old
+   and new instances during a rolling deploy — fails to authenticate for that window. This
+   is a real, if brief, service-disruption risk on a prod DB app, not a cosmetic wording
+   issue. Either declare an explicit maintenance window, or (safer, no window needed) rotate
+   via a parallel role/credential: create the new role, deploy it everywhere, drain, THEN
+   revoke the old role's password — never invalidate a credential still in active use.
    1. `fly secrets set DATABASE_URL=... -a nuzantara-rag --stage` (staged, not deployed).
    2. `ALTER ROLE backend_rag_v2 WITH PASSWORD '<new>'` on prod (superuser session — the
-      read-only MCP cannot and must not do this).
+      read-only MCP cannot and must not do this). **This is the step that opens the
+      disruption window — see correction above; sequence accordingly.**
    3. `fly deploy` to release the staged secret in one rollout.
    4. Update the local `.env` on Pro and M5 (Mini has none) — write in place, keep `0600`,
       never `cat` the file to verify; confirm with `stat` and a live app health probe.
-   5. Verify: `/health` 200 on `nuzantara-rag`, plus one real DB-backed endpoint.
+   5. Verify: `/health` 200 on `nuzantara-rag`, plus one real DB-backed endpoint, AND confirm
+      the OLD password is actively rejected (a positive auth-failure test), not just that the
+      new one works — a rotation that silently leaves the old credential valid is not a
+      rotation.
    The demotion step in the original line is **not needed** — already `NOSUPERUSER` on prod.
 2. ~~**GLM 5.2 z.ai recharge**~~ — **struck. Nothing to buy.** The seat is alive; the probe was
    wrong. The ledger line is closed by the sibling's PR #3161 (which also ships
@@ -206,3 +219,84 @@ it thirteen days later on the strength of a purchase recommendation.
 
 That leaves **exactly one** genuinely operator-owned item out of the six examined: the
 `backend_rag_v2` password rotation. The other five were a session's work all along.
+
+## Adversarial review
+
+**Seat: `codex` (gpt-5.6-sol, `codex exec --sandbox read-only -c model_reasoning_effort=xhigh`,
+independent-correctness framing, real tool access to this repo — not a pasted-diff critique).**
+A different session first spot-checked 5 factual claims against live systems (all 5 held —
+`~/.claude/CLAUDE.md:169-170` kimi/Allegro text, `branch_graveyard_cleanup.sh:153`'s merge-base
+line verbatim, live `backend_rag_v2 rolsuper=false` via Postgres MCP, `apps/cell/.env` `0600` on
+M5, PENDING-ARMS.md diff matching this report's own table), then dispatched Codex to hunt for
+what those checks didn't cover — especially the reasoning, not just the facts. **Verdict: FAIL**
+(2 BLOCKER, 4 MEDIUM, 1 LOW). Every finding below changed this document; none was waved through.
+
+1. **BLOCKER — the reconciled ledger asserted two incompatible truths about the tri-LLM
+   `claude-opus` seat in the same breath.** The new `ROOT-CAUSED 2026-07-26` line and the
+   pre-existing `closed 2026-07-25` line immediately below it (which claims to supersede it,
+   saying the cause was "never diagnosed" and the seat "self-resolved") now directly
+   contradict each other — and the dates run backwards, since a 07-25 entry cannot supersede
+   a diagnosis first made on 07-26. **Independently re-confirmed** by re-reading both lines in
+   `PENDING-ARMS.md`. **FIXED** in this commit: the 07-26 line now explicitly says the 07-25
+   "closed, root cause never diagnosed" entry below it predates this diagnosis and should be
+   read as a historical data point (the 5-PR-recovery observation), not a current verdict —
+   without touching that line's own text, since this PR didn't author it and reverting or
+   editing someone else's closed entry unilaterally is a different question than fixing the
+   contradiction this PR itself introduced.
+2. **BLOCKER — the password-rotation runbook called an inherently non-atomic sequence
+   "atomic."** `ALTER ROLE` invalidates the old password before the rollout that would give
+   every consumer the new one; during a rolling deploy, old and new instances necessarily
+   coexist across that gap, so some connections would fail. **FIXED** in this commit: §Solo-
+   operatore now states the disruption window explicitly, gives the parallel-credential
+   alternative that avoids it entirely, and adds a positive old-credential-rejection check to
+   the verification step instead of implying atomicity was ever free.
+3. **MEDIUM — the claude-opus shape-bug root cause is real but its historical scope is
+   overstated.** The code bug (`codex_tri_llm_review.py::review_claude_opus` assigning raw
+   Keychain JSON straight into `CLAUDE_CODE_OAUTH_TOKEN`) is confirmed still present on
+   `origin/main` today. But the report doesn't show the actual failed-run auth output, and it
+   doesn't reconcile "every spawn was poisoned" against the fact that 5 unattended runs
+   produced valid verdicts before any fix landed. **DISPOSITION: acknowledged, not rewritten**
+   — the underlying bug-exists claim is independently confirmed (see finding 4's verification
+   below), but the "this was necessarily THE cause of the cited incidents" framing in the
+   PENDING-ARMS line is stronger than the evidence shown here supports. Left as a caveat here
+   rather than editing that line's prose further, since untangling root-cause-vs-symptom for
+   5 specific historical incidents is beyond what this reconciliation pass can settle.
+4. **MEDIUM — "CURED" did not follow from the evidence, and this is now independently
+   confirmed, not just Codex's claim.** The PENDING-ARMS line's own proof-of-armed bar is
+   "the fix merged AND the next PR's comment shows a real verdict." Neither is true: verified
+   live this session — `extract_oauth_access_token()` does not exist anywhere in
+   `scripts/codex_tri_llm_review.py` on `origin/main`, and commit `20c901330a` (the fix) is
+   **not** an ancestor of `origin/main`. Further verified: the branch
+   `agent/air-m5/ops/trillm-seat-fix` is pushed to origin but **no PR has ever been opened for
+   it** — this is Esiste≠Armato (cicatrix family #2), not a review backlog. **FIXED** in this
+   commit: the PENDING-ARMS line now says "FIX WRITTEN AND PUSHED, NOT YET MERGED" instead of
+   "CURED," and states the branch/PR-existence facts above so the next reader doesn't have to
+   re-derive them.
+5. **MEDIUM — the sibling PR's GLM doctrine fix is incomplete.** `.claude/skills/modus/
+   SKILL.md`'s arsenal table (as it stands in this PR's own diff, independently observed
+   before Codex ran) declares GLM 5.2 **ALIVE** as refuter in one row and still **DEAD** as
+   "second brain" one row below, and the Codex slugs are still marked dead in the row above
+   both. **DISPOSITION: acknowledged, not fixed here** — that file is `.claude/skills/modus/
+   SKILL.md`, which this PR's report explicitly (and correctly, per modus's own
+   self-modification policy) declines to edit directly; it's a real follow-up, now on record
+   in two independent places (this review + the report's own text) instead of one.
+6. **MEDIUM — the "3 surviving pre-purge branches" merge-base claim isn't reproducible from
+   the report as written.** No branch names, SHAs, or `merge-base` output are given, only the
+   count. **DISPOSITION: accepted as a real gap, not resolved here** — reconstructing which 3
+   branches without their identities preserved would take a separate investigation; the
+   underlying critique of `content_on_main()`'s merge-base assumption is independently
+   verified accurate (the function's code was read directly, matches the report's citation),
+   which is the load-bearing part for this reconciliation's own methodology.
+7. **LOW — sibling-PR agreement was given more evidential weight than it earns.** Correlation
+   (two sessions reading the same code/memory) isn't independent verification, and holding a
+   PR in draft contains the risk without resolving the underlying disagreement. **DISPOSITION:
+   acknowledged — no edit needed.** The report's own text already frames this correctly ("what
+   saved it was... the sibling's disagreement... draft is the only real hold, disarming
+   `--auto` is not one") and the actual resolution credited is the live `claude-glm` probe,
+   not the sibling's agreement — the existing wording already matches this finding's intent.
+
+**Not evaluated by Codex** (no live access in its sandbox): the exact 7,993/108-character
+Keychain measurements, the live `claude-glm` PONG + z.ai endpoint responses, the SSH probes to
+Pro/Mini (peer unreachable), and the identities of the 3 pre-purge branches. These remain as
+originally reported, corroborated only by the wrapper/symlink structure Codex could read
+statically, not by re-running the live probes themselves.
