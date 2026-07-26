@@ -9,6 +9,7 @@ proven to spare.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from collections import Counter
@@ -773,3 +774,84 @@ def test_the_two_stored_copies_no_longer_contradict_each_other(mod, rules, canon
         if mn.strip() and mn.strip() in wc and cured_mn and cured_mn not in cured_wc:
             broken.append(rec.get("kode_kbli_2025"))
     assert not broken, f"cured mapping_note no longer matches its embedded copy in whatChanged: {broken[:6]}"
+
+
+def _sidecar_fixture(tmp_path: Path, pinned: str, last_modified: str) -> tuple[Path, Path]:
+    dataset = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    dataset.write_bytes(b'{"data": []}\n')
+    sidecar = tmp_path / "kbli-dataset-version.json"
+    sidecar.write_text(
+        json.dumps({"datasetSha256": pinned, "lastModified": last_modified}) + "\n",
+        encoding="utf-8",
+    )
+    return dataset, sidecar
+
+
+def test_sidecar_is_reconciled_even_when_the_run_rewrites_nothing(tmp_path, monkeypatch):
+    """GUILT: the pin bump used to hang off `if c_changed`.
+
+    That made it unreachable in the one situation where the pin is actually wrong:
+    resolving a merge conflict takes main's sidecar (the PREVIOUS lot's hash), and
+    the re-run that follows is a fixed point — zero records change, so the stale
+    pin never moved and the red gate could only be cleared by hand-editing a
+    DERIVED file. Keyed on the mismatch, a no-op run still repairs it.
+    """
+    mod = _load_module()
+    dataset, sidecar = _sidecar_fixture(tmp_path, "sha256:" + "0" * 64, "2020-01-01")
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(
+        mod, "run_sync_script", lambda: pytest.fail("sync must not run when the copy already matches")
+    )
+
+    # canonical IS the copy here, so the drift branch stays out of the way.
+    wrote = mod.reconcile_sidecar(dataset)
+
+    assert wrote is True
+    expected = hashlib.sha256(dataset.read_bytes()).hexdigest()
+    assert json.loads(sidecar.read_text())["datasetSha256"] == f"sha256:{expected}"
+
+
+def test_sidecar_already_current_is_left_untouched(tmp_path, monkeypatch):
+    """INNOCENCE: an already-correct pin must not be rewritten.
+
+    `lastModified` is the SEO source of truth for /kbli lastmod and JSON-LD
+    dateModified. Stamping today's date on a run that changed nothing would tell
+    Google all 1,559 pages were modified — the exact lie the sidecar exists to
+    prevent, arriving through the tool meant to keep it honest.
+    """
+    mod = _load_module()
+    dataset = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    dataset.write_bytes(b'{"data": []}\n')
+    current = hashlib.sha256(dataset.read_bytes()).hexdigest()
+    _, sidecar = _sidecar_fixture(tmp_path, f"sha256:{current}", "2026-01-01")
+    dataset.write_bytes(b'{"data": []}\n')
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(mod, "run_sync_script", lambda: pytest.fail("no sync when nothing drifted"))
+
+    wrote = mod.reconcile_sidecar(dataset)
+
+    assert wrote is False
+    assert json.loads(sidecar.read_text())["lastModified"] == "2026-01-01"
+
+
+def test_sidecar_syncs_first_when_the_mouth_copy_lags_canonical(tmp_path, monkeypatch):
+    """The mouth copy is a sync DESTINATION, not a second source of truth.
+
+    Hashing it while it lags canonical would pin a dataset nobody serves: the
+    vitest gate goes green against the stale copy and the cure stays invisible on
+    the pages — a green light for the wrong file.
+    """
+    mod = _load_module()
+    dataset, sidecar = _sidecar_fixture(tmp_path, "sha256:" + "0" * 64, "2020-01-01")
+    canonical = tmp_path / "canonical.json"
+    canonical.write_bytes(b'{"data": [{"kode_kbli_2025": "46442"}]}\n')
+    calls: list[int] = []
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(mod, "run_sync_script", lambda: calls.append(1))
+
+    mod.reconcile_sidecar(canonical)
+
+    assert calls == [1], "a drifted mouth copy must be re-synced before it is hashed"

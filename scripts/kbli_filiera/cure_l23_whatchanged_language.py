@@ -458,12 +458,29 @@ def run_sync_script() -> None:
         raise CureError(f"sync_kbli_dataset.sh sync failed with exit {result.returncode}")
 
 
-def update_sidecar() -> None:
+def reconcile_sidecar(canonical: Path) -> bool:
+    """Bring the SEO sidecar in line with the dataset, keyed on WHETHER IT MATCHES.
+
+    This used to hang off `if c_changed`, which made it unreachable in the exact
+    case where the pin is wrong: resolving a merge conflict takes main's sidecar
+    (the PREVIOUS lot's hash), and the re-run that follows is a fixed point — zero
+    records change, so the stale pin never moved forward and only a hand-edit of a
+    DERIVED file could have fixed it. Keyed on the mismatch instead, and idempotent
+    (no write when already current), so a no-op run still reconciles drift.
+    """
     if not SIDECAR_DATASET_PATH.exists():
         raise CureError(f"sidecar dataset copy missing: {SIDECAR_DATASET_PATH} (sync must run first)")
+    # The mouth copy is a sync DESTINATION, not a second source: if it drifted from
+    # canonical, hashing it would pin a dataset nobody serves.
+    if SIDECAR_DATASET_PATH.read_bytes() != canonical.read_bytes():
+        logger.info("sidecar dataset copy differs from canonical — syncing before hashing")
+        run_sync_script()
     digest = hashlib.sha256(SIDECAR_DATASET_PATH.read_bytes()).hexdigest()
     sidecar = json.loads(SIDECAR_PATH.read_text(encoding="utf-8"))
     before = sidecar.get("datasetSha256")
+    if before == f"sha256:{digest}":
+        logger.info("sidecar already current (%s) — no write", before)
+        return False
     # The `sha256:` prefix is load-bearing, not decoration: a BARE hex string in
     # committed data trips `Detect Secrets`, a REQUIRED check, as a "Hex High
     # Entropy String" — and which hashes trip it is a dice roll re-rolled every
@@ -474,6 +491,7 @@ def update_sidecar() -> None:
         json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     logger.info("sidecar updated: %s -> %s", before, sidecar["datasetSha256"])
+    return True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -546,7 +564,9 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(payload, f, ensure_ascii=False, indent=indent)
             f.write("\n")
         run_sync_script()
-        update_sidecar()
+
+    # Outside the `if c_changed` block on purpose — see reconcile_sidecar's docstring.
+    reconcile_sidecar(args.canonical)
 
     logger.info("APPLIED — canonical=%d gold=%d record(s) rewritten", c_changed, g_changed)
     logger.info(
