@@ -549,3 +549,99 @@ def test_no_field_is_left_with_unbalanced_bold_markers(mod, rules, gold_payload)
             if after != v and after.count("**") % 2 != before_n % 2:
                 bad.append((code, field))
     assert not bad, f"cure changed the bold-marker parity of: {bad[:6]}"
+
+
+# ==========================================================================
+# L2.5 — the top-level fields. `whatChanged` EMBEDS `mapping_note`, but they
+# are two independent stored copies, so curing one left the other Italian.
+# ==========================================================================
+
+def test_top_level_field_policy_is_explicit(mod):
+    policy = dict(mod.TOP_LEVEL_FIELDS)
+    assert policy == {"mapping_note": True, "aggregation_note": True}
+    # These are single-line machine output, so normalisation is safe — the
+    # opposite call from whatYouNeed, and made on measurement rather than taste.
+    assert all(policy.values())
+
+
+@pytest.mark.parametrize(
+    "before, expected",
+    [
+        (
+            "PP28 usa codice KBLI 2020 01122 (Pertanian Padi Inbrida...). Match: 80%",
+            "PP28 uses KBLI 2020 code 01122 (Pertanian Padi Inbrida...). Match: 80%",
+        ),
+        ("Dati da 01116 + 1 codici figli PP28", "data from 01116 + 1 PP28 child code(s)"),
+        # The whole value is pipeline debris — a Python list literal — and it was
+        # rendered to clients verbatim. Emptying is correct, not lossy: which 2020
+        # codes a record does and does not carry lives structurally in
+        # pp28_sources / kbli_2020_source, which is where an audit trail belongs.
+        ("Cleaned: removed invalid ['01272']", ""),
+    ],
+)
+def test_top_level_guilt_on_the_real_values(mod, rules, before, expected):
+    assert mod.cure_text(before, rules, Counter(), normalize_whitespace=True) == expected
+
+
+def test_the_debris_records_render_nothing_rather_than_a_dangling_dash(mod):
+    """Emptying `mapping_note` must not leave "— " on the page.
+
+    Asserted against the FRONTEND SOURCE, not assumed: both consumers guard on
+    truthiness, so an empty string renders nothing. If either guard is ever
+    removed, 88 pages would show a bare em-dash and this test says so.
+    """
+    page = (REPO_ROOT / "apps" / "mouth" / "src" / "app" / "kbli" / "[code]" / "page.tsx").read_text(
+        encoding="utf-8"
+    )
+    faq = (REPO_ROOT / "apps" / "mouth" / "src" / "lib" / "kbli-faq.ts").read_text(encoding="utf-8")
+    assert "kbli.transition.mappingNote && (" in page, "the crosswalk row lost its truthiness guard"
+    assert "code.transition.mappingNote ?" in faq, "the FAQ answer lost its truthiness guard"
+
+
+def test_top_level_pass_is_canonical_only_because_gold_has_no_such_fields(mod, gold_payload):
+    """Measured, not assumed — the reason cure_top_level is never handed gold."""
+    present = [
+        (code, field)
+        for code, intel in mod.gold_pairs(gold_payload)
+        if isinstance(intel, dict)
+        for field, _ in mod.TOP_LEVEL_FIELDS
+        if isinstance(intel.get(field), str) and intel[field]
+    ]
+    assert not present, f"gold unexpectedly carries top-level fields: {present[:5]}"
+
+
+def test_the_fields_deliberately_left_alone_are_not_in_scope(mod):
+    """status_mapping / _data_note / uraian must never enter either field list.
+
+    Each has a live reason: status_mapping is the machine field TransitionBadge
+    renders (curing it breaks the badge on 1,558 records); _data_note is evidence
+    rendered verbatim and is pinned as an INNOCENCE case in
+    kbli-internal-leak.test.ts; uraian is the official BPS Indonesian text.
+    This test is the tripwire against a future "let's finish the sweep".
+    """
+    in_scope = {f for f, _ in mod.FIELDS} | {f for f, _ in mod.TOP_LEVEL_FIELDS}
+    for forbidden in ("status_mapping", "_data_note", "uraian", "ruang_lingkup"):
+        assert forbidden not in in_scope, f"{forbidden} must never be cured — see the comment on TOP_LEVEL_FIELDS"
+
+
+def test_the_two_stored_copies_no_longer_contradict_each_other(mod, rules, canonical_records):
+    """The client-visible symptom this lot exists for.
+
+    `whatChanged` embeds `mapping_note` verbatim, but they are independent
+    copies: L2.3 cured the embedded one and left the source Italian, so a page
+    rendered an English block and an Italian crosswalk row about the same fact.
+    After this cure, wherever the embedding relation holds, the cured
+    `mapping_note` must still appear inside the cured `whatChanged`.
+    """
+    broken = []
+    for rec in canonical_records:
+        mn = rec.get("mapping_note")
+        wc = (rec.get("intel_2026") or {}).get("whatChanged")
+        if not isinstance(mn, str) or not mn or not isinstance(wc, str):
+            continue
+        cured_mn = mod.cure_text(mn, rules, Counter(), normalize_whitespace=True)
+        cured_wc = mod.cure_text(wc, rules, Counter(), normalize_whitespace=True)
+        # only assert on records where the embedding relation actually holds
+        if mn.strip() and mn.strip() in wc and cured_mn and cured_mn not in cured_wc:
+            broken.append(rec.get("kode_kbli_2025"))
+    assert not broken, f"cured mapping_note no longer matches its embedded copy in whatChanged: {broken[:6]}"

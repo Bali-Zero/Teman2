@@ -115,6 +115,45 @@ FIELDS: tuple[tuple[str, bool], ...] = (
     ("zantaraOpener", False),
 )
 
+# Client-facing fields that hang off the RECORD, not off `intel_2026`. Same
+# (name, may-normalise-whitespace) contract as FIELDS.
+#
+# These are NOT a widening for tidiness. `intel_2026.whatChanged` EMBEDS
+# `mapping_note` verbatim — measured on the pre-L2.3 canonical, `mapping_note`
+# is an exact substring of `whatChanged` in 25 of 352 records — but they are two
+# INDEPENDENT STORED COPIES, so curing one left the other untouched. The result
+# on prod today: ~157 pages render an English `whatChanged` block and an Italian
+# crosswalk row, about the same fact, on the same page.
+#
+# Both are rendered, and `mapping_note` reaches THREE surfaces:
+#   * apps/mouth/src/app/kbli/[code]/page.tsx:928-930 — visible "— {mappingNote}"
+#   * apps/mouth/src/lib/kbli-faq.ts:117 — spliced into the FAQ answer, which is
+#     ALSO emitted as FAQPage JSON-LD, i.e. structured data Google indexes.
+#
+# Whitespace normalisation is safe on both (measured: 0 of them contain a
+# newline or a 2+ space run — they are single-line machine output, the shape
+# `whatChanged` has and `whatYouNeed` does not).
+#
+# `aggregation_note` is included with its scope stated honestly: it is typed and
+# transformed in BOTH apps (mouth + kbli-navigator) but rendered by NO page or
+# component — ZERO readers. Curing it is audit-trail, not a client fix; it is
+# done here because the rule already exists and because a field that is one
+# `<span>` away from being read should not be holding 198 Italian strings.
+TOP_LEVEL_FIELDS: tuple[tuple[str, bool], ...] = (
+    ("mapping_note", True),
+    ("aggregation_note", True),
+)
+
+# Deliberately NOT cured, each for its own reason. Listed so the next session
+# does not "complete the sweep" and break something load-bearing:
+#   * `status_mapping` (1,558 records) — the MACHINE field. TransitionBadge
+#     renders it via MAPPING_STATUS_LABELS as "Direct Match" etc. Its raw token
+#     appears in a curl only because it is in the serialized props, never as
+#     visible text. Curing it would destroy the badge on every record.
+#   * `_data_note` (88 with symbols) — evidence, rendered VERBATIM as an audit
+#     trail. kbli-internal-leak.test.ts pins it as an explicit INNOCENCE case.
+#   * `uraian` — the official BPS Indonesian description.
+
 # Residue probe. Deliberately literal and deliberately NOT the cure's own rule
 # set: if it reused the rules it would report zero by construction — a check
 # that cannot fail. These are tokens that are unambiguously Italian IN THIS
@@ -352,6 +391,45 @@ def cure_dataset(
     return changed, hits, residues
 
 
+def cure_top_level(
+    payload: Any,
+    rules: list[dict[str, Any]],
+    only: set[str] | None,
+) -> tuple[int, Counter, list[tuple[str, list[str]]]]:
+    """Cure TOP_LEVEL_FIELDS on the canonical's records.
+
+    A separate pass rather than a widening of cure_dataset, on purpose: that
+    function's per-field behaviour is pinned by mutation-tested guards and there
+    is no reason to put a second container shape through it. Gold is not passed
+    here because gold carries NONE of these fields — measured, not assumed.
+
+    Same write discipline as cure_dataset: a field is written back only when a
+    declared rule fired on it.
+    """
+    changed = 0
+    hits: Counter = Counter()
+    residues: list[tuple[str, list[str]]] = []
+    for rec in _iter_records(payload):
+        code = str(rec.get(CODE_FIELD) or rec.get("kode_kbli") or rec.get("code") or "")
+        if only and code not in only:
+            continue
+        for field, normalize in TOP_LEVEL_FIELDS:
+            before = rec.get(field)
+            if not isinstance(before, str) or not before:
+                continue
+            field_hits: Counter = Counter()
+            after = cure_text(before, rules, field_hits, normalize_whitespace=normalize)
+            if field_hits and after != before:
+                rec[field] = after
+                changed += 1
+                hits.update(field_hits)
+            left = residue_markers(after) + enum_residue(after)
+            if left:
+                residues.append((f"{code}.{field}", left))
+    logger.info("canonical top-level: %d (record,field) rewritten", changed)
+    return changed, hits, residues
+
+
 def run_sync_script() -> None:
     logger.info("running %s sync", SYNC_SCRIPT)
     result = subprocess.run(
@@ -407,6 +485,11 @@ def main(argv: list[str] | None = None) -> int:
     c_changed, c_hits, c_residue = cure_dataset(
         canonical_pairs(payload), rules, only, "canonical"
     )
+
+    t_changed, t_hits, t_residue = cure_top_level(payload, rules, only)
+    c_changed += t_changed
+    c_hits += t_hits
+    c_residue += t_residue
 
     gold_payload = json.loads(args.gold.read_text(encoding="utf-8"))
     g_changed, g_hits, g_residue = cure_dataset(
