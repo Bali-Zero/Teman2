@@ -80,7 +80,7 @@ export default function ProfileSettingsPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <User className="w-6 h-6 text-blue-400" />
+            <User className="w-6 h-6 text-[var(--bz-accent)]" />
             Profile Settings
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -234,7 +234,7 @@ export default function ProfileSettingsPage() {
                 <span className="text-[var(--foreground-muted)]">
                   Account Status
                 </span>
-                <span className="text-green-500">Active</span>
+                <span className="text-[var(--state-success)]">Active</span>
               </div>
             </div>
           </div>

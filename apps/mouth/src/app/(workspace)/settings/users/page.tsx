@@ -149,7 +149,7 @@ export default function UserManagementPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-400" />
+              <Users className="w-6 h-6 text-[var(--bz-accent)]" />
               User Management
             </h1>
             <p className="text-sm text-[var(--foreground-muted)]">
@@ -186,13 +186,13 @@ export default function UserManagementPage() {
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
-          <p className="text-2xl font-bold text-green-400">
+          <p className="text-2xl font-bold text-[var(--state-success)]">
             {users.filter((u) => u.is_online).length}
           </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Admins</p>
-          <p className="text-2xl font-bold text-purple-400">
+          <p className="text-2xl font-bold text-[var(--bz-neon-purple)]">
             {users.filter((u) => u.role === "admin").length}
           </p>
         </div>
@@ -263,8 +263,8 @@ export default function UserManagementPage() {
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                         user.role === "admin"
-                          ? "bg-purple-500/20 text-purple-400"
-                          : "bg-blue-500/20 text-blue-400"
+                          ? "bg-[var(--bz-neon-purple)]/15 text-[var(--bz-neon-purple)]"
+                          : "bg-[var(--state-info)]/15 text-[var(--state-info)]"
                       }`}
                     >
                       <Shield className="w-3 h-3" />
@@ -275,7 +275,7 @@ export default function UserManagementPage() {
                     <span
                       className={`inline-flex items-center gap-1 text-sm ${
                         user.is_online
-                          ? "text-green-400"
+                          ? "text-[var(--state-success)]"
                           : "text-[var(--foreground-muted)]"
                       }`}
                     >

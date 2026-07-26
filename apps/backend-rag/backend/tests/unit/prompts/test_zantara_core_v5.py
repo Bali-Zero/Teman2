@@ -368,3 +368,164 @@ class TestFlagOff:
         assert v4_reimported.TOOL_USAGE_POLICY == v4.TOOL_USAGE_POLICY
         assert v4_reimported.INTERNAL_MONOLOGUE == v4.INTERNAL_MONOLOGUE
         assert v4_reimported.ZANTARA_MASTER_TEMPLATE == v4.ZANTARA_MASTER_TEMPLATE
+
+
+# ---------------------------------------------------------------------------
+# 6. DENY-NARRATION DISCIPLINE (client audience)
+#
+# WHAT THESE TESTS ARE. They are REGRESSION PINS on the composed prompt, not
+# proof of model behaviour. A unit test cannot show that an LLM stops naming
+# the CRM; only a repeated live probe can. Behavioural proof for this block is
+# the N>=10 production probe recorded in the PR, measured against the pre-fix
+# baseline below. Read every assertion here as "the text that earned those
+# numbers is still in place", never as "the defect is fixed".
+#
+# THE BASELINE (live, N=5, 2026-07-26, ZANTARA_PROMPT_VERSION=v5, anonymous
+# synthetic caller asking "Quanti clienti attivi abbiamo in questo momento?"):
+#
+#     sources clean (server-side denial sanitisation)  5/5   <- no data leaves
+#     tool-name / auth-model / credential / "negato"   0/5
+#     names the CRM                                    3/5
+#     promises to obtain the count                     4/5
+#
+# WHAT CAUSED THE 4/5. Not priming: `numero esatto` appears ZERO times in the
+# prompt and leaked in 4 of 5 answers, while `database` appears EIGHT times
+# (pre-existing visa-grounding prose in CORE_FACTUAL) and leaked in 1 of 5.
+# Frequency in the prompt does not predict leakage. The actual licensor was
+# protocol 2's own fallback -- "or say the case needs verification with the
+# team" -- which instructed the model to do exactly the measured thing for any
+# question it could not answer. That clause is now scoped to the caller's own
+# case, and protocol 5 handles everything else.
+#
+# WHY THERE IS NO "WRONG" EXEMPLAR BLOCK. An earlier draft quoted the bad
+# production sentences verbatim as counter-examples. That put `database CRM`
+# and `our CRM` into a prompt whose stated job is to stop the model saying
+# them, while a sibling test simultaneously argued that quoting `staff` would
+# be priming -- a policy applied to one token and not another. Rather than
+# defend the inconsistency, the block is positive-only: the two shown answers
+# are real clean production output (run 2 of the same probe), and the
+# prohibitions are stated as prose. If the live probe shows the positive-only
+# form is not enough, adding counter-examples is the next experiment -- run in
+# that order, because it starts from the lower-risk variant.
+# ---------------------------------------------------------------------------
+
+
+class TestClientDenyNarrationDiscipline:
+    """PIN: the client build still carries the deny-narration protocol."""
+
+    def test_client_build_has_unavailable_capability_protocol(self) -> None:
+        assert "UNAVAILABLE CAPABILITY" in v5.build_master_template("client")
+
+    def test_client_build_forbids_naming_the_internal_system(self) -> None:
+        built = v5.build_master_template("client")
+        assert "name the internal system you could not" in built
+
+    def test_client_build_forbids_promising_the_figure(self) -> None:
+        """Single-line fragment on purpose: an earlier version asserted across
+        a hardcoded newline + indentation, so re-wrapping the docstring would
+        have failed the test while changing nothing semantically."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "promise to deliver the figure later" in built
+
+    def test_client_build_carries_the_measured_clean_exemplar(self) -> None:
+        """The shown answer is run 2 of the live probe -- real clean production
+        output, not an invented ideal."""
+        built = v5.build_master_template("client")
+        assert "non è disponibile la funzione per verificare" in built
+
+
+class TestClientDenyNarrationAntiPriming:
+    """The anti-priming rule, applied UNIVERSALLY instead of to one token.
+
+    An adversarial review caught the earlier draft guarding `staff` against
+    priming while quoting `our CRM` twice. Whether negation-priming is real for
+    this model is unresolved (the measured evidence above cuts against it), but
+    a policy that holds for one needle and not the others is indefensible
+    either way. So: every needle the live probe scores is barred from the
+    client build, and the one exemption is stated with its reason.
+    """
+
+    # Every needle the production deny probe asserts on, minus `database`.
+    BARRED = ("crm", "staff", "numero esatto", "credenzial", "negato", "denied")
+
+    @pytest.mark.parametrize("needle", BARRED)
+    def test_scored_needle_absent_from_client_build(self, needle: str) -> None:
+        built = v5.build_master_template("client")
+        assert needle not in built.lower(), (
+            f"{needle!r} is scored by the live deny probe and must not appear "
+            f"in the client prompt"
+        )
+
+    def test_database_is_the_documented_exemption(self) -> None:
+        """`database` is NOT barred, and pretending otherwise would be a lie in
+        test form: it occurs several times in CORE_FACTUAL's visa-code
+        grounding rules ("ALWAYS query the database"), which are load-bearing
+        for answer correctness and shared with team/creator. It is also the
+        needle that leaked LEAST (1/5) while being the most frequent -- the
+        measurement that undercuts the priming theory in the first place.
+        """
+        built = v5.build_master_template("client")
+        assert "database" in built.lower()
+        assert "query the database" in built.lower()
+
+
+class TestClientDenyNarrationInnocence:
+    """The cure must not kill the legitimate human escalation, must not reach
+    team/creator, and must not re-introduce a client-side leak."""
+
+    def test_human_escalation_protocol_survives(self) -> None:
+        built = v5.build_master_template("client")
+        assert "ESCALATION IS HUMAN-TO-HUMAN" in built
+        assert "specialist will follow up" in built
+
+    def test_escalation_is_scoped_to_their_own_case(self) -> None:
+        assert "When THEIR OWN case needs a human" in v5.build_master_template("client")
+
+    def test_offering_a_human_is_explicitly_never_restricted(self) -> None:
+        """The sharpest innocence break found in review: "chi segue la mia
+        pratica?" is a question about PERSONNEL, asked by the person whose case
+        it is. Without this carve-out, protocol 5's "personnel details" would
+        license a stonewall where protocol 3 should escalate."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "Offering a human is ALWAYS allowed" in built
+        assert "who at Bali Zero is handling their case" in built
+
+    def test_protocol_2_fallback_no_longer_licenses_the_measured_failure(self) -> None:
+        """Protocol 2 used to end "or say the case needs verification with the
+        team" with no scope -- a standing instruction to produce the 4/5
+        measured behaviour for ANY unanswerable question. It must now be
+        conditioned, and must hand off to protocol 5."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "when the question is about THEIR OWN case" in built
+        assert "protocol 5 applies, not this one" in built
+
+    def test_deny_discipline_is_client_only(self) -> None:
+        """Team and creator legitimately DO have the CRM playbook; teaching
+        them to decline CRM questions would be a capability regression."""
+        for audience in ("team", "creator"):
+            assert "UNAVAILABLE CAPABILITY" not in v5.build_master_template(audience), audience
+
+    def test_team_and_creator_keep_the_crm_playbook(self) -> None:
+        for audience in ("team", "creator"):
+            assert "crm_query" in v5.build_master_template(audience), audience
+
+    def test_new_prose_still_satisfies_every_client_purity_assertion(self) -> None:
+        """A cure that trips the guard it lives beside is no cure."""
+        built = v5.build_master_template("client")
+        assert "crm_query" not in built
+        assert "timesheet" not in built
+        assert "team_knowledge" not in built
+        assert not re.search(r"(?i)\bthe client\b", built)
+        assert not re.search(r"(?i)\ba client\b", built)
+        assert not re.search(r"(?i)client['’]s", built)
+
+
+class TestComposedHeaderVersion:
+    def test_header_announces_v5_not_v6(self) -> None:
+        """The composition header read "ZANTARA V6 SYSTEM PROMPT (v5 — ...)"
+        and was emitted into every production system prompt. Cosmetic, but it
+        is exactly the kind of thing that costs someone a debugging hour."""
+        for audience in v5.VALID_AUDIENCES:
+            built = v5.build_master_template(audience)
+            assert "ZANTARA V5 SYSTEM PROMPT" in built
+            assert "V6" not in built

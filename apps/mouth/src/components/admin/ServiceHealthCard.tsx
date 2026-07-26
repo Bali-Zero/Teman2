@@ -29,13 +29,13 @@ export function ServiceHealthCard({
   const getStatusColor = (s: ServiceStatus) => {
     switch (s) {
       case "ok":
-        return "text-green-500 bg-green-500/10 border-green-500/20";
+        return "text-[var(--state-success)] bg-[var(--state-success)]/10 border-[var(--state-success)]/30";
       case "warning":
-        return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+        return "text-[var(--state-warning)] bg-[var(--state-warning)]/10 border-[var(--state-warning)]/30";
       case "error":
-        return "text-red-500 bg-red-500/10 border-red-500/20";
+        return "text-[var(--state-danger)] bg-[var(--state-danger)]/10 border-[var(--state-danger)]/30";
       default:
-        return "text-gray-500 bg-gray-500/10 border-gray-500/20";
+        return "text-[var(--bz-text-2)] bg-[var(--bz-glass-rim)] border-[var(--bz-border)]";
     }
   };
 
@@ -84,7 +84,9 @@ export function ServiceHealthCard({
               <span
                 className={cn(
                   "font-mono",
-                  latency > 1000 ? "text-yellow-500" : "text-green-500",
+                  latency > 1000
+                    ? "text-[var(--state-warning)]"
+                    : "text-[var(--state-success)]",
                 )}
               >
                 {latency.toFixed(1)}ms

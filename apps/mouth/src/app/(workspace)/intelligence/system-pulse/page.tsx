@@ -93,7 +93,7 @@ export default function SystemPulsePage() {
   if (!metrics) {
     return (
       <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <AlertCircle className="h-12 w-12 text-red-500" />
+        <AlertCircle className="h-12 w-12 text-[var(--state-danger)]" />
         <p className="text-[var(--bz-text-2)] text-lg">Metrics Unavailable</p>
         <Button onClick={loadMetrics} variant="secondary">
           Retry
@@ -144,14 +144,14 @@ export default function SystemPulsePage() {
           className={cn(
             "border-t-4 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl",
             metrics.agent_status === "active"
-              ? "border-t-green-500"
+              ? "border-t-[var(--state-success)]"
               : metrics.agent_status === "idle"
-                ? "border-t-amber-500"
-                : "border-t-red-500",
+                ? "border-t-[var(--state-warning)]"
+                : "border-t-[var(--state-danger)]",
           )}
           style={{
             background: "rgba(35, 35, 40, 0.45)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -162,10 +162,10 @@ export default function SystemPulsePage() {
               className={cn(
                 "h-5 w-5",
                 metrics.agent_status === "active"
-                  ? "text-green-500"
+                  ? "text-[var(--state-success)]"
                   : metrics.agent_status === "idle"
-                    ? "text-amber-500"
-                    : "text-red-500",
+                    ? "text-[var(--state-warning)]"
+                    : "text-[var(--state-danger)]",
               )}
             />
           </CardHeader>
@@ -175,14 +175,14 @@ export default function SystemPulsePage() {
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
                   metrics.agent_status === "active"
-                    ? "bg-green-100 text-green-600"
+                    ? "bg-[var(--state-success)]/10 text-[var(--state-success)]"
                     : metrics.agent_status === "idle"
-                      ? "bg-amber-100 text-amber-600"
-                      : "bg-red-100 text-red-600",
+                      ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
+                      : "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
                 )}
               >
                 {metrics.agent_status === "active" && (
-                  <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--state-success)] animate-pulse"></span>
                 )}
                 {metrics.agent_status.toUpperCase()}
               </span>
@@ -195,18 +195,18 @@ export default function SystemPulsePage() {
 
         {/* Last Scan */}
         <Card
-          className="border-t-4 border-t-blue-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          className="border-t-4 border-t-[var(--state-info)] shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
           style={{
             background:
               "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--bz-text-2)]">
               Last Scan
             </CardTitle>
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-[var(--state-info)]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--bz-text-1)]">
@@ -222,18 +222,18 @@ export default function SystemPulsePage() {
 
         {/* Items Processed Today */}
         <Card
-          className="border-t-4 border-t-purple-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          className="border-t-4 border-t-[var(--bz-neon-purple)] shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
           style={{
             background:
               "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--bz-text-2)]">
               Items Processed Today
             </CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-500" />
+            <TrendingUp className="h-5 w-5 text-[var(--bz-neon-purple)]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--bz-text-1)]">
@@ -247,18 +247,18 @@ export default function SystemPulsePage() {
 
         {/* Avg Response Time */}
         <Card
-          className="border-t-4 border-t-amber-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          className="border-t-4 border-t-[var(--state-warning)] shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
           style={{
             background:
               "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--bz-text-2)]">
               Avg Response Time
             </CardTitle>
-            <Zap className="h-5 w-5 text-amber-500" />
+            <Zap className="h-5 w-5 text-[var(--state-warning)]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--bz-text-1)]">
@@ -275,14 +275,14 @@ export default function SystemPulsePage() {
           className={cn(
             "border-t-4 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl",
             metrics.qdrant_health === "healthy"
-              ? "border-t-green-500"
+              ? "border-t-[var(--state-success)]"
               : metrics.qdrant_health === "degraded"
-                ? "border-t-amber-500"
-                : "border-t-red-500",
+                ? "border-t-[var(--state-warning)]"
+                : "border-t-[var(--state-danger)]",
           )}
           style={{
             background: "rgba(35, 35, 40, 0.45)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -293,30 +293,30 @@ export default function SystemPulsePage() {
               className={cn(
                 "h-5 w-5",
                 metrics.qdrant_health === "healthy"
-                  ? "text-green-500"
+                  ? "text-[var(--state-success)]"
                   : metrics.qdrant_health === "degraded"
-                    ? "text-amber-500"
-                    : "text-red-500",
+                    ? "text-[var(--state-warning)]"
+                    : "text-[var(--state-danger)]",
               )}
             />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               {metrics.qdrant_health === "healthy" ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-[var(--state-success)]" />
               ) : metrics.qdrant_health === "degraded" ? (
-                <AlertCircle className="h-5 w-5 text-amber-600" />
+                <AlertCircle className="h-5 w-5 text-[var(--state-warning)]" />
               ) : (
-                <AlertCircle className="h-5 w-5 text-red-600" />
+                <AlertCircle className="h-5 w-5 text-[var(--state-danger)]" />
               )}
               <span
                 className={cn(
                   "text-2xl font-bold",
                   metrics.qdrant_health === "healthy"
-                    ? "text-green-600"
+                    ? "text-[var(--state-success)]"
                     : metrics.qdrant_health === "degraded"
-                      ? "text-amber-600"
-                      : "text-red-600",
+                      ? "text-[var(--state-warning)]"
+                      : "text-[var(--state-danger)]",
                 )}
               >
                 {metrics.qdrant_health.charAt(0).toUpperCase() +
@@ -335,18 +335,18 @@ export default function SystemPulsePage() {
 
         {/* Next Scheduled Run */}
         <Card
-          className="border-t-4 border-t-blue-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          className="border-t-4 border-t-[var(--state-info)] shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
           style={{
             background:
               "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--bz-border)",
           }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--bz-text-2)]">
               Next Scheduled Run
             </CardTitle>
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-[var(--state-info)]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--bz-text-1)]">
@@ -365,10 +365,10 @@ export default function SystemPulsePage() {
 
       {/* Agent Configuration */}
       <Card
-        className="shadow-2xl backdrop-blur-xl transition-all duration-300 border-[rgba(255,255,255,0.05)]"
+        className="shadow-2xl backdrop-blur-xl transition-all duration-300 border-[var(--bz-border)]"
         style={{
           background:
-            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+            "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
         }}
       >
         <CardHeader>
