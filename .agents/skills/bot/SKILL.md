@@ -61,17 +61,55 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   "On ABSTAIN or any RAG error → raise … the operator can take over the thread." Measured: that
   operator does not come. Over the whole history of `meta_inbox_threads` — **28 threads, 26 with
   at least one `failed` outbox row, and exactly 4 EVER touched by a human**
-  (`handling_version > 0`, max 1). ~22 threads hit a failure and nobody arrived. There is also NO
+  (`handling_version > 0`, max 1). ~22 threads hit a failure and nobody arrived.
+
+  **CORRECTION (same day, before this entry ever landed) — those failures were NOT abstains.**
+  An earlier draft of this bullet let the 26-of-28 number imply that clients had been silenced by
+  discarded refusals. They had not. `meta_inbox_messages.error` records the last exception after
+  the sentinel `bot_generate_failed_after_5_attempts:`, and classifying all 52 give-ups gives:
+  **44 = `wa-inbox bot auto-reply not enabled in v1`** (2-18 June — the bot was simply switched
+  off), 5 = `no customer message in thread <n>`, 2 = RAG `500` (12 July), 1 = `401 Unauthorized`.
+  **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
+  in production. Current state is healthy — week of 19 July: **0 generation failures on 13
+  inbound** (small sample, stated as such).
+  _Method note: the first classifying query returned "0 abstains" AND a second returned "0
+  failures per week", which contradicted a count of 52. The bug was mine — `split_part(error,':')`
+  meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own
+  probes disagreeing is what surfaced it; a single probe would have shipped the wrong number._
+
+  **The better-evidenced sibling defect, found by the same classification:** the worker retries
+  **permanent** conditions five times. "auto-reply not enabled" and "no customer message in
+  thread" are not transient — they cannot become true on attempt 5 — yet each burned 5 generation
+  attempts and wrote a phantom "failure" into the ledger. That is the same disease as the abstain
+  case (a non-retryable outcome sent down the retry channel) and it is the one with evidence
+  behind it. #31 is therefore scoped as: `bot_generate_fn` has ONE exit for THREE outcomes —
+  sendable refusal, permanent non-condition, transient error — and the worker treats all three
+  alike. There is also NO
   human-notification path anywhere (grepped worker + generator for telegram/alert/notify/
   escalate/CRM-assign), and the `apology_sent_at`/`ack_sent_at` code from migration 260 is armed
   by `WA_OUTBOX_MANNERS_ENABLED`, default OFF, docstring "Ships dark: unset in prod today" — which
   is why those columns are 0-for-184 and, even armed, would write to the CLIENT, not a colleague.
   Fix specified in task #31: split ABSTAIN (a truthful, sendable result) from ERROR (retry/park).
-  Open design point, deliberately NOT decided in code: sending the refusal turns the row into a
-  normal `done`, which REMOVES the only visible anomaly — the replacement signal depends on where
-  the team actually looks, and auto-setting `human_handling` would mark a thread as owned by
-  someone who does not know they own it. Do NOT overload `meta_inbox_messages.error`: it means
-  "failed" today, and a successful abstain written there breaks every query that reads it.
+
+  **The replacement-signal question is DECIDED (it was a schema choice, not a business one).**
+  `wa_outbox` has no jsonb/metadata column, but it already carries the exact precedent: `ack_sent_at`
+  and `apology_sent_at`, nullable timestamps that record _what kind of thing_ was sent. So: add
+  `abstained_at timestamptz NULL` and leave `status='done'`, because the row WAS sent. Additive,
+  nullable, no backfill, no reader touched — the safest migration class. Rejected alternative: a new
+  terminal `status='abstained'`. `wa_outbox.status` is read only inside `wa_outbox_worker.py`
+  (`whatsapp_chat.py:916` reads a DIFFERENT table via `_META_STATUS_RANK`), so it would be
+  containable — but it is still a shared format changed from one side (superscar #9), for no gain
+  over a nullable column. Still NOT decided, and still deliberately so: auto-setting `human_handling`
+  would mark a thread as owned by someone who does not know they own it. And do NOT overload
+  `meta_inbox_messages.error` — it means "gave up" today, and a successful abstain written there
+  breaks every query that reads it.
+
+  **Contract note for whoever implements it:** `generate_bot_reply` returns a plain `str` and the
+  worker treats it as opaque. Return a small result object (`text` + `abstained` + `reason`), do NOT
+  signal the refusal by raising a custom exception: an abstain is a SUCCESSFUL send, and putting it
+  on the exception path invites any intervening `except Exception` to swallow it straight back into
+  a park — re-creating this exact bug one refactor later. The refusal copy must be IMPORTED from the
+  shared constant #3260 introduces, never re-typed here (two copies drift — superscars #1/#9).
 
 - **⚙️ MERGED + LIVE — PR #3261**: `security.yml` cancels superseded PR runs, never on main (it
   owns 4 of the 25 required checks). Content-verified on main: line 28 is
