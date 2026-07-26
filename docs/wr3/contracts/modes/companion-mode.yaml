@@ -28,12 +28,71 @@ inherit_from_wr2:
 
 output_dir_template: "apps/war-room/output/companion/{wr2_slug}-{sub_mode}/"
 
+# ── The duration envelope is NOT a companion-mode invention ────────────
+# [60,150] s is WR3's native contract, declared identically across the standard
+# pipeline: brief-interpreter (`target_duration_s` integer in [60,150], default
+# 60, out-of-range = hard_fail), shot-director (60s→8 clips … 150s→19),
+# script-editor (duration × 3 ±10% words: 180 … 450), pre-render-gatekeeper
+# (80/120/150/190 cr, insufficient = HARD HALT + Telegram P0), post-assembler
+# (master within ±2s of target).
+#
+# The companion path sets `skip_brief_interpreter: true`, so it never passes the
+# agent that enforces that range — which is the only reason a 15-second default
+# could exist here at all. The dispatcher now enforces the envelope itself on
+# the automatic path (`_assert_duration_envelope`), so skipping the validator no
+# longer means skipping the validation.
+duration_envelope:
+  min_s: 60
+  max_s: 150
+  enforced_on: "the automatic sub-mode only — an opt-in sub-mode is a human's explicit choice"
+
 sub_modes:
   # ── Default sub-mode ─────────────────────────────────────────────────
-  # Triggered automatically on every wr2_episode_published. Antonello can
-  # disable per-episode with `companion_skip: true` in the WR2 brief.json.
-  story_15s:
+  # Zero, 2026-07-26: "la wr3 è prestabilita e crea il video del carosello
+  # della wr2 (in due versioni uguali ma una in inglese con sottotitoli inglese
+  # e una indonesiana con sottotitoli indonesiano)" + "massimo 150 secondi e
+  # minimo 60 secondi". Every published carousel yields this; `companion_skip:
+  # true` in the WR2 brief.json is the only escape hatch.
+  episode:
     is_default: true
+    output_format: "IG Reel / TikTok / Shorts 9:16 1080×1920"
+    target_duration_s: 60 # default; MUST sit inside duration_envelope
+    min_duration_s: 60
+    max_duration_s: 150
+    clip_count: 8 # ceil(target_duration_s / 8): 60→8, 90→12, 120→15, 150→19
+    clip_duration_s: 8
+    has_voiceover: true
+    has_video: true
+    # Two cuts, identical in edit. One render of the visual layer is shared;
+    # only the voice track and the subtitle text differ. The ID cut needs a real
+    # Indonesian voice-over (Zero's ruling) — never EN audio under ID subtitles.
+    language_cuts: ["en", "id"]
+    cost:
+      ceiling_unit: "ceil(target_duration_s/8) × 10 cr — 80 cr @60s … 190 cr @150s"
+      ceiling_usd: 0.475 # 190 cr at the same 0.0025 $/cr rate as the other sub-modes
+      # HARD, unlike the other sub-modes: the gatekeeper contract already halts
+      # before authorising Veo spend, and this is the path that spends without a
+      # human in the loop.
+      hard_halt_on_exceed: true
+    critic_lane_mask:
+      # Full 4-lane critic — this is a first-class episode artifact.
+      lane_1_identity_arcface: true
+      lane_2_audio_sync: true
+      lane_3_brand_voice: true
+      lane_4_legal_verbatim: true
+    voice_register: "analitico"
+    activation: "automatic_on_publish"
+
+  # ── Opt-in short sub-mode (Antonello flag `--story`) ─────────────────
+  # Was the automatic default until 2026-07-26. Demoted, not deleted: the
+  # capability is still worth having, but it must be a deliberate choice.
+  #
+  # DELIBERATELY OUTSIDE `duration_envelope`. 15 s is below WR3's declared
+  # minimum and would be a hard_fail if this path ran brief-interpreter. It
+  # stays reachable only behind an explicit human flag, and is exempt from the
+  # envelope check for exactly that reason.
+  story_15s:
+    is_default: false
     output_format: "IG Story 9:16 1080×1920"
     target_duration_s: 15
     clip_count: 2
@@ -54,31 +113,7 @@ sub_modes:
       lane_3_brand_voice: true
       lane_4_legal_verbatim: false
     voice_register: "ironico" # see ~/.claude/skills/bali-zero-brand/wr3/companion-mode-spec.md
-    activation: "automatic_on_publish"
-
-  # ── Opt-in expanded sub-mode (Antonello flag `--expand`) ─────────────
-  # Triggered only when WR2 brief.json carries `companion_expand: true`.
-  # Full standard WR3 pipeline (60s Reel), full 4-lane critic.
-  reel_60s:
-    is_default: false
-    output_format: "IG Reel / TikTok / Shorts 9:16 1080×1920"
-    target_duration_s: 60
-    clip_count: 8
-    clip_duration_s: 8
-    has_voiceover: true
-    has_video: true
-    cost:
-      ceiling_unit: "80 cr Flow Pro (~$0.20 cash equivalent)"
-      ceiling_usd: 0.20
-      hard_halt_on_exceed: false
-    critic_lane_mask:
-      # Full 4-lane critic — Reel is a first-class episode artifact.
-      lane_1_identity_arcface: true
-      lane_2_audio_sync: true
-      lane_3_brand_voice: true
-      lane_4_legal_verbatim: true
-    voice_register: "analitico"
-    activation: "antonello_flag --expand (WR2 brief.companion_expand=true)"
+    activation: "antonello_flag --story (WR2 brief.companion_story=true)"
 
   # ── Opt-in text-only sub-mode (Antonello flag `--engage`) ────────────
   # NO video, NO voice — text-only. Generates an IG comment + DM reply
@@ -111,7 +146,14 @@ failure_modes:
     action: "If brief_path does NOT exist on disk → log WARN, skip companion, no Telegram"
     telegram_p0_on: false
   - code: "claim_ids_empty"
-    action: "If primary_claim_ids is empty → fallback to story_15s using slides_path hook only"
+    # CHANGED 2026-07-26. Was "fallback to story_15s using slides_path hook
+    # only" — which is now wrong twice over: 15 s contradicts the ruled
+    # envelope, and WR2 carries claim ids in 0 of 23 briefs on disk, so the
+    # fallback would fire on EVERY episode and silently make the short format
+    # the real default again. An episode with no inherited claims would have to
+    # be either ungrounded or re-query NotebookLM (Law 2). Skip is the honest
+    # outcome, and it keeps the arming gate visible instead of degrading past it.
+    action: "If primary_claim_ids is empty → log WARN, skip the companion entirely, spend nothing"
     telegram_p0_on: false
   - code: "wr2_slug_collision"
     action: "If output_dir already exists → suffix with -retry-<timestamp>"
@@ -122,7 +164,7 @@ law_compliance:
   law_1_cli_only: "Dispatch via wr3_companion_dispatcher.py → publish_wr3_event() (no SDK)"
   law_2_osint_blindato: "NB source_ids never touched — claim_ids inherited transitively from WR2"
   law_3_event_driven: "Consumes wr2_episode_published, emits wr3_episode_brief_requested with mode=companion_from_carousel"
-  law_4_graceful_degradation: "Missing brief → log skip; claim_ids empty → fallback story_15s"
+  law_4_graceful_degradation: "Missing brief → log skip; claim_ids empty → log skip (degrading to a shorter format would silently defeat the ruled envelope)"
   law_5_zero_authority: "comment_interactive sub-mode REQUIRES manual Antonello publish (no autopublish)"
   law_6_local_sovereignty: "All dispatch on local Pro/Mini (Flow API only cloud touchpoint, same as standard WR3)"
   law_7_numbers_first: "Per-sub-mode ceilings enforced; inherited claim_ids preserve numeric verbatim"

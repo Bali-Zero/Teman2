@@ -105,8 +105,21 @@ per-shot refs, `Zantara-Voice-Corpus/`, and gfx mockups A/B/C + COMPARE.
 
 1. **Emit `wr2_episode_published`** at the WR2 publish step, carrying the carousel slug.
    _Proof:_ the supervisor's stdout log shows its first-ever dispatch line.
+   **BUILT, DELIBERATELY UNARMED** (PR #3166, 2026-07-26). `wr2_ig_publish.py` emits the event
+   after `_mark_queue_published`, so it only ever fires for a carousel that is fully published and
+   fully recorded — but behind `WR2_WR3_HANDOFF_ENABLED`, default OFF. The firebreak is not
+   timidity: the WR3 supervisor runs `WR3_DRY_RUN=false` and dispatches through `claude --print`,
+   so the first emitted event is real Veo spend, not a smoke test. The proof line above is
+   therefore also the proof-of-armed in the PENDING-ARMS ledger.
 2. **Drop the opt-in**: companion runs for every published carousel; keep `companion_skip` as the
    only escape hatch. _Proof:_ a published carousel with no flags produces a WR3 brief.
+   **CONTRACT DONE** (2026-07-26): `episode` is the automatic sub-mode at 60–150 s in two cuts,
+   `story_15s` is demoted behind `--story`, `companion_expand` is gone, and the dispatcher enforces
+   the duration envelope itself (`_assert_duration_envelope`) because this path skips the agent
+   that used to enforce it. Proven in dry-run, not yet on a live publish — which is blocked on the
+   same thing step 1 is: **`primary_claim_ids` is empty in 23 of 23 WR2 briefs on disk**, and an
+   episode with no inherited claims is now skipped outright rather than downgraded. Making WR2
+   emit claim ids is the remaining arming condition for both steps.
 3. **Two-cut render**: one visual render, two audio+subtitle tracks (EN/ID).
    _Proof:_ two MP4s, byte-different audio, identical video stream hash.
 4. **Graphics layer as an overlay pass**, parameterised from brand tokens, mirroring the

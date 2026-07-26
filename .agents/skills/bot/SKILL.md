@@ -20,7 +20,7 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-26 — keep current)
+## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
 - **🗣️ CLIENT VOICE: persona + greeting SHIPPED & PROVEN LIVE; deny narration NOT YET (2026-07-26).**
   Three things landed and were verified INSIDE the running container (`flyctl ssh` pinned to
@@ -39,22 +39,34 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
     v4's `GREETING_RULES` hardcodes the name in all four worked flows while rule 1 of the SAME block
     correctly says `[Name]`. Now name-neutralized for ALL audiences via fail-loud
     `GREETING_NAME_NEUTRALIZATIONS`; container-verified 4 → **0** name-greetings, `[Name]` = 6.
-  - **Deny narration: measured, NOT cured — do not report it as fixed (PR #3170).** Live tally,
-    anonymous caller asking _"Quanti clienti attivi abbiamo?"_:
+  - **Deny narration: #3170 had NO measurable effect. Corrected 2026-07-27 — the earlier
+    "suggestive, p≈0.08" line in this corner was wrong and is retracted.** TWO post-fix runs of
+    N=10 existed (03:05Z and 04:12Z, same content-verified container); the first write-up pooled
+    only the more favourable one. Honest tally, anonymous caller asking _"Quanti clienti attivi
+    abbiamo?"_:
 
-    |                                          | pre-fix (N=5) | post-fix (N=10) |
-    | ---------------------------------------- | ------------- | --------------- |
-    | `sources` clean — server-side tourniquet | 5/5           | **10/10**       |
-    | tool-name / auth-model / credential leak | 0/5           | **0/10**        |
-    | names the CRM                            | 3/5           | 3/10            |
-    | promises to obtain the count             | 4/5           | 3/10            |
+    |                                          | pre-fix (N=5) | post A (N=10) | post B (N=10) | pooled post | Fisher p |
+    | ---------------------------------------- | ------------- | ------------- | ------------- | ----------- | -------- |
+    | `sources` clean — server-side tourniquet | 5/5           | 10/10         | 10/10         | **20/20**   | —        |
+    | tool-name / auth-model / credential leak | 0/5           | 0/10          | 0/10          | **0/20**    | —        |
+    | names the CRM                            | 3/5           | 5/10          | 3/10          | 8/20 (40%)  | **0.62** |
+    | promises to obtain the count             | 4/5           | 6/10          | 3/10          | 9/20 (45%)  | **0.32** |
+    | says "database"                          | 1/5           | 3/10          | 3/10          | 6/20 (30%)  | 1.00     |
 
-    **No data leaks in any run** — the server-side layer holds 100%. What remains is narration:
-    directionally better, but pooling both post-fix runs gives 7/20 vs 4/5 (Fisher p≈0.08) —
-    suggestive, not proven. The root cause found by cross-family adversarial review was protocol 2's
-    own unscoped fallback (_"or say the case needs verification with the team"_), now conditioned;
-    the residue is prompt-soft by nature. Next experiment, in this order: add counter-examples back
-    (dropped in #3170 for anti-priming consistency) and re-measure.
+    **No data leaks in any run** — the server-side layer holds 100%, and that is the part that
+    matters. But the narration is statistically unchanged. The two post-fix runs are mutually
+    consistent (p=0.65 / 0.37), so pooling them is legitimate; discarding one was not.
+    Method scar: not a single sample this time, a _selected_ sample — see
+    `lesson_four_of_my_own_probes_lied_in_four_different_ways_2026_07_27`.
+
+    **Why the prompt fix could not work, discovered 2026-07-27:** at least one narration channel
+    is not in the prompt at all. When the verifier scores a draft < 0.7, `reasoning.py` injects
+    the retry instruction as a **user turn**, and the model answers it — _"Message reçu pour les
+    corrections de conformité factuelle"_, _"Capisco, mi scuso per l'errore precedente"_,
+    _"Terima kasih atas koreksinya"_, _"Got it. Let's correct this…"_ — client-facing, in four
+    languages. No edit to `zantara_core_v5` can reach that path. Fixed at the injection site by
+    `build_rephrase_prompt()` + explicit OUTPUT RULES (gag scoped to the META layer only; "admit
+    it if the context is insufficient" is preserved and pinned by innocence tests).
 
 - **📏 METHOD — two traps this campaign paid for, do not repeat:**
   - **A single sample is not a baseline.** An "8/8 pass" under v4 vs "5/8" under v5 nearly got
@@ -64,17 +76,106 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
     which is how the priming theory was refuted and the real licensor found. See memory
     `lesson_the_load_bearing_rule_is_not_the_named_rule_2026_07_26`.
 
-- **🇫🇷 OPEN — language drift is a SYMPTOM of a retrieval miss, not a prompt defect (2026-07-26).**
-  Base rate measured 8/10; **every miss is the same question** (_"My KITAS extension was rejected…"_,
-  1/3 correct) — `en-remote` and `en-pma` are 3/3, Italian control OK. That query is also the one
-  whose retrieval returns off-topic sources (`PPh 21`, `PPN/VAT`, `E31B VISA KELUARGA` for a
-  rejected-extension question), and its one English run emitted the raw KG scaffold instead of prose.
-  Working hypothesis: when retrieval misses, generation degrades and instruction adherence goes with
-  it. **Fix the KB coverage gap for rejection/appeal-shaped queries FIRST**; only then consider
-  hardening the language rule. Memory: `discovery_bot_language_protocol_violated_stochastically_2026_07_26`.
-  GOTCHA that cost real time: this drift silently broke an unrelated probe — an escalation check with
-  English-only markers reported `0/3` while the answers _did_ escalate, in French. **Any assertion on
-  generated text must be language-agnostic.**
+- **🇫🇷 ONE QUESTION NEVER ANSWERS CORRECTLY — and it is a NO-COVERAGE failure, not a language one
+  (reframed by measurement 2026-07-27; the 2026-07-26 "symptom of a retrieval miss" framing was
+  half right and is superseded).** _"My KITAS extension was rejected last week and immigration did
+  not explain why."_ → **11/12 answered in FRENCH, 1/12 dumped the raw KG scaffold. Zero correct
+  answers in 12 live runs.** The "English" run was not an English answer — it was the internal
+  block. Language was labelling two ways of failing, not success vs failure.
+  - **The correlation the old plan asked for is untestable**: `evidence_score` was **0.850 in all
+    16 runs** across two unrelated questions. It has no variance (see the abstain-gate bullet).
+  - **Ruled out BY MEASUREMENT, each one**: self-correction (fires, but the drift appears without
+    it) · memory contamination (three fresh `user_id`s drifted 3/3; and `memory_facts` has had zero
+    writes since 2026-07-24 for anyone) · the composed prompt (no French in any of the three
+    audience templates, container-read) · the KG (0 French rows of 119,732) · the language detector
+    (all patterns score 0 on this sentence → falls through to the `"en"` default) · French in the
+    corpus (0/8 chunks, read server-side) · Italian density of the evidence (the arm that answers
+    ENGLISH 4/4 is _more_ Italian, 13.1% vs 12.7% — hypothesis refuted by its own pre-registered
+    prediction) · a generic no-coverage fallback (a DIFFERENT uncovered English question answers
+    in English 2/2).
+  - **It is specific to English on this query.** Same question in Italian → Italian; in
+    Indonesian → Indonesian; prefixing _"Reply in English."_ does **not** win. A different
+    uncovered English question → English.
+  - **The structural defect, which IS actionable:** retrieval returns E31B/E28A/E31H/E33A/E32A
+    (family / investor / ex-citizen visas) for a rejected-extension question — nothing on point —
+    and when a trusted tool has run, `evidence_score` is pinned at 0.85 regardless of relevance, so
+    the abstain gate cannot catch it and the model confabulates instead of admitting the gap.
+    **Fix the blind spot (below) and the KB coverage; the exact reason one string attracts French
+    is the least actionable part.**
+  - **Retracted trends** (each read from ≤5 points, then falsified): "context_length grows
+    monotonically"; "ctx=16 → scaffold dump".
+  - GOTCHA that cost real time: this drift silently broke an unrelated probe — an escalation check
+    with English-only markers reported `0/3` while the answers _did_ escalate, in French. **Any
+    assertion on generated text must be language-agnostic.**
+
+- **🚨 THE ABSTAIN GATE IS BLIND TO A SUCCESSFUL-BUT-WRONG RETRIEVAL (2026-07-27).** Read the scope
+  carefully — an earlier draft of this entry said "unreachable / nothing ever reaches them" and that
+  was **WRONG**, falsified the same night by a live WhatsApp message: the gate DID fire,
+  `abstain_reason='no_relevant_context'`, which only happens at `evidence_score < 0.05`.
+  - **What is true.** `_reasoning_evidence.py::compute_evidence_score` returns the constant 0.85
+    whenever `trusted_tools_used`, **without looking at the sources at all**; otherwise it falls
+    through to a keyword score. So the gate sees a real number when retrieval FAILS, and a
+    flattering constant when retrieval SUCCEEDS — including when it succeeds at fetching entirely
+    off-topic documents. **The blind spot is the successful-but-irrelevant retrieval**, which is
+    exactly the 12/12-wrong KITAS case.
+  - **Ordering matters and is easy to misread**: the score is computed at `reasoning.py:559` with
+    the PRE-flipper flag; `apply_shared_trusted_flippers` (`:594`) then sets
+    `trusted_tools_used=True` merely because `detect_llm_has_tools()` is true — that predicate tests
+    only that the gateway **has tools configured**, not that one ran. The GENERATION gate
+    (`should_apply_low_evidence_policy`) is bypassed on that post-flipper flag, so it is far weaker
+    than the LABEL gate in `orchestrator_response.py`, which reads the score itself.
+  - **Measured both ways, same endpoint**: 16/16 synthetic runs → 0.850, `abstain=False`; one real
+    WA request on the same question → `< 0.05`, abstained. Same code, different luck in the ReAct
+    loop. **So do not call `evidence_score` a constant — call it a number that stops being
+    informative the moment a tool succeeds.**
+  - **Do NOT lower the 0.85 constant** — that degrades every correct answer too, and the thresholds
+    are panel-ruled. The missing signal is _relevance_, and per-source `score` values already exist
+    (0.667, 0.6, 0.571 … observed live). Needs the 4-LLM panel, plus a tripwire exercising the
+    successful-retrieval-but-wrong-documents case end-to-end — the 38 existing tests all check the
+    comparison, none checks that its input can vary. Memory:
+    `discovery_the_abstain_gates_are_well_tested_and_unreachable_2026_07_27` (filename kept for the
+    link; its body carries the same correction).
+
+- **🔇 A CORRECT ABSTENTION REACHES THE CLIENT AS SILENCE (2026-07-27, observed live).** By design:
+  `wa_inbox_bot.py:346` raises on `data["abstain"]` — _"RAG refused — do not guess. Let the worker
+  park it; operator can take over."_ — and the worker's guard turns that into retry/backoff and
+  eventually `failed`, "never a wrong send". Verified on Zero's own message: thread 77, outbox 182,
+  `status=failed`, `attempts=2`, **`body IS NULL`** — nothing was ever generated or sent. The
+  posture (silence beats a wrong answer) is defensible; the two things around it are not:
+  1. **Nobody takes over.** The design hands off to an operator lane that CLAUDE.md §2 says does not
+     exist. All-time: **143 failed vs 38 done**, 26 distinct threads, `apology_sent_at` = 0 over the
+     last 7 days. The client is left waiting, with no signal that anything happened.
+  2. **Each abstention costs up to 5 full RAG runs.** The retry re-runs the entire pipeline for a
+     question that will abstain identically every time.
+
+  Cheapest honest fix: treat abstain as a TERMINAL outcome rather than a retryable failure, and send
+  a real hand-off line ("I don't have verified information on this — a Bali Zero specialist will
+  follow up"), which protocol 3 already permits. Wording needs a Zero ruling.
+
+- **🧱 KG SCAFFOLD REACHES CLIENTS ON THE WEB CHAT — the stripper covers 1 of N consumers
+  (2026-07-27).** `/api/agentic-rag/query` returned, as the ENTIRE answer, `## SUGGESTED WORKFLOW
+(from visa_subgraph, confidence: 78%)` (631 chars, no prose) on **4/12** runs of the
+  KITAS-rejection class — and **3/4** on its Italian phrasing. `wa_inbox_bot.py` strips it
+  (`_KG_WORKFLOW_SCAFFOLD_RE`, carefully anchored), so WhatsApp is clean — but `apps/mouth` calls
+  the same endpoint from three places and `git grep "SUGGESTED WORKFLOW" apps/mouth` returns
+  **zero**. Two consequences: (a) the web chat may render internal telemetry — needs browser QA to
+  confirm it reaches a rendered surface; (b) on WhatsApp a scaffold-only answer strips to empty
+  and `wa_inbox_bot` correctly raises rather than send a blank — so **the client gets no reply at
+  all, and no apology** (`apology_sent_at` = 0 over 7 days). Do NOT just add a server-side strip:
+  the fast-path is deliberate and has a test asserting the block is in `result.answer`; the
+  response already carries a separate `workflow` key, so the structural fix is to stop embedding
+  it in `answer` — a contract change that needs the consumer map first.
+
+- **🧠 WHATSAPP CLIENTS NOW HAVE NO LONG-TERM MEMORY AT ALL — by design, decision needed
+  (2026-07-27).** `memory_facts` (26,141 rows / 140 users) and `episodic_memories` (1,721) both
+  stopped writing at the SAME instant, 2026-07-24T00:59:40Z; `collective_memories` has 0 rows
+  ever. Not a fault: PR #3036 (P0-MEM) made both chokepoints skip the shared `wa-mirror-internal`
+  pseudo-identity that Path B resolves EVERY WhatsApp sender to — and all WA memory was keyed on
+  that bucket. The bleed is contained; the price is total amnesia for WA clients. The real fix, if
+  memory is wanted back, is to key on the RESOLVED SENDER (already resolved server-side for the
+  persona override, PR #3062) rather than on the shared auth identity. The 26k existing rows sit
+  under the shared id and must not be read back. **Business decision, not a bug report — take it
+  to Zero.**
 
 - **🧟 `collective_memories` is a DEAD ORGAN (2026-07-26).** `get_collective_context()` reads table
   `collective_memories` = **0 rows**, while `collective_memory` (singular) holds 6. Every request

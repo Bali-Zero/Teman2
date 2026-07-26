@@ -574,3 +574,76 @@ def test_scar_pin_cooldown_capture_is_errexit_immune(tmp_path):
             "bare command-substitution assignment under `bash -e` — this is the "
             f"W101 shape that silenced the alarm for nine days: {line.strip()!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Scar pin: the flip-branch name must be unique PER ATTEMPT, not per day.
+#
+# #3207 cured the outage by run-scoping the branch name, but left nothing that
+# FAILS if it ever goes back to a date-only name — the workflow comment is the
+# only thing holding the fix, and a comment does not fail CI. This pins it.
+#
+# It also pins the half #3207 did not cover: re-running a failed run REUSES
+# its run id, so an attempt that pushed its branch and then died at pr-create
+# (failure mode #1 of the same outage) makes the re-run collide exactly as the
+# second daily run used to.
+#
+# Deliberately in THIS file: it is named on a real pytest line in
+# .github/workflows/immune-enforcement.yml, so it executes. A new file under
+# scripts/tests/ is collected by no glob in this repo and would sit green
+# forever (superscar #2 — written, not armed).
+# ---------------------------------------------------------------------------
+
+REFRESH_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs-inventory-refresh.yml"
+
+
+def _branch_assignment() -> str:
+    """The right-hand side of the workflow's `BRANCH=` assignment.
+
+    Raises rather than returning "" if the assignment is gone: a check that
+    silently examines an empty string is decoration, and a blind scan is not
+    a clean scan (W97/W102).
+    """
+    for line in REFRESH_WORKFLOW.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("BRANCH="):
+            return stripped[len("BRANCH=") :]
+    raise AssertionError(
+        f"no `BRANCH=` assignment found in {REFRESH_WORKFLOW} — the flip-branch "
+        "naming moved or was renamed; re-anchor this pin instead of deleting it."
+    )
+
+
+def _is_unique_per_attempt(rhs: str) -> bool:
+    """The predicate under test. RUN_ID alone is NOT enough — a re-run keeps it."""
+    return "GITHUB_RUN_ID" in rhs and "GITHUB_RUN_ATTEMPT" in rhs
+
+
+def test_flip_branch_name_is_unique_per_attempt() -> None:
+    """INNOCENCE: the name as it stands satisfies the predicate."""
+    rhs = _branch_assignment()
+    assert _is_unique_per_attempt(rhs), (
+        f"flip-branch name {rhs} is not unique per ATTEMPT — two runs (or two "
+        "attempts of one run) can derive the same branch, and a single "
+        "failed-after-push attempt then wedges every later one with "
+        "'! [rejected] ... (non-fast-forward)' until someone deletes the branch by hand."
+    )
+    # Uniqueness is ADDITIVE to the human-readable date, not a replacement.
+    assert "DATE_SLUG" in rhs
+    # The prefix every downstream consumer matches on must survive — asserted
+    # against the liveness module's own constant, not a copy of the string.
+    assert rhs.lstrip('"').startswith(liveness.ORGAN_PR_BRANCH_PREFIX)
+
+
+def test_the_pin_rejects_both_historical_names() -> None:
+    """GUILT: without this half, the innocence test could be passing because
+    the predicate is trivially true rather than because the defect is gone.
+
+    Both names below really shipped: the first caused the nine-day outage, the
+    second is #3207's cure, which is correct for the twice-daily case and still
+    collides on a re-run.
+    """
+    assert not _is_unique_per_attempt('"docs/auto-sync-inventory-${DATE_SLUG}"')
+    assert not _is_unique_per_attempt(
+        '"docs/auto-sync-inventory-${DATE_SLUG}-${GITHUB_RUN_ID}"'
+    )
