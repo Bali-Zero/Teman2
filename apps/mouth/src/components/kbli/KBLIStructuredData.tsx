@@ -29,13 +29,26 @@ export function KBLICodeJsonLd({
       : "";
   // PMA source attribution with vintage (FATAL-2 axis): cite the in-force
   // annexes and their pending KBLI-2025 crosswalk instead of bare fact.
+  //
+  // The attribution is DERIVED, not fixed. "Crosswalk to KBLI 2025 pending" tells a
+  // reader — and Google, and every AI answer built on this JSON-LD — that a basis
+  // exists and only the mapping is unfinished. That is true for the codes with a
+  // recorded KBLI-2020 origin. For the 100 that record none, there is nothing to
+  // crosswalk from, and the same sentence would overstate what we can show. Same
+  // principle as the Bali qualifiers above: never let the structured data carry a
+  // green light the data cannot support.
+  const pmaBasisUntraceable =
+    code.provenance?.pma.status === "untraceable_basis";
+  const pmaAttribution = pmaBasisUntraceable
+    ? " — our sources record no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
+    : " per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)";
   const pmaLabel = `${
     code.pma.status === "open"
       ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
       : code.pma.status === "restricted"
         ? `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`
         : "Closed to foreign investment (TERTUTUP)"
-  } per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)`;
+  }${pmaAttribution}`;
 
   const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
   const licenseType = code.licensing[0]?.licenseType ?? "NIB";

@@ -121,13 +121,17 @@ When the WR2 carousel pipeline successfully publishes an episode (Canva apply + 
 
 ### Three sub-modes
 
-| Sub-mode              | Activation                                                          | Output                                      | Duration          | Clips | Cost ceiling             | Critic lanes                             |
-| --------------------- | ------------------------------------------------------------------- | ------------------------------------------- | ----------------- | ----- | ------------------------ | ---------------------------------------- |
-| `story_15s`           | **default** (always runs unless `companion_skip=true` in WR2 brief) | IG Story 9:16                               | 15s (16s trimmed) | 2×8s  | 20 cr Flow Pro (~$0.05)  | Lane 1 (Identity) + Lane 3 (Brand voice) |
-| `reel_60s`            | opt-in via WR2 brief `companion_expand=true` (Antonello `--expand`) | IG Reel / TikTok / Shorts                   | 60s               | 8×8s  | 80 cr Flow Pro (~$0.20)  | Full 4-lane                              |
-| `comment_interactive` | opt-in via WR2 brief `companion_engage=true` (Antonello `--engage`) | text-only (IG comment + DM reply templates) | 0s                | 0     | $0.05 (Sonnet text-only) | Lane 3 only + manual review              |
+| Sub-mode              | Activation                                                               | Output                                      | Duration                     | Clips   | Cost ceiling                        | Critic lanes                             |
+| --------------------- | ------------------------------------------------------------------------ | ------------------------------------------- | ---------------------------- | ------- | ----------------------------------- | ---------------------------------------- |
+| `episode`             | **automatic** (every publish, unless `companion_skip=true` in WR2 brief) | IG Reel / TikTok / Shorts, EN + ID cuts     | 60s default, 60–150s allowed | 8–19×8s | 80 cr @60s … 190 cr (~$0.475) @150s | Full 4-lane                              |
+| `story_15s`           | opt-in via WR2 brief `companion_story=true` (Antonello `--story`)        | IG Story 9:16                               | 15s (16s trimmed)            | 2×8s    | 20 cr Flow Pro (~$0.05)             | Lane 1 (Identity) + Lane 3 (Brand voice) |
+| `comment_interactive` | opt-in via WR2 brief `companion_engage=true` (Antonello `--engage`)      | text-only (IG comment + DM reply templates) | 0s                           | 0       | $0.05 (Sonnet text-only)            | Lane 3 only + manual review              |
 
-Multiple sub-modes can be requested simultaneously (e.g. `--expand` AND `--engage` both set in the WR2 brief) — one companion event is emitted per sub-mode.
+Opt-in sub-modes are additive: `--story` and `--engage` ride alongside the automatic `episode`, one companion event emitted per sub-mode.
+
+**Changed 2026-07-26 (Zero's ruling).** WR3 is now _preordained_: "la wr3 è prestabilita e crea il video del carosello della wr2 (in due versioni uguali ma una in inglese con sottotitoli inglese e una indonesiana con sottotitoli indonesiano)", bounded to "massimo 150 secondi e minimo 60 secondi". The old `reel_60s` sub-mode is what `episode` grew out of — renamed and promoted from opt-in to automatic; `story_15s` was demoted from default to a flag. `companion_expand` is gone: a stale one in a WR2 brief is ignored, not fatal.
+
+`[60,150]` is not a companion-mode invention — it is WR3's native envelope, declared identically in `brief-interpreter` (out-of-range = `hard_fail`), `shot-director` (60s→8 clips … 150s→19), `script-editor` and the `pre-render-gatekeeper` credit ceilings. Because companion mode sets `skip_brief_interpreter: true`, it never passes the agent that enforces that range — which is the only reason a 15-second default could exist here at all. `wr3_companion_dispatcher._assert_duration_envelope` now enforces it on the automatic path, so skipping the validator no longer means skipping the validation. `story_15s` sits outside the envelope deliberately and stays exempt: it is a human's explicit choice.
 
 ### Cost economy
 
@@ -137,7 +141,9 @@ Companion mode REUSES the WR2 brief verbatim:
 - `brief-interpreter` is **SKIPPED entirely** — no NB query, no NB source_ids ever enter the room (Law 2: NB UUIDs never leak across pipelines).
 - `domain` and `audience_segment` are inherited verbatim.
 
-Net effect per `story_15s` companion: ~$0.05 vs ~$0.45 for a from-scratch WR3 brief (savings: brief-interpreter $0.30 + critic Lane 2/4 ~$0.10).
+Net effect per companion: ~$0.20 for a 60s `episode` (~$0.475 at the 150s ceiling) against ~$0.45 of brief cost avoided on top of the render — the inheritance saves brief-interpreter's ~$0.30 NB query on every episode. The opt-in `story_15s` still lands at ~$0.05, and additionally skips critic Lane 2/4 (~$0.10); the automatic `episode` runs the full 4-lane critic, because it ships without a human in the loop.
+
+**Empty `primary_claim_ids` skips the companion entirely** (changed 2026-07-26, was: fall back to `story_15s`). WR2 carries claim ids in 0 of 23 briefs on disk today, so the old fallback would have fired on _every_ episode and quietly reinstated the very format the ruling replaced. An episode with no inherited claims would have to be either ungrounded or re-query NotebookLM (Law 2 forbids the latter here). Skipping spends nothing and keeps the gap visible instead of degrading past it.
 
 ### Output isolation
 
