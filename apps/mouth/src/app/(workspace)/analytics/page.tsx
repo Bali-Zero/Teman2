@@ -34,7 +34,7 @@ import {
   Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
 // Helper to format large numbers
 const formatNumber = (n: number): string => {
@@ -63,24 +63,38 @@ const formatUSD = (amount: number): string => {
   }).format(amount);
 };
 
-// Accent color styles for stat cards
+// Accent color styles for stat cards — categorical/stat accents read the
+// --bz-chart-* series (tokenized for exactly this use); cyan has no chart
+// twin, so it reads its neon family token.
 const accentColorStyles: Record<string, { border: string; icon: string }> = {
-  blue: { border: "border-l-[3px] border-l-[#60A5FA]", icon: "text-[#60A5FA]" },
-  teal: { border: "border-l-[3px] border-l-[#2DD4BF]", icon: "text-[#2DD4BF]" },
+  blue: {
+    border: "border-l-[3px] border-l-[var(--bz-chart-1)]",
+    icon: "text-[var(--bz-chart-1)]",
+  },
+  teal: {
+    border: "border-l-[3px] border-l-[var(--bz-chart-6)]",
+    icon: "text-[var(--bz-chart-6)]",
+  },
   amber: {
-    border: "border-l-[3px] border-l-[#FBBF24]",
-    icon: "text-[#FBBF24]",
+    border: "border-l-[3px] border-l-[var(--bz-chart-3)]",
+    icon: "text-[var(--bz-chart-3)]",
   },
   purple: {
-    border: "border-l-[3px] border-l-[#A78BFA]",
-    icon: "text-[#A78BFA]",
+    border: "border-l-[3px] border-l-[var(--bz-chart-4)]",
+    icon: "text-[var(--bz-chart-4)]",
   },
-  pink: { border: "border-l-[3px] border-l-[#F472B6]", icon: "text-[#F472B6]" },
+  pink: {
+    border: "border-l-[3px] border-l-[var(--bz-chart-7)]",
+    icon: "text-[var(--bz-chart-7)]",
+  },
   emerald: {
-    border: "border-l-[3px] border-l-[#34D399]",
-    icon: "text-[#34D399]",
+    border: "border-l-[3px] border-l-[var(--bz-chart-2)]",
+    icon: "text-[var(--bz-chart-2)]",
   },
-  cyan: { border: "border-l-[3px] border-l-[#22D3EE]", icon: "text-[#22D3EE]" },
+  cyan: {
+    border: "border-l-[3px] border-l-[var(--bz-neon-cyan)]",
+    icon: "text-[var(--bz-neon-cyan)]",
+  },
 };
 
 // Stat Card Component with animated numbers
@@ -118,9 +132,9 @@ function StatCard({
 }) {
   const variants = {
     default: "text-[var(--bz-text-1)]",
-    success: "text-[var(--success)]",
-    warning: "text-[var(--warning)]",
-    danger: "text-[var(--error)]",
+    success: "text-[var(--state-success)]",
+    warning: "text-[var(--state-warning)]",
+    danger: "text-[var(--state-danger)]",
   };
 
   const accent = accentColor ? accentColorStyles[accentColor] : null;
@@ -146,7 +160,7 @@ function StatCard({
       style={{
         background:
           "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+        border: "1px solid var(--bz-border)",
       }}
     >
       <div className="flex items-center gap-3 mb-2">
@@ -200,9 +214,9 @@ function ProgressBar({
   const percent = Math.min((value / max) * 100, 100);
   const colors = {
     accent: "bg-[var(--bz-accent)]",
-    success: "bg-[var(--success)]",
-    warning: "bg-[var(--warning)]",
-    danger: "bg-[var(--error)]",
+    success: "bg-[var(--state-success)]",
+    warning: "bg-[var(--state-warning)]",
+    danger: "bg-[var(--state-danger)]",
   };
 
   return (
@@ -247,16 +261,16 @@ function ExpandableSection({
       )}
       style={{
         background:
-          "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+        border: "1px solid var(--bz-border)",
       }}
     >
       <div
         onClick={onToggle}
-        className="px-4 py-3 border-b flex items-center justify-between cursor-pointer transition-colors hover:bg-white/5"
+        className="px-4 py-3 border-b flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--bz-glass-rim)]"
         style={{
-          borderColor: "rgba(255, 255, 255, 0.05)",
-          background: "rgba(255, 255, 255, 0.02)",
+          borderColor: "var(--bz-border)",
+          background: "var(--bz-glass-rim)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -481,8 +495,8 @@ export default function AnalyticsDashboard() {
   if (error && !data) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/5">
-          <AlertTriangle className="w-8 h-8 text-[var(--error)]" />
+        <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-[var(--state-danger)]/20 bg-[var(--state-danger)]/5">
+          <AlertTriangle className="w-8 h-8 text-[var(--state-danger)]" />
           <p className="text-[var(--bz-text-1)]">{error}</p>
           <button
             onClick={handleRefresh}
@@ -636,7 +650,7 @@ export default function AnalyticsDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
                   <p className="text-xs text-[var(--bz-text-2)]">Total Cost</p>
-                  <p className="text-lg font-bold text-[var(--success)]">
+                  <p className="text-lg font-bold text-[var(--state-success)]">
                     {formatUSD(llmUsage.total_cost_usd)}
                   </p>
                 </div>
@@ -662,17 +676,19 @@ export default function AnalyticsDashboard() {
                     {formatNumber(llmUsage.total_prompt_tokens)}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                  <p className="text-xs text-[var(--success)]">
+                <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                  <p className="text-xs text-[var(--state-success)]">
                     Completion Tokens
                   </p>
-                  <p className="text-2xl font-bold text-[var(--success)]">
+                  <p className="text-2xl font-bold text-[var(--state-success)]">
                     {formatNumber(llmUsage.total_completion_tokens)}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--warning)]/10 text-center">
-                  <p className="text-xs text-[var(--warning)]">Total Cost</p>
-                  <p className="text-2xl font-bold text-[var(--warning)]">
+                <div className="p-4 rounded-lg bg-[var(--state-warning)]/10 text-center">
+                  <p className="text-xs text-[var(--state-warning)]">
+                    Total Cost
+                  </p>
+                  <p className="text-2xl font-bold text-[var(--state-warning)]">
                     {formatUSD(llmUsage.total_cost_usd)}
                   </p>
                 </div>
@@ -690,7 +706,7 @@ export default function AnalyticsDashboard() {
                       </span>,
                       formatNumber(m.prompt_tokens),
                       formatNumber(m.completion_tokens),
-                      <span key="c" className="text-[var(--success)]">
+                      <span key="c" className="text-[var(--state-success)]">
                         {formatUSD(m.cost_usd)}
                       </span>,
                     ])}
@@ -868,15 +884,19 @@ export default function AnalyticsDashboard() {
                     {queryInsights.satisfaction.total_queries}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--error)]/10 text-center">
-                  <p className="text-xs text-[var(--error)]">Failed Queries</p>
-                  <p className="text-lg font-bold text-[var(--error)]">
+                <div className="p-3 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                  <p className="text-xs text-[var(--state-danger)]">
+                    Failed Queries
+                  </p>
+                  <p className="text-lg font-bold text-[var(--state-danger)]">
                     {queryInsights.failed_queries.length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--success)]/10 text-center">
-                  <p className="text-xs text-[var(--success)]">Satisfaction</p>
-                  <p className="text-lg font-bold text-[var(--success)]">
+                <div className="p-3 rounded-lg bg-[var(--state-success)]/10 text-center">
+                  <p className="text-xs text-[var(--state-success)]">
+                    Satisfaction
+                  </p>
+                  <p className="text-lg font-bold text-[var(--state-success)]">
                     {queryInsights.satisfaction.satisfaction_percent != null
                       ? `${queryInsights.satisfaction.satisfaction_percent}%`
                       : "N/A"}
@@ -893,15 +913,19 @@ export default function AnalyticsDashboard() {
                   User Satisfaction
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                    <p className="text-xs text-[var(--success)]">Thumbs Up</p>
-                    <p className="text-2xl font-bold text-[var(--success)]">
+                  <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                    <p className="text-xs text-[var(--state-success)]">
+                      Thumbs Up
+                    </p>
+                    <p className="text-2xl font-bold text-[var(--state-success)]">
                       {queryInsights.satisfaction.thumbs_up}
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
-                    <p className="text-xs text-[var(--error)]">Thumbs Down</p>
-                    <p className="text-2xl font-bold text-[var(--error)]">
+                  <div className="p-4 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                    <p className="text-xs text-[var(--state-danger)]">
+                      Thumbs Down
+                    </p>
+                    <p className="text-2xl font-bold text-[var(--state-danger)]">
                       {queryInsights.satisfaction.thumbs_down}
                     </p>
                   </div>
@@ -957,7 +981,7 @@ export default function AnalyticsDashboard() {
               {queryInsights.failed_queries.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-[var(--error)]" />
+                    <AlertTriangle className="w-4 h-4 text-[var(--state-danger)]" />
                     Top Failed Queries (0 chunks retrieved)
                   </h4>
                   <DataTable
@@ -969,7 +993,10 @@ export default function AnalyticsDashboard() {
                       >
                         {q.query_text}
                       </span>,
-                      <span key="c" className="font-medium text-[var(--error)]">
+                      <span
+                        key="c"
+                        className="font-medium text-[var(--state-danger)]"
+                      >
                         {q.fail_count}x
                       </span>,
                       <span
@@ -1028,7 +1055,7 @@ export default function AnalyticsDashboard() {
                               <div className="absolute inset-0 bg-[var(--bz-accent)]" />
                               {failPercent > 0 && (
                                 <div
-                                  className="absolute bottom-0 left-0 right-0 bg-[var(--error)]"
+                                  className="absolute bottom-0 left-0 right-0 bg-[var(--state-danger)]"
                                   style={{ height: `${failPercent}%` }}
                                 />
                               )}
@@ -1051,7 +1078,7 @@ export default function AnalyticsDashboard() {
                       Total
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-sm bg-[var(--error)]" />{" "}
+                      <span className="w-2 h-2 rounded-sm bg-[var(--state-danger)]" />{" "}
                       Failed
                     </span>
                   </div>
@@ -1141,21 +1168,21 @@ export default function AnalyticsDashboard() {
                 Response Times (Percentiles)
               </h4>
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                  <p className="text-xs text-[var(--success)]">P50</p>
-                  <p className="text-xl font-bold text-[var(--success)]">
+                <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                  <p className="text-xs text-[var(--state-success)]">P50</p>
+                  <p className="text-xl font-bold text-[var(--state-success)]">
                     {data.system.response_time_p50.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--warning)]/10 text-center">
-                  <p className="text-xs text-[var(--warning)]">P95</p>
-                  <p className="text-xl font-bold text-[var(--warning)]">
+                <div className="p-4 rounded-lg bg-[var(--state-warning)]/10 text-center">
+                  <p className="text-xs text-[var(--state-warning)]">P95</p>
+                  <p className="text-xl font-bold text-[var(--state-warning)]">
                     {data.system.response_time_p95.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
-                  <p className="text-xs text-[var(--error)]">P99</p>
-                  <p className="text-xl font-bold text-[var(--error)]">
+                <div className="p-4 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                  <p className="text-xs text-[var(--state-danger)]">P99</p>
+                  <p className="text-xl font-bold text-[var(--state-danger)]">
                     {data.system.response_time_p99.toFixed(0)}ms
                   </p>
                 </div>
@@ -1187,8 +1214,8 @@ export default function AnalyticsDashboard() {
                     className={cn(
                       "text-xl font-bold",
                       data.system.error_rate_percent > 5
-                        ? "text-[var(--error)]"
-                        : "text-[var(--success)]",
+                        ? "text-[var(--state-danger)]"
+                        : "text-[var(--state-success)]",
                     )}
                   >
                     {data.system.error_rate_percent.toFixed(2)}%
@@ -1210,8 +1237,8 @@ export default function AnalyticsDashboard() {
                       className={cn(
                         "px-2 py-1 rounded-full text-xs",
                         s.healthy
-                          ? "bg-[var(--success)]/10 text-[var(--success)]"
-                          : "bg-[var(--error)]/10 text-[var(--error)]",
+                          ? "bg-[var(--state-success)]/10 text-[var(--state-success)]"
+                          : "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
                       )}
                     >
                       {s.healthy ? "● Healthy" : "● Down"}
@@ -1303,8 +1330,8 @@ export default function AnalyticsDashboard() {
                     className={cn(
                       "px-2 py-1 rounded-full text-xs",
                       c.status === "green"
-                        ? "bg-[var(--success)]/10 text-[var(--success)]"
-                        : "bg-[var(--warning)]/10 text-[var(--warning)]",
+                        ? "bg-[var(--state-success)]/10 text-[var(--state-success)]"
+                        : "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
                     )}
                   >
                     {c.status}
@@ -1315,10 +1342,10 @@ export default function AnalyticsDashboard() {
 
             {/* Error Count */}
             {data.qdrant.error_count > 0 && (
-              <div className="p-4 rounded-lg bg-[var(--error)]/10 border border-[var(--error)]/20">
+              <div className="p-4 rounded-lg bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/20">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-[var(--error)]" />
-                  <span className="font-medium text-[var(--error)]">
+                  <AlertTriangle className="w-5 h-5 text-[var(--state-danger)]" />
+                  <span className="font-medium text-[var(--state-danger)]">
                     {data.qdrant.error_count} errors detected today
                   </span>
                 </div>
@@ -1342,7 +1369,7 @@ export default function AnalyticsDashboard() {
               </div>
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
                 <p className="text-xs text-[var(--bz-text-2)]">Active</p>
-                <p className="text-lg font-bold text-[var(--success)]">
+                <p className="text-lg font-bold text-[var(--state-success)]">
                   {data.crm.clients_active}
                 </p>
               </div>
@@ -1369,9 +1396,9 @@ export default function AnalyticsDashboard() {
                     {data.crm.clients_total}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                  <p className="text-xs text-[var(--success)]">Active</p>
-                  <p className="text-2xl font-bold text-[var(--success)]">
+                <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                  <p className="text-xs text-[var(--state-success)]">Active</p>
+                  <p className="text-2xl font-bold text-[var(--state-success)]">
                     {data.crm.clients_active}
                   </p>
                 </div>
@@ -1421,16 +1448,22 @@ export default function AnalyticsDashboard() {
                 Revenue
               </h4>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--success)]/10">
-                  <p className="text-xs text-[var(--success)]">Revenue Paid</p>
-                  <p className="text-xl font-bold text-[var(--success)]">
-                    {formatIDR(data.crm.revenue_paid)}
+                <div className="p-4 rounded-lg bg-[var(--state-success)]/10">
+                  <p className="text-xs text-[var(--state-success)]">
+                    Revenue Paid
+                  </p>
+                  <p className="text-xl font-bold text-[var(--state-success)]">
+                    <Money value={data.crm.revenue_paid} />
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--warning)]/10">
-                  <p className="text-xs text-[var(--warning)]">Outstanding</p>
-                  <p className="text-xl font-bold text-[var(--warning)]">
-                    {formatIDR(data.crm.revenue_quoted - data.crm.revenue_paid)}
+                <div className="p-4 rounded-lg bg-[var(--state-warning)]/10">
+                  <p className="text-xs text-[var(--state-warning)]">
+                    Outstanding
+                  </p>
+                  <p className="text-xl font-bold text-[var(--state-warning)]">
+                    <Money
+                      value={data.crm.revenue_quoted - data.crm.revenue_paid}
+                    />
                   </p>
                 </div>
               </div>
@@ -1438,7 +1471,7 @@ export default function AnalyticsDashboard() {
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--bz-text-2)]">Total Quoted</span>
                   <span className="font-medium">
-                    {formatIDR(data.crm.revenue_quoted)}
+                    <Money value={data.crm.revenue_quoted} />
                   </span>
                 </div>
               </div>
@@ -1455,7 +1488,7 @@ export default function AnalyticsDashboard() {
                   className={cn(
                     "p-4 rounded-lg text-center",
                     data.crm.renewals_30_days > 0
-                      ? "bg-[var(--error)]/10"
+                      ? "bg-[var(--state-danger)]/10"
                       : "bg-[var(--bz-card)]/50",
                   )}
                 >
@@ -1463,7 +1496,7 @@ export default function AnalyticsDashboard() {
                     className={cn(
                       "text-xs",
                       data.crm.renewals_30_days > 0
-                        ? "text-[var(--error)]"
+                        ? "text-[var(--state-danger)]"
                         : "text-[var(--bz-text-2)]",
                     )}
                   >
@@ -1472,7 +1505,8 @@ export default function AnalyticsDashboard() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      data.crm.renewals_30_days > 0 && "text-[var(--error)]",
+                      data.crm.renewals_30_days > 0 &&
+                        "text-[var(--state-danger)]",
                     )}
                   >
                     {data.crm.renewals_30_days}
@@ -1482,7 +1516,7 @@ export default function AnalyticsDashboard() {
                   className={cn(
                     "p-4 rounded-lg text-center",
                     data.crm.renewals_60_days > 0
-                      ? "bg-[var(--warning)]/10"
+                      ? "bg-[var(--state-warning)]/10"
                       : "bg-[var(--bz-card)]/50",
                   )}
                 >
@@ -1490,7 +1524,7 @@ export default function AnalyticsDashboard() {
                     className={cn(
                       "text-xs",
                       data.crm.renewals_60_days > 0
-                        ? "text-[var(--warning)]"
+                        ? "text-[var(--state-warning)]"
                         : "text-[var(--bz-text-2)]",
                     )}
                   >
@@ -1499,7 +1533,8 @@ export default function AnalyticsDashboard() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      data.crm.renewals_60_days > 0 && "text-[var(--warning)]",
+                      data.crm.renewals_60_days > 0 &&
+                        "text-[var(--state-warning)]",
                     )}
                   >
                     {data.crm.renewals_60_days}
@@ -1586,15 +1621,19 @@ export default function AnalyticsDashboard() {
                   {data.team.hours_week.toFixed(1)}h
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                <p className="text-xs text-[var(--success)]">Active Sessions</p>
-                <p className="text-2xl font-bold text-[var(--success)]">
+              <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                <p className="text-xs text-[var(--state-success)]">
+                  Active Sessions
+                </p>
+                <p className="text-2xl font-bold text-[var(--state-success)]">
                   {data.team.active_sessions}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--warning)]/10 text-center">
-                <p className="text-xs text-[var(--warning)]">Open Actions</p>
-                <p className="text-2xl font-bold text-[var(--warning)]">
+              <div className="p-4 rounded-lg bg-[var(--state-warning)]/10 text-center">
+                <p className="text-xs text-[var(--state-warning)]">
+                  Open Actions
+                </p>
+                <p className="text-2xl font-bold text-[var(--state-warning)]">
                   {data.team.action_items_open}
                 </p>
               </div>
@@ -1661,7 +1700,7 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
                 <p className="text-xs text-[var(--bz-text-2)]">Avg Rating</p>
-                <p className="text-lg font-bold text-[var(--success)]">
+                <p className="text-lg font-bold text-[var(--state-success)]">
                   {data.feedback.avg_rating.toFixed(1)}/5
                 </p>
               </div>
@@ -1671,9 +1710,9 @@ export default function AnalyticsDashboard() {
                   {data.feedback.total_ratings}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--error)]/10 text-center">
-                <p className="text-xs text-[var(--error)]">Negative</p>
-                <p className="text-lg font-bold text-[var(--error)]">
+              <div className="p-3 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                <p className="text-xs text-[var(--state-danger)]">Negative</p>
+                <p className="text-lg font-bold text-[var(--state-danger)]">
                   {data.feedback.negative_feedback_count}
                 </p>
               </div>
@@ -1683,12 +1722,14 @@ export default function AnalyticsDashboard() {
           <div className="space-y-6">
             {/* Rating Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
-                <p className="text-xs text-[var(--success)]">Average Rating</p>
-                <p className="text-3xl font-bold text-[var(--success)]">
+              <div className="p-4 rounded-lg bg-[var(--state-success)]/10 text-center">
+                <p className="text-xs text-[var(--state-success)]">
+                  Average Rating
+                </p>
+                <p className="text-3xl font-bold text-[var(--state-success)]">
                   {data.feedback.avg_rating.toFixed(2)}
                 </p>
-                <p className="text-xs text-[var(--success)]">out of 5</p>
+                <p className="text-xs text-[var(--state-success)]">out of 5</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
                 <p className="text-xs text-[var(--bz-text-2)]">Total Ratings</p>
@@ -1696,9 +1737,11 @@ export default function AnalyticsDashboard() {
                   {data.feedback.total_ratings}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
-                <p className="text-xs text-[var(--error)]">Negative Feedback</p>
-                <p className="text-2xl font-bold text-[var(--error)]">
+              <div className="p-4 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                <p className="text-xs text-[var(--state-danger)]">
+                  Negative Feedback
+                </p>
+                <p className="text-2xl font-bold text-[var(--state-danger)]">
                   {data.feedback.negative_feedback_count}
                 </p>
               </div>
@@ -1741,10 +1784,10 @@ export default function AnalyticsDashboard() {
                           className={cn(
                             "h-full rounded-full transition-all",
                             rating >= 4
-                              ? "bg-[var(--success)]"
+                              ? "bg-[var(--state-success)]"
                               : rating === 3
-                                ? "bg-[var(--warning)]"
-                                : "bg-[var(--error)]",
+                                ? "bg-[var(--state-warning)]"
+                                : "bg-[var(--state-danger)]",
                           )}
                           style={{ width: `${percent}%` }}
                         />
@@ -1764,17 +1807,17 @@ export default function AnalyticsDashboard() {
             {/* Recent Negative Feedback */}
             {data.feedback.recent_negative_feedback.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-3 text-[var(--error)]">
+                <h4 className="text-sm font-medium mb-3 text-[var(--state-danger)]">
                   Recent Negative Feedback
                 </h4>
                 <div className="space-y-2">
                   {data.feedback.recent_negative_feedback.map((f, i) => (
                     <div
                       key={i}
-                      className="p-3 rounded-lg bg-[var(--error)]/5 border border-[var(--error)]/20"
+                      className="p-3 rounded-lg bg-[var(--state-danger)]/5 border border-[var(--state-danger)]/20"
                     >
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-[var(--error)]">
+                        <span className="text-[var(--state-danger)]">
                           Rating: {f.rating}/5
                         </span>
                         <span className="text-[var(--bz-text-2)]">
@@ -1806,10 +1849,10 @@ export default function AnalyticsDashboard() {
                         className={cn(
                           "w-full rounded-t",
                           t.rating >= 4
-                            ? "bg-[var(--success)]"
+                            ? "bg-[var(--state-success)]"
                             : t.rating >= 3
-                              ? "bg-[var(--warning)]"
-                              : "bg-[var(--error)]",
+                              ? "bg-[var(--state-warning)]"
+                              : "bg-[var(--state-danger)]",
                         )}
                         style={{ height: `${(t.rating / 5) * 100}%` }}
                       />
@@ -1835,15 +1878,19 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("alerts")}
           summary={
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--error)]/10">
-                <p className="text-xs text-[var(--error)]">Auth Failures</p>
-                <p className="text-lg font-bold text-[var(--error)]">
+              <div className="p-3 rounded-lg bg-[var(--state-danger)]/10">
+                <p className="text-xs text-[var(--state-danger)]">
+                  Auth Failures
+                </p>
+                <p className="text-lg font-bold text-[var(--state-danger)]">
                   {data.alerts.auth_failures_today}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--warning)]/10">
-                <p className="text-xs text-[var(--warning)]">Active Alerts</p>
-                <p className="text-lg font-bold text-[var(--warning)]">
+              <div className="p-3 rounded-lg bg-[var(--state-warning)]/10">
+                <p className="text-xs text-[var(--state-warning)]">
+                  Active Alerts
+                </p>
+                <p className="text-lg font-bold text-[var(--state-warning)]">
                   {data.alerts.active_alerts.length}
                 </p>
               </div>
@@ -1853,17 +1900,19 @@ export default function AnalyticsDashboard() {
           <div className="space-y-6">
             {/* Overview Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
-                <p className="text-xs text-[var(--error)]">
+              <div className="p-4 rounded-lg bg-[var(--state-danger)]/10 text-center">
+                <p className="text-xs text-[var(--state-danger)]">
                   Auth Failures Today
                 </p>
-                <p className="text-2xl font-bold text-[var(--error)]">
+                <p className="text-2xl font-bold text-[var(--state-danger)]">
                   {data.alerts.auth_failures_today}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--warning)]/10 text-center">
-                <p className="text-xs text-[var(--warning)]">Active Alerts</p>
-                <p className="text-2xl font-bold text-[var(--warning)]">
+              <div className="p-4 rounded-lg bg-[var(--state-warning)]/10 text-center">
+                <p className="text-xs text-[var(--state-warning)]">
+                  Active Alerts
+                </p>
+                <p className="text-2xl font-bold text-[var(--state-warning)]">
                   {data.alerts.active_alerts.length}
                 </p>
               </div>
@@ -1885,7 +1934,7 @@ export default function AnalyticsDashboard() {
             {data.alerts.active_alerts.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[var(--error)]" />
+                  <Shield className="w-4 h-4 text-[var(--state-danger)]" />
                   Active Alerts
                 </h4>
                 <div className="space-y-2">
@@ -1895,9 +1944,9 @@ export default function AnalyticsDashboard() {
                       className={cn(
                         "p-3 rounded-lg border",
                         a.severity === "critical"
-                          ? "bg-[var(--error)]/10 border-[var(--error)]/30"
+                          ? "bg-[var(--state-danger)]/10 border-[var(--state-danger)]/30"
                           : a.severity === "warning"
-                            ? "bg-[var(--warning)]/10 border-[var(--warning)]/30"
+                            ? "bg-[var(--state-warning)]/10 border-[var(--state-warning)]/30"
                             : "bg-[var(--bz-card)] border-[var(--bz-border)]",
                       )}
                     >
@@ -1907,9 +1956,9 @@ export default function AnalyticsDashboard() {
                           className={cn(
                             "px-2 py-0.5 rounded-full text-xs",
                             a.severity === "critical"
-                              ? "bg-[var(--error)]/20 text-[var(--error)]"
+                              ? "bg-[var(--state-danger)]/20 text-[var(--state-danger)]"
                               : a.severity === "warning"
-                                ? "bg-[var(--warning)]/20 text-[var(--warning)]"
+                                ? "bg-[var(--state-warning)]/20 text-[var(--state-warning)]"
                                 : "bg-[var(--bz-card)] text-[var(--bz-text-2)]",
                           )}
                         >
@@ -1936,7 +1985,7 @@ export default function AnalyticsDashboard() {
                     e.email,
                     <span
                       key="r"
-                      className="text-[var(--error)] truncate max-w-[200px] block"
+                      className="text-[var(--state-danger)] truncate max-w-[200px] block"
                     >
                       {e.reason}
                     </span>,
@@ -1956,7 +2005,10 @@ export default function AnalyticsDashboard() {
                     <span key="q" className="truncate max-w-[400px] block">
                       {q.query}
                     </span>,
-                    <span key="d" className="text-[var(--warning)] font-medium">
+                    <span
+                      key="d"
+                      className="text-[var(--state-warning)] font-medium"
+                    >
                       {q.duration_ms}ms
                     </span>,
                   ])}

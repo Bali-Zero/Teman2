@@ -108,7 +108,8 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
 def main(argv: list[str]) -> int:
     repo_root = Path(__file__).resolve().parents[1]
     targets: list[Path] = []
-    if argv:
+    explicit = bool(argv)
+    if explicit:
         targets = [repo_root / p for p in argv]
     else:
         # Default sweep: scripts/, apps/, packages/
@@ -119,13 +120,40 @@ def main(argv: list[str]) -> int:
             targets.extend(root_dir.rglob("*.py"))
 
     bad: list[tuple[Path, int, str]] = []
+    scanned = 0
     for path in targets:
         if not path.is_file():
             continue
         if not is_in_scope(path, repo_root):
             continue
+        scanned += 1
         for line_no, line in find_violations(path):
             bad.append((path, line_no, line))
+
+    # BLIND-SCAN GUARD (cicatrix #4 / W84 — "0 files traversed != clean"; same
+    # convention as scripts/secrets_permissions_audit.py, which exits 2).
+    #
+    # Without this, a sweep that reaches NO files prints the green banner below
+    # and returns 0 — the gate passes because it is BLIND, not because the tree
+    # is clean. That is not hypothetical: the sweep silently `continue`s over a
+    # missing root (l.117), so a renamed/moved `apps/`, a sparse or partial
+    # checkout, or a CI job that trims the worktree to save time would each turn
+    # this gate into decoration while still reporting success. Fail LOUD instead.
+    #
+    # Scoped to the DEFAULT sweep only: with explicit argv (pre-commit passing
+    # the changed-file list) an empty in-scope set is legitimate — a commit of
+    # only .md files has no Python to judge. Guarding that case too would be an
+    # over-match (cicatrix #3) that blocks innocent commits.
+    if not explicit and scanned == 0:
+        print(
+            "❌ asyncpg-lint: BLIND SCAN — the default sweep of scripts/, apps/, "
+            "packages/ traversed ZERO in-scope Python files.\n"
+            "Refusing to report 'clean': a scan that sees nothing proves nothing.\n"
+            "Likely causes: a sparse/partial checkout, a trimmed worktree, or a "
+            "renamed source root (the sweep skips roots that do not exist).",
+            file=sys.stderr,
+        )
+        return 2
 
     if not bad:
         print("✅ asyncpg-lint: no violations — all `except asyncpg.PostgresError` "

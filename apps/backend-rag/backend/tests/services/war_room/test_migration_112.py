@@ -14,6 +14,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from collections.abc import Callable, Iterator
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import pytest
@@ -32,6 +34,61 @@ pytestmark = pytest.mark.skipif(
     asyncpg is None or not TEST_DSN,
     reason="TEST_DATABASE_URL not set or asyncpg missing",
 )
+
+
+# Ceiling for "the NOTIFY never arrived", NOT a timing expectation. The happy
+# path returns in milliseconds; this only bounds the failure.
+NOTIFY_TIMEOUT = 30.0
+
+
+@asynccontextmanager
+async def notify_listener(channel: str, until: Callable[[dict], bool]) -> Iterator[list[dict]]:
+    """SYNCHRONISE with the listener, never sleep-and-hope.
+
+    PostgreSQL LISTEN/NOTIFY delivers only to sessions that are ALREADY
+    listening — a payload sent before `add_listener` returns is gone for good,
+    not delayed. These tests used to give the listener a flat `sleep(0.2)` head
+    start and then read for a flat `sleep(2.0)`, which is a race, not a wait: on
+    a loaded machine (this repo's pre-push runs the full suite, and several
+    sessions push at once — measured at load-average 50+ with 27 concurrent
+    pre-push scripts) the connect+LISTEN does not finish inside 200ms, the
+    write fires into the void, and the test fails on a healthy database.
+
+    Now the caller's write is not issued until the LISTEN is confirmed attached,
+    and we stop as soon as a payload the caller actually cares about arrives.
+    `until` matters: these tests filter for a SPECIFIC event, so stopping at the
+    first payload of any kind would let an unrelated notify that happens to land
+    first satisfy the wait and fail the assertion spuriously.
+    """
+    received: list[dict] = []
+    attached = asyncio.Event()
+    delivered = asyncio.Event()
+
+    def on_notify(_conn, _pid, _channel, payload):
+        event = json.loads(payload)
+        received.append(event)
+        if until(event):
+            delivered.set()
+
+    async def listener():
+        listen_conn = await asyncpg.connect(TEST_DSN)
+        try:
+            await listen_conn.add_listener(channel, on_notify)
+            attached.set()
+            try:
+                await asyncio.wait_for(delivered.wait(), timeout=NOTIFY_TIMEOUT)
+            except asyncio.TimeoutError:
+                pass  # let the caller's assertion report it, with its own message
+        finally:
+            attached.set()  # never strand the caller if connect/LISTEN raised
+            await listen_conn.close()
+
+    task = asyncio.create_task(listener())
+    await asyncio.wait_for(attached.wait(), timeout=NOTIFY_TIMEOUT)
+    try:
+        yield received
+    finally:
+        await task
 
 
 @pytest.fixture
@@ -72,34 +129,21 @@ async def test_tables_exist(conn):
 @pytest.mark.asyncio
 async def test_insert_draft_triggers_notify(conn):
     """Trigger must emit pg_notify('war_room_event', ...) on draft INSERT."""
-    received: list[dict] = []
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
-        )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
+    def is_briefed(p: dict) -> bool:
+        return p.get("status") == "briefed"
 
-    task = asyncio.create_task(listener_task())
-    # give the listener a tick to subscribe
-    await asyncio.sleep(0.2)
+    async with notify_listener("war_room_event", is_briefed) as received:
+        await conn.execute("""
+            INSERT INTO war_room_drafts (topic, status)
+            VALUES ('integration test', 'briefed');
+        """)
 
-    await conn.execute("""
-        INSERT INTO war_room_drafts (topic, status)
-        VALUES ('integration test', 'briefed');
-    """)
-
-    await task
-    assert any(p.get("status") == "briefed" for p in received), received
+    assert any(is_briefed(p) for p in received), received
 
 
 @pytest.mark.asyncio
 async def test_status_change_triggers_notify(conn):
-    received: list[dict] = []
-
     draft_row = await conn.fetchrow("""
         INSERT INTO war_room_drafts (topic, status)
         VALUES ('status-change test', 'briefed')
@@ -107,32 +151,22 @@ async def test_status_change_triggers_notify(conn):
     """)
     draft_id: UUID = draft_row["id"]
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
+    def is_approved(p: dict) -> bool:
+        return p.get("status") == "approved"
+
+    async with notify_listener("war_room_event", is_approved) as received:
+        await conn.execute(
+            "UPDATE war_room_drafts SET status = 'approved' WHERE id = $1;",
+            draft_id,
         )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
 
-    task = asyncio.create_task(listener_task())
-    await asyncio.sleep(0.2)
-
-    await conn.execute(
-        "UPDATE war_room_drafts SET status = 'approved' WHERE id = $1;",
-        draft_id,
-    )
-
-    await task
-    approved_events = [p for p in received if p.get("status") == "approved"]
+    approved_events = [p for p in received if is_approved(p)]
     assert approved_events, f"no approved event received: {received}"
     assert UUID(approved_events[0]["draft_id"]) == draft_id
 
 
 @pytest.mark.asyncio
 async def test_post_insert_triggers_notify(conn):
-    received: list[dict] = []
     draft_row = await conn.fetchrow("""
         INSERT INTO war_room_drafts (topic, status)
         VALUES ('post-insert test', 'approved')
@@ -140,28 +174,19 @@ async def test_post_insert_triggers_notify(conn):
     """)
     draft_id: UUID = draft_row["id"]
 
-    async def listener_task():
-        listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "war_room_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
+    def is_post_published(p: dict) -> bool:
+        return p.get("event_type") == "post_published"
+
+    async with notify_listener("war_room_event", is_post_published) as received:
+        await conn.execute(
+            """
+            INSERT INTO war_room_posts (draft_id, platform, post_external_id)
+            VALUES ($1, 'instagram', 'ig_test_1');
+            """,
+            draft_id,
         )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
 
-    task = asyncio.create_task(listener_task())
-    await asyncio.sleep(0.2)
-
-    await conn.execute(
-        """
-        INSERT INTO war_room_posts (draft_id, platform, post_external_id)
-        VALUES ($1, 'instagram', 'ig_test_1');
-        """,
-        draft_id,
-    )
-
-    await task
-    post_events = [p for p in received if p.get("event_type") == "post_published"]
+    post_events = [p for p in received if is_post_published(p)]
     assert post_events, f"no post_published event: {received}"
 
 

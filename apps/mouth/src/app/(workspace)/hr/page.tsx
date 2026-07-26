@@ -5,7 +5,13 @@ import type { LucideIcon } from "lucide-react";
 import { Gift, Banknote, Calendar, Users } from "lucide-react";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { AdminDashboard, PersonalDashboard } from "@/types/hr";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
 
 function StatCard({
   icon: Icon,
@@ -16,20 +22,20 @@ function StatCard({
 }: {
   icon: LucideIcon;
   label: string;
-  value: string;
-  sub?: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
   color: string;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+    <div className="border rounded-xl p-5" style={PANEL}>
       <div className="flex items-center gap-3 mb-3">
         <div className={`p-2 rounded-lg ${color}`}>
           <Icon size={20} />
         </div>
-        <span className="text-sm text-zinc-400">{label}</span>
+        <span className="text-sm text-[var(--bz-text-2)]">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-zinc-100">{value}</div>
-      {sub && <div className="text-xs text-zinc-500 mt-1">{sub}</div>}
+      <div className="text-2xl font-bold text-[var(--bz-text-1)]">{value}</div>
+      {sub && <div className="text-xs text-[var(--bz-text-3)] mt-1">{sub}</div>}
     </div>
   );
 }
@@ -37,31 +43,33 @@ function StatCard({
 function AdminDashboardView({ data }: { data: AdminDashboard }) {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-zinc-100">HR Dashboard</h1>
+      <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+        HR Dashboard
+      </h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users}
           label="Active Employees"
           value={String(data.employee_count || 0)}
-          color="bg-blue-500/10 text-blue-400"
+          color="bg-[var(--state-info)]/10 text-[var(--state-info)]"
         />
         <StatCard
           icon={Gift}
           label="Pending Bonuses"
           value={String(data.pending_bonuses?.count || 0)}
           sub={
-            data.pending_bonuses?.total
-              ? formatIDR(data.pending_bonuses.total)
-              : undefined
+            data.pending_bonuses?.total ? (
+              <Money value={data.pending_bonuses.total} />
+            ) : undefined
           }
-          color="bg-amber-500/10 text-amber-400"
+          color="bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
         />
         <StatCard
           icon={Calendar}
           label="Leave Requests"
           value={String(data.pending_leave_requests || 0)}
           sub="pending approval"
-          color="bg-purple-500/10 text-purple-400"
+          color="bg-[var(--bz-neon-purple)]/10 text-[var(--bz-neon-purple)]"
         />
         <StatCard
           icon={Banknote}
@@ -72,7 +80,7 @@ function AdminDashboardView({ data }: { data: AdminDashboard }) {
               ? `${data.current_period.payroll_month}/${data.current_period.payroll_year}`
               : "Not calculated yet"
           }
-          color="bg-emerald-500/10 text-emerald-400"
+          color="bg-[var(--state-success)]/10 text-[var(--state-success)]"
         />
       </div>
     </div>
@@ -83,33 +91,39 @@ function PersonalDashboardView({ data }: { data: PersonalDashboard }) {
   const annualBalance = data.leave_balances?.find((b) => b.code === "annual");
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-zinc-100">My HR Dashboard</h1>
+      <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+        My HR Dashboard
+      </h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={Gift}
           label="This Month Bonuses"
           value={String(data.month_bonuses?.count || 0)}
           sub={
-            data.month_bonuses?.total
-              ? formatIDR(data.month_bonuses.total)
-              : "No bonuses yet"
+            data.month_bonuses?.total ? (
+              <Money value={data.month_bonuses.total} />
+            ) : (
+              "No bonuses yet"
+            )
           }
-          color="bg-amber-500/10 text-amber-400"
+          color="bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
         />
         <StatCard
           icon={Banknote}
           label="Latest Payslip"
           value={
-            data.latest_payslip
-              ? formatIDR(data.latest_payslip.net_salary_idr)
-              : "N/A"
+            data.latest_payslip ? (
+              <Money value={data.latest_payslip.net_salary_idr} />
+            ) : (
+              "N/A"
+            )
           }
           sub={
             data.latest_payslip
               ? `${data.latest_payslip.payroll_month}/${data.latest_payslip.payroll_year}`
               : "No payslip yet"
           }
-          color="bg-emerald-500/10 text-emerald-400"
+          color="bg-[var(--state-success)]/10 text-[var(--state-success)]"
         />
         <StatCard
           icon={Calendar}
@@ -120,7 +134,7 @@ function PersonalDashboardView({ data }: { data: PersonalDashboard }) {
               : "N/A"
           }
           sub="annual leave remaining"
-          color="bg-purple-500/10 text-purple-400"
+          color="bg-[var(--bz-neon-purple)]/10 text-[var(--bz-neon-purple)]"
         />
       </div>
     </div>
@@ -159,15 +173,18 @@ export default function HRDashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-zinc-100">HR Dashboard</h1>
+        <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+          HR Dashboard
+        </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 animate-pulse"
+              className="border rounded-xl p-5 animate-pulse"
+              style={PANEL}
             >
-              <div className="h-4 bg-zinc-800 rounded w-24 mb-4" />
-              <div className="h-8 bg-zinc-800 rounded w-32" />
+              <div className="h-4 bg-[var(--bz-glass-rim)] rounded w-24 mb-4" />
+              <div className="h-8 bg-[var(--bz-glass-rim)] rounded w-32" />
             </div>
           ))}
         </div>
@@ -177,7 +194,7 @@ export default function HRDashboardPage() {
 
   if (error) {
     return (
-      <div className="bg-red-900/20 border border-red-800 rounded-xl p-6 text-red-400">
+      <div className="bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/30 rounded-xl p-6 text-[var(--state-danger)]">
         <h2 className="font-semibold mb-2">Error</h2>
         <p>{error}</p>
       </div>
