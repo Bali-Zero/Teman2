@@ -141,7 +141,13 @@ jobs:
         run: |
           set -euo pipefail
           DATE_SLUG=$(date -u +%Y-%m-%d)
-          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}"
+          # Run-scoped, never date-scoped. With a bare date the SECOND run of
+          # any day (this workflow is scheduled twice: 07:00 + 19:00 UTC) found
+          # the branch its own morning run had already pushed, and died with
+          # "! [rejected] ... (non-fast-forward)". That was failure mode #2 of
+          # the 2026-07-22..26 nine-day outage; mode #1 is handled at pr-create
+          # below. Measured then: 9 consecutive failed runs, 9 orphan branches.
+          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}-${GITHUB_RUN_ID}"
 
           # P3-prime: "Refresh PR logs 'advanced N flips, eligibility
           # recomputed'" — surfaced in BOTH the commit message and the PR
@@ -189,10 +195,26 @@ jobs:
             echo
             echo "Docs-only diff, auto-generated, safe to auto-merge. See \`scripts/docs_inventory_regen.sh\` header and memory \`discovery_docs_guardian_wallclock_gate_rot_2026_07_16\` for the full incident history."
           } >"$PR_BODY_FILE"
-          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+          # errexit-immune capture (scar W101: a bare `VAR=$(...)` under `set -e`
+          # aborts BEFORE any check of the result, so the diagnostic branch below
+          # could never run). Capture rc explicitly, then decide.
+          PR_CREATE_RC=0
+          PR_CREATE_OUT=$(gh pr create --base main --head "$BRANCH" \
             --title "chore(docs): scheduled inventory refresh (${DATE_SLUG})" \
-            --body-file "$PR_BODY_FILE")
+            --body-file "$PR_BODY_FILE" 2>&1) || PR_CREATE_RC=$?
           rm -f "$PR_BODY_FILE"
+
+          if [ "$PR_CREATE_RC" -ne 0 ]; then
+            echo "$PR_CREATE_OUT" >&2
+            if printf '%s' "$PR_CREATE_OUT" | grep -q "not permitted to create or approve pull requests"; then
+              echo "::error::GitHub Actions is forbidden from opening PRs on this repository, so this workflow can regenerate the inventory but can never land it. This is NOT a token-scope bug: this workflow already declares 'permissions: {contents: write, pull-requests: write}' and the branch push above succeeded (which needs contents: write). The prohibition is the ACCOUNT-level Actions setting ('Allow GitHub Actions to create and approve pull requests'), which no workflow token can override. Branch '${BRANCH}' is pushed and carries a correct inventory — open the PR by hand, or flip the account setting. This exact failure ran silently for 9 days (2026-07-22..26) and left 9 orphan branches." >&2
+            else
+              echo "::error::gh pr create failed (rc=${PR_CREATE_RC}) for branch '${BRANCH}'. The branch IS pushed and carries a regenerated inventory; it just has no PR." >&2
+            fi
+            exit 1
+          fi
+
+          PR_URL="$PR_CREATE_OUT"
           echo "Opened: $PR_URL"
           PR_NUM=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
           # BLOCKER-4 fix (red-team 2026-07-18): a swallowed `::warning::`
@@ -207,3 +229,40 @@ jobs:
             echo "::error::auto-merge arm failed for $PR_URL — the flip-PR is open but NOT armed to merge; docs/DOCS_INVENTORY.md will NOT update on main until this is re-armed or merged manually. Failing this run so the failure is visible (BLOCKER-4)." >&2
             exit 1
           fi
+
+      # The 2026-07-22..26 outage was NOT a missing failure signal — BLOCKER-4
+      # above already made the run exit 1, loudly and correctly. It failed 9
+      # times in a row and nobody read a single one. A red run is only a signal
+      # if something carries it OUT of Actions, so this step is the carrier.
+      #
+      # Deliberately `failure()` on the whole job rather than wired to one known
+      # branch: the mode that actually bit (Actions forbidden from opening PRs)
+      # was not a mode anyone had foreseen, and the next one will not be either.
+      # Coverage beats precision here — a false ping costs nothing, a silent
+      # nine-day death cost every docs PR a red `inventory-check` it did not earn.
+      - name: Telegram alert when this guardian dies
+        if: failure()
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The `exit 0` / `|| true` below are the OPPOSITE of the MAJOR-6 rule in
+          # docs-inventory-refresh-liveness.yml ("a failed alert must fail the run"),
+          # and that is deliberate, not an oversight. There the alert path was the
+          # only signal, so swallowing its failure made the run lie. Here the job is
+          # already red (`if: failure()`); an exit 1 from this step would add nothing
+          # except overwriting the ORIGINAL step's ::error:: as the run's headline —
+          # trading a precise cause for a generic "notification failed". Do not
+          # "harmonise" these two: they sit at different points of the same rule.
+          if [ -z "${BOT:-}" ] || [ -z "${CHAT:-}" ]; then
+            echo "Telegram secrets missing — cannot alert (the run is still red)."
+            exit 0
+          fi
+          TEXT="docs-inventory-refresh FAILED.
+          The docs inventory did not land on main; every PR touching docs/** will inherit a red inventory-check until this is cured.
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" >/dev/null || true

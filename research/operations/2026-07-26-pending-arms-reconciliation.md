@@ -10,7 +10,24 @@ sources:
   - live probes this session: gh, ssh mini, codex CLI, claude CLI, postgres MCP, curl
 ---
 
-# PENDING-ARMS reconciliation, 2026-07-26 — the operator-gated bucket is not trustworthy
+# PENDING-ARMS reconciliation, 2026-07-26 — six of sixty-five, and all six were wrong
+
+> **Scope and conflict of interest, stated up front** (both added after a second adversarial pass —
+> see the review section at the end; the original title claimed "the operator-gated bucket is not
+> trustworthy", generalising from a sample it chose itself).
+>
+> **Six lines of sixty-five were examined**, not the bucket. The other fifty-nine were never
+> opened. Six-for-six is a striking hit rate and it is *suggestive* of a systemic defect — the
+> mechanism in §Meta-pattern applies to every line by construction, since no line's `proof:` is
+> ever executed — but this report measures six lines, and any claim about the remaining
+> fifty-nine is inference, not evidence.
+>
+> **The author benefits from its own conclusions.** Every line moved out of `operator_gated`
+> shrinks the set of things a session must stop for, and the session both selected the six and
+> wrote the verdicts. That is the shape under which one should read a report whose finding is
+> "the humans owe less than the ledger says". The defence is not the author's good faith: it is
+> that each verdict below names the line's own criterion and the command that settles it, so a
+> reader can re-run any of them and disagree.
 
 ## Why this pass exists
 
@@ -37,9 +54,14 @@ code, `scripts/branch_graveyard_cleanup.sh::content_on_main()`. **It is disarmed
 mb=$(git merge-base "$MAIN_REF" "$branch" 2>/dev/null) || return 1
 ```
 
-and since the 2026-07-13 PII history-purge rewrote all 7,837 commits, `git merge-base` between
-`origin/main` and any pre-purge branch is **empty** — verified on all three surviving pre-purge
-branches this session. The function therefore returns "content NOT on main" for every one of them
+and since the 2026-07-13 PII history-purge rewrote the whole history (`origin/main 2ae5e6fb →
+33120add`, 7,837 commits — figure from the purge's own capture, memory
+`ops_pii_history_purge_executed_proven_2026_07_13`, not re-counted here), `git merge-base` between
+`origin/main` and any pre-purge branch is **empty**. Verified this session on the three pre-purge
+branches that still exist — `agent/air-m5/mouth/seo-batch3-title-meta-v3` (#1967),
+`agent/air-m5/docs/git-history-purge-plan` (#2326),
+`agent/mini-pro2/infra/healer-ledger-close-p0-apikey-rotation` (#2301) — named here because "all
+three surviving branches" is not a reproducible claim. The function therefore returns "content NOT on main" for every one of them
 **without comparing a single blob**. The "0 content-on-main deletable across 83 branches"
 recorded on 2026-07-13 is an artefact of that, not a fact about content. This is the third
 generation of the W88 trap: first the SHA-ancestor, then the three-dot diff, now the merge-base
@@ -53,10 +75,18 @@ So the method used here is per-line and evidential, not mechanical:
    produced a confident false verdict. So: run the line's criterion, and where it invokes a
    system, check that it invokes it the way the system is actually invoked — the wrapper, the
    shim, the env the cron sets — not a lookalike assembled from its parts.
+   **When this applies** (added after review, because as first written the rule forbade ordinary
+   ad-hoc diagnosis): only when a probe's result will be **recorded as a verdict about a system** —
+   a ledger closure, a spend recommendation, a doctrine-table edit, an alert. Exploratory `curl`,
+   `ps`, `grep` while thinking are not verdicts and need no ceremony. The trigger is not "am I
+   probing?" but "is this going in writing as the answer?".
 2. Execute it live this turn (disk, ssh, CLI probe, prod DB, HTTP).
 3. Close only on a pass. Where the criterion is unexecutable, say so and leave the line open.
-4. Where a branch is involved, take the file-set from the commits the branch **authored**
-   (`tip^..tip`) and blob-compare per file — never merge-base, never three-dot.
+4. Where a branch is involved, take the file-set from **`gh api repos/<slug>/pulls/<n>/files`**
+   and blob-compare per file against a **pinned** `origin/main` SHA — never merge-base, never
+   three-dot. (Originally this step said `tip^..tip`. Corrected after review: post-rewrite that
+   range is not derivable — `merge-base --is-ancestor <tip>^ origin/main` returns NO for every
+   pre-purge branch. Detail in the companion verdict doc §A2.)
 
 ## Verdicts
 
@@ -65,11 +95,11 @@ So the method used here is per-line and evidential, not mechanical:
 | line | criterion | evidence |
 |---|---|---|
 | `~/.claude/CLAUDE.md` §External LLM arsenal — Kimi block (opened 07-19, `operator[control-plane]`) | "the global file mentions kimi-code CLI + Allegro subscription" | present at `~/.claude/CLAUDE.md:169-170`: `~/.kimi-code/bin/kimi`, `kimi-code/k3`, "Allegro-tier". Done, unrecorded. |
-| Codex model slugs sol/terra/luna (opened 07-21, `operator[business]`) | "`codex exec -m <slug> … PING` returns a model answer (not a 400) for each slug" | all three answered `PING-OK`, rc=0, this session. **The line's premise is false today.** |
+| Codex model slugs sol/terra/luna (opened 07-21, `operator[business]`) | "`codex exec -m <slug> … PING` returns a model answer (not a 400) for each slug" | all three answered `PING-OK`, rc=0, this session. Corroborated later the same session by a *non-trivial* run: `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh` produced the eight-finding adversarial review cited in this repo's companion verdict doc — a 400 cannot write a review. **Note the contradiction:** the SessionStart proprioception line says `seat codex: AUTH_DEAD`. Its snapshot is 239h stale (the banner says so); the live runs are from today. Where a cached health report and a live invocation disagree, the invocation wins — which is the same lesson as the GLM section below, at the opposite sign. |
 | Mini main checkout 1 unpushed commit blocking the 5min cron (opened 07-18, `operator[control-plane]`) | "`git_alignment` ancestor=yes AND `mini-git-pull.log` shows `OK pulled`" | `git merge-base --is-ancestor HEAD origin/main` = **yes**; log at 03:57:26 today: `OK pulled to 258d5fedd (1 commits from origin)`. HEAD moved between two probes 20 minutes apart — the cron is not merely unblocked, it is running. |
 | META_EN flip (closed in the sibling PR) | "view-source of /kbli/28180 shows an English `<title>`" | HTTP 200 + full-coverage English title, live. |
 
-### RE-OWNED — not operator-gated at all (2)
+### RE-OWNED — not operator-gated at all (1, was 2 — see the withdrawal below)
 
 **tri-LLM `claude-opus` seat `down (no_json)`.** Tagged "me … or `operator[secret]` if it turns
 out to be a token rotation". It is neither a rotation nor a bot-health regression: it is a
@@ -83,12 +113,23 @@ misbehaved". It only bites when the env var is absent, i.e. exactly the unattend
 context the bot runs in and never the interactive session anyone would debug it from.
 
 **Mini repo relocation (`~/Desktop/nuzantara` → symlink).** Tagged `operator[business] (confirm
-intent — Legge 5)`. The intent is already **recorded**: memory
-`decision_repo_moved_out_of_desktop_tcc_immunity_2026_07_16` (on disk, 2026-07-16 19:28) is the
-fleet-wide decision to move off TCC-protected `~/Desktop`, and the symlink's own mtime is
-`16 lug 11:05` the same day. The business half is answered; what remains is the docs-sync half,
-which is a session's job — and it is real: `CLAUDE.md` §11 still instructs `cd ~/Desktop/nuzantara`
-for deploys.
+intent — Legge 5)`. **This re-own is WITHDRAWN** (second adversarial pass — the reasoning below is
+kept so the slide is visible rather than deleted).
+
+The argument was: the intent is already recorded, because memory
+`decision_repo_moved_out_of_desktop_tcc_immunity_2026_07_16` (on disk, 2026-07-16 19:28) records
+the fleet-wide decision to move off TCC-protected `~/Desktop`, and the symlink's own mtime is
+`16 lug 11:05` the same day.
+
+The slide is in the word "recorded". That memory file was **written by a session**, and the line's
+criterion asks for the *operator's* confirmation of intent. A session's note that a decision was
+taken is evidence that a session believed so — it is not the confirmation, and treating the two as
+interchangeable is precisely how a session grants itself an operator's authority one file at a
+time. The line stays `operator[business]`. The docs-sync half is genuinely a session's job and
+genuinely open (`CLAUDE.md` §11 still says `cd ~/Desktop/nuzantara` for deploys); that half can be
+split out and done without touching the business half.
+
+**Net effect on the count: 65 → 61, not 60.**
 
 ### Half-done, and the ledger did not say so (1)
 
@@ -122,7 +163,14 @@ Two earlier drafts of this section said the opposite, and the sequence is the fi
    `CLAUDE_CONFIG_DIR=~/.claude-glm`. My probe set the config dir and **not the token**.
    Through the real entry point: `claude-glm -p "reply with exactly: PONG" --model glm-5.2`
    → `PONG`. The `operator[business]` recharge this line asked for would have bought
-   capacity that was never lost.
+   capacity that was never lost. Proven twice over the same day: that same seat then ran the
+   adversarial review of *this* document and returned eight findings, six of which are applied
+   above.
+4. **Ledger status, stated precisely** (the earlier wording said the line is "closed by the
+   sibling's PR #3161", which reads as done): #3161 is **OPEN**, not merged, as of this writing.
+   It ships `scripts/claude-glm.sh` and the closure of ledger line 28. This report deliberately
+   does not touch that line — one line, one owner — so the ledger still shows it open until
+   #3161 lands. "Closed by another PR" is a plan, not a state.
 
 What the probe actually measured was *my own missing credential*, and it reported it in the
 seat's voice. Every property that makes a live probe feel authoritative was present: real
@@ -300,3 +348,30 @@ Keychain measurements, the live `claude-glm` PONG + z.ai endpoint responses, the
 Pro/Mini (peer unreachable), and the identities of the 3 pre-purge branches. These remain as
 originally reported, corroborated only by the wrapper/symlink structure Codex could read
 statically, not by re-running the live probes themselves.
+
+---
+
+## Adversarial review — secondo passaggio (GLM 5.2, cross-family, documento intero)
+
+Il seat che questo documento aveva appena dichiarato morto per sbaglio è quello che l'ha
+revisionato. Non è ironia decorativa: era il modo più diretto di provare la correzione della
+§GLM, e il seat ha restituito **SOUND-WITH-CAVEATS** con 8 findings — il che è più utile di un
+SOUND.
+
+| # | finding | esito |
+|---|---|---|
+| 1 | la chiusura degli slug Codex contraddice la proprioception di sessione (`seat codex: AUTH_DEAD`) ed è priva di output mostrato | **accolta** — aggiunta la corroborazione (lo stesso seat ha poi prodotto una review di 8 punti: un 400 non scrive una review) e dichiarata la contraddizione: lo snapshot è 239h stale, l'invocazione è di oggi |
+| 2 | la ri-assegnazione del relocation Mini scivola sul senso di "registrato": un file di memoria scritto da una sessione non è la conferma dell'operatore che il criterio chiede | **accolta, ri-assegnazione RITIRATA** — conteggio corretto 65 → **61**, non 60 |
+| 3 | "tutti e tre i branch pre-purge" e "7.837 commit" sono affermati come fatti ma non riproducibili dal testo | **accolta** — i tre branch sono nominati, la cifra attribuita alla sua fonte |
+| 4 | il titolo generalizza da 6 righe su 65 scelte da chi scrive | **accolta** — titolo e cappello riscritti: sei righe, non il bucket |
+| 5 | la regola nata dall'errore GLM è troppo larga: senza un test di applicabilità vieta la diagnostica ad-hoc ordinaria | **accolta** — la regola ora scatta solo quando l'esito diventa un **verdetto messo per iscritto** (chiusura, spesa, dottrina, alert), non su ogni `curl` |
+| 6 | la lezione è applicata solo retoricamente: le altre cinque chiusure si fidano di probe live senza mostrarne l'output né ri-controllarne l'entry point | **accolta in parte** — la #1 ora porta la sua prova. Le altre quattro **non** sono state ri-controllate all'entry-point in questo passaggio, ed è meglio dirlo che fingere: sono più difendibili (grep su file, log su disco, HTTP 200 su URL pubblica — non c'è wrapper che possa mentire come per GLM), ma "più difendibili" non è "ri-verificate" |
+| 7 | la riga GLM è dichiarata "chiusa dalla PR #3161" senza verificare che esista, sia mergiata, spedisca la cura | **accolta** — #3161 è **OPEN**, non mergiata; il testo ora lo dice e chiama la cosa col suo nome: un piano, non uno stato |
+| 8 | il documento non dichiara mai il proprio conflitto d'interesse: ridurre `operator_gated_overdue` allarga l'autorità di chi scrive | **accolta** — dichiarato in testa, insieme allo scope |
+
+**Il finding che pesa più degli altri è il 2**, ed è la stessa malattia della §GLM in un'altra
+forma: là un'invocazione somigliante veniva presa per il sistema; qui una nota scritta da una
+sessione veniva presa per la conferma di un umano. Entrambe sostituiscono la cosa con qualcosa che
+le assomiglia — e in un report il cui esito è "l'umano deve meno di quanto dice il registro",
+quella sostituzione va nella direzione che conviene a chi scrive. È esattamente il punto del
+finding 8, e per questo il ritiro è più importante del conteggio che corregge.
