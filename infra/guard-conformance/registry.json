@@ -273,7 +273,7 @@
       ]
     },
     "detect_secrets_content_keyed_rules": {
-      "_doc": "CONTENT_KEYED_RULES in scripts/detect_secrets_auto_triage.py — path-scoped AND content-keyed (assignment-target name) auto-triage rules, added so a detect-secrets false-positive fix can't degrade into a blanket whole-file path rule (superscar #3). PR #3127 registered the first entry: worker-plane review panel executable identity pins (sha256/cdhash).",
+      "_doc": "CONTENT_KEYED_RULES in scripts/detect_secrets_auto_triage.py — path-scoped AND content-keyed (assignment-target name) auto-triage rules, added so a detect-secrets false-positive fix can't degrade into a blanket whole-file path rule (superscar #3). PR #3127 registered the first entry: worker-plane review panel executable identity pins (sha256/cdhash). 2026-07-26 added a second entry: apps/mouth/data/kbli-gold-all.json's sentence_sha256 idempotency marker — content-keyed rather than path-only because, unlike this repo's other KBLI auto-approve rules, that file has an open (not data-plane-guarded) writer set.",
       "source": "scripts/detect_secrets_auto_triage.py",
       "tests": ["scripts/tests/test_detect_secrets_auto_triage.py"]
     },
