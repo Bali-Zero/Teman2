@@ -150,13 +150,17 @@ fi
 # drift" when the true state is "could not check this tick"; Law 6 also
 # makes a transient offline/fetch-refused state a natural condition, not
 # a fault, so it must not be silently promoted to ACTIONABLE either — it
-# is logged for visibility instead, never swallowed.
-python3 scripts/lint_home_fork.py --check >/dev/null 2>&1
+# is logged for visibility instead, never swallowed. The tool's own
+# verdict text is captured, not discarded, in EITHER branch — a guard
+# whose product is a verdict must not have that verdict thrown away by
+# its only reader.
+LHF_CHECK_OUT=$(python3 scripts/lint_home_fork.py --check 2>&1)
 LHF_CHECK_RC=$?
 if [ $(( LHF_CHECK_RC & 1 )) -ne 0 ]; then
     ACTIONABLE=1; REASONS="${REASONS}home-fork-drift "
+    log "home-fork --check (rc=$LHF_CHECK_RC): $LHF_CHECK_OUT"
 elif [ $(( LHF_CHECK_RC & 4 )) -ne 0 ]; then
-    log "home-fork --check: CANNOT-VERIFY (rc=$LHF_CHECK_RC, origin/main unreachable this tick) — not treated as drift"
+    log "home-fork --check: CANNOT-VERIFY (rc=$LHF_CHECK_RC), not treated as drift: $LHF_CHECK_OUT"
 fi
 
 # Receptor D: arsenal seats (scripts/arsenal_probe.py) — the seat<->armed
