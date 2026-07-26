@@ -42,7 +42,13 @@ SENTINEL_JOB_KEY="$(echo "$JOB_NAME" | tr '-' '_')"
 #   3. CRON_TIMEOUT env var (global crontab override)
 #   4. 300s hard default
 case "$SENTINEL_JOB_KEY" in
-    fly_pg_backup)      _job_default=900 ;;   # PG dump+gzip+upload Tigris
+    # 2026-07-26: was 900. This is the OUTER cap and it covers dump + SFTP + Tigris
+    # upload + verify, so it must exceed fly-pg-backup.sh's own DUMP_TIMEOUT (2400) plus
+    # its SFTP_TIMEOUT (900) — raising only the inner cap would have changed nothing,
+    # because this one fires first. Measured that day: the dump alone took ~815s (vs ~90s
+    # the day before) on an unchanged 2749MB database, with the primary's `cpu` health
+    # check failing. See the comment block in fly-pg-backup.sh.
+    fly_pg_backup)      _job_default=3600 ;;  # PG dump+gzip+upload Tigris
     fly_qdrant_backup)  _job_default=600 ;;   # Qdrant snapshot+upload
     knowledge_graph_builder) _job_default=900 ;;  # full KG rebuild
     *)                  _job_default="" ;;

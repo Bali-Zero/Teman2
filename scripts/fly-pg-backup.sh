@@ -38,7 +38,17 @@ FLY_BIN="${FLY_BIN:-/opt/homebrew/bin/fly}"
 KEEP_LOCAL=7
 KEEP_REMOTE=30
 MAX_RETRIES=3
-DUMP_TIMEOUT=900   # in-machine pg_dump+gzip wall-clock cap
+# A timeout is a CEILING for a hung job, not a claim about how long the work takes.
+# Both of these were sized against a ~90s dump; on 2026-07-26 the same dump of the same
+# 2749MB database on the same shared-cpu-2x machine ran at ~570-660 KB/s — ~815s — with
+# exactly one pg_dump alive (counted on the machine, so the rate is not self-contention)
+# and the primary's own `cpu` health check failing ("system spent 3.13s of the last 10
+# seconds waiting on cpu"). 900s would have left ~85s for SFTP + Tigris upload + gunzip
+# verify, which historically need ~90s: the nightly would have died at ~97% of the work.
+# Raised to ~3x the slow-day observation so a bad-CPU-neighbour day cannot silently eat
+# the backup. If the machine is healthy the job simply finishes early — a ceiling costs
+# nothing when it is not reached. The slowness itself is a separate, unexplained finding.
+DUMP_TIMEOUT=2400  # in-machine pg_dump+gzip wall-clock cap (~815s observed 2026-07-26)
 SFTP_TIMEOUT=900   # SFTP transfer wall-clock cap (~5min observed for ~360MB over DERP)
 
 # Tigris credentials (set by fly storage create)
