@@ -24,9 +24,10 @@ import type {
 } from "@/lib/api/crm/crm.types";
 
 const severityClass: Record<TaxCompanyPilotGap["severity"], string> = {
-  high: "border-red-200 bg-red-50 text-red-800",
-  medium: "border-amber-200 bg-amber-50 text-amber-800",
-  low: "border-sky-200 bg-sky-50 text-sky-800",
+  high: "border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] text-[var(--state-danger)]",
+  medium:
+    "border-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] text-[var(--state-warning)]",
+  low: "border-[color-mix(in_srgb,var(--state-info)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-info)_10%,transparent)] text-[var(--state-info)]",
 };
 
 const severityLabel: Record<TaxCompanyPilotGap["severity"], string> = {
@@ -156,25 +157,27 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
     map.business_story?.length > 0 ? map.business_story : map.ai_recap;
 
   return (
-    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <header className="grid gap-4 border-b border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1fr_240px]">
+    <article className="overflow-hidden rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] backdrop-blur-sm">
+      <header className="grid gap-4 border-b border-[var(--bz-border)] bg-[rgba(255,255,255,0.03)] p-4 lg:grid-cols-[1fr_240px]">
         <div className="min-w-0">
-          <p className="mb-2 text-xs font-semibold uppercase text-emerald-700">
+          <p className="mb-2 text-xs font-semibold uppercase text-[var(--state-success)]">
             {companyStatus}
           </p>
-          <h2 className="text-xl font-semibold text-slate-950">
+          <h2 className="text-xl font-semibold text-[var(--bz-text-primary)]">
             {map.company.name}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[var(--bz-text-secondary)]">
             {map.company.aliases.join(" · ")}
           </p>
         </div>
-        <div className="border-l border-slate-200 pl-4 text-sm">
-          <p className="text-[11px] font-semibold uppercase text-slate-500">
+        <div className="border-l border-[var(--bz-border)] pl-4 text-sm">
+          <p className="text-[11px] font-semibold uppercase text-[var(--bz-text-secondary)]">
             Tax owner
           </p>
-          <p className="font-semibold text-slate-950">{map.tax_member.name}</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="font-semibold text-[var(--bz-text-primary)]">
+            {map.tax_member.name}
+          </p>
+          <p className="mt-1 text-xs text-[var(--bz-text-secondary)]">
             {map.tax_member.workspace_branch}
           </p>
         </div>
@@ -182,11 +185,11 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
 
       <div className="grid gap-6 p-4 lg:grid-cols-[1fr_1.05fr]">
         <section>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
             <UserRound size={16} />
             Person entry
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[var(--bz-border)]">
             {personDossiers.map((dossier) => (
               <div
                 key={dossier.person_name}
@@ -194,10 +197,10 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-950">
+                    <p className="font-medium text-[var(--bz-text-primary)]">
                       {dossier.person_name}
                     </p>
-                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                    <p className="mt-1 text-sm leading-5 text-[var(--bz-text-secondary)]">
                       {dossier.headline}
                     </p>
                   </div>
@@ -207,27 +210,27 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                       href={dossier.drive_folder_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                      className="rounded-md p-1.5 text-[var(--bz-text-muted)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--bz-text-primary)]"
                     >
                       <ExternalLink size={15} />
                     </a>
                   )}
                 </div>
-                <p className="mt-2 text-xs font-medium text-emerald-800">
+                <p className="mt-2 text-xs font-medium text-[var(--state-success)]">
                   {dossier.next_action}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {dossier.document_groups.map((item) => (
                     <span
                       key={`${dossier.person_name}-${item}`}
-                      className="rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
+                      className="rounded bg-[rgba(255,255,255,0.05)] px-2 py-1 text-[11px] text-[var(--bz-text-secondary)]"
                     >
                       {item}
                     </span>
                   ))}
                 </div>
                 {dossier.risk_flags.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-800">
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--state-warning)]">
                     {dossier.risk_flags.map((flag) => (
                       <li key={`${dossier.person_name}-${flag}`}>{flag}</li>
                     ))}
@@ -239,17 +242,17 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
             <Sparkles size={16} />
             Business story
           </div>
-          <ul className="space-y-2 text-sm leading-6 text-slate-700">
+          <ul className="space-y-2 text-sm leading-6 text-[var(--bz-text-secondary)]">
             {businessStory.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
-          <div className="mt-4 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
-            <div className="mb-1 flex items-center gap-2 font-semibold">
+          <div className="mt-4 border-l-2 border-[var(--state-success)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] px-3 py-2 text-sm text-[var(--bz-text-primary)]">
+            <div className="mb-1 flex items-center gap-2 font-semibold text-[var(--state-success)]">
               <ShieldCheck size={15} />
               Internal review
             </div>
@@ -261,8 +264,8 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
         </section>
       </div>
 
-      <section className="border-t border-slate-200 px-4 py-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+      <section className="border-t border-[var(--bz-border)] px-4 py-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
           <GitBranch size={16} />
           Evidence story layer
         </div>
@@ -270,22 +273,22 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
           {evidenceStories.map((story) => (
             <div
               key={`${story.person_name}-${story.company_name}`}
-              className="border-l-2 border-slate-300 bg-slate-50 px-3 py-2"
+              className="border-l-2 border-[var(--bz-border-hover)] bg-[rgba(255,255,255,0.03)] px-3 py-2"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-950">
+                  <p className="font-medium text-[var(--bz-text-primary)]">
                     {story.person_name}
                   </p>
-                  <p className="mt-1 text-xs font-medium uppercase text-slate-500">
+                  <p className="mt-1 text-xs font-medium uppercase text-[var(--bz-text-secondary)]">
                     {story.relationship_path.join(" -> ")}
                   </p>
                 </div>
-                <span className="rounded bg-white px-2 py-1 text-[11px] text-slate-500 ring-1 ring-slate-200">
+                <span className="rounded bg-[rgba(255,255,255,0.05)] px-2 py-1 text-[11px] text-[var(--bz-text-secondary)] ring-1 ring-[var(--bz-border)]">
                   {story.confidence}
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-5 text-slate-700">
+              <p className="mt-2 text-sm leading-5 text-[var(--bz-text-secondary)]">
                 {story.recap}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -297,7 +300,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                       target="_blank"
                       rel="noreferrer"
                       aria-label={`Open ${item.source_label} evidence in Drive`}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-950"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[rgba(255,255,255,0.04)] px-2 py-1 text-xs text-[var(--bz-text-secondary)] ring-1 ring-[var(--bz-border)] hover:bg-[rgba(255,255,255,0.08)] hover:text-[var(--bz-text-primary)]"
                     >
                       <FolderOpen size={13} />
                       {item.label}: {item.source_label}
@@ -306,7 +309,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                   ) : (
                     <span
                       key={`${story.person_name}-${item.label}-${item.source_label}`}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[rgba(255,255,255,0.04)] px-2 py-1 text-xs text-[var(--bz-text-secondary)] ring-1 ring-[var(--bz-border)]"
                     >
                       <FileText size={13} />
                       {item.label}: {item.detail}
@@ -314,26 +317,26 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                   ),
                 )}
               </div>
-              <p className="mt-3 text-xs font-medium text-emerald-800">
+              <p className="mt-3 text-xs font-medium text-[var(--state-success)]">
                 {story.next_action}
               </p>
             </div>
           ))}
         </div>
         <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
-          <div className="flex items-center gap-2 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-emerald-950">
+          <div className="flex items-center gap-2 border-l-2 border-[var(--state-success)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] px-3 py-2 text-[var(--bz-text-primary)]">
             <Download size={15} />
             {portalRule}
           </div>
-          <div className="flex items-center gap-2 border-l-2 border-slate-500 bg-slate-50 px-3 py-2 text-slate-700">
+          <div className="flex items-center gap-2 border-l-2 border-[var(--bz-border-hover)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-[var(--bz-text-secondary)]">
             <ShieldCheck size={15} />
             {teamRule}
           </div>
         </div>
       </section>
 
-      <section className="border-t border-slate-200 px-4 py-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+      <section className="border-t border-[var(--bz-border)] px-4 py-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
           <ListChecks size={16} />
           Next best actions
         </div>
@@ -355,9 +358,9 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
         </div>
       </section>
 
-      <div className="grid gap-6 border-t border-slate-200 px-4 py-4 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-6 border-t border-[var(--bz-border)] px-4 py-4 lg:grid-cols-[1.1fr_0.9fr]">
         <section>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
             <FileText size={16} />
             Key company records
           </div>
@@ -365,9 +368,9 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
             {Object.entries(documentsByGroup).map(([group, documents]) => (
               <div
                 key={group}
-                className="border-l-2 border-slate-200 bg-slate-50 px-3 py-2"
+                className="border-l-2 border-[var(--bz-border-hover)] bg-[rgba(255,255,255,0.03)] px-3 py-2"
               >
-                <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                <p className="mb-2 text-xs font-semibold uppercase text-[var(--bz-text-secondary)]">
                   {group}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -377,12 +380,12 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                       href={document.evidence_url ?? "#"}
                       target={document.evidence_url ? "_blank" : undefined}
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-950"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[rgba(255,255,255,0.04)] px-2 py-1 text-xs text-[var(--bz-text-secondary)] ring-1 ring-[var(--bz-border)] hover:bg-[rgba(255,255,255,0.08)] hover:text-[var(--bz-text-primary)]"
                     >
                       {document.name}
                       {document.sensitivity === "financial" ||
                       document.sensitivity === "credential" ? (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">
+                        <span className="rounded bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] px-1.5 py-0.5 text-[10px] text-[var(--state-warning)]">
                           {document.sensitivity}
                         </span>
                       ) : null}
@@ -395,7 +398,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
             <AlertTriangle size={16} />
             Open decisions
           </div>
@@ -415,9 +418,9 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
         </section>
       </div>
 
-      <section className="grid gap-4 border-t border-slate-200 p-4 lg:grid-cols-[1fr_auto]">
+      <section className="grid gap-4 border-t border-[var(--bz-border)] p-4 lg:grid-cols-[1fr_auto]">
         <div>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
             <BriefcaseBusiness size={16} />
             Folder cleanup
           </div>
@@ -425,10 +428,12 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
             {map.duplicate_candidates.map((candidate) => (
               <div
                 key={candidate.label}
-                className="border-l-2 border-slate-200 px-3 py-1.5"
+                className="border-l-2 border-[var(--bz-border-hover)] px-3 py-1.5"
               >
-                <p className="text-sm text-slate-900">{candidate.label}</p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="text-sm text-[var(--bz-text-primary)]">
+                  {candidate.label}
+                </p>
+                <p className="mt-1 text-xs text-[var(--bz-text-secondary)]">
                   Keep one client-facing source of truth before creating team
                   shortcuts.
                 </p>
@@ -444,7 +449,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
               target="_blank"
               rel="noreferrer"
               aria-label={`Open ${link.label} in Drive`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--bz-border)] px-2.5 py-1.5 text-xs font-medium text-[var(--bz-text-secondary)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--bz-text-primary)]"
             >
               <Link2 size={13} />
               {link.label}
@@ -483,15 +488,15 @@ function WorkspaceAiReviewPanel({
   ).length;
 
   return (
-    <section className="mb-5 border-b border-slate-200 pb-5">
+    <section className="mb-5 border-b border-[var(--bz-border)] pb-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-primary)]">
           <Sparkles size={16} />
           Workspace AI review
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {autoApproveResult && (
-            <span className="rounded bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">
+            <span className="rounded bg-[color-mix(in_srgb,var(--state-success)_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--state-success)] ring-1 ring-[color-mix(in_srgb,var(--state-success)_30%,transparent)]">
               {autoApproveResult.dry_run
                 ? `${autoApproveResult.eligible_count} ready · ${autoApproveResult.blocked_count} held`
                 : `${autoApproveResult.approved_count} approved · ${autoApproveResult.blocked_count} held`}
@@ -501,7 +506,7 @@ function WorkspaceAiReviewPanel({
             type="button"
             disabled={!onAutoApproveDryRun || autoApproving}
             onClick={() => onAutoApproveDryRun?.()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--bz-border)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1.5 text-xs font-semibold text-[var(--bz-text-secondary)] hover:bg-[rgba(255,255,255,0.08)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles size={13} />
             Check stories
@@ -510,12 +515,12 @@ function WorkspaceAiReviewPanel({
             type="button"
             disabled={!onAutoApproveApply || autoApproving}
             onClick={() => onAutoApproveApply?.()}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--state-success)] px-2.5 py-1.5 text-xs font-semibold text-[var(--bz-navy-950)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ShieldCheck size={13} />
             Approve stories
           </button>
-          <span className="rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+          <span className="rounded bg-[rgba(255,255,255,0.05)] px-2.5 py-1 text-xs font-medium text-[var(--bz-text-secondary)] ring-1 ring-[var(--bz-border)]">
             {loading
               ? "Checking drafts"
               : `${draftCount} draft${draftCount === 1 ? "" : "s"}`}
@@ -530,14 +535,14 @@ function WorkspaceAiReviewPanel({
             return (
               <article
                 key={snapshot.id}
-                className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] p-3 backdrop-blur-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">
+                    <p className="truncate text-sm font-semibold text-[var(--bz-text-primary)]">
                       {snapshot.company_name}
                     </p>
-                    <p className="mt-1 text-xs uppercase text-slate-500">
+                    <p className="mt-1 text-xs uppercase text-[var(--bz-text-secondary)]">
                       {snapshot.provider} · {snapshot.status}
                     </p>
                   </div>
@@ -547,7 +552,7 @@ function WorkspaceAiReviewPanel({
                       aria-label={`Approve Workspace AI draft for ${snapshot.company_name}`}
                       disabled={!onApproveSnapshot || isApproving}
                       onClick={() => onApproveSnapshot?.(snapshot.id)}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--state-success)] px-2.5 py-1.5 text-xs font-semibold text-[var(--bz-navy-950)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ShieldCheck size={13} />
                       {isApproving ? "Approving" : "Approve"}
@@ -555,7 +560,7 @@ function WorkspaceAiReviewPanel({
                   )}
                 </div>
                 {firstFact && (
-                  <div className="mt-3 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
+                  <div className="mt-3 border-l-2 border-[var(--state-success)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] px-3 py-2 text-sm text-[var(--bz-text-primary)]">
                     <p className="font-medium">{firstFact.label}</p>
                     <p className="mt-1 leading-5">{firstFact.detail}</p>
                   </div>
@@ -603,46 +608,48 @@ export function TaxCompanyPilotWorkspace({
   const openDecisions = maps.reduce((sum, map) => sum + map.gaps.length, 0);
 
   return (
-    <section className="min-h-screen bg-[#f4f6f1] px-4 py-5 text-slate-950 md:px-6">
-      <header className="mb-5 flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="min-h-screen px-4 py-5 text-[var(--bz-text-primary)] md:px-6">
+      <header className="mb-5 flex flex-col gap-4 border-b border-[var(--bz-border)] pb-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase text-emerald-700">
+          <p className="text-xs font-semibold uppercase text-[var(--state-success)]">
             CRM tax workspace
           </p>
           <h1 className="mt-1 text-2xl font-semibold md:text-3xl">
             Person-first intelligence desk
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--bz-text-secondary)]">
             Start from each person, then review the company, tax owner, records,
             Drive evidence, and decisions behind them.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-right md:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] px-3 py-2 backdrop-blur-sm">
             <p className="text-xl font-semibold">{maps.length}</p>
-            <p className="text-[11px] uppercase text-slate-500">
+            <p className="text-[11px] uppercase text-[var(--bz-text-secondary)]">
               Companies under review
             </p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] px-3 py-2 backdrop-blur-sm">
             <p className="text-xl font-semibold">{totalPeople}</p>
-            <p className="text-[11px] uppercase text-slate-500">
+            <p className="text-[11px] uppercase text-[var(--bz-text-secondary)]">
               People connected
             </p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] px-3 py-2 backdrop-blur-sm">
             <p className="text-xl font-semibold">{totalDocuments}</p>
-            <p className="text-[11px] uppercase text-slate-500">
+            <p className="text-[11px] uppercase text-[var(--bz-text-secondary)]">
               Records mapped
             </p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div className="rounded-lg border border-[var(--bz-border)] bg-[rgba(35,35,40,0.65)] px-3 py-2 backdrop-blur-sm">
             <p className="text-xl font-semibold">{openDecisions}</p>
-            <p className="text-[11px] uppercase text-slate-500">
+            <p className="text-[11px] uppercase text-[var(--bz-text-secondary)]">
               Open decisions
             </p>
             {highGaps > 0 && (
-              <p className="mt-1 text-[10px] text-red-700">{highGaps} urgent</p>
+              <p className="mt-1 text-[10px] text-[var(--state-danger)]">
+                {highGaps} urgent
+              </p>
             )}
           </div>
         </div>

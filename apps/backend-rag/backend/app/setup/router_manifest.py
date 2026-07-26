@@ -180,7 +180,14 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Dream ──
     RouterEntry(name="dream", process_groups=_RAG, tags=("module",)),
     # ── Dynamic Pricing ──
-    RouterEntry(name="dynamic_pricing", process_groups=_RAG, tags=("pricing",)),
+    # _BOTH since 2026-07-25: the public website renders prices from PricingTool
+    # (Golden Rule #11) and reaches the backend through the light _API process.
+    # While this router was _RAG-only there was NO pricing route on the public
+    # surface at all, so every client-facing price was necessarily a hardcoded
+    # literal. Only GET /api/pricing/service is auth-exempt (see
+    # backend/app/auth/public_endpoints.py); /all, /search and /scenario keep
+    # requiring auth on both processes.
+    RouterEntry(name="dynamic_pricing", process_groups=_BOTH, tags=("pricing",)),
     # ── EventBus ──
     RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
     # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──

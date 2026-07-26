@@ -1,4 +1,11 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
+
+// WS3 final slice (GARUDA Day Edition): skeleton surfaces read --bz-card /
+// --bz-border (were dark-only rgba(30,30,35,0.7) + white/5 hairlines).
+const SKELETON_SURFACE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+} as const;
 
 export default function PartnerLoading() {
   return (
@@ -15,10 +22,7 @@ export default function PartnerLoading() {
           <div
             key={i}
             className="rounded-xl border p-4 h-24 animate-pulse"
-            style={{
-              background: 'rgba(30,30,35,0.7)',
-              borderColor: 'rgba(255,255,255,0.05)',
-            }}
+            style={SKELETON_SURFACE}
           />
         ))}
       </div>
@@ -29,10 +33,7 @@ export default function PartnerLoading() {
           <div
             key={i}
             className="rounded-lg border p-4 h-20 animate-pulse"
-            style={{
-              background: 'rgba(30,30,35,0.7)',
-              borderColor: 'rgba(255,255,255,0.05)',
-            }}
+            style={SKELETON_SURFACE}
           />
         ))}
       </div>

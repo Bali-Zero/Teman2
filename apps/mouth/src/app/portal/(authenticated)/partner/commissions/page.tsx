@@ -1,7 +1,21 @@
 "use client";
 
+/**
+ * Partner Commissions — full commission ledger with status filters.
+ *
+ * WS3 final slice (GARUDA Day Edition, 2026-07-26): day-theme token
+ * alignment. Masthead = copper rule + serif (--font-serif) in --tx-pure;
+ * filter chips: active = darker copper step --bz-copper-text with
+ * theme-aware --bz-on-warm fg (5.70:1 light; 6.74:1 dark — the base
+ * copper step with white would be 4.37:1, below the 4.5:1 floor);
+ * inactive = --bz-card hairline.
+ * Status cells render the shared StatusBadge on --state-* AA tokens
+ * (was bg-white/10 neutral pill for every state). No hardcoded hexes.
+ */
+
 import { useEffect, useState } from "react";
 import { formatIDR } from "@balizero/core/utils";
+import { StatusBadge } from "@/components/portal/StatusBadge";
 import {
   getMyCommissions,
   type PartnerCommission,
@@ -28,6 +42,21 @@ const ALL_CHIP_STATUSES: CommissionStatus[] = [
   "clawback_pending",
   "pending_approval",
 ];
+
+// Active chip: darker copper step + theme-aware on-warm fg (AA both themes,
+// see header comment). Was bg-amber-600 + text-white.
+const CHIP_ACTIVE_STYLE = {
+  background: "var(--bz-copper-text)",
+  color: "var(--bz-on-warm)",
+} as const;
+
+// Inactive chip: white card + hairline + secondary text. Was
+// bg-white/10 + text-gray-300 + hover:bg-white/20.
+const CHIP_IDLE_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+  color: "var(--tx-secondary)",
+} as const;
 
 function fmt(n: number | undefined | null): string {
   if (n == null) return "—";
@@ -60,27 +89,45 @@ export default function PartnerCommissionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
+  if (loading)
+    return <div className="p-6 text-[var(--tx-secondary)]">Loading...</div>;
+  if (error)
+    return (
+      <div className="p-6" style={{ color: "var(--state-danger)" }}>
+        Error: {error}
+      </div>
+    );
 
   const filtered =
     activeFilter === "all"
       ? commissions
       : commissions.filter((c) => c.status === activeFilter);
 
+  const chipStyle = (active: boolean) =>
+    active ? CHIP_ACTIVE_STYLE : CHIP_IDLE_STYLE;
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-white">My Commissions</h1>
+      {/* Day masthead: copper rule + Cormorant serif headline per concept */}
+      <section>
+        <div
+          aria-hidden="true"
+          className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+        />
+        <h1
+          className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          My Commissions
+        </h1>
+      </section>
 
       {/* Status filter chips */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveFilter("all")}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-            activeFilter === "all"
-              ? "bg-amber-600 text-white"
-              : "bg-white/10 text-gray-300 hover:bg-white/20"
-          }`}
+          className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+          style={chipStyle(activeFilter === "all")}
         >
           All ({commissions.length})
         </button>
@@ -90,11 +137,8 @@ export default function PartnerCommissionsPage() {
             <button
               key={s}
               onClick={() => setActiveFilter(s)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                activeFilter === s
-                  ? "bg-amber-600 text-white"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
+              className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+              style={chipStyle(activeFilter === s)}
             >
               {STATUS_LABELS[s] ?? s} ({count})
             </button>
@@ -103,13 +147,20 @@ export default function PartnerCommissionsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-gray-400 text-sm">
+        <p className="text-[var(--tx-secondary)] text-sm">
           No commissions match this filter.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border border-white/10 rounded-lg">
-            <thead className="bg-white/5 text-gray-400">
+        <div
+          className="overflow-x-auto rounded-xl border"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+            boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+          }}
+        >
+          <table className="w-full text-sm text-left">
+            <thead className="text-[var(--tx-secondary)]">
               <tr>
                 <th className="px-4 py-2">Accrued At</th>
                 <th className="px-4 py-2">Process</th>
@@ -120,9 +171,12 @@ export default function PartnerCommissionsPage() {
                 <th className="px-4 py-2">Paid At</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
+            <tbody className="divide-y divide-[var(--bz-border)]">
               {filtered.map((c) => (
-                <tr key={c.id} className="text-gray-200 hover:bg-white/5">
+                <tr
+                  key={c.id}
+                  className="text-[var(--tx-primary)] hover:bg-[var(--bz-card-hover)]"
+                >
                   <td className="px-4 py-2">{fmtDate(c.created_at)}</td>
                   <td className="px-4 py-2">
                     {c.practice_type_name ?? c.client_name ?? "—"}
@@ -131,9 +185,7 @@ export default function PartnerCommissionsPage() {
                   <td className="px-4 py-2">{fmt(c.withholding_amount)}</td>
                   <td className="px-4 py-2">{fmt(c.net_amount)}</td>
                   <td className="px-4 py-2">
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-white/10">
-                      {STATUS_LABELS[c.status] ?? c.status}
-                    </span>
+                    <StatusBadge status={c.status} />
                   </td>
                   <td className="px-4 py-2">{fmtDate(c.paid_at)}</td>
                 </tr>

@@ -676,6 +676,101 @@ def test_cross_family_provider_environments_are_hermetic(
     ] == expected_attempts
 
 
+_CODEX_SPARK_PROBE = (
+    'case " $* " in\n'
+    '  *" -m gpt-5.3-codex-spark "*)\n'
+    '    printf "codex-spark\\n" >> "$CALL_LOG"\n'
+    "    {spark_body}\n"
+    "    ;;\n"
+    "  *)\n"
+    '    printf "codex-primary\\n" >> "$CALL_LOG"\n'
+    "    {primary_body}\n"
+    "    ;;\n"
+    "esac\n"
+)
+
+
+def test_codex_primary_quota_falls_back_to_the_separate_spark_bucket(
+    tmp_path: Path,
+) -> None:
+    """Guilt: Spark bills a SEPARATE weekly bucket, so an exhausted primary must
+    not make the cascade abandon a paid, full bucket."""
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SPARK_PROBE.format(
+                spark_body='printf "spark-answer\\n"\nexit 0',
+                primary_body='printf "You have hit your weekly limit\\n" >&2\nexit 1',
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "spark-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert "codex-primary" in lines
+    assert "codex-spark" in lines
+    # The whole point: a full Spark bucket keeps us inside the paid seat.
+    assert "nonclaude-ollama" not in lines, lines
+
+
+def test_codex_success_never_spends_the_spark_bucket(tmp_path: Path) -> None:
+    """Innocence: Spark is a fallback, not a second call on every codex hop."""
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SPARK_PROBE.format(
+                spark_body='printf "spark-answer\\n"\nexit 0',
+                primary_body='printf "primary-answer\\n"\nexit 0',
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "primary-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert "codex-primary" in lines
+    assert "codex-spark" not in lines, lines
+
+
+def test_codex_spark_retry_has_a_kill_switch(tmp_path: Path) -> None:
+    """An empty CLAUDE_CASCADE_CODEX_SPARK_MODEL restores the pre-Spark behaviour:
+    exhausted codex crosses to the next provider instead of retrying."""
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SPARK_PROBE.format(
+                spark_body='printf "spark-answer\\n"\nexit 0',
+                primary_body='printf "You have hit your weekly limit\\n" >&2\nexit 1',
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+    env["CLAUDE_CASCADE_CODEX_SPARK_MODEL"] = ""
+
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "ollama-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert "codex-spark" not in lines, lines
+
+
 def test_cli_compat_shim_preserves_json_only_stdout(tmp_path: Path) -> None:
     bodies = _default_bodies()
     bodies["token1"] = (

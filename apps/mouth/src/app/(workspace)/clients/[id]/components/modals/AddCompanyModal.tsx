@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Building2,
   CreditCard,
@@ -11,17 +11,23 @@ import {
   Plus,
   X,
   Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { fileToBase64 } from '@/lib/utils';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { fileToBase64 } from "@/lib/utils";
 
 // ============================================
 // ADD COMPANY MODAL - TYPES
 // ============================================
-type DocumentType = 'akta' | 'sk' | 'businessId' | 'nib' | 'npwp' | 'profilePerseroan';
+type DocumentType =
+  | "akta"
+  | "sk"
+  | "businessId"
+  | "nib"
+  | "npwp"
+  | "profilePerseroan";
 
 interface CompanyDocuments {
   akta?: File;
@@ -57,19 +63,19 @@ interface FormErrors {
 }
 
 const INITIAL_FORM_DATA: CompanyFormData = {
-  company_name: '',
-  company_type: 'PT PMA',
-  kbli_code: '',
-  nib: '',
-  npwp_company: '',
-  registered_address: '',
-  city: '',
-  province: '',
-  company_email: '',
-  company_phone: '',
-  role: 'Director',
+  company_name: "",
+  company_type: "PT PMA",
+  kbli_code: "",
+  nib: "",
+  npwp_company: "",
+  registered_address: "",
+  city: "",
+  province: "",
+  company_email: "",
+  company_phone: "",
+  role: "Director",
   is_primary: false,
-  ownership_percentage: '',
+  ownership_percentage: "",
 };
 
 // ============================================
@@ -79,7 +85,9 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExtractingNpwp, setIsExtractingNpwp] = useState(false);
   const [isExtractingNib, setIsExtractingNib] = useState(false);
-  const [uploadErrors, setUploadErrors] = useState<Partial<Record<DocumentType, string>>>({});
+  const [uploadErrors, setUploadErrors] = useState<
+    Partial<Record<DocumentType, string>>
+  >({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [documents, setDocuments] = useState<CompanyDocuments>({});
   const [formData, setFormData] = useState<CompanyFormData>(INITIAL_FORM_DATA);
@@ -91,7 +99,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
         setErrors((prev) => ({ ...prev, [field]: undefined }));
       }
     },
-    [errors]
+    [errors],
   );
 
   const updateDocument = useCallback(
@@ -101,42 +109,42 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
         setUploadErrors((prev) => ({ ...prev, [type]: undefined }));
       }
     },
-    [uploadErrors]
+    [uploadErrors],
   );
 
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
 
     if (!formData.company_name.trim()) {
-      newErrors.company_name = 'Company name is required';
+      newErrors.company_name = "Company name is required";
     } else if (formData.company_name.length < 3) {
-      newErrors.company_name = 'Company name must be at least 3 characters';
+      newErrors.company_name = "Company name must be at least 3 characters";
     } else if (formData.company_name.length > 200) {
-      newErrors.company_name = 'Company name must be less than 200 characters';
+      newErrors.company_name = "Company name must be less than 200 characters";
     }
 
     if (formData.company_email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.company_email)) {
-        newErrors.company_email = 'Invalid email format';
+        newErrors.company_email = "Invalid email format";
       }
     }
 
     if (formData.ownership_percentage) {
       const percentage = parseFloat(formData.ownership_percentage);
       if (isNaN(percentage) || percentage < 0 || percentage > 100) {
-        newErrors.ownership_percentage = 'Ownership must be between 0 and 100';
+        newErrors.ownership_percentage = "Ownership must be between 0 and 100";
       }
     }
 
     if (formData.nib && !/^\d+$/.test(formData.nib)) {
-      newErrors.nib = 'NIB should contain only numbers';
+      newErrors.nib = "NIB should contain only numbers";
     }
 
     if (formData.npwp_company) {
-      const npwpClean = formData.npwp_company.replace(/\D/g, '');
+      const npwpClean = formData.npwp_company.replace(/\D/g, "");
       if (npwpClean.length !== 15) {
-        newErrors.npwp_company = 'NPWP must be 15 digits';
+        newErrors.npwp_company = "NPWP must be 15 digits";
       }
     }
 
@@ -146,14 +154,14 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
 
   const extractNpwp = useCallback(async (): Promise<boolean> => {
     if (!documents.npwp) {
-      toast.error('Please upload NPWP file first');
+      toast.error("Please upload NPWP file first");
       return false;
     }
 
     setIsExtractingNpwp(true);
     try {
       const base64 = await fileToBase64(documents.npwp);
-      const response = (await api.post('/api/crm/clients/extract-npwp', {
+      const response = (await api.post("/api/crm/clients/extract-npwp", {
         file: base64,
         file_name: documents.npwp.name,
         client_id: clientId,
@@ -172,16 +180,16 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
           registered_address: response.address || prev.registered_address,
           city: response.city || prev.city,
         }));
-        toast.success('NPWP data extracted', {
-          description: 'Address and NPWP number auto-filled',
+        toast.success("NPWP data extracted", {
+          description: "Address and NPWP number auto-filled",
         });
         return true;
       } else {
-        toast.warning('OCR failed', { description: response.message });
+        toast.warning("OCR failed", { description: response.message });
         return false;
       }
     } catch (err) {
-      toast.error('Extraction failed', { description: (err as Error).message });
+      toast.error("Extraction failed", { description: (err as Error).message });
       return false;
     } finally {
       setIsExtractingNpwp(false);
@@ -190,14 +198,14 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
 
   const extractNib = useCallback(async (): Promise<boolean> => {
     if (!documents.nib) {
-      toast.error('Please upload NIB file first');
+      toast.error("Please upload NIB file first");
       return false;
     }
 
     setIsExtractingNib(true);
     try {
       const base64 = await fileToBase64(documents.nib);
-      const response = (await api.post('/api/crm/clients/extract-nib', {
+      const response = (await api.post("/api/crm/clients/extract-nib", {
         file: base64,
         file_name: documents.nib.name,
         client_id: clientId,
@@ -216,16 +224,16 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
           company_name: response.company_name || prev.company_name,
           kbli_code: response.kbli_code || prev.kbli_code,
         }));
-        toast.success('NIB data extracted', {
-          description: 'NIB number auto-filled',
+        toast.success("NIB data extracted", {
+          description: "NIB number auto-filled",
         });
         return true;
       } else {
-        toast.warning('OCR failed', { description: response.message });
+        toast.warning("OCR failed", { description: response.message });
         return false;
       }
     } catch (err) {
-      toast.error('Extraction failed', { description: (err as Error).message });
+      toast.error("Extraction failed", { description: (err as Error).message });
       return false;
     } finally {
       setIsExtractingNib(false);
@@ -234,7 +242,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!validateForm()) {
-      toast.error('Please fix form errors');
+      toast.error("Please fix form errors");
       return false;
     }
 
@@ -262,7 +270,9 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
       });
 
       // Upload documents if any
-      const documentEntries = Object.entries(documents).filter(([, file]) => file !== undefined);
+      const documentEntries = Object.entries(documents).filter(
+        ([, file]) => file !== undefined,
+      );
       const uploadResults = await Promise.allSettled(
         documentEntries.map(async ([type, file]) => {
           const base64 = await fileToBase64(file!);
@@ -272,30 +282,38 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
             document_type: type,
           });
           return type;
-        })
+        }),
       );
 
-      const failures = uploadResults.filter((r) => r.status === 'rejected');
+      const failures = uploadResults.filter((r) => r.status === "rejected");
       if (failures.length > 0) {
         failures.forEach((result, index) => {
           const [type] = documentEntries[index];
-          logger.error(`Failed to upload ${type}:`, {}, (result as PromiseRejectedResult).reason);
+          logger.error(
+            `Failed to upload ${type}:`,
+            {},
+            (result as PromiseRejectedResult).reason,
+          );
           setUploadErrors((prev) => ({
             ...prev,
-            [type as DocumentType]: 'Upload failed',
+            [type as DocumentType]: "Upload failed",
           }));
         });
-        toast.warning(`Company created, but ${failures.length} document(s) failed to upload`, {
-          description: 'You can re-upload them from the company documents tab.',
-        });
+        toast.warning(
+          `Company created, but ${failures.length} document(s) failed to upload`,
+          {
+            description:
+              "You can re-upload them from the company documents tab.",
+          },
+        );
       } else {
-        toast.success('Company created and linked successfully');
+        toast.success("Company created and linked successfully");
       }
       onSuccess();
       return true;
     } catch (err) {
-      logger.error('Failed to create company:', {}, err as Error);
-      toast.error('Failed to create company', {
+      logger.error("Failed to create company:", {}, err as Error);
+      toast.error("Failed to create company", {
         description: (err as Error).message,
       });
       return false;
@@ -338,7 +356,11 @@ interface AddCompanyModalProps {
   onSuccess: () => void;
 }
 
-export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps) {
+export function AddCompanyModal({
+  clientId,
+  onClose,
+  onSuccess,
+}: AddCompanyModalProps) {
   const {
     formData,
     documents,
@@ -363,29 +385,48 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === "Escape") handleClose();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [handleClose]);
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 text-sm';
+    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 text-sm";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--bz-border)] bg-[var(--bz-base)] p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Add New Company</h3>
-            <p className="text-sm text-[var(--bz-text-2)]">Create a new PT PMA and link it to this client</p>
+            <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+              Add New Company
+            </h3>
+            <p className="text-sm text-[var(--bz-text-2)]">
+              Create a new PT PMA and link it to this client
+            </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close modal">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </Button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="space-y-4"
+        >
           {/* Company Basic Info */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
@@ -393,12 +434,27 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium mb-1.5">Company Name *</label>
-                <input type="text" value={formData.company_name} onChange={(e) => updateField('company_name', e.target.value)} className={inputClass} placeholder="e.g. PT Bali Investment Mandiri" required />
+                <label className="block text-xs font-medium mb-1.5">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.company_name}
+                  onChange={(e) => updateField("company_name", e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. PT Bali Investment Mandiri"
+                  required
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">Company Type</label>
-                <select value={formData.company_type} onChange={(e) => updateField('company_type', e.target.value)} className={inputClass}>
+                <label className="block text-xs font-medium mb-1.5">
+                  Company Type
+                </label>
+                <select
+                  value={formData.company_type}
+                  onChange={(e) => updateField("company_type", e.target.value)}
+                  className={inputClass}
+                >
                   <option value="PT PMA">PT PMA</option>
                   <option value="PT Perorangan">PT Perorangan</option>
                   <option value="CV">CV</option>
@@ -406,8 +462,16 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">KBLI Code</label>
-                <input type="text" value={formData.kbli_code} onChange={(e) => updateField('kbli_code', e.target.value)} className={inputClass} placeholder="e.g. 68111" />
+                <label className="block text-xs font-medium mb-1.5">
+                  KBLI Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.kbli_code}
+                  onChange={(e) => updateField("kbli_code", e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. 68111"
+                />
               </div>
             </div>
           </div>
@@ -420,22 +484,65 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
             {/* NIB */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium mb-1.5">NIB (Business ID) <span className="text-[var(--bz-text-2)]">- Number</span></label>
-                <input type="text" value={formData.nib} onChange={(e) => updateField('nib', e.target.value)} className={inputClass} placeholder="Nomor Induk Berusaha" />
+                <label className="block text-xs font-medium mb-1.5">
+                  NIB (Business ID){" "}
+                  <span className="text-[var(--bz-text-2)]">- Number</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.nib}
+                  onChange={(e) => updateField("nib", e.target.value)}
+                  className={inputClass}
+                  placeholder="Nomor Induk Berusaha"
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">NIB Document <span className="text-[var(--bz-text-2)]">- Upload + OCR</span></label>
+                <label className="block text-xs font-medium mb-1.5">
+                  NIB Document{" "}
+                  <span className="text-[var(--bz-text-2)]">
+                    - Upload + OCR
+                  </span>
+                </label>
                 <div className="flex items-center gap-2">
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => updateDocument('nib', e.target.files?.[0])} className="hidden" id="nib-doc-upload" />
-                  <label htmlFor="nib-doc-upload" className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate">
-                    {documents.nib ? documents.nib.name : 'Upload NIB file'}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => updateDocument("nib", e.target.files?.[0])}
+                    className="hidden"
+                    id="nib-doc-upload"
+                  />
+                  <label
+                    htmlFor="nib-doc-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.nib ? documents.nib.name : "Upload NIB file"}
                   </label>
                   {documents.nib && (
                     <>
-                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { void extractNib(); }} disabled={isExtractingNib}>
-                        {isExtractingNib ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} Extract
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={() => {
+                          void extractNib();
+                        }}
+                        disabled={isExtractingNib}
+                      >
+                        {isExtractingNib ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}{" "}
+                        Extract
                       </Button>
-                      <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => updateDocument('nib', undefined)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500"
+                        onClick={() => updateDocument("nib", undefined)}
+                      >
                         <X className="w-4 h-4" />
                       </Button>
                     </>
@@ -446,22 +553,69 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
             {/* NPWP */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium mb-1.5">NPWP Company <span className="text-[var(--bz-text-2)]">- Number (auto from OCR)</span></label>
-                <input type="text" value={formData.npwp_company} onChange={(e) => updateField('npwp_company', e.target.value)} className={inputClass} placeholder="Company Tax ID" />
+                <label className="block text-xs font-medium mb-1.5">
+                  NPWP Company{" "}
+                  <span className="text-[var(--bz-text-2)]">
+                    - Number (auto from OCR)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.npwp_company}
+                  onChange={(e) => updateField("npwp_company", e.target.value)}
+                  className={inputClass}
+                  placeholder="Company Tax ID"
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">NPWP Document <span className="text-[var(--bz-text-2)]">- Upload + OCR</span></label>
+                <label className="block text-xs font-medium mb-1.5">
+                  NPWP Document{" "}
+                  <span className="text-[var(--bz-text-2)]">
+                    - Upload + OCR
+                  </span>
+                </label>
                 <div className="flex items-center gap-2">
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => updateDocument('npwp', e.target.files?.[0])} className="hidden" id="npwp-upload" />
-                  <label htmlFor="npwp-upload" className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate">
-                    {documents.npwp ? documents.npwp.name : 'Upload NPWP'}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) =>
+                      updateDocument("npwp", e.target.files?.[0])
+                    }
+                    className="hidden"
+                    id="npwp-upload"
+                  />
+                  <label
+                    htmlFor="npwp-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.npwp ? documents.npwp.name : "Upload NPWP"}
                   </label>
                   {documents.npwp && (
                     <>
-                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { void extractNpwp(); }} disabled={isExtractingNpwp}>
-                        {isExtractingNpwp ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} Extract
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={() => {
+                          void extractNpwp();
+                        }}
+                        disabled={isExtractingNpwp}
+                      >
+                        {isExtractingNpwp ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}{" "}
+                        Extract
                       </Button>
-                      <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => updateDocument('npwp', undefined)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500"
+                        onClick={() => updateDocument("npwp", undefined)}
+                      >
                         <X className="w-4 h-4" />
                       </Button>
                     </>
@@ -477,25 +631,53 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
               <Upload className="w-4 h-4" /> Document Uploads
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(['akta', 'sk', 'businessId', 'profilePerseroan'] as const).map((docType) => {
-                const labels: Record<string, string> = { akta: 'AKTA', sk: 'SK', businessId: 'Business Identification', profilePerseroan: 'Profile Perseroan' };
-                return (
-                  <div key={docType}>
-                    <label className="block text-xs font-medium mb-1.5">{labels[docType]}</label>
-                    <div className="flex items-center gap-2">
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => updateDocument(docType, e.target.files?.[0])} className="hidden" id={`${docType}-upload`} />
-                      <label htmlFor={`${docType}-upload`} className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate">
-                        {documents[docType] ? documents[docType]!.name : `Upload ${labels[docType]}`}
+              {(["akta", "sk", "businessId", "profilePerseroan"] as const).map(
+                (docType) => {
+                  const labels: Record<string, string> = {
+                    akta: "AKTA",
+                    sk: "SK",
+                    businessId: "Business Identification",
+                    profilePerseroan: "Profile Perseroan",
+                  };
+                  return (
+                    <div key={docType}>
+                      <label className="block text-xs font-medium mb-1.5">
+                        {labels[docType]}
                       </label>
-                      {documents[docType] && (
-                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => updateDocument(docType, undefined)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) =>
+                            updateDocument(docType, e.target.files?.[0])
+                          }
+                          className="hidden"
+                          id={`${docType}-upload`}
+                        />
+                        <label
+                          htmlFor={`${docType}-upload`}
+                          className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                        >
+                          {documents[docType]
+                            ? documents[docType]!.name
+                            : `Upload ${labels[docType]}`}
+                        </label>
+                        {documents[docType] && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500"
+                            onClick={() => updateDocument(docType, undefined)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </div>
           </div>
 
@@ -506,26 +688,70 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
             </h4>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium mb-1.5">Registered Address</label>
-                <textarea value={formData.registered_address} onChange={(e) => updateField('registered_address', e.target.value)} className={inputClass} rows={2} placeholder="Full registered address" />
+                <label className="block text-xs font-medium mb-1.5">
+                  Registered Address
+                </label>
+                <textarea
+                  value={formData.registered_address}
+                  onChange={(e) =>
+                    updateField("registered_address", e.target.value)
+                  }
+                  className={inputClass}
+                  rows={2}
+                  placeholder="Full registered address"
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1.5">City</label>
-                  <input type="text" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className={inputClass} placeholder="e.g. Denpasar" />
+                  <label className="block text-xs font-medium mb-1.5">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => updateField("city", e.target.value)}
+                    className={inputClass}
+                    placeholder="e.g. Denpasar"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1.5">Province</label>
-                  <input type="text" value={formData.province} onChange={(e) => updateField('province', e.target.value)} className={inputClass} placeholder="e.g. Bali" />
+                  <label className="block text-xs font-medium mb-1.5">
+                    Province
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.province}
+                    onChange={(e) => updateField("province", e.target.value)}
+                    className={inputClass}
+                    placeholder="e.g. Bali"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1.5">Email</label>
-                  <input type="email" value={formData.company_email} onChange={(e) => updateField('company_email', e.target.value)} className={inputClass} placeholder="company@email.com" />
+                  <label className="block text-xs font-medium mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.company_email}
+                    onChange={(e) =>
+                      updateField("company_email", e.target.value)
+                    }
+                    className={inputClass}
+                    placeholder="company@email.com"
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">Phone</label>
-                <input type="tel" value={formData.company_phone} onChange={(e) => updateField('company_phone', e.target.value)} className={inputClass} placeholder="+62 xxx xxxx xxxx" />
+                <label className="block text-xs font-medium mb-1.5">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={formData.company_phone}
+                  onChange={(e) => updateField("company_phone", e.target.value)}
+                  className={inputClass}
+                  placeholder="+62 xxx xxxx xxxx"
+                />
               </div>
             </div>
           </div>
@@ -537,8 +763,14 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium mb-1.5">Role in Company</label>
-                <select value={formData.role} onChange={(e) => updateField('role', e.target.value)} className={inputClass}>
+                <label className="block text-xs font-medium mb-1.5">
+                  Role in Company
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => updateField("role", e.target.value)}
+                  className={inputClass}
+                >
                   <option value="Director">Director</option>
                   <option value="Commissioner">Commissioner</option>
                   <option value="Shareholder">Shareholder</option>
@@ -548,21 +780,62 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5">Ownership %</label>
-                <input type="number" min="0" max="100" step="0.01" value={formData.ownership_percentage} onChange={(e) => updateField('ownership_percentage', e.target.value)} className={inputClass} placeholder="e.g. 51" />
+                <label className="block text-xs font-medium mb-1.5">
+                  Ownership %
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.ownership_percentage}
+                  onChange={(e) =>
+                    updateField("ownership_percentage", e.target.value)
+                  }
+                  className={inputClass}
+                  placeholder="e.g. 51"
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_primary" checked={formData.is_primary} onChange={(e) => updateField('is_primary', e.target.checked)} className="rounded border-[var(--bz-border)] bg-[var(--bz-surface)]" />
-              <label htmlFor="is_primary" className="text-sm text-[var(--bz-text-1)]">Set as primary company for this client</label>
+              <input
+                type="checkbox"
+                id="is_primary"
+                checked={formData.is_primary}
+                onChange={(e) => updateField("is_primary", e.target.checked)}
+                className="rounded border-[var(--bz-border)] bg-[var(--bz-surface)]"
+              />
+              <label
+                htmlFor="is_primary"
+                className="text-sm text-[var(--bz-text-1)]"
+              >
+                Set as primary company for this client
+              </label>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t border-[var(--bz-border)]">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</>) : (<><Plus className="w-4 h-4 mr-2" />Create Company</>)}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Company
+                </>
+              )}
             </Button>
           </div>
         </form>

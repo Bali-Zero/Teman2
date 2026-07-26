@@ -38,6 +38,7 @@ from backend.services.agents.tool_authorizer import (
     AuthDecision,
     ToolAuthorizer,
 )
+from backend.services.pii.violation_store import hash_subject
 
 # ─────────────────────────────────────────────────────────────────────────
 # AgentRole — new requires_confirmation field
@@ -283,5 +284,6 @@ class TestAuditLogConfirmation:
         msg = records[-1].getMessage()
         assert "decision=needs_confirmation" in msg
         assert "tool=image_generation" in msg
-        assert "user=damar@balizero.com" in msg
+        assert f"user=h:{hash_subject('damar@balizero.com')}" in msg
+        assert "damar@balizero.com" not in msg, "raw staff email must never reach the audit log"
         assert "role=visa_specialist" in msg

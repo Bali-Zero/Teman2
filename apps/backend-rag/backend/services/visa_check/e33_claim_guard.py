@@ -10,18 +10,25 @@ plus the legacy error list (``USD 1,500/month`` superseded figure, ``IDR
 guaranteed", "automatic KITAP", "E33 permits local work", any-bank
 placement, ``5-10 years`` first-grant phrasing).
 
-Wiring: ``guard_e33_answer`` is called once in
+Wiring: ``guard_e33_answer_detailed`` (and the legacy ``guard_e33_answer``
+text-only wrapper) is called once in
 ``backend/services/rag/agentic/orchestrator_core.py`` (``process_query_core``,
 right before the final ``return result``) — the single finalization point of
-the ReAct-generated answer path. It is log-only and non-blocking: violations
-are logged and a safe fallback note is appended; the answer is never
-rewritten or suppressed. Cached answers (FAQ/semantic) are pre-vetted and
-intentionally not re-checked; KG fast-path answers are covered by the static
-surface tests in
+the ReAct-generated answer path. The fallback-note append is unconditional
+and non-blocking (never rewrites or removes the model's text). Whether a
+violation ALSO routes the answer into the abstain/HUMAN_REVIEW path is an
+enforcement decision made by the caller, gated by the
+``E33_CLAIM_GUARD_ENFORCE`` env kill-switch (default off) — see
+``orchestrator_core.py`` for the wiring, since a ``CoreResult`` mutation
+belongs there, not in this stdlib-only module. Cached answers (FAQ/semantic)
+are pre-vetted and intentionally not re-checked; KG fast-path answers are
+covered by the static surface tests in
 ``backend/tests/services/visa_check/test_e33_forbidden_claims.py``.
 
 The module is stdlib-only on purpose: importing it can never create import
-cycles or I/O, so it is safe to call on the hot path.
+cycles or I/O, so it is safe to call on the hot path. ``GuardOutcome`` is a
+plain frozen dataclass of ``str``/``tuple`` — no pydantic/CoreResult import
+here, to keep that guarantee.
 """
 
 from __future__ import annotations
@@ -191,22 +198,85 @@ def check_e33_claims(text: str) -> list[ClaimViolation]:
     return violations
 
 
-def guard_e33_answer(answer: str) -> str:
-    """Log E33 forbidden-claim violations and append a safe fallback note.
+@dataclass(frozen=True)
+class GuardOutcome:
+    """Result of a guard pass: the (possibly note-appended) text plus the raw
+    violations, so a caller can decide on enforcement beyond the note-append
+    (e.g. routing to abstain). Plain dataclass of stdlib types only — see
+    module docstring on why ``CoreResult`` is never imported here.
+    """
 
-    Non-blocking by contract: never raises, never rewrites or suppresses the
-    answer. Returns the original answer unchanged when no violation is found.
+    answer: str
+    violations: tuple[ClaimViolation, ...]
+
+    @property
+    def has_violation(self) -> bool:
+        return bool(self.violations)
+
+
+def guard_e33_answer_detailed(answer: str) -> GuardOutcome:
+    """Scan, log, and append the fallback note — same contract as
+    ``guard_e33_answer`` — but also return the violations found, so the
+    caller can additionally enforce (e.g. set ``CoreResult.abstain``).
+
+    Non-blocking by contract: never raises, never rewrites or removes any of
+    the model's original text (only appends). Returns the original answer
+    unchanged (and an empty violations tuple) when nothing is flagged.
     """
     try:
         violations = check_e33_claims(answer)
     except Exception:  # pragma: no cover - defensive; guard must never break the hot path
         logger.exception("[E33Guard] check failed — returning answer unguarded")
-        return answer
+        return GuardOutcome(answer=answer, violations=())
     if not violations:
-        return answer
+        return GuardOutcome(answer=answer, violations=())
     logger.warning(
         "[E33Guard] %d forbidden E33 claim(s) in generated answer: %s",
         len(violations),
         [(v.pattern_id, v.matched_text[:80]) for v in violations],
     )
-    return answer.rstrip() + "\n\n" + E33_SAFE_FALLBACK_NOTE
+    guarded = answer.rstrip() + "\n\n" + E33_SAFE_FALLBACK_NOTE
+    return GuardOutcome(answer=guarded, violations=tuple(violations))
+
+
+def guard_e33_answer(answer: str) -> str:
+    """Log E33 forbidden-claim violations and append a safe fallback note.
+
+    Non-blocking by contract: never raises, never rewrites or suppresses the
+    answer. Returns the original answer unchanged when no violation is found.
+
+    Text-only backward-compat wrapper around ``guard_e33_answer_detailed`` —
+    kept because it is the smallest possible surface for a caller that only
+    cares about the guarded text, not the violation enforcement decision.
+    """
+    return guard_e33_answer_detailed(answer).answer
+
+
+#: Reason code written to ``CoreResult.abstain_reason`` when the enforcement
+#: kill-switch is armed and a violation fires. Kept alongside the pattern
+#: registry (single source of truth) rather than in orchestrator_core.py.
+E33_ABSTAIN_REASON = "e33_forbidden_claim"
+
+
+def apply_guard_enforcement(
+    *,
+    has_violation: bool,
+    enforce: bool,
+    existing_abstain_reason: str | None,
+) -> str | None:
+    """Pure enforcement decision — no I/O, no CoreResult import.
+
+    Returns the ``abstain_reason`` string the caller should write (combined
+    with any pre-existing reason, e.g. a low evidence-score abstain that
+    already fired upstream) when the answer should ALSO be routed to
+    abstain/HUMAN_REVIEW, or ``None`` when nothing should change.
+
+    Kept separate from ``guard_e33_answer_detailed`` so the decision itself
+    is trivially unit-testable without constructing a ``CoreResult`` or an
+    ``AgentState`` — see ``test_e33_claim_guard.py::TestApplyGuardEnforcement``.
+    """
+    if not (has_violation and enforce):
+        return None
+    if existing_abstain_reason:
+        return f"{existing_abstain_reason}+{E33_ABSTAIN_REASON}"
+    return E33_ABSTAIN_REASON

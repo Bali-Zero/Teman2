@@ -188,7 +188,7 @@ Per `superpowers:verification-before-completion`:
 
 ## 5. Constraints / hard rules
 
-- Maps API key `AIzaSyCWPZb1_aSV_NVvS9ZSR0Mlq9El8qO8uLQ` unchanged (note: char 21 is lowercase `l`, not digit `1` — verified against production `/prime` page load).
+- Maps API key `<GOOGLE_API_KEY_REDACTED>` unchanged (verified against production `/prime` page load) — redacted 2026-07-25: a live key must never appear in this public repo; read it from the environment.
 - Backend `/api/prime/zoning` contract unchanged.
 - `packages/core/styles/bz-tokens.css` read-only — all new components use existing `--bz-*` tokens.
 - `packages/core/components/BZLogo.tsx` untouched.

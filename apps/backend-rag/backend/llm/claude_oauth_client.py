@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import logging
 import os
 import re
@@ -105,7 +106,18 @@ _QUOTA_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"\b(?:"
     r"out of extra usage|"
     r"(?:weekly|usage)\s+(?:limit|quota)|"
-    r"quota\s+(?:exceeded|exhausted)|"
+    r"quota\s+(?:exceeded|exhausted)"
+    r")\b",
+    re.IGNORECASE,
+)
+# Distinct from _QUOTA_DIAGNOSTIC_PATTERN on purpose (found by cross-family
+# review 2026-07-25): a 429/rate-limit is a TRANSIENT condition that can
+# clear in seconds, unlike a weekly/usage quota exhaustion which persists for
+# days. Both used to share the "quota" class, which meant a single transient
+# 429 earned the same 15-minute seat cooldown as a durable exhaustion — this
+# class exists so only the durable signal ever reaches _COOLDOWN_CLASSES.
+_RATE_LIMIT_DIAGNOSTIC_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:"
     r"rate[ -]?limit(?:ed| exceeded)?|"
     r"too many requests|429"
     r")\b",
@@ -252,7 +264,123 @@ def _classify_cli_diagnostic(text: str) -> str | None:
         return "authentication"
     if _QUOTA_DIAGNOSTIC_PATTERN.search(compact):
         return "quota"
+    if _RATE_LIMIT_DIAGNOSTIC_PATTERN.search(compact):
+        return "rate_limit"
     return None
+
+
+# ---------------------------------------------------------------------------
+# Seat cooldown — measured 2026-07-25, not theorised
+# ---------------------------------------------------------------------------
+# An exhausted Max seat does NOT go quiet: it exits 1 and prints
+#   "You've hit your weekly limit · resets 9am (Asia/Makassar)"
+# Two consequences, both verified on disk before this was written:
+#   1. `_classify_cli_diagnostic` WOULD label that message `quota` — but it was
+#      only ever called on the exit==0 branch, so the seat logged as the opaque
+#      `cli_exit_1` and nobody could tell exhaustion from a crash.
+#   2. With no memory of the verdict, every single call re-spawned the CLI for
+#      every exhausted seat. Two dead ~2s process launches per request, forever,
+#      until the weekly window rolls over.
+# So: remember the verdict for a while and skip that seat.
+#
+# The TTL is deliberately much shorter than the condition it tracks (a weekly
+# limit can be days from resetting). Cheap to be wrong in the recovery
+# direction — one probe per seat per window — and expensive to be wrong in the
+# other, which is exactly the bug being fixed.
+#
+# NOT wired to `RATE_LIMIT_PATTERN`: that pattern is a loose word-list
+# (`quota|capacity|exhausted|...`) matching anywhere in the output, and a
+# transient 429 is not a durable condition. Only the FRAMED classes from
+# `_classify_cli_diagnostic` — which requires a bounded, error-shaped message —
+# are durable enough to earn a skip. Widening the loose pattern instead would
+# be cicatrix #3 (guard deciding on substring, not entity).
+#
+# CORRECTION (cross-family review, 2026-07-25): being FRAMED is necessary but
+# not sufficient for durability — a 429/rate-limit is just as tightly framed
+# as a weekly-limit message, but resolves in seconds, not days. It used to
+# share the `quota` class with genuine exhaustion for exactly that reason and
+# would have earned the same 15-minute cooldown. `_RATE_LIMIT_DIAGNOSTIC_PATTERN`
+# now classifies it separately as `rate_limit`, which is deliberately absent
+# from `_COOLDOWN_CLASSES` below — still rotates to the next seat WITHIN the
+# current call (via `_classify_cli_diagnostic` returning non-None), never
+# remembered ACROSS calls.
+_DEFAULT_SEAT_COOLDOWN_S: Final[float] = 900.0
+_COOLDOWN_CLASSES: Final[frozenset[str]] = frozenset({"quota", "authentication"})
+# label+fingerprint -> monotonic deadline. Process-local by design: no shared
+# store, so a cron that lives 30s carries nothing, and the long-lived Fly
+# service self-heals on restart. Racy writes between coroutines are harmless
+# (worst case: one duplicate probe).
+_seat_cooldowns: dict[str, float] = {}
+
+
+def _seat_cooldown_s() -> float:
+    """Cooldown TTL in seconds. ``CLAUDE_OAUTH_SEAT_COOLDOWN_S=0`` disables."""
+    raw = os.getenv("CLAUDE_OAUTH_SEAT_COOLDOWN_S", "").strip()
+    if not raw:
+        return _DEFAULT_SEAT_COOLDOWN_S
+    try:
+        parsed = float(raw)
+    except ValueError:
+        return _DEFAULT_SEAT_COOLDOWN_S
+    # Also catches NaN (never > 0) — degrades to "disabled", never to a
+    # poisoned deadline that would strand a seat forever.
+    return parsed if parsed > 0 else 0.0
+
+
+def _seat_key(token: str, label: str) -> str:
+    """Stable, non-secret identity for a seat.
+
+    Keyed on a token FINGERPRINT, not the label alone: rotating
+    ``CLAUDE_CODE_OAUTH_TOKEN_1`` keeps the label but must not inherit the old
+    credential's cooldown. Never stores or logs the token itself (cicatrix #4).
+    """
+    if not token:
+        return f"{label}:keychain"
+    return f"{label}:{hashlib.sha256(token.encode()).hexdigest()[:8]}"
+
+
+def _mark_seat_cooling(token: str, label: str, diagnostic_class: str | None) -> None:
+    """Record that this seat reported a durable failure. No-op for other classes."""
+    ttl = _seat_cooldown_s()
+    if ttl <= 0 or diagnostic_class not in _COOLDOWN_CLASSES:
+        return
+    _seat_cooldowns[_seat_key(token, label)] = time.monotonic() + ttl
+    logger.warning("%s: %s — skipping this seat for %.0fs", label, diagnostic_class, ttl)
+
+
+def _drop_cooling_seats(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Filter out seats still inside their cooldown window.
+
+    FAIL-OPEN by construction: if that would leave nothing to try, the full
+    list is returned unchanged. A cooldown is an optimisation and must never be
+    able to starve the cascade down to zero candidates.
+    """
+    now = time.monotonic()
+    live: list[tuple[str, str]] = []
+    skipped: list[str] = []
+    for token, label in pairs:
+        key = _seat_key(token, label)
+        until = _seat_cooldowns.get(key)
+        if until is None or until <= now:
+            _seat_cooldowns.pop(key, None)
+            live.append((token, label))
+        else:
+            skipped.append(label)
+    if not live:
+        if skipped:
+            logger.warning(
+                "all %d seat(s) cooling; ignoring cooldown and trying anyway",
+                len(skipped),
+            )
+        return pairs
+    if skipped:
+        logger.info("skipping %d cooling seat(s): %s", len(skipped), ", ".join(skipped))
+    return live
+
+
+def _reset_seat_cooldowns() -> None:
+    """Clear the in-process cooldown memo. For tests — never called in prod."""
+    _seat_cooldowns.clear()
 
 
 async def _kill_and_reap(proc: Any) -> None:
@@ -468,7 +596,7 @@ async def complete_async(
     if total_timeout_s <= 0:
         raise ValueError("total_timeout_s must be positive")
 
-    tokens = _collect_tokens()
+    tokens = _drop_cooling_seats(_collect_tokens())
     start = time.monotonic()
     deadline = start + total_timeout_s
     last_error = ""
@@ -646,6 +774,7 @@ async def complete_async(
             ) = _parse_json_envelope(output)
             if structured_error:
                 diagnostic_class = _classify_cli_diagnostic(parsed_text) or "structured_error"
+                _mark_seat_cooling(token, label, diagnostic_class)
                 last_error = f"{label}: {diagnostic_class}"
                 logger.warning(
                     "%s: CLI structured error (%s), trying next",
@@ -665,6 +794,7 @@ async def complete_async(
             if diagnostic_class is None:
                 diagnostic_class = _classify_cli_diagnostic(stderr)
             if diagnostic_class is not None:
+                _mark_seat_cooling(token, label, diagnostic_class)
                 last_error = f"{label}: {diagnostic_class}"
                 logger.warning(
                     "%s: CLI diagnostic (%s), trying next",
@@ -679,6 +809,24 @@ async def complete_async(
             continue
 
         if exit_code != 0:
+            # Classify BEFORE falling back to the bare exit code. An exhausted
+            # seat exits NON-zero while printing its diagnostic (measured
+            # 2026-07-25); without this branch it logged as `cli_exit_1`, which
+            # is indistinguishable from a crash and carries no verdict to
+            # remember — so every later call re-probed the dead seat.
+            diagnostic_class = _classify_cli_diagnostic(output)
+            if diagnostic_class is None:
+                diagnostic_class = _classify_cli_diagnostic(stderr)
+            if diagnostic_class is not None:
+                _mark_seat_cooling(token, label, diagnostic_class)
+                last_error = f"{label}: {diagnostic_class}"
+                logger.warning(
+                    "%s: CLI diagnostic (%s, exit=%d), trying next",
+                    label,
+                    diagnostic_class,
+                    exit_code,
+                )
+                continue
             last_error = f"{label}: cli_exit_{exit_code}"
             logger.warning("%s: CLI failed (exit=%d), trying next", label, exit_code)
             continue

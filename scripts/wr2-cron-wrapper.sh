@@ -71,13 +71,26 @@ if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
         echo "[wr2-wrapper] ERROR: fly CLI not found on PATH — cannot dispatch newsletter_cli into Fly (api process)." >&2
         exit 74
     fi
-    # A stale FLY_API_TOKEN in the secrets file overrides the (curated) fly
-    # agent auth in ~/.fly/config.yml and makes every fly call die with
-    # 'Could not find App "nuzantara-rag"'. This killed the daily newsletter
-    # run; the same rot already recurred twice (secrets file line 3 carries a
-    # #DISABLED-2026-06-03-stale marker, and fly-pg-backup.sh unsets the var
-    # for the same reason). Config-file auth is the reliable path here.
-    unset FLY_API_TOKEN
+    # Which fly credential is alive? Ask fly — never assume.
+    # Until 2026-07-26 this line was a bare `unset FLY_API_TOKEN`: a stale env
+    # token used to shadow valid auth in ~/.fly/config.yml and kill the daily
+    # newsletter run. Then the world inverted — the config token rotted while
+    # the env token stayed valid — and the unset became the thing that broke it
+    # (same day, same inversion, in fly-pg-backup.sh: prod PG had no backup).
+    # Pinning either direction is the bug; scripts/lib/fly_credential.sh probes.
+    _fly_cred_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/fly_credential.sh"
+    if [[ ! -f "$_fly_cred_lib" ]]; then
+        echo "[wr2-wrapper] ERROR: scripts/lib/fly_credential.sh not found — cannot resolve a fly credential." >&2
+        exit 74
+    fi
+    # shellcheck source=lib/fly_credential.sh
+    source "$_fly_cred_lib"
+    # Probe against THIS app, not `auth whoami`. Pro's FLY_API_TOKEN is scoped
+    # to nuzantara-postgres only (ledgered 2026-07-25), so whoami would accept a
+    # credential that cannot see nuzantara-rag and the dispatch below would die
+    # on 'Could not find App' — the same wrong answer, one stage later. Failing
+    # here instead says WHICH credential and WHY, before spending the run.
+    resolve_fly_credential "$(command -v fly)" machine list -a nuzantara-rag || exit 74
     remote_cmd="python -m $MODULE"
     for arg in "$@"; do
         remote_cmd+=" $(printf '%q' "$arg")"

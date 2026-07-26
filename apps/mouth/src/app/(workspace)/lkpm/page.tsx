@@ -24,7 +24,7 @@ import type {
   LKPMDeadline,
   LKPMOSSCredentials,
 } from "@/lib/api/portal/portal.types";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
 // Tax consultants — kept in sync with backend migration 093.
 const TAX_CONSULTANTS: { value: string; label: string }[] = [
@@ -237,8 +237,8 @@ export default function LKPMBatchPage() {
             onChange={(e) => setQuarter(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "rgba(35,35,40,0.65)",
+              borderColor: "var(--bz-border)",
             }}
           >
             {QUARTERS.map((q) => (
@@ -252,8 +252,8 @@ export default function LKPMBatchPage() {
             onChange={(e) => setYear(Number(e.target.value))}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "rgba(35,35,40,0.65)",
+              borderColor: "var(--bz-border)",
             }}
           >
             {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
@@ -270,11 +270,16 @@ export default function LKPMBatchPage() {
         <section
           className="rounded-lg border p-4 flex items-center gap-2"
           style={{
-            background: "rgba(239,68,68,0.08)",
-            borderColor: "rgba(239,68,68,0.3)",
+            background:
+              "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+            borderColor:
+              "color-mix(in srgb, var(--state-danger) 30%, transparent)",
           }}
         >
-          <AlertTriangle className="w-5 h-5" style={{ color: "#f87171" }} />
+          <AlertTriangle
+            className="w-5 h-5"
+            style={{ color: "var(--state-danger)" }}
+          />
           <span className="text-sm font-medium">
             {counts.redAlerts} critical alert{counts.redAlerts !== 1 ? "s" : ""}{" "}
             across all clients
@@ -289,17 +294,23 @@ export default function LKPMBatchPage() {
           style={
             nextDeadline.is_overdue
               ? {
-                  background: "rgba(239,68,68,0.08)",
-                  borderColor: "rgba(239,68,68,0.3)",
+                  background:
+                    "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+                  borderColor:
+                    "color-mix(in srgb, var(--state-danger) 30%, transparent)",
                 }
               : nextDeadline.days_remaining <= 14
                 ? {
-                    background: "rgba(245,158,11,0.08)",
-                    borderColor: "rgba(245,158,11,0.3)",
+                    background:
+                      "color-mix(in srgb, var(--state-warning) 8%, transparent)",
+                    borderColor:
+                      "color-mix(in srgb, var(--state-warning) 30%, transparent)",
                   }
                 : {
-                    background: "rgba(16,185,129,0.06)",
-                    borderColor: "rgba(16,185,129,0.25)",
+                    background:
+                      "color-mix(in srgb, var(--state-success) 6%, transparent)",
+                    borderColor:
+                      "color-mix(in srgb, var(--state-success) 25%, transparent)",
                   }
           }
         >
@@ -307,10 +318,10 @@ export default function LKPMBatchPage() {
             className="w-5 h-5"
             style={{
               color: nextDeadline.is_overdue
-                ? "#f87171"
+                ? "var(--state-danger)"
                 : nextDeadline.days_remaining <= 14
-                  ? "#fbbf24"
-                  : "#34d399",
+                  ? "var(--state-warning)"
+                  : "var(--state-success)",
             }}
           />
           <div className="flex items-center gap-2 flex-wrap">
@@ -325,10 +336,10 @@ export default function LKPMBatchPage() {
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
                 nextDeadline.is_overdue
-                  ? "bg-red-500/15 text-red-400"
+                  ? "bg-[color-mix(in_srgb,var(--state-danger)_15%,transparent)] text-[var(--state-danger)]"
                   : nextDeadline.days_remaining <= 14
-                    ? "bg-amber-500/15 text-amber-400"
-                    : "bg-emerald-500/10 text-emerald-400"
+                    ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)]"
+                    : "bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]"
               }`}
             >
               {nextDeadline.is_overdue
@@ -352,19 +363,19 @@ export default function LKPMBatchPage() {
           label="Submitted"
           value={counts.submitted}
           icon={CheckCircle}
-          color="#34d399"
+          color="var(--state-success)"
         />
         <KPICard
           label="Pending"
           value={counts.pending}
           icon={Clock}
-          color="#fbbf24"
+          color="var(--state-warning)"
         />
         <KPICard
           label="Red Alerts"
           value={counts.redAlerts}
           icon={AlertTriangle}
-          color="#f87171"
+          color="var(--state-danger)"
         />
       </section>
 
@@ -381,15 +392,15 @@ export default function LKPMBatchPage() {
                 statusFilter === filter
                   ? {
                       background:
-                        "linear-gradient(135deg, var(--bz-accent-warm) 0%, rgba(212, 132, 90, 0.8) 100%)",
+                        "linear-gradient(135deg, var(--bz-accent-warm) 0%, color-mix(in srgb, var(--bz-accent) 80%, transparent) 100%)",
                       color: "white",
-                      boxShadow: "0 4px 15px rgba(212, 132, 90, 0.3)",
+                      boxShadow: "0 4px 15px var(--bz-accent-glow)",
                     }
                   : {
-                      background: "rgba(35,35,40,0.6)",
+                      background: "rgba(35,35,40,0.65)",
                       backdropFilter: "blur(12px)",
                       color: "var(--bz-text-2)",
-                      border: "1px solid rgba(255,255,255,0.05)",
+                      border: "1px solid var(--bz-border)",
                     }
               }
             >
@@ -403,9 +414,8 @@ export default function LKPMBatchPage() {
       <section
         className="rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden"
         style={{
-          background:
-            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
-          borderColor: "rgba(255, 255, 255, 0.05)",
+          background: "rgba(35,35,40,0.65)",
+          borderColor: "var(--bz-border)",
         }}
       >
         <div className="overflow-x-auto">
@@ -444,7 +454,7 @@ export default function LKPMBatchPage() {
               ) : (
                 filteredItems.map((item) => (
                   <React.Fragment key={item.id}>
-                    <tr className="hover:bg-[rgba(255,255,255,0.05)] transition-colors">
+                    <tr className="hover:bg-[var(--surface-raised)] transition-colors">
                       <td className="px-4 py-3 font-medium">
                         {item.company_name}
                       </td>
@@ -460,8 +470,8 @@ export default function LKPMBatchPage() {
                           disabled={assigningId === item.id}
                           className="rounded border px-2 py-1 text-xs backdrop-blur-md"
                           style={{
-                            background: "rgba(35,35,40,0.6)",
-                            borderColor: "rgba(255,255,255,0.05)",
+                            background: "rgba(35,35,40,0.65)",
+                            borderColor: "var(--bz-border)",
                             color: item.lkpm_assigned_to
                               ? "var(--bz-text-1)"
                               : "var(--bz-text-2)",
@@ -483,10 +493,10 @@ export default function LKPMBatchPage() {
                           className="px-2 py-1 rounded text-xs font-medium inline-flex items-center gap-1"
                           style={{
                             background: openCreds[item.id]
-                              ? "rgba(212, 132, 90, 0.2)"
-                              : "rgba(255,255,255,0.05)",
+                              ? "color-mix(in srgb, var(--bz-accent) 20%, transparent)"
+                              : "var(--surface-raised)",
                             color: openCreds[item.id]
-                              ? "#d4845a"
+                              ? "var(--bz-accent)"
                               : "var(--bz-text-2)",
                           }}
                           aria-label="Show OSS credentials"
@@ -508,7 +518,7 @@ export default function LKPMBatchPage() {
                         </button>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs">
-                        {formatIDR(item.realized_total)}
+                        <Money value={item.realized_total} />
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -516,8 +526,9 @@ export default function LKPMBatchPage() {
                             <span
                               className="px-1.5 py-0.5 rounded text-xs font-medium"
                               style={{
-                                background: "rgba(239,68,68,0.12)",
-                                color: "#f87171",
+                                background:
+                                  "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+                                color: "var(--state-danger)",
                               }}
                             >
                               {item.red_alerts}
@@ -527,8 +538,9 @@ export default function LKPMBatchPage() {
                             <span
                               className="px-1.5 py-0.5 rounded text-xs font-medium"
                               style={{
-                                background: "rgba(245,158,11,0.12)",
-                                color: "#fbbf24",
+                                background:
+                                  "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+                                color: "var(--state-warning)",
                               }}
                             >
                               {item.yellow_alerts}
@@ -538,7 +550,7 @@ export default function LKPMBatchPage() {
                             item.yellow_alerts === 0 && (
                               <CheckCircle
                                 className="w-4 h-4"
-                                style={{ color: "#34d399" }}
+                                style={{ color: "var(--state-success)" }}
                               />
                             )}
                         </div>
@@ -551,8 +563,9 @@ export default function LKPMBatchPage() {
                               disabled={validatingId === item.id}
                               className="px-2 py-1 rounded text-xs font-medium"
                               style={{
-                                background: "rgba(59,130,246,0.12)",
-                                color: "#60a5fa",
+                                background:
+                                  "color-mix(in srgb, var(--state-info) 12%, transparent)",
+                                color: "var(--state-info)",
                               }}
                             >
                               {validatingId === item.id ? (
@@ -567,8 +580,9 @@ export default function LKPMBatchPage() {
                               onClick={() => handleMarkSubmitted(item.id)}
                               className="px-2 py-1 rounded text-xs font-medium"
                               style={{
-                                background: "rgba(16,185,129,0.12)",
-                                color: "#34d399",
+                                background:
+                                  "color-mix(in srgb, var(--state-success) 12%, transparent)",
+                                color: "var(--state-success)",
                               }}
                             >
                               Mark Submitted
@@ -578,7 +592,7 @@ export default function LKPMBatchPage() {
                             href={`/lkpm/${item.id}`}
                             className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
                             style={{
-                              background: "rgba(255,255,255,0.05)",
+                              background: "var(--surface-raised)",
                               color: "var(--bz-text-2)",
                             }}
                           >
@@ -594,14 +608,15 @@ export default function LKPMBatchPage() {
                           colSpan={7}
                           className="px-4 py-3"
                           style={{
-                            background: "rgba(212, 132, 90, 0.06)",
+                            background:
+                              "color-mix(in srgb, var(--bz-accent) 6%, transparent)",
                             borderLeft: "3px solid var(--bz-accent-warm)",
                           }}
                         >
                           <div className="flex items-center gap-4 flex-wrap text-xs">
                             <span
                               className="font-semibold uppercase tracking-wide"
-                              style={{ color: "#d4845a" }}
+                              style={{ color: "var(--bz-accent)" }}
                             >
                               OSS Credentials
                             </span>
@@ -612,7 +627,7 @@ export default function LKPMBatchPage() {
                               <code
                                 className="font-mono px-2 py-0.5 rounded"
                                 style={{
-                                  background: "rgba(0,0,0,0.3)",
+                                  background: "var(--surface-sunken)",
                                   color: "var(--bz-text-1)",
                                 }}
                               >
@@ -626,7 +641,7 @@ export default function LKPMBatchPage() {
                                       "Username",
                                     )
                                   }
-                                  className="p-1 rounded hover:bg-[rgba(255,255,255,0.08)]"
+                                  className="p-1 rounded hover:bg-[var(--surface-raised)]"
                                   aria-label="Copy username"
                                 >
                                   <Copy className="w-3 h-3" />
@@ -640,7 +655,7 @@ export default function LKPMBatchPage() {
                               <code
                                 className="font-mono px-2 py-0.5 rounded"
                                 style={{
-                                  background: "rgba(0,0,0,0.3)",
+                                  background: "var(--surface-sunken)",
                                   color: "var(--bz-text-1)",
                                 }}
                               >
@@ -654,7 +669,7 @@ export default function LKPMBatchPage() {
                                       "Password",
                                     )
                                   }
-                                  className="p-1 rounded hover:bg-[rgba(255,255,255,0.08)]"
+                                  className="p-1 rounded hover:bg-[var(--surface-raised)]"
                                   aria-label="Copy password"
                                 >
                                   <Copy className="w-3 h-3" />
@@ -699,9 +714,8 @@ function KPICard({
     <div
       className="rounded-xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
       style={{
-        background:
-          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-        borderColor: "rgba(255, 255, 255, 0.05)",
+        background: "rgba(35,35,40,0.65)",
+        borderColor: "var(--bz-border)",
       }}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -723,27 +737,49 @@ function BatchStatusBadge({ status }: { status: string }) {
     {
       draft: {
         label: "Draft",
-        style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+        style: {
+          background:
+            "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+          color: "var(--state-warning)",
+        },
       },
       validated: {
         label: "Validated",
-        style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
+        style: {
+          background: "color-mix(in srgb, var(--state-info) 12%, transparent)",
+          color: "var(--state-info)",
+        },
       },
       client_review: {
         label: "Client Review",
-        style: { background: "rgba(168,85,247,0.12)", color: "#a78bfa" },
+        style: {
+          background:
+            "color-mix(in srgb, var(--bz-neon-purple) 12%, transparent)",
+          color: "var(--bz-neon-purple)",
+        },
       },
       approved: {
         label: "Approved",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+        style: {
+          background:
+            "color-mix(in srgb, var(--state-success) 12%, transparent)",
+          color: "var(--state-success)",
+        },
       },
       submitted: {
         label: "Submitted",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+        style: {
+          background:
+            "color-mix(in srgb, var(--state-success) 12%, transparent)",
+          color: "var(--state-success)",
+        },
       },
       archived: {
         label: "Archived",
-        style: { background: "rgba(107,114,128,0.12)", color: "#9ca3af" },
+        style: {
+          background: "var(--surface-raised)",
+          color: "var(--bz-text-2)",
+        },
       },
     };
 

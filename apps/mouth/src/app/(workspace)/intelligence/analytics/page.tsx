@@ -99,7 +99,7 @@ export default function IntelligenceAnalyticsPage() {
   if (!analytics) {
     return (
       <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <BarChart3 className="h-12 w-12 text-red-500" />
+        <BarChart3 className="h-12 w-12 text-[var(--state-danger)]" />
         <p className="text-[var(--foreground-muted)] text-lg">
           Analytics Unavailable
         </p>
@@ -158,12 +158,12 @@ export default function IntelligenceAnalyticsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-t-4 border-t-blue-500">
+        <Card className="border-t-4 border-t-[var(--bz-chart-1)]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Total Processed
             </CardTitle>
-            <FileText className="h-5 w-5 text-blue-500" />
+            <FileText className="h-5 w-5 text-[var(--bz-chart-1)]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
@@ -175,15 +175,15 @@ export default function IntelligenceAnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-t-4 border-t-green-500">
+        <Card className="border-t-4 border-t-[var(--state-success)]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Approval Rate
             </CardTitle>
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CheckCircle className="h-5 w-5 text-[var(--state-success)]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-[var(--state-success)]">
               {analytics.summary.approval_rate}%
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
@@ -192,15 +192,15 @@ export default function IntelligenceAnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-t-4 border-t-red-500">
+        <Card className="border-t-4 border-t-[var(--state-danger)]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Rejection Rate
             </CardTitle>
-            <XCircle className="h-5 w-5 text-red-500" />
+            <XCircle className="h-5 w-5 text-[var(--state-danger)]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-[var(--state-danger)]">
               {analytics.summary.rejection_rate}%
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
@@ -209,15 +209,15 @@ export default function IntelligenceAnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-t-4 border-t-purple-500">
+        <Card className="border-t-4 border-t-[var(--bz-neon-purple)]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Published
             </CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-500" />
+            <TrendingUp className="h-5 w-5 text-[var(--bz-neon-purple)]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-[var(--bz-neon-purple)]">
               {analytics.summary.total_published}
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
@@ -252,28 +252,28 @@ export default function IntelligenceAnalyticsPage() {
                   <div className="flex-1 flex items-end gap-1 h-32">
                     {day.processed > 0 && (
                       <div
-                        className="flex-1 bg-blue-500 rounded-t transition-all"
+                        className="flex-1 bg-[var(--bz-chart-1)] rounded-t transition-all"
                         style={{ height: `${processedHeight}%` }}
                         title={`Processed: ${day.processed}`}
                       />
                     )}
                     {day.approved > 0 && (
                       <div
-                        className="flex-1 bg-green-500 rounded-t transition-all"
+                        className="flex-1 bg-[var(--state-success)] rounded-t transition-all"
                         style={{ height: `${approvedHeight}%` }}
                         title={`Approved: ${day.approved}`}
                       />
                     )}
                     {day.rejected > 0 && (
                       <div
-                        className="flex-1 bg-red-500 rounded-t transition-all"
+                        className="flex-1 bg-[var(--state-danger)] rounded-t transition-all"
                         style={{ height: `${rejectedHeight}%` }}
                         title={`Rejected: ${day.rejected}`}
                       />
                     )}
                     {day.published > 0 && (
                       <div
-                        className="flex-1 bg-purple-500 rounded-t transition-all"
+                        className="flex-1 bg-[var(--bz-neon-purple)] rounded-t transition-all"
                         style={{
                           height: `${(day.published / maxDailyValue) * 100}%`,
                         }}
@@ -290,25 +290,25 @@ export default function IntelligenceAnalyticsPage() {
           </div>
           <div className="flex gap-4 mt-6 pt-4 border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded" />
+              <div className="w-4 h-4 bg-[var(--bz-chart-1)] rounded" />
               <span className="text-xs text-[var(--foreground-muted)]">
                 Processed
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded" />
+              <div className="w-4 h-4 bg-[var(--state-success)] rounded" />
               <span className="text-xs text-[var(--foreground-muted)]">
                 Approved
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded" />
+              <div className="w-4 h-4 bg-[var(--state-danger)] rounded" />
               <span className="text-xs text-[var(--foreground-muted)]">
                 Rejected
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-purple-500 rounded" />
+              <div className="w-4 h-4 bg-[var(--bz-neon-purple)] rounded" />
               <span className="text-xs text-[var(--foreground-muted)]">
                 Published
               </span>
@@ -339,7 +339,7 @@ export default function IntelligenceAnalyticsPage() {
                 <span className="text-sm text-[var(--foreground-muted)]">
                   Approved
                 </span>
-                <span className="text-lg font-semibold text-green-600">
+                <span className="text-lg font-semibold text-[var(--state-success)]">
                   {analytics.type_breakdown.visa.approved}
                 </span>
               </div>
@@ -347,7 +347,7 @@ export default function IntelligenceAnalyticsPage() {
                 <span className="text-sm text-[var(--foreground-muted)]">
                   Rejected
                 </span>
-                <span className="text-lg font-semibold text-red-600">
+                <span className="text-lg font-semibold text-[var(--state-danger)]">
                   {analytics.type_breakdown.visa.rejected}
                 </span>
               </div>
@@ -375,7 +375,7 @@ export default function IntelligenceAnalyticsPage() {
                 <span className="text-sm text-[var(--foreground-muted)]">
                   Approved
                 </span>
-                <span className="text-lg font-semibold text-green-600">
+                <span className="text-lg font-semibold text-[var(--state-success)]">
                   {analytics.type_breakdown.news.approved}
                 </span>
               </div>
@@ -383,7 +383,7 @@ export default function IntelligenceAnalyticsPage() {
                 <span className="text-sm text-[var(--foreground-muted)]">
                   Rejected
                 </span>
-                <span className="text-lg font-semibold text-red-600">
+                <span className="text-lg font-semibold text-[var(--state-danger)]">
                   {analytics.type_breakdown.news.rejected}
                 </span>
               </div>
@@ -391,7 +391,7 @@ export default function IntelligenceAnalyticsPage() {
                 <span className="text-sm text-[var(--foreground-muted)]">
                   Published
                 </span>
-                <span className="text-lg font-semibold text-purple-600">
+                <span className="text-lg font-semibold text-[var(--bz-neon-purple)]">
                   {analytics.type_breakdown.news.published}
                 </span>
               </div>
