@@ -19,13 +19,28 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/tes
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("ENVIRONMENT", "test")
 
-# Add backend to Python path
+# Add backend to Python path. This is what makes `import backend` work here —
+# and it is enough on its own.
+#
+# There used to be an `os.chdir(backend_path / "backend")` on the next line,
+# labelled "change to backend directory for imports". It was never needed for
+# the imports, and because it ran at MODULE scope it fired during pytest
+# COLLECTION and moved the cwd of the whole session, permanently, for every
+# test collected after it. Any later test that resolves something relative to
+# the cwd then resolves it against `apps/backend-rag/backend` instead of
+# `apps/backend-rag`. Not hypothetical: it broke
+# `tests/test_sentry_lazy_import.py`, which spawns a subprocess inheriting the
+# cwd and CI's relative `PYTHONPATH=.` — the child looked for `backend/` inside
+# `backend/` and died with `ModuleNotFoundError: No module named 'backend'`,
+# turning main red for every PR in the repo. It passed in isolation and failed
+# in the suite, which is the signature of exactly this class of defect.
+#
+# Never chdir at import scope in a test module. If a test genuinely needs a
+# different cwd, use `monkeypatch.chdir(...)` inside it, which restores.
+# Enforced by scripts/tests/test_no_import_time_chdir_in_tests.py.
 backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
-
-# Change to backend directory for imports
-os.chdir(str(backend_path / "backend"))
 
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.reasoning_utils import (

@@ -143,6 +143,7 @@ jobs:
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
             scripts/tests/test_fly_backup_timeouts.py \
+            scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
