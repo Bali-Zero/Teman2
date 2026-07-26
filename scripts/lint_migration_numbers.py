@@ -67,8 +67,20 @@ def main() -> int:
 
     sql_files = sorted(MIGRATIONS_DIR.glob("*.sql"))
     if not sql_files:
-        print(f"⚠️  migration-numbers lint: no .sql files under {MIGRATIONS_DIR}")
-        return 0
+        # BLIND-SCAN GUARD (cicatrix #4 / W84 — "0 files traversed != clean").
+        # The missing-directory case above already exits 2; this closes the
+        # narrower sibling: the directory EXISTS but holds no .sql at all.
+        # On this repo that is never legitimate — migrations_v2/ is populated on
+        # main — so it means the checkout is partial/sparse or the glob stopped
+        # matching. A warning is not a gate: downgrade to exit 0 and the lint
+        # reports success while having judged nothing.
+        print(
+            f"❌ migration-numbers lint: BLIND SCAN — {MIGRATIONS_DIR} exists but "
+            "contains no .sql files.\nRefusing to report clean: a lint that reads "
+            "nothing proves nothing (partial/sparse checkout?).",
+            file=sys.stderr,
+        )
+        return 2
 
     duplicates = find_duplicates(sql_files)
     if duplicates:

@@ -75,6 +75,7 @@ from backend.services.rag.agentic.reasoning_utils import (
     is_valid_tool_call,  # noqa: F401  re-exported for _reasoning_loop_helpers late-lookup + test patches
 )
 from backend.services.rag.agentic.response_processor import post_process_response
+from backend.services.rag.agentic.team_crm_tools import filter_gemini_tools_for_caller
 from backend.services.rag.agentic.tool_executor import (
     execute_tool,
     parse_tool_call,  # noqa: F401  re-exported for _reasoning_loop_helpers late-lookup + test patches
@@ -240,6 +241,22 @@ class ReasoningEngine:
         model_used_name = "unknown"
         accumulated_usage = TokenUsage()  # Track total token usage across ReAct loop
 
+        # T-VIS (W0 safety pre-arm, 2026-07-25): narrow the Gemini tool
+        # declarations to this caller's audience ONCE, computed fresh for
+        # THIS request from the trusted, server-resolved
+        # `state.caller_profile` (set by OrchestratorCore.process_query_core
+        # — never a client-settable field). `llm_gateway.gemini_tools` is
+        # the orchestrator-wide, construction-time list shared across every
+        # concurrent request; this filtered COPY is what actually gets sent
+        # to Gemini for the ONE call in this loop that has
+        # enable_function_calling=True (every other send_message call below
+        # passes enable_function_calling=False and never reaches the tools
+        # branch, so it needs no override).
+        _scoped_gemini_tools = filter_gemini_tools_for_caller(
+            getattr(llm_gateway, "gemini_tools", None),
+            getattr(state, "caller_profile", None),
+        )
+
         # ==================== REACT LOOP ====================
         # 🔍 TRACING: Span for entire ReAct loop
         with trace_span(
@@ -280,6 +297,7 @@ class ReasoningEngine:
                             system_prompt,
                             tier=model_tier,
                             enable_function_calling=True,
+                            gemini_tools=_scoped_gemini_tools,
                         )
 
                         # Accumulate token usage
@@ -1076,6 +1094,16 @@ Do not invent information. If the context is insufficient, admit it.
             Events with types: "thinking", "tool_call", "observation", "token"
         """
         language = detect_query_language(query)
+
+        # T-VIS (W0 safety pre-arm, 2026-07-25): same per-request narrowing
+        # as execute_react_loop — see that function's comment for the full
+        # rationale. Computed once for this request from the trusted
+        # `state.caller_profile`.
+        _scoped_gemini_tools = filter_gemini_tools_for_caller(
+            getattr(llm_gateway, "gemini_tools", None),
+            getattr(state, "caller_profile", None),
+        )
+
         # ==================== REACT LOOP ====================
         while state.current_step < state.max_steps:
             state.current_step += 1
@@ -1102,6 +1130,7 @@ Do not invent information. If the context is insufficient, admit it.
                     tier=model_tier,
                     enable_function_calling=True,
                     images=step_images,
+                    gemini_tools=_scoped_gemini_tools,
                 )
 
             except (

@@ -1,5 +1,7 @@
 #!/bin/bash
-# pro.log_rotate — Copytruncate rotation for logs over 50MB under ~/logs (5-generation retention)
+# pro.log_rotate — Copytruncate rotation for logs under ~/logs (5-generation retention)
+# Tiers (M3 2026-07-20): error-pattern logs (*.err.log, *stderr*.log, *.error.log,
+# *launchd.err*) rotate at 10MB, everything else at 50MB.
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
 # Canon: infra/launchagents/wrappers/log-rotate-run.sh
 # Live:  ~/scripts/log-rotate-run.sh (declared pair, node=pro)
@@ -69,6 +71,12 @@ trap 'rm -f "$PIDFILE"' EXIT
 log "run start"
 
 THRESHOLD_MB="${PRO_LOG_ROTATE_THRESHOLD_MB:-50}"
+# M3 (2026-07-20): error-pattern logs get a LOWER threshold. They sit in the
+# 1-50MB dead zone — above the log-size-watchdog's 1MB alert line, below this
+# rotator's 50MB — so they never rotated and re-alerted every cycle (16 files,
+# ~34 alerts/12h, including a "No space left" from 16 days prior re-sent as
+# fresh). 10MB keeps them trimmed while preserving generous error history.
+ERR_THRESHOLD_MB="${PRO_LOG_ROTATE_ERR_THRESHOLD_MB:-10}"
 RETENTION="${PRO_LOG_ROTATE_RETENTION:-5}"
 ARCHIVE_DIR="$HOME/logs/archive"
 mkdir -p "$ARCHIVE_DIR"
@@ -76,12 +84,26 @@ DATE_TAG="$(date +%Y%m%d)"
 ROTATED=0
 ERRORS=0
 
-# Every file >50MB under ~/logs, any depth, excluding anything already inside
-# an "archive" dir (never re-rotate a .gz archive or a nested archive/ dir).
+# Every file above threshold under ~/logs, any depth, excluding anything already
+# inside an "archive" dir (never re-rotate a .gz archive or a nested archive/ dir).
+# M3: find at the LOWER err-threshold, then apply the per-file tier — error
+# pattern logs (*.err.log, *stderr*.log, *.error.log, *launchd.err*) rotate at
+# ERR_THRESHOLD_MB, everything else at THRESHOLD_MB.
 while IFS= read -r -d '' f; do
     case "$f" in
         */archive/*) continue ;;
     esac
+
+    case "$(basename "$f")" in
+        *.err.log|*stderr*.log|*.error.log|*launchd.err*)
+            threshold_mb="$ERR_THRESHOLD_MB" ;;
+        *)
+            threshold_mb="$THRESHOLD_MB" ;;
+    esac
+    size_bytes=$(stat -f%z "$f" 2>/dev/null || echo 0)
+    if [ "$((size_bytes / 1048576))" -lt "$threshold_mb" ]; then
+        continue
+    fi
 
     # Fold the subdir path into the archive filename so cross-subdir
     # basename collisions (e.g. two different "organism.stderr.log") never
@@ -112,7 +134,7 @@ while IFS= read -r -d '' f; do
         log "ERROR: gzip failed for $f"
         ERRORS=$((ERRORS + 1))
     fi
-done < <(find "$HOME/logs" -type f -size "+${THRESHOLD_MB}M" -print0 2>/dev/null)
+done < <(find "$HOME/logs" -type f -size "+${ERR_THRESHOLD_MB}M" -print0 2>/dev/null)
 
 # Retention: keep only the newest N generations per archived name-prefix.
 if [ -d "$ARCHIVE_DIR" ]; then
@@ -130,7 +152,7 @@ if [ -d "$ARCHIVE_DIR" ]; then
         done
 fi
 
-log "run summary: rotated=$ROTATED errors=$ERRORS threshold=${THRESHOLD_MB}M retention=${RETENTION}"
+log "run summary: rotated=$ROTATED errors=$ERRORS threshold=${THRESHOLD_MB}M err_threshold=${ERR_THRESHOLD_MB}M retention=${RETENTION}"
 if [ "$ERRORS" -eq 0 ]; then
     heartbeat "ok" "rotated=$ROTATED errors=0"
 else

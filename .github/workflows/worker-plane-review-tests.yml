@@ -1,0 +1,123 @@
+name: worker-plane review panel tests
+
+# Runs the worker-plane multi-LLM review-panel tool's own test suite: the
+# three pre-existing files (test_check_worker_plane_review.py,
+# test_launch_worker_plane_review_panel.py,
+# test_worker_plane_review_packet.py), the v3-final-gate parity tripwire
+# (test_v3_final_gate_parity.py), and (PR #3127) the guilt+innocence corpus
+# for scripts/detect_secrets_auto_triage.py's CONTENT_KEYED_RULES
+# (test_detect_secrets_auto_triage.py) — the auto-triage rule that approves
+# the executable code-signing identity pins (sha256/cdhash) these two review
+# files carry, without blanket-approving the whole file (cicatrix-superscar
+# #3, registered in infra/guard-conformance/registry.json). Before this
+# workflow, NO CI job anywhere referenced any of these files by name or by
+# directory — grepped every workflow in this repo for
+# "worker_plane"/"worker-plane" and found zero matches. "167 passed / 2
+# skipped" was a local-only claim; this workflow is what turns it into a CI
+# fact.
+#
+# NOT a required check on main yet (branch-protection is operator-only,
+# adding it there is a separate, deliberate step, see PENDING-ARMS). A red
+# run here is advisory until that's done — same lesson learned live on
+# PR #3114, where kbli-filiera-vault-compilers was red and not required and
+# the PR merged anyway. Following the repo's own sentinel-gate pattern here
+# regardless (see below) so this workflow is *ready* to become required
+# without also inheriting the W69 pending-forever trap the day someone flips
+# that switch.
+#
+# SENTINEL PATTERN (same reasoning as token-lint.yml / guard-conformance.yml,
+# W69): NO top-level pull_request paths: filter — the workflow always
+# triggers on PR, so a future required-check flip never leaves an
+# out-of-scope PR stuck at "Expected — waiting for status" forever. The
+# relevant-paths decision lives in the "Did worker-plane review surfaces
+# change?" step; on a path-miss PR the job ends success (sentinel), without
+# paying the ~2-minute test-suite cost.
+#
+# PYTHON 3.10+ IS LOAD-BEARING: test_check_worker_plane_review.py uses
+# zip(..., strict=True) (PEP 618). Pinned to 3.11 to match this repo's own
+# CI standard (see tests.yml's setup-python steps) and the version this
+# workflow was verified against.
+
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  push:
+    branches: [main]
+    paths:
+      - "scripts/check_worker_plane_review.py"
+      - "scripts/launch_worker_plane_review_panel.py"
+      - "scripts/freeze_worker_plane_review.py"
+      - "scripts/detect_secrets_auto_triage.py"
+      - "scripts/tests/test_check_worker_plane_review.py"
+      - "scripts/tests/test_launch_worker_plane_review_panel.py"
+      - "scripts/tests/test_worker_plane_review_packet.py"
+      - "scripts/tests/test_v3_final_gate_parity.py"
+      - "scripts/tests/test_detect_secrets_auto_triage.py"
+      - ".github/workflows/worker-plane-review-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-plane-review-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: worker-plane review panel — test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the PR base is resolvable for the sentinel diff
+
+      - name: Did worker-plane review surfaces change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full suite"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no worker-plane review surface changed — sentinel success"
+          fi
+
+      - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        if: steps.relevant.outputs.run == 'true'
+        # Pinned, matching this repo's convention (token-lint.yml) of not
+        # floating a supply-chain dependency for a gate's own runner. Version
+        # verified locally against this exact suite (9.1.1, 170 passed / 2
+        # skipped on a clean Python 3.11.15 venv).
+        run: pip install --quiet "pytest==9.1.1"
+
+      - name: worker-plane review panel test suite
+        if: steps.relevant.outputs.run == 'true'
+        # scripts/tests/*.py import via `from scripts.<module> import ...` /
+        # `from scripts import <module>`, so this must run as `python3 -m
+        # pytest` from the repo root (adds repo root to sys.path) — a bare
+        # `pytest` invocation collects fine but the imports fail.
+        run: |
+          python3 -m pytest \
+            scripts/tests/test_check_worker_plane_review.py \
+            scripts/tests/test_launch_worker_plane_review_panel.py \
+            scripts/tests/test_worker_plane_review_packet.py \
+            scripts/tests/test_v3_final_gate_parity.py \
+            scripts/tests/test_detect_secrets_auto_triage.py \
+            -q
+
+      - name: Sentinel success (no worker-plane review surface changed)
+        if: steps.relevant.outputs.run != 'true'
+        run: echo "No worker-plane review surface changed in this PR — suite not required. Sentinel pass."

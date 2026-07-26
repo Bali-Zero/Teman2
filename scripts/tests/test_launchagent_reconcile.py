@@ -164,6 +164,36 @@ def test_home_fork_target_allow_listed_not_a_fork(world):
     assert r["canon_paired"] == []
 
 
+def test_allow_listed_target_ignores_basename_collision_canon(world):
+    """Live bug 2026-07-26 (Mini healer tick): _repo_canon_for() matches by
+    BASENAME ALONE, so an allow-listed standalone tool (e.g.
+    ~/.local/bin/zero-design/run.sh, a Node webapp launcher, no repo canon by
+    design) can coincidentally collide with an UNRELATED repo file sharing the
+    same generic name (e.g. scripts/cron-agent-python/run.sh, a totally
+    different cron wrapper) and get reported DIVERGED — even though the human
+    already ruled this path unrelated via the allow-list. Guard-over-match,
+    superscar #3 sibling: same basename is not the same entity."""
+    payload = world["home"] / ".local" / "bin" / "zero-design" / "run.sh"
+    payload.parent.mkdir(parents=True)
+    payload.write_text("#!/bin/zsh\nnode local-webapp-server.mjs --lan\n")
+    unrelated_canon = world["repo"] / "scripts" / "cron-agent-python" / "run.sh"
+    unrelated_canon.parent.mkdir(parents=True)
+    unrelated_canon.write_text("#!/usr/bin/env bash\necho totally unrelated cron wrapper\n")
+    hf_dir = world["repo"] / "infra" / "home-fork"
+    hf_dir.mkdir(parents=True)
+    (hf_dir / "declared-pairs.json").write_text(
+        json.dumps({"pairs": [], "allow": ["~/.local/bin/zero-design/*"]})
+    )
+    write_plist(
+        world["agents"] / "com.balizero.zerodesign.studio.plist",
+        "com.balizero.zerodesign.studio",
+        program_args=[str(payload)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert r["canon_paired"] == []
+
+
 def test_home_fork_target_declared_pair_live_not_a_fork(world):
     """A target whose ~-path exactly matches a declared pair's 'live' field
     is tracked by lint_home_fork.py's --check sha256 flow already — not a

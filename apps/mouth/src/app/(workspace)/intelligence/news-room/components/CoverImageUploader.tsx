@@ -145,7 +145,11 @@ export function CoverImageUploader({
                     setPreview(null);
                     setFile(null);
                   }}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  className="absolute top-2 right-2 p-1 rounded-full transition-opacity hover:opacity-85"
+                  style={{
+                    background: "var(--state-danger)",
+                    color: "var(--bz-text-pure)",
+                  }}
                   disabled={uploading}
                 >
                   <X className="h-4 w-4" />

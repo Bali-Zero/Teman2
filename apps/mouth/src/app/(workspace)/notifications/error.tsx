@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Bell, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Bell, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function NotificationsError({
   error,
@@ -13,7 +13,7 @@ export default function NotificationsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Notifications Error', {}, error);
+    logger.error("Notifications Error", {}, error);
   }, [error]);
 
   return (
@@ -27,8 +27,8 @@ export default function NotificationsError({
           Couldn&apos;t Load Notifications
         </h2>
         <p className="text-muted-foreground">
-          There was an error loading your notifications. Please try again or contact support if the
-          problem persists.
+          There was an error loading your notifications. Please try again or
+          contact support if the problem persists.
         </p>
       </div>
 

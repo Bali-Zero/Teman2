@@ -999,6 +999,46 @@ class TimeSheetTool(BaseTool):
             return json.dumps({"error": str(e)})
 
 
+
+# W0 safety pre-arm (S1, 2026-07-25): defensive bounds for the LLM-supplied
+# `limit`/`days_ahead` kwargs CRMTool.execute() feeds straight into `LIMIT $N`
+# SQL. An LLM can be induced (or can simply hallucinate) into requesting an
+# unbounded row count — mirrors the identical pattern already hardened in
+# team_crm_tools.py's `_clamp_limit`/`_clamp_days` (same constants shape,
+# kept as separate module-local functions here since CRMTool predates and is
+# broader-scoped than the WA team-assistant tools).
+_CRM_DEFAULT_LIMIT = 20
+_CRM_MAX_LIMIT = 50
+_CRM_DEFAULT_DAYS_AHEAD = 30
+_CRM_MAX_DAYS_AHEAD = 365
+
+
+def _clamp_crm_limit(limit: Any) -> int:
+    """Coerce+clamp a caller-supplied `limit` to [1, _CRM_MAX_LIMIT].
+
+    Non-numeric / missing input degrades to the documented default (20)
+    rather than raising — an LLM can pass a string, None, or a list instead
+    of an int, and CRMTool.execute() must never crash on that.
+    """
+    try:
+        n = int(limit)
+    except (TypeError, ValueError):
+        return _CRM_DEFAULT_LIMIT
+    return max(1, min(n, _CRM_MAX_LIMIT))
+
+
+def _clamp_crm_days_ahead(days_ahead: Any) -> int:
+    """Coerce+clamp a caller-supplied `days_ahead` to [1, _CRM_MAX_DAYS_AHEAD].
+
+    Same non-numeric fallback contract as `_clamp_crm_limit`.
+    """
+    try:
+        n = int(days_ahead)
+    except (TypeError, ValueError):
+        return _CRM_DEFAULT_DAYS_AHEAD
+    return max(1, min(n, _CRM_MAX_DAYS_AHEAD))
+
+
 class CRMTool(BaseTool):
     """Tool for querying the CRM database — client counts, search, practice status."""
 
@@ -1066,6 +1106,14 @@ class CRMTool(BaseTool):
     ) -> str:
         if not self.db_pool:
             return json.dumps({"error": "CRM database not available"})
+
+        # W0 S1: clamp BEFORE any branch below builds a query — every
+        # branch that feeds `limit` into `LIMIT $N` (search_clients,
+        # expiring_documents, practice_stats, recent_clients) shares this
+        # single clamped value, so a fix here covers the whole class in one
+        # place instead of one call site at a time.
+        limit = _clamp_crm_limit(limit)
+        days_ahead = _clamp_crm_days_ahead(days_ahead)
 
         try:
             async with self.db_pool.acquire() as conn:
