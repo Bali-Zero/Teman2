@@ -8,6 +8,14 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { Practice } from "@/lib/api/crm/crm.types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatIDR } from "@balizero/core/utils";
+
+// The price assertions go through the SAME formatter the component uses, so
+// they cannot drift from it. But `formatIDR` (Intl, id-ID) puts a NON-BREAKING
+// space (U+00A0) between "Rp" and the digits, and testing-library normalizes
+// the DOM text WITHOUT normalizing the matcher string — so the raw formatter
+// output can never match the rendered node. Normalize the expectation too.
+const idr = (amount: number) => formatIDR(amount).replace(/\u00a0/g, " ");
 
 const mocks = vi.hoisted(() => ({
   back: vi.fn(),
@@ -106,10 +114,6 @@ vi.mock("./RequiredDocumentsCard", () => ({
   RequiredDocumentsCard: ({ practiceId }: { practiceId: number }) => (
     <div data-testid="required-documents">Documents for {practiceId}</div>
   ),
-}));
-
-vi.mock("@balizero/core/utils", () => ({
-  formatIDR: (amount: number) => `IDR ${amount}`,
 }));
 
 import CaseDetailPage from "./page";
@@ -253,7 +257,7 @@ describe("CaseDetailPage", () => {
       "https://wa.me/62812345",
     );
     expect(screen.getByText("Zero Tester")).toBeInTheDocument();
-    expect(screen.getAllByText("IDR 1750000")).toHaveLength(2);
+    expect(screen.getAllByText(idr(1_750_000))).toHaveLength(2);
     expect(screen.getByTestId("required-documents")).toHaveTextContent(
       "Documents for 42",
     );
@@ -402,7 +406,7 @@ describe("CaseDetailPage", () => {
         quoted_price: 2_000_000,
       });
     });
-    expect(await screen.findByText("IDR 2000000")).toBeInTheDocument();
+    expect(await screen.findByText(idr(2_000_000))).toBeInTheDocument();
   });
 
   it("closes an unchanged edit and submits changed fields with a reload", async () => {
