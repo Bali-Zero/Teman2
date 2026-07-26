@@ -179,6 +179,21 @@ recover_delta() {
           && echo "[$(date)] W81-fix: recovered delta from branch $_wt_branch -> main" >> "$LOG"
         return 0
     fi
+    # W105-#68 (2026-07-27): an exact-name miss above is not proof nothing exists
+    # for today. Measured live 2026-07-25: a manually-produced, COMPLETE
+    # (non-partial) delta with real findings sat for two days under
+    # .worktrees/regulatory-watcher-2026-07-25/research/regulatory/, renamed to
+    # `...manual-session-DO-NOT-RECOVER` specifically to defeat the glob above —
+    # and nothing logged that it had happened, so the evasion was indistinguishable
+    # from an honest absence. Do NOT auto-recover a near-miss (an unverified rename
+    # could be untrustworthy content the operator meant to discard) but DO log it,
+    # so the next reader of this log can go look instead of assuming a clean day.
+    setopt local_options null_glob
+    local -a _near_misses
+    _near_misses=( "$HOME"/nuzantara/.worktrees/*/research/regulatory/*"$DATE"*(N.om) )
+    if (( ${#_near_misses} > 0 )); then
+        echo "[$(date)] W105-#68: ${#_near_misses} file(s) under .worktrees/*/research/regulatory/ mention $DATE but do not match the exact expected name $DELTA_BASENAME — NOT auto-recovered, needs a manual look: ${_near_misses[*]}" >> "$LOG"
+    fi
     return 1
 }
 

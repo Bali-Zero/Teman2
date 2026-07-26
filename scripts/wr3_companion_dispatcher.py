@@ -11,12 +11,18 @@ Critical contract (Law 2): NB source_ids are NEVER re-queried — claim_ids are
 inherited verbatim from the WR2 brief. brief-interpreter is SKIPPED entirely.
 
 Sub-mode selection (one of three):
-  * story_15s         — default (always runs unless WR2 brief.companion_skip=true)
-  * reel_60s          — opt-in via WR2 brief.companion_expand=true
+  * episode           — AUTOMATIC on every publish (unless brief.companion_skip=true),
+                        60-150 s, two language cuts (en + id)
+  * story_15s         — opt-in via WR2 brief.companion_story=true
   * comment_interactive — opt-in via WR2 brief.companion_engage=true
 
-Multiple sub-modes can be requested simultaneously (e.g. --expand AND --engage
-both set) → one companion event per sub-mode.
+The opt-in sub-modes are additive: they ride alongside the automatic episode,
+one companion event emitted per sub-mode.
+
+Changed 2026-07-26 (Zero's ruling): the episode is preordained, so there is no
+flag that turns it ON — only `companion_skip` turns it off. It grew out of the
+old `reel_60s` sub-mode, renamed and promoted; `story_15s` was demoted from
+default to a flag, and `companion_expand` no longer exists.
 
 ENVIRONMENT
   DATABASE_URL           Postgres DSN (local pg-proxy port 15432)
@@ -29,7 +35,7 @@ USAGE
 
       python scripts/wr3_companion_dispatcher.py \\
           --wr2-slug kep71-spt-2025 \\
-          --sub-modes story_15s,reel_60s
+          --sub-modes episode,story_15s
 """
 from __future__ import annotations
 
@@ -39,7 +45,7 @@ import json
 import logging
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -94,6 +100,10 @@ class CompanionModeConfig:
     sub_modes: dict[str, dict[str, Any]]
     inherit_from_wr2: dict[str, bool]
     output_dir_template: str
+    # WR3's native [60,150] s contract, mirrored here because the companion path
+    # skips brief-interpreter (the agent that would hard_fail out-of-range).
+    # Empty dict = no envelope declared → the check is a no-op, never a crash.
+    duration_envelope: dict[str, Any] = field(default_factory=dict)
 
     @property
     def default_sub_mode(self) -> str:
@@ -124,6 +134,7 @@ def load_companion_mode_config(
         sub_modes=dict(raw["sub_modes"]),
         inherit_from_wr2=dict(raw.get("inherit_from_wr2") or {}),
         output_dir_template=raw["output_dir_template"],
+        duration_envelope=dict(raw.get("duration_envelope") or {}),
     )
 
 
@@ -166,19 +177,57 @@ def _resolve_requested_sub_modes(
 ) -> list[str]:
     """Inspect WR2 brief for Antonello flags + return ordered list of sub-modes.
 
-    `companion_skip: true` → return [] (no companion at all)
-    `companion_expand: true` → add reel_60s
-    `companion_engage: true` → add comment_interactive
-    Default story_15s is always added unless `companion_skip=true`.
+    The default sub-mode is always added unless `companion_skip=true` — Zero's
+    2026-07-26 ruling made the companion PREORDAINED, so there is no opt-in flag
+    that turns the episode on. `companion_expand` used to be that flag; it is
+    gone, and a brief still carrying it is simply ignored rather than rejected
+    (WR2 briefs are written by another pipeline; a stale key must not break a
+    publish that already happened).
+
+    `companion_skip: true`   → return [] (no companion at all)
+    `companion_story: true`  → additionally produce the short opt-in cut
+    `companion_engage: true` → additionally produce the text-only cut
     """
     if wr2_brief.get("companion_skip"):
         return []
     out: list[str] = [config.default_sub_mode]
-    if wr2_brief.get("companion_expand") and "reel_60s" in config.sub_modes:
-        out.append("reel_60s")
+    if wr2_brief.get("companion_story") and "story_15s" in config.sub_modes:
+        out.append("story_15s")
     if wr2_brief.get("companion_engage") and "comment_interactive" in config.sub_modes:
         out.append("comment_interactive")
     return out
+
+
+def _assert_duration_envelope(config: CompanionModeConfig, sub_mode: str) -> None:
+    """Enforce WR3's [60,150] s envelope on the AUTOMATIC path.
+
+    WR3 declares this range in brief-interpreter.yaml with `out-of-range =
+    hard_fail`, and the whole downstream derivation chain is keyed to it
+    (shot-director clip counts, script-editor word counts, gatekeeper credit
+    ceilings, post-assembler ±2 s check). The companion path sets
+    `skip_brief_interpreter: true` and therefore never meets that gate — which
+    is precisely how a 15-second default came to live here unchallenged.
+
+    Enforcing it here means skipping the validator no longer means skipping the
+    validation. Opt-in sub-modes are exempt: those are a human's explicit
+    choice, and `story_15s` is deliberately outside the envelope.
+    """
+    if sub_mode != config.default_sub_mode:
+        return
+    env = config.duration_envelope
+    if not env:
+        return
+    target = config.sub_modes[sub_mode].get("target_duration_s")
+    lo, hi = env.get("min_s"), env.get("max_s")
+    if target is None or lo is None or hi is None:
+        return
+    if not (lo <= target <= hi):
+        raise CompanionDispatchError(
+            f"companion-mode.yaml: automatic sub-mode {sub_mode!r} declares "
+            f"target_duration_s={target}, outside WR3's [{lo},{hi}] envelope. "
+            "The automatic path spends Veo credits with no human in the loop, so "
+            "it may not run a duration the standard pipeline would hard_fail."
+        )
 
 
 def _build_wr3_brief(
@@ -225,6 +274,27 @@ def _build_wr3_brief(
         "audience_segment": payload["audience_segment"],
         # ── Sub-mode rendering parameters ────────────────────────────
         "target_duration_s": sub_mode_cfg["target_duration_s"],
+        # Present only on the episode sub-mode. Downstream agents derive
+        # clip_count and word_count from target_duration_s; the bounds travel
+        # with it so the planner can move inside the envelope without any
+        # consumer having to re-derive where the envelope came from.
+        **(
+            {"min_duration_s": sub_mode_cfg["min_duration_s"]}
+            if "min_duration_s" in sub_mode_cfg
+            else {}
+        ),
+        **(
+            {"max_duration_s": sub_mode_cfg["max_duration_s"]}
+            if "max_duration_s" in sub_mode_cfg
+            else {}
+        ),
+        # EN + ID. One render of the visual layer is shared between the cuts;
+        # only the voice track and the subtitle text differ.
+        **(
+            {"language_cuts": list(sub_mode_cfg["language_cuts"])}
+            if "language_cuts" in sub_mode_cfg
+            else {}
+        ),
         "clip_count": sub_mode_cfg["clip_count"],
         "has_voiceover": sub_mode_cfg["has_voiceover"],
         "has_video": sub_mode_cfg["has_video"],
@@ -251,6 +321,7 @@ async def dispatch_companion(
     pg_conn: Any | None = None,
     config: CompanionModeConfig | None = None,
     dry_run: bool | None = None,
+    sub_modes_override: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Main entry point.
 
@@ -266,6 +337,11 @@ async def dispatch_companion(
         config: optional pre-loaded CompanionModeConfig (else loaded from disk).
         dry_run: if True, never emit even with a live connection. Defaults
             to env var WR3_DRY_RUN.
+        sub_modes_override: explicit sub-mode list (the `--sub-modes` backfill
+            flag), bypassing the WR2 brief's flags. Unknown names are refused
+            rather than resolved late into a KeyError, and the duration envelope
+            still applies — an override is a choice of WHICH sub-modes run, not
+            a way around what they are allowed to be.
 
     Returns:
         List of translated WR3 brief dicts (one per requested sub-mode).
@@ -279,7 +355,16 @@ async def dispatch_companion(
     wr2_brief = _read_wr2_sidecar(payload, key="brief_path")
     wr2_slides = _read_wr2_sidecar(payload, key="slides_path")
 
-    requested = _resolve_requested_sub_modes(wr2_brief, cfg)
+    if sub_modes_override:
+        unknown = [s for s in sub_modes_override if s not in cfg.sub_modes]
+        if unknown:
+            raise CompanionDispatchError(
+                f"unknown sub-mode(s) {unknown} — companion-mode.yaml declares "
+                f"{sorted(cfg.sub_modes)}"
+            )
+        requested = list(sub_modes_override)
+    else:
+        requested = _resolve_requested_sub_modes(wr2_brief, cfg)
     if not requested:
         logger.info(
             "WR2 carousel %s: companion_skip=true — emitting nothing",
@@ -287,8 +372,23 @@ async def dispatch_companion(
         )
         return []
 
+    # failure_modes.claim_ids_empty. Was "fall back to the short cut"; that is
+    # now a skip. WR2 carries claim ids in 0 of 23 briefs on disk, so a fallback
+    # would fire on every episode and quietly reinstate the very format the
+    # 2026-07-26 ruling replaced — and an episode with no inherited claims is
+    # either ungrounded or re-queries NotebookLM, which Law 2 forbids.
+    if not payload["primary_claim_ids"]:
+        logger.warning(
+            "WR2 carousel %s: no inherited claim ids — skipping the companion "
+            "entirely (no Veo spend). WR2 does not yet emit claim ids; until it "
+            "does, this is the expected outcome, not a transient error.",
+            payload["slug"],
+        )
+        return []
+
     briefs: list[dict[str, Any]] = []
     for sub_mode in requested:
+        _assert_duration_envelope(cfg, sub_mode)
         brief = _build_wr3_brief(
             payload,
             sub_mode=sub_mode,
@@ -343,8 +443,9 @@ def _cli() -> int:
     parser.add_argument(
         "--sub-modes",
         default="",
-        help="Comma-separated override (e.g. 'story_15s,reel_60s'). "
-        "If empty, falls back to companion_skip/expand/engage flags from WR2 brief.",
+        help="Comma-separated override (e.g. 'episode,story_15s'). "
+        "If empty, the automatic episode runs plus whatever "
+        "companion_skip/story/engage flags the WR2 brief carries.",
     )
     parser.add_argument(
         "--dry-run",
@@ -357,6 +458,10 @@ def _cli() -> int:
         payload = json.loads(args.payload_json.read_text())
     else:
         # Minimal smoke payload — caller must edit before real backfill.
+        # NOTE: its empty `primary_claim_ids` now guarantees a skip (the
+        # claim_ids_empty failure mode no longer downgrades to a shorter cut),
+        # so `--wr2-slug` alone prints `[]` by construction. A real backfill
+        # needs `--payload-json` with the carousel's actual claim ids.
         payload = {
             "slug": args.wr2_slug,
             "slides_count": 10,
@@ -368,8 +473,15 @@ def _cli() -> int:
             "slides_path": f"apps/war-room/output/carousel/{args.wr2_slug}/slides.json",
         }
 
+    override = [s.strip() for s in args.sub_modes.split(",") if s.strip()]
+
     async def _run() -> list[dict[str, Any]]:
-        return await dispatch_companion(payload, pg_conn=None, dry_run=True)
+        return await dispatch_companion(
+            payload,
+            pg_conn=None,
+            dry_run=True,
+            sub_modes_override=override or None,
+        )
 
     briefs = asyncio.run(_run())
     print(json.dumps(briefs, indent=2, default=str))

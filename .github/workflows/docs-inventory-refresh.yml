@@ -147,7 +147,14 @@ jobs:
           # "! [rejected] ... (non-fast-forward)". That was failure mode #2 of
           # the 2026-07-22..26 nine-day outage; mode #1 is handled at pr-create
           # below. Measured then: 9 consecutive failed runs, 9 orphan branches.
-          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}-${GITHUB_RUN_ID}"
+          # GITHUB_RUN_ATTEMPT too, not RUN_ID alone: re-running a failed run
+          # REUSES its run id. So an attempt that pushed its branch and then
+          # died (which is exactly what mode #1 above does — it dies at
+          # pr-create, after the push) leaves that branch behind, and hitting
+          # "re-run" reproduces the identical non-fast-forward rejection that
+          # run-scoping was added to kill. The attempt counter is the only part
+          # of the name that changes between attempt 1 and attempt 2.
+          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           # P3-prime: "Refresh PR logs 'advanced N flips, eligibility
           # recomputed'" — surfaced in BOTH the commit message and the PR
