@@ -48,6 +48,14 @@ describe("funnel-app", () => {
     );
   });
 
+  it("does not block the user flow when analytics delivery fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    await expect(
+      emitFunnelAppEvent({ type: "app_viewed", app: "visa_clock" }),
+    ).resolves.toBeUndefined();
+  });
+
   it("APP_EVENTS is the exact event-name source of truth for the tracker", async () => {
     // No duplicates, snake_case naming — mirrors funnel-view.test.ts.
     expect(new Set(APP_EVENTS).size).toBe(APP_EVENTS.length);

@@ -46,6 +46,13 @@ if [[ "${WR2_CRON_ENABLED:-true}" == "false" || "${!ORGAN_VAR:-true}" == "false"
 fi
 
 REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/nuzantara}"
+# Resolved above for our own `cd` below, but never re-exported for the child
+# python process — every module reading NUZANTARA_REPO_ROOT via os.environ
+# always fell through to its own file-relative guess. Confirmed live 2026-07-27:
+# m13_weekly.py's guess landed one directory too shallow (apps/ instead of
+# repo root), writing its weekly report to apps/research/... instead of
+# research/.... Export it so the resolved value actually reaches the module.
+export NUZANTARA_REPO_ROOT="$REPO_ROOT"
 SECRETS_FILE="${NUZANTARA_SECRETS:-$HOME/.nuzantara-secrets.env}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
 mkdir -p "$LOG_DIR"

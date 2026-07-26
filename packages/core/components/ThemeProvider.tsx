@@ -11,11 +11,7 @@ import {
 } from "react";
 
 export type Theme =
-  | "dark"
-  | "light"
-  | "editorial"
-  | "operative-light"
-  | "operative-dark";
+  "dark" | "light" | "editorial" | "operative-light" | "operative-dark";
 export type Funnel = "visa" | "kbli" | "tax" | "property" | null;
 
 interface ThemeContextValue {
@@ -27,6 +23,43 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+/** The ONE key the theme is persisted under. Matches the pre-paint script. */
+export const THEME_STORAGE_KEY = "bz-theme";
+/** Retired mirror key, read once at mount for migration, then deleted (WS4). */
+const LEGACY_THEME_STORAGE_KEY = "theme";
+
+function isTheme(v: string | null | undefined): v is Theme {
+  return (
+    v === "dark" ||
+    v === "light" ||
+    v === "editorial" ||
+    v === "operative-light" ||
+    v === "operative-dark"
+  );
+}
+
+/**
+ * One-time migration off the legacy `theme` key (WS4 theme-key reconciliation).
+ *
+ * Idempotent, and deliberately VALIDATING: only a value this token system can
+ * actually render is carried over. The retired appearance-settings page
+ * persisted `'system'` under the legacy key, and the pre-paint script in
+ * app/layout.tsx does NOT validate what it reads — it writes the stored string
+ * straight onto `data-theme`. Copying `'system'` across would yield
+ * `data-theme="system"`, which matches no file in tokens/themes/, i.e. an
+ * unstyled page on the next reload. An unreadable legacy value is dropped, and
+ * the user falls back to the hostname persona, which is a working theme.
+ */
+function migrateLegacyThemeKey(): void {
+  if (typeof window === "undefined") return;
+  const legacy = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+  if (legacy === null) return;
+  if (localStorage.getItem(THEME_STORAGE_KEY) === null && isTheme(legacy)) {
+    localStorage.setItem(THEME_STORAGE_KEY, legacy);
+  }
+  localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: Theme;
@@ -37,7 +70,8 @@ interface ThemeProviderProps {
  * ThemeProvider — writes data-theme and data-funnel onto <html>.
  *
  * Theme precedence on mount:
- *   1. localStorage (bz-theme, legacy: theme — user choice wins)
+ *   1. localStorage (bz-theme — the only theme key; a legacy `theme` value is
+ *      migrated once at mount and the legacy key removed)
  *   2. defaultTheme prop
  *
  * An inline script in <head> sets data-theme before React hydrates,
@@ -55,7 +89,7 @@ export function ThemeProvider({
   // On mount: reconcile React state with the DOM/localStorage source of truth.
   //
   // Precedence (matches the pre-paint themeInitScript in app/layout.tsx):
-  //   1. localStorage('theme')  — explicit user choice, wins everywhere
+  //   1. localStorage('bz-theme') — explicit user choice, wins everywhere
   //   2. the data-theme the pre-paint script ALREADY set, persona-aware by
   //      hostname (my./zantara. → operative-light, kita./prime. → operative-dark,
   //      public → editorial). We must NOT clobber it with `defaultTheme`.
@@ -66,16 +100,11 @@ export function ThemeProvider({
   // portal showed navy instead of paper). Reading the pre-paint value back
   // keeps the provider hostname-aware for free.
   useEffect(() => {
-    const isTheme = (v: string | null | undefined): v is Theme =>
-      v === "dark" ||
-      v === "light" ||
-      v === "editorial" ||
-      v === "operative-light" ||
-      v === "operative-dark";
+    migrateLegacyThemeKey();
 
     const stored =
       typeof window !== "undefined"
-        ? (localStorage.getItem("bz-theme") ?? localStorage.getItem("theme"))
+        ? localStorage.getItem(THEME_STORAGE_KEY)
         : null;
     const prePaint =
       typeof document !== "undefined"
@@ -95,11 +124,12 @@ export function ThemeProvider({
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
     if (typeof window !== "undefined") {
-      // Canonical key is `bz-theme` (matches the pre-paint script in
-      // app/layout.tsx — no FOUC on reload); `theme` kept as legacy mirror
-      // for readers not yet migrated (dropped in WS4).
-      localStorage.setItem("bz-theme", next);
-      localStorage.setItem("theme", next);
+      // `bz-theme` is the ONLY theme key — same key the pre-paint script in
+      // app/layout.tsx reads, so a reload repaints without FOUC. The legacy
+      // `theme` mirror was dropped in WS4: it had no readers left, and while
+      // it lived, a writer that touched only one of the two keys made the
+      // applied theme depend on which writer ran last.
+      localStorage.setItem(THEME_STORAGE_KEY, next);
       document.documentElement.dataset.theme = next;
     }
   }, []);

@@ -71,6 +71,8 @@ jobs:
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
+              scripts/lint_worktree_husky_symlink.py|\
+              scripts/tests/test_lint_worktree_husky_symlink.py|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -92,6 +94,15 @@ jobs:
               scripts/tests/test_docs_audit.py|\
               scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
+              scripts/lib/fly_credential.sh|\
+              scripts/test_fly_credential.sh|\
+              scripts/lib/offsite_verify.sh|\
+              scripts/test_offsite_verify.sh|\
+              scripts/fly-pg-backup.sh|\
+              scripts/wr2-cron-wrapper.sh|\
+              scripts/cron-wrapper.sh|\
+              scripts/tests/test_fly_backup_timeouts.py|\
+              scripts/tests/test_no_import_time_chdir_in_tests.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -122,6 +133,7 @@ jobs:
             scripts/tests/test_codex_autofix_selector.py \
             scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
+            scripts/tests/test_lint_worktree_husky_symlink.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
@@ -131,6 +143,8 @@ jobs:
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_fly_backup_timeouts.py \
+            scripts/tests/test_no_import_time_chdir_in_tests.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -141,6 +155,22 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W106: shipped with #3176 and named by NO workflow until now, so its 24 checks
+          # ran nowhere — a test no workflow names is not coverage, it only looks like it.
+          # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
+          # deleted corpus must go red rather than quietly pass.
+          bash scripts/test_fly_credential.sh
+
+      - name: Off-site artifact gate corpus (guilt + innocence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
+          # last line. Named here at birth, for the same reason as the corpus above.
+          bash scripts/test_offsite_verify.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

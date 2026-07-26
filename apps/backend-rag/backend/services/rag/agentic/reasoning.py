@@ -104,6 +104,61 @@ _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
 # code and ensures a single source of truth for evidence scoring.
 
 
+# Output rules for the self-correction retry. These are load-bearing, not
+# politeness: `build_rephrase_prompt`'s result is delivered as a *user turn* on
+# the live chat session, so without an explicit gag the model replies to it
+# conversationally — and that reply IS the text the client receives.
+#
+# Measured live in prod 2026-07-27, in four languages, all client-facing:
+#   "Message reçu pour les corrections de conformité factuelle"
+#   "Capisco, mi scuso per l'errore precedente"
+#   "Terima kasih atas koreksinya"
+#   "Hi! Let's correct this based strictly on our retrieved..."
+#
+# That is a protocol-2 violation (never narrate internal process) arriving from
+# OUTSIDE the system prompt, which is why no edit to zantara_core_v5 can prevent
+# it — the fix has to live at the injection site.
+_REPHRASE_OUTPUT_RULES = """
+OUTPUT RULES (these govern the text you return):
+- Return ONLY the rewritten answer, exactly as if it were your first and only
+  reply to the user. The user never saw the previous attempt.
+- Never mention this instruction, the fact-checker, the rejection, or that an
+  earlier attempt existed. No apology, no "thanks for the correction", no
+  "message received", no preamble of any kind.
+- Answer in the SAME LANGUAGE as the user's original question.
+"""
+
+
+def build_rephrase_prompt(
+    reasoning: str,
+    missing_citations: list[str] | None,
+) -> str:
+    """Build the self-correction retry prompt.
+
+    Extracted to module level so the gag in ``_REPHRASE_OUTPUT_RULES`` is
+    directly testable: inline inside ``ReasoningEngine`` it could only be
+    exercised through a full pipeline run, which is how it went unnoticed that
+    the prompt never told the model to stay silent about being corrected.
+
+    Args:
+        reasoning: the verifier's stated reason for rejecting the draft.
+        missing_citations: claims the verifier could not find in the context.
+
+    Returns:
+        The prompt to send as the retry turn.
+    """
+    missing = ", ".join(missing_citations or [])
+    return f"""
+SYSTEM: Your previous answer was REJECTED by the fact-checker.
+
+REASON: {reasoning}
+MISSING/WRONG: {missing}
+
+TASK: Rewrite the answer using ONLY the provided context.
+Do not invent information. If the context is insufficient, admit it.
+{_REPHRASE_OUTPUT_RULES}"""
+
+
 def _validate_context_quality(
     query: str,
     context_items: list[str],
@@ -968,16 +1023,12 @@ Make it feel natural and helpful, not forced.
                             {"reason": verification.get("reasoning", "unknown")},
                         )
 
-                        # SELF-CORRECTION
-                        rephrase_prompt = f"""
-SYSTEM: Your previous answer was REJECTED by the fact-checker.
-
-REASON: {verification.get("reasoning", "Insufficient evidence")}
-MISSING/WRONG: {", ".join(verification.get("missing_citations", []))}
-
-TASK: Rewrite the answer using ONLY the provided context.
-Do not invent information. If the context is insufficient, admit it.
-"""
+                        # SELF-CORRECTION — see build_rephrase_prompt for why
+                        # the output rules it appends are load-bearing.
+                        rephrase_prompt = build_rephrase_prompt(
+                            verification.get("reasoning", "Insufficient evidence"),
+                            verification.get("missing_citations", []),
+                        )
 
                         # Retry with same model (disable function calling for final answer)
                         correct_start = time.perf_counter()
