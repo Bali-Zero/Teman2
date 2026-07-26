@@ -158,6 +158,87 @@ def cure(mod, rules, text: str) -> str:
             "as blocked in Bali by the risk-class moratorium.",
             "BLOCCATO_CLASSE_RISCHIO",
         ),
+        # ---- L2.6: the last Italian left in whatChanged after L2.3 cured the
+        # templates. These are FREE PROSE, not machine templates, which is why
+        # the earlier template map never reached them. Every `before` is the
+        # stored value verbatim.
+        (
+            "Renumbered/adjusted from KBLI 2020. 46411 stabile.",
+            "46411 is unchanged.",
+            "stabile",
+        ),
+        (
+            "Renumbered/adjusted from KBLI 2020. KBLI 64910 invariato 2020→2025.",
+            "KBLI 64910 is unchanged from 2020 to 2025.",
+            "invariato",
+        ),
+        (
+            "Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020.",
+            "KBLI 2025 keeps 46442 separate from 46441, reinforcing the regulatory/ministerial distinction introduced in KBLI 2020.",
+            "mantiene",
+        ),
+        (
+            "Eredita parte del vecchio 46421 KBLI 2020. In KBLI 2025 scorporato in 46451 (alat tulis) e 46452 (percetakan). Verificare mapping NIB per non perdere licenze API-U esistenti.",
+            "it was split into 46451 (alat tulis — stationery) and 46452 (percetakan — printing)",
+            "scorporato",
+        ),
+        (
+            "Questo è il codice KBLI 2025 per il vecchio 46444 (alat kesehatan). Non confondere con 46430 (ottica consumer): lenti correttive e dispositivi diagnostici appartengono qui, non lì.",
+            "corrective lenses and diagnostic devices belong here, not there.",
+            "confondere",
+        ),
+        (
+            "Codice completamente nuovo in KBLI 2025 (parte nuova Categoria V — Carbon & Environment). Nessuna migrazione da KBLI 2020 necessaria. Solo nuova registrazione.",
+            "No migration from KBLI 2020 is needed — only a fresh registration.",
+            "migrazione",
+        ),
+        (
+            "Transizione puramente amministrativa. UU P2SK framework sovraordinato.",
+            "The UU P2SK framework is the overarching legal structure.",
+            "sovraordinato",
+        ),
+        (
+            "POJK 46/2024 è norma di riferimento principale entrata in vigore fine 2024.",
+            "POJK 46/2024 is the principal reference regulation, in force since late 2024.",
+            "norma di riferimento",
+        ),
+        (
+            "POJK 40/2024 framework attuale (sostituisce POJK 10/2022). UU P2SK base legislativa.",
+            "superseding POJK 10/2022, with UU P2SK as the legislative basis.",
+            "sostituisce",
+        ),
+        (
+            "KBLI 66125 invariato 2020→2025 (sotto categoria 6612 — Aktivitas Perantara Transaksi).",
+            "(under subgroup 6612 — Aktivitas Perantara Transaksi, transaction intermediary activities)",
+            "sotto categoria",
+        ),
+        (
+            "BI regolatore esclusivo tramite PBI 6/2024.",
+            "Bank Indonesia is the sole regulator, under PBI 6/2024.",
+            "regolatore esclusivo",
+        ),
+        # ---- L2.6 truncations. Each `before` ends exactly where the stored
+        # value ends: mid-word.
+        (
+            "POJK 46/2024 in force. Licenze esistenti v",
+            "POJK 46/2024 in force.",
+            "Licenze esistenti",
+        ),
+        (
+            "the June 2026 window. Verifica aggiornamento l",
+            "the June 2026 window.",
+            "Verifica aggiornamento",
+        ),
+        (
+            "Bank Indonesia is the sole regulator, under PBI 6/2024 e PADG cor",
+            "under PBI 6/2024.",
+            "PADG",
+        ),
+        (
+            "following the closure of the June 2026 window. POJK 3/2024 (ITSK) gove",
+            "Also cited for this code: POJK 3/2024 (ITSK — Financial Sector Technology Innovation).",
+            "(ITSK) gove",
+        ),
     ],
 )
 def test_guilt_rule_fires_on_the_real_defect(mod, rules, before, must_contain, must_not_contain):
@@ -434,6 +515,53 @@ def test_probe_innocence_the_italian_citation_is_still_not_residue(mod):
     an internal ENUM token from enum_residue — see the next test.
     """
     assert not mod.residue_markers("the previous 'match con aggregazione' label was stale")
+
+
+def test_probe_vocabulary_is_not_smaller_than_the_defect(mod):
+    """L2.6 GUILT on the PROBE. It reported 2 residual records; there were 9.
+
+    Every sentence below is a real client-facing value the probe walked past
+    because none of its 11 original markers appeared in it. A bound that is
+    smaller than the defect is not conservative — the line "residue: 2" reads as
+    "almost done" and is why this field stayed Italian for three lots.
+    """
+    missed = [
+        "KBLI 64910 invariato 2020→2025.",
+        "Eredita parte del vecchio 46421 KBLI 2020.",
+        "In KBLI 2025 scorporato in 46451 (alat tulis).",
+        "Non confondere con 46430 (ottica consumer).",
+        "Codice completamente nuovo in KBLI 2025.",
+        "Nessuna migrazione da KBLI 2020 necessaria.",
+        "POJK 46/2024 è norma di riferimento principale.",
+        "UU P2SK framework sovraordinato.",
+        "POJK 40/2024 framework attuale (sostituisce POJK 10/2022).",
+        "(sotto categoria 6612 — Aktivitas Perantara Transaksi)",
+        "BI regolatore esclusivo tramite PBI 6/2024.",
+        "lenti correttive e dispositivi diagnostici appartengono qui",
+        "rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020",
+        "Verificare mapping NIB per non perdere licenze API-U esistenti.",
+    ]
+    blind = [s for s in missed if not mod.residue_markers(s)]
+    assert blind == [], f"the probe is still blind to real Italian: {blind}"
+
+
+def test_probe_innocence_english_prose_is_not_italian_residue(mod):
+    """The under-match fix must not ship its own over-match twin.
+
+    These markers are matched as SUBSTRINGS, so a bare "eredita" would fire
+    inside the English word "hereditary" — the same form-vs-entity error, at the
+    opposite sign, inside the list written to cure an under-match. The marker is
+    anchored to "eredita parte" for exactly this reason, and this test is what
+    stops a future tidy-up from shortening it back.
+    """
+    innocent = [
+        "Hereditary land rights are governed separately.",
+        "The licensee must renew before expiry.",
+        "This is a new code, completely separate from the old one.",
+        "Verify the NIB mapping before you register.",
+    ]
+    guilty = [s for s in innocent if mod.residue_markers(s)]
+    assert guilty == [], f"the probe now over-matches English prose: {guilty}"
 
 
 def test_probe_a_scare_quoted_enum_is_a_leak_not_a_citation(mod):

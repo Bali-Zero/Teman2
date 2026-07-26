@@ -162,6 +162,22 @@ _RESIDUE_MARKERS = (
     "mantiene", "separato", "rafforzando", "rinumerato", "aggregazione",
     "codici", "usa codice", "Dati da", "stabile", "confermato",
     "Verifica e aggiornamento",
+    # 2026-07-26 (L2.6). The list above was the probe's whole vocabulary, and it
+    # UNDER-COUNTED: it reported 2 residual records when an independent lexical
+    # scan of the same field found 9. Every token below was present in a real,
+    # client-facing Italian sentence the probe walked straight past — the same
+    # under-match twin the bounded-quote fix already had to learn once. A probe
+    # whose vocabulary is smaller than the defect's is not a loose bound, it is
+    # a wrong one, because a "residue: 2" line reads as "almost done".
+    "invariato", "eredita parte", "scorporato", "verificare", "confondere",
+    "appartengono", "completamente", "migrazione", "nessuna", "riferimento",
+    "licenze", "sovraordinato", "sostituisce", "distinzione", "introdotta",
+    "vecchio", "sotto categoria", "regolatore esclusivo",
+    # NOTE on "eredita parte" rather than bare "eredita": these markers are
+    # matched as SUBSTRINGS, and the English word "hereditary" contains
+    # "eredita". The bare token would have made the probe over-match on ordinary
+    # English prose — the identical form-vs-entity error, at the opposite sign,
+    # inside the very list written to fix an under-match.
 )
 
 
