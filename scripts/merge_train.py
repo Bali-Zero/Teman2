@@ -421,24 +421,69 @@ def update_branch(number: int, expected_head_sha: str) -> bool:
 # "failure" and silently ignored a CANCELLED run for twelve hours.
 _OK_CONCLUSIONS_REST = frozenset({"success", "neutral", "skipped"})
 
+# Task #40 follow-up (team-lead review, 2026-07-26): rerolling blindly risks
+# an unbounded rerun loop that #3146 never exposed because it was rare
+# (12h stuck, one PR). The SAME night, main alone showed 15 of its last 20
+# push-runs CANCELLED — on this repo, cancelled-with-a-newer-successor
+# (concurrency `cancel-in-progress: true` superseding an outdated run) is
+# the DOMINANT, self-healing case, not the exception. Two independent caps:
+MAX_RERUN_ATTEMPTS = 2  # per-run cap: belt-and-braces if guard 1 has a hole.
+
 
 def reroll_failed_runs(number: int, head_sha: str) -> list[int]:
-    """Re-run every non-OK completed run attached to this head (Codex 13,
-    widened by task #40). `--failed` (re-run only the failed jobs) is kept
-    for an actual `failure` conclusion — proven, minimizes cost. Anything
-    else (cancelled/timed_out/action_required/stale/unrecognized) gets a
-    full rerun with no `--failed` flag: a run with zero jobs marked
-    "failed" (e.g. everything CANCELLED) has nothing for `--failed` to
-    select, and a full rerun is exactly the fix verified live on PR #3146
-    (`POST .../actions/runs/<id>/rerun`, the REST equivalent of this call)."""
+    """Re-run the LATEST non-OK run per workflow attached to this head
+    (Codex 13, widened by task #40, guarded by task #40's follow-up).
+
+    Guard 1 — supersede-vs-stuck: `actions/runs?head_sha=` can return
+    MULTIPLE runs of the SAME workflow for the SAME sha (a relabel or
+    duplicate trigger creates a new run without retiring the old one).
+    Rerunning an OLD run that already has a newer sibling for the same
+    workflow is pure waste — the older run is what a concurrency-group
+    supersede-cancel is SUPPOSED to produce, not a stuck state — and could
+    fight that sibling's own concurrency group. Group by `workflow_id`,
+    keep only the run with the highest `run_number` (the latest one for
+    this sha); anything not the latest is presumed superseded and is never
+    touched, rerun-worthy conclusion or not. If the latest run for a
+    workflow is still `status != "completed"`, it is progressing — leave
+    it alone (that is `blocking_required_checks`'s PROGRESSING case, not
+    ours to act on).
+
+    Guard 2 — attempt cap: even a correct guard 1 does not prove a rerun
+    will not itself land in the same non-OK state again (a genuinely
+    flaky/misconfigured workflow). Refuse past `MAX_RERUN_ATTEMPTS`
+    (`run_attempt` on the run object, incremented by `gh run rerun` itself)
+    so a hole in guard 1 terminates into a report instead of spinning —
+    `decide_head`'s reroll-once-per-(pr,sha) skiplist already surfaces the
+    remaining blocking state to a human on the next tick regardless.
+
+    `--failed` (re-run only the failed jobs) is kept for an actual
+    `failure` conclusion — proven, minimizes cost. Anything else
+    (cancelled/timed_out/action_required/stale/unrecognized) gets a full
+    rerun with no `--failed` flag: a run with zero jobs marked "failed"
+    (e.g. everything CANCELLED) has nothing for `--failed` to select, and
+    a full rerun is exactly the fix verified live on PR #3146
+    (`POST .../actions/runs/<id>/rerun`, the REST equivalent of this call).
+    """
     runs = gh_json([
         "api",
-        f"repos/{REPO}/actions/runs?head_sha={head_sha}&status=completed&per_page=50",
+        f"repos/{REPO}/actions/runs?head_sha={head_sha}&per_page=100",
     ])
-    rerolled = []
+
+    latest_by_workflow: dict[Any, dict[str, Any]] = {}
     for r in runs.get("workflow_runs", []):
+        wf = r.get("workflow_id")
+        cur = latest_by_workflow.get(wf)
+        if cur is None or r.get("run_number", 0) > cur.get("run_number", 0):
+            latest_by_workflow[wf] = r
+
+    rerolled = []
+    for r in latest_by_workflow.values():
+        if r.get("status") != "completed":
+            continue  # latest for this workflow is still progressing
         conclusion = (r.get("conclusion") or "").lower()
         if conclusion in _OK_CONCLUSIONS_REST:
+            continue
+        if r.get("run_attempt", 1) > MAX_RERUN_ATTEMPTS:
             continue
         cmd = ["run", "rerun", str(r["id"]), "--repo", REPO]
         if conclusion == "failure":

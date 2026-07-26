@@ -345,3 +345,134 @@ class TestBlockingRequiredChecks:
             {"status": "COMPLETED", "conclusion": "FAILURE", "name": "not-required-here"},
         ]}
         assert train.blocking_required_checks(detail, {"required-instead"}) == {}
+
+
+def _run(
+    id_: int,
+    workflow_id: int,
+    run_number: int,
+    status: str,
+    conclusion: str | None,
+    run_attempt: int = 1,
+) -> dict:
+    """A workflow-run object shaped exactly like the live API response
+    (verified 2026-07-26 against a real head_sha: `id`, `workflow_id`,
+    `run_number`, `run_attempt`, `status`, `conclusion` are all real
+    fields, not assumed ones)."""
+    return {
+        "id": id_,
+        "workflow_id": workflow_id,
+        "run_number": run_number,
+        "run_attempt": run_attempt,
+        "status": status,
+        "conclusion": conclusion,
+    }
+
+
+class TestRerollFailedRuns:
+    """`reroll_failed_runs` is a side-effect function — mock `gh_json` (the
+    fetch) and `gh` (the rerun call) rather than hitting the network. Task
+    #40 follow-up (team-lead review, 2026-07-26): the PREVIOUS version
+    reran every non-OK run it saw, with no defense against rerunning a run
+    already superseded by a newer one for the same workflow — main alone
+    showed 15/20 push-runs cancelled the same night, nearly all of them
+    supersede-cancels, not stuck ones. These tests prove guard 1
+    (supersede-vs-stuck) and guard 2 (attempt cap) independently."""
+
+    def _wire(self, monkeypatch, runs: list[dict]):
+        monkeypatch.setattr(train, "gh_json", lambda args, **kw: {"workflow_runs": runs})
+        reran: list[list[str]] = []
+
+        def fake_gh(cmd, **kw):
+            reran.append(cmd)
+            return ""
+
+        monkeypatch.setattr(train, "gh", fake_gh)
+        return reran
+
+    # --- INNOCENCE: the shape that must still work -----------------------
+
+    def test_innocence_pr3146_shape_cancelled_with_no_successor_gets_rerun(self, monkeypatch):
+        """The exact PR #3146 shape: one run, one workflow, CANCELLED,
+        nothing newer behind it — must still be rerun (full rerun, no
+        `--failed`, since a fully-cancelled run has no failed jobs)."""
+        reran = self._wire(monkeypatch, [
+            _run(30166697962, 555, 100, "completed", "cancelled"),
+        ])
+        ids = train.reroll_failed_runs(3146, "deadbeef")
+        assert ids == [30166697962]
+        assert reran == [["run", "rerun", "30166697962", "--repo", train.REPO]]
+
+    def test_innocence_failure_conclusion_still_uses_failed_flag(self, monkeypatch):
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "failure"),
+        ])
+        ids = train.reroll_failed_runs(1, "sha")
+        assert ids == [1]
+        assert reran == [["run", "rerun", "1", "--repo", train.REPO, "--failed"]]
+
+    def test_innocence_ok_conclusions_never_rerun(self, monkeypatch):
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "success"),
+            _run(2, 556, 100, "completed", "neutral"),
+            _run(3, 557, 100, "completed", "skipped"),
+        ])
+        assert train.reroll_failed_runs(1, "sha") == []
+        assert reran == []
+
+    # --- GUILT: guard 1, supersede-vs-stuck -------------------------------
+
+    def test_guilt_supersede_cancelled_run_with_successful_successor_not_rerun(self, monkeypatch):
+        """Same workflow_id, two runs at the same head_sha: an OLDER
+        cancelled one and a NEWER (higher run_number) successful one. The
+        older is presumed superseded — rerunning it is pure waste and the
+        newer one already carries the real verdict."""
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "cancelled"),
+            _run(2, 555, 101, "completed", "success"),
+        ])
+        assert train.reroll_failed_runs(1, "sha") == []
+        assert reran == []
+
+    def test_guilt_supersede_cancelled_run_with_in_progress_successor_not_rerun(self, monkeypatch):
+        """The newer sibling hasn't finished yet — still not our job to
+        touch either run: the newer one is progressing, the older one is
+        superseded."""
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "cancelled"),
+            _run(2, 555, 101, "in_progress", None),
+        ])
+        assert train.reroll_failed_runs(1, "sha") == []
+        assert reran == []
+
+    def test_guilt_multiple_workflows_each_judged_independently(self, monkeypatch):
+        """Guard 1 groups by workflow_id — a stuck run on workflow A must
+        still be rerun even while workflow B has a legitimate supersede
+        pending, and vice versa. Proves the grouping doesn't over-suppress
+        across unrelated workflows."""
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "cancelled"),        # A: stuck, alone
+            _run(2, 556, 100, "completed", "cancelled"),        # B: superseded...
+            _run(3, 556, 101, "completed", "success"),          # ...by this
+        ])
+        assert train.reroll_failed_runs(1, "sha") == [1]
+        assert reran == [["run", "rerun", "1", "--repo", train.REPO]]
+
+    # --- GUILT: guard 2, attempt cap ---------------------------------------
+
+    def test_guilt_attempt_cap_stops_rerolling_past_the_limit(self, monkeypatch):
+        reran = self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "cancelled",
+                 run_attempt=train.MAX_RERUN_ATTEMPTS + 1),
+        ])
+        assert train.reroll_failed_runs(1, "sha") == []
+        assert reran == []
+
+    def test_innocence_attempt_at_the_cap_still_rerolls(self, monkeypatch):
+        """Off-by-one check: exactly at the cap is still allowed — the cap
+        blocks the attempt AFTER the limit, not the limit itself."""
+        self._wire(monkeypatch, [
+            _run(1, 555, 100, "completed", "cancelled",
+                 run_attempt=train.MAX_RERUN_ATTEMPTS),
+        ])
+        assert train.reroll_failed_runs(1, "sha") == [1]
