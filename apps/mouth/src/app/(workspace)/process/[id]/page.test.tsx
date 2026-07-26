@@ -108,11 +108,30 @@ vi.mock("./RequiredDocumentsCard", () => ({
   ),
 }));
 
-vi.mock("@balizero/core/utils", () => ({
-  formatIDR: (amount: number) => `IDR ${amount}`,
-}));
+// NOTE: do not mock the money formatter here. There used to be a
+// `vi.mock("@balizero/core/utils", ...)` returning `IDR ${amount}`, and the two
+// price assertions below looked for that string. It never took effect: the page
+// renders prices through `<Money>` (`@balizero/core`), and `Money.tsx` imports
+// `formatIDR` from the RELATIVE `../utils/currency` — a different module id than
+// the one being mocked, so the real formatter always ran. The assertions were
+// therefore looking for text nothing on the page ever produced, and the suite
+// went red the moment this file was armed in CI (#3227).
+//
+// Assert against the real formatter instead, so a deliberate change to the
+// canonical money notation shows up here as a considered edit rather than a
+// mystery.
+
+import { formatIDR } from "@balizero/core/utils";
 
 import CaseDetailPage from "./page";
+
+/**
+ * `formatIDR` emits a NON-BREAKING space after "Rp" (Intl id-ID currency
+ * output). Testing Library's default normalizer collapses it to a plain space
+ * before matching, so the expected string has to be normalized the same way —
+ * passing `formatIDR(n)` raw would silently never match.
+ */
+const money = (amount: number) => formatIDR(amount).replace(/\u00a0/g, " ");
 
 const profile = {
   id: "user-1",
@@ -253,7 +272,7 @@ describe("CaseDetailPage", () => {
       "https://wa.me/62812345",
     );
     expect(screen.getByText("Zero Tester")).toBeInTheDocument();
-    expect(screen.getAllByText("IDR 1750000")).toHaveLength(2);
+    expect(screen.getAllByText(money(1_750_000))).toHaveLength(2);
     expect(screen.getByTestId("required-documents")).toHaveTextContent(
       "Documents for 42",
     );
@@ -402,7 +421,7 @@ describe("CaseDetailPage", () => {
         quoted_price: 2_000_000,
       });
     });
-    expect(await screen.findByText("IDR 2000000")).toBeInTheDocument();
+    expect(await screen.findByText(money(2_000_000))).toBeInTheDocument();
   });
 
   it("closes an unchanged edit and submits changed fields with a reload", async () => {
