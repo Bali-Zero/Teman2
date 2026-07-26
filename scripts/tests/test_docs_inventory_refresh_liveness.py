@@ -437,3 +437,78 @@ def test_real_repo_slug_constant_is_the_correct_one():
     # --repo really is required, not just documented as such in prose.
     assert "--repo REPO" in result.stdout
     assert "[--repo" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Scar pin: the flip-branch name must be unique PER RUN, not per day.
+#
+# The organ is scheduled twice daily and both runs once derived the same
+# `docs/auto-sync-inventory-${DATE_SLUG}`. A run that pushed that branch and
+# then died before its PR merged left it orphaned, and every later run was
+# rejected against it (non-fast-forward) — one transient failure became a
+# permanent outage: 17 consecutive red runs, 2026-07-17 → 2026-07-25.
+#
+# This lives in THIS file on purpose: it is named on a real pytest line in
+# .github/workflows/immune-enforcement.yml, so it actually executes. A new
+# file under scripts/tests/ would be collected by no workflow and would sit
+# green forever (superscar #2 — written, not armed).
+# ---------------------------------------------------------------------------
+
+REFRESH_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs-inventory-refresh.yml"
+
+# Tokens that make a branch name differ between two runs of the same UTC day.
+# The date slug alone does not: that IS the defect being pinned.
+_PER_RUN_TOKENS = ("GITHUB_RUN_ID", "github.run_id")
+
+
+def _branch_assignment() -> str:
+    """The right-hand side of the workflow's `BRANCH=` assignment.
+
+    Fails loudly if the assignment cannot be found rather than returning ""
+    and letting the assertions below pass against nothing — a check that
+    silently examines an empty string is decoration (W97/W102: a blind scan
+    is not a clean scan).
+    """
+    for line in REFRESH_WORKFLOW.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("BRANCH="):
+            return stripped[len("BRANCH=") :]
+    raise AssertionError(
+        f"no `BRANCH=` assignment found in {REFRESH_WORKFLOW} — the flip-branch "
+        "naming moved or was renamed; re-anchor this pin instead of deleting it."
+    )
+
+
+def _is_unique_per_run(rhs: str) -> bool:
+    """The predicate under test, applied to a branch-name expression."""
+    return any(token in rhs for token in _PER_RUN_TOKENS)
+
+
+def test_flip_branch_name_is_unique_per_run() -> None:
+    """INNOCENCE: the branch name as it stands today satisfies the predicate."""
+    rhs = _branch_assignment()
+    assert _is_unique_per_run(rhs), (
+        f"flip-branch name {rhs} carries no per-run token — two runs of the "
+        "same UTC day would derive the same branch, and one failed-after-push "
+        "run would then wedge every later run (non-fast-forward) forever."
+    )
+    # The date slug is still wanted for human readability; uniqueness is
+    # ADDITIVE to it, not a replacement. Pins that the fix didn't drop it.
+    assert "DATE_SLUG" in rhs
+    # The prefix every downstream consumer matches on (the liveness guardian's
+    # ORGAN_PR_BRANCH_PREFIX, and the workflow comments) must survive.
+    assert rhs.lstrip('"').startswith(liveness.ORGAN_PR_BRANCH_PREFIX)
+
+
+def test_the_pin_would_have_caught_the_nine_day_outage() -> None:
+    """GUILT: the historical date-only name is rejected by the same predicate.
+
+    Without this half, `test_flip_branch_name_is_unique_per_run` could be
+    passing because the predicate is trivially true rather than because the
+    defect is gone.
+    """
+    historical = '"docs/auto-sync-inventory-${DATE_SLUG}"'
+    assert not _is_unique_per_run(historical)
+    # And a re-run reuses GITHUB_RUN_ID, so the attempt counter matters too:
+    # without it, re-running a failed run reproduces the exact collision.
+    assert "GITHUB_RUN_ATTEMPT" in _branch_assignment()

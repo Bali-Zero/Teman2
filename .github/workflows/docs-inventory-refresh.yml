@@ -141,7 +141,24 @@ jobs:
         run: |
           set -euo pipefail
           DATE_SLUG=$(date -u +%Y-%m-%d)
-          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}"
+          # The branch name must be unique PER RUN, not per day. This organ is
+          # scheduled TWICE daily (09:xx and 20:xx UTC), and both runs once
+          # derived the same `docs/auto-sync-inventory-${DATE_SLUG}`. So the
+          # first run to push its branch and then die before that PR merged
+          # left an orphan branch, and every later run — building its branch
+          # fresh from main — was rejected against it:
+          #   ! [rejected] docs/auto-sync-inventory-2026-07-25 (non-fast-forward)
+          # which converts ONE transient failure into a PERMANENT outage. Lived
+          # it: 17 consecutive red runs, 2026-07-17 → 2026-07-25, nine days in
+          # which docs/DOCS_INVENTORY.md never refreshed on main.
+          # `delete_branch_on_merge` does NOT cover this — a run that dies
+          # before its PR merges leaves no merge to trigger the deletion.
+          # GITHUB_RUN_ATTEMPT is in the name too: re-running a failed run
+          # reuses its RUN_ID and would reproduce the very same collision.
+          # Cost of uniqueness: a failed-after-push run leaves one orphan
+          # branch behind. That is inert (nothing collides with it now) and is
+          # reported by scripts/branch_graveyard_cleanup.sh.
+          BRANCH="docs/auto-sync-inventory-${DATE_SLUG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           # P3-prime: "Refresh PR logs 'advanced N flips, eligibility
           # recomputed'" — surfaced in BOTH the commit message and the PR
