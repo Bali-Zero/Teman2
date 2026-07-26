@@ -48,14 +48,45 @@ Usage (embedded in .husky/pre-push):
 ESCALATION CONDITION (stated 2026-07-26, task #27 ruling: warn-only without
 a falsifiable trigger becomes wallpaper). Base rate the night this shipped:
 4 branches hit the zero-check trap in well under an hour of main's normal
-churn. If the trap recurs 3 MORE times after this warning is live —
-measured by task #27's companion detection sweep (workflow-run count <=2 on
-an open PR's head SHA, i.e. a branch that warned-and-was-ignored, or one
-that somehow trapped without ever triggering this check) — this check
-escalates from warn-only to a hard pre-push block on a stale first push.
-That threshold must be tracked as an open PENDING-ARMS entry, not left to
-memory: an unmonitored escalation condition is just a slower-motion version
-of the "esiste ≠ armato" family this repo already has ten scars for.
+churn — and the same night surfaced a second, independently-measured fact
+that sharpens WHY: while this repo's pushes were being drained, M5 was
+running **12 concurrent `pytest backend/tests/` suites on 10 cores (load
+24.85)** while GitHub's own Actions queue sat at **0**. The staleness
+window this tool warns about is not weather — it is a rate WE set
+ourselves: the more lanes push in parallel, the longer each individual
+push takes (the bottleneck is local CPU, not GitHub), and the longer a
+push takes, the wider the window for origin/main to move again before it
+lands. Concurrency does not just correlate with the trap, it MANUFACTURES
+it — a fact discovered by living it: multiple branches this same night
+staled out DURING their own push because of how many siblings were
+pushing at once.
+
+CORRECTED same day (team-lead review): the original wording named a
+threshold — "3 more recurrences" — measured by task #27's companion
+detection sweep, but that sweep does not exist yet. A condition whose
+measuring instrument is unbuilt can never be evaluated, so it can never
+fire; that is not a rule, it is a promise with no clock on it. Restated
+correctly: **this escalation is BLOCKED on its measuring instrument
+existing.** Two candidate triggers, not equally ready:
+
+  - **Concurrency at push time (preferred, team-lead review 2026-07-26)**
+    — measurable THE MOMENT this hook runs (`ps aux | grep -c pytest`, or
+    GitHub's own in-progress-run count), no historical tracking needed.
+    Concurrency PREDICTS the trap rather than counting it after the fact.
+  - **Recurrence count (backstop)** — counts trap incidents already
+    survived; needs task #27's companion detection sweep to exist first
+    (it does not).
+
+Neither is wired up yet — this paragraph documents the design, not a
+shipped mechanism; wiring either one in is a change to `.husky/pre-push`
+and is deliberately out of scope of this PR (sequenced behind task #39
+per team-lead's ruling — see the PR body). Until one of them is built,
+this clause is not actionable; it must be tracked as an open PENDING-ARMS
+entry naming the MEASURING INSTRUMENT ITSELF (a concurrency check, or the
+detection sweep — not just a numeric threshold) as the blocking
+dependency — an escalation condition with an unbuilt measuring instrument
+is just a slower-motion version of the "esiste ≠ armato" family this repo
+already has ten scars for.
 
 Pure function, no git/subprocess state — same discipline as
 prepush_classify.py's "THIS script owns zero git/subprocess state" (the bash
