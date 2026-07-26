@@ -19,6 +19,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -998,3 +999,119 @@ def test_main_conflicting_ops_rejected(fake_repo, capsys):
     mod, _ = fake_repo
     rc = mod.main(["--list", "--cleanup"])
     assert rc != 0
+
+
+# ---------------------------------------------------------------------------
+# W105 upstream half — the broker must never CREATE a nested worktree
+# ---------------------------------------------------------------------------
+
+
+def _git(args, cwd):
+    return subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
+
+
+@pytest.fixture
+def repo_with_worktree(tmp_path):
+    """A real git repo carrying the broker's signature file, plus one linked worktree."""
+    root = tmp_path / "main"
+    (root / "scripts").mkdir(parents=True)
+    (root / "scripts" / "agent_start.py").write_text("# signature\n")
+    (root / ".gitignore").write_text(".worktrees/\n")
+    _git(["init", "-q"], root)
+    _git(["config", "user.email", "t@t.t"], root)
+    _git(["config", "user.name", "t"], root)
+    _git(["add", "-A"], root)
+    _git(["commit", "-qm", "init"], root)
+    wt = root / ".worktrees" / "ops-existing"
+    _git(["worktree", "add", "-q", "-b", "b/existing", str(wt), "HEAD"], root)
+    yield root, wt
+    _git(["worktree", "prune"], root)
+
+
+def test_repo_root_resolves_to_main_checkout_from_inside_a_worktree(repo_with_worktree):
+    """THE SCAR. `Path(__file__).resolve().parents[1]` answered with the WORKTREE when the
+    copy inside one was run — so `WORKTREES_DIR` pointed at `<worktree>/.worktrees` and the
+    broker nested a worktree inside a worktree (W63). And the wrong copy is the CONVENIENT
+    one: every lane cds into its worktree, where `python scripts/agent_start.py` is the
+    documented quick-start.
+    """
+    root, wt = repo_with_worktree
+    (wt / "scripts").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCRIPT_PATH, wt / "scripts" / "agent_start.py")
+
+    probe = (
+        "import importlib.util,sys;"
+        f"spec=importlib.util.spec_from_file_location('as_probe', r'{wt}/scripts/agent_start.py');"
+        "m=importlib.util.module_from_spec(spec);sys.modules['as_probe']=m;"
+        "spec.loader.exec_module(m);print(m.REPO_ROOT)"
+    )
+    out = subprocess.run([sys.executable, "-c", probe], cwd=str(wt),
+                         capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr[-800:]
+    derived = Path(out.stdout.strip())
+    assert derived == root.resolve(), (
+        f"the copy inside a worktree derived REPO_ROOT={derived}, not the main checkout "
+        f"{root.resolve()} — this is exactly how W63 nesting happened"
+    )
+    assert ".worktrees" not in str(derived)
+
+
+def test_refuses_a_target_inside_an_existing_worktree(repo_with_worktree, tmp_path):
+    """GUILT for the REGISTRY arm, which is the only thing that can catch this shape.
+
+    A worktree does not have to live under `.worktrees/` — `git worktree add` puts one
+    wherever it is told. When it doesn't, the target inherits only ONE `.worktrees`
+    segment, so the structural fallback is blind by construction and the verdict must
+    come from asking git which paths are actually worktrees (entity, not shape — W105).
+    """
+    root, _wt = repo_with_worktree
+    side = tmp_path / "side-wt"
+    assert _git(["worktree", "add", "-q", "-b", "b/side", str(side), "HEAD"], root).returncode == 0
+    target = side / ".worktrees" / "ops-nested"
+    assert str(target.resolve()).count("/.worktrees/") == 1, "the structural check must NOT fire here"
+
+    mod = _load_module(root)
+    with pytest.raises(SystemExit) as exc:
+        mod._refuse_if_nested(target)
+    assert "inside an existing" in str(exc.value)
+
+
+def test_refuses_a_doubled_worktrees_segment_even_with_a_dead_probe(repo_with_worktree, monkeypatch):
+    """GUILT: a probe that cannot answer is not the same fact as "nothing is nested"
+    (family #2). With `git worktree list` starved, the structural shape still refuses.
+
+    The patch is scoped to that ONE invocation: `mod.subprocess` IS the global module, so
+    replacing `.run` outright also kills the fixture's own teardown — a test harness that
+    breaks what it did not intend to touch is the same over-match this lane keeps curing.
+    """
+    root, wt = repo_with_worktree
+    mod = _load_module(root)
+    real_run = subprocess.run
+
+    def _probe_dead(*a, **k):
+        argv = a[0] if a else k.get("args", [])
+        if isinstance(argv, (list, tuple)) and "worktree" in argv and "list" in argv:
+            raise OSError("probe dead")
+        return real_run(*a, **k)
+
+    monkeypatch.setattr(mod.subprocess, "run", _probe_dead)
+    with pytest.raises(SystemExit) as exc:
+        mod._refuse_if_nested(wt / ".worktrees" / "ops-nested")
+    assert "inside another worktree" in str(exc.value)
+
+
+def test_does_not_refuse_an_ordinary_target_under_the_main_checkout(repo_with_worktree):
+    """INNOCENCE, and the one that matters: the main checkout contains EVERY worktree, so
+    a rule that called that "nesting" would refuse every creation the broker exists for."""
+    root, _wt = repo_with_worktree
+    mod = _load_module(root)
+    # returning at all IS the property: the refusal path exits, it never returns.
+    assert mod._refuse_if_nested(root / ".worktrees" / "ops-brand-new") is None
+
+
+def test_does_not_refuse_a_sibling_of_an_existing_worktree(repo_with_worktree):
+    """INNOCENCE: sharing a parent directory with a worktree is not being inside one —
+    the same entity-vs-shape distinction the removal guard needed (W105)."""
+    root, _wt = repo_with_worktree
+    mod = _load_module(root)
+    assert mod._refuse_if_nested(root / ".worktrees" / "ops-existing-sibling") is None
