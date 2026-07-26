@@ -127,26 +127,44 @@ else
                 continue
             fi
 
-            if [ "$remote_sha" = "$ZERO_SHA" ]; then
-                # New branch/ref not yet on the remote — diff from where it
-                # forked off main, i.e. every commit this push is introducing.
-                # W101 sibling (2026-07-26): a BARE X="$(...)" assignment takes the
-                # substitution's exit status under this wrapper's sh -e, so a failing
-                # `git merge-base` (no common ancestor, corrupt local_sha, etc.) would
-                # abort the whole hook HERE — before the `[ -z "$RANGE_FROM" ]` check
-                # two lines down ever runs, exactly as the already-fixed VERDICT_OUTPUT
-                # line 164 documents. `|| RANGE_FROM=""` makes the failure land IN the
-                # variable instead of killing the script, so the existing fail-closed
-                # check below still fires and degrades to the FULL suite as designed.
-                RANGE_FROM="$(git merge-base origin/main "$local_sha" 2>/dev/null)" || RANGE_FROM=""
-                if [ -z "$RANGE_FROM" ]; then
-                    DIFF_ERROR=1
-                    break
-                fi
-            else
-                # Existing branch being updated — diff only the NEW commits
-                # since what the remote already has.
-                RANGE_FROM="$remote_sha"
+            # ALWAYS anchor to the merge-base with origin/main — for a brand-new
+            # branch AND for one already on the remote. The range is "what this
+            # branch contributes that main does not have", i.e. GitHub's own
+            # "Files changed" semantics.
+            #
+            # This used to branch on $remote_sha ("existing branch — diff only the
+            # NEW commits since what the remote already has"), and that asymmetry
+            # WAS the defect. When a branch merges origin/main in (the normal way
+            # to resolve a conflict), `$remote_sha..$local_sha` contains every
+            # commit main gained since the last push — so the classifier is handed
+            # MAIN's files and attributes them to this push. Measured 2026-07-26 on
+            # a two-file diff whose files are BOTH on the allowlist: the classifier
+            # reported "11/20 changed file(s) are NOT on the innocent allowlist" and
+            # named .gitignore, published_articles.json, escalations_pro.jsonl,
+            # scripts/merge_train.py … all of them already merged and already
+            # tested. Result: the FULL suite, three times, ~40 min each. Re-cut
+            # from main with no merge commit, the same delta passed the gate in
+            # seconds. The rule was right; the INPUT lied — W102's shape, here in
+            # the pre-push gate instead of in CI.
+            #
+            # Trade-off, deliberate: on an incremental push to an existing branch
+            # this now re-classifies the branch's WHOLE file set rather than just
+            # the newest commits. That is strictly more conservative (it can only
+            # widen the set, never narrow it), and a branch's own file set is
+            # small — whereas the merge case it fixes could pull in hundreds.
+            #
+            # W101 sibling (2026-07-26): a BARE X="$(...)" assignment takes the
+            # substitution's exit status under this wrapper's sh -e, so a failing
+            # `git merge-base` (no common ancestor, corrupt local_sha, etc.) would
+            # abort the whole hook HERE — before the `[ -z "$RANGE_FROM" ]` check
+            # two lines down ever runs, exactly as the already-fixed VERDICT_OUTPUT
+            # line below documents. `|| RANGE_FROM=""` makes the failure land IN the
+            # variable instead of killing the script, so the existing fail-closed
+            # check below still fires and degrades to the FULL suite as designed.
+            RANGE_FROM="$(git merge-base origin/main "$local_sha" 2>/dev/null)" || RANGE_FROM=""
+            if [ -z "$RANGE_FROM" ]; then
+                DIFF_ERROR=1
+                break
             fi
 
             if ! git diff --no-ext-diff --no-renames --name-only "$RANGE_FROM" "$local_sha" >> "$UNION_FILE" 2>/dev/null; then
