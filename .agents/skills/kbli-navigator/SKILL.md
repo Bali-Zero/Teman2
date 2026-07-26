@@ -39,11 +39,44 @@ with spec-authored exact rules — never a hand-edit, never a regex invented at 
   serve it after the rebuild.
 - **L2.3** `whatChanged` spoke Italian and leaked internal enum tokens — PR #3196 MERGED
   (`9583709d9f`), 576 records (465 canonical + 111 gold), 20 rules, 0 enum tokens on either
-  surface. One residue is DECLARED not hidden: `/kbli/46442` still carries hand-written Italian
-  editorial prose, which a template map cannot translate without inventing it; the compiler PRINTS
-  it every run (ledger line open).
+  surface. One residue was DECLARED not hidden: `/kbli/46442` still carried hand-written Italian
+  editorial prose. **That declaration was two-thirds wrong and L2.6 closed it** — the residue was
+  never 1 record (it was 9), and "a template map cannot translate it without inventing it" was a
+  false dichotomy: free prose is translatable by literal rule + an independent grader, which is
+  exactly what L2.6 did.
 - **L2.4** the same leak OUTSIDE `whatChanged` — **38 (record,field) pairs / 40 occurrences** across
   `whatYouNeed` (30), `baliContext` (6), `zantaraOpener` (2), both surfaces. 14 new rules.
+- **L2.5** `mapping_note` / `aggregation_note` — PR #3201. `whatChanged` **embeds `mapping_note`
+  verbatim**, so L2.3 cured the composed copy and left the SOURCE Italian: ~157 pages rendered an
+  English `whatChanged` block and an Italian crosswalk row about the same fact. 88 records served a
+  raw Python list literal (`Cleaned: removed invalid ['01272']`) — visible AND in the **FAQPage
+  JSON-LD Google indexes**. 443 rewrites, **zero new rules**: every one was already matched by a
+  rule written for `whatChanged`; the work was structural (those fields hang off the RECORD, while
+  `cure_dataset` iterates the `intel_2026` container).
+- **L2.6** the last Italian in `whatChanged` — **9 canonical + 1 gold**, free prose no template could
+  reach, 6 of them visible in a `<p>` on prod. Same four `invariato` records were also **cut
+  mid-word** in storage. 15 new rules. After L2.6, `whatChanged` is the ONLY field that ever carried
+  client-facing Italian and it now carries none.
+
+**L2.6's three findings, none of which are about Italian:**
+
+- **A probe whose vocabulary is smaller than the defect reports a WRONG bound, not a loose one.** The
+  compiler printed `residue: 2`; an independent lexical scan of the same field found **9**. Its
+  11-token list simply did not contain the words the defect used, and `residue: 2` read as _almost
+  done_ for three lots. A bound is only conservative if its vocabulary is at least as large as the
+  thing it bounds.
+- **The fix for an under-match ships an over-match unless you look for the twin in the same edit.**
+  These markers match as SUBSTRINGS and the English word _hereditary_ contains **eredita** — the
+  obvious token would have made the probe fire on ordinary English. Anchored to `eredita parte`,
+  pinned by an innocence test. (Same shape as W94/W105: the cure re-catching the disease it cures.)
+- **Decide per RENDER SITE, and say which of the two you fixed.** 3 of the 9 sit behind a gold record
+  that masks `intel_2026` → cured at rest and for the non-page consumers, NOT visibly. 3 others
+  (10433/60103/60203) quote the old Italian value inside an English correction notice — that is
+  evidence of a correction, pinned as untouched. Same field, same scan, three different verdicts.
+
+**Open (filed, not fixed):** `46411` now reads _"Renumbered/adjusted from KBLI 2020. 46411 is
+unchanged."_ — the lead (derived from `status_mapping`) contradicts the tail. Content defect, needs a
+crosswalk adjudication, deliberately not resolved under a translation PR.
 
 **Four findings from L2.4 that generalise past KBLI — this is the part worth re-reading:**
 

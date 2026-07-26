@@ -36,7 +36,7 @@
     "or a 5-digit code operand) so it CANNOT fire inside a quoted historical label. The innocence",
     "corpus pins this: superscar #3 says match the entity, never the bare substring."
   ],
-  "version": 4,
+  "version": 5,
   "rules": [
     {
       "id": "mapping_codice_rinumerato",
@@ -242,6 +242,98 @@
       "pattern": "as 'BLOCCATO_CLASSE_RISCHIO'",
       "replacement": "as blocked in Bali by the risk-class moratorium",
       "note": "1 firing (canonical 47249.whatYouNeed): 'classifying this retail trade as BLOCCATO_CLASSE_RISCHIO' with the symbol in single quotes. Those are SCARE-QUOTES around an internal identifier, not an audit citation — a client reads the raw symbol either way. This is the record that proved the probe's quoted-token exemption was hiding a real leak rather than protecting evidence. Wording mirrors BALI_STATUS_CONFIG.BLOCCATO_CLASSE_RISCHIO.label ('Blocked in Bali (risk-class moratorium)')."
+    },
+
+    {
+      "id": "it_code_stabile",
+      "pattern": "(?<![0-9])(\\d{5}) stabile\\.",
+      "replacement": "\\1 is unchanged.",
+      "note": "L2.6. 1 firing (canonical 46411). Parameterised on the code rather than written as a literal, so a future record carrying the same one-word pipeline verdict is cured too. NOTE the pre-existing content defect this does NOT fix and does not hide: 46411's lead sentence says 'Renumbered/adjusted from KBLI 2020' and the tail now says 'is unchanged' — the two contradict. That is a status_mapping/content question, not a language one, and is filed rather than silently resolved here."
+    },
+    {
+      "id": "it_kbli_invariato",
+      "pattern": "KBLI (\\d{5}) invariato 2020→2025",
+      "replacement": "KBLI \\1 is unchanged from 2020 to 2025",
+      "note": "L2.6. 4 firings (canonical 64910, 65121, 66125, 66161) — the one genuinely templated shape in this batch, hence parameterised. These same four records are also the only ones in the catalogue cut mid-word; the truncation rules below finish them."
+    },
+    {
+      "id": "it_46442_separate_from",
+      "pattern": "Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020\\.",
+      "replacement": "KBLI 2025 keeps 46442 separate from 46441, reinforcing the regulatory/ministerial distinction introduced in KBLI 2020.",
+      "note": "L2.6. 1 firing (canonical 46442, VISIBLE on prod). Free prose, so a literal — no template to generalise over."
+    },
+    {
+      "id": "it_46451_split",
+      "pattern": "Eredita parte del vecchio 46421 KBLI 2020\\. In KBLI 2025 scorporato in 46451 \\(alat tulis\\) e 46452 \\(percetakan\\)\\. Verificare mapping NIB per non perdere licenze API-U esistenti\\.",
+      "replacement": "Inherits part of the old KBLI 2020 code 46421. In KBLI 2025 it was split into 46451 (alat tulis — stationery) and 46452 (percetakan — printing). Check your NIB mapping so you do not lose existing API-U licences.",
+      "note": "L2.6. 1 firing (canonical 46451, VISIBLE on prod). The Indonesian terms of art are KEPT and glossed rather than translated away — alat tulis and percetakan are what the client will actually pick on OSS."
+    },
+    {
+      "id": "it_46791_not_optics",
+      "pattern": "Questo è il codice KBLI 2025 per il vecchio 46444 \\(alat kesehatan\\)\\. Non confondere con 46430 \\(ottica consumer\\): lenti correttive e dispositivi diagnostici appartengono qui, non lì\\.",
+      "replacement": "This is the KBLI 2025 code for the old 46444 (alat kesehatan — medical devices). Do not confuse it with 46430 (consumer optics): corrective lenses and diagnostic devices belong here, not there.",
+      "note": "L2.6. 1 firing (canonical 46791). NOT currently visible on the page — gold carries its own English whatChanged for this code and gold MASKS intel_2026 — so this is a cure at rest and for the non-page consumers. Stated rather than claimed as a visible fix."
+    },
+    {
+      "id": "it_64995_brand_new_code",
+      "pattern": "Codice completamente nuovo in KBLI 2025 \\(parte nuova Categoria V — Carbon & Environment\\)\\. Nessuna migrazione da KBLI 2020 necessaria\\. Solo nuova registrazione\\.",
+      "replacement": "An entirely new code in KBLI 2025 (part of the new Category V — Carbon & Environment). No migration from KBLI 2020 is needed — only a fresh registration.",
+      "note": "L2.6. 2 firings — the ONLY record in this batch whose Italian sits on BOTH surfaces (canonical 64995 and gold 64995), and gold does not mask it, so it is visible on prod. Measured per-surface; not extrapolated."
+    },
+    {
+      "id": "it_65121_p2sk_overarching",
+      "pattern": "Transizione puramente amministrativa\\. UU P2SK framework sovraordinato\\.",
+      "replacement": "The transition is purely administrative. The UU P2SK framework is the overarching legal structure.",
+      "note": "L2.6. 1 firing (canonical 65121). 'sovraordinato' was first drafted as 'takes precedence' and the adversarial grader refuted it: precedence asserts an operational conflict-preemption rule the Italian never claimed. 'Overarching legal structure' is what the source says."
+    },
+    {
+      "id": "it_64910_pojk46_reference",
+      "pattern": "POJK 46/2024 è norma di riferimento principale entrata in vigore fine 2024\\.",
+      "replacement": "POJK 46/2024 is the principal reference regulation, in force since late 2024.",
+      "note": "L2.6. 1 firing (canonical 64910, VISIBLE on prod)."
+    },
+    {
+      "id": "it_66161_pojk40_framework",
+      "pattern": "POJK 40/2024 framework attuale \\(sostituisce POJK 10/2022\\)\\. UU P2SK base legislativa\\.",
+      "replacement": "POJK 40/2024 is the current framework, superseding POJK 10/2022, with UU P2SK as the legislative basis.",
+      "note": "L2.6. 1 firing (canonical 66161, VISIBLE on prod)."
+    },
+    {
+      "id": "it_66125_subgroup_6612",
+      "pattern": "\\(sotto categoria 6612 — Aktivitas Perantara Transaksi\\)",
+      "replacement": "(under subgroup 6612 — Aktivitas Perantara Transaksi, transaction intermediary activities)",
+      "note": "L2.6. 1 firing (canonical 66125). 'subgroup', not 'group': in KBLI nomenclature a 4-digit level is the Subgolongan. Corrected by the adversarial grader — the first draft said 'group'."
+    },
+    {
+      "id": "it_66125_bi_sole_regulator",
+      "pattern": "BI regolatore esclusivo tramite PBI 6/2024",
+      "replacement": "Bank Indonesia is the sole regulator, under PBI 6/2024",
+      "note": "L2.6. 1 firing (canonical 66125)."
+    },
+
+    {
+      "id": "trunc_64910_licenze_esistenti",
+      "pattern": " Licenze esistenti v$",
+      "replacement": "",
+      "note": "L2.6 TRUNCATION. The stored value ends mid-word. 'Licenze esistenti' (existing licences) has lost its entire predicate, so nothing survives that asserts anything — DROPPED. We do not know what it said and will not invent it (rule #9). The loss is recorded here and in git history; it is not recoverable from any other field, which was checked before dropping."
+    },
+    {
+      "id": "trunc_65121_verifica_aggiornamento",
+      "pattern": " Verifica aggiornamento l$",
+      "replacement": "",
+      "note": "L2.6 TRUNCATION. Same shape as 64910: predicate lost, nothing assertable survives, DROPPED. The sentence immediately before it already states the OSS verification requirement in English, so no information the client needs is lost."
+    },
+    {
+      "id": "trunc_66125_padg",
+      "pattern": " e PADG cor$",
+      "replacement": ".",
+      "note": "L2.6 TRUNCATION. 'e PADG cor…' has lost the PADG NUMBER, so the citation is unusable — a reader cannot look up a regulation we cannot name. DROPPED, and the sentence is closed with the period the truncation ate. The complete half of the same sentence (PBI 6/2024) is kept and translated above."
+    },
+    {
+      "id": "trunc_66161_pojk3_itsk",
+      "pattern": " POJK 3/2024 \\(ITSK\\) gove$",
+      "replacement": " Also cited for this code: POJK 3/2024 (ITSK — Financial Sector Technology Innovation).",
+      "note": "L2.6 TRUNCATION — the one case where dropping would have been the WRONG call, and the adversarial grader is why it did not happen. Here only the VERB is cut ('gove…'): the regulation number and its acronym are complete and are exactly what a business reader needs. But completing the verb would assert a legal effect the data no longer states, and the grader's own proposed completion ('governs ITSK') invented the object too. So the citation is KEPT in the only form the record still supports — that this regulation is cited for this code — and the lost predicate is not reconstructed. The ITSK expansion is a term gloss, independently given by the grader, not a claim about this code."
     }
   ]
 }

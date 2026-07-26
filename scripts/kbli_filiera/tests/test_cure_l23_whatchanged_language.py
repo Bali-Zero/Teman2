@@ -9,6 +9,7 @@ proven to spare.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from collections import Counter
@@ -157,6 +158,87 @@ def cure(mod, rules, text: str) -> str:
             "classifying this retail trade as 'BLOCCATO_CLASSE_RISCHIO'.",
             "as blocked in Bali by the risk-class moratorium.",
             "BLOCCATO_CLASSE_RISCHIO",
+        ),
+        # ---- L2.6: the last Italian left in whatChanged after L2.3 cured the
+        # templates. These are FREE PROSE, not machine templates, which is why
+        # the earlier template map never reached them. Every `before` is the
+        # stored value verbatim.
+        (
+            "Renumbered/adjusted from KBLI 2020. 46411 stabile.",
+            "46411 is unchanged.",
+            "stabile",
+        ),
+        (
+            "Renumbered/adjusted from KBLI 2020. KBLI 64910 invariato 2020→2025.",
+            "KBLI 64910 is unchanged from 2020 to 2025.",
+            "invariato",
+        ),
+        (
+            "Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020.",
+            "KBLI 2025 keeps 46442 separate from 46441, reinforcing the regulatory/ministerial distinction introduced in KBLI 2020.",
+            "mantiene",
+        ),
+        (
+            "Eredita parte del vecchio 46421 KBLI 2020. In KBLI 2025 scorporato in 46451 (alat tulis) e 46452 (percetakan). Verificare mapping NIB per non perdere licenze API-U esistenti.",
+            "it was split into 46451 (alat tulis — stationery) and 46452 (percetakan — printing)",
+            "scorporato",
+        ),
+        (
+            "Questo è il codice KBLI 2025 per il vecchio 46444 (alat kesehatan). Non confondere con 46430 (ottica consumer): lenti correttive e dispositivi diagnostici appartengono qui, non lì.",
+            "corrective lenses and diagnostic devices belong here, not there.",
+            "confondere",
+        ),
+        (
+            "Codice completamente nuovo in KBLI 2025 (parte nuova Categoria V — Carbon & Environment). Nessuna migrazione da KBLI 2020 necessaria. Solo nuova registrazione.",
+            "No migration from KBLI 2020 is needed — only a fresh registration.",
+            "migrazione",
+        ),
+        (
+            "Transizione puramente amministrativa. UU P2SK framework sovraordinato.",
+            "The UU P2SK framework is the overarching legal structure.",
+            "sovraordinato",
+        ),
+        (
+            "POJK 46/2024 è norma di riferimento principale entrata in vigore fine 2024.",
+            "POJK 46/2024 is the principal reference regulation, in force since late 2024.",
+            "norma di riferimento",
+        ),
+        (
+            "POJK 40/2024 framework attuale (sostituisce POJK 10/2022). UU P2SK base legislativa.",
+            "superseding POJK 10/2022, with UU P2SK as the legislative basis.",
+            "sostituisce",
+        ),
+        (
+            "KBLI 66125 invariato 2020→2025 (sotto categoria 6612 — Aktivitas Perantara Transaksi).",
+            "(under subgroup 6612 — Aktivitas Perantara Transaksi, transaction intermediary activities)",
+            "sotto categoria",
+        ),
+        (
+            "BI regolatore esclusivo tramite PBI 6/2024.",
+            "Bank Indonesia is the sole regulator, under PBI 6/2024.",
+            "regolatore esclusivo",
+        ),
+        # ---- L2.6 truncations. Each `before` ends exactly where the stored
+        # value ends: mid-word.
+        (
+            "POJK 46/2024 in force. Licenze esistenti v",
+            "POJK 46/2024 in force.",
+            "Licenze esistenti",
+        ),
+        (
+            "the June 2026 window. Verifica aggiornamento l",
+            "the June 2026 window.",
+            "Verifica aggiornamento",
+        ),
+        (
+            "Bank Indonesia is the sole regulator, under PBI 6/2024 e PADG cor",
+            "under PBI 6/2024.",
+            "PADG",
+        ),
+        (
+            "following the closure of the June 2026 window. POJK 3/2024 (ITSK) gove",
+            "Also cited for this code: POJK 3/2024 (ITSK — Financial Sector Technology Innovation).",
+            "(ITSK) gove",
         ),
     ],
 )
@@ -436,6 +518,53 @@ def test_probe_innocence_the_italian_citation_is_still_not_residue(mod):
     assert not mod.residue_markers("the previous 'match con aggregazione' label was stale")
 
 
+def test_probe_vocabulary_is_not_smaller_than_the_defect(mod):
+    """L2.6 GUILT on the PROBE. It reported 2 residual records; there were 9.
+
+    Every sentence below is a real client-facing value the probe walked past
+    because none of its 11 original markers appeared in it. A bound that is
+    smaller than the defect is not conservative — the line "residue: 2" reads as
+    "almost done" and is why this field stayed Italian for three lots.
+    """
+    missed = [
+        "KBLI 64910 invariato 2020→2025.",
+        "Eredita parte del vecchio 46421 KBLI 2020.",
+        "In KBLI 2025 scorporato in 46451 (alat tulis).",
+        "Non confondere con 46430 (ottica consumer).",
+        "Codice completamente nuovo in KBLI 2025.",
+        "Nessuna migrazione da KBLI 2020 necessaria.",
+        "POJK 46/2024 è norma di riferimento principale.",
+        "UU P2SK framework sovraordinato.",
+        "POJK 40/2024 framework attuale (sostituisce POJK 10/2022).",
+        "(sotto categoria 6612 — Aktivitas Perantara Transaksi)",
+        "BI regolatore esclusivo tramite PBI 6/2024.",
+        "lenti correttive e dispositivi diagnostici appartengono qui",
+        "rafforzando la distinzione regolatorio-ministeriale introdotta in KBLI 2020",
+        "Verificare mapping NIB per non perdere licenze API-U esistenti.",
+    ]
+    blind = [s for s in missed if not mod.residue_markers(s)]
+    assert blind == [], f"the probe is still blind to real Italian: {blind}"
+
+
+def test_probe_innocence_english_prose_is_not_italian_residue(mod):
+    """The under-match fix must not ship its own over-match twin.
+
+    These markers are matched as SUBSTRINGS, so a bare "eredita" would fire
+    inside the English word "hereditary" — the same form-vs-entity error, at the
+    opposite sign, inside the list written to cure an under-match. The marker is
+    anchored to "eredita parte" for exactly this reason, and this test is what
+    stops a future tidy-up from shortening it back.
+    """
+    innocent = [
+        "Hereditary land rights are governed separately.",
+        "The licensee must renew before expiry.",
+        "This is a new code, completely separate from the old one.",
+        "Verify the NIB mapping before you register.",
+    ]
+    guilty = [s for s in innocent if mod.residue_markers(s)]
+    assert guilty == [], f"the probe now over-matches English prose: {guilty}"
+
+
 def test_probe_a_scare_quoted_enum_is_a_leak_not_a_citation(mod):
     """Quoting does not make an internal symbol client-appropriate.
 
@@ -645,3 +774,84 @@ def test_the_two_stored_copies_no_longer_contradict_each_other(mod, rules, canon
         if mn.strip() and mn.strip() in wc and cured_mn and cured_mn not in cured_wc:
             broken.append(rec.get("kode_kbli_2025"))
     assert not broken, f"cured mapping_note no longer matches its embedded copy in whatChanged: {broken[:6]}"
+
+
+def _sidecar_fixture(tmp_path: Path, pinned: str, last_modified: str) -> tuple[Path, Path]:
+    dataset = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    dataset.write_bytes(b'{"data": []}\n')
+    sidecar = tmp_path / "kbli-dataset-version.json"
+    sidecar.write_text(
+        json.dumps({"datasetSha256": pinned, "lastModified": last_modified}) + "\n",
+        encoding="utf-8",
+    )
+    return dataset, sidecar
+
+
+def test_sidecar_is_reconciled_even_when_the_run_rewrites_nothing(tmp_path, monkeypatch):
+    """GUILT: the pin bump used to hang off `if c_changed`.
+
+    That made it unreachable in the one situation where the pin is actually wrong:
+    resolving a merge conflict takes main's sidecar (the PREVIOUS lot's hash), and
+    the re-run that follows is a fixed point — zero records change, so the stale
+    pin never moved and the red gate could only be cleared by hand-editing a
+    DERIVED file. Keyed on the mismatch, a no-op run still repairs it.
+    """
+    mod = _load_module()
+    dataset, sidecar = _sidecar_fixture(tmp_path, "sha256:" + "0" * 64, "2020-01-01")
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(
+        mod, "run_sync_script", lambda: pytest.fail("sync must not run when the copy already matches")
+    )
+
+    # canonical IS the copy here, so the drift branch stays out of the way.
+    wrote = mod.reconcile_sidecar(dataset)
+
+    assert wrote is True
+    expected = hashlib.sha256(dataset.read_bytes()).hexdigest()
+    assert json.loads(sidecar.read_text())["datasetSha256"] == f"sha256:{expected}"
+
+
+def test_sidecar_already_current_is_left_untouched(tmp_path, monkeypatch):
+    """INNOCENCE: an already-correct pin must not be rewritten.
+
+    `lastModified` is the SEO source of truth for /kbli lastmod and JSON-LD
+    dateModified. Stamping today's date on a run that changed nothing would tell
+    Google all 1,559 pages were modified — the exact lie the sidecar exists to
+    prevent, arriving through the tool meant to keep it honest.
+    """
+    mod = _load_module()
+    dataset = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    dataset.write_bytes(b'{"data": []}\n')
+    current = hashlib.sha256(dataset.read_bytes()).hexdigest()
+    _, sidecar = _sidecar_fixture(tmp_path, f"sha256:{current}", "2026-01-01")
+    dataset.write_bytes(b'{"data": []}\n')
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(mod, "run_sync_script", lambda: pytest.fail("no sync when nothing drifted"))
+
+    wrote = mod.reconcile_sidecar(dataset)
+
+    assert wrote is False
+    assert json.loads(sidecar.read_text())["lastModified"] == "2026-01-01"
+
+
+def test_sidecar_syncs_first_when_the_mouth_copy_lags_canonical(tmp_path, monkeypatch):
+    """The mouth copy is a sync DESTINATION, not a second source of truth.
+
+    Hashing it while it lags canonical would pin a dataset nobody serves: the
+    vitest gate goes green against the stale copy and the cure stays invisible on
+    the pages — a green light for the wrong file.
+    """
+    mod = _load_module()
+    dataset, sidecar = _sidecar_fixture(tmp_path, "sha256:" + "0" * 64, "2020-01-01")
+    canonical = tmp_path / "canonical.json"
+    canonical.write_bytes(b'{"data": [{"kode_kbli_2025": "46442"}]}\n')
+    calls: list[int] = []
+    monkeypatch.setattr(mod, "SIDECAR_DATASET_PATH", dataset)
+    monkeypatch.setattr(mod, "SIDECAR_PATH", sidecar)
+    monkeypatch.setattr(mod, "run_sync_script", lambda: calls.append(1))
+
+    mod.reconcile_sidecar(canonical)
+
+    assert calls == [1], "a drifted mouth copy must be re-synced before it is hashed"
