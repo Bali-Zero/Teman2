@@ -11,6 +11,7 @@ import type {
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { baliBlockClause, shouldShowReason } from "@/lib/kbli-bali-block";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -931,16 +932,17 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             The licensing path below is the <strong>national</strong> procedure,
             valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
             <strong>Bali</strong>, this activity is currently{" "}
-            {kbli.baliL4?.status === "CHIUSO_PMA_NO_BESAR"
-              ? "reserved for micro/small/medium enterprises and closed to a PT PMA"
-              : "blocked for a PT PMA under the 13 May 2026 moratorium"}
+            {baliBlockClause(kbli.baliL4?.status)}
             {/* The reason is spliced mid-sentence, so its own terminal period
                 would collide with the one below ("…(GARUDA-FILIERA).. See the").
                 Un-disclosed reasons end without a period and were fine; every
                 disclosed one ends with a full stop, and there are now 152 of
-                them. */}
-            {kbli.baliL4?.reason
-              ? ` — ${kbli.baliL4.reason.replace(/\.\s*$/, "")}`
+                them. It is also SUPPRESSED when it answers the moratorium-test
+                question on a code the moratorium did not block — see
+                `shouldShowReason`; that pairing is what put a cause and its
+                denial in the same sentence on 58 pages. */}
+            {shouldShowReason(kbli.baliL4?.status, kbli.baliL4?.reason)
+              ? ` — ${(kbli.baliL4?.reason ?? "").replace(/\.\s*$/, "")}`
               : ""}
             . See the Bali status badge above before planning a Bali setup.
           </p>
