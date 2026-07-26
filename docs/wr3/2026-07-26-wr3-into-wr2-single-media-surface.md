@@ -1,6 +1,6 @@
 # WR3 into WR2 — one media surface, two language cuts
 
-> **Status:** DESIGN, awaiting Zero's sign-off on the open decisions in §6.
+> **Status:** DESIGN **signed off** — Zero ruled all four open questions on 2026-07-26 (§6). Ready to build.
 > **Mandate (Zero, 2026-07-26):** _"wr3 dobbiamo farla entrare nella app wr2 e quindi creare un
 > unico luogo di sviluppo media. Riguardo la produzione come wr2, la wr3 è prestabilita e crea il
 > video del carosello della wr2 (in due versioni uguali ma una in inglese con sottotitoli inglese e
@@ -59,7 +59,7 @@ change, so both cuts share one render of the visual layer.
 Measured from `C5a-FINAL-gfx.mp4` (`ffprobe` + frame extraction, 2026-07-26):
 
 **Container** — 1080×1920 (9:16), **24 fps**, h264, AAC stereo 48 kHz, 6.1 Mbps, **163 s**.
-Note: 163 s is far longer than the current WR3 contract (60–90 s VO, 8 s clips) — see §6.
+Note: 163 s is **above the agreed 150 s ceiling** (§6.1) — the reference is the LOOK to match, not a length to copy.
 
 **Subject** — Zantara: medium shot (waist-up), centred, walking or standing, talking to camera.
 Cream V-neck blouse, camel high-waisted trousers, tan leather crossbody bag, gold hoops.
@@ -113,20 +113,34 @@ per-shot refs, `Zantara-Voice-Corpus/`, and gfx mockups A/B/C + COMPARE.
    clean/gfx split the reference already demonstrates. _Proof:_ the same clean render with the
    overlay disabled and enabled.
 5. **Canary**: BKPM 5/2025 paid-up capital → 2.5 mld (Zero's pick). Facts already verified, so a
-   bad result indicts the pipeline, not the grounding. Budget ≈ 70 credits of 12 410.
+   bad result indicts the pipeline, not the grounding. Budget: 8–19 clips inside the 60–150 s contract ⇒ ~80–190 credits of 12 410. **EN cut first**; the ID cut waits on an Indonesian voice corpus (§6.2).
 
-## 6. Open — Zero decides
+## 6. Decided (Zero, 2026-07-26)
 
-1. **Length.** The reference is **163 s**; the WR3 contract targets 60–90 s. Do we raise the
-   contract to reference length, or cut the carousel down to 60–90 s? This drives credit burn
-   (~10 cr per 8 s clip) and the platform targets.
-2. **Indonesian voice.** The Zantara voice corpus is English. The ID cut needs either a rendered
-   Indonesian VO for the same character, or ID subtitles over the EN VO. Not the same product.
-3. **Amber emphasis across languages.** The signature move highlights _specific terms_. Term
-   selection must be authored per language, not machine-translated from the English pick, or the
-   emphasis lands on the wrong word.
-4. **Where "the WR2 app" is.** Confirm the merge target is the WR2 skill/pipeline surface rather
-   than a new app directory, so we do not create a third place.
+1. **Length — flexible, hard bounds `60 s ≤ duration ≤ 150 s`.** Not a target: a **contract**, and
+   the gatekeeper enforces it before any credit is spent. Consequences that follow from the number,
+   not from taste:
+   - the style reference itself (**163 s**) is **over the cap** — it is the look to match, not a
+     length to copy;
+   - at ~8 s per clip, the envelope is **8–19 clips**, i.e. **~80–190 credits per episode** and
+     **~65–150 episodes** inside the current 12 410;
+   - the VO budget follows at ~3 words/s: **~180–450 words**. A carousel too thin to reach 60 s of
+     honest narration must not be padded to clear the floor — it should not become an episode.
+     Reaching the floor is a **quality gate**, not a formatting step.
+2. **Indonesian voice — a real ID voice-over, not subtitles over English.** So the ID cut is a
+   genuine second render of the audio, and the Zantara voice corpus (today English-only,
+   `zantara-avatar-flow/Zantara-Voice-Corpus/`) needs an Indonesian counterpart before the first ID
+   episode. **This is now the critical path for the ID cut** — the visual layer renders once and is
+   shared, but the ID audio cannot be derived from the EN one. Sub-decision left to the build:
+   whether the ID voice comes from Veo's native audio for the same character or from the local
+   Chatterbox fallback; both are already wired in `wr3-audio-asset-producer`, and the choice is
+   empirical (identity + LUFS + transcript match), not architectural.
+3. **Amber emphasis — authored per language** (default taken, not overridden). The storyboarder
+   picks the emphasised terms **for each language independently**; never translate the English
+   selection. A regulatory number keeps its emphasis in both cuts, but the surrounding words that
+   carry the sentence's weight differ between English and Indonesian.
+4. **Merge target — the existing WR2 surface.** No new app directory. Anything that reads like
+   "a new place for media" is out of scope by construction: the whole point is to stop having two.
 
 ---
 

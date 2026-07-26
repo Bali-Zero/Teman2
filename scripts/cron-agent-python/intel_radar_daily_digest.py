@@ -162,15 +162,16 @@ class IntelRadarDailyDigestJob(AgentJob):
             await conn.close()
 
     def _compose_message(self, rows: list) -> str:
-        """Compose Telegram HTML digest message.
+        """Compose the Telegram digest message — plain text (the gateway sends
+        without parse_mode; see scripts/sentinel_lib/alerter.py's own "gateway
+        sends plain text" precedent — HTML tags/entities would otherwise show
+        up literally).
 
         Layout:
           Header: count + window
           Per-tier section (L1/L2/L3): top 3-5 findings each, with title + domain
           Footer: total + handoff hint
         """
-        import html as _html
-
         now = datetime.now(WITA)
         by_tier: dict[str, list] = defaultdict(list)
         domain_counter: Counter = Counter()
@@ -181,17 +182,17 @@ class IntelRadarDailyDigestJob(AgentJob):
                 domain_counter[r["source_domain"]] += 1
 
         lines: list[str] = [
-            f"📰 <b>Intel Radar — Daily Digest</b>",
-            f"<i>{now.strftime('%a %d %b %Y, %H:%M WITA')}</i>",
+            "📰 Intel Radar — Daily Digest",
+            now.strftime("%a %d %b %Y, %H:%M WITA"),
             f"{len(rows)} findings · "
             + " · ".join(f"{tier}={len(by_tier.get(tier, []))}" for tier in ("L1", "L2", "L3")),
             "",
         ]
 
         tier_labels = {
-            "L1": "🔵 <b>L1 — Core</b> (visa/kitas/KBLI/OSS/pajak)",
-            "L2": "🟢 <b>L2 — Adjacent</b> (banking/property/tourism)",
-            "L3": "🟡 <b>L3 — Lateral</b> (rupiah/ASEAN/macro)",
+            "L1": "🔵 L1 — Core (visa/kitas/KBLI/OSS/pajak)",
+            "L2": "🟢 L2 — Adjacent (banking/property/tourism)",
+            "L3": "🟡 L3 — Lateral (rupiah/ASEAN/macro)",
         }
         for tier in ("L1", "L2", "L3"):
             tier_rows = by_tier.get(tier, [])
@@ -199,20 +200,20 @@ class IntelRadarDailyDigestJob(AgentJob):
                 continue
             lines.append(tier_labels[tier])
             for r in tier_rows[:5]:
-                title = _html.escape((r["title"] or "?")[:120])
+                title = (r["title"] or "?")[:120]
                 domain = r["source_domain"] or "—"
-                lines.append(f"  • <b>{title}</b>")
-                lines.append(f"    <i>{_html.escape(domain)}</i>")
+                lines.append(f"  • {title}")
+                lines.append(f"    {domain}")
             if len(tier_rows) > 5:
-                lines.append(f"  <i>… +{len(tier_rows) - 5} more</i>")
+                lines.append(f"  … +{len(tier_rows) - 5} more")
             lines.append("")
 
         if domain_counter:
             top_domains = ", ".join(f"{d} ({c})" for d, c in domain_counter.most_common(3))
-            lines.append(f"<i>Top domains:</i> {_html.escape(top_domains)}")
+            lines.append(f"Top domains: {top_domains}")
 
         lines.append("")
-        lines.append("<i>↓ Handoff to scraper queue (auto)</i>")
+        lines.append("↓ Handoff to scraper queue (auto)")
 
         return "\n".join(lines)
 
