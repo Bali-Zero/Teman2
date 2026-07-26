@@ -48,6 +48,47 @@ async def _dsn_reachable() -> bool:
         return False
 
 
+async def _current_book() -> str | None:
+    try:
+        conn = await asyncpg.connect(DSN)
+        try:
+            return await conn.fetchval("SELECT current_database()")
+        finally:
+            await conn.close()
+    except Exception:
+        return None
+
+
+async def _skip_unless_approved_book() -> None:
+    """Skip the 7 cases that DRIVE an attested entrypoint off the local book.
+
+    `run_census` / `run_apply` / `run_rollback` / `run_verify` all open with
+    `attest_local_book`, which raises SystemExit unless `current_database()`
+    is APPROVED_DATABASE. That refusal is the safety property these tests
+    exist to protect, so those seven cannot pass against any other book and
+    must not be attempted — while the other 23 in this file touch no attested
+    entrypoint and SHOULD keep running wherever the DSN points.
+
+    Why it surfaced now: CI points INTAKE_TEST_DSN at `nuzantara_test`
+    deliberately (see .github/workflows/tests.yml — it unskips ~50 intake
+    tests). These seven were skipping by ACCIDENT anyway, because the CI
+    database lacked columns they touch and the query failed before the
+    attestation did. This PR's ci_bootstrap_schema.py work made the schema
+    complete enough that the accident stopped protecting us and the guard
+    fired as designed.
+
+    Gate the seven, not the file — skipping all 30 to cure 1 would hand back
+    most of what pointing the DSN at CI was for. And never widen
+    APPROVED_DATABASE to make CI green: that deletes the property under test.
+    """
+    book = await _current_book()
+    if book != _mod.APPROVED_DATABASE:
+        pytest.skip(
+            f"intake DB at {DSN} is book {book!r}, not the approved local book "
+            f"({_mod.APPROVED_DATABASE!r}) — attested entrypoints refuse by design"
+        )
+
+
 @pytest_asyncio.fixture
 async def pool():
     if not await _dsn_reachable():
@@ -363,6 +404,7 @@ async def _mk_done_queue(conn, tag: str, passport: str, name: str):
 
 async def test_verify_batch_unknown_is_error(pool):
     """R8-3: a mistyped/unknown batch id must be exit 2, never a clean 0."""
+    await _skip_unless_approved_book()
     rc = await _mod.run_verify(DSN, f"no-such-batch-{uuid.uuid4().hex[:8]}")
     assert rc == 2
 
@@ -371,6 +413,7 @@ async def test_verify_batch_owner_mismatch_flagged_and_clean_pass(pool):
     """R8-3: verify proves the sole owner IS the ledger's client (a key owned
     by somebody else must be an owner_violation even with exactly one owner);
     a genuinely clean batch (owner matches, reroute_verified) is rc 0."""
+    await _skip_unless_approved_book()
     tag = uuid.uuid4().hex[:8]
     passport = _passport()
     batch = f"test-verify-{tag}"
@@ -949,6 +992,7 @@ async def test_verify_batch_flags_document_gate_conflict(pool):
     conflicting live doc (same sid, different name) committed after apply
     turns the batch verify into exit 4 with a document_gate violation;
     without it the same batch verifies clean (self-evidence never fires)."""
+    await _skip_unless_approved_book()
     tag = uuid.uuid4().hex[:8]
     passport = _passport()
     nm = _name(tag)
@@ -1225,6 +1269,7 @@ async def test_run_rollback_partial_is_exit_4(pool, monkeypatch):
     """R10-6: a rollback where every row is GUARDED (here: content drift —
     a human touched the created card) must exit 4, never 0 — automation
     reading 0 would treat a still-alive contact as reverted."""
+    await _skip_unless_approved_book()
     tag = uuid.uuid4().hex[:8]
     passport = _passport()
     batch = f"test-r10c-{tag}"
@@ -1303,6 +1348,7 @@ async def test_run_rollback_unknown_batch_is_exit_2(pool, monkeypatch):
     """R11-4: a mistyped batch id must not be a vacuous success — zero rows
     in ANY status is exit 2 'unknown_batch', never rolled_back:0 exit 0
     (automation would read the typo as 'reverted')."""
+    await _skip_unless_approved_book()
     monkeypatch.setenv(_mod.KILLSWITCH_ENV, "1")
     async with pool.acquire() as conn:
         await conn.execute(_mod.LEDGER_DDL)
@@ -1439,6 +1485,7 @@ async def test_armed_apply_refuses_unattested_worker(monkeypatch, capsys):
     """R11-3: an ARMED apply with a failing worker attestation refuses
     (exit 3) BEFORE any ledger/client write; --skip-worker-attest is the
     only bypass and is a visible CLI choice."""
+    await _skip_unless_approved_book()
     if not await _dsn_reachable():
         pytest.skip(f"local intake DB not reachable at {DSN}")
     monkeypatch.setenv(_mod.KILLSWITCH_ENV, "1")
@@ -1516,6 +1563,7 @@ async def test_unarmed_rollback_over_live_rows_is_exit_6(pool, monkeypatch):
     """R12-4: killswitch OFF over a batch holding live 'created' rows must
     NOT exit 0 — nothing was touched, and automation reading 0 would treat
     a forgotten killswitch as a completed revert. Exit 6, rows intact."""
+    await _skip_unless_approved_book()
     monkeypatch.delenv(_mod.KILLSWITCH_ENV, raising=False)
     tag = uuid.uuid4().hex[:8]
     passport = _passport()
@@ -1624,3 +1672,46 @@ async def test_post_drain_attestation_failure_freezes_lot(pool):
         "post_drain_attestation"
     )
     assert results["innocence"] is None
+
+
+def test_every_attested_driver_carries_the_book_guard() -> None:
+    """A new test that drives an attested entrypoint must not slip the guard.
+
+    The seven guarded cases were found by reading the file once; nothing stops
+    the eighth from being written without `_skip_unless_approved_book()` and
+    turning CI red again for a reason that is by-design, not a defect. This
+    pins the rule to the source instead of to whoever remembers it.
+
+    Innocence side: it must NOT demand the guard from the 23 cases that touch
+    no attested entrypoint — those SHOULD keep running against the CI book.
+    """
+    import re as _re
+
+    src = Path(__file__).read_text()
+    attested = ("run_census", "run_apply", "run_rollback", "run_verify")
+    guard = "_skip_unless_approved_book()"
+
+    missing, guarded, plain = [], [], []
+    for part in _re.split(r"^(?=(?:async )?def )", src, flags=_re.M):
+        m = _re.match(r"(?:async )?def (test_\w+)", part)
+        if not m or m.group(1) == "test_every_attested_driver_carries_the_book_guard":
+            continue
+        drives = any(f"_mod.{a}(" in part for a in attested)
+        has = guard in part
+        if drives and not has:
+            missing.append(m.group(1))
+        elif drives:
+            guarded.append(m.group(1))
+        elif has:
+            plain.append(m.group(1))
+
+    assert not missing, (
+        "these tests drive an attested entrypoint without "
+        f"{guard}: {missing} — they will SystemExit on any book that is not "
+        f"{_mod.APPROVED_DATABASE!r}. Add the guard; never widen APPROVED_DATABASE."
+    )
+    assert guarded, "the guard corpus went empty — the detector stopped detecting"
+    assert not plain, (
+        f"these tests carry {guard} but drive no attested entrypoint: {plain} — "
+        "they would skip in CI for no reason, handing back coverage."
+    )

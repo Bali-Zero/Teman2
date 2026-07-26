@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import json
 import logging
+from _thread import LockType
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
+from threading import Lock
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -113,6 +115,18 @@ class CircuitBreaker:
     failure_count: int = 0
     last_failure: Optional[str] = None
     opened_at: Optional[str] = None
+    _half_open_probe_in_flight: bool = field(
+        default=False,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _state_lock: LockType = field(
+        default_factory=Lock,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     # -- State queries -------------------------------------------------------
 
@@ -122,8 +136,9 @@ class CircuitBreaker:
         If the breaker is OPEN and the auto-close timeout has elapsed,
         the state transitions to HALF_OPEN before being returned.
         """
-        self._evaluate_timeout()
-        return self.state
+        with self._state_lock:
+            self._evaluate_timeout()
+            return self.state
 
     @property
     def is_open(self) -> bool:
@@ -137,10 +152,20 @@ class CircuitBreaker:
     def should_allow_request(self) -> bool:
         """Return True if a request should be allowed through.
 
-        Allowed in CLOSED (normal) and HALF_OPEN (probe) states.
+        CLOSED requests flow normally.  HALF_OPEN atomically reserves one
+        probe; later callers remain blocked until that probe records success
+        or failure.
         """
-        current = self.get_state()
-        return current in (CBState.CLOSED, CBState.HALF_OPEN)
+        with self._state_lock:
+            self._evaluate_timeout()
+            if self.state == CBState.CLOSED:
+                return True
+            if self.state != CBState.HALF_OPEN:
+                return False
+            if self._half_open_probe_in_flight:
+                return False
+            self._half_open_probe_in_flight = True
+            return True
 
     # -- Transition actions --------------------------------------------------
 
@@ -153,6 +178,86 @@ class CircuitBreaker:
         In HALF_OPEN state (probe failed), transitions back to OPEN and
         resets the timeout window.
         """
+        with self._state_lock:
+            self._record_failure_locked()
+
+    def record_probe_failure_if_in_flight(self) -> bool:
+        """Fail and release a reserved HALF_OPEN probe, if one exists.
+
+        Pipeline exception handlers use this to avoid leaving a probe
+        permanently reserved when execution aborts before the normal
+        ``record_success`` or ``record_failure`` call.
+
+        Returns:
+            True when an in-flight probe was failed; otherwise False.
+        """
+        with self._state_lock:
+            if (
+                self.state != CBState.HALF_OPEN
+                or not self._half_open_probe_in_flight
+            ):
+                return False
+            self._record_failure_locked()
+            return True
+
+    def record_success(self) -> None:
+        """Record a success.
+
+        In HALF_OPEN state, transitions back to CLOSED and resets counters.
+        In CLOSED state, resets the failure count.
+        """
+        with self._state_lock:
+            if self.state == CBState.HALF_OPEN:
+                self.state = CBState.CLOSED
+                self.failure_count = 0
+                self.opened_at = None
+                self._half_open_probe_in_flight = False
+                logger.info(
+                    "Circuit breaker %s: HALF_OPEN -> CLOSED (probe succeeded)",
+                    self.name.value,
+                )
+            elif self.state == CBState.CLOSED:
+                # Reset rolling failure count on success
+                self.failure_count = 0
+
+    def force_open(self, reason: str = "") -> None:
+        """Force the breaker into OPEN state (e.g. via cascade rule).
+
+        Args:
+            reason: Human-readable reason logged with the transition.
+        """
+        with self._state_lock:
+            if self.state == CBState.OPEN:
+                return
+            previous = self.state
+            self.state = CBState.OPEN
+            self.opened_at = _now_iso()
+            self._half_open_probe_in_flight = False
+            logger.warning(
+                "Circuit breaker %s: %s -> OPEN (forced: %s)",
+                self.name.value,
+                previous.value,
+                reason or "no reason given",
+            )
+
+    def force_close(self) -> None:
+        """Manually reset the breaker to CLOSED (used for manual-close breakers)."""
+        with self._state_lock:
+            previous = self.state
+            self.state = CBState.CLOSED
+            self.failure_count = 0
+            self.opened_at = None
+            self._half_open_probe_in_flight = False
+            logger.info(
+                "Circuit breaker %s: %s -> CLOSED (manual close)",
+                self.name.value,
+                previous.value,
+            )
+
+    # -- Internal ------------------------------------------------------------
+
+    def _record_failure_locked(self) -> None:
+        """Record a failure while ``_state_lock`` is held."""
         now = _now_iso()
         self.failure_count += 1
         self.last_failure = now
@@ -161,6 +266,7 @@ class CircuitBreaker:
             # Probe failed — re-open and reset timeout
             self.state = CBState.OPEN
             self.opened_at = now
+            self._half_open_probe_in_flight = False
             logger.warning(
                 "Circuit breaker %s: HALF_OPEN -> OPEN (probe failed, "
                 "timeout reset)",
@@ -188,56 +294,6 @@ class CircuitBreaker:
                     self.failure_threshold,
                 )
 
-    def record_success(self) -> None:
-        """Record a success.
-
-        In HALF_OPEN state, transitions back to CLOSED and resets counters.
-        In CLOSED state, resets the failure count.
-        """
-        if self.state == CBState.HALF_OPEN:
-            self.state = CBState.CLOSED
-            self.failure_count = 0
-            self.opened_at = None
-            logger.info(
-                "Circuit breaker %s: HALF_OPEN -> CLOSED (probe succeeded)",
-                self.name.value,
-            )
-        elif self.state == CBState.CLOSED:
-            # Reset rolling failure count on success
-            self.failure_count = 0
-
-    def force_open(self, reason: str = "") -> None:
-        """Force the breaker into OPEN state (e.g. via cascade rule).
-
-        Args:
-            reason: Human-readable reason logged with the transition.
-        """
-        if self.state == CBState.OPEN:
-            return
-        previous = self.state
-        self.state = CBState.OPEN
-        self.opened_at = _now_iso()
-        logger.warning(
-            "Circuit breaker %s: %s -> OPEN (forced: %s)",
-            self.name.value,
-            previous.value,
-            reason or "no reason given",
-        )
-
-    def force_close(self) -> None:
-        """Manually reset the breaker to CLOSED (used for manual-close breakers)."""
-        previous = self.state
-        self.state = CBState.CLOSED
-        self.failure_count = 0
-        self.opened_at = None
-        logger.info(
-            "Circuit breaker %s: %s -> CLOSED (manual close)",
-            self.name.value,
-            previous.value,
-        )
-
-    # -- Internal ------------------------------------------------------------
-
     def _evaluate_timeout(self) -> None:
         """Transition from OPEN to HALF_OPEN if the timeout has elapsed.
 
@@ -258,6 +314,7 @@ class CircuitBreaker:
         deadline = opened_dt + timedelta(hours=self.timeout_hours)
         if datetime.now(tz=timezone.utc) >= deadline:
             self.state = CBState.HALF_OPEN
+            self._half_open_probe_in_flight = False
             logger.info(
                 "Circuit breaker %s: OPEN -> HALF_OPEN "
                 "(timeout %dh elapsed)",

@@ -104,6 +104,7 @@ coverage.xml
 *.cover
 .hypothesis/
 test-results/
+test-results-*.xml
 test_results/
 testsprite_tests/tmp/
 
