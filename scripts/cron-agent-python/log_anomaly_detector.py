@@ -129,6 +129,20 @@ def _fresh_lines(lines: list[str], cutoff: datetime) -> list[str]:
     return out
 
 
+def _tier_for(alerts: list[dict]) -> str:
+    """Gateway tier for a batch of alerts, driven by their OWN severity
+    classification (LOG_PATTERNS/FLY_PATTERNS above already label each match
+    RED vs YELLOW): FATAL, OOM, 502/503, CRM-down are genuinely tg_notify.py's
+    own p0 definition ("prod hotfix, guardian red") — this job's docstring
+    promises reacting "in seconds", which digest cannot honor. YELLOW
+    (circuit-breaker, timeouts) is informative → digest. Either way, the
+    gateway's dedup+budget is a second, independent backstop on top of this
+    job's own 30min-cooldown/3-per-run limits (W104, 2026-07-25: those
+    upstream limits fail-opened to 288/day once).
+    """
+    return "p0" if any(a["severity"] == "RED" for a in alerts) else "digest"
+
+
 class LogAnomalyDetectorJob(AgentJob):
     name = "log-anomaly-detector"
     timeout_s = 300
@@ -156,7 +170,12 @@ class LogAnomalyDetectorJob(AgentJob):
 
         if alerts:
             msg = self._compose_alert(alerts)
-            ok = await self.send_telegram(msg, tier="p0", dedup_key=self._dedup_key(alerts))
+            # tier: severity-driven (this branch's fix, kept — main hardcodes p0
+            # unconditionally, which burns the shared p0 budget on YELLOW blips).
+            # dedup_key: main's _dedup_key (source+label hash, not count-based) —
+            # kept over this branch's own, it's the better of the two.
+            tier = _tier_for(alerts)
+            ok = await self.send_telegram(msg, tier=tier, dedup_key=self._dedup_key(alerts))
             self.log_step("telegram_sent", outputs={"ok": ok},
                           side_effect="anomaly_alert" if ok else None)
 
@@ -351,19 +370,21 @@ class LogAnomalyDetectorJob(AgentJob):
         return "log-anomaly:" + hashlib.sha256(",".join(sig).encode()).hexdigest()[:12]
 
     def _compose_alert(self, alerts: list[dict]) -> str:
+        # Gateway sends plain text (no parse_mode) — see scripts/sentinel_lib/
+        # alerter.py's own "Strip Markdown ... gateway sends plain text" precedent.
         now = datetime.now(WITA)
         red_alerts = [a for a in alerts if a["severity"] == "RED"]
         icon = "🔴" if red_alerts else "🟡"
         lines = [
-            f"{icon} <b>Log Anomaly</b> — {len(alerts)} issues",
+            f"{icon} Log Anomaly — {len(alerts)} issues",
             f"{now.strftime('%H:%M WITA')}",
             "",
         ]
         for a in alerts:
             sev_icon = "🔴" if a["severity"] == "RED" else "🟡"
-            lines.append(f"{sev_icon} <b>{a['label']}</b> [{a['source']}]")
+            lines.append(f"{sev_icon} {a['label']} [{a['source']}]")
             if a.get("sample"):
-                lines.append(f"  <code>{a['sample'][:150]}</code>")
+                lines.append(f"  {a['sample'][:150]}")
         return "\n".join(lines)
 
     def _elapsed(self) -> float:

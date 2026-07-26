@@ -82,6 +82,20 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Claude 5 routing (2026-07-02)**: interactive sessions = **Fable 5** (architect/orchestrator/final on-disk gate, max effort — the final gate never cascades to a weaker model; window dead → task SUSPENDS); implementer subagents/workflows = **Sonnet 5** (`claude-sonnet-5`, `model:"sonnet"`); grunt = Haiku 4.5. Cron tier-1: repo-side pins migrated to `claude-sonnet-5` on 2026-07-03 after per-agent probes (see `research/operations/2026-07-03-sonnet5-cron-migration.md`); LIVE HOME wrappers (`~/scripts/`) still on `claude-sonnet-4-6` until the operator applies the diffs in that doc (tracked in modus PENDING-ARMS). Exception: the nb-agents slug micro-prompt stays 4-6 (probe wobble). Full arsenal routing: `.claude/skills/modus/SKILL.md` §Arsenal.
 
+**Opus 5 roster update (2026-07-25) — additive, changes no rule.** **Claude Opus 5** (`claude-opus-5`) shipped and is the current Opus tier: a drop-in successor to Opus 4.8 at the *same* price ($5/$25 per MTok, 1M context, 128K output), strongest on agentic coding and long-horizon work. Everywhere this repo names **Opus 4.8 as the capable non-Fable seat** — the Fable-paid contingency below, the `modus` §Arsenal fallback rows, cascade tier-1 synthesis — read **Opus 5**; 4.8 stays a valid pin, it is not deprecated. **This does NOT touch the final on-disk gate**, which remains unconditionally Fable per the paragraph above and the guarded note below. Canonical roster — use the alias exactly as written, never invent a date suffix: `claude-fable-5` · `claude-opus-5` · `claude-opus-4-8` · `claude-sonnet-5` · `claude-sonnet-4-6` · `claude-haiku-4-5`. Haiku 4.5 is the only one that also has a real dated full ID (`claude-haiku-4-5-20251001`, used by existing pins) — both resolve; the 5-family has aliases only.
+
+> ⚠️ **Observed divergence, ruling pending — do NOT act on this line as a rule.** The clause above declares the interactive default to be Fable 5; the harness currently reports **`claude-opus-5`** as the session model. Which of the two is correct going forward is a Legge-5 call, so **the clause is left exactly as written** and no replacement wording is drafted here — candidate options live in `.claude/skills/modus/PENDING-ARMS.md` (owner `operator[business]`), not in this file. Recorded because it is a fact about the running system, not a proposal. **The final on-disk gate is out of scope of this divergence and stays unconditionally Fable.**
+
+**What actually changes with the 5-family** (non-obvious, load-bearing on cron budgets and cost baselines):
+
+- **Opus 5 thinks by default.** Omitting `thinking` now thinks (on 4.8/4.7 it meant *no* thinking), and `max_tokens` caps thinking **plus** answer — a route sized tightly around its answer can now truncate. `thinking:{type:"disabled"}` is accepted **only at effort ≤ `high`**; pairing it with `xhigh`/`max` returns 400. With thinking off, Opus 5 can also emit a tool call as **plain visible text** — the call silently never runs, no error. To cut cost, lower `effort`; do not disable thinking.
+- **Sonnet 5 uses a new tokenizer: ~30% more tokens for the same text** (per-token price unchanged). Every `max_tokens`, compaction trigger and cost baseline tuned on Sonnet 4.6 must be re-measured with `count_tokens` — never apply a blanket multiplier. Relevant to `scripts/cost_baseline.py`, still on the 4.x price table.
+- `effort` spans five levels on both (`low`→`max`); **`xhigh` is the sweet spot for coding/agentic**. On Opus 5, `low`/`medium` punch far above their weight — they are the primary cost/latency lever.
+- Minimum cacheable prompt drops to **512 tokens on Opus 5** (1024 on Opus 4.8): prompts previously written off as uncacheable now cache with no code change.
+- **Opus 5 draws on a rate-limit bucket separate** from the combined Opus 4.x pool — moving traffic neither inherits nor frees headroom.
+- Removed across the whole 5-family (400 if sent): `temperature` / `top_p` / `top_k` and `budget_tokens`. No last-assistant-turn prefill. Use `output_config.effort` and `output_config.format`.
+- Both Fable 5 and Opus 5 carry **elevated cybersecurity safeguards**: a declined request returns HTTP **200** with `stop_reason: "refusal"` — check `stop_reason` *before* reading `content`, or `content[0]` throws.
+
 **Kimi seat (added 2026-07-19, Zero GO)**: Moonshot **Kimi K3** + **kimi-for-coding 2.7** via `kimi` CLI (`~/.kimi-code/bin/kimi`, Allegro flat subscription, OAuth device-code login — no API key). Invocation: `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding) · `-m kimi-code/kimi-for-coding-highspeed` (grunt). Cross-family council/second-opinion seat and flat-quota implementation relief; probed by `scripts/arsenal_probe.py` (seat `kimi`). Armed on all three machines 2026-07-19. Never the final gate.
 
 > **Fable-paid contingency — ACTIVE (Zero decision 2026-07-12: "non voglio pagare")** (research:
@@ -158,7 +172,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 9. **Verify Sources** — Never presume, verify against actual data.
 10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
 11. **PricingTool Only** — All prices from `PricingTool`. Never hardcode.
-12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`. Never `--no-verify`/`--amend` on pushed.
+12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` (matches what the harness itself appends; historical commits keep whatever model authored them — never rewrite them). Never `--no-verify`/`--amend` on pushed.
 
 ## 9. Data Invariants (NEVER VIOLATE)
 

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Plug } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, Plug } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function IntegrationsError({
   error,
@@ -13,7 +13,7 @@ export default function IntegrationsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Integrations Error', {}, error);
+    logger.error("Integrations Error", {}, error);
   }, [error]);
 
   return (
@@ -23,10 +23,12 @@ export default function IntegrationsError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Couldn&apos;t Load Integrations</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Couldn&apos;t Load Integrations
+        </h2>
         <p className="text-muted-foreground">
-          There was an error loading this page. Please try again or contact support if the
-          problem persists.
+          There was an error loading this page. Please try again or contact
+          support if the problem persists.
         </p>
       </div>
 
