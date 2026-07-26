@@ -179,7 +179,8 @@ _AUTH_DEAD_PAT = re.compile(
     r"\b401\b|authentication failed|token_revoked|refresh_token_reused|oauth token", re.IGNORECASE
 )
 _QUOTA_DEAD_PAT = re.compile(
-    r"out of extra usage|usage limit|quota|\b429\b|rate.?limit|exhausted", re.IGNORECASE
+    r"out of extra usage|usage limit|weekly limit|quota|\b429\b|rate.?limit|exhausted",
+    re.IGNORECASE,
 )
 _BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance", re.IGNORECASE)
 _MODEL_ERR_PAT = re.compile(r"\b1211\b|unknown model", re.IGNORECASE)
