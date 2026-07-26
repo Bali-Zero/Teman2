@@ -92,7 +92,7 @@ export default function RolesPermissionsPage() {
   const [newRole, setNewRole] = useState({
     name: "",
     description: "",
-    color: "#60A5FA",
+    color: "#60A5FA", // token-lint-ok: role color is user-picked via <input type="color">, which requires a #rrggbb seed value
     permissions: [] as string[],
   });
 
@@ -101,7 +101,7 @@ export default function RolesPermissionsPage() {
       id: "1",
       name: "Admin",
       description: "Full system access",
-      color: "#A78BFA",
+      color: "#A78BFA", // token-lint-ok: role color is user-picked via <input type="color">, which requires a #rrggbb seed value
       userCount: 1,
       permissions: allPermissions.map((p) => p.id),
     },
@@ -109,7 +109,7 @@ export default function RolesPermissionsPage() {
       id: "2",
       name: "User",
       description: "Standard user access",
-      color: "#60A5FA",
+      color: "#60A5FA", // token-lint-ok: role color is user-picked via <input type="color">, which requires a #rrggbb seed value
       userCount: 3,
       permissions: [
         "dashboard_view",
@@ -124,7 +124,7 @@ export default function RolesPermissionsPage() {
       id: "3",
       name: "Viewer",
       description: "Read-only access",
-      color: "#34D399",
+      color: "#34D399", // token-lint-ok: role color is user-picked via <input type="color">, which requires a #rrggbb seed value
       userCount: 2,
       permissions: [
         "dashboard_view",
@@ -179,7 +179,7 @@ export default function RolesPermissionsPage() {
       setNewRole({
         name: "",
         description: "",
-        color: "#60A5FA",
+        color: "#60A5FA", // token-lint-ok: role color is user-picked via <input type="color">, which requires a #rrggbb seed value
         permissions: [],
       });
       toast.success("Role created", {
@@ -240,7 +240,7 @@ export default function RolesPermissionsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-              <Shield className="w-6 h-6 text-purple-400" />
+              <Shield className="w-6 h-6 text-[var(--bz-neon-purple)]" />
               Roles & Permissions
             </h1>
             <p className="text-sm text-[var(--foreground-muted)]">
@@ -288,7 +288,7 @@ export default function RolesPermissionsPage() {
                 {role.name !== "Admin" && (
                   <button
                     onClick={() => deleteRole(role.id)}
-                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
+                    className="p-1.5 rounded hover:bg-[var(--state-danger)]/15 text-[var(--state-danger)]"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -338,25 +338,25 @@ export default function RolesPermissionsPage() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-blue-400" />
+            <Eye className="w-4 h-4 text-[var(--state-info)]" />
             <span className="text-[var(--foreground-muted)]">
               View = Read access
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Edit className="w-4 h-4 text-amber-400" />
+            <Edit className="w-4 h-4 text-[var(--state-warning)]" />
             <span className="text-[var(--foreground-muted)]">
               Edit = Write access
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-purple-400" />
+            <Shield className="w-4 h-4 text-[var(--bz-neon-purple)]" />
             <span className="text-[var(--foreground-muted)]">
               Admin = Full control
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-green-400" />
+            <Key className="w-4 h-4 text-[var(--state-success)]" />
             <span className="text-[var(--foreground-muted)]">
               Use = Feature access
             </span>
@@ -366,7 +366,7 @@ export default function RolesPermissionsPage() {
 
       {/* Create/Edit Modal */}
       {(showCreateModal || editingRole) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--surface-overlay)] p-4">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
               {editingRole ? "Edit Role" : "Create New Role"}

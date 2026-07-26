@@ -88,7 +88,7 @@ export default function LocaleSettingsPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Globe className="w-6 h-6 text-blue-400" />
+            <Globe className="w-6 h-6 text-[var(--bz-accent)]" />
             Language & Region
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -137,7 +137,7 @@ export default function LocaleSettingsPage() {
       {/* Timezone */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-5 h-5 text-purple-400" />
+          <Clock className="w-5 h-5 text-[var(--bz-neon-purple)]" />
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Timezone
           </h2>
@@ -166,7 +166,7 @@ export default function LocaleSettingsPage() {
       {/* Date & Time Format */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6 space-y-6">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-amber-400" />
+          <Calendar className="w-5 h-5 text-[var(--bz-accent)]" />
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Date & Time Format
           </h2>

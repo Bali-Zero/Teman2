@@ -12,13 +12,21 @@ import {
 import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { PayrollPeriod, Payslip } from "@/types/hr";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+// Payroll period statuses, hue-preserving: draft -> neutral, calculated ->
+// info, approved -> warning, paid -> success (same map as payroll/[slipId]).
 const statusColors: Record<string, string> = {
-  draft: "bg-zinc-500/10 text-zinc-400",
-  calculated: "bg-blue-500/10 text-blue-400",
-  approved: "bg-amber-500/10 text-amber-400",
-  paid: "bg-emerald-500/10 text-emerald-400",
+  draft: "bg-[var(--bz-glass-rim)] text-[var(--bz-text-2)]",
+  calculated: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
+  approved: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
+  paid: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
 };
 
 export default function PayrollPage() {
@@ -94,10 +102,10 @@ export default function PayrollPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-zinc-100">Payroll</h1>
+        <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">Payroll</h1>
         <div className="animate-pulse space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-900 rounded-lg" />
+            <div key={i} className="h-20 bg-[var(--bz-glass-rim)] rounded-lg" />
           ))}
         </div>
       </div>
@@ -108,7 +116,9 @@ export default function PayrollPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-zinc-100">Payroll Periods</h1>
+          <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+            Payroll Periods
+          </h1>
           <button
             onClick={handleCalculate}
             disabled={calculating}
@@ -120,7 +130,10 @@ export default function PayrollPage() {
         </div>
 
         {periods.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
+          <div
+            className="border rounded-xl p-8 text-center text-[var(--bz-text-3)]"
+            style={PANEL}
+          >
             No payroll periods yet. Click &quot;Calculate Current Month&quot; to
             start.
           </div>
@@ -129,12 +142,13 @@ export default function PayrollPage() {
             {periods.map((period) => (
               <div
                 key={period.id}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-center justify-between"
+                className="border rounded-lg p-4 flex items-center justify-between"
+                style={PANEL}
               >
                 <div>
                   <div className="flex items-center gap-3">
-                    <Banknote size={18} className="text-zinc-500" />
-                    <span className="font-medium text-zinc-200">
+                    <Banknote size={18} className="text-[var(--bz-text-3)]" />
+                    <span className="font-medium text-[var(--bz-text-1)]">
                       {String(period.payroll_month).padStart(2, "0")}/
                       {period.payroll_year}
                     </span>
@@ -144,16 +158,16 @@ export default function PayrollPage() {
                       {period.status}
                     </span>
                   </div>
-                  <div className="text-sm text-zinc-500 mt-1">
+                  <div className="text-sm text-[var(--bz-text-3)] mt-1">
                     {period.payslip_count} payslips · Total:{" "}
-                    {formatIDR(period.total_net || 0)}
+                    <Money value={period.total_net || 0} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {period.status === "calculated" && (
                     <button
                       onClick={() => handleApprove(period.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--state-warning)]/10 text-[var(--state-warning)] hover:bg-[var(--state-warning)]/20 text-sm"
                     >
                       <CheckCircle size={14} />
                       Approve
@@ -162,7 +176,7 @@ export default function PayrollPage() {
                   {period.status === "approved" && (
                     <button
                       onClick={() => handleMarkPaid(period.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--state-success)]/10 text-[var(--state-success)] hover:bg-[var(--state-success)]/20 text-sm"
                     >
                       <CreditCard size={14} />
                       Mark Paid
@@ -179,9 +193,14 @@ export default function PayrollPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-zinc-100">My Payslips</h1>
+      <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+        My Payslips
+      </h1>
       {payslips.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
+        <div
+          className="border rounded-xl p-8 text-center text-[var(--bz-text-3)]"
+          style={PANEL}
+        >
           No payslips available yet.
         </div>
       ) : (
@@ -190,23 +209,24 @@ export default function PayrollPage() {
             <Link
               key={slip.id}
               href={`/hr/payroll/${slip.id}`}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-center justify-between group hover:bg-zinc-800/60 hover:border-zinc-700 transition-colors"
+              className="border rounded-lg p-4 flex items-center justify-between group hover:bg-[var(--bz-glass-rim)] transition-colors"
+              style={PANEL}
             >
               <div>
-                <span className="font-medium text-zinc-200">
+                <span className="font-medium text-[var(--bz-text-1)]">
                   {String(slip.payroll_month).padStart(2, "0")}/
                   {slip.payroll_year}
                 </span>
-                <div className="text-sm text-zinc-500 mt-1">
-                  Base: {formatIDR(slip.base_salary_idr)} + Bonus:{" "}
-                  {formatIDR(slip.bonus_total_idr)} - Deductions:{" "}
-                  {formatIDR(slip.deduction_total_idr)}
+                <div className="text-sm text-[var(--bz-text-3)] mt-1">
+                  Base: <Money value={slip.base_salary_idr} /> + Bonus:{" "}
+                  <Money value={slip.bonus_total_idr} /> - Deductions:{" "}
+                  <Money value={slip.deduction_total_idr} />
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <div className="text-lg font-semibold text-emerald-400">
-                    {formatIDR(slip.net_salary_idr)}
+                  <div className="text-lg font-semibold text-[var(--state-success)]">
+                    <Money value={slip.net_salary_idr} />
                   </div>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${statusColors[slip.period_status] || ""}`}
@@ -216,7 +236,7 @@ export default function PayrollPage() {
                 </div>
                 <ChevronRight
                   size={16}
-                  className="text-zinc-600 group-hover:text-zinc-400 transition-colors"
+                  className="text-[var(--bz-text-3)] group-hover:text-[var(--bz-text-2)] transition-colors"
                 />
               </div>
             </Link>
