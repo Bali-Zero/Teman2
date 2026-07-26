@@ -90,7 +90,30 @@ SIDECAR_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-dataset-version.jso
 SIDECAR_DATASET_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"
 
 CODE_FIELD = "kode_kbli_2025"
-FIELD = "whatChanged"
+
+# The client-facing fields this cure may rewrite, each with ONE policy bit:
+# may its whitespace be normalised?
+#
+# `whatChanged` is short, single-paragraph, machine-templated text. Collapsing
+# runs of spaces there is safe, and is load-bearing for the fixed-point test —
+# re-running the cure on the applied dataset must be a no-op.
+#
+# The other three are hand-written editorial markdown whose two-space
+# indentation carries meaning ("\n  Obligations:", "\n  Requirements:").
+# Measured on 2026-07-26 over all 7,641 (record,field) pairs of those three:
+# the rules fire 10 times, while whitespace normalisation alone mutates 184
+# records that contain no enum leak at all. An 18:1 collateral-to-signal ratio
+# is not a tidy-up, it is an unscoped rewrite of client-facing prose smuggled
+# inside a PR that claims to remove enum tokens.
+#
+# Superscar #3, one level up from regexes: a transformation proven innocent on
+# one field's SHAPE is not innocent on another's.
+FIELDS: tuple[tuple[str, bool], ...] = (
+    ("whatChanged", True),
+    ("whatYouNeed", False),
+    ("baliContext", False),
+    ("zantaraOpener", False),
+)
 
 # Residue probe. Deliberately literal and deliberately NOT the cure's own rule
 # set: if it reused the rules it would report zero by construction — a check
@@ -140,11 +163,21 @@ def load_rules(spec_path: Path) -> list[dict[str, Any]]:
     return compiled
 
 
-def cure_text(text: str, rules: list[dict[str, Any]], hits: Counter) -> str:
+def cure_text(
+    text: str,
+    rules: list[dict[str, Any]],
+    hits: Counter,
+    *,
+    normalize_whitespace: bool = True,
+) -> str:
     """Apply every rule in order. Records per-rule hit counts in `hits`.
 
     Each rule is anchored on its full template context, so none can fire inside
     a quoted historical label — see the spec's `_the_trap_guarded_here`.
+
+    `normalize_whitespace` is per-FIELD, not per-caller convenience: see FIELDS.
+    Keyword-only and defaulting True so the whatChanged behaviour this cure
+    shipped with cannot change by accident.
     """
     out = text
     for rule in rules:
@@ -162,8 +195,11 @@ def cure_text(text: str, rules: list[dict[str, Any]], hits: Counter) -> str:
             hits[rule["id"]] += n
     # Collapse whitespace the deletion rule may have doubled, without touching
     # newlines (the field is rendered with whitespace-pre-line in places).
-    out = re.sub(r"[ \t]{2,}", " ", out)
-    return out.strip()
+    # Skipped on markdown fields, where indentation is structure — see FIELDS.
+    if normalize_whitespace:
+        out = re.sub(r"[ \t]{2,}", " ", out)
+        return out.strip()
+    return out
 
 
 def residue_markers(text: str) -> list[str]:
@@ -179,10 +215,47 @@ def residue_markers(text: str) -> list[str]:
     flagged before this strip, 5 after, and the 49 difference was entirely that
     one quoted label. A guard and its own success-metric must both match the
     ENTITY, never the bare substring (superscar #3).
+
+    THE STRIP IS BOUNDED, and that bound is the 2026-07-26 fix. The original
+    pattern was `'[^']*'`, which is not a quote stripper in English prose — it
+    is a PROSE stripper, because `'` is also the possessive apostrophe. Measured
+    on gold `82400.baliContext`: the apostrophe in "Bali's freelancer economy"
+    paired with the one in "the 'business services marketplace' code" 468
+    characters later, swallowing everything between them — including a real
+    client-facing leak — and the probe reported that record CLEAN. The over-match
+    cure had shipped its under-match twin (the W94/W105 shape).
+    A citation is SHORT and lives on one line; prose that happens to sit between
+    two apostrophes is neither. Bounding the span to a single line of <=60 chars
+    keeps every real citation stripped and stops the swallow.
     """
-    scannable = re.sub(r"'[^']*'", " ", text)
+    scannable = re.sub(r"'[^'\n]{1,60}'", " ", text)
     low = scannable.lower()
     return [m for m in _RESIDUE_MARKERS if m.lower() in low]
+
+
+# An internal enum token: SCREAMING_SNAKE with at least one underscore.
+_ENUM_TOKEN_RE = re.compile(r"\b[A-Z]{3,}(?:_[A-Z]+)+\b")
+
+
+def enum_residue(text: str) -> list[str]:
+    """Internal enum tokens still visible to a client in `text`.
+
+    Independent of the cure's rules by construction — a probe that reused them
+    would report zero by definition, the check that cannot fail.
+
+    Citation detection here is by PROXIMITY, not by span: a token counts as a
+    deliberate citation only when it is IMMEDIATELY wrapped ('TOKEN' or `TOKEN`).
+    That predicate cannot scan past the token's own boundaries, so it cannot
+    repeat the swallow described in residue_markers() above.
+    """
+    out = []
+    for m in _ENUM_TOKEN_RE.finditer(text):
+        before = text[m.start() - 1] if m.start() > 0 else ""
+        after = text[m.end()] if m.end() < len(text) else ""
+        if (before == "'" and after == "'") or (before == "`" and after == "`"):
+            continue
+        out.append(m.group(0))
+    return out
 
 
 def _iter_records(payload: Any) -> list[dict[str, Any]]:
@@ -220,7 +293,18 @@ def cure_dataset(
     only: set[str] | None,
     label: str,
 ) -> tuple[int, Counter, list[tuple[str, list[str]]]]:
-    """Cure `FIELD` in every (code, container) pair. Returns (changed, hits, residues)."""
+    """Cure every field in FIELDS, in every (code, container) pair.
+
+    Returns (changed, hits, residues), where `changed` counts (record,field)
+    rewrites, not records.
+
+    A field is written back ONLY when a rule actually fired on it. That is a
+    second, structural guard on top of the per-field whitespace policy: even if
+    normalisation were ever switched back on for a markdown field, a record with
+    no enum leak could still never be silently reformatted. "The cure changed it"
+    and "a declared rule changed it" must be the same set — and a test asserts
+    exactly that.
+    """
     changed = 0
     hits: Counter = Counter()
     residues: list[tuple[str, list[str]]] = []
@@ -229,16 +313,20 @@ def cure_dataset(
             continue
         if not isinstance(container, dict):
             continue
-        before = container.get(FIELD)
-        if not isinstance(before, str) or not before:
-            continue
-        after = cure_text(before, rules, hits)
-        if after != before:
-            container[FIELD] = after
-            changed += 1
-        left = residue_markers(after)
-        if left:
-            residues.append((code, left))
+        for field, normalize in FIELDS:
+            before = container.get(field)
+            if not isinstance(before, str) or not before:
+                continue
+            field_hits: Counter = Counter()
+            after = cure_text(before, rules, field_hits, normalize_whitespace=normalize)
+            if field_hits and after != before:
+                container[field] = after
+                changed += 1
+                hits.update(field_hits)
+            left = residue_markers(after) if field == "whatChanged" else []
+            left = left + enum_residue(after)
+            if left:
+                residues.append((f"{code}.{field}", left))
     logger.info("%s: %d record(s) rewritten", label, changed)
     return changed, hits, residues
 
