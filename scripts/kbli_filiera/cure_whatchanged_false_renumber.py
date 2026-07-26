@@ -314,10 +314,16 @@ def update_sidecar() -> None:
     import hashlib
     from datetime import date
 
+    # Field name is "datasetSha256" — that is what the sidecar schema declares
+    # and what apps/mouth/src/lib/kbli-dataset-version.test.ts reads. A run
+    # that wrote a bare "sha256" key here (2026-07-25) left datasetSha256
+    # stale while looking like it had updated the file: the vitest guard went
+    # red on a merged PR because check≠action — the key existed, just under
+    # the wrong name.
     digest = hashlib.sha256(SIDECAR_DATASET_PATH.read_bytes()).hexdigest()
     sidecar = json.loads(SIDECAR_PATH.read_text(encoding="utf-8"))
-    before = sidecar.get("sha256")
-    sidecar["sha256"] = f"sha256:{digest}"
+    before = sidecar.get("datasetSha256")
+    sidecar["datasetSha256"] = f"sha256:{digest}"
     sidecar["lastModified"] = date.today().isoformat()
     SIDECAR_PATH.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     logger.info("sidecar updated: %s -> sha256:%s", before, digest)

@@ -414,3 +414,81 @@ def test_the_gold_organ_is_load_bearing_because_gold_is_not_a_mirror_of_canonica
         != str(((by_code[code].get("intel_2026") or {}).get("whatChanged") or ""))
     ]
     assert divergent, "gold now mirrors canonical exactly — the two-organ split needs re-justifying"
+
+
+# ---------------------------------------------------------------------------
+# update_sidecar() — the field name IS the contract
+# ---------------------------------------------------------------------------
+#
+# 2026-07-25: this function wrote a bare "sha256" key while the sidecar
+# schema (and apps/mouth/src/lib/kbli-dataset-version.test.ts) reads
+# "datasetSha256" — the write succeeded, the file changed, and the vitest
+# guard still went red on a merged PR because it was checking a field the
+# write never touched. Guilt: a wrong key name must fail. Innocence: the
+# right key name, with an unrelated key already present, must pass and must
+# not disturb that unrelated key.
+
+
+def _run_update_sidecar(tmp_path: Path, dataset_bytes: bytes, sidecar_before: dict) -> dict:
+    import hashlib
+
+    dataset_path = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    dataset_path.write_bytes(dataset_bytes)
+    sidecar_path = tmp_path / "kbli-dataset-version.json"
+    sidecar_path.write_text(json.dumps(sidecar_before), encoding="utf-8")
+
+    original_dataset_path = cure.SIDECAR_DATASET_PATH
+    original_sidecar_path = cure.SIDECAR_PATH
+    cure.SIDECAR_DATASET_PATH = dataset_path
+    cure.SIDECAR_PATH = sidecar_path
+    try:
+        cure.update_sidecar()
+    finally:
+        cure.SIDECAR_DATASET_PATH = original_dataset_path
+        cure.SIDECAR_PATH = original_sidecar_path
+
+    after = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    expected = f"sha256:{hashlib.sha256(dataset_bytes).hexdigest()}"
+    return after, expected
+
+
+def test_update_sidecar_writes_datasetSha256_not_a_lookalike_key(tmp_path: Path):
+    after, expected = _run_update_sidecar(
+        tmp_path,
+        b'{"data": ["fixture content A"]}',
+        {"lastModified": "2020-01-01", "datasetSha256": "sha256:stale", "note": "keep me"},
+    )
+    assert after["datasetSha256"] == expected
+    assert "sha256" not in after, "a stray top-level 'sha256' key means the wrong field was written"
+    assert after["note"] == "keep me", "update_sidecar must not disturb unrelated keys"
+
+
+def test_update_sidecar_is_guilty_of_the_2026_07_25_regression_if_it_reappears():
+    # Direct guilt check on the shipped function body, not a fixture: prove the
+    # exact wrong key name from the incident is not the one being written.
+    import inspect
+
+    source = inspect.getsource(cure.update_sidecar)
+    assert 'sidecar["sha256"]' not in source, (
+        "update_sidecar() writes sidecar['sha256'] again — the field the vitest "
+        "guard and the sidecar schema actually read is 'datasetSha256'"
+    )
+
+
+def test_live_sidecar_datasetSha256_matches_the_live_dataset_hash():
+    """Python-side mirror of apps/mouth/src/lib/kbli-dataset-version.test.ts.
+
+    Two independent runtimes (Python here, vitest in CI) checking the same
+    invariant on the same committed files — neither can silently drift
+    without both going red.
+    """
+    import hashlib
+
+    dataset = (REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json").read_bytes()
+    sha = hashlib.sha256(dataset).hexdigest()
+    sidecar = json.loads(
+        (REPO_ROOT / "apps" / "mouth" / "data" / "kbli-dataset-version.json").read_text(encoding="utf-8")
+    )
+    assert sidecar["datasetSha256"] == f"sha256:{sha}", (
+        "sidecar datasetSha256 is stale — run cure.update_sidecar() or bump it by hand"
+    )
