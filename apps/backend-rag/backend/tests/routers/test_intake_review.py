@@ -600,38 +600,29 @@ async def test_claim_steal_expired_lease(pool, seed):
                             params={"claim_token": new_token})
 
 
+# The lease offsets are OFFSETS, not timestamps, and the absolute
+# `lease_expires_at` is built inside the test body from `datetime.now()` at call
+# time. An earlier version put `datetime.now(timezone.utc) + timedelta(minutes=5)`
+# straight into the parametrize list — but a parametrize argument is evaluated
+# once, at COLLECTION, and pytest collects the whole tree before running anything.
+# On a loaded machine the full backend suite needs well over five minutes to reach
+# this file, by which point the "live" lease has expired and the guard correctly
+# answers 409 while the case still expects 403/400. Three of the five params then
+# fail for a reason that has nothing to do with the guard. A test whose verdict
+# depends on how long the suite took to get to it is a clock bomb: keep every
+# absolute time inside the test.
 @pytest.mark.parametrize(
-    ("lease_expires_at", "lease_owner", "claim_token", "expected_status"),
+    ("lease_offset", "lease_owner", "claim_token", "expected_status"),
     [
         (None, TEAM_OWNER["email"], None, 409),
-        (
-            datetime.now(timezone.utc) - timedelta(minutes=1),
-            TEAM_OWNER["email"],
-            None,
-            409,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OTHER["email"],
-            None,
-            403,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OWNER["email"],
-            "not-a-uuid",
-            400,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            " ",
-            str(uuid.uuid4()),
-            403,
-        ),
+        (timedelta(minutes=-1), TEAM_OWNER["email"], None, 409),
+        (timedelta(minutes=5), TEAM_OTHER["email"], None, 403),
+        (timedelta(minutes=5), TEAM_OWNER["email"], "not-a-uuid", 400),
+        (timedelta(minutes=5), " ", str(uuid.uuid4()), 403),
     ],
 )
 async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
-    lease_expires_at,
+    lease_offset,
     lease_owner,
     claim_token,
     expected_status,
@@ -645,6 +636,9 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     """
     from backend.app.routers.intake_review import _require_active_claim
 
+    lease_expires_at = (
+        None if lease_offset is None else datetime.now(timezone.utc) + lease_offset
+    )
     active_token = uuid.uuid4()
     prop = {
         "status": "review_claimed",
