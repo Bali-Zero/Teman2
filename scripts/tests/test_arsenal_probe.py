@@ -65,6 +65,40 @@ def test_refresh_token_reused_classifies_auth_dead():
     assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
 
 
+def test_recovered_codex_401_string_classifies_auth_dead():
+    # #29 (2026-07-26): the exact terminal error recovered from Codex's own
+    # rollout log for the real, transient AUTH_DEAD incident — a regression
+    # guard on the specific string, not just the general 401 shape.
+    ev = (
+        "unexpected status 401 Unauthorized: Missing bearer or basic authentication "
+        "in header, url: https://api.openai.com/v1/responses, cf-ray: "
+        "a20b72431db49185-DPS, request id: 0f06c28b-a836-478c-ac86-4259815da99b"
+    )
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
+
+
+def test_oauth_token_expired_invalid_revoked_classify_auth_dead():
+    # guilt: the tightened alternative still catches genuine failures phrased
+    # as "oauth token <failure-word>" (#34) — mirrors the already-correct
+    # claude-cascade.sh RAW_RETRYABLE_PATTERN shape.
+    for word in ["expired", "invalid", "revoked"]:
+        ev = f"oauth token {word}, please re-authenticate"
+        assert (
+            ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.AUTH_DEAD
+        ), f"failed on: {ev}"
+
+
+def test_benign_oauth_token_mention_is_not_auth_dead():
+    # innocence (#34, scar #3 guard-over-match): a bare mention of "oauth
+    # token" with NO failure word present must not classify AUTH_DEAD — the
+    # pre-fix pattern matched this exact shape of benign, healthy-operation
+    # prose, which would have declared a live seat dead.
+    ev = "Checking oauth token cache for refresh eligibility (routine)."
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
+    assert status != ap.AUTH_DEAD
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_glm_1211_classifies_model_err_never_shed():
     ev = 'HTTP 400 {"error": {"code": 1211, "message": "Unknown Model"}}'
     status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
@@ -239,6 +273,29 @@ def test_evidence_tail_truncates_and_scrubs():
     tail = ap.evidence_tail(text, limit=160)
     assert len(tail) <= 160
     assert long_secret not in tail
+
+
+def test_evidence_tail_keeps_the_tail_not_the_head():
+    # guilt (#34): the diagnostic part — the actual error — lives past the
+    # first 160 chars of a real Codex startup banner; a head-truncation
+    # (the pre-fix behavior) drops it entirely. This is the exact shape
+    # #29 needed a second data source to recover.
+    head = "Reading additional input from stdin... OpenAI Codex v0.145.0 -------- " * 3
+    error_tail = (
+        "unexpected status 401 Unauthorized: Missing bearer or basic "
+        "authentication in header, url: https://api.openai.com/v1/responses"
+    )
+    text = head + error_tail
+    result = ap.evidence_tail(text, limit=160)
+    assert error_tail[-100:] in result
+    assert len(result) <= 160
+
+
+def test_evidence_tail_short_text_returned_whole():
+    # innocence: text already within the cap is untouched either way — the
+    # fix changes which end survives truncation, not the untruncated case.
+    text = "PONG all good"
+    assert ap.evidence_tail(text, limit=160) == text
 
 
 # ---------------------------------------------------------------------------

@@ -159,8 +159,16 @@ def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
 
 
 def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: int = 160) -> str:
+    """The tail, not the head — the name is a promise the old slice broke.
+
+    Errors live at the tail (a stack trace's cause, an HTTP status line, a CLI's
+    final message); a head-truncation keeps the greeting and drops the diagnosis.
+    #29 (2026-07-26): a real AUTH_DEAD verdict was only recoverable because an
+    external Codex rollout log happened to still be on disk — this field alone,
+    head-truncated at 160 chars, cut off before reaching the actual error.
+    """
     scrubbed = scrub((text or "").strip().replace("\n", " "), extra_secrets)
-    return scrubbed[:limit]
+    return scrubbed[-limit:]
 
 
 # ---------------------------------------------------------------- classification
@@ -175,8 +183,18 @@ def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: i
 # request id minted at 12:11 (`...0706**1211**...`). \b between digits does not
 # split a digit run, so ids stay innocent while bracketed/spaced codes still match
 # (scar #3: match the entity, not the substring).
+# The bare phrase "oauth token" (no failure word) is the same over-match risk one
+# level up: a benign sentence merely mentioning it — "checking oauth token cache
+# for refresh eligibility" — used to classify AUTH_DEAD with no error present at
+# all. #34 (2026-07-26): tightened to require a failure word immediately after,
+# mirroring the already-correct `oauth token (expired|invalid|revoked)` shape in
+# infra/launchagents/wrappers/claude-cascade.sh's RAW_RETRYABLE_PATTERN. The other
+# alternatives (401/token_revoked/refresh_token_reused/authentication failed) are
+# already failure-shaped and untouched — only the loose one moved.
 _AUTH_DEAD_PAT = re.compile(
-    r"\b401\b|authentication failed|token_revoked|refresh_token_reused|oauth token", re.IGNORECASE
+    r"\b401\b|authentication failed|token_revoked|refresh_token_reused|"
+    r"oauth token (expired|invalid|revoked)",
+    re.IGNORECASE,
 )
 _QUOTA_DEAD_PAT = re.compile(
     r"out of extra usage|usage limit|weekly limit|quota|\b429\b|rate.?limit|exhausted",
