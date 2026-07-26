@@ -211,6 +211,10 @@ export const PRICING_FALLBACK: Record<string, string> = {
   "E33G Multiple Entry": "Rp 9,5M",
   "KITAS Retirement": "Rp 22M",
   "PT PMA": "Rp 20M",
+  // Matches bali_zero_official_prices_2026.json PricingTool SSOT key
+  // ("E33 Second Home (5 Years)") and the canonical display format used on
+  // the /visa/second-home landing page and services_data.ts.
+  "E33 Second Home (5 Years)": "IDR 39,000,000",
 };
 
 // ─── i18n ────────────────────────────────────────────────────────────────────

@@ -25,27 +25,43 @@ interface PeopleColumnProps {
   totalShares?: number;
 }
 
-export function PeopleColumn({ associates, fallbackName, customFields, totalShares }: PeopleColumnProps) {
+export function PeopleColumn({
+  associates,
+  fallbackName,
+  customFields,
+  totalShares,
+}: PeopleColumnProps) {
   // If associates from client_company_links are incomplete, use OCR-extracted shareholders
   const ocrShareholders: Associate[] = (() => {
     try {
-      const cf = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
+      const cf =
+        typeof customFields === "string"
+          ? JSON.parse(customFields)
+          : customFields;
       const sh = cf?.shareholders;
       if (!sh) return [];
-      const parsed: OcrShareholder[] = typeof sh === 'string' ? JSON.parse(sh) : sh;
+      const parsed: OcrShareholder[] =
+        typeof sh === "string" ? JSON.parse(sh) : sh;
       if (!Array.isArray(parsed) || parsed.length === 0) return [];
-      const total = totalShares || parsed.reduce((sum, s) => sum + (s.shares || 0), 0);
+      const total =
+        totalShares || parsed.reduce((sum, s) => sum + (s.shares || 0), 0);
       return parsed.map((s) => ({
         client_name: s.name,
-        role: s.role?.toLowerCase() || 'shareholder',
+        role: s.role?.toLowerCase() || "shareholder",
         shares_count: s.shares,
-        ownership_percentage: total > 0 && s.shares ? Math.round((s.shares / total) * 100 * 10) / 10 : undefined,
+        ownership_percentage:
+          total > 0 && s.shares
+            ? Math.round((s.shares / total) * 100 * 10) / 10
+            : undefined,
       }));
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   })();
 
   // Use OCR shareholders if they have more detail than client_company_links
-  const people = ocrShareholders.length > associates.length ? ocrShareholders : associates;
+  const people =
+    ocrShareholders.length > associates.length ? ocrShareholders : associates;
   if (people.length === 0) return null;
 
   // Build equity bar segments
@@ -149,9 +165,7 @@ export function PeopleColumn({ associates, fallbackName, customFields, totalShar
           className="p-3 px-4 rounded-[var(--kbli-radius-md)] flex items-center gap-2.5"
           style={glassCard}
         >
-          <div
-            className="flex-1 h-1 rounded-full overflow-hidden flex"
-          >
+          <div className="flex-1 h-1 rounded-full overflow-hidden flex">
             {equitySegments.map((seg, i) => (
               <div
                 key={i}

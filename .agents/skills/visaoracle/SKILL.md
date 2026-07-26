@@ -335,6 +335,60 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   30-priority-code pack; signing stays M5 (Track A), FASE 2 trees stay Mini (Track B).
   Next: rule authoring → sign → activate → arm SHADOW per
   `research/visa/2026-07-24-shadow-arming-runbook.md`. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~04:00 WITA): **W2 FIRST PACK SIGNED + ON MAIN.**
+  `#3092` (`c33c183ad8ea`, 12 fact-bases corpus) and `#3090` (`3c412c96b085`, first signed
+  PRODUCTION RulePack: **38 products / 110 rules / 28 sources**, `compile_pack` zero errors,
+  kid `prod-2026-07-1`, `payload_sha256 47a97c32…`, Fable gate SHIP with adversarial
+  counter-probe) both merged. Chain: 8 fact-bases (live primary sources 2026-07-24, 2
+  Gemini grade rounds with dispositions) → 2 authoring agents (A1 18p/47r, A2 20p/63r, zero
+  overlap) → assemble → compile → sign → verify. **Kid-pattern bug found+fixed at first
+  signing** (ceremony kids start with a digit, fail the engine's `IDENTIFIER_PATTERN`;
+  relabeled `test-2026-07-1`/`prod-2026-07-1` same key material; Fly trust store re-staged
+  digest `ab319439ecf92a0f`; errata in `docs/runbooks/visa-engine-key-ceremony.md`).
+  **Detect-secrets cure**: pack hashes audited in baseline + naming-scoped triage rule
+  (`contracts/packs/rulepack-*.json`). **Next: activation addendum
+  (`research/visa/2026-07-25-activation-addendum.md`)** — provision `visa_activation_executor`
+  (one-time, operator), build the small `activate_pack.py` ops tool, activate, then the 3
+  SHADOW secrets + smoke per the arming runbook. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~12:30 WITA): **SHADOW IS LIVE IN PRODUCTION — first
+  real evidence row.** The full activation arc is done: `activate_pack.py` ops CLI built
+  (PR #3101, 8/8 tests, dry-run verified); fingerprint HMAC key store minted (kid
+  `fp-2026-07-1`, M5 custody) + 3 secrets set on Fly (`VISA_ENGINE_EVALUATE_MODE=SHADOW`,
+  `VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`, `VISA_ENGINE_DRIVER_TOKEN`); roles provisioned
+  on prod PG (`visa_activation_executor` NOLOGIN + grants on `nuzantara_rag`, ops role
+  `visa_activation_operator` LOGIN granted executor — Fly PG is 2-machine HA, primary
+  `5683e090f3d228`, `OPERATOR_PASSWORD` from keeper environ; `fly pg connect` hangs on
+  wireguard — use `fly ssh console -C` + `fly ssh sftp put` with `--machine` pinning, sftp
+  never overwrites); **pack ACTIVATED** (`activation_id bb35cb81-276d-4a6e-8570-e46a2c692777`,
+  actor token `operator.zero-2026-07`). **Smoke green end-to-end:**
+  `POST /api/visa-oracle/evaluate` now returns a real engine verdict
+  (`HUMAN_REVIEW_REQUIRED` + `BRIDGING_FROM_VISIT_ITK_PROHIBITED`, `mode:CURATED`,
+  `rule_pack 446ee4ee seq 1`, HMAC fingerprint `fp-2026-07-1`) and the FIRST row landed in
+  `visa_decisions` (`RECOMMEND`/`SHADOW`, `long_tourism`, 32-byte fingerprint,
+  `ruleset_activation_id` set). The collection window is accumulating from real traffic.
+  GATE STATUS unchanged: 🔴 RED (volume/breadth = 1 row so far).
+- 2026-07-25 (M5, Kimi orchestrator, consolidation): **FINAL LEDGER of the two-day run.**
+  **12 PRs merged**: #3032 `8875b95a` (funnel v1 resurrected, live-smoked 201 + DB row),
+  #3033 `0185dc5c` (disclaimer all-5-states + PII-free submit-failure telemetry), #3038
+  `6e88b24b` (next-steps gated on SUPPORTED_CANDIDATES), #3046 `7f99e570` (mig 256
+  traffic_source + G-a-vol/breadth split), #3028 `8b5dffbd` (architect corpus + definitive
+  plan), #3060 `35da9284` (mig 257 business/diaspora categories), #3061 `726dbc93`
+  (**evaluate read-path API**), #3034 `dbb31e4d` (G-b metamorphic + canonical replay CLI),
+  #3079 `f43f04c1` (SHADOW arming runbook), #3092 `c33c183a` (12 W2 fact-bases), #3090
+  `3c412c96` (**first signed PRODUCTION RulePack** 38p/110r/28s, kid prod-2026-07-1),
+  #3101 `6893ea5d` (activate_pack ops CLI). **Production state**: endpoint live serving
+  real verdicts in SHADOW+CURATED; pack `446ee4ee` seq 1 ACTIVE (activation bb35cb81);
+  secrets staged: trust store (relabeled kids), EVALUATE_MODE=SHADOW, FINGERPRINT_KEYS,
+  DRIVER_TOKEN; roles: visa_activation_executor (NOLOGIN, grants on nuzantara_rag),
+  visa_activation_operator (LOGIN, custody M5); `visa_decisions` accumulating.
+  **Standing bugs fixed en route**: key-ceremony digit-start kids (errata + relabel),
+  detect-secrets pack-hash baseline (+ triage rule), docsync/inventory date-drift pattern,
+  prettier-3.8.4-vs-main skew (3 files, flagged for infra), `fly pg connect` wireguard
+  hang (use fly ssh console -C + sftp put --machine). **Open items**: D1/D2/D3 owner
+  decisions (pack in `research/visa/2026-07-23-d1-decision-pack.md`); W1c persona breadth
+  extension (after window data); Track C wiring 4a/4b (Pro, briefed); Track B FASE 2
+  (Mini, briefed); G-d drill + flip only at all-green. Seat status: codex CLI dead on M5,
+  GLM Keychain-only, Opus caps ~4-5h — graders fall back to Opus/Fable per Zero.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

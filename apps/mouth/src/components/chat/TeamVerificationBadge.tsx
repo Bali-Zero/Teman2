@@ -13,10 +13,10 @@ interface TeamVerificationBadgeProps {
 
 const LABELS: Record<string, (domain: string) => string> = {
   en: (d) => `Our ${d} specialists are verifying`,
-  it: (d) => `Verificato dal team ${d}`,
-  id: (d) => `Diverifikasi oleh tim ${d}`,
-  fr: (d) => `Vérifié par l'équipe ${d}`,
-  ru: (d) => `Подтверждено командой ${d}`,
+  it: (d) => `I nostri specialisti di ${d} stanno verificando`,
+  id: (d) => `Spesialis ${d} kami sedang memverifikasi`,
+  fr: (d) => `Nos spécialistes de ${d} vérifient`,
+  ru: (d) => `Наши специалисты по ${d} проверяют`,
 };
 
 const VERIFIED_LABELS: Record<string, (domain: string) => string> = {

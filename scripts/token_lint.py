@@ -411,6 +411,12 @@ def parse_unified_diff(text: str) -> list[AddedLine]:
 # `Binary files <a-side> and <b-side> differ` — emitted when git considers a
 # file binary (e.g. a `.gitattributes -diff` rule). In --base mode `--text`
 # prevents these; a marker reaching the parser means crafted/manual input.
+#
+# `--text` suppresses the MARKER, not the binary-ness: a real binary blob is
+# emitted as raw bytes instead, which is why _git_diff decodes defensively.
+# Those bytes are attributed to their own path and dropped by the `allowed`
+# and is_scoped gates in scan() — the marker path below stays the mechanism
+# for a SCOPED file whose content the diff genuinely withholds.
 BINARY_MARKER_RE = re.compile(r"^Binary files (.+) and (.+) differ$")
 
 
@@ -706,19 +712,32 @@ def _git_diff(base: str) -> tuple[list[str], str]:
     """
 
     def run(args: list[str]) -> str:
+        # Bytes, then decode with errors="replace" — NOT text=True.
+        #
+        # `--text` (pinned below, and by test_git_diff_invocation_uses_text_flag)
+        # tells git to emit content for files it would otherwise mark binary.
+        # For a genuinely binary blob that means the RAW BYTES land in stdout,
+        # and a strict utf-8 decode dies on them: the first PR to add images
+        # (13 JPEGs, 2026-07-26) crashed the scanner with UnicodeDecodeError
+        # before the parser existed to judge anything.
+        #
+        # Replacing undecodable bytes cannot open a bypass: every added-line
+        # path is cross-checked against the `--name-only` SSOT list (see the
+        # `allowed` gate in scan()), so garbage attributed to a path git never
+        # reported is skipped, and garbage attributed to a real scoped path can
+        # only over-report — fail-closed, never silent-clean.
         proc = subprocess.run(
             ["git", *args],
             cwd=_repo_root(),
             capture_output=True,
-            text=True,
             check=False,
         )
         if proc.returncode != 0:
             raise GitError(
                 f"git {' '.join(args)} failed (exit {proc.returncode}): "
-                f"{proc.stderr.strip() or '<no stderr>'}"
+                f"{proc.stderr.decode('utf-8', 'replace').strip() or '<no stderr>'}"
             )
-        return proc.stdout
+        return proc.stdout.decode("utf-8", "replace")
 
     names = _git_lines(run(["diff", "--name-only", f"{base}...HEAD"]))
     text = run(["diff", "--unified=0", "--no-color", "--text", f"{base}...HEAD"])

@@ -108,7 +108,8 @@
             "W85",
             "W91",
             "W92",
-            "segment-scoping-6th"
+            "segment-scoping-6th",
+            "W105"
           ],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
@@ -162,6 +163,24 @@
                 "infra/claude-hooks/test_runtime_state_allowlist.py"
               ],
               "note": "PENDING-ARMS 'Pro main self-align strutturalmente chiuso' iteration 5 (2026-07-11): a runtime_state_allowlist.json (machine-scoped, mirrors scripts/lint_home_fork.py machine_label() convention) exempts 3 Pro-only continuously-rewritten tracked files from gating the ff-only exception. W91 lesson applied to the allowlist ITSELF: guilt (any other tracked-dirty file, a rename touching an allowlisted name, wrong machine, missing allowlist file all still gate) + innocence (exactly the 3 declared paths, or a subset, still opens) both proven."
+            },
+            "_resolve_under_worktrees": {
+              "tests": [
+                "infra/claude-hooks/test_w105_nested_worktree_removal.py"
+              ],
+              "note": "W105 (2026-07-26): resolved a removal target by TRUNCATING to the first segment under .worktrees/, so `.worktrees/<outer>/.worktrees/<inner>` resolved to <outer> and removing a clean nested worktree was refused in the dirty OUTER's name — family #3 deciding on path SHAPE, not on the ENTITY the path names. Fix: return the INNERMOST worktree `git worktree list --porcelain` actually knows that equals-or-contains the target; the legacy truncation stays as the fallback when git cannot enumerate (it is also what correctly pins `rm -rf <dirty-wt>/subdir` to <dirty-wt>, the W80 protection). Guilt: outer-by-own-path and `rm -rf <dirty-wt>/sub` still BLOCK. Innocence: the clean nested worktree, by both `git worktree remove` and `rm -rf`, is ALLOWED — both innocence cases fail against the pre-fix hook, verified before the fix landed."
+            },
+            "_worktrees_strictly_inside": {
+              "tests": [
+                "infra/claude-hooks/test_w105_nested_worktree_removal.py"
+              ],
+              "note": "The under-match twin W94 predicts for any over-match fix. `.worktrees/` is gitignored, so `git status` inside an OUTER worktree is blind to a worktree nested in it: removing the outer reads CLEAN while destroying the nested one's uncommitted work. The dirtiness probe cannot see these victims — only the worktree registry names them. Guilt: `rm -rf <clean-outer>` holding a DIRTY nested worktree BLOCKS (fails against the pre-fix hook). Innocence: clean-outer + clean-nested is still ALLOWED."
+            },
+            "_unarmed_dirty_removal_target": {
+              "tests": [
+                "infra/claude-hooks/test_w105_nested_worktree_removal.py"
+              ],
+              "note": "Judges every VICTIM of the removal (the named target plus every registered worktree strictly inside it), not just the token the command spelled out. Previously judged the resolved target alone. (test_arm_keep_hook.py exercises this function end-to-end for the non-nested W80 cases but never names it, so it is deliberately NOT listed here — the anti-phantom rule wants a test that mentions the symbol, not one that merely happens to run through it.)"
             }
           },
           "also_covered_by": ["vaccine"]
@@ -234,6 +253,11 @@
         "scripts/test_guardrails_core_overmatch.py",
         "scripts/test_guardrails_overmatch.py"
       ]
+    },
+    "detect_secrets_content_keyed_rules": {
+      "_doc": "CONTENT_KEYED_RULES in scripts/detect_secrets_auto_triage.py — path-scoped AND content-keyed (assignment-target name) auto-triage rules, added so a detect-secrets false-positive fix can't degrade into a blanket whole-file path rule (superscar #3). PR #3127 registered the first entry: worker-plane review panel executable identity pins (sha256/cdhash).",
+      "source": "scripts/detect_secrets_auto_triage.py",
+      "tests": ["scripts/tests/test_detect_secrets_auto_triage.py"]
     },
     "under_match_sentinels": {
       "content-freshness-sentinel": {

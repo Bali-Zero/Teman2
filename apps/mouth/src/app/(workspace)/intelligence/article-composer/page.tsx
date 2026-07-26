@@ -55,16 +55,16 @@ const DRAFT_KEY = "bz_composer_draft_v2";
 // Warm Depth glassmorphism reusable styles
 const cardClass = "rounded-2xl border overflow-hidden";
 const cardStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.03)",
+  background: "rgba(35,35,40,0.65)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
-  borderColor: "rgba(255,255,255,0.07)",
+  borderColor: "var(--bz-border)",
 };
 const inputClass =
   "w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all";
 const inputBaseStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  borderColor: "rgba(255,255,255,0.07)",
+  background: "rgba(35,35,40,0.6)",
+  borderColor: "var(--bz-border)",
   color: "var(--bz-text-1)",
 };
 const inputFocusStyle: React.CSSProperties = {
@@ -384,7 +384,7 @@ export default function ArticleComposerPage() {
           {/* Left panel header */}
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+            style={{ borderColor: "var(--bz-border)" }}
           >
             <div className="flex items-center gap-2.5">
               <FileText
@@ -400,15 +400,22 @@ export default function ArticleComposerPage() {
             </div>
             <div className="flex items-center gap-2.5">
               <div
-                className={`h-2 w-2 rounded-full ${configured ? "bg-emerald-500" : "bg-red-500"}`}
+                className="h-2 w-2 rounded-full"
+                style={{
+                  background: configured
+                    ? "var(--state-success)"
+                    : "var(--state-danger)",
+                }}
               />
               {apiCost > 0 && (
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-medium border"
                   style={{
                     color: "var(--bz-accent)",
-                    borderColor: "rgba(212,132,90,0.3)",
-                    background: "rgba(212,132,90,0.08)",
+                    borderColor:
+                      "color-mix(in srgb, var(--bz-accent) 30%, transparent)",
+                    background:
+                      "color-mix(in srgb, var(--bz-accent) 8%, transparent)",
                   }}
                 >
                   ${(apiCost / 100).toFixed(4)}
@@ -424,7 +431,8 @@ export default function ArticleComposerPage() {
                 className="text-[11px] font-medium"
                 style={{ color: "var(--bz-text-2)" }}
               >
-                Article Title <span style={{ color: "#ef4444" }}>*</span>
+                Article Title{" "}
+                <span style={{ color: "var(--state-danger)" }}>*</span>
               </label>
               <input
                 value={title}
@@ -443,7 +451,8 @@ export default function ArticleComposerPage() {
                 className="text-[11px] font-medium"
                 style={{ color: "var(--bz-text-2)" }}
               >
-                Raw Content <span style={{ color: "#ef4444" }}>*</span>
+                Raw Content{" "}
+                <span style={{ color: "var(--state-danger)" }}>*</span>
               </label>
               <AutoResizeTextarea
                 value={content}
@@ -542,7 +551,7 @@ export default function ArticleComposerPage() {
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-4 text-center transition-colors hover:bg-white/[0.02]"
-                  style={{ borderColor: "rgba(255,255,255,0.1)" }}
+                  style={{ borderColor: "var(--bz-border)" }}
                 >
                   <ImageIcon
                     className="h-5 w-5"
@@ -558,7 +567,7 @@ export default function ArticleComposerPage() {
               ) : (
                 <div
                   className="relative overflow-hidden rounded-xl border"
-                  style={{ borderColor: "rgba(255,255,255,0.07)" }}
+                  style={{ borderColor: "var(--bz-border)" }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element --
                       blob:/data: preview cannot use next/image; explicit
@@ -574,7 +583,7 @@ export default function ArticleComposerPage() {
                     type="button"
                     onClick={removeCoverImage}
                     aria-label="Remove cover image"
-                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white hover:bg-red-900/80"
+                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white transition-opacity hover:opacity-85"
                   >
                     <X size={14} />
                   </button>
@@ -587,11 +596,14 @@ export default function ArticleComposerPage() {
               <div
                 className="rounded-xl border px-3 py-2.5 text-[12px]"
                 style={{
-                  background: "rgba(239,68,68,0.08)",
+                  background:
+                    "color-mix(in srgb, var(--state-danger) 8%, transparent)",
                   backdropFilter: "blur(12px)",
                   WebkitBackdropFilter: "blur(12px)",
-                  borderColor: "rgba(239,68,68,0.3)",
-                  color: "#fca5a5",
+                  borderColor:
+                    "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+                  color:
+                    "color-mix(in srgb, var(--state-danger) 55%, var(--bz-text-pure))",
                 }}
               >
                 {error}
@@ -607,12 +619,15 @@ export default function ArticleComposerPage() {
                 background:
                   loading || !configured
                     ? "rgba(255,255,255,0.06)"
-                    : "linear-gradient(135deg, var(--bz-accent), #c06a3a)",
+                    : "linear-gradient(135deg, var(--bz-accent), var(--bz-accent-hover))",
                 boxShadow:
                   loading || !configured
                     ? "none"
-                    : "0 8px 24px rgba(212,132,90,0.35)",
-                color: loading || !configured ? "var(--bz-text-2)" : "#fff",
+                    : "0 8px 24px color-mix(in srgb, var(--bz-accent) 35%, transparent)",
+                color:
+                  loading || !configured
+                    ? "var(--bz-text-2)"
+                    : "var(--bz-text-pure)",
               }}
             >
               {loading ? (
@@ -629,7 +644,7 @@ export default function ArticleComposerPage() {
       {/* ──── Vertical divider ──── */}
       <div
         className="hidden lg:block w-px self-stretch"
-        style={{ background: "rgba(255,255,255,0.06)" }}
+        style={{ background: "var(--bz-border)" }}
       />
 
       {/* ──── RIGHT PANEL: Preview / Result ──── */}
@@ -638,7 +653,7 @@ export default function ArticleComposerPage() {
           {/* Right panel header */}
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+            style={{ borderColor: "var(--bz-border)" }}
           >
             <div className="flex items-center gap-2.5">
               <Sparkles
@@ -661,8 +676,10 @@ export default function ArticleComposerPage() {
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all"
                       style={{
                         color: "var(--bz-accent)",
-                        border: "1px solid rgba(212,132,90,0.4)",
-                        background: "rgba(212,132,90,0.1)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--bz-accent) 40%, transparent)",
+                        background:
+                          "color-mix(in srgb, var(--bz-accent) 10%, transparent)",
                       }}
                     >
                       <Save size={11} /> Save
@@ -671,9 +688,12 @@ export default function ArticleComposerPage() {
                       onClick={cancelEditing}
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all"
                       style={{
-                        color: "#fca5a5",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        background: "rgba(239,68,68,0.08)",
+                        color:
+                          "color-mix(in srgb, var(--state-danger) 55%, var(--bz-text-pure))",
+                        border:
+                          "1px solid color-mix(in srgb, var(--state-danger) 30%, transparent)",
+                        background:
+                          "color-mix(in srgb, var(--state-danger) 8%, transparent)",
                       }}
                     >
                       <X size={11} /> Cancel
@@ -685,7 +705,7 @@ export default function ArticleComposerPage() {
                     className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                     style={{
                       color: "var(--bz-text-2)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <Pencil size={11} /> Edit
@@ -700,7 +720,7 @@ export default function ArticleComposerPage() {
               /* Empty / placeholder state */
               <div
                 className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center"
-                style={{ borderColor: "rgba(255,255,255,0.1)" }}
+                style={{ borderColor: "var(--bz-border)" }}
               >
                 <div
                   className="mb-4 rounded-full p-4"
@@ -781,7 +801,7 @@ export default function ArticleComposerPage() {
                     <span
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
-                        borderColor: "rgba(255,255,255,0.1)",
+                        borderColor: "var(--bz-border)",
                         background: "rgba(255,255,255,0.04)",
                         color: "var(--bz-text-2)",
                       }}
@@ -791,7 +811,7 @@ export default function ArticleComposerPage() {
                     <span
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
-                        borderColor: "rgba(255,255,255,0.1)",
+                        borderColor: "var(--bz-border)",
                         background: "rgba(255,255,255,0.04)",
                         color: "var(--bz-text-2)",
                       }}
@@ -894,10 +914,10 @@ export default function ArticleComposerPage() {
                           <span
                             className={
                               activeArticle.tldr.should_worry === "Yes"
-                                ? "text-[#fecaca]"
+                                ? "text-[color-mix(in_srgb,var(--state-danger)_40%,var(--bz-text-pure))]"
                                 : activeArticle.tldr.should_worry === "No"
-                                  ? "text-[#bbf7d0]"
-                                  : "text-[#fed7aa]"
+                                  ? "text-[color-mix(in_srgb,var(--state-success)_45%,var(--bz-text-pure))]"
+                                  : "text-[color-mix(in_srgb,var(--state-warning)_50%,var(--bz-text-pure))]"
                             }
                           >
                             {activeArticle.tldr.should_worry}
@@ -910,10 +930,10 @@ export default function ArticleComposerPage() {
                           <span
                             className={
                               activeArticle.tldr.risk_level === "High"
-                                ? "text-[#fecaca]"
+                                ? "text-[color-mix(in_srgb,var(--state-danger)_40%,var(--bz-text-pure))]"
                                 : activeArticle.tldr.risk_level === "Low"
-                                  ? "text-[#bbf7d0]"
-                                  : "text-[#fed7aa]"
+                                  ? "text-[color-mix(in_srgb,var(--state-success)_45%,var(--bz-text-pure))]"
+                                  : "text-[color-mix(in_srgb,var(--state-warning)_50%,var(--bz-text-pure))]"
                             }
                           >
                             {activeArticle.tldr.risk_level}
@@ -1093,7 +1113,7 @@ export default function ArticleComposerPage() {
                 {/* ── AI Tags ── */}
                 <div
                   className="mt-2 pt-3 border-t"
-                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                  style={{ borderColor: "var(--bz-border)" }}
                 >
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium mb-2"
@@ -1127,7 +1147,7 @@ export default function ArticleComposerPage() {
                           key={i}
                           className="rounded-full border px-2 py-0.5 text-[11px]"
                           style={{
-                            borderColor: "rgba(255,255,255,0.1)",
+                            borderColor: "var(--bz-border)",
                             background: "rgba(255,255,255,0.04)",
                             color: "var(--bz-text-2)",
                           }}
@@ -1144,8 +1164,10 @@ export default function ArticleComposerPage() {
                   <div
                     className="rounded-xl border p-3.5 flex flex-col gap-3 mt-2"
                     style={{
-                      background: "rgba(77,184,122,0.04)",
-                      borderColor: "rgba(77,184,122,0.2)",
+                      background:
+                        "color-mix(in srgb, var(--state-success) 4%, transparent)",
+                      borderColor:
+                        "color-mix(in srgb, var(--state-success) 20%, transparent)",
                     }}
                   >
                     <div
@@ -1154,7 +1176,7 @@ export default function ArticleComposerPage() {
                     >
                       <Globe
                         size={14}
-                        style={{ color: "var(--bz-green, #4db87a)" }}
+                        style={{ color: "var(--state-success)" }}
                       />
                       <span>Publish to Site</span>
                     </div>
@@ -1178,8 +1200,8 @@ export default function ArticleComposerPage() {
                           <SelectTrigger
                             className="h-8 text-[12px] rounded-xl"
                             style={{
-                              background: "rgba(255,255,255,0.04)",
-                              borderColor: "rgba(255,255,255,0.07)",
+                              background: "rgba(35,35,40,0.6)",
+                              borderColor: "var(--bz-border)",
                               color: "var(--bz-text-2)",
                             }}
                           >
@@ -1218,8 +1240,9 @@ export default function ArticleComposerPage() {
                       disabled={publishing || isEditing}
                       className="mt-1 w-full rounded-full py-1.5 text-[12px] font-medium transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
                       style={{
-                        background: "var(--bz-green, #4db87a)",
-                        color: "#052e16",
+                        background: "var(--state-success)",
+                        // Dark ink on the success fill — AA ~7:1 on anthracite
+                        color: "var(--bz-bg)",
                       }}
                     >
                       {publishing ? (
@@ -1238,7 +1261,7 @@ export default function ArticleComposerPage() {
                           href={publishedUrl}
                           target="_blank"
                           className="underline break-all"
-                          style={{ color: "var(--bz-green, #4db87a)" }}
+                          style={{ color: "var(--state-success)" }}
                         >
                           {publishedUrl}
                         </a>
@@ -1255,7 +1278,7 @@ export default function ArticleComposerPage() {
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                       style={{
                         color: "var(--bz-text-2)",
-                        border: "1px solid rgba(255,255,255,0.07)",
+                        border: "1px solid var(--bz-border)",
                       }}
                     >
                       <Copy size={11} /> Copy JSON
@@ -1265,7 +1288,7 @@ export default function ArticleComposerPage() {
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                       style={{
                         color: "var(--bz-text-2)",
-                        border: "1px solid rgba(255,255,255,0.07)",
+                        border: "1px solid var(--bz-border)",
                       }}
                     >
                       <Download size={11} /> Export

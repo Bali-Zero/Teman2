@@ -1,9 +1,12 @@
-"""Unit tests for the E33 runtime claim guard (task 1.3).
+"""Unit tests for the E33 runtime claim guard (task 1.3, armed task 2026-07-25).
 
 Covers ``check_e33_claims`` (per-pattern positives, negation guards, E33
-context gating) and ``guard_e33_answer`` (log + fallback note, never raises).
-Uses the trimmed registry fixture at ``fixtures/e33_fact_registry.json`` —
-tests never touch the sibling worktree path.
+context gating), ``guard_e33_answer``/``guard_e33_answer_detailed`` (log +
+fallback note, never raises), and ``apply_guard_enforcement`` (the pure
+abstain/HUMAN_REVIEW routing decision gated by the ``E33_CLAIM_GUARD_ENFORCE``
+kill-switch). Uses the trimmed registry fixture at
+``fixtures/e33_fact_registry.json`` — tests never touch the sibling worktree
+path.
 """
 
 from __future__ import annotations
@@ -15,11 +18,15 @@ from pathlib import Path
 import pytest
 
 from backend.services.visa_check.e33_claim_guard import (
+    E33_ABSTAIN_REASON,
     E33_FORBIDDEN_PATTERNS,
     E33_SAFE_FALLBACK_NOTE,
     LEGACY_ERROR_REF,
+    GuardOutcome,
+    apply_guard_enforcement,
     check_e33_claims,
     guard_e33_answer,
+    guard_e33_answer_detailed,
 )
 
 FIXTURE_REGISTRY = Path(__file__).parent / "fixtures" / "e33_fact_registry.json"
@@ -140,6 +147,172 @@ class TestGuardE33Answer:
 
     def test_empty_answer_passthrough(self) -> None:
         assert guard_e33_answer("") == ""
+
+
+class TestGuardE33AnswerDetailed:
+    """``guard_e33_answer_detailed`` must be byte-identical to
+    ``guard_e33_answer`` on ``.answer`` and additionally expose the raw
+    violations the enforcement decision needs.
+    """
+
+    def test_positive_corpus_covers_all_ten_patterns(self) -> None:
+        """Sanity check on the corpus itself: every registered pattern_id
+        has at least one GUILT case — the precondition the two corpus tests
+        below rely on."""
+        covered = {pid for pid, _ in POSITIVE_CASES}
+        registered = {p.pattern_id for p in E33_FORBIDDEN_PATTERNS}
+        assert covered == registered, (
+            f"POSITIVE_CASES does not cover exactly the registered patterns: "
+            f"missing={registered - covered} extra={covered - registered}"
+        )
+
+    @pytest.mark.parametrize(("pattern_id", "text"), POSITIVE_CASES)
+    def test_guilt_case_reports_violation(self, pattern_id: str, text: str) -> None:
+        """GUILT corpus (10/10 patterns): each forbidden claim must trip the
+        detailed guard, append the note, and never touch the model's own text."""
+        outcome = guard_e33_answer_detailed(text)
+        assert outcome.has_violation
+        assert pattern_id in {v.pattern_id for v in outcome.violations}
+        assert outcome.answer.startswith(text.rstrip())
+        assert E33_SAFE_FALLBACK_NOTE in outcome.answer
+
+    @pytest.mark.parametrize("text", NEGATIVE_CASES)
+    def test_innocence_case_reports_no_violation(self, text: str) -> None:
+        """INNOCENCE corpus: adjacent legitimate phrasing (correct negations,
+        no-E33-context mentions, empty string) must never trip the guard —
+        answer passed through byte-for-byte, no note appended."""
+        outcome = guard_e33_answer_detailed(text)
+        assert not outcome.has_violation
+        assert outcome.violations == ()
+        assert outcome.answer == text
+
+    def test_outcome_is_immutable_and_stdlib_only(self) -> None:
+        outcome = guard_e33_answer_detailed(_E33 + "deposit at any Indonesian bank.")
+        assert isinstance(outcome, GuardOutcome)
+        with pytest.raises(Exception):  # frozen dataclass -> FrozenInstanceError
+            outcome.answer = "tampered"  # type: ignore[misc]
+
+    def test_guard_e33_answer_and_detailed_agree_on_text(self) -> None:
+        for text in [*[t for _, t in POSITIVE_CASES], *NEGATIVE_CASES]:
+            assert guard_e33_answer(text) == guard_e33_answer_detailed(text).answer
+
+
+class TestApplyGuardEnforcement:
+    """Pure decision function — no I/O, no CoreResult. GUILT = violation
+    found AND kill-switch armed routes to abstain; INNOCENCE = every other
+    combination (switch off, or no violation) leaves abstain untouched."""
+
+    # --- GUILT: enforcement fires ---
+    def test_violation_plus_enforce_sets_new_reason(self) -> None:
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=True, existing_abstain_reason=None
+        )
+        assert reason == E33_ABSTAIN_REASON
+
+    def test_violation_plus_enforce_combines_with_existing_reason(self) -> None:
+        """A query that already abstained on low evidence score must keep
+        that reason visible, not have it silently clobbered."""
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=True, existing_abstain_reason="low_confidence"
+        )
+        assert reason == f"low_confidence+{E33_ABSTAIN_REASON}"
+
+    # --- INNOCENCE: enforcement must NOT fire ---
+    def test_violation_but_kill_switch_off_is_noop(self) -> None:
+        """The default (dark-ship) shape: a real violation, switch OFF ->
+        no abstain routing. This is the CURRENT behaviour the kill-switch
+        must preserve by default."""
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=False, existing_abstain_reason=None
+        )
+        assert reason is None
+
+    def test_no_violation_even_when_armed_is_noop(self) -> None:
+        """A clean, legitimate answer must never be routed to abstain even
+        when enforcement is armed — the guard only acts on real violations."""
+        reason = apply_guard_enforcement(
+            has_violation=False, enforce=True, existing_abstain_reason=None
+        )
+        assert reason is None
+
+    def test_no_violation_and_switch_off_is_noop(self) -> None:
+        reason = apply_guard_enforcement(
+            has_violation=False, enforce=False, existing_abstain_reason="low_confidence"
+        )
+        assert reason is None
+
+
+class TestApplyE33ClaimGuardCallSite:
+    """Integration test against the real orchestrator_core.py wiring
+    (``_apply_e33_claim_guard``), using a bare ``CoreResult`` — no
+    ``OrchestratorCore``/``AgentState`` construction needed. Proves the
+    kill-switch's default-OFF behaviour end-to-end, not just via the pure
+    helper in isolation.
+    """
+
+    def test_default_kill_switch_is_off(self) -> None:
+        """Module-level constant must default to False when
+        E33_CLAIM_GUARD_ENFORCE is unset — 'ship dark' precondition."""
+        from backend.services.rag.agentic import orchestrator_core as oc
+
+        assert oc._E33_CLAIM_GUARD_ENFORCE is False
+
+    def test_violation_default_off_appends_note_but_does_not_abstain(self) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        result = CoreResult(answer=_E33 + "deposit at any Indonesian bank.")
+        oc._apply_e33_claim_guard(result)
+
+        assert E33_SAFE_FALLBACK_NOTE in result.answer
+        assert result.abstain is False
+        assert result.abstain_reason is None
+
+    def test_violation_armed_routes_to_abstain(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        result = CoreResult(answer=_E33 + "with our package, approval is guaranteed.")
+        oc._apply_e33_claim_guard(result)
+
+        assert result.abstain is True
+        assert result.abstain_reason == E33_ABSTAIN_REASON
+        assert E33_SAFE_FALLBACK_NOTE in result.answer  # note-append still happens
+
+    def test_violation_armed_preserves_existing_abstain_reason(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        result = CoreResult(
+            answer=_E33 + "with our package, approval is guaranteed.",
+            abstain=True,
+            abstain_reason="low_confidence",
+        )
+        oc._apply_e33_claim_guard(result)
+
+        assert result.abstain is True
+        assert result.abstain_reason == f"low_confidence+{E33_ABSTAIN_REASON}"
+
+    def test_clean_answer_armed_does_not_abstain(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """INNOCENCE at the call site: even with enforcement armed, a
+        legitimate answer must sail through untouched — the failure mode of
+        a false positive here is 'parked for human review', not this path
+        firing on correct text."""
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        clean = _E33 + "first grant is up to 5 years; it does not authorize employment."
+        result = CoreResult(answer=clean)
+        oc._apply_e33_claim_guard(result)
+
+        assert result.answer == clean
+        assert result.abstain is False
+        assert result.abstain_reason is None
 
 
 class TestRegistryFixture:
