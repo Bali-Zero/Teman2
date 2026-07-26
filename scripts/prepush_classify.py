@@ -81,6 +81,56 @@ inputs, CONVERGED findings):
   `.claude/skills/modus/PENDING-ARMS.md`, owner = orchestrator session,
   non-blocking.
 
+v3 EXTENSION (2026-07-26, task #43): MEASURED, not hypothetical — a fleet
+night where nearly every diff touched CI/guards/scripts (task #16's
+scripts/tests/ sweep, #39's .husky/pre-push fix, #43 itself) drove up to
+13 concurrent `pytest backend/tests/` suites on a 10-core M5 laptop, one
+convoy 54min in and still climbing (~98min projected). Root cause: the
+allowlist did not yet recognize two path classes that are provably
+INNOCENT with respect to `pytest backend/tests/` specifically — the exact
+gate this module exists to skip:
+
+  - `.github/workflows/*.yml` — a workflow file is never imported by, or
+    collected into, a `pytest backend/tests/` run; it has its own gates
+    (`actionlint`, hot-zone enforcement) for its own correctness. The
+    PRE-EXISTING `.github/workflows/tests.yml` entry in
+    NEVER_INNOCENT_EXACT_PATHS is checked FIRST and is untouched by this
+    broader rule — editing the workflow that DEFINES the required test
+    run still forces full, unconditionally (proof:
+    test_edge_never_innocent_exact_paths_are_not_on_the_allowlist, which
+    iterates the exact-path set generically and would fail if this
+    ordering ever broke).
+  - `scripts/tests/*.py` — the 235-file suite audited in task #16, tests
+    OF the ops/immune-system scripts under the repo-root `scripts/`
+    directory. VERIFIED (not assumed) structurally incapable of affecting
+    `pytest backend/tests/`'s outcome: (a) `.husky/pre-push` invokes it as
+    `( cd apps/backend-rag && ... pytest backend/tests/ ... )` — the
+    collection root is `apps/backend-rag/backend/tests/`, a different
+    filesystem branch entirely from repo-root `scripts/tests/`; (b) a
+    repo-wide grep for any import of the repo-root `scripts.tests`
+    package from anywhere under `apps/backend-rag/` returns zero real
+    hits (the only matches are prose in comments/docstrings naming the
+    file, and unrelated code in the OTHER, differently-nested
+    `apps/backend-rag/backend/tests/scripts/` directory, which resolves
+    `from scripts.X import Y` against `apps/backend-rag/scripts/` per its
+    own conftest.py — a same-named but structurally unrelated tree, not
+    to be confused with the one this rule allowlists).
+    `scripts/tests/conftest.py` stays forced-full regardless (the
+    directory-independent NEVER_INNOCENT_BASENAMES net, checked before
+    any allowlist rule); `scripts/tests/__init__.py` is verified empty
+    and additionally unreachable by the same import-chain argument;
+    `scripts/tests/fixtures/` is verified to contain only `.md` fixture
+    data, no `.py`, so the `.py`-suffix scoping does not admit anything
+    there either; the one `.sh` file in the directory
+    (`test_prepush_failclosed.sh`) is out of scope for this suffix rule
+    and correctly stays unknown -> full, conservative by construction.
+
+  Verified by piping real path lists through the CLI end-to-end, not by
+  reading the code and reasoning about it (mandate, task #43) — see the
+  new guilt+innocence pairs in scripts/tests/test_prepush_classify.py and
+  the direct `echo ... | python3 scripts/prepush_classify.py` runs logged
+  in the task #43 PR body.
+
 CONTRACT
 --------
 Input:  a list of repo-relative file paths, one per line, via:
@@ -157,7 +207,11 @@ VERDICT_SKIP = "skip-backend"
 # old bare-prefix ALLOWLIST_INNOCENT_PREFIXES into the suffix-scoped
 # ALLOWLIST_PREFIX_SUFFIX_PAIRS mechanism (MUST-FIX: extension-blindness),
 # added `..`-traversal + embedded-newline rejection (HARDENING-2).
-ALLOWLIST_VERSION = 2
+# v3 (2026-07-26, task #43): added .github/workflows (.yml) and
+# scripts/tests (.py) — two path classes measured (not assumed) to be
+# structurally incapable of affecting `pytest backend/tests/` — see the
+# module-docstring "v3 EXTENSION" section above for the verification.
+ALLOWLIST_VERSION = 3
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -227,6 +281,39 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         EXCLUDED by this suffix scoping — they are not on
 #                         the allowed-suffix list, so they fall to
 #                         "unknown -> full" like any other .py change would.
+#   .github/workflows/**   v3 (task #43): scoped to `.yml` ONLY. A workflow
+#                         file is never imported by or collected into a
+#                         `pytest backend/tests/` run — see the module
+#                         docstring's "v3 EXTENSION" for the full argument.
+#                         `.github/workflows/tests.yml` itself is exempted
+#                         from this rule via NEVER_INNOCENT_EXACT_PATHS
+#                         (checked BEFORE this loop, so it still forces
+#                         full). The 1 real .txt file verified living in
+#                         this SAME directory
+#                         (catE-paid-anthropic-baseline.txt) is correctly
+#                         EXCLUDED by suffix scoping. Nothing outside
+#                         .github/workflows/ (e.g. .github/CODEOWNERS,
+#                         .github/actions/**) is admitted by this rule —
+#                         the prefix is workflows/ specifically, not .github
+#                         wholesale.
+#   scripts/tests/**       v3 (task #43): scoped to `.py` ONLY. The 235-file
+#                         suite audited in task #16 — tests OF the repo's
+#                         ops/immune-system scripts, verified structurally
+#                         unreachable from `pytest backend/tests/` (module
+#                         docstring, "v3 EXTENSION"). `conftest.py` under
+#                         this directory still forces full regardless (the
+#                         directory-independent NEVER_INNOCENT_BASENAMES
+#                         net, checked before this loop).
+#                         `scripts/tests/__init__.py` is verified empty and
+#                         admitted by this suffix rule like any other .py
+#                         file here — deliberate, not an oversight.
+#                         `scripts/tests/fixtures/` is verified to contain
+#                         only .md fixture data (no .py), so this scoping
+#                         does not admit anything from it. The 1 real .sh
+#                         file verified living in this SAME directory
+#                         (test_prepush_failclosed.sh) is correctly
+#                         EXCLUDED by suffix scoping — falls to
+#                         "unknown -> full" like any other .sh change would.
 #
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
@@ -250,6 +337,8 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (".claude/commands", (".md",)),
     (".claude/agents", (".md",)),
     ("infra/launchagents", (".plist", ".sh")),
+    (".github/workflows", (".yml",)),
+    ("scripts/tests", (".py",)),
 )
 
 

@@ -279,6 +279,31 @@ def test_aggregation_note_left_untouched_documented_stale():
 # ---------------------------------------------------------------------------
 
 
+def _all_cure_spec_codes() -> set[str]:
+    """Union of every code any committed cure spec claims to touch.
+
+    Deliberately duplicated from `test_kbli_lot2_56101_metadata_cure.py` rather than
+    imported: these lot files are written to stay self-contained and independently
+    readable (see this file's own header). Handles the four spec shapes in this repo —
+    {"codes": [{"code": ...}]}, a single top-level "code", a dict keyed by code with
+    leading-underscore metadata, and the descriptive manifests emitted by append-style
+    compilers.
+    """
+    codes: set[str] = set()
+    spec_dir = REPO_ROOT / "scripts/kbli_filiera/cure_specs"
+    for spec_path in sorted(spec_dir.glob("*.json")):
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        if isinstance(spec.get("codes"), list):
+            codes.update(
+                str(e["code"]) for e in spec["codes"] if isinstance(e, dict) and "code" in e
+            )
+        elif "code" in spec:
+            codes.add(str(spec["code"]))
+        else:
+            codes.update(k for k in spec if not k.startswith("_"))
+    return codes
+
+
 def test_canonical_diff_vs_origin_main_is_subset_of_residual_codes():
     main_by_code = _git_show_by_code("origin/main", CANONICAL_REL)
     disk_by_code = _load_by_code(REPO_ROOT / CANONICAL_REL)
@@ -287,9 +312,21 @@ def test_canonical_diff_vs_origin_main_is_subset_of_residual_codes():
         "never add/remove records."
     )
     changed = {code for code in main_by_code if main_by_code[code] != disk_by_code[code]}
-    assert changed <= set(RESIDUAL_CODES), (
-        f"canonical diff vs origin/main touches {sorted(changed - set(RESIDUAL_CODES))} "
-        f"beyond the intended {RESIDUAL_CODES} — scope leak."
+    # The allowlist is every code a COMMITTED cure spec claims, not this lot's two.
+    # A literal `changed <= RESIDUAL_CODES` holds only while this branch's sole
+    # divergence from main is this lot — it breaks the instant any legitimate,
+    # independently-adjudicated sibling cure also lives on the branch, and then blames
+    # that cure for a "scope leak" it did not commit. `test_kbli_lot2_56101_metadata_
+    # cure.py::test_canonical_diff_vs_origin_main_is_exactly_56101` was generalized off
+    # the same literal on 2026-07-19 for the same reason; this twin kept the defect
+    # until 2026-07-26. Broadening to the spec-derived superset (rather than dropping
+    # the check, which would silently accept an arbitrary unrelated mutation) keeps the
+    # innocence guarantee this test exists for.
+    allowed = set(RESIDUAL_CODES) | _all_cure_spec_codes()
+    assert changed <= allowed, (
+        f"canonical diff vs origin/main touches {sorted(changed - allowed)} which "
+        f"neither this lot ({RESIDUAL_CODES}) nor any committed cure spec under "
+        "scripts/kbli_filiera/cure_specs/ claims — scope leak."
     )
 
 

@@ -20,7 +20,68 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-25 — keep current)
+## 1. LIVE STATE (last update 2026-07-26 — keep current)
+
+- **🗣️ CLIENT VOICE: persona + greeting SHIPPED & PROVEN LIVE; deny narration NOT YET (2026-07-26).**
+  Three things landed and were verified INSIDE the running container (`flyctl ssh` pinned to
+  `--machine 1781e5eda03438`; the machine is picked at RANDOM without it), never from a merge status.
+  - **`ZANTARA_PROMPT_VERSION=v5` ARMED in Fly secrets** (was `v4`) — the audience-composed prompt
+    is now the live one. Container-verified: `PROMPT_VERSION_ACTIVE=v5`, `crm_query` present in the
+    team/creator builds (37063/37483 chars) and **absent from client** (36258) — the C20 asymmetry
+    is real in prod, not just in tests. Wiring confirmed deployed: `audience_derived=1`,
+    `get_master_template(audience)`×3, `skipping legacy persona prepend`×1.
+  - **Persona leak CURED + proven.** The pre-arm answer told a client _"so we can get this over to
+    the client"_; post-arm the same probe passes. This was inert until the secret flip — the deploy
+    alone would not have done it.
+  - **Greeting by the founder's codename CURED + proven (PR #3182).** An anonymous caller was
+    getting _"Salut Zero, …"_. NOT a memory bleed — ruled out by measurement: `memory_facts`,
+    `episodic_memories` and `collective_memories` all returned **0 rows** for that user id.
+    v4's `GREETING_RULES` hardcodes the name in all four worked flows while rule 1 of the SAME block
+    correctly says `[Name]`. Now name-neutralized for ALL audiences via fail-loud
+    `GREETING_NAME_NEUTRALIZATIONS`; container-verified 4 → **0** name-greetings, `[Name]` = 6.
+  - **Deny narration: measured, NOT cured — do not report it as fixed (PR #3170).** Live tally,
+    anonymous caller asking _"Quanti clienti attivi abbiamo?"_:
+
+    |                                          | pre-fix (N=5) | post-fix (N=10) |
+    | ---------------------------------------- | ------------- | --------------- |
+    | `sources` clean — server-side tourniquet | 5/5           | **10/10**       |
+    | tool-name / auth-model / credential leak | 0/5           | **0/10**        |
+    | names the CRM                            | 3/5           | 3/10            |
+    | promises to obtain the count             | 4/5           | 3/10            |
+
+    **No data leaks in any run** — the server-side layer holds 100%. What remains is narration:
+    directionally better, but pooling both post-fix runs gives 7/20 vs 4/5 (Fisher p≈0.08) —
+    suggestive, not proven. The root cause found by cross-family adversarial review was protocol 2's
+    own unscoped fallback (_"or say the case needs verification with the team"_), now conditioned;
+    the residue is prompt-soft by nature. Next experiment, in this order: add counter-examples back
+    (dropped in #3170 for anti-priming consistency) and re-measure.
+
+- **📏 METHOD — two traps this campaign paid for, do not repeat:**
+  - **A single sample is not a baseline.** An "8/8 pass" under v4 vs "5/8" under v5 nearly got
+    reported as a regression; N=5 showed the surface is nondeterministic. Compare TALLIES.
+  - **Needle census beats intuition.** `numero esatto` appears **0** times in the prompt and leaked
+    **4/5**; `database` appears **8** times and leaked **1/5**. Frequency does not predict leakage,
+    which is how the priming theory was refuted and the real licensor found. See memory
+    `lesson_the_load_bearing_rule_is_not_the_named_rule_2026_07_26`.
+
+- **🇫🇷 OPEN — language drift is a SYMPTOM of a retrieval miss, not a prompt defect (2026-07-26).**
+  Base rate measured 8/10; **every miss is the same question** (_"My KITAS extension was rejected…"_,
+  1/3 correct) — `en-remote` and `en-pma` are 3/3, Italian control OK. That query is also the one
+  whose retrieval returns off-topic sources (`PPh 21`, `PPN/VAT`, `E31B VISA KELUARGA` for a
+  rejected-extension question), and its one English run emitted the raw KG scaffold instead of prose.
+  Working hypothesis: when retrieval misses, generation degrades and instruction adherence goes with
+  it. **Fix the KB coverage gap for rejection/appeal-shaped queries FIRST**; only then consider
+  hardening the language rule. Memory: `discovery_bot_language_protocol_violated_stochastically_2026_07_26`.
+  GOTCHA that cost real time: this drift silently broke an unrelated probe — an escalation check with
+  English-only markers reported `0/3` while the answers _did_ escalate, in French. **Any assertion on
+  generated text must be language-agnostic.**
+
+- **🧟 `collective_memories` is a DEAD ORGAN (2026-07-26).** `get_collective_context()` reads table
+  `collective_memories` = **0 rows**, while `collective_memory` (singular) holds 6. Every request
+  pays for the lookup and injects nothing; nothing alarms. Also note it is called with **no user and
+  no query filter** (`limit=10`, global top-N by confidence) — if that table is ever populated, it
+  becomes a cross-audience channel into anonymous clients' prompts. Gate it by audience before
+  filling it.
 
 - **📐 THE SPEC IS NOW THE PLAN OF RECORD — and it is being EXECUTED (2026-07-25, Fable/M5).**
   `research/operations/2026-07-24-zantara-bot-consultant-assistant-spec.md` (added by this PR) is
