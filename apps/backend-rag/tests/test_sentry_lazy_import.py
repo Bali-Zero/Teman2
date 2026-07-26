@@ -6,13 +6,39 @@ import sys
 import textwrap
 from pathlib import Path
 
-# `apps/backend-rag` — the only directory from which `import backend` resolves.
-# Both probes below pin `cwd` to it explicitly instead of inheriting the pytest
-# session's ambient cwd: these tests assert something about the IMPORT GRAPH, and
-# they must not be able to fail for a reason that has nothing to do with it. A
-# module-level `os.chdir` in an unrelated test file used to move the session cwd
-# at collection time and made both of them fail with `No module named 'backend'`.
-_BACKEND_RAG_ROOT = Path(__file__).resolve().parents[1]
+# apps/backend-rag — the directory `backend` is a package inside.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _guarded_child(script: str, timeout: int, **env_overrides: str):
+    """Run the guarded probe with `backend` importable, from ANY cwd.
+
+    These probes run `python -c`, which puts the CURRENT DIRECTORY on the
+    child's sys.path — never PYTHONPATH, and never pytest's own
+    `pythonpath = .` (that setting feeds pytest's sys.path, it does not
+    export anything to a subprocess). So the tests passed when pytest
+    happened to be invoked from apps/backend-rag and failed with
+    `ModuleNotFoundError: No module named 'backend'` when it was not — which
+    is what CI does. They were red on main and, as a REQUIRED check, blocked
+    every open PR regardless of its diff.
+
+    Anchoring cwd to BACKEND_ROOT is the fix; PYTHONPATH is belt-and-braces
+    for the day someone switches these probes to `-m`, where cwd is not
+    added to sys.path.
+    """
+    existing = os.environ.get("PYTHONPATH", "")
+    pythonpath = os.pathsep.join(p for p in (str(BACKEND_ROOT), existing) if p)
+    env = {**os.environ, "PYTHONPATH": pythonpath, **env_overrides}
+    return subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        cwd=BACKEND_ROOT,
+        env=env,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        timeout=timeout,
+    )
 
 
 def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
@@ -36,17 +62,7 @@ def test_sentry_config_import_skips_sentry_sdk_when_disabled() -> None:
         module.init_sentry()
         """
     )
-    env = {**os.environ, "SKIP_SENTRY_INIT": "1"}
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        check=False,
-        env=env,
-        cwd=_BACKEND_RAG_ROOT,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True,
-        timeout=15,
-    )
+    result = _guarded_child(script, timeout=15, SKIP_SENTRY_INIT="1")
     assert result.returncode == 0, result.stdout + result.stderr
 
 
@@ -75,20 +91,8 @@ def test_init_sentry_with_dsn_does_not_block_startup() -> None:
         print(f"returned_in={elapsed:.3f}")
         """
     )
-    env = {
-        **os.environ,
-        "SENTRY_DSN": "not-a-real-dsn",
-        "SKIP_SENTRY_INIT": "",
-    }
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        check=False,
-        env=env,
-        cwd=_BACKEND_RAG_ROOT,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True,
-        timeout=10,
+    result = _guarded_child(
+        script, timeout=10, SENTRY_DSN="not-a-real-dsn", SKIP_SENTRY_INIT=""
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "returned_in=" in result.stdout

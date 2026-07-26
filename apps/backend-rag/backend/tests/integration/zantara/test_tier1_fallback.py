@@ -24,17 +24,14 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-# NOTE: there used to be an `os.chdir(backend_path / "backend")` here, labelled
-# "change to backend directory for imports". It never helped the imports below
-# (the sys.path entry above is what resolves `backend.*`) and it ran at COLLECTION
-# time, so it moved the cwd of the WHOLE pytest session — permanently, for every
-# test collected after it. Any test that shells out and relies on the cwd then saw
-# `apps/backend-rag/backend`, where `import backend` does not resolve. That is
-# exactly how `tests/test_sentry_lazy_import.py` failed the moment #3227 armed it.
-# Do not reintroduce it: process-global state set at import time is invisible to
-# the tests it breaks. `backend/tests/compliance/test_no_module_level_chdir.py`
-# now fails the suite if it comes back.
-
+# NO os.chdir here. This module used to chdir into backend/ "for imports" at import
+# time — but the sys.path.insert above is what makes `from backend...` resolve, and a
+# module-level chdir is never undone: it moves the cwd of the WHOLE pytest process for
+# every test collected after it. Anything that then reads a relative path in a child
+# process breaks. That is exactly how `PYTHONPATH=.` in CI came to mean
+# apps/backend-rag/backend, so tests/test_sentry_lazy_import.py's `python -c` subprocess
+# died on `ModuleNotFoundError: No module named 'backend'` — a test three directories
+# away, failing for a line in this file. test_no_global_cwd_mutation.py pins it.
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.reasoning_utils import (
     get_critical_domain_type,

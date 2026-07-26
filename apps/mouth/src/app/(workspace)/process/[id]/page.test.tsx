@@ -108,11 +108,12 @@ vi.mock("./RequiredDocumentsCard", () => ({
   ),
 }));
 
-// NOTE: money is rendered by <Money>, which imports formatIDR from
-// "../utils/currency" — a different specifier than "@balizero/core/utils".
-// A vi.mock on the barrel never reached the component, so these assertions
-// must match the real Intl output: "Rp 1.750.000" (id-ID, IDR, 0 decimals).
-// Testing Library's default normalizer collapses the NBSP to a plain space.
+// Money is deliberately NOT mocked. An earlier draft stubbed "@balizero/core/utils"
+// with `formatIDR: (n) => `IDR ${n}`` and asserted "IDR 1750000" — but the page renders
+// <Money>, and Money.tsx imports formatIDR from "../utils/currency", a different module
+// than the "./utils/index.ts" barrel that specifier resolves to. The stub bound to
+// nothing, the real formatter ran, and both assertions failed in CI. Assert the text the
+// user actually sees instead; hr/bonuses/page.test.tsx exercises <Money> the same way.
 import CaseDetailPage from "./page";
 
 const profile = {
