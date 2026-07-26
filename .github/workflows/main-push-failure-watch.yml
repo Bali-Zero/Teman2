@@ -259,12 +259,31 @@ jobs:
     # producing verdicts at all", because it only ever sees individual
     # events, never the gap between them.
     #
-    # This job asks a different question, every 15 minutes: how long
-    # since main's tests.yml last produced a REAL conclusion (success,
-    # failure, or timed_out — not cancelled) on a push or schedule run?
-    # It alerts only once the gap exceeds THRESHOLD_MINUTES, then again
-    # every ESCALATION_MINUTES while the gap keeps growing — "one alert
-    # per outage", not one per 15-minute check, computed purely from
+    # This job asks a different question, every 15 minutes: is there a
+    # commit on `main` newer than the last REAL tests.yml conclusion
+    # (success, failure, or timed_out — not cancelled, on a push or
+    # schedule run), and if so, how long has it sat unjudged?
+    #
+    # Deliberately NOT "how long since the last verdict, period" — that
+    # was the first version of this job, caught before shipping: with
+    # tests.yml's schedule now every 2h (task #37), a quiet main with no
+    # pushes only ever gets a fresh verdict every ~2h, so a naive
+    # verdict-to-now clock would breach THRESHOLD_MINUTES=45 on EVERY
+    # ordinary quiet stretch and re-alert on every escalation boundary
+    # for hours — alarm fatigue built in on day one, exactly the failure
+    # mode this job exists to avoid from the opposite direction. A main
+    # that hasn't moved since its last verdict is fully verified no
+    # matter how much wall-clock time has passed; there is nothing to
+    # alarm about. So staleness is measured from the moment main's HEAD
+    # first diverged from the last-verified commit, not from the verdict
+    # timestamp itself — a fresh push gets a 45-minute grace period
+    # before this job says anything, and a quiet main never breaches at
+    # all, because `current head == last verified sha` short-circuits to
+    # zero staleness regardless of how old that verdict is.
+    #
+    # It alerts once the gap exceeds THRESHOLD_MINUTES, then again every
+    # ESCALATION_MINUTES while the gap keeps growing — "one alert per
+    # outage", not one per 15-minute check, computed purely from
     # timestamp arithmetic so there is no external state to persist or to
     # go stale itself.
     #
@@ -298,24 +317,65 @@ jobs:
           CHECK_INTERVAL_MINUTES=15
           ESCALATION_MINUTES=60
 
+          CURRENT_HEAD=$(gh api "repos/${REPO}/commits/main" --jq '.sha')
+
           # Lookback of 30 completed runs comfortably covers even a long
           # cancellation streak (tonight's worst was 15 of 20) while
           # staying a single cheap API call.
-          LAST_TS=$(gh api "repos/${REPO}/actions/workflows/tests.yml/runs?branch=main&status=completed&per_page=30" \
-            --jq '[.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="success" or .conclusion=="failure" or .conclusion=="timed_out"))] | sort_by(.updated_at) | last | .updated_at // empty')
+          LAST_RUN=$(gh api "repos/${REPO}/actions/workflows/tests.yml/runs?branch=main&status=completed&per_page=30" \
+            --jq '[.workflow_runs[] | select((.event=="push" or .event=="schedule") and (.conclusion=="success" or .conclusion=="failure" or .conclusion=="timed_out"))] | sort_by(.updated_at) | last')
+          LAST_VERIFIED_SHA=$(echo "${LAST_RUN}" | jq -r '.head_sha // empty')
+          LAST_VERIFIED_AT=$(echo "${LAST_RUN}" | jq -r '.updated_at // empty')
 
           NOW_EPOCH=$(date -u +%s)
-          if [ -z "${LAST_TS}" ]; then
-            # No qualifying run at all within the lookback window — treat
-            # as maximally stale rather than silently passing.
+          UNVERIFIED_SHA=""
+
+          if [ -z "${LAST_VERIFIED_SHA}" ]; then
+            # No qualifying run at all within the lookback window — we
+            # don't even know main's last verified state, so anything on
+            # main is by definition long-unverified. Maximally stale.
             STALE_MINUTES=999999
+            UNVERIFIED_SHA="${CURRENT_HEAD}"
+          elif [ "${LAST_VERIFIED_SHA}" = "${CURRENT_HEAD}" ]; then
+            # main's current tip IS what was last verified — fully caught
+            # up, no matter how long ago that verdict ran. THE FIX: a
+            # 2-hour-old verdict on an unchanged main is not staleness,
+            # it's main correctly having nothing new to test. Without this
+            # branch, a quiet night with tests.yml's 2h schedule cadence
+            # would breach THRESHOLD_MINUTES on every ordinary gap between
+            # scheduled runs and re-alert on every escalation boundary —
+            # caught in review before shipping, not by a test.
+            STALE_MINUTES=0
           else
-            LAST_EPOCH=$(date -u -d "${LAST_TS}" +%s)
-            STALE_MINUTES=$(( (NOW_EPOCH - LAST_EPOCH) / 60 ))
+            # main has moved past what was last verified. Staleness is
+            # measured from when the FIRST unverified commit landed, not
+            # from the old verdict's own timestamp — a main that gained
+            # one commit five minutes ago gets its full grace period
+            # instead of inheriting whatever age the previous verdict
+            # happened to have. `compare` orders `commits[]` oldest-first
+            # (base-exclusive, head-inclusive, matches `git log
+            # base..head`); known residual gap, not solved here: it caps
+            # at 250 commits, irrelevant at this repo's push cadence but
+            # named so it isn't mistaken for unconditional.
+            FIRST_UNVERIFIED_AT=$(gh api "repos/${REPO}/compare/${LAST_VERIFIED_SHA}...${CURRENT_HEAD}" \
+              --jq '.commits[0].commit.committer.date // empty')
+            if [ -z "${FIRST_UNVERIFIED_AT}" ]; then
+              # SHAs differ but compare returned no commits — shouldn't
+              # happen; defensive fallback, not a silent pass.
+              STALE_MINUTES=999999
+            else
+              FIRST_UNVERIFIED_EPOCH=$(date -u -d "${FIRST_UNVERIFIED_AT}" +%s)
+              STALE_MINUTES=$(( (NOW_EPOCH - FIRST_UNVERIFIED_EPOCH) / 60 ))
+            fi
+            UNVERIFIED_SHA="${CURRENT_HEAD}"
           fi
 
-          echo "stale_minutes=${STALE_MINUTES}" >> "$GITHUB_OUTPUT"
-          echo "last_verdict_at=${LAST_TS}" >> "$GITHUB_OUTPUT"
+          {
+            echo "stale_minutes=${STALE_MINUTES}"
+            echo "last_verified_sha=${LAST_VERIFIED_SHA}"
+            echo "last_verified_at=${LAST_VERIFIED_AT}"
+            echo "unverified_sha=${UNVERIFIED_SHA}"
+          } >> "$GITHUB_OUTPUT"
 
           # STALE_MINUTES==999999 (no qualifying run found at all) is
           # handled BEFORE the escalation-boundary math, not through it:
@@ -340,13 +400,15 @@ jobs:
             fi
           fi
 
-      - name: Telegram alert — main has produced no test verdict in a while
+      - name: Telegram alert — main has an unverified commit sitting too long
         if: steps.check.outputs.should_alert == 'true'
         env:
           BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           STALE: ${{ steps.check.outputs.stale_minutes }}
-          LAST: ${{ steps.check.outputs.last_verdict_at }}
+          LAST_SHA: ${{ steps.check.outputs.last_verified_sha }}
+          LAST_AT: ${{ steps.check.outputs.last_verified_at }}
+          UNVERIFIED_SHA: ${{ steps.check.outputs.unverified_sha }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -354,8 +416,10 @@ jobs:
             echo "::warning::Telegram secrets missing — cannot alert"
             exit 0
           fi
-          LAST_DISPLAY="${LAST:-never (no qualifying run found)}"
-          TEXT="main has had no completed tests.yml verdict (success/failure) in ${STALE} min — last: ${LAST_DISPLAY}. Runs may be queued-then-cancelled under load (task #41) -- https://github.com/${REPO}/actions/workflows/tests.yml?query=branch%3Amain"
+          LAST_DISPLAY="${LAST_SHA:-unknown}"
+          [ -n "${LAST_AT}" ] && LAST_DISPLAY="${LAST_DISPLAY} (${LAST_AT})"
+          SHORT_UNVERIFIED="${UNVERIFIED_SHA:0:7}"
+          TEXT="main has an unverified commit (${SHORT_UNVERIFIED}) with no completed tests.yml verdict in ${STALE} min — last verified: ${LAST_DISPLAY}. Runs may be queued-then-cancelled under load (task #41) -- https://github.com/${REPO}/commits/main"
           curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
             --data-urlencode "chat_id=${CHAT}" \
             --data-urlencode "text=${TEXT}"

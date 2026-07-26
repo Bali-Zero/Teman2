@@ -37,14 +37,30 @@ Task #41 verdict-liveness, why it exists: a REACTIVE per-event watcher
 with `cancelled` excluded cannot distinguish "one routine supersede" from
 "main has stopped producing verdicts at all" — it only ever sees
 individual events, never the gap between them. `verdict-liveness` instead
-polls every 15 minutes and alerts once the gap since the last real
-(non-cancelled) tests.yml conclusion on main exceeds a threshold, then
+polls every 15 minutes and alerts once main has a commit that has sat
+without a real (non-cancelled) tests.yml conclusion for too long, then
 again on a bounded escalation cadence — "one alert per outage", computed
 purely from timestamp arithmetic, no external state.
 
+Design correction caught in review, before shipping (team-lead, not a
+test): the FIRST version of `verdict-liveness` measured staleness as
+"now minus the last verdict's own timestamp" — verdict-to-now, not
+commit-to-verdict. With tests.yml's schedule cadence at every 2 hours
+(task #37), a quiet main with no pushes only ever gets a fresh verdict
+every ~2h, so that measure would breach THRESHOLD_MINUTES=45 on EVERY
+ordinary quiet stretch and re-alert on every escalation boundary for
+hours — alarm fatigue built in on day one, from the opposite direction of
+the `cancelled`-exclusion bug this job exists to fix. The corrected
+design compares main's CURRENT head commit against the last-verified
+commit's SHA: if they're equal, main is fully caught up regardless of how
+old that verdict is (zero staleness); if they differ, staleness is
+measured from when the first unverified commit landed, not from the old
+verdict's timestamp. `compute_stale_minutes()` below models this.
+
 Self-check: if a future edit changes either job's `if:`, the aggregation
-step's `run:` script, or the escalation constants in the YAML, this script
-fails loudly (exit 2) instead of silently proving the wrong thing.
+step's `run:` script, the escalation constants, or the commit-comparison
+logic in the YAML, this script fails loudly (exit 2) instead of silently
+proving the wrong thing.
 """
 import re
 import sys
@@ -83,6 +99,13 @@ EXPECTED_AGGREGATE_SELECT_SUBSTRING = (
 
 CHECK_STEP_NAME = "Check time since main's last completed tests.yml verdict"
 EXPECTED_ESCALATION_CONSTANTS = ("THRESHOLD_MINUTES=45", "CHECK_INTERVAL_MINUTES=15", "ESCALATION_MINUTES=60")
+
+# The specific substring that proves the quiet-period fix is present: the
+# branch that short-circuits staleness to zero when main's current head
+# equals the last-verified SHA. Checking for this exact comparison (not
+# just "the constants exist") is what catches a future edit that reverts
+# to the verdict-to-now measure while leaving the constants untouched.
+EXPECTED_QUIET_PERIOD_SHORT_CIRCUIT = '"${LAST_VERIFIED_SHA}" = "${CURRENT_HEAD}"'
 
 
 def _normalize(s: str) -> str:
@@ -181,6 +204,22 @@ def self_check() -> None:
         )
         sys.exit(2)
 
+    if EXPECTED_QUIET_PERIOD_SHORT_CIRCUIT not in check_run_raw:
+        print(
+            f"FATAL: step '{CHECK_STEP_NAME}'.run no longer contains the\n"
+            "  quiet-period short-circuit (current head == last verified sha\n"
+            "  -> zero staleness) this script models.\n"
+            f"  expected substring: {EXPECTED_QUIET_PERIOD_SHORT_CIRCUIT!r}\n"
+            "  Without this branch, a quiet main re-alerts on every ordinary\n"
+            "  gap between scheduled tests.yml runs — the exact bug caught\n"
+            "  in review before this job first shipped. Update\n"
+            "  EXPECTED_QUIET_PERIOD_SHORT_CIRCUIT and compute_stale_minutes()\n"
+            "  below to match the new YAML before trusting this script's\n"
+            "  verdict again.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
 
 def alert_fires(
     top_event_name: str, wr_event: str, head_branch: str, conclusion: str
@@ -208,6 +247,43 @@ def liveness_job_runs(top_event_name: str) -> bool:
 
 
 UNKNOWN_STALE_SENTINEL = 999999
+
+
+def compute_stale_minutes(
+    last_verified_sha: str | None,
+    current_head_sha: str,
+    first_unverified_epoch: int | None,
+    now_epoch: int,
+) -> int:
+    """Models the commit-aware staleness computation in the `Check time
+    since main's last completed tests.yml verdict` step.
+
+    THIS is the design correction caught in review (see module docstring)
+    before the job first shipped — the version this replaces measured
+    `now - last_verdict_timestamp` unconditionally, which breaches a
+    45-minute threshold on every ordinary gap between 2-hourly scheduled
+    runs on a quiet main. The fix: staleness is about UNVERIFIED COMMITS,
+    not about elapsed time since a verdict happened to be produced.
+
+    `last_verified_sha=None` models "no qualifying run found in the
+    lookback window at all" -> unconditionally unknown/maximally stale
+    (mirrors `should_alert`'s own UNKNOWN_STALE_SENTINEL handling one
+    layer up).
+    `last_verified_sha == current_head_sha` models "main hasn't moved
+    since the last real verdict" -> zero staleness, REGARDLESS of how
+    long ago that verdict ran. This is the fix.
+    Otherwise, staleness is `now - first_unverified_epoch` — the age of
+    the OLDEST commit past the last verified one, not the verdict's own
+    (stale) timestamp. `first_unverified_epoch=None` models the
+    defensive "SHAs differ but compare returned no commits" fallback.
+    """
+    if last_verified_sha is None:
+        return UNKNOWN_STALE_SENTINEL
+    if last_verified_sha == current_head_sha:
+        return 0
+    if first_unverified_epoch is None:
+        return UNKNOWN_STALE_SENTINEL
+    return (now_epoch - first_unverified_epoch) // 60
 
 
 def should_alert(
@@ -392,6 +468,42 @@ ESCALATION_SCENARIOS = [
     ),
 ]
 
+# (label, last_verified_sha, current_head_sha, first_unverified_epoch,
+#  now_epoch, expect_stale_minutes)
+# Uses relative epochs (0 = "now") rather than real timestamps for
+# readability — only the DIFFERENCE matters to compute_stale_minutes().
+STALE_MINUTES_SCENARIOS = [
+    (
+        "INNOCENCE (THE FIX) — main's current head IS the last verified "
+        "sha: a quiet main with no pushes, verdict is 3 hours old (well "
+        "past a naive 45-min verdict-to-now threshold) but there is "
+        "NOTHING NEW to verify. Must be zero staleness, not 180.",
+        "sha-a", "sha-a", -3 * 60 * 60, 0, 0,
+    ),
+    (
+        "GUILT — main moved past the last verified sha 50 minutes ago: "
+        "real, known staleness past threshold",
+        "sha-a", "sha-b", -50 * 60, 0, 50,
+    ),
+    (
+        "INNOCENCE — main moved past the last verified sha only 5 "
+        "minutes ago: within the grace period, not yet stale",
+        "sha-a", "sha-b", -5 * 60, 0, 5,
+    ),
+    (
+        "GUILT — no qualifying run found at all (last_verified_sha is "
+        "None): unconditionally unknown/maximally stale, regardless of "
+        "current_head_sha or timestamps",
+        None, "sha-b", None, 0, UNKNOWN_STALE_SENTINEL,
+    ),
+    (
+        "GUILT (defensive fallback) — SHAs differ but the compare API "
+        "returned no commits (first_unverified_epoch is None): treated "
+        "as maximally stale, not silently passed as zero",
+        "sha-a", "sha-b", None, 0, UNKNOWN_STALE_SENTINEL,
+    ),
+]
+
 
 def main() -> None:
     self_check()
@@ -439,11 +551,23 @@ def main() -> None:
         if not ok:
             failures.append(label)
 
+    print("\n== verdict-liveness commit-aware staleness (task #41, quiet-period fix) ==")
+    for label, last_sha, head_sha, first_epoch, now_epoch, expect in STALE_MINUTES_SCENARIOS:
+        got = compute_stale_minutes(last_sha, head_sha, first_epoch, now_epoch)
+        ok = got == expect
+        print(f"[{'PASS' if ok else 'FAIL'}] {label}\n"
+              f"         last_verified_sha={last_sha} current_head_sha={head_sha} "
+              f"first_unverified_epoch={first_epoch} now_epoch={now_epoch} "
+              f"-> stale_minutes={got} (expected {expect})")
+        if not ok:
+            failures.append(label)
+
     total = (
         len(ALERT_SCENARIOS)
         + len(AGGREGATE_SCENARIOS)
         + len(LIVENESS_JOB_SCENARIOS)
         + len(ESCALATION_SCENARIOS)
+        + len(STALE_MINUTES_SCENARIOS)
     )
     if failures:
         print(f"\n{len(failures)}/{total} scenarios FAILED", file=sys.stderr)
