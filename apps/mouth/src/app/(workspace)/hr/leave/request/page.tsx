@@ -9,8 +9,18 @@ import type { LeaveTypeOption } from "@/lib/api/hr/hr";
 // ─── Mini Calendar Component ───────────────────────────────────────────────
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 function MiniCalendar({
@@ -292,7 +302,8 @@ export default function LeaveRequestPage() {
   }, []);
 
   const setStartDate = (date: string) => {
-    const endDate = form.end_date && form.end_date < date ? date : form.end_date;
+    const endDate =
+      form.end_date && form.end_date < date ? date : form.end_date;
     setForm((prev) => ({
       ...prev,
       start_date: date,
