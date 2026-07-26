@@ -30,6 +30,19 @@ EVERY worktree, dirty and unarmed included. The token normalization now lives in
 caller answers it with the whole registry as the victim list (never with the root's
 own `git status`, which reports the MAIN checkout's dirtiness — an unrelated verdict).
 
+ROUND 2, same refuter re-run on the round-1 fix (REFUTED, 7 findings, 4 blockers).
+The first pass taught the guard exactly one thing — judge the ENTITY, not the shape
+of the path — and the second pass found five more places in the same file that had
+never been told. Each has a case below, and all five are red against the round-1
+hook: a DEAD registry resurrects the truncation (`_resolve_under_worktrees` named the
+outer worktree again), `rm -rf <symlink>/*` and `rm -rf <root>/.worktrees/*/` slipped
+past `_token_to_worktrees_path`, a worktree literally NAMED `.worktrees` was read as a
+container by `_unarmed_dirty_removal_target`, and `_worktree_is_dirty` answered with
+the ENCLOSING checkout's status for any path that was not a worktree root — a
+permanent false block, fixed by making it consult `_looks_like_worktree` first.
+`_worktrees_strictly_inside` applies the same entity test to its dead-registry
+filesystem fallback.
+
 Run:  python3 infra/claude-hooks/test_w105_nested_worktree_removal.py
       pytest infra/claude-hooks/test_w105_nested_worktree_removal.py -q
 """
