@@ -446,6 +446,32 @@ jobs:
           cd apps/${{ matrix.app }}
           npm run test:coverage:check
 
+      # WS4 governance: `packages/core` is the shared design-system (tokens,
+      # ThemeProvider, SystemPulse, ComplianceRadar, FactBadge, …) that every
+      # workspace/portal page renders through. It shipped 33 test files / 123
+      # tests that NO workflow ever executed: apps/mouth's vitest config scopes
+      # `include` to `src/**`, and packages/core/vitest.config.ts had no caller.
+      # Built, never armed (cicatrix-superscar #2) — a green CI was asserting
+      # nothing about the components WS2/WS3 landed.
+      #
+      # Deliberately a STEP of the already-required `Frontend Tests (Next.js)
+      # (mouth, true)` leg, NOT a new job or matrix entry: branch protection
+      # pins required contexts by NAME, so a new name would be born unrequired
+      # and would need a settings change nobody would make (W69 — required
+      # checks disarmed). Attaching here means it gates from the merge onward.
+      #
+      # `cd packages/core` resolves vitest/jsdom/@vitejs/plugin-react upward
+      # from the ROOT node_modules (verified: nothing is nested under
+      # apps/mouth, and packages/core/node_modules holds no packages), so the
+      # existing root `npm install` above is all the setup it needs. No
+      # coverage gate: packages/core has no established coverage target yet —
+      # same posture as the admin-dashboard leg.
+      - name: Run packages/core tests (shared design-system suite)
+        if: matrix.app == 'mouth'
+        run: |
+          cd packages/core
+          npx vitest --run
+
       - name: Upload coverage
         if: matrix.coverage
         uses: codecov/codecov-action@v7
