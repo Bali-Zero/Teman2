@@ -5,7 +5,19 @@ import { Save, Plus, Settings } from "lucide-react";
 import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { BonusRate } from "@/types/hr";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Form controls on the panel surface. */
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+};
 
 export default function HRSettingsPage() {
   const [rates, setRates] = useState<BonusRate[]>([]);
@@ -65,10 +77,12 @@ export default function HRSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-zinc-100">HR Settings</h1>
+        <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+          HR Settings
+        </h1>
         <div className="animate-pulse space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 bg-zinc-900 rounded-lg" />
+            <div key={i} className="h-12 border rounded-lg" style={PANEL} />
           ))}
         </div>
       </div>
@@ -78,7 +92,7 @@ export default function HRSettingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-100">
+        <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
           <Settings size={24} className="inline mr-2 mb-1" />
           Bonus Rate Configuration
         </h1>
@@ -92,9 +106,12 @@ export default function HRSettingsPage() {
       </div>
 
       {showNew && (
-        <div className="bg-zinc-900 border border-[var(--bz-accent)]/30 rounded-lg p-4 flex items-end gap-3">
+        <div
+          className="border rounded-lg p-4 flex items-end gap-3"
+          style={{ ...PANEL, borderColor: "var(--bz-border-accent)" }}
+        >
           <div className="flex-1">
-            <label className="block text-xs text-zinc-400 mb-1">
+            <label className="block text-xs text-[var(--bz-text-2)] mb-1">
               Practice Type Code
             </label>
             <input
@@ -107,11 +124,12 @@ export default function HRSettingsPage() {
                 }))
               }
               placeholder="e.g. property_sale"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-200"
+              className="w-full border rounded px-2 py-1.5 text-sm text-[var(--bz-text-1)]"
+              style={INPUT_STYLE}
             />
           </div>
           <div className="w-40">
-            <label className="block text-xs text-zinc-400 mb-1">
+            <label className="block text-xs text-[var(--bz-text-2)] mb-1">
               Amount (IDR)
             </label>
             <input
@@ -121,12 +139,13 @@ export default function HRSettingsPage() {
                 setNewRate((prev) => ({ ...prev, amount_idr: e.target.value }))
               }
               placeholder="500000"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-200"
+              className="w-full border rounded px-2 py-1.5 text-sm text-[var(--bz-text-1)]"
+              style={INPUT_STYLE}
             />
           </div>
           <button
             onClick={handleCreate}
-            className="px-3 py-1.5 rounded bg-[var(--bz-accent)] text-zinc-950 text-sm font-medium"
+            className="px-3 py-1.5 rounded bg-[var(--bz-accent)] text-[var(--bz-on-warm)] text-sm font-medium"
           >
             Create
           </button>
@@ -134,7 +153,7 @@ export default function HRSettingsPage() {
       )}
 
       <div className="space-y-1">
-        <div className="grid grid-cols-3 text-xs text-zinc-500 px-4 py-2 uppercase tracking-wider">
+        <div className="grid grid-cols-3 text-xs text-[var(--bz-text-3)] px-4 py-2 uppercase tracking-wider">
           <span>Practice Type</span>
           <span>Bonus Amount</span>
           <span>Status</span>
@@ -142,14 +161,15 @@ export default function HRSettingsPage() {
         {rates.map((rate) => (
           <div
             key={rate.id}
-            className="grid grid-cols-3 items-center bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3"
+            className="grid grid-cols-3 items-center border rounded-lg px-4 py-3"
+            style={PANEL}
           >
             <div>
-              <span className="text-zinc-200">
+              <span className="text-[var(--bz-text-1)]">
                 {rate.practice_type_code?.replace(/_/g, " ")}
               </span>
               {rate.practice_type_name && (
-                <span className="text-xs text-zinc-500 ml-2">
+                <span className="text-xs text-[var(--bz-text-3)] ml-2">
                   ({rate.practice_type_name})
                 </span>
               )}
@@ -161,13 +181,14 @@ export default function HRSettingsPage() {
                     type="number"
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
-                    className="w-32 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200"
+                    className="w-32 border rounded px-2 py-1 text-sm text-[var(--bz-text-1)]"
+                    style={INPUT_STYLE}
                   />
                   <button
                     onClick={() =>
                       handleSave(rate.practice_type_code, Number(editAmount))
                     }
-                    className="p-1 text-emerald-400 hover:text-emerald-300"
+                    className="p-1 text-[var(--state-success)]"
                   >
                     <Save size={14} />
                   </button>
@@ -180,12 +201,12 @@ export default function HRSettingsPage() {
                   }}
                   className="text-[var(--bz-accent)] hover:underline"
                 >
-                  {formatIDR(rate.amount_idr)}
+                  <Money value={rate.amount_idr} />
                 </button>
               )}
             </div>
             <span
-              className={`text-xs ${rate.is_active ? "text-emerald-400" : "text-zinc-500"}`}
+              className={`text-xs ${rate.is_active ? "text-[var(--state-success)]" : "text-[var(--bz-text-3)]"}`}
             >
               {rate.is_active ? "Active" : "Inactive"}
             </span>

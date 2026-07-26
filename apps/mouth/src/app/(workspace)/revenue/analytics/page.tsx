@@ -67,6 +67,22 @@ interface ProcessByType {
 // COMPONENTS
 // ================================================
 
+const STAT_COLOR_CLASSES: Record<string, string> = {
+  green:
+    "bg-[color-mix(in_srgb,var(--state-success)_5%,transparent)] border-[color-mix(in_srgb,var(--state-success)_20%,transparent)]",
+  amber:
+    "bg-[color-mix(in_srgb,var(--state-warning)_5%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_20%,transparent)]",
+  blue: "bg-[color-mix(in_srgb,var(--state-info)_5%,transparent)] border-[color-mix(in_srgb,var(--state-info)_20%,transparent)]",
+};
+
+const STAT_ICON_CLASSES: Record<string, string> = {
+  green:
+    "bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]",
+  amber:
+    "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] text-[var(--state-warning)]",
+  blue: "bg-[color-mix(in_srgb,var(--state-info)_10%,transparent)] text-[var(--state-info)]",
+};
+
 const StatCard = ({
   title,
   value,
@@ -85,7 +101,7 @@ const StatCard = ({
   loading?: boolean;
 }) => (
   <div
-    className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}
+    className={`rounded-xl border p-4 sm:p-6 ${STAT_COLOR_CLASSES[color] ?? STAT_COLOR_CLASSES.blue}`}
   >
     <div className="flex items-start justify-between">
       <div>
@@ -100,7 +116,7 @@ const StatCard = ({
             )}
             {trend !== undefined && (
               <span
-                className={`text-xs font-medium flex items-center gap-1 mt-1 ${trend >= 0 ? "text-green-500" : "text-red-500"}`}
+                className={`text-xs font-medium flex items-center gap-1 mt-1 ${trend >= 0 ? "text-[var(--state-success)]" : "text-[var(--state-danger)]"}`}
               >
                 {trend >= 0 ? (
                   <ArrowUpRight className="w-3 h-3" />
@@ -113,8 +129,10 @@ const StatCard = ({
           </>
         )}
       </div>
-      <div className={`p-2 sm:p-3 rounded-lg bg-${color}-500/10`}>
-        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${color}-500`} />
+      <div
+        className={`p-2 sm:p-3 rounded-lg ${STAT_ICON_CLASSES[color] ?? STAT_ICON_CLASSES.blue}`}
+      >
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       </div>
     </div>
   </div>
@@ -142,10 +160,12 @@ const MiniChart = ({
     .join(" ");
 
   const colorClasses: Record<string, string> = {
-    blue: "stroke-blue-500 fill-blue-500/10",
-    green: "stroke-green-500 fill-green-500/10",
-    red: "stroke-red-500 fill-red-500/10",
-    amber: "stroke-amber-500 fill-amber-500/10",
+    blue: "stroke-[var(--bz-chart-1)] fill-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)]",
+    green:
+      "stroke-[var(--bz-chart-2)] fill-[color-mix(in_srgb,var(--bz-chart-2)_10%,transparent)]",
+    red: "stroke-[var(--bz-chart-7)] fill-[color-mix(in_srgb,var(--bz-chart-7)_10%,transparent)]",
+    amber:
+      "stroke-[var(--bz-chart-3)] fill-[color-mix(in_srgb,var(--bz-chart-3)_10%,transparent)]",
   };
 
   return (
@@ -162,7 +182,9 @@ const MiniChart = ({
         fill="none"
         strokeWidth="2"
         points={points}
-        className={colorClasses[color]?.split(" ")[0] || "stroke-blue-500"}
+        className={
+          colorClasses[color]?.split(" ")[0] || "stroke-[var(--bz-chart-1)]"
+        }
       />
     </svg>
   );
@@ -345,7 +367,7 @@ export default function RevenueAnalyticsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Growth</p>
                     <p
-                      className={`font-medium ${revenueGrowth >= 0 ? "text-green-500" : "text-red-500"}`}
+                      className={`font-medium ${revenueGrowth >= 0 ? "text-[var(--state-success)]" : "text-[var(--state-danger)]"}`}
                     >
                       {revenueTrend.length >= 2
                         ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth.toFixed(1)}%`
@@ -393,7 +415,7 @@ export default function RevenueAnalyticsPage() {
                           <td className="p-3 text-right font-medium">
                             {formatIDR(month.revenue)}
                           </td>
-                          <td className="p-3 text-right text-green-500">
+                          <td className="p-3 text-right text-[var(--state-success)]">
                             {formatIDR(month.paid)}
                           </td>
                           <td className="p-3 text-right text-muted-foreground">
@@ -401,7 +423,7 @@ export default function RevenueAnalyticsPage() {
                           </td>
                           <td className="p-3 text-right">
                             <span
-                              className={`font-medium ${percent >= 100 ? "text-green-500" : percent >= 80 ? "text-amber-500" : "text-red-500"}`}
+                              className={`font-medium ${percent >= 100 ? "text-[var(--state-success)]" : percent >= 80 ? "text-[var(--state-warning)]" : "text-[var(--state-danger)]"}`}
                             >
                               {percent.toFixed(0)}%
                             </span>

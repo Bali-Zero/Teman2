@@ -176,6 +176,37 @@ class PricingService:
         # Try to search for the service
         return self.search_service(service_type)
 
+    def get_service_by_key(self, key: str) -> dict[str, Any] | None:
+        """Look up ONE service by its exact catalogue key.
+
+        This is the deterministic counterpart to :meth:`search_service`: no
+        scoring, no fuzzy matching, no "best guess". A caller that renders a
+        price on a client-facing surface must get either the exact row it asked
+        for or nothing — a near-miss silently rendered as the real price is the
+        failure mode this method exists to make impossible.
+
+        Returns ``None`` when the key is unknown OR when the catalogue failed to
+        load, so the caller cannot mistake "not loaded" for "no such service".
+        The two are distinguished by :attr:`loaded`.
+        """
+        if not self.loaded:
+            return None
+
+        for category, service_name, entry in _iter_service_entries(
+            self.prices.get("services", {})
+        ):
+            if service_name != key:
+                continue
+            return {
+                "key": service_name,
+                "name": entry.get("name") or service_name,
+                "price": _entry_display_price(entry),
+                "category": category,
+                "validity": entry.get("validity") or None,
+                "notes": entry.get("notes") or None,
+            }
+        return None
+
     def get_all_prices(self) -> dict[str, Any]:
         """Get all official prices"""
         if not self.loaded:

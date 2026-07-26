@@ -254,6 +254,11 @@
         "scripts/test_guardrails_overmatch.py"
       ]
     },
+    "detect_secrets_content_keyed_rules": {
+      "_doc": "CONTENT_KEYED_RULES in scripts/detect_secrets_auto_triage.py — path-scoped AND content-keyed (assignment-target name) auto-triage rules, added so a detect-secrets false-positive fix can't degrade into a blanket whole-file path rule (superscar #3). PR #3127 registered the first entry: worker-plane review panel executable identity pins (sha256/cdhash).",
+      "source": "scripts/detect_secrets_auto_triage.py",
+      "tests": ["scripts/tests/test_detect_secrets_auto_triage.py"]
+    },
     "under_match_sentinels": {
       "content-freshness-sentinel": {
         "scar": ["W82"],
