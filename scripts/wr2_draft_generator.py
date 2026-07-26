@@ -2248,11 +2248,17 @@ async def _process_one_planner_writer(
     # the socket's self-probe — when it prints reward_live>0 the loop has closed.
     logger.info(
         "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s "
-        "ledger_entries=%d reward_live=%d engagement_signal=%s(n=%d) "
+        "ledger_entries=%d reward_live=%d engagement_signal=%s(n=%d,injected=%s) "
         "forbidden_phrases=%d",
         draft_id, register, liveness_tier or "(none)", recent_arcs,
         len(ledger.entries), ledger.reward_live_count,
+        # has_signal alone would LIE now (cicatrix #2): since the baseline filter
+        # landed, an axis can rank values and still name none of them (nothing
+        # beats the corpus median) — signal=True while the prompt gets NOTHING.
+        # `injected` is the honest probe: it reports what actually reached the
+        # planner, not what was merely aggregated. (red-team finding #6b.)
         axis_engagement.has_signal, axis_engagement.total_posts,
+        bool(engagement_hint),
         len(forbidden_phrases),
     )
 

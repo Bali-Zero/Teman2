@@ -170,10 +170,10 @@ class LogAnomalyDetectorJob(AgentJob):
 
         if alerts:
             msg = self._compose_alert(alerts)
-            # tier: severity-driven (this branch's fix, kept — main hardcodes p0
-            # unconditionally, which burns the shared p0 budget on YELLOW blips).
-            # dedup_key: main's _dedup_key (source+label hash, not count-based) —
-            # kept over this branch's own, it's the better of the two.
+            # tier: severity-driven via _tier_for() below — RED gets p0, everything
+            # else gets digest, so a YELLOW blip doesn't burn the shared p0 budget.
+            # dedup_key: source+label hash, not count-based (W104, 2026-07-25:
+            # count-based upstream limits fail-opened to 288/day once).
             tier = _tier_for(alerts)
             ok = await self.send_telegram(msg, tier=tier, dedup_key=self._dedup_key(alerts))
             self.log_step("telegram_sent", outputs={"ok": ok},
