@@ -98,6 +98,7 @@ _FILIERA_DIR = Path(__file__).resolve().parent
 if str(_FILIERA_DIR) not in sys.path:
     sys.path.insert(0, str(_FILIERA_DIR))
 
+from _prose_disclosure import DISCLOSURE_RE  # noqa: E402
 from _l4bali_basis import (  # noqa: E402
     CODE_FIELD,
     DISCLOSURE_PREFIX,
@@ -148,12 +149,9 @@ DISCLOSURE_BY_BASIS: dict[str, str] = {
     ),
 }
 
-# Anchored at END-OF-STRING, like `cure_l4bali_disclosure.LEGACY_SUFFIX_RE`: a body that
-# was hand-touched after the append, or double-appended by some other pass, does NOT
-# match and is reported instead of being re-shaped on a guess. This is what makes a
-# wording change (which the adversarial gate WILL demand — it did on day one) a
-# replacement rather than a second paragraph stacked on the first.
-REWORD_RE = re.compile(r"\n\n\*\*Risk tier under review\.\*\* [^\n]+$")
+# The anchored pattern is shared with the lot compilers via `_prose_disclosure` —
+# two writers of one field must not each own a copy of the rule.
+REWORD_RE = DISCLOSURE_RE
 
 
 
@@ -333,6 +331,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gold", type=Path, default=GOLD_PATH)
     parser.add_argument("--only", nargs="*", help="restrict to these codes")
     parser.add_argument("--census", action="store_true", help="report and write nothing")
+    parser.add_argument(
+        "--emit-spec", type=Path, default=None,
+        help="write the coverage manifest (the codes this cure touched) and exit",
+    )
     parser.add_argument("--apply", action="store_true", help="write (default is dry-run)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -349,6 +351,27 @@ def main(argv: list[str] | None = None) -> int:
     print(f"canonical records: {len(records)}")
     for key in sorted(stats):
         print(f"  {key:34s} {stats[key]}")
+    if args.emit_spec:
+        # A RECORD of what the structural selector chose — never an input to it.
+        # Selection stays `l4_bali.reason` carrying the disclosure prefix; this file
+        # exists so the canonical-diff innocence checks can account for every changed
+        # record ("no cure spec claims this code" is how they catch a stray mutation),
+        # and so coverage is auditable without re-running the tool.
+        payload = {
+            "_spec_id": SPEC_ID,
+            "_generated_by": "scripts/kbli_filiera/cure_l3_prose_gap_disclosure.py --emit-spec",
+            "_selection": "structural: l4_bali.reason startswith the l4bali disclosure prefix",
+            "_note": (
+                "Descriptive, not prescriptive. Editing this file does NOT change which "
+                "records the cure touches — re-run --emit-spec to regenerate it."
+            ),
+            "codes": [{"code": p["code"], "gap_basis": p["basis"]} for p in plans],
+        }
+        args.emit_spec.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        print(f"wrote {args.emit_spec} ({len(plans)} codes)")
+        return 0
     if args.census:
         return 0
 

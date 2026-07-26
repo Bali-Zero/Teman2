@@ -164,6 +164,41 @@ def test_a_record_with_no_prose_is_reported_never_invented():
     assert rec["intel_2026"]["whatYouNeed"] == ""
 
 
+def test_a_lot_compiler_rewriting_the_body_does_not_destroy_the_disclosure():
+    """THE INTERACTION. `intel_2026.whatYouNeed` has two writers.
+
+    The lot compilers own the BODY and their contract is "equals the spec text
+    verbatim"; this cure APPENDS. Measured before the shared rule existed, the lot-2
+    compiler reported `42999: intel_2026.whatYouNeed -> honest-gap` after this cure
+    ran — its next apply would have rewritten the body back to the spec text and
+    deleted the disclosure, silently, on a page that needs it. A cure reverting a cure.
+
+    Both writers now read `_prose_disclosure`, so a body rewrite carries the appendix
+    across. This asserts the property directly rather than trusting that both modules
+    happen to agree.
+    """
+    from _prose_disclosure import reattach, split_disclosure
+
+    rec = _record("12121", prose="Spec honest-gap text.")
+    plans, _ = _plan([rec])
+    cure.apply_plan(plans)
+    after_append = rec["intel_2026"]["whatYouNeed"]
+
+    # what a lot compiler does: compare, then write, its own half
+    base, appendix = split_disclosure(after_append)
+    assert base == "Spec honest-gap text.", "the lot compiler must see its own text unchanged"
+    assert appendix, "the appendix must be separable, not fused into the body"
+
+    rewritten = reattach("A NEWER spec honest-gap text.", appendix)
+    rec["intel_2026"]["whatYouNeed"] = rewritten
+    assert rewritten.startswith("A NEWER spec honest-gap text.")
+    assert rewritten.count("Risk tier under review.") == 1, "the disclosure must survive"
+
+    # …and this cure still reads the rewritten body as already disclosed
+    plans2, stats2 = _plan([rec])
+    assert stats2["canonical_already_disclosed"] == 1
+
+
 def test_the_sentence_never_asserts_what_the_regulator_published():
     """F12. Every variant speaks about OUR retrieval; none claims the regulator has
     not published something, and none names an internal field at the reader."""
