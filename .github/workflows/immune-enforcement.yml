@@ -94,6 +94,8 @@ jobs:
               scripts/tests/test_docs_inventory_regen.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
+              scripts/lib/offsite_verify.sh|\
+              scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
               scripts/wr2-cron-wrapper.sh|\
               scripts/cron-wrapper.sh|\
@@ -157,6 +159,13 @@ jobs:
           # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
           # deleted corpus must go red rather than quietly pass.
           bash scripts/test_fly_credential.sh
+
+      - name: Off-site artifact gate corpus (guilt + innocence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
+          # last line. Named here at birth, for the same reason as the corpus above.
+          bash scripts/test_offsite_verify.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
