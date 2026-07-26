@@ -77,6 +77,7 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -121,30 +122,39 @@ SPEC_ID = "l3_prose_gap_disclosure_2026_07_26"
 # sources" is a statement we can stand behind; "not published" is not.
 _HEAD = "\n\n**Risk tier under review.** "
 _TAIL = (
-    ", so any risk-tier or scale-based statement on this page is provisional and pending "
-    "re-derivation. Confirm the current classification with the Bali Zero team before "
-    "registering or investing."
+    " Where this page states a risk tier or a scale-based requirement, treat it as "
+    "provisional pending re-derivation, and verify the current classification at oss.go.id "
+    "before acting on it."
 )
 DISCLOSURE_BY_BASIS: dict[str, str] = {
     GAP_BASIS_DISPUTED_KEY: (
         _HEAD
-        + "The licensing rows this code's risk tier was read from have since been set aside "
-        "as unverifiable for KBLI 2025"
+        + "The licensing rows this code's risk tier was read from have since been set aside as "
+        "unverifiable for KBLI 2025, so we cannot currently re-derive it."
         + _TAIL
     ),
     GAP_BASIS_NO_OSS_SCOPE: (
         _HEAD
         + "No KBLI-2025 risk scope for this code could be retrieved from the OSS API when this "
-        "dataset was built, and no licensing rows are served"
+        "dataset was built, so we cannot currently verify the tier this page's assessment was "
+        "derived from."
         + _TAIL
     ),
     GAP_BASIS_DETACHED_TIER: (
         _HEAD
-        + "The risk tier cited for this code is no longer among its licensing rows — it was set "
-        "aside as unverifiable while other rows were kept"
+        + "The risk tier this code's assessment cites is no longer among the licensing rows we "
+        "can verify, so we cannot currently re-derive it."
         + _TAIL
     ),
 }
+
+# Anchored at END-OF-STRING, like `cure_l4bali_disclosure.LEGACY_SUFFIX_RE`: a body that
+# was hand-touched after the append, or double-appended by some other pass, does NOT
+# match and is reported instead of being re-shaped on a guess. This is what makes a
+# wording change (which the adversarial gate WILL demand — it did on day one) a
+# replacement rather than a second paragraph stacked on the first.
+REWORD_RE = re.compile(r"\n\n\*\*Risk tier under review\.\*\* [^\n]+$")
+
 
 
 class CureError(RuntimeError):
@@ -233,7 +243,7 @@ def plan(
             if isinstance(existing, dict) and existing.get("sentence_sha256") == marker["sentence_sha256"]:
                 canonical_action = "already_disclosed"
             elif isinstance(existing, dict):
-                canonical_action = "marker_wording_drift"
+                canonical_action = "reword" if REWORD_RE.search(intel[PROSE_FIELD].rstrip()) else "wording_drift_unanchored"
             else:
                 canonical_action = "append"
         stats[f"canonical_{canonical_action}"] += 1
@@ -245,7 +255,7 @@ def plan(
             if isinstance(existing, dict) and existing.get("sentence_sha256") == marker["sentence_sha256"]:
                 gold_action = "already_disclosed"
             elif isinstance(existing, dict):
-                gold_action = "marker_wording_drift"
+                gold_action = "reword" if REWORD_RE.search(gold_entry[PROSE_FIELD].rstrip()) else "wording_drift_unanchored"
             else:
                 gold_action = "append"
         elif isinstance(gold_entry, dict):
@@ -270,17 +280,23 @@ def plan(
     return plans, stats
 
 
+def _rewrite(body: str, item: dict[str, Any]) -> str:
+    """Append the paragraph, replacing an earlier wording of it if one is there."""
+    stripped = REWORD_RE.sub("", body.rstrip())
+    return stripped.rstrip() + item["text"]
+
+
 def apply_plan(plans: list[dict[str, Any]]) -> tuple[int, int]:
     canonical_writes = gold_writes = 0
     for item in plans:
-        if item["canonical_action"] == "append":
+        if item["canonical_action"] in ("append", "reword"):
             intel = item["record"]["intel_2026"]
-            intel[PROSE_FIELD] = intel[PROSE_FIELD].rstrip() + item["text"]
+            intel[PROSE_FIELD] = _rewrite(intel[PROSE_FIELD], item)
             intel[MARKER_FIELD] = item["marker"]
             canonical_writes += 1
-        if item["gold_action"] == "append":
+        if item["gold_action"] in ("append", "reword"):
             entry = item["gold_entry"]
-            entry[PROSE_FIELD] = entry[PROSE_FIELD].rstrip() + item["text"]
+            entry[PROSE_FIELD] = _rewrite(entry[PROSE_FIELD], item)
             entry[MARKER_FIELD] = item["marker"]
             gold_writes += 1
     return canonical_writes, gold_writes
@@ -336,11 +352,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.census:
         return 0
 
-    to_write = [p for p in plans if "append" in (p["canonical_action"], p["gold_action"])]
+    actionable = {"append", "reword"}
+    to_write = [p for p in plans if actionable & {p["canonical_action"], p["gold_action"]}]
     print(
         f"\n{'APPLY' if args.apply else 'DRY-RUN'}: "
-        f"{sum(1 for p in plans if p['canonical_action'] == 'append')} canonical + "
-        f"{sum(1 for p in plans if p['gold_action'] == 'append')} gold appends"
+        f"{sum(1 for p in plans if p['canonical_action'] in actionable)} canonical + "
+        f"{sum(1 for p in plans if p['gold_action'] in actionable)} gold writes"
     )
     if not args.apply:
         for item in to_write[:3]:
