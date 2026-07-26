@@ -191,6 +191,38 @@ _TOOL_USAGE_POLICY_CORE: str = (
     + _TOOL_USAGE_POLICY_CLOSE_TAG
 )
 
+# ---------------------------------------------------------------------------
+# GREETING NAME — the founder's codename was the worked example for how to
+# greet ANY user, so the bot addressed strangers by it.
+#
+# Found live on 2026-07-26: an anonymous caller (synthetic phone, no memory
+# rows, no collective facts — both verified empty in prod) got back
+# "Salut Zero, ...". Not a memory-tenancy bleed: v4's GREETING_RULES simply
+# hardcodes the name in its four worked flows, so the model copied the
+# example literally, exactly as instructed.
+#
+# The same block already gets this right one paragraph earlier — rule 1 says
+# `"Hi [Name]!", "Ciao [Name]!", "Halo [Name]!"`. The flows below it then
+# contradict that with a specific person's name. `[Name]` is correct for all
+# three audiences: a client should be greeted by THEIR name (or none), a team
+# member is not the founder, and for the founder the CREATOR_PERSONA already
+# supplies the identity the placeholder resolves to.
+#
+# The Italian bridge phrase is the same defect in a second place: `en` and
+# `id` list nameless bridges ("Sure" / "Tentu,"), only `it` carries a name.
+# ---------------------------------------------------------------------------
+
+GREETING_NAME_NEUTRALIZATIONS: tuple[tuple[str, str], ...] = (
+    ('"Certamente Zero,"', '"Certamente,"'),
+    ('You: "Ciao Zero! Come posso aiutarti?"', 'You: "Ciao [Name]! Come posso aiutarti?"'),
+    ('You: "Hi Zero! How can I help?"', 'You: "Hi [Name]! How can I help?"'),
+    ('You: "Halo Zero! Ada yang bisa saya bantu?"', 'You: "Halo [Name]! Ada yang bisa saya bantu?"'),
+)
+
+GREETING_RULES_NEUTRAL: str = _apply_neutralizations(
+    GREETING_RULES, GREETING_NAME_NEUTRALIZATIONS
+)
+
 INTERNAL_MONOLOGUE: str = _apply_neutralizations(
     _INTERNAL_MONOLOGUE_V4, (INTERNAL_MONOLOGUE_NEUTRALIZATION,)
 )
@@ -222,7 +254,7 @@ Today's date: {{today_wita}}
 
 {LANGUAGE_PROTOCOL}
 
-{GREETING_RULES}
+{GREETING_RULES_NEUTRAL}
 
 {CITATION_RULES}
 
