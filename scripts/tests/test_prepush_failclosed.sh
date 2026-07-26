@@ -170,6 +170,142 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Case 8 (guilt, task #45, 2026-07-26): the pytest-verdict block used to be
+# `elif ! ( subshell ); then FAILED; fi` — a bare boolean negation that
+# collapses EVERY non-zero exit into one branch, always printed as "Python
+# tests FAILED". Measured live (cache-untrack, same night): a push ran clean
+# through 97% of the suite then took `Terminated: 15` (SIGTERM) with 3% left
+# — an external kill, not a failing assertion — and still printed "FAILED",
+# sending the lane hunting a regression that did not exist.
+#
+# This proves the FIX's classification logic (mirrored from .husky/pre-push)
+# against a REAL SIGTERM'd child process, not a synthetic exit code: a
+# synthetic `exit 143` would test the arithmetic below, not the actual bug —
+# the actual bug is that shells report a signal-terminated child's status as
+# 128+N, and the OLD code threw that bit away. A real kill is the only thing
+# that proves the classification survives the real mechanism.
+# ---------------------------------------------------------------------------
+classify_verdict() {
+    # Exact mirror of the 3-way branch added to .husky/pre-push.
+    TEST_RC="$1"
+    if [ "$TEST_RC" -eq 0 ]; then
+        echo "VERDICT=PASS"
+    elif [ "$TEST_RC" -ge 128 ]; then
+        echo "VERDICT=TERMINATED signal=$((TEST_RC - 128))"
+    else
+        echo "VERDICT=FAILED"
+    fi
+}
+
+sleep 30 >/dev/null 2>&1 &
+CHILD8=$!
+sleep 0.3
+kill -TERM "$CHILD8" 2>/dev/null
+wait "$CHILD8" 2>/dev/null
+rc8=$?
+out8="$(classify_verdict "$rc8")"
+if [ "$out8" = "VERDICT=TERMINATED signal=15" ]; then
+    note_pass "guilt (task #45) — a REAL SIGTERM'd child (rc=$rc8) classifies as TERMINATED, never FAILED"
+else
+    note_fail "guilt (task #45) — expected VERDICT=TERMINATED signal=15, got rc=$rc8 out='$out8'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 9 (innocence, task #45): a REAL genuinely-failing command (a plain
+# non-zero exit, no signal involved) must still classify as FAILED — the fix
+# must not swallow real test failures while fixing the signal misreport.
+# ---------------------------------------------------------------------------
+sh -c 'exit 3'
+rc9=$?
+out9="$(classify_verdict "$rc9")"
+if [ "$out9" = "VERDICT=FAILED" ]; then
+    note_pass "innocence (task #45) — a REAL non-signal failure (rc=$rc9) still classifies as FAILED"
+else
+    note_fail "innocence (task #45) — expected VERDICT=FAILED, got rc=$rc9 out='$out9'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 10 (innocence, task #45): a REAL succeeding command must classify as
+# PASS — the fix must not perturb the happy path.
+# ---------------------------------------------------------------------------
+sh -c 'exit 0'
+rc10=$?
+out10="$(classify_verdict "$rc10")"
+if [ "$out10" = "VERDICT=PASS" ]; then
+    note_pass "innocence (task #45) — a REAL success (rc=$rc10) still classifies as PASS"
+else
+    note_fail "innocence (task #45) — expected VERDICT=PASS, got rc=$rc10 out='$out10'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 11 (guilt, task #45 round 2, 2026-07-27): Cases 8-10 proved the
+# classify_verdict() LOGIC is correct by calling it directly with a captured
+# $? — but that never exposed it to the bug that actually shipped in #3230:
+# the hook runs live under `sh -e` (confirmed in the process table), and a
+# BARE compound command aborts the shell on non-zero BEFORE the next
+# statement runs. #3230's classification block put `TEST_RC=$?` on its own
+# line, unguarded, right after the bare pytest subshell — correct logic,
+# unreachable code. This case reproduces that exact OLD shape with a REAL
+# `kill -TERM` on a real child (not a synthetic exit code, same discipline as
+# Case 8) and proves it aborts sh -e before the classification line ever
+# runs — the failure mode #3230 actually shipped.
+# ---------------------------------------------------------------------------
+out11="$(sh -e -c '
+    ( sh -c "kill -TERM \$\$; sleep 5" )
+    TEST_RC=$?
+    echo "reached rc=$TEST_RC"
+' 2>/dev/null)"
+rc11=$?
+if [ "$rc11" != "0" ] && [ "$out11" != "reached rc=143" ]; then
+    note_pass "guilt (task #45 round 2, OLD bare pattern) — sh -e aborts before TEST_RC=\$? runs (rc=$rc11 out='$out11')"
+else
+    note_fail "guilt (task #45 round 2, OLD bare pattern) — expected sh -e to abort before the classification line, got rc=$rc11 out='$out11'"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 12 (innocence, task #45 round 2): the FIXED pattern —
+# `TEST_RC=0; ( cmd ) || TEST_RC=$?` — puts the subshell in a tested context,
+# so sh -e is exempt and TEST_RC still receives the real code. Same REAL
+# kill as Case 11, same child, only the guard differs — isolates the guard
+# as the variable that flips guilt into innocence.
+# ---------------------------------------------------------------------------
+out12="$(sh -e -c '
+    TEST_RC=0
+    ( sh -c "kill -TERM \$\$; sleep 5" ) || TEST_RC=$?
+    echo "reached rc=$TEST_RC"
+' 2>/dev/null)"
+if [ "$out12" = "reached rc=143" ]; then
+    note_pass "innocence (task #45 round 2, NEW guarded pattern) — sh -e reaches classification with the real code (got: $out12)"
+else
+    note_fail "innocence (task #45 round 2, NEW guarded pattern) — expected 'reached rc=143', got: $out12"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 13 (tripwire, task #45 round 2): the ORIGINAL Case-11 tripwire only
+# grepped for the bare substring `TEST_RC=$?` — which matches the OLD broken
+# form just as reliably as the NEW fixed one (`) || TEST_RC=$?` still
+# contains `TEST_RC=$?`), so it certified #3230's unreachable code with a
+# clean pass. Same family as Case 4/7's same-line guard check, but this
+# variable's guard sits on the CLOSING PAREN line of a multi-line subshell,
+# not the assignment's own line — so the precise anchor is
+# `) || TEST_RC=$?` together, and its ABSENCE (a bare `TEST_RC=$?` line with
+# no `||` anywhere on it) must never reappear.
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire (task #45 round 2) — $HOOK_FILE not found (cannot verify)"
+else
+    bad_lines8="$(grep -n '^\s*TEST_RC=\$?\s*$' "$HOOK_FILE" || true)"
+    guarded="$(grep -c ') || TEST_RC=\$?' "$HOOK_FILE" || true)"
+    if [ -z "$bad_lines8" ] && [ "${guarded:-0}" -ge 1 ] \
+       && grep -q '\[ "\$TEST_RC" -ge 128 \]' "$HOOK_FILE" \
+       && grep -q 'TERMINATED by signal' "$HOOK_FILE"; then
+        note_pass "tripwire (task #45 round 2) — TEST_RC=\$? capture is guarded (') || TEST_RC=\$?'), no bare unguarded form, 3-way classification + signal message intact in $HOOK_FILE"
+    else
+        note_fail "tripwire (task #45 round 2) — bare unguarded TEST_RC=\$? reintroduced, guarded form missing, or classification/message reverted in $HOOK_FILE: bad_lines='$bad_lines8' guarded_count=$guarded"
+    fi
+fi
+
 echo "---"
 echo "$pass passed, $fail failed"
 
