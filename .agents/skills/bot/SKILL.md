@@ -54,16 +54,42 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   read on the new subject alone would have handed every WA client the shared bucket's PROFILE and
   HISTORY — FACTS and PROFILE/HISTORY now gate independently.
 
-- **⚙️ IN FLIGHT — PR #3261**: `security.yml` cancels superseded PR runs, never on main (it owns
-  4 of the 25 required checks). Honest limit recorded in the PR: `cancel-in-progress: false`
-  protects only a run that has already STARTED — a QUEUED run is superseded regardless.
+- **🔇 THE WHATSAPP PATH THROWS THE REFUSAL AWAY — this is why "oggi tace" (2026-07-27).** The
+  copy in #3260 improves every channel that renders the RAG answer, and reaches the bot on NONE
+  of them, because `wa_inbox_bot.py` (~line 346) does `if data.get("abstain"): raise
+RuntimeError(...)` before a message is ever composed. Its docstring states it as a contract:
+  "On ABSTAIN or any RAG error → raise … the operator can take over the thread." Measured: that
+  operator does not come. Over the whole history of `meta_inbox_threads` — **28 threads, 26 with
+  at least one `failed` outbox row, and exactly 4 EVER touched by a human**
+  (`handling_version > 0`, max 1). ~22 threads hit a failure and nobody arrived. There is also NO
+  human-notification path anywhere (grepped worker + generator for telegram/alert/notify/
+  escalate/CRM-assign), and the `apology_sent_at`/`ack_sent_at` code from migration 260 is armed
+  by `WA_OUTBOX_MANNERS_ENABLED`, default OFF, docstring "Ships dark: unset in prod today" — which
+  is why those columns are 0-for-184 and, even armed, would write to the CLIENT, not a colleague.
+  Fix specified in task #31: split ABSTAIN (a truthful, sendable result) from ERROR (retry/park).
+  Open design point, deliberately NOT decided in code: sending the refusal turns the row into a
+  normal `done`, which REMOVES the only visible anomaly — the replacement signal depends on where
+  the team actually looks, and auto-setting `human_handling` would mark a thread as owned by
+  someone who does not know they own it. Do NOT overload `meta_inbox_messages.error`: it means
+  "failed" today, and a successful abstain written there breaks every query that reads it.
+
+- **⚙️ MERGED + LIVE — PR #3261**: `security.yml` cancels superseded PR runs, never on main (it
+  owns 4 of the 25 required checks). Content-verified on main: line 28 is
+  `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`. Two honest limits recorded on the
+  PR: `cancel-in-progress: false` protects only a run that has already STARTED (a QUEUED run is
+  superseded regardless), and the PR's claim to be copying `tests.yml`'s current form was WRONG —
+  `tests.yml` had already moved to `${{ github.event_name == 'schedule' || ... }}` plus a separate
+  group for the scheduled run (#3206). Alignment tracked as task #30.
 
 - **⚠️ COORDINATION: check main by CONTENT before building a bot-adjacent fix.** On 2026-07-27
-  three separate lanes independently built the same `<Money>` mock fix, and one branch was one
-  push away from DELETING a sibling's already-merged guard. Root cause measured: the pre-push
-  allowlist sends frontend-only diffs through the full backend suite, so the machine ran 6
-  concurrent pushes at load 33 — see memory
-  `discovery_the_prepush_allowlist_is_how_the_fleet_saturates_itself_2026_07_27`.
+  three separate lanes independently built the same `<Money>` mock fix, main ended up with TWO
+  separate guards for one `chdir` bug (#3265 and #3270), and one branch was one push away from
+  DELETING a sibling's already-merged guard. Root cause measured: the pre-push allowlist sends
+  frontend-only diffs through the full backend suite, so the machine ran 6 concurrent pushes at
+  load 33, peaking at **59** an hour later — see memory
+  `discovery_the_prepush_allowlist_is_how_the_fleet_saturates_itself_2026_07_27`. Read files that
+  carry a decision with `git show origin/main:<path>`, never from the M5 checkout, which is kept
+  behind on purpose.
 
 - **🗣️ CLIENT VOICE: persona + greeting SHIPPED & PROVEN LIVE; deny narration NOT YET (2026-07-26).**
   Three things landed and were verified INSIDE the running container (`flyctl ssh` pinned to
