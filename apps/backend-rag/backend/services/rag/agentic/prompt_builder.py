@@ -31,7 +31,20 @@ from backend.app.core.config import settings
 # CREATOR_PERSONA/TEAM_PERSONA stay sourced from v1 directly — they are
 # persona overlays, not versioned templates (v2/v3/v4 all re-export them
 # unchanged, never redefine), so this is not a second instance of the bug.
-from backend.llm.prompt_manager import ZANTARA_MASTER_TEMPLATE
+#
+# v5 (audience-composed, see backend/prompts/zantara_core_v5.py) has no
+# single flat ZANTARA_MASTER_TEMPLATE — the `prompt_manager` MODULE object
+# is imported too (not just the constant) so `prompt_manager.PROMPT_VERSION_ACTIVE`
+# and `prompt_manager.get_master_template(audience)` below are read LIVE at
+# call time via attribute access, never snapshotted at this file's import
+# time (a plain `from ... import PROMPT_VERSION_ACTIVE` would freeze a copy
+# of whatever value was active when this module first loaded). The name
+# below is otherwise unused in this file now (superseded by
+# get_master_template(audience)) but the import itself must stay — it's
+# the anchor test_prompt_source_parity.py::test_prompt_builder_uses_the_
+# versioned_door asserts on (the F1 split-brain regression guard).
+from backend.llm import prompt_manager
+from backend.llm.prompt_manager import ZANTARA_MASTER_TEMPLATE  # noqa: F401
 from backend.prompts.zantara_core import CREATOR_PERSONA, TEAM_PERSONA
 from backend.prompts.zantara_core_v4 import today_wita_string
 
@@ -240,6 +253,16 @@ class SystemPromptBuilder:
                 and "admin" in str(profile.get("role", "")).lower())
             ):
                 is_team = True
+
+        # Audience for the v5 (audience-composed) prompt door — see
+        # backend.prompts.zantara_core_v5.build_master_template. Unresolved/
+        # unknown role MUST fall to "client" (fail-safe: fewest capabilities,
+        # most locked-down voice) — never "team"/"creator" by omission. This
+        # is a pure function of is_creator/is_team, already part of the
+        # cache key below, so no separate cache-key entry is needed. No-op
+        # for v1-v4: prompt_manager.get_master_template() ignores this value
+        # unless PROMPT_VERSION_ACTIVE == "v5".
+        audience = "creator" if is_creator else "team" if is_team else "client"
 
         # Detect language EARLY for cache key
         query_lower = query.lower() if query else ""
@@ -471,12 +494,35 @@ class SystemPromptBuilder:
         # NOTE: Language detection already done BEFORE cache check (lines 342-366)
         # Variable `detected_lang` is already set with descriptive names
 
+        # Resolve the master template through the versioned door, threading
+        # `audience` for v5 (a no-op for v1-v4 — see get_master_template's
+        # docstring). Computed once and reused by both branches below.
+        master_template = prompt_manager.get_master_template(audience)
+
+        # v5 bakes CREATOR_PERSONA/TEAM_PERSONA straight into master_template
+        # (v1-v4 instead prepend them AFTER the Jaksel-phrase strip below —
+        # see the "Inject Creator/Team Persona" comment further down). That
+        # ordering means CREATOR_PERSONA's own tone line ("you can still use
+        # a bit of Jaksel flair... dev-to-dev") is immune to the strip today
+        # — a blind strip over the WHOLE composed v5 template would silently
+        # delete that instruction for every non-Indonesian-language creator
+        # query, a real behaviour regression vs today's v4. Protect the
+        # persona segment from the strip below, mirroring the immunity it
+        # already has in v1-v4 (TEAM_PERSONA carries no such phrase today,
+        # but is included for the same reason, defensively).
+        _v5_persona_voice: str | None = None
+        if prompt_manager.PROMPT_VERSION_ACTIVE == "v5":
+            if audience == "creator":
+                _v5_persona_voice = CREATOR_PERSONA
+            elif audience == "team":
+                _v5_persona_voice = TEAM_PERSONA
+
         # Build prompt with language handling
         if detected_lang:
             # For non-Indonesian queries, use a STRIPPED version of the template
             # Remove Jaksel references that make Gemini respond in Indonesian
             stripped_template = _safe_template_fill(
-                ZANTARA_MASTER_TEMPLATE,
+                master_template,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
@@ -505,8 +551,17 @@ class SystemPromptBuilder:
                 '"lho"',
                 '"kok"',
             ]
-            for phrase in jaksel_phrases:
-                stripped_template = stripped_template.replace(phrase, "")
+            if _v5_persona_voice and _v5_persona_voice in stripped_template:
+                # Split around the (single, verbatim) persona segment, strip
+                # everywhere EXCEPT inside it, then reassemble.
+                _voice_head, _voice_tail = stripped_template.split(_v5_persona_voice, 1)
+                for phrase in jaksel_phrases:
+                    _voice_head = _voice_head.replace(phrase, "")
+                    _voice_tail = _voice_tail.replace(phrase, "")
+                stripped_template = _voice_head + _v5_persona_voice + _voice_tail
+            else:
+                for phrase in jaksel_phrases:
+                    stripped_template = stripped_template.replace(phrase, "")
 
             # Add strong language instruction
             language_header = f"""
@@ -520,7 +575,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             final_prompt = language_header + stripped_template
         else:
             final_prompt = _safe_template_fill(
-                ZANTARA_MASTER_TEMPLATE,
+                master_template,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
@@ -544,8 +599,20 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             final_prompt += no_greeting_warning
             logger.debug("🚫 [PromptBuilder] Injected no-greeting warning (already greeted)")
 
-        # Inject Creator/Team Persona if applicable
-        if is_creator:
+        # Inject Creator/Team Persona if applicable.
+        # v5 (PROMPT_VERSION_ACTIVE == "v5") already composed the audience
+        # voice into master_template above — CREATOR_PERSONA/TEAM_PERSONA
+        # for team/creator, a dedicated client voice otherwise (see
+        # zantara_core_v5.build_master_template) — so prepending here again
+        # would duplicate that section. This branch is precisely what v5
+        # replaces; v1-v4 keep today's behaviour unchanged.
+        if prompt_manager.PROMPT_VERSION_ACTIVE == "v5":
+            logger.debug(
+                "🧬 [PromptBuilder] v5 active — audience '%s' voice already "
+                "composed into master_template, skipping legacy persona prepend",
+                audience,
+            )
+        elif is_creator:
             final_prompt = CREATOR_PERSONA + "\n\n" + final_prompt
             logger.info("🧬 [PromptBuilder] Activated CREATOR Mode for %s", user_id)
         elif is_team:
