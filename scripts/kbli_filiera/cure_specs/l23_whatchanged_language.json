@@ -1,0 +1,156 @@
+{
+  "_doc": "l23_whatchanged_language.json — the rule table for cure_l23_whatchanged_language.py.",
+  "_why": [
+    "intel_2026.whatChanged is rendered to clients at apps/mouth/src/app/kbli/[code]/page.tsx:689",
+    "(and :428 for the gold copy). It is composed by concatenating the record's `mapping_note`",
+    "VERBATIM onto an English lead sentence — and mapping_note is Italian machine output from the",
+    "crosswalk pipeline. The result is an English regulatory page whose 2025-transition section",
+    "speaks Italian. Measured on origin/main 2026-07-26: 346 of 1,559 records (22.2%) contain at",
+    "least one of the literal templates below. Proven live on prod before this cure:",
+    "  /kbli/46442 -> 'Il KBLI 2025 mantiene 46442 separato da 46441, rafforzando la distinzione...'",
+    "  /kbli/01279 -> 'PP28 usa codice KBLI 2020 01270 (...). Match: 100%'",
+    "  /kbli/10305 -> 'PP28 usa codice KBLI 2020 10311 (...). Match: 100%'"
+  ],
+  "_scope_and_its_limit": [
+    "This cure is DETERMINISTIC and covers the six template classes only. It is NOT a claim that",
+    "whatChanged is now entirely English. A residue of free-prose Italian exists that matches no",
+    "template (e.g. 46442's hand-written 'Il KBLI 2025 mantiene ... rafforzando la distinzione",
+    "regolatorio-ministeriale ...'); the compiler COUNTS and PRINTS that residue every run rather",
+    "than letting it pass as covered. Reporting a bound, not a truth: 346 is a FLOOR derived from",
+    "literal matching; a looser word-list matcher scored ~353, and a looser matcher can also score",
+    "false positives. Never cite either number as 'the number of Italian records'.",
+    "Same discipline the corner already records for the tier-claim matcher (19 <= truth <= 152)."
+  ],
+  "_the_trap_guarded_here": [
+    "One record carries an ENGLISH audit note that QUOTES the Italian label as history:",
+    "  \"Corrected 2026-07-19 - the previous 'match con aggregazione' status_mapping/label was stale\".",
+    "A bare phrase replacement would rewrite that citation and corrupt an audit trail. Every rule",
+    "below is therefore anchored on its full template context ('KBLI 2020->2025 mapping: ' prefix,",
+    "or a 5-digit code operand) so it CANNOT fire inside a quoted historical label. The innocence",
+    "corpus pins this: superscar #3 says match the entity, never the bare substring."
+  ],
+  "version": 1,
+  "rules": [
+    {
+      "id": "mapping_codice_rinumerato",
+      "pattern": "KBLI 2020→2025 mapping: codice rinumerato\\.",
+      "replacement": "KBLI 2020→2025 mapping: code renumbered.",
+      "note": "181 records. Anchored on the 'mapping: ' prefix so a quoted label is untouched."
+    },
+    {
+      "id": "mapping_match_con_aggregazione",
+      "pattern": "KBLI 2020→2025 mapping: match con aggregazione\\.",
+      "replacement": "KBLI 2020→2025 mapping: matched with aggregation.",
+      "note": "133 records. The 'mapping: ' anchor is what protects the 2026-07-19 audit citation."
+    },
+    {
+      "id": "pp28_usa_codice",
+      "pattern": "PP28 usa codice KBLI 2020 (\\d{5})",
+      "replacement": "PP28 uses KBLI 2020 code \\1",
+      "note": "9 records. The code operand keeps the match anchored to the real template."
+    },
+    {
+      "id": "dati_da_codici_figli",
+      "pattern": "Dati da (\\d{5}) \\+ (\\d+) codici figli PP28",
+      "replacement": "data from \\1 + \\2 PP28 child code(s)",
+      "note": "16 records. Reached as 'Aggregation: Dati da ...' — the lead word is already English."
+    },
+    {
+      "id": "verifica_e_aggiornamento",
+      "pattern": "Verifica e aggiornamento (NIB|OSS) (?:ora richiesti|da eseguire ora) dopo la chiusura della finestra di giugno (\\d{4})\\.",
+      "replacement": "\\1 verification and update are now required following the closure of the June \\2 window.",
+      "note": "7 records across 4 wordings. Both Italian variants ('ora richiesti' / 'da eseguire ora') carry the same obligation, so they render to one English sentence."
+    },
+    {
+      "id": "enum_leak_parenthetical",
+      "pattern": "\\s*\\((MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO)\\)",
+      "replacement": "",
+      "note": "A RAW ENUM leaking onto a public page — the same disease as L1.1 (raw-enum leak in 'By the numbers'), recurring on a different field. Source: build_what_changed's fallback branch, kbli_enrichment_pipeline.py:351 — `STATUS_MAP.get(mapping, f\"Mapping status: {mapping}.\")` prints the identifier verbatim whenever the status is not in STATUS_MAP. Here the enum trails an already-English sentence ('Direct match from KBLI 2020 (MATCH_LANGSUNG).'), so the cure simply DROPS the parenthetical and the sentence stands. The four tokens are enumerated literally, never matched as an ALL-CAPS shape: NIB / OSS / KBLI / PMA are legitimate acronyms on these pages and a shape-matcher would eat them."
+    },
+    {
+      "id": "enum_leak_leading_dash",
+      "pattern": "\\b(?:MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO)\\s+—\\s+(\\w)(\\w*)",
+      "replacement": "",
+      "uppercase_first_group": true,
+      "note": "The same leak in leading position ('MATCH_LANGSUNG — direct match from KBLI 2020.'). Dropping the token would leave the sentence starting lowercase, so the first letter of the surviving clause is re-capitalised — see uppercase_first_group in the compiler for why that is a per-rule flag and not a blanket post-pass."
+    },
+    {
+      "id": "enum_leak_parenthetical_status",
+      "pattern": "\\s*\\((?:MATCH_LANGSUNG|MATCH_CON_AGGREGAZIONE|BPS_ONLY|CODICE_RINUMERATO) status\\)",
+      "replacement": "",
+      "note": "8 occurrences of the parenthetical carrying a trailing word: \"it didn't exist in 2020 (BPS_ONLY status).\" The first parenthetical rule requires the parens to hold ONLY the token, so this variant slipped it — found by re-running the residue probe after that rule landed, which is the point of having a probe that does not reuse the cure's own rules."
+    },
+    {
+      "id": "enum_leak_leading_from",
+      "pattern": "\\bCODICE_RINUMERATO from KBLI",
+      "replacement": "Renumbered from KBLI",
+      "note": "'CODICE_RINUMERATO from KBLI 2020 code 62012.' — leading token followed by 'from', not an em-dash. The English participle matches STATUS_MAP's own verb for this status."
+    },
+    {
+      "id": "enum_leak_leading_from_aggregazione",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE from KBLI",
+      "replacement": "Consolidated from KBLI",
+      "note": "Same shape for the aggregation status."
+    },
+    {
+      "id": "enum_leak_inline_mapping",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE mapping\\b",
+      "replacement": "aggregated mapping",
+      "note": "'The MATCH_CON_AGGREGAZIONE mapping means some activities...' — the token used as an adjective mid-sentence. Lower-case replacement because the article before it already carries the capital."
+    },
+    {
+      "id": "enum_leak_bare_sentence",
+      "pattern": "\\bMATCH_LANGSUNG\\.",
+      "replacement": "Unchanged from KBLI 2020 — direct match.",
+      "note": "The bare form, where the enum IS the whole sentence and there is no English left to keep. The replacement is NOT authored here: it is STATUS_MAP['MATCH_LANGSUNG'] verbatim from kbli_enrichment_pipeline.py:96 — the pipeline author's own rendering of this exact status. Ordered AFTER the parenthetical/dash rules so it only ever sees what they left."
+    },
+    {
+      "id": "enum_leak_bare_sentence_rinumerato",
+      "pattern": "\\bCODICE_RINUMERATO\\.",
+      "replacement": "Renumbered from KBLI 2020. Your OSS registration may need updating to the new code.",
+      "note": "STATUS_MAP['CODICE_RINUMERATO'] verbatim (kbli_enrichment_pipeline.py:97)."
+    },
+    {
+      "id": "enum_leak_bare_sentence_aggregazione",
+      "pattern": "\\bMATCH_CON_AGGREGAZIONE\\.",
+      "replacement": "This code consolidates multiple KBLI 2020 activities into one. Verify your specific activity maps correctly.",
+      "note": "STATUS_MAP['MATCH_CON_AGGREGAZIONE'] verbatim (kbli_enrichment_pipeline.py:98)."
+    },
+    {
+      "id": "enum_leak_bare_sentence_bps_only",
+      "pattern": "\\bBPS_ONLY\\.",
+      "replacement": "New in KBLI 2025 — no equivalent in KBLI 2020. Register fresh on OSS.",
+      "note": "STATUS_MAP['BPS_ONLY'] verbatim (kbli_enrichment_pipeline.py:99)."
+    },
+    {
+      "id": "enum_leak_leading_from_bare_code",
+      "pattern": "\\bCODICE_RINUMERATO from (\\d{5})",
+      "replacement": "Renumbered from KBLI 2020 code \\1",
+      "note": "3 gold records. The leading-token rule required the literal 'from KBLI'; here the token is followed straight by a bare code ('CODICE_RINUMERATO from 68130'). An UNDER-match I introduced by anchoring on the wrong side of the operand — found by the residue probe on the SECOND surface, which is why gold is scanned and not assumed to mirror canonical."
+    },
+    {
+      "id": "enum_leak_bps_only_with_pp28",
+      "pattern": "\\bBPS_ONLY with PP28 data\\b",
+      "replacement": "new in KBLI 2025, with PP28 data",
+      "note": "4 gold records: 'New code in KBLI 2025 (BPS_ONLY with PP28 data).' The parenthetical carries real information (PP28 data exists) so it is rendered, not dropped."
+    },
+    {
+      "id": "enum_leak_bps_only_article",
+      "pattern": "\\ba BPS_ONLY code\\b",
+      "replacement": "a code new in KBLI 2025",
+      "note": "The token used as a noun-adjective: 'This is a BPS_ONLY code — it exists in...'."
+    },
+    {
+      "id": "enum_leak_bps_only_as",
+      "pattern": "\\bas BPS_ONLY\\b",
+      "replacement": "as new in KBLI 2025",
+      "note": "'maintains the classification as BPS_ONLY, meaning...' — same token, adverbial position."
+    },
+    {
+      "id": "cleaned_removed_invalid",
+      "pattern": "Cleaned: removed invalid \\[[^\\]]*\\]\\s*",
+      "replacement": "",
+      "note": "9 records. DELETED, not translated — deliberately. This is internal pipeline bookkeeping about a code the cleaner dropped; it is not information a client can act on, and it was never meant to reach a public page. The fact itself is not lost: which 2020 codes a record does and does not carry is recorded structurally in the crosswalk fields (pp28_sources / kbli_2020_source), which is where an audit trail belongs. This is the one rule that removes rather than renders, and it is called out here so the removal is a recorded decision rather than a silent side effect."
+    }
+  ]
+}
