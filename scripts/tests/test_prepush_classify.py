@@ -831,3 +831,127 @@ def test_edge_cli_sentinel_via_stdin_end_to_end() -> None:
     proc = _run_cli([], stdin_text=f"{pc.ERROR_SENTINEL}\n")
     assert proc.returncode == 0
     assert proc.stdout.strip() == pc.VERDICT_FULL
+
+
+# ===========================================================================
+# v4 — apps/mouth/src (.ts/.tsx/.css)
+#
+# Why this entry exists: it is the last high-traffic tree with no rule, so
+# every frontend-only PR paid the full ~43min backend suite. On 2026-07-27
+# that cost FOUR consecutive pushes of a single frontend-only branch — the
+# suite simply outlives the background task's budget.
+#
+# Why it is safe: measured on disk, no backend test opens a file under
+# apps/mouth (10 mention it, all as string literals fed to a path->command
+# mapper). The dangerous suffix is `.mdx`, which has a REAL reader
+# (backend/scripts/index_mdx_to_balizero_news.py does rglob("*.mdx") +
+# read_text) — hence excluded, and pinned as GUILT below.
+# ===========================================================================
+
+
+def test_innocence_mouth_src_ts_and_tsx_skip() -> None:
+    """The shapes this entry exists for: a lib module, a component, a page."""
+    for path in (
+        "apps/mouth/src/lib/kbli-bali-block.ts",
+        "apps/mouth/src/lib/kbli-bali-block.test.ts",
+        "apps/mouth/src/components/kbli/LicensingSection.tsx",
+        "apps/mouth/src/app/kbli/[code]/page.tsx",
+        "apps/mouth/src/app/globals.css",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_real_frontend_only_pr_skips() -> None:
+    """The actual file list of PR #3262 (frontend files only) — the diff
+    whose four pushes died paying for a suite that could not see it."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/mouth/src/lib/kbli-bali-block.test.ts",
+            "apps/mouth/src/components/kbli/LicensingSection.tsx",
+            "apps/mouth/src/app/kbli/[code]/page.tsx",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_mouth_mdx_still_forces_full() -> None:
+    """`.mdx` is excluded because a real backend reader exists:
+    backend/scripts/index_mdx_to_balizero_news.py rglob()s and read_text()s
+    the articles tree. 3360 of the 3835 tracked files under src/ are .mdx —
+    admitting them would be the single largest hole this entry could open."""
+    verdict, unknown = pc.classify(
+        ["apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [
+        "apps/mouth/src/content/articles/business/kbli-2025-great-transition.mdx"
+    ]
+
+
+def test_guilt_mouth_dataset_outside_src_forces_full() -> None:
+    """Scoped to src/ specifically, NOT apps/mouth wholesale: the KBLI
+    dataset copies live in apps/mouth/data/ and are data-plane artifacts."""
+    for path in (
+        "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json",
+        "apps/mouth/data/kbli-gold-all.json",
+        "apps/mouth/next.config.ts",
+        "apps/mouth/package.json",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_wrong_suffix_forces_full() -> None:
+    """Suffix scoping is the mechanism — a .json or .yaml under src/ is not
+    admitted just because its directory is."""
+    for path in (
+        "apps/mouth/src/data/services_data.json",
+        "apps/mouth/src/i18n/messages.json",
+        "apps/mouth/src/app/opengraph.png",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_lookalike_prefix_forces_full() -> None:
+    """#3's recurring disease: a prefix check without a boundary anchor
+    over-matches. `srcarchive` is not `src`."""
+    for path in (
+        "apps/mouth/srcarchive/old.ts",
+        "apps/mouth/src-backup/old.tsx",
+        "apps/mouth-legacy/src/old.ts",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+
+
+def test_guilt_mouth_src_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite."""
+    verdict, unknown = pc.classify(
+        [
+            "apps/mouth/src/lib/kbli-bali-block.ts",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_mouth_src_traversal_escape_forces_full() -> None:
+    """HARDENING-2 still holds for the new entry: `..` must not let a path
+    suffix-match its way out of the allowlisted directory."""
+    verdict, _ = pc.classify(
+        ["apps/mouth/src/../../backend-rag/backend/services/rag/reasoning.ts"]
+    )
+    assert verdict == pc.VERDICT_FULL
+
+
+def test_allowlist_version_bumped_for_the_new_entry() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 4
+    assert ("apps/mouth/src", (".ts", ".tsx", ".css")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
