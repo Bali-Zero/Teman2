@@ -40,10 +40,29 @@ _spec.loader.exec_module(_mod)
 
 
 async def _dsn_reachable() -> bool:
+    """Reachable AND the book the script under test will actually accept.
+
+    Connectivity alone is the wrong gate. `intake_drive_contact_autocreate`
+    opens with `attest_local_book`, which raises SystemExit unless
+    `current_database()` is APPROVED_DATABASE — that refusal is the safety
+    property these tests exist to protect, so a run against any other book
+    cannot pass and must not be attempted.
+
+    This matters in CI: the suite connects to `nuzantara_test`. It skipped
+    here for years by accident, because the CI database was missing the
+    columns these tests touch and the connect-or-query failed first. Once
+    scripts/ci_bootstrap_schema.py grew complete enough (this PR), the
+    accident stopped protecting us and the attestation fired as designed —
+    a red suite for a test that can never be green in CI. Ask the real
+    question instead, and never widen APPROVED_DATABASE to make it pass.
+    """
     try:
         conn = await asyncpg.connect(DSN)
-        await conn.close()
-        return True
+        try:
+            dbname = await conn.fetchval("SELECT current_database()")
+        finally:
+            await conn.close()
+        return dbname == _mod.APPROVED_DATABASE
     except Exception:
         return False
 
@@ -51,7 +70,10 @@ async def _dsn_reachable() -> bool:
 @pytest_asyncio.fixture
 async def pool():
     if not await _dsn_reachable():
-        pytest.skip(f"local intake DB not reachable at {DSN}")
+        pytest.skip(
+            f"intake DB at {DSN} is not the approved local book "
+            f"({_mod.APPROVED_DATABASE!r}) or is unreachable"
+        )
     p = await asyncpg.create_pool(DSN, min_size=1, max_size=4)
     yield p
     await p.close()
@@ -1440,7 +1462,10 @@ async def test_armed_apply_refuses_unattested_worker(monkeypatch, capsys):
     (exit 3) BEFORE any ledger/client write; --skip-worker-attest is the
     only bypass and is a visible CLI choice."""
     if not await _dsn_reachable():
-        pytest.skip(f"local intake DB not reachable at {DSN}")
+        pytest.skip(
+            f"intake DB at {DSN} is not the approved local book "
+            f"({_mod.APPROVED_DATABASE!r}) or is unreachable"
+        )
     monkeypatch.setenv(_mod.KILLSWITCH_ENV, "1")
 
     async def fake_census(conn):
