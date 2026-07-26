@@ -21,13 +21,21 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 type ConciergeIntent =
-  "visa" | "company" | "tax" | "property" | "operations" | "unknown";
+  | "visa"
+  | "company"
+  | "tax"
+  | "property"
+  | "operations"
+  | "unknown";
 
 type ConciergeRisk = "low" | "medium" | "high";
 type SupportedLocale = "en" | "it" | "id" | "fr" | "ru";
 
 type ConciergeNextAction =
-  "answer_only" | "collect_non_pii_context" | "handoff_team" | "open_booking";
+  | "answer_only"
+  | "collect_non_pii_context"
+  | "handoff_team"
+  | "open_booking";
 
 interface ConciergeMessage {
   id: string;
@@ -524,7 +532,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
       try {
         const response = await fetch("/api/lab/voice-concierge/status");
         const payload = (await response.json()) as
-          VoiceConciergeLabStatus | ConciergeErrorResponse;
+          | VoiceConciergeLabStatus
+          | ConciergeErrorResponse;
         if (!cancelled && "local_audio" in payload) {
           setLabStatus(payload);
         }
@@ -622,7 +631,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
         });
 
         const payload = (await response.json()) as
-          ConciergeResponse | ConciergeErrorResponse;
+          | ConciergeResponse
+          | ConciergeErrorResponse;
 
         if (!response.ok || !isConciergeResponse(payload)) {
           const errorPayload = payload as ConciergeErrorResponse;
