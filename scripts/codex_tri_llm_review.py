@@ -414,6 +414,57 @@ async def review_codex(prompt: str) -> ReviewVerdict:
         return parse_verdict("codex", "", time.time() - start, error=str(e))
 
 
+def extract_oauth_access_token(raw: str) -> str | None:
+    """Return a usable OAuth access token from a credential blob, or None.
+
+    WHY THIS EXISTS (2026-07-26). The macOS keychain item
+    ``Claude Code-credentials`` does NOT hold a bare token: it holds a JSON
+    document — measured 7,993 characters on a live M5 — shaped
+
+        {"mcpOAuth": {...},
+         "claudeAiOauth": {"accessToken": "sk-ant-oa…", "refreshToken": …,
+                           "expiresAt": …, "subscriptionType": "max", …}}
+
+    The previous code assigned ``security … -w`` stdout VERBATIM to
+    ``CLAUDE_CODE_OAUTH_TOKEN``. Every ``claude`` spawn therefore carried an
+    8KB JSON blob where a 108-character token belongs, failed to
+    authenticate, and printed a human notice instead of the requested JSON —
+    which ``parse_verdict`` reports as the opaque ``no_json``. That reads on
+    the PR comment as "the reviewer misbehaved", so the real cause (a
+    credential SHAPE bug) stayed invisible while the seat was down across
+    many PRs (#3016, #2961, #3027, …).
+
+    It only bites where the env var is absent — i.e. exactly the unattended
+    cron/Action context the bot runs in, never the interactive session a
+    human would debug it from. Scar family #2: green in the shell, dead in
+    production.
+
+    Accepts BOTH shapes so either credential store works: a bare token
+    passes through unchanged; a JSON blob yields ``claudeAiOauth.accessToken``.
+    Returns None when neither is recoverable — the caller must then leave the
+    env var unset rather than poison it.
+    """
+    text = (raw or "").strip()
+    if not text:
+        return None
+    # Anything that opens a JSON container is a credential DOCUMENT, never a
+    # token — `[` as well as `{`, or a JSON array would sail through the
+    # bare-token path and poison the env var exactly as the blob used to.
+    if text[0] not in "{[":
+        return text  # already a bare token (the ~/.claude/token file shape)
+    try:
+        blob = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(blob, dict):
+        return None
+    oauth = blob.get("claudeAiOauth")
+    if not isinstance(oauth, dict):
+        return None
+    token = oauth.get("accessToken")
+    return token.strip() if isinstance(token, str) and token.strip() else None
+
+
 async def review_claude_opus(prompt: str) -> ReviewVerdict:
     """Invoke Claude OAuth (Pro MAX, no API key) via local ``claude`` CLI.
 
@@ -465,12 +516,18 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
             text=True,
             check=False,
         )
+        token: str | None = None
         if keychain_result.returncode == 0 and keychain_result.stdout.strip():
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = keychain_result.stdout.strip()
-        else:
+            token = extract_oauth_access_token(keychain_result.stdout)
+        if token is None:
             token_path = Path.home() / ".claude" / "token"
             if token_path.exists():
-                env["CLAUDE_CODE_OAUTH_TOKEN"] = token_path.read_text().strip()
+                token = extract_oauth_access_token(token_path.read_text())
+        # Deliberately DO NOT set the var when extraction failed: an
+        # unparseable credential must leave the CLI to its own auth, never
+        # override it with a value we know is not a token.
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
     try:
         proc = await asyncio.create_subprocess_exec(
             "claude",
