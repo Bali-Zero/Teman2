@@ -11,7 +11,13 @@
  */
 
 import { ApiClient } from "./api-client";
-import type { GateStatus, GateSection } from "./api-client";
+import type {
+  ComplianceAlertItem,
+  ComplianceAlertOutcome,
+  ComplianceAlertPage,
+  GateStatus,
+  GateSection,
+} from "./api-client";
 import type { UserProfile } from "@/types";
 import type { LoginResponse } from "./auth/auth.types";
 import type {
@@ -71,6 +77,9 @@ export type {
   InteractionStats,
   GateStatus,
   GateSection,
+  ComplianceAlertItem,
+  ComplianceAlertOutcome,
+  ComplianceAlertPage,
 };
 
 export { TierLevel };

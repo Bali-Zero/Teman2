@@ -62,6 +62,11 @@ def test_guilty_per_skala_empty_deletes_all_requires_and_archives_every_target()
     # untouched fields survive the merge
     assert plan.new_properties["pma_status"] == "TERBUKA"
     assert plan.skip_reason is None
+    # class-cure (2026-07-18): the node has no licensing_status key at all —
+    # the cure writes PENDING_REGULATION so the router stops defaulting to
+    # "REGULATED" on a freshly-declared honest gap.
+    assert plan.new_properties["licensing_status"] == "PENDING_REGULATION"
+    assert plan.licensing_status_note == "licensing_status: missing -> PENDING_REGULATION"
 
 
 def test_guilty_with_no_current_edges_still_marks_delete_all_requires_but_no_archive():
@@ -76,13 +81,19 @@ def test_guilty_with_no_current_edges_still_marks_delete_all_requires_but_no_arc
     # _disputed_requires key (nothing to archive this run).
     assert plan.update_node is True
     assert "_disputed_requires" not in plan.new_properties
+    # licensing_status is still written even with zero edges to archive —
+    # it is gated on delete_all_requires (the per_skala verdict), not on
+    # whether this particular run found edges to delete.
+    assert plan.new_properties["licensing_status"] == "PENDING_REGULATION"
 
 
 def test_idempotent_rerun_after_edges_already_deleted_does_not_touch_prior_archive():
     """Second run: edges are already gone (current_requires_targets=[]) and
     the node was already fully synced by a prior run, including a
-    _disputed_requires archive from that run. Must be a total no-op —
-    critically, must NOT overwrite/blank the existing archive."""
+    _disputed_requires archive AND a licensing_status=PENDING_REGULATION
+    write from that run. Must be a total no-op — critically, must NOT
+    overwrite/blank the existing archive, and the licensing_status
+    re-write must be declared a no-op, not silently skipped."""
     already_synced_row = {
         "description": CANONICAL_CURED["uraian"],
         "properties": {
@@ -90,6 +101,7 @@ def test_idempotent_rerun_after_edges_already_deleted_does_not_touch_prior_archi
             "pma_status": "TERBUKA",
             "_data_note": CANONICAL_CURED["_data_note"],
             "_disputed_requires": MIXED_TARGETS,  # archived by the first run
+            "licensing_status": "PENDING_REGULATION",  # written by the first run
         },
     }
 
@@ -100,6 +112,7 @@ def test_idempotent_rerun_after_edges_already_deleted_does_not_touch_prior_archi
     assert plan.update_node is False
     assert plan.new_properties is None
     assert plan.new_description is None
+    assert plan.licensing_status_note == "licensing_status already PENDING_REGULATION (no-op)"
 
 
 def test_innocent_per_skala_non_empty_refuses_edge_deletion():
@@ -115,6 +128,29 @@ def test_innocent_per_skala_non_empty_refuses_edge_deletion():
     assert plan.update_node is True
     assert plan.new_properties is not None
     assert "_disputed_requires" not in plan.new_properties
+    # NOT a cure (per_skala non-empty) — licensing_status is never touched,
+    # even though the text sync happens.
+    assert plan.licensing_status_note is None
+    assert "licensing_status" not in plan.new_properties
+
+
+def test_innocent_per_skala_non_empty_leaves_existing_licensing_status_untouched():
+    """A code that is NOT a detached/cured gap (per_skala non-empty) may
+    already carry its OWN licensing_status (e.g. a legacy "REGULATED" value
+    unrelated to this cure) — the class-cure only ever writes
+    PENDING_REGULATION for per_skala==[] codes; a non-detached code's
+    existing value must survive the merge byte-for-byte."""
+    record = dict(CANONICAL_CURED, per_skala=[{"skala_usaha": ["Menengah"]}])
+    row = {
+        "description": KG_ROW_STALE["description"],
+        "properties": dict(KG_ROW_STALE["properties"], licensing_status="REGULATED"),
+    }
+
+    plan = plan_fix("51103", record, row, MIXED_TARGETS)
+
+    assert plan.delete_all_requires is False
+    assert plan.licensing_status_note is None
+    assert plan.new_properties["licensing_status"] == "REGULATED"
 
 
 def test_innocent_per_skala_key_entirely_absent_treated_as_non_empty():
@@ -124,12 +160,17 @@ def test_innocent_per_skala_key_entirely_absent_treated_as_non_empty():
 
     assert plan.delete_all_requires is False
     assert plan.skip_reason is not None and "non-empty" in plan.skip_reason
+    assert plan.licensing_status_note is None
 
 
 def test_innocent_already_clean_node_is_full_noop_except_edge_flag():
     clean_row = {
         "description": CANONICAL_CURED["uraian"],
-        "properties": {"uraian": CANONICAL_CURED["uraian"], "_data_note": CANONICAL_CURED["_data_note"]},
+        "properties": {
+            "uraian": CANONICAL_CURED["uraian"],
+            "_data_note": CANONICAL_CURED["_data_note"],
+            "licensing_status": "PENDING_REGULATION",
+        },
     }
 
     plan = plan_fix("51103", CANONICAL_CURED, clean_row, [])
@@ -138,6 +179,7 @@ def test_innocent_already_clean_node_is_full_noop_except_edge_flag():
     assert plan.new_properties is None
     assert plan.new_description is None
     assert plan.delete_all_requires is True  # still checked/attempted, idempotent — no edges exist
+    assert plan.licensing_status_note == "licensing_status already PENDING_REGULATION (no-op)"
 
 
 def test_skip_code_missing_from_canonical_dataset():

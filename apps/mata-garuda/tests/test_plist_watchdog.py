@@ -107,3 +107,76 @@ def test_ledger_persisted(env):
     led = json.loads((pw.LEDGER).read_text())
     assert "com.matagaruda.zeta" in led
     assert len(led["com.matagaruda.zeta"]) == 1
+
+
+# ── host-pins (cicatrix family #10 — active-active split-brain) ────────────
+
+
+def _write_pins(pw, snap_dir: Path, pins: dict) -> None:
+    (snap_dir / "host-pins.json").write_text(json.dumps(pins))
+
+
+def test_pinned_label_wrong_host_is_skipped_not_healed(env, monkeypatch):
+    """Label pinned to mini-pro2, this host is 'Nuzantara' → NOT healed,
+    report contains SKIP with the pin + this-host detail."""
+    _write_pins(pw, env.snap, {"com.matagaruda.kg-query-api": ["mini-pro2"]})
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Nuzantara")
+    env.add_snapshot("kg-query-api")   # vanished (no live file) → would-be heal
+    assert pw.main() == 0
+    assert env.bootstrapped == []
+    assert "com.matagaruda.kg-query-api" not in [
+        h.split(":")[0] for h in env.bootstrapped
+    ]
+
+
+def test_pinned_label_wrong_host_report_contains_skip(env, monkeypatch, capsys):
+    _write_pins(pw, env.snap, {"com.matagaruda.kg-query-api": ["mini-pro2"]})
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Nuzantara")
+    env.add_snapshot("kg-query-api")
+    pw.main()
+    out = capsys.readouterr().out
+    assert "SKIP com.matagaruda.kg-query-api" in out
+    assert "mini-pro2" in out
+    assert "nuzantara" in out  # normalized current host
+
+
+def test_pinned_label_matching_host_heals_normally(env, monkeypatch):
+    """Label pinned to mini-pro2, this host normalizes to 'mini-pro2'
+    (from 'Mini-Pro2.local') → heals normally."""
+    _write_pins(pw, env.snap, {"com.matagaruda.kg-query-api": ["mini-pro2"]})
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Mini-Pro2.local")
+    env.add_snapshot("kg-query-api")
+    assert pw.main() == 0
+    assert "com.matagaruda.kg-query-api" in env.bootstrapped
+
+
+def test_unpinned_label_heals_as_today(env, monkeypatch):
+    """A label absent from host-pins.json heals exactly like before pinning."""
+    _write_pins(pw, env.snap, {"com.matagaruda.kg-query-api": ["mini-pro2"]})
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Nuzantara")
+    env.add_snapshot("some-other-job")   # NOT in the pins file
+    assert pw.main() == 0
+    assert "com.matagaruda.some-other-job" in env.bootstrapped
+
+
+def test_missing_host_pins_file_heals_as_today(env, monkeypatch, capsys):
+    """No host-pins.json at all (SNAPSHOT_DIR/host-pins.json absent) → fail-open,
+    behavior identical to pre-pin (heals), plus a report line."""
+    assert not (env.snap / "host-pins.json").exists()
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Nuzantara")
+    env.add_snapshot("kg-query-api")
+    assert pw.main() == 0
+    assert "com.matagaruda.kg-query-api" in env.bootstrapped
+    out = capsys.readouterr().out
+    assert "host-pins: unreadable" in out
+
+
+def test_malformed_host_pins_file_fails_open(env, monkeypatch, capsys):
+    """host-pins.json exists but is not valid JSON → fail-open, same as missing."""
+    (env.snap / "host-pins.json").write_text("{not valid json,,,")
+    monkeypatch.setattr(pw.socket, "gethostname", lambda: "Nuzantara")
+    env.add_snapshot("kg-query-api")
+    assert pw.main() == 0
+    assert "com.matagaruda.kg-query-api" in env.bootstrapped
+    out = capsys.readouterr().out
+    assert "host-pins: unreadable" in out

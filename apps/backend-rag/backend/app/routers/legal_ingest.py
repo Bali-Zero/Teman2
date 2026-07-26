@@ -525,6 +525,12 @@ class LegalDocType(str, Enum):
     Permen = "Permen"
     SE = "SE"
     SKB = "SKB"
+    # Widened 2026-07-19 (peraturan feeder revival): national-hierarchy types
+    # the sheet feeder actually carries. Additive only — existing values untouched.
+    UU = "UU"
+    Perppu = "Perppu"
+    KMK = "KMK"
+    Permenaker = "Permenaker"
 
 
 class LegalIngestFullRequest(BaseModel):

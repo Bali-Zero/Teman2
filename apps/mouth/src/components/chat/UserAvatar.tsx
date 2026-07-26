@@ -28,7 +28,7 @@ export function UserAvatar({
     return (
       <Image
         src={userAvatar}
-        alt="User"
+        alt={userName ? `Avatar for ${userName}` : "User avatar"}
         width={config.dimensions}
         height={config.dimensions}
         className={`${config.classes} rounded-full object-cover ${className}`}

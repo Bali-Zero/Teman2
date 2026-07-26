@@ -36,6 +36,17 @@ shift
 REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 
+# 0. PATH — launchd hands this wrapper a minimal PATH (no /opt/homebrew/bin).
+# wr2_image_generator.py's Codex lane execs CODEX_BIN="/opt/homebrew/bin/codex"
+# directly (absolute path, so it launches), but that file's shebang is
+# `#!/usr/bin/env node` — `env` resolves `node` via PATH, which launchd never
+# populates with Homebrew's prefix. Result: "codex exit=127: env: node: No
+# such file or directory", indistinguishable from a Codex quota-exhaust
+# failure unless you inspect the exact error text. Same signature already
+# cured in scripts/auth_sentinel_cron.sh (2026-07-12) but never propagated to
+# this sibling wrapper — found 2026-07-22 diagnosing a stuck WR2 cover image.
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 # 1. Secrets — source primary then backend-specific (additive)
 if [[ -f "$SECRETS_FILE" ]]; then
     # shellcheck disable=SC1090

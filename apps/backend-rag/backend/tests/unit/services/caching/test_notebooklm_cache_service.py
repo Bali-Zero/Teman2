@@ -21,7 +21,10 @@ from typing import Any
 
 import pytest
 
-from backend.services.caching.notebooklm_cache_service import NotebookLMCacheService
+from backend.services.caching.notebooklm_cache_service import (
+    NotebookLMCacheService,
+    domain_scope_id,
+)
 
 VALID_METADATA: dict[str, Any] = {
     "source_ref": "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1",
@@ -37,12 +40,14 @@ class FakeAsyncRedis:
 
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
 
     async def get(self, key: str) -> str | None:
         return self.store.get(key)
 
-    async def setex(self, key: str, _ttl: int, value: str) -> None:
+    async def setex(self, key: str, ttl: int, value: str) -> None:
         self.store[key] = value
+        self.ttls[key] = ttl
 
     async def delete(self, *keys: str) -> int:
         deleted = 0
@@ -121,6 +126,31 @@ async def test_set_succeeds_with_full_provenance_metadata(
     assert got is not None
     assert got["answer"] == "PPh Badan is..."
     assert got["metadata"]["source_priority"] == 80
+
+
+@pytest.mark.asyncio
+async def test_set_uses_service_default_ttl_when_no_override_given(
+    cache: NotebookLMCacheService,
+) -> None:
+    await cache.set("What is PPh Badan?", "PPh Badan is...", metadata=VALID_METADATA)
+    key = cache.cache_prefix + cache._hash_question("What is PPh Badan?", "")
+    assert cache.redis_client.ttls[key] == cache.ttl_seconds
+
+
+@pytest.mark.asyncio
+async def test_set_ttl_seconds_override_is_used_instead_of_default(
+    cache: NotebookLMCacheService,
+) -> None:
+    custom_ttl = 7 * 24 * 3600  # DINAMIS class, 7 days
+    await cache.set(
+        "How often does the visa fee change?",
+        "It varies.",
+        metadata=VALID_METADATA,
+        ttl_seconds=custom_ttl,
+    )
+    key = cache.cache_prefix + cache._hash_question("How often does the visa fee change?", "")
+    assert cache.redis_client.ttls[key] == custom_ttl
+    assert cache.redis_client.ttls[key] != cache.ttl_seconds
 
 
 @pytest.mark.asyncio
@@ -283,3 +313,43 @@ async def test_notebook_scoped_and_unscoped_entries_do_not_collide(
 
     assert scoped["answer"] == "scoped legacy answer"
     assert unscoped["answer"] == "harvester answer"
+
+
+# ── domain_scope_id() — Phase-0 safety rail (FATAL 1) ───────────────────────
+
+
+def test_domain_scope_id_is_deterministic_and_domain_specific() -> None:
+    first_call = domain_scope_id("visa")
+    second_call = domain_scope_id("visa")
+    assert first_call == second_call  # deterministic — same domain, same key
+    assert domain_scope_id("visa") != domain_scope_id("tax")  # domain-specific
+
+
+@pytest.mark.asyncio
+async def test_domain_scoped_entries_for_same_question_do_not_collide(
+    cache: NotebookLMCacheService,
+) -> None:
+    """GUILT (FATAL 1): two domains, byte-identical question text, must
+    resolve to two different cache keys — no collision-policy refusal."""
+    visa_metadata = {**VALID_METADATA, "domain": "visa"}
+    tax_metadata = {**VALID_METADATA, "domain": "tax"}
+
+    ok_visa = await cache.set(
+        "What documents do I need?",
+        "Visa answer",
+        metadata=visa_metadata,
+        notebook_id=domain_scope_id("visa"),
+    )
+    ok_tax = await cache.set(
+        "What documents do I need?",
+        "Tax answer",
+        metadata=tax_metadata,
+        notebook_id=domain_scope_id("tax"),
+    )
+
+    assert ok_visa is True
+    assert ok_tax is True
+    visa_got = await cache.get("What documents do I need?", notebook_id=domain_scope_id("visa"))
+    tax_got = await cache.get("What documents do I need?", notebook_id=domain_scope_id("tax"))
+    assert visa_got["answer"] == "Visa answer"
+    assert tax_got["answer"] == "Tax answer"

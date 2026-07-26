@@ -111,7 +111,7 @@
 **Cross-LLM verification (bipolar verifier already in CLAUDE.md)**:
 
 - Critic panel: Claude main + Gemini cross-check (free) + NotebookLM ground-truth (NB-DESIGN-AGENT just created).
-- DeepSeek as alternate cross-check when Gemini quota exhausted.
+- Kimi K3 (`kimi` CLI, flat sub) as alternate cross-check when Gemini quota exhausted (DeepSeek API retired 2026-07-19).
 - Never include OpenAI in runtime path (would burn Codex Plus quota that's reserved for code review).
 
 **Tools whitelist for orchestrator** (`tools` field in YAML):

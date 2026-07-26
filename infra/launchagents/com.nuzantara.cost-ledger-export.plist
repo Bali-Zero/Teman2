@@ -14,7 +14,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/nuzantara-deploy/scripts/cost_ledger_export_run.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cost_ledger_export_run.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>1800</integer>

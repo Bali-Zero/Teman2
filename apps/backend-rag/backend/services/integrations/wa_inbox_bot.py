@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from typing import Any
 
 import asyncpg
@@ -42,8 +43,76 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
+from backend.channels.format import format_rich_text
 
 logger = logging.getLogger("zantara.backend")
+
+# ── KG workflow-scaffold strip (client-voice hardening, 2026-07-25) ──────
+# `orchestrator_core.py::_format_workflow_for_prompt` appends an internal
+# diagnostics block to the RAG answer on some queries — a "## SUGGESTED
+# WORKFLOW (from <source>, confidence: NN%)" heading, the workflow name,
+# a numbered step list, and an optional "**Confidence**: ..." line — ALWAYS
+# closed by the literal trailer sentence below (`_KG_WORKFLOW_TRAILER`,
+# copied verbatim from orchestrator_core.py). That block is internal
+# diagnostics for an operator reading the raw answer, not a WhatsApp
+# client, and has been observed CONTRADICTING the actual answer (e.g. an
+# E33G remote-worker answer followed by a local-employment IMTA/TKA
+# workflow it never asked for).
+#
+# We do NOT edit orchestrator_core.py (another lane owns it, and the block
+# may be legitimate for other consumers like the web chat UI) — this strip
+# lives at the WhatsApp channel boundary instead.
+#
+# Anchored on the two literal strings the emitter ALWAYS writes together
+# (heading prefix + closing sentence, both from the SAME
+# `_format_workflow_for_prompt` call) rather than a loose "workflow"
+# keyword — see .claude/rules/cicatrix-superscar.md family #3
+# (guard-over-match) for why a bare-substring match would be unsafe: a
+# legitimate client answer ("il nostro workflow di onboarding...") must
+# never be caught by this. The non-greedy DOTALL match between the two
+# anchors also means only the block itself is removed, never content that
+# happens to follow it (e.g. the KG fast-path's reasoning text, which is
+# appended AFTER the workflow block in some code paths and must survive).
+_KG_WORKFLOW_TRAILER = (
+    "IMPORTANT: This is a suggested workflow. "
+    "Always verify current requirements with the user."
+)
+_KG_WORKFLOW_SCAFFOLD_RE = re.compile(
+    r"\s*##\s+SUGGESTED WORKFLOW \(from .*?" + re.escape(_KG_WORKFLOW_TRAILER),
+    re.DOTALL,
+)
+
+
+def _strip_kg_workflow_scaffold(answer: str) -> str:
+    """Remove the internal KG-workflow diagnostics block, if present.
+
+    Safe to call on any answer text — a no-op when the block is absent
+    (the common case).
+    """
+    return _KG_WORKFLOW_SCAFFOLD_RE.sub("", answer).strip()
+
+
+# Mirrors backend/services/integrations/whatsapp_service.py's `text[:4096]`
+# hard cutoff (WhatsApp Cloud API's message-body limit). Duplicated as a
+# local constant rather than imported — this module's job ends at "the
+# text to send"; the actual truncate+send belongs to whatsapp_service.py
+# (another lane's file, out of scope here). Used only to log non-silently
+# when a reply is about to be truncated downstream, so the eventual
+# chunked-sending work has real data on how often/how badly this happens.
+#
+# NOT derived from backend/prompts/channel_overlays.py's
+# ChannelConfig(name="whatsapp", max_words=150, ...): that number is a
+# WORD-count *prompt instruction* to the LLM ("try to keep it short"),
+# empirically NOT obeyed (the production evidence behind this PR was
+# ~450 words / 2923 chars, generated WITH that overlay active) — which is
+# exactly why this fix is deterministic post-processing instead of a
+# stronger instruction. Converting a word budget into a char threshold
+# here would answer a different question ("is this reply longer than our
+# style guideline?") than the one this check needs to answer ("is real
+# content about to be physically deleted by whatsapp_service.py's hard
+# cutoff?"). Coupling to ChannelConfig.max_words was considered and
+# rejected for that reason, not overlooked — see PR description.
+_WHATSAPP_HARD_SEND_LIMIT = 4096
 
 # How many prior turns of the thread to feed the orchestrator as context.
 _HISTORY_TURNS = 12
@@ -113,15 +182,36 @@ def _rag_client_headers() -> dict[str, str]:
     "role=internal" pseudo-user, the same channel Pro-side internal scripts use.
     Without this the bot can NEVER generate a reply (every call → 401 → worker
     marks the row failed).
+
+    ALSO sends X-WA-Bot-Profile-Key (settings.wa_inbox_bot_profile_key, Fly
+    secret WA_INBOX_BOT_PROFILE_KEY) — a SECOND secret exclusive to this
+    process, distinct from X-Internal-Key (which other Pro-side scripts also
+    hold). `agentic_rag.py::_verify_wa_inbox_bot_profile_key` gates WA
+    sender-profile resolution (owner/team persona override) on THIS key
+    specifically, not on the shared internal-key role (P0-ID hardening,
+    2026-07-24). Missing → profile resolution simply never fires for this
+    bot's calls (fail-safe degrade, not a 401 — the query itself still works).
     """
+    headers: dict[str, str] = {}
     internal_key = getattr(settings, "wa_mirror_internal_key", None)
     if internal_key:
-        return {"X-Internal-Key": internal_key}
-    logger.warning(
-        "wa-inbox bot: WA_MIRROR_INTERNAL_KEY not configured — "
-        "RAG calls will be rejected by HybridAuthMiddleware (401)"
-    )
-    return {}
+        headers["X-Internal-Key"] = internal_key
+    else:
+        logger.warning(
+            "wa-inbox bot: WA_MIRROR_INTERNAL_KEY not configured — "
+            "RAG calls will be rejected by HybridAuthMiddleware (401)"
+        )
+    profile_key = getattr(settings, "wa_inbox_bot_profile_key", None)
+    if profile_key:
+        headers["X-WA-Bot-Profile-Key"] = profile_key
+    else:
+        logger.warning(
+            "wa-inbox bot: WA_INBOX_BOT_PROFILE_KEY not configured — "
+            "owner/team persona override will never resolve for this bot's "
+            "queries (query itself still works; degrades to client-shaped "
+            "persona only)"
+        )
+    return headers
 
 
 async def _get_rag_client() -> httpx.AsyncClient:
@@ -217,12 +307,31 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     if not query:
         raise RuntimeError(f"wa-inbox bot: no customer message in thread {thread_id}")
 
-    payload = {
+    # Team-assistant V1 (2026-07-19) used to resolve the sender's identity
+    # HERE and forward it as a `profile` request field. P0-ID containment
+    # (2026-07-24) moved that same `resolve_sender_identity` lookup
+    # server-side (`agentic_rag.py::_resolve_trusted_wa_profile`) — the
+    # server no longer trusts a client-declared profile at all, so doing
+    # the lookup here too would be a redundant DB round-trip on this
+    # latency-critical path (research/operations/2026-07-20-wa-bot-latency.md)
+    # for a value nobody reads anymore.
+    payload: dict[str, Any] = {
         "query": query,
         "user_id": f"whatsapp_{phone}",
         "session_id": f"wa_meta_session_{thread_id}",
         "conversation_history": history,
         "channel": "whatsapp",
+        # Latency: cap the ReAct loop at 2 steps (default 3) for this
+        # real-time channel — observed 33-94s replies, ~15-17s/step, see
+        # research/operations/2026-07-20-wa-bot-latency.md. Never raises the
+        # cap. Full win on single-hop queries (the common case); a query
+        # needing 2+ tool calls exits the loop before an in-loop synthesis
+        # turn and falls to the post-loop context-synthesis path instead
+        # (reasoning.py:428-429, :656) — same LLM-call count, a different
+        # answer path, worth watching on the abstain/low-context-quality
+        # rate post-rollout. Self-correction re-verify (post-loop, not a
+        # ReAct step) is untouched — the answer-quality safety net stays.
+        "max_steps": 2,
     }
 
     # P9 admission gate — bound in-flight RAG calls from this api process
@@ -250,9 +359,45 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     if not answer:
         raise RuntimeError(f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}")
 
+    # Remove internal KG-workflow diagnostics before the answer ever reaches
+    # the channel formatter — see _strip_kg_workflow_scaffold docstring.
+    answer = _strip_kg_workflow_scaffold(answer)
+    if not answer:
+        raise RuntimeError(
+            f"wa-inbox bot: answer empty after workflow-scaffold strip, thread {thread_id}"
+        )
+
+    # Channel boundary: convert the orchestrator's generic markdown into
+    # WhatsApp-safe formatting (*bold*, unicode bullets, no raw ##/**/[N]
+    # noise) — see backend/channels/format.py::format_rich_text. Length is
+    # tracked pre- AND post-format (not enforced — see
+    # _WHATSAPP_HARD_SEND_LIMIT docstring for why 150-word ChannelConfig
+    # guidance is the wrong unit for this) so the eventual chunked-sending
+    # lane inherits a real length distribution instead of a guess.
+    pre_format_len = len(answer)
+    answer = format_rich_text(answer, "whatsapp")
+    if not answer:
+        raise RuntimeError(
+            f"wa-inbox bot: answer empty after channel formatting, thread {thread_id}"
+        )
+    post_format_len = len(answer)
+
+    if post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
+        logger.warning(
+            "wa-inbox bot: reply for thread %s is %d chars post-format (%d "
+            "pre-format), exceeds WhatsApp's %d-char single-message limit — "
+            "whatsapp_service.py will hard-truncate it on send. Chunked "
+            "sending is out of scope for this change.",
+            thread_id,
+            post_format_len,
+            pre_format_len,
+            _WHATSAPP_HARD_SEND_LIMIT,
+        )
+
     logger.info(
-        "wa-inbox bot generated reply for thread %s (%d chars)",
+        "wa-inbox bot generated reply for thread %s (%d chars post-format, %d chars pre-format)",
         thread_id,
-        len(answer),
+        post_format_len,
+        pre_format_len,
     )
     return answer

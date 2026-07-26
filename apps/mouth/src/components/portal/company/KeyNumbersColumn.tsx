@@ -133,7 +133,7 @@ export function KeyNumbersColumn({
           <span
             className={`font-bold text-[var(--kbli-text-primary)] leading-[1.15] tabular-nums tracking-[-0.02em] ${
               item.large
-                ? "text-[28px] font-[800] text-[var(--kbli-accent)]"
+                ? "text-[28px] font-[800] text-[var(--bz-copper)]"
                 : item.valueStyle || "text-[22px]"
             }`}
           >
@@ -145,7 +145,19 @@ export function KeyNumbersColumn({
             </span>
           )}
           {item.tag && (
-            <span className="inline-block self-start px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[10px] font-semibold mt-1 bg-[rgba(232,168,73,0.1)] text-[var(--kbli-amber)]">
+            /* WS3 slice 9: warning tone reads the semantic state token.
+               The column sits directly on paper, where a 12% tint fill
+               sinks warning fg to ~4.1:1 — hairline border + bare state fg
+               instead (4.78:1 on paper; was rgba(232,168,73,.1) +
+               --kbli-amber = 1.84:1). */
+            <span
+              className="inline-block self-start px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[10px] font-semibold mt-1"
+              style={{
+                border:
+                  "1px solid color-mix(in srgb, var(--state-warning) 35%, transparent)",
+                color: "var(--state-warning)",
+              }}
+            >
               {item.tag}
             </span>
           )}

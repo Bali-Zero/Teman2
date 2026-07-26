@@ -69,6 +69,7 @@ def base_state() -> MultiAgentState:
     return {
         "query": "How much will PT PMA cost and when can I start operations?",
         "user_context": {},
+        "grounding_context": "",
         "legal_analysis": "",
         "financial_breakdown": "",
         "timeline_estimate": "",

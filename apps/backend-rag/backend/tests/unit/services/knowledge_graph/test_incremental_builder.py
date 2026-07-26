@@ -77,7 +77,10 @@ class TestInit:
 
 class TestGetGeminiClient:
     @patch("backend.services.knowledge_graph.incremental_builder.settings")
-    def test_no_api_key_returns_none(self, mock_settings: MagicMock) -> None:
+    def test_no_api_key_returns_none(
+        self, mock_settings: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("KG_GOOGLE_API_KEY", raising=False)
         mock_settings.google_api_key = None
         mock_settings.google_ai_studio_key = None
         mock_settings.google_imagen_api_key = None
@@ -86,6 +89,44 @@ class TestGetGeminiClient:
         with patch.dict("sys.modules", {"google": MagicMock(), "google.genai": MagicMock()}):
             result = b._get_gemini_client()
         assert result is None
+
+    @patch("backend.services.knowledge_graph.incremental_builder.settings")
+    def test_prefers_kg_google_api_key_env_over_shared_settings(
+        self, mock_settings: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """KG extraction must isolate its key from the WhatsApp bot's shared one."""
+        monkeypatch.setenv("KG_GOOGLE_API_KEY", "kg-dedicated-key")
+        mock_settings.google_api_key = "shared-bot-key"
+        mock_settings.google_ai_studio_key = None
+        mock_settings.google_imagen_api_key = None
+
+        mock_genai = MagicMock()
+        b = KGIncrementalBuilder()
+        with patch.dict(
+            "sys.modules", {"google": MagicMock(genai=mock_genai), "google.genai": mock_genai}
+        ):
+            b._get_gemini_client()
+
+        assert mock_genai.Client.call_args.kwargs["api_key"] == "kg-dedicated-key"
+
+    @patch("backend.services.knowledge_graph.incremental_builder.settings")
+    def test_falls_back_to_shared_settings_when_kg_key_unset(
+        self, mock_settings: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Additive: behavior is unchanged until KG_GOOGLE_API_KEY is set anywhere."""
+        monkeypatch.delenv("KG_GOOGLE_API_KEY", raising=False)
+        mock_settings.google_api_key = "shared-bot-key"
+        mock_settings.google_ai_studio_key = None
+        mock_settings.google_imagen_api_key = None
+
+        mock_genai = MagicMock()
+        b = KGIncrementalBuilder()
+        with patch.dict(
+            "sys.modules", {"google": MagicMock(genai=mock_genai), "google.genai": mock_genai}
+        ):
+            b._get_gemini_client()
+
+        assert mock_genai.Client.call_args.kwargs["api_key"] == "shared-bot-key"
 
     @patch("backend.services.knowledge_graph.incremental_builder.settings")
     def test_import_error_returns_none(self, mock_settings: MagicMock) -> None:

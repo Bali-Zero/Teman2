@@ -688,6 +688,12 @@ async def test_process_one_composes_when_news_shaped_but_summary_present(
     citations-only, BUT article_summary is real -> composes normally, never
     parked. Proves the backstop doesn't over-trigger on the common case
     (B1's facts-first fix handles this one, not B2's park)."""
+    # Production cutover (2026-07-21): this test mocks the MONOLITH's own
+    # claude_compose_slides — pin the engine so it keeps exercising exactly
+    # that path (WR2_COMPOSE_ENGINE now defaults to planner_writer, which
+    # never calls claude_compose_slides and would otherwise fall through to
+    # a REAL Claude OAuth call here).
+    monkeypatch.setenv("WR2_COMPOSE_ENGINE", "monolith")
     draft_id = uuid.uuid4()
     row = {
         "id": draft_id,
@@ -734,6 +740,9 @@ async def test_process_one_composes_when_facts_citations_only_but_enrichment_ric
     (thirty_second_brief). The old _has_usable_source parked on the
     citations-only signal alone, discarding that real content. The fix must
     compose instead."""
+    # Production cutover (2026-07-21): same monolith-pin rationale as
+    # test_process_one_composes_when_news_shaped_but_summary_present above.
+    monkeypatch.setenv("WR2_COMPOSE_ENGINE", "monolith")
     draft_id = uuid.uuid4()
     row = {
         "id": draft_id,

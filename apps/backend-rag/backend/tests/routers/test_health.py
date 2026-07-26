@@ -151,3 +151,56 @@ class TestHealthEndpoints:
         assert body["status"] == "degraded"
         assert body["services"]["database"]["status"] == "healthy"
         assert body["services"]["redis"]["details"]["connected"] is True
+
+    @pytest.mark.integration
+    def test_detailed_health_reports_real_faq_and_semantic_cache_hit_rate(
+        self,
+        app: FastAPI,
+        client: TestClient,
+    ) -> None:
+        """faq_semantic_cache must report the WA orchestrator's real FAQ +
+        semantic cache counters — not the unrelated generic CacheService
+        (backend.core.cache) that the old "query_cache" block exposed under
+        a name that read as "the WA cache". Regression guard for the
+        cache-hit-rate blind spot fixed 2026-07-21."""
+        from backend.app.metrics import (
+            faq_cache_hits_total,
+            faq_cache_misses_total,
+            semantic_cache_hits_total,
+            semantic_cache_misses_total,
+        )
+        from backend.app.routers.health import _counter_snapshot
+
+        faq_hits_before, _ = _counter_snapshot(faq_cache_hits_total)
+        faq_misses_before, _ = _counter_snapshot(faq_cache_misses_total)
+        sem_hits_before, _ = _counter_snapshot(semantic_cache_hits_total)
+        sem_misses_before, _ = _counter_snapshot(semantic_cache_misses_total)
+
+        # Simulate one hit + one miss on each cache tier.
+        faq_cache_hits_total.labels(domain="tax").inc()
+        faq_cache_misses_total.inc()
+        semantic_cache_hits_total.labels(match_type="semantic").inc()
+        semantic_cache_misses_total.inc()
+
+        response = client.get("/health/detailed")
+
+        assert response.status_code == 200
+        services = response.json()["services"]
+
+        # Old misleading key must be gone; renamed key present.
+        assert "query_cache" not in services
+        assert "generic_query_cache" in services
+
+        cache = services["faq_semantic_cache"]
+        assert cache["status"] == "healthy"
+        assert cache["details"]["scope"].startswith("per-worker")
+
+        faq = cache["details"]["faq_cache"]
+        assert faq["hits"] == faq_hits_before + 1
+        assert faq["misses"] == faq_misses_before + 1
+        assert faq["hits_by_domain"]["domain=tax"] >= 1
+
+        semantic = cache["details"]["semantic_cache"]
+        assert semantic["hits"] == sem_hits_before + 1
+        assert semantic["misses"] == sem_misses_before + 1
+        assert semantic["hits_by_match_type"]["match_type=semantic"] >= 1

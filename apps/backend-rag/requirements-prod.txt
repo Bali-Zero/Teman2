@@ -3,7 +3,7 @@
 # Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
 
 # Core Framework
-fastapi!=0.136.3,>=0.136.3  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
+fastapi!=0.136.3,>=0.139.2  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 starlette>=1.3.1,<1.4.0  # Security fix: CVE-2026-48818/48817 (fix 1.1.0), CVE-2026-54282 (1.3.0), CVE-2026-54283 (1.3.1); supersedes PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep prod on the suite-tested 1.x line.
 uvicorn[standard]>=0.51.0  # Upgraded for async improvements
 pydantic>=2.12.5
@@ -18,22 +18,22 @@ anyio>=4.14.2
 qdrant-client>=1.18.0,<1.19.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # AI API Clients (optimized for resolution speed)
-openai>=2.45.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
-anthropic>=0.116.0  # Updated for httpx 0.28+ compatibility
-google-genai>=2.11.0  # Unified SDK (replaces google-generativeai)
+openai>=2.46.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
+anthropic>=0.117.0  # Updated for httpx 0.28+ compatibility
+google-genai>=2.12.1  # Unified SDK (replaces google-generativeai)
 google-api-python-client>=2.198.0
 google-auth>=2.55.2
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
-google-cloud-storage>=3.12.1
+google-cloud-storage>=3.13.0
 
 # Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
 # bucket. No backend module imports it; pinned here so production venv
 # rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
-boto3>=1.43.46
+boto3>=1.43.52
 
-langchain>=1.3.13
+langchain>=1.3.14
 langchain-core>=1.4.9
 langchain-anthropic>=1.4.8
 langchain-openai>=1.3.5
@@ -63,7 +63,7 @@ python-docx>=1.1.0
 # HTTP/Network
 httpx>=0.28.1,<1.0.0
 requests>=2.32.4  # Security: .netrc credential leak fix
-aiohttp>=3.14.1  # Security: zip bomb, directory traversal, DoS fixes
+aiohttp>=3.14.2  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0
 
 # Authentication
@@ -93,13 +93,21 @@ slowapi>=0.1.10  # Rate limiting for FastAPI
 
 # Observability
 prometheus-fastapi-instrumentator>=8.0.2
-sentry-sdk[fastapi]>=2.64.0  # Error monitoring
+sentry-sdk[fastapi]>=2.66.0  # Error monitoring
 
 # XML/HTML Processing
 lxml>=6.1.1
 
 # ML/Math
 scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
+
+# Visa Engine — signed RulePack bundle verification
+# (backend/services/visa_engine/bundle.py): RFC 8785 JSON Canonicalization
+# Scheme (JCS) over the signed envelope + Draft 2020-12 JSON Schema
+# validation of the raw wire dict before any Pydantic parsing.
+rfc8785==0.1.4  # exact pin: canonicalization is a security-relevant deterministic contract, no version drift allowed
+jsonschema>=4.26.0  # already resolved transitively via `mcp`, but bundle.py imports Draft202012Validator/FormatChecker directly — declared explicitly so a future `mcp` dependency change can never silently drop it from the lock (scar W98)
+rfc3339-validator>=0.1.4  # jsonschema's FormatChecker() "date-time" check is a no-op without this installed (silently skips validation, not an error) — 3-seat verify FIX-NOW #11 caught it present in the dev venv (via some other transitive chain) but undeclared in any manifest, so a clean prod install from the lock would have silently run with format validation OFF
 
 # REMOVED FOR SIZE OPTIMIZATION:
 # - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings
@@ -117,13 +125,13 @@ apscheduler==3.11.3
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=83.0.0
-langsmith>=0.10.2  # Observability: @traceable on RAG nodes + KG nodes
+langsmith>=0.10.9  # Observability: @traceable on RAG nodes + KG nodes
 
 # Langfuse + OpenInference instrumentation (PR #312, prod runtime — was
 # missing in requirements-prod.txt so observability silently no-op'd in
 # production even with LANGFUSE_*_KEY secrets set on Fly).
 # Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
-langfuse>=4.14.0,<5.0.0  # LLM observability, OTEL-based v2+
+langfuse>=4.14.1,<5.0.0  # LLM observability, OTEL-based v2+
 openinference-instrumentation-anthropic>=1.0.6  # Anthropic SDK auto-trace
 openinference-instrumentation-google-genai>=1.2.0  # Auto-trace Gemini SDK
 openinference-instrumentation-openai>=0.1.52  # Auto-trace OpenAI-compat (DeepSeek, Ollama)

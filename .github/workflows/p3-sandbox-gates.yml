@@ -28,6 +28,7 @@ jobs:
   p3-static-validation:
     name: P3 static validation (enforcing)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -53,7 +54,7 @@ jobs:
             echo "::notice::no relevant paths changed — sentinel success"
           fi
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.relevant.outputs.run == 'true'
         with:
           python-version: "3.11"
@@ -99,6 +100,7 @@ jobs:
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       # MONITOR step — GitHub ephemeral runners have no safe Docker daemon for

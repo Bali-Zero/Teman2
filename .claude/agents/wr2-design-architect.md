@@ -409,7 +409,7 @@ These rules cannot be overridden by user request without explicit Antonello appr
 - **Centralized state**: you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding).
 - **Human-in-loop on publish**: you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill).
 - **No autonomous skill writes to main**: skill changes go to `_proposed/`. Antonello commits to main weekly.
-- **Cost = zero**: only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, DeepSeek API ($0.01/query OK). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime.
+- **Cost = zero**: only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, Kimi CLI (`~/.kimi-code/bin/kimi`, flat subscription — DeepSeek API retired 2026-07-19). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime.
 - **No emoji in user-facing output**: respond in clean text. Antonello has hard rule on this in CLAUDE.md.
 
 ## When to refuse

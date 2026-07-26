@@ -45,6 +45,7 @@ WHITELIST_FILES: set[str] = {
     "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
     "yarn.lock",
     "tsconfig.json",
     "vercel.json",
@@ -139,6 +140,10 @@ WHITELIST_DOTDIRS: set[str] = {
     # README.md explaining why each block is parked + cicatrix-scars pointer.
     # Outside every active CI matcher (`paths:` filters), see PR #363.
     ".disabled",
+    # kimi-code project scope: skills under .kimi-code/skills/ are auto-
+    # discovered by the Kimi CLI from the git root (Kimi arsenal entry
+    # 2026-07-19, PR #2798). Same class as .claude/ and .agents/.
+    ".kimi-code",
 }
 
 

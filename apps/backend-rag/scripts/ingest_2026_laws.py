@@ -89,7 +89,13 @@ LAWS_2026 = [
     },
 ]
 
-COLLECTION_NAME = "legal_unified_2026"
+# "legal_unified_2026" was a dead end: absent from collection_registry.py's
+# CANONICAL_COLLECTION_ALIASES (so LegalIngestionService's preflight allowlist
+# rejects it) and never selected by any live retrieval routing table
+# (multi_hop.py / query_planner.py / kg_orchestrator.py / agentic/tools.py all
+# route legal-domain queries to "legal_unified" only). Content ingested under
+# the old name would sit in Qdrant unreachable by any user-facing query.
+COLLECTION_NAME = "legal_unified"
 SOURCE_DIR = PROJECT_ROOT / "data/kb_sources/2026_updates"
 
 

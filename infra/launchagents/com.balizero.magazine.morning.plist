@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Repo canon. Pro-only LaunchAgent: morning magazine compose at 08:15 WITA, after collectors, target publish by 08:30. -->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>MAGAZINE_PUBLISH_ENABLED</key>
+		<string>true</string>
+		<key>MAGAZINE_PYTHON</key>
+		<string>/Users/nuzantara/nuzantara/apps/zantara-media/.venv_mag/bin/python</string>
+		<key>MAGAZINE_ROOT</key>
+		<string>/Users/nuzantara/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.balizero.magazine.morning</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/nuzantara/infra/launchagents/wrappers/bali-zero-magazine-publish.sh</string>
+		<string>morning</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/bali-zero-magazine-morning.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/bali-zero-magazine-morning.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>8</integer>
+		<key>Minute</key>
+		<integer>15</integer>
+	</dict>
+</dict>
+</plist>

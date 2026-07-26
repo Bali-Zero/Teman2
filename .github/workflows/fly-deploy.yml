@@ -16,6 +16,7 @@ jobs:
   pre-deploy-gate:
     name: Pre-deploy validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/backend-rag
@@ -43,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -135,6 +136,7 @@ jobs:
     name: Run DB migrations on Fly.io
     needs: pre-deploy-gate # only after gate passes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Job-level env so both setup-flyctl and the flyctl ssh call see the token.
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -155,6 +157,7 @@ jobs:
     name: Fly.io rolling deploy
     needs: run-migrations # BLOCCATO se migration fallisce
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -213,6 +216,7 @@ jobs:
     name: Re-run SQL v2 migrations on fresh image
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -337,6 +341,7 @@ jobs:
     name: Run Python-idiom migrations (post-deploy, idempotent)
     needs: [deploy, run-sql-v2-migrations-post-deploy]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -442,10 +447,50 @@ jobs:
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown" || true
 
+  # Task #19 fix (2026-07-26): this job used to list run-python-migrations in
+  # `needs:` with no `if:`, so GitHub's default "all needs must succeed" rule
+  # SKIPPED it whenever a post-deploy migration failed — even though `deploy`
+  # had already shipped a new image that was live and serving traffic. A
+  # skip is not a failure, so nothing downstream (rollback, the Telegram
+  # "deploy fallito" alert) ever fired; only the migration job's OWN local
+  # alert did, which reads as "one problem reported" while the automated
+  # recovery silently never ran. Two entry points into the same skip-cascade:
+  # run-python-migrations failing directly, or run-sql-v2-migrations-post-
+  # deploy failing and skipping run-python-migrations as a consequence (its
+  # own needs: [deploy, run-sql-v2-migrations-post-deploy]) — both dead-end
+  # at this job today.
+  #
+  # Fix: gate on `deploy` alone via `always()` + an explicit result check,
+  # same idiom deploy-failure-alert already uses a few jobs down in this
+  # file. Health-check's job is to assess the LIVE service, independent of
+  # whether its post-deploy migrations succeeded — so run-python-migrations'
+  # own outcome is deliberately NOT part of the condition. If `deploy` itself
+  # failed or was skipped (e.g. run-migrations blocked it), needs.deploy.result
+  # is not 'success', so this job correctly stays skipped too — no new image
+  # shipped, nothing to health-check, deploy-failure-alert already covers
+  # that case. run-sql-v2-migrations-post-deploy is added to `needs:` for
+  # explicitness (it was already transitively ordered ahead of this job via
+  # run-python-migrations' own needs:, so this doesn't change execution
+  # order — it stops correctness from depending on an edge a future edit to
+  # run-python-migrations could remove without noticing).
+  #
+  # Rollback scope, stated so the alert below can't imply more than it does:
+  # `flyctl releases rollback` reverts the IMAGE only. It cannot and does not
+  # revert the DATABASE — run-migrations (pre-deploy) already applied schema
+  # changes before `deploy` ran. A rollback here means "old code, new-or-
+  # partially-new schema", safe only if those migrations were backward-
+  # compatible. That's a pre-existing property of this workflow's ONE
+  # rollback mechanism, not something this fix introduces — this fix only
+  # makes that mechanism reachable from the 2 failure paths above instead of
+  # neither.
   post-deploy-health:
     name: Post-deploy health check + rollback
-    needs: [deploy, run-python-migrations]
+    needs: [deploy, run-sql-v2-migrations-post-deploy, run-python-migrations]
+    if: |
+      always() &&
+      needs.deploy.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -509,16 +554,44 @@ jobs:
       - name: Notifica Telegram — deploy fallito + rollback
         if: failure()
         run: |
-          MESSAGE="🔴 *Deploy Nuzantara FALLITO*%0A%0AHealth check non passato dopo 5 min.%0ARollback automatico eseguito.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          MESSAGE="🔴 *Deploy Nuzantara FALLITO*%0A%0AHealth check non passato dopo 5 min.%0ARollback automatico eseguito (SOLO immagine — lo schema DB applicato dalle migration pre-deploy NON viene revertito).%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
           curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown" || true
 
+      # Task #19 follow-up (2026-07-26): this job's `if:` now runs even when a
+      # post-deploy migration failed (see the header comment above), but
+      # `success()` at step level reflects ONLY this job's own steps — it does
+      # NOT look at `needs.*.result`. Before this split, a migration failure
+      # meant this job was skipped entirely, so no success message could ever
+      # fire alongside a failure one. After the fix, a healthy service +
+      # failed migration produces BOTH: the migration job's own 🔴 alert, then
+      # this step's unqualified ✅ — a green message arriving after a red one
+      # reads as "resolved, disregard the above," which is false. So the two
+      # notification steps below are gated on the migration jobs' results, not
+      # just on step success: a genuinely clean deploy gets the unqualified ✅,
+      # a healthy-but-migration-failed deploy gets its own degraded message
+      # that says so explicitly.
       - name: Notifica Telegram — deploy OK
-        if: success()
+        if: |
+          success() &&
+          needs.run-python-migrations.result == 'success' &&
+          needs.run-sql-v2-migrations-post-deploy.result == 'success'
         run: |
-          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato. Migration post-deploy pulite.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+      - name: Notifica Telegram — deploy sano, migration post-deploy degradata
+        if: |
+          success() &&
+          (needs.run-python-migrations.result != 'success' ||
+           needs.run-sql-v2-migrations-post-deploy.result != 'success')
+        run: |
+          MESSAGE="⚠️ *Deploy Nuzantara — servizio sano, migration degradata*%0A%0AHealth check passato: il backend risponde. MA una o più migration post-deploy NON sono andate a buon fine.%0A%0Arun-sql-v2-migrations-post-deploy: \`${{ needs.run-sql-v2-migrations-post-deploy.result }}\`%0Arun-python-migrations: \`${{ needs.run-python-migrations.result }}\`%0A%0ASchema state NON verificato — non è 'tutto ok', è 'il servizio non è stato riavviato'. Investigare la migration fallita PRIMA di considerare il deploy completo.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
           curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
             -d "text=${MESSAGE}" \
@@ -548,6 +621,7 @@ jobs:
       always() &&
       (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Determine failing stage
         id: stage

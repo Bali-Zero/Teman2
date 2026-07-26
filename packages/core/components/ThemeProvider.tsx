@@ -37,7 +37,7 @@ interface ThemeProviderProps {
  * ThemeProvider — writes data-theme and data-funnel onto <html>.
  *
  * Theme precedence on mount:
- *   1. localStorage.theme (user choice wins)
+ *   1. localStorage (bz-theme, legacy: theme — user choice wins)
  *   2. defaultTheme prop
  *
  * An inline script in <head> sets data-theme before React hydrates,
@@ -74,7 +74,9 @@ export function ThemeProvider({
       v === "operative-dark";
 
     const stored =
-      typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+      typeof window !== "undefined"
+        ? (localStorage.getItem("bz-theme") ?? localStorage.getItem("theme"))
+        : null;
     const prePaint =
       typeof document !== "undefined"
         ? document.documentElement.dataset.theme
@@ -93,6 +95,10 @@ export function ThemeProvider({
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
     if (typeof window !== "undefined") {
+      // Canonical key is `bz-theme` (matches the pre-paint script in
+      // app/layout.tsx — no FOUC on reload); `theme` kept as legacy mirror
+      // for readers not yet migrated (dropped in WS4).
+      localStorage.setItem("bz-theme", next);
       localStorage.setItem("theme", next);
       document.documentElement.dataset.theme = next;
     }

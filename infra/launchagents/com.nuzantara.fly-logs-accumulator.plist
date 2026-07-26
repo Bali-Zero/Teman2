@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Fly logs accumulator (O0-P1, approved by Zero 2026-07-19).
+         Long-running follower: KeepAlive.SuccessfulExit=false restarts only on
+         crash — a clean exit 0 (G5 kill switch FLY_LOGS_ACCUMULATOR_ENABLED=false)
+         stays stopped by design. The script self-rotates daily and prunes >14d.
+         Emergency stop: launchctl bootout gui/$(id -u)/com.nuzantara.fly-logs-accumulator -->
+    <key>Label</key>
+    <string>com.nuzantara.fly-logs-accumulator</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/fly_logs_accumulator.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/fly-logs-accumulator.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/fly-logs-accumulator.launchd.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>FLY_LOGS_APP</key>
+        <string>nuzantara-rag</string>
+    </dict>
+</dict>
+</plist>

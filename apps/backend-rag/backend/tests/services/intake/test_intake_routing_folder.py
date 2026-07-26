@@ -363,7 +363,7 @@ async def test_resolve_entity_folder_match_no_strong_no_phone() -> None:
 @pytest.mark.asyncio
 async def test_resolve_entity_strong_id_skips_folder_query() -> None:
     conn = FakeConn(
-        passport_rows=[{"id": 7, "full_name": "Alice Strong"}],
+        passport_rows=[{"id": 7, "full_name": "Alice Strong", "id_verified": True}],
         client_fuzzy_rows=[{"id": 9, "name": "Budi Santoso", "sim": 0.84}],
     )
     out = await rt.resolve_entity(

@@ -1056,6 +1056,37 @@ class Settings(BaseSettings):
     wa_mirror_crm_write_key: str | None = None
     wa_mirror_crm_write_enabled: bool = False
 
+    # Scoped service key EXCLUSIVE to wa_inbox_bot.py's own call to
+    # POST /api/agentic-rag/query, used ONLY to gate WA sender-profile
+    # resolution (owner/team persona override — P0-ID, hardened 2026-07-24).
+    # DISTINCT from wa_mirror_internal_key BY DESIGN: that key is shared with
+    # other Pro-side scripts (e.g. wa-mirror-auto-promote-leads), and an
+    # earlier version of this fix gated profile resolution on
+    # `role=="internal"` (granted to ANY holder of the shared key) plus a
+    # phone parsed from the client-supplied `user_id` body field — closable
+    # by any shared-key holder sending `user_id="whatsapp_<owner's PUBLIC
+    # WA number>"` (the number is documented-public, see
+    # whatsapp_identity.py). This key has no such gap: only a request
+    # carrying THIS specific secret can trigger profile resolution at all.
+    # Header: X-WA-Bot-Profile-Key. Unset → profile resolution silently
+    # never fires (fail-safe: no persona override, not an open door).
+    # Rotate via `fly secrets set WA_INBOX_BOT_PROFILE_KEY=...`.
+    wa_inbox_bot_profile_key: str | None = None
+
+    # T4 (spec `2026-07-24-zantara-bot-consultant-assistant-spec.md` §5):
+    # unify the WhatsApp `_caller_profile` identity with the ReAct-loop
+    # `agent_role` RBAC gate (`tool_authorizer.py`). When True, a server-
+    # resolved WA sender profile (see `_resolve_trusted_wa_profile` —
+    # itself gated on `wa_inbox_bot_profile_key` above, never a request
+    # field) is mapped to the caller's `AgentRole` from
+    # `team_agent_config.TEAM_AGENTS`, so a real team member texting the
+    # bot gets their own scope instead of `agent_role=None` (which
+    # hard-denies every `SENSITIVE_TOOLS` entry — the 2026-07-21
+    # tourniquet). Default False: the derivation is dormant and every
+    # WhatsApp query behaves byte-identical to today until this is armed.
+    # Rotate/arm via `fly secrets set WA_BOT_AGENT_ROLE_ENABLED=true`.
+    wa_bot_agent_role_enabled: bool = False
+
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================

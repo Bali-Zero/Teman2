@@ -2,48 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key>
-  <string>com.nuzantara.intake-gate-count-pusher</string>
-
-  <!-- INTAKE login gate — Pro->Fly document-count mirror pusher.               -->
-  <!-- Computes per-user pending-document COUNTS (non-PII integers) from the    -->
-  <!-- LOCAL intake tables and pushes a full snapshot to Fly so the Fly gate     -->
-  <!-- evaluator can enforce gate-1 (documents) while the PII stays on the Pro   -->
-  <!-- (Law 2). Cron shim (NOT daemon), single-instance via flock. Runs on Pro. -->
-  <!-- Secret: BRIDGE_API_KEY from Keychain (balizero-whatsapp/bridge-api-key)  -->
-  <!-- at runtime; NOT in this plist (2026-04-29 plist-secret scar).            -->
-
-  <key>ProgramArguments</key>
-  <array>
-    <string>/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python</string>
-    <string>-u</string>
-    <string>/Users/nuzantara/nuzantara/scripts/intake_gate_count_pusher.py</string>
-  </array>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>INTAKE_DATABASE_URL</key>
-    <string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
-    <key>FLY_BRIDGE_URL</key>
-    <string>https://nuzantara-rag.fly.dev</string>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-  </dict>
-
-  <!-- Every 5 minutes. -->
-  <key>StartInterval</key>
-  <integer>300</integer>
-
-  <key>RunAtLoad</key>
-  <true/>
-
-  <key>KeepAlive</key>
-  <false/>
-
-  <key>StandardOutPath</key>
-  <string>/Users/nuzantara/logs/intake-gate-count-pusher.log</string>
-
-  <key>StandardErrorPath</key>
-  <string>/Users/nuzantara/logs/intake-gate-count-pusher.log</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>FLY_BRIDGE_URL</key>
+		<string>https://nuzantara-rag.fly.dev</string>
+		<key>INTAKE_DATABASE_URL</key>
+		<string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.nuzantara.intake-gate-count-pusher</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/scripts/intake-gate-pusher-run.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/intake-gate-count-pusher.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/intake-gate-count-pusher.log</string>
+	<key>StartInterval</key>
+	<integer>300</integer>
 </dict>
 </plist>

@@ -25,10 +25,20 @@ _PROFILE_ROW = {
 }
 
 
+class _Tx:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+
 def _make_service(fetchrow_return: dict | None = None) -> tuple["PortalService", AsyncMock]:
     mock_conn = AsyncMock()
     mock_conn.execute.return_value = None
     mock_conn.fetchrow.return_value = fetchrow_return or _PROFILE_ROW
+    # conn.transaction() must be an async CM, not a coroutine (phone-lock TX).
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -54,19 +64,23 @@ async def test_update_profile_updates_allowed_fields():
 
     assert result is not None
 
-    # Three execute calls: UPDATE, notification_alerts, portal_messages
-    assert mock_conn.execute.call_count == 3
+    # Four execute calls: phone-core advisory lock (F12), UPDATE,
+    # notification_alerts, portal_messages
+    assert mock_conn.execute.call_count == 4
 
-    update_sql = mock_conn.execute.call_args_list[0][0][0]
+    lock_sql = mock_conn.execute.call_args_list[0][0][0]
+    assert "pg_advisory_xact_lock" in lock_sql
+
+    update_sql = mock_conn.execute.call_args_list[1][0][0]
     assert "phone" in update_sql
     assert "whatsapp" in update_sql
     assert "address" in update_sql
 
-    alert_sql = mock_conn.execute.call_args_list[1][0][0]
+    alert_sql = mock_conn.execute.call_args_list[2][0][0]
     assert "notification_alerts" in alert_sql
     assert "portal_profile_update" in alert_sql
 
-    msg_sql = mock_conn.execute.call_args_list[2][0][0]
+    msg_sql = mock_conn.execute.call_args_list[3][0][0]
     assert "portal_messages" in msg_sql
     assert "client_to_team" in msg_sql
 
@@ -115,13 +129,17 @@ async def test_update_profile_notification_failure_does_not_raise():
     """If notification_alerts INSERT fails, update_profile still returns profile (graceful degradation)."""
     mock_conn = AsyncMock()
     mock_conn.fetchrow.return_value = _PROFILE_ROW
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     call_count = 0
 
     async def execute_side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        if call_count == 2:  # notification_alerts INSERT
+        # Call order with the F12 phone-core lock: #1 advisory lock (the OLD
+        # row's phone yields a core even though "+62888" does not), #2 UPDATE,
+        # #3 notification_alerts INSERT.
+        if call_count == 3:  # notification_alerts INSERT
             raise Exception("DB constraint error")
         return None
 
@@ -146,13 +164,16 @@ async def test_update_profile_message_failure_does_not_raise() -> None:
     """If portal_messages insert fails, update_profile still returns the profile."""
     mock_conn = AsyncMock()
     mock_conn.fetchrow.return_value = _PROFILE_ROW
+    mock_conn.transaction = MagicMock(return_value=_Tx())
 
     call_count = 0
 
     async def execute_side_effect(*args: object, **kwargs: object) -> None:
         nonlocal call_count
         call_count += 1
-        if call_count == 3:  # portal_messages INSERT
+        # With the F12 lock as call #1 (old row's phone core), portal_messages
+        # is now call #4 (#2 UPDATE, #3 notification_alerts).
+        if call_count == 4:  # portal_messages INSERT
             raise Exception("message insert failed")
 
     mock_conn.execute.side_effect = execute_side_effect
@@ -180,3 +201,70 @@ async def test_get_profile_data_returns_empty_when_client_missing() -> None:
     result = await service._get_profile_data(mock_conn, client_id=404)
 
     assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_update_profile_phone_lock_fails_closed_on_nonconvergence():
+    """Round-12 F12 gap 2 guilt: a phone value oscillating across concurrent
+    cooperative writers for all 3 convergence rounds must abort the update
+    (fail CLOSED), never proceed while the row's current core is unlocked."""
+    service, mock_conn = _make_service()
+    # Every re-read shows a DIFFERENT phone (fresh core each time) — the lock
+    # set can never cover the row's current cores.
+    mock_conn.fetchrow.side_effect = [
+        {**_PROFILE_ROW, "phone": "+62811111111", "phone_normalized": "62811111111"},
+        {**_PROFILE_ROW, "phone": "+62822222222", "phone_normalized": "62822222222"},
+        {**_PROFILE_ROW, "phone": "+62833333333", "phone_normalized": "62833333333"},
+    ]
+
+    with pytest.raises(RuntimeError, match="phone_lock_convergence_failed"):
+        await service.update_profile(
+            client_id=1,
+            fields={"phone": "+6281234567890"},
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    # The UPDATE never ran: every execute call was an advisory lock.
+    for call in mock_conn.execute.call_args_list:
+        assert "pg_advisory_xact_lock" in call[0][0]
+
+
+@pytest.mark.asyncio
+async def test_update_profile_phone_lock_converges_on_stable_row():
+    """Round-12 F12 gap 2 innocence: a stable row converges on the second
+    read and the update proceeds normally."""
+    service, mock_conn = _make_service()
+
+    result = await service.update_profile(
+        client_id=1,
+        fields={"phone": "+6281234567890"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+    assert result is not None
+    update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
+    assert update_sqls  # the write DID happen
+
+
+@pytest.mark.asyncio
+async def test_update_profile_whatsapp_only_takes_phone_lock():
+    """Round-15 F21 guilt: a whatsapp-ONLY portal profile update must take
+    the phonecore advisory locks — whatsapp is an ownership column, and
+    before the fix this path bypassed the lock protocol entirely."""
+    service, mock_conn = _make_service()
+
+    result = await service.update_profile(
+        client_id=1,
+        fields={"whatsapp": "+6281234567890"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+    assert result is not None
+    lock_sqls = [
+        c[0][0]
+        for c in mock_conn.execute.call_args_list
+        if "pg_advisory_xact_lock" in c[0][0]
+    ]
+    assert lock_sqls  # the whatsapp-only update DID take the phonecore lock
+    update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
+    assert update_sqls and "whatsapp" in update_sqls[0]

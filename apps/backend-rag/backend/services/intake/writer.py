@@ -50,12 +50,19 @@ import logging
 import os
 import re
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
 
 from backend.core.cache import invalidate_crm_stats
-from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+from backend.services.intake.client_enricher import (
+    _IDENTITY_FILL_ONLY_COLUMNS,
+    ENRICHMENT_MAP,
+    _normalize_for_promotion,
+    _unwrap,
+    enrich_client_from_extracted_fields,
+)
 from backend.services.intake.enqueue import PIPELINE_VERSION
 
 logger = logging.getLogger("zantara.intake.writer")
@@ -904,14 +911,40 @@ async def execute_commit(
         # client's profile (renewal-alert clock, identity fields). Before this the
         # intake commit filed the file and discarded the structured data. Conservative:
         # skips archive-only (client_id None), unknown doc_types, and absent fields —
-        # never overwrites an existing card value with NULL. A bad field is skipped,
-        # never raised, so enrichment can't roll back the document it belongs to.
-        enriched = await enrich_client_from_extracted_fields(
-            conn,
-            plan.client_id,
-            plan.doc_type,
-            plan.payload.get("extracted_fields"),
-        )
+        # never overwrites an existing card value with NULL. Enrichment is metadata,
+        # best-effort by contract: it runs inside its OWN nested transaction
+        # (savepoint), so a failure in its SQL (schema introspection, the UPDATE
+        # itself) rolls back only the enrichment and can never abort the document
+        # commit it belongs to (Codex 2026-07-19: the bare call propagated).
+        enriched: dict[str, Any] = {}
+        try:
+            async with conn.transaction():
+                enriched = await enrich_client_from_extracted_fields(
+                    conn,
+                    plan.client_id,
+                    plan.doc_type,
+                    plan.payload.get("extracted_fields"),
+                )
+        except Exception:
+            logger.warning(
+                "intake.writer: client enrichment failed for proposal=%s client=%s — "
+                "document commit proceeds without card update",
+                plan.proposal_id,
+                plan.client_id,
+                exc_info=True,
+            )
+            enriched = {}
+        # F1 fill-only conflicts (client_enricher.py): surface loudly — the doc
+        # carried an identifier that disagrees with the client's card and was
+        # deliberately NOT written. Column names only, never the values (Law 2).
+        skipped_conflicts = enriched.pop("_skipped_conflicts", None)
+        if skipped_conflicts:
+            logger.warning(
+                "intake.writer.enrichment_conflict_skipped proposal=%s columns=%s",
+                plan.proposal_id,
+                skipped_conflicts,
+            )
+        enriched_columns = sorted(enriched.keys()) if enriched else None
         # Learning evidence is part of the same atomic commit: a document cannot
         # become routed without also contributing its approved/corrected labels.
         # The INSERT is idempotent, so re-committing the same intake instance does
@@ -929,7 +962,14 @@ async def execute_commit(
         await advance_proposal(
             conn, plan.proposal_id, from_status=advance_from, target_status=advance_to
         )
-        audit_id = await _write_audit(conn, plan, dry_run=False, outcome="committed", doc_id=doc_id)
+        audit_id = await _write_audit(
+            conn,
+            plan,
+            dry_run=False,
+            outcome="committed",
+            doc_id=doc_id,
+            enriched_columns=enriched_columns,
+        )
         logger.info(
             "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s "
             "enriched=%s corrections=%d (real write)",
@@ -1056,6 +1096,129 @@ async def advance_proposal(
 
 
 # --------------------------------------------------------------------------- #
+# _revert_document_enrichment — CAS de-enrichment on rollback (F2b, design §8)
+# --------------------------------------------------------------------------- #
+async def _revert_document_enrichment(
+    conn: asyncpg.Connection,
+    *,
+    client_id: int,
+    doc_type: str | None,
+    extracted_fields: dict[str, Any],
+    enriched_columns: list[Any],
+) -> list[str]:
+    """Revert IDENTIFIER columns a rolled-back document enriched — CAS, never a guess.
+
+    Only touches ``_IDENTITY_FILL_ONLY_COLUMNS`` (passport_number/kitas_number/
+    npwp/nib): non-identifier enriched columns (full_name/dates/nationality) are
+    intentionally left alone (low mis-attribution risk, higher ambiguity for what
+    "revert" even means for a name — out of scope, design doc F2 note).
+
+    CAS semantics: a column is nulled out ONLY if the client's CURRENT value still
+    normalizes to what THIS document wrote (``compare-and-swap`` on the value, not
+    a blind revert). If a human correction or a later document changed it since,
+    that newer truth must survive the rollback — skip with a warning instead.
+    """
+    identifier_cols = [
+        c for c in enriched_columns if isinstance(c, str) and c in _IDENTITY_FILL_ONLY_COLUMNS
+    ]
+    if not identifier_cols:
+        return []
+
+    mapping = ENRICHMENT_MAP.get(doc_type or "") or []
+    col_to_extract_key = {column: extract_key for extract_key, column, _coerce in mapping}
+    col_to_coerce = {column: coerce for _extract_key, column, coerce in mapping}
+
+    # Schema-drift guard (same pattern as client_enricher): only touch columns
+    # that actually exist on THIS database's clients table.
+    existing_cols = {
+        r["column_name"]
+        for r in await conn.fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'clients' AND table_schema = current_schema()"
+        )
+    }
+    fetch_cols = [c for c in (*identifier_cols, "custom_fields") if c in existing_cols]
+    if not fetch_cols:
+        return []
+    row = await conn.fetchrow(f"SELECT {', '.join(fetch_cols)} FROM clients WHERE id = $1", client_id)
+    if row is None:
+        return []
+    current = dict(row)
+
+    cf = current.get("custom_fields")
+    if isinstance(cf, str):
+        try:
+            cf = json.loads(cf)
+        except (ValueError, TypeError):
+            cf = {}
+    if not isinstance(cf, dict):
+        cf = {}
+    backfill = cf.get("identity_backfill")
+    cf_mutated = False
+
+    reverted: list[str] = []
+    set_parts: list[str] = []
+    params: list[Any] = []
+    idx = 1
+    for column in identifier_cols:
+        if column not in existing_cols:
+            continue
+        extract_key = col_to_extract_key.get(column)
+        coerce = col_to_coerce.get(column)
+        if extract_key is None or coerce is None:
+            continue  # doc_type's map no longer carries this column — nothing to compare
+        raw = _unwrap(extracted_fields.get(extract_key))
+        if raw is None:
+            continue
+        doc_value = coerce(raw)
+        if doc_value is None:
+            continue
+        current_value = current.get(column)
+        if not current_value:
+            continue  # already empty — nothing to revert
+        if _normalize_for_promotion(current_value) != _normalize_for_promotion(doc_value):
+            logger.warning(
+                "intake.writer.deenrich_skip client=%s column=%s "
+                "— current value no longer matches the rolled-back document "
+                "(changed since commit, CAS miss; left untouched)",
+                client_id,
+                column,
+            )
+            continue
+        set_parts.append(f"{column} = ${idx}")
+        params.append(None)
+        idx += 1
+        reverted.append(column)
+
+        if isinstance(backfill, dict) and isinstance(backfill.get(column), dict):
+            backfill[column]["reverted"] = True
+            backfill[column]["reverted_at"] = datetime.now(timezone.utc).isoformat()
+            cf_mutated = True
+
+    if not set_parts:
+        return []
+
+    if cf_mutated and "custom_fields" in existing_cols:
+        # ::text::jsonb — same codec-agnostic pattern as client_enricher/writer
+        # elsewhere in this module (plain pool has no jsonb codec registered).
+        set_parts.append(f"custom_fields = ${idx}::text::jsonb")
+        params.append(json.dumps(cf))
+        idx += 1
+
+    params.append(client_id)
+    await conn.execute(
+        f"UPDATE clients SET {', '.join(set_parts)}, updated_at = NOW() WHERE id = ${idx}",
+        *params,
+    )
+    logger.warning(
+        "intake.writer.deenriched client=%s columns=%s",
+        client_id,
+        reverted,
+    )
+    return reverted
+
+
+# --------------------------------------------------------------------------- #
 # rollback_commit — undo a committed intake instance (panel Q5 hard-prereq, 5C)
 # --------------------------------------------------------------------------- #
 async def rollback_commit(
@@ -1077,9 +1240,15 @@ async def rollback_commit(
     * the ``documents`` row keyed by ``(client_id, intake_idempotency_key)`` — removed;
     * its membership entry in any ``practices.documents[]`` that linked it (matched by
       the stored ``doc_id``);
-    * the originating ``document_routing_proposal`` — moved BACK from 'routed' to
-      'review_claimed' so a reviewer can re-decide (NOT to 'dead' — rollback is a
-      do-over, not a rejection).
+    * the originating ``document_routing_proposal`` — moved BACK to a review state so
+      a reviewer can re-decide (NOT to 'dead' — rollback is a do-over, not a
+      rejection): human-routed ``'routed'`` -> ``'review_claimed'``, system-committed
+      ``'auto_routed'`` -> ``'review_pending'`` (F2, design doc §8 — a never-claimed
+      auto-attach re-enters the queue rather than landing "claimed" by nobody);
+    * (F2b) any IDENTIFIER column (passport_number/kitas_number/npwp/nib) the rolled-
+      back document's commit enriched onto the client's card — CAS-reverted to NULL
+      only if the client's current value still matches what that document wrote (a
+      later human correction or newer document wins and is left untouched).
 
     Idempotent: if no document matches the key, nothing is undone and the result is
     ``outcome='rolled_back', doc_id=None`` (a second rollback is a safe no-op). Writes
@@ -1100,6 +1269,7 @@ async def rollback_commit(
     doc_id = doc["id"] if doc else None
     proposal_id = doc["intake_proposal_id"] if doc else None
     practice_id = doc["practice_id"] if doc else None
+    reverted_columns: list[str] = []
 
     if doc_id is not None:
         # Detach from the practice membership array (match by stored doc_id).
@@ -1120,17 +1290,72 @@ async def rollback_commit(
                 )
         # Remove the document itself.
         await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
-        # Re-open the proposal for re-decision (routed -> review_claimed).
+        # Re-open the proposal for re-decision. Human approve: 'routed' -> 'review_claimed'.
+        # System auto-attach (F2, design doc §8): 'auto_routed' -> 'review_pending' — a
+        # never-claimed system commit re-enters the queue, it isn't "claimed" by nobody.
+        # Single CASE-guarded UPDATE; any other status is left untouched.
         if proposal_id is not None:
             await conn.execute(
                 """
                 UPDATE document_routing_proposal
-                   SET status = 'review_claimed'
+                   SET status = CASE status
+                                   WHEN 'routed' THEN 'review_claimed'
+                                   WHEN 'auto_routed' THEN 'review_pending'
+                                   ELSE status
+                                 END
                  WHERE id = $1
-                   AND status = 'routed'
+                   AND status IN ('routed', 'auto_routed')
                 """,
                 proposal_id,
             )
+
+        # F2b de-enrichment: undo the IDENTIFIER columns THIS document's commit wrote
+        # onto the client's card. The committed audit row is the only durable record
+        # of which columns were written and what the document's extracted values
+        # were (the `documents` row itself carries no extracted_fields column, and
+        # it is being deleted above) — CAS against it, never a blind revert.
+        audit_row = await conn.fetchrow(
+            """
+            SELECT plan FROM intake_commit_audit
+            WHERE client_id = $1 AND idempotency_key = $2 AND outcome = 'committed'
+            ORDER BY id DESC LIMIT 1
+            """,
+            client_id,
+            idempotency_key,
+        )
+        if audit_row is None:
+            logger.warning(
+                "intake.writer.deenrich_skip_legacy client=%s key=%s "
+                "(no committed audit row found — nothing known to revert)",
+                client_id,
+                idempotency_key,
+            )
+        else:
+            audit_plan = _as_dict(audit_row["plan"])
+            enriched_columns = audit_plan.get("enriched_columns")
+            if not isinstance(enriched_columns, list) or not enriched_columns:
+                logger.warning(
+                    "intake.writer.deenrich_skip_legacy client=%s key=%s "
+                    "(legacy audit lacks enriched_columns — nothing known to revert)",
+                    client_id,
+                    idempotency_key,
+                )
+            else:
+                audit_doc_type = audit_plan.get("doc_type")
+                payload_obj = audit_plan.get("payload")
+                extracted_fields = (
+                    payload_obj.get("extracted_fields")
+                    if isinstance(payload_obj, dict)
+                    and isinstance(payload_obj.get("extracted_fields"), dict)
+                    else {}
+                )
+                reverted_columns = await _revert_document_enrichment(
+                    conn,
+                    client_id=client_id,
+                    doc_type=audit_doc_type if isinstance(audit_doc_type, str) else None,
+                    extracted_fields=extracted_fields,
+                    enriched_columns=enriched_columns,
+                )
 
     # Forensic audit ONLY when something was actually undone. A no-op rollback (no
     # matching document → doc_id/proposal_id are None) writes nothing: intake_commit_audit
@@ -1158,7 +1383,10 @@ async def rollback_commit(
             False,
             "rolled_back",
             idempotency_key,
-            json.dumps({"rolled_back_doc_id": doc_id}, default=str),
+            json.dumps(
+                {"rolled_back_doc_id": doc_id, "reverted_enrichment_columns": reverted_columns},
+                default=str,
+            ),
             None,
         )
     logger.warning(
@@ -1187,8 +1415,21 @@ async def _write_audit(
     outcome: str,
     doc_id: int | None,
     error: str | None = None,
+    enriched_columns: list[str] | None = None,
 ) -> int:
-    """Append one intake_commit_audit row (the ONLY write a 5B dry-run performs)."""
+    """Append one intake_commit_audit row (the ONLY write a 5B dry-run performs).
+
+    ``enriched_columns`` (F2a, design doc §8): the COLUMN NAMES (never values —
+    Law 2) the client_enricher actually wrote in this commit, e.g.
+    ``["passport_number", "passport_expiry"]``. Only set on a real committed
+    outcome. ``rollback_commit`` reads this back to know which identifier
+    columns are eligible for CAS de-enrichment (F2b) — a row written before
+    this change simply has no ``enriched_columns`` key, which rollback treats
+    as "nothing known to revert" (see ``_revert_document_enrichment``).
+    """
+    payload = plan.to_dict()
+    if enriched_columns:
+        payload["enriched_columns"] = enriched_columns
     audit_id = await conn.fetchval(
         """
         INSERT INTO intake_commit_audit (
@@ -1207,7 +1448,7 @@ async def _write_audit(
         dry_run,
         outcome,
         plan.idempotency_key,
-        json.dumps(plan.to_dict(), default=str),
+        json.dumps(payload, default=str),
         error,
     )
     return int(audit_id)

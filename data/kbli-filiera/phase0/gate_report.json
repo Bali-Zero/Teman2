@@ -1,0 +1,151 @@
+{
+  "aggregate": {
+    "fn": 0,
+    "fp": 0,
+    "holdout_edge_error_rate": 0.0,
+    "passes": true,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tp": 211,
+    "truth_edges": 211
+  },
+  "bps_pdf_sha256": "29f17b3b133497a88c5bfd0eaa3f73c90233b9b95dd76dd0ea2ccaed31724949",
+  "consistency_item7": {
+    "only_in_forward_L5": 0,
+    "only_in_reverse_L10": 0
+  },
+  "eye_adjudication_method": "conductor eye-read of rendered holdout pages at 200 DPI, independent of the parse (never a re-parse; W100)",
+  "gate": "bps_phase0_acceptance",
+  "holdout_pdf_pages": [
+    156,
+    159,
+    179,
+    207,
+    227,
+    369,
+    372,
+    379,
+    423,
+    427
+  ],
+  "parser_run_digest": "ca9e7ffcadcaf526e1bd69afecb40f23d31ac20db8ab4aafa21a0271206100b2",
+  "pass_thresholds": {
+    "precision": 0.995,
+    "recall": 0.995
+  },
+  "scores_per_page": [
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 156,
+      "parser_edge_count": 30,
+      "tp": 30,
+      "truth_edge_count": 30
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 159,
+      "parser_edge_count": 24,
+      "tp": 24,
+      "truth_edge_count": 24
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 179,
+      "parser_edge_count": 19,
+      "tp": 19,
+      "truth_edge_count": 19
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 207,
+      "parser_edge_count": 25,
+      "tp": 25,
+      "truth_edge_count": 25
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 227,
+      "parser_edge_count": 15,
+      "tp": 15,
+      "truth_edge_count": 15
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 369,
+      "parser_edge_count": 28,
+      "tp": 28,
+      "truth_edge_count": 28
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 372,
+      "parser_edge_count": 20,
+      "tp": 20,
+      "truth_edge_count": 20
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 379,
+      "parser_edge_count": 14,
+      "tp": 14,
+      "truth_edge_count": 14
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 423,
+      "parser_edge_count": 15,
+      "tp": 15,
+      "truth_edge_count": 15
+    },
+    {
+      "false_negative_edges": [],
+      "false_positive_edges": [],
+      "fn": 0,
+      "fp": 0,
+      "page": 427,
+      "parser_edge_count": 21,
+      "tp": 21,
+      "truth_edge_count": 21
+    }
+  ],
+  "sebagian_modifier_item5": "verified-absent-in-source (0 table-cell occurrences in 444 pages)",
+  "tier4_aql_default_item10": {
+    "aql_class_percent": 0.01,
+    "inspection_level": "General Inspection Level II",
+    "inspection_start": "normal",
+    "lot_size": "Tier-4 stratum code count (fixed at tiering; (n, Ac) looked up then)",
+    "measured_as_percent": 0.0,
+    "measured_holdout_edge_error_rate": 0.0,
+    "sampling": "ISO 2859-1 single sampling",
+    "status": "CONDUCTOR-PROPOSED default — Zero accepts-or-overrides (Legge 5) before any Tier-4 certification runs",
+    "switching_rule": "tighten after 2 of 5 consecutive lots rejected; return to normal after 5 consecutive accepted under tightened"
+  },
+  "verdict": "PASS"
+}

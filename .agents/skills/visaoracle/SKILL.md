@@ -15,6 +15,57 @@ Mandate: Zero, 2026-07-17. Working mode: multi-LLM deep-research ↔ brainstorm 
 rounds), all work in worktree `mouth-visa-oracle` until final draft for operator analysis. This is
 Subhi's surface (`apps/mouth`) — verification per CLAUDE.md §13 (CI + AI review, generator≠grader).
 
+## ENFORCE-GATE (Zero pre-authorized the flip, Legge 5 exercised 2026-07-19 — OBJECTIVE gate, never early)
+
+**Firebreak change (durable).** The ENFORCE flip on the public Visa Oracle surface was previously
+"Zero's decision only" (Legge 5). Zero has now PRE-EXERCISED that decision (2026-07-19, genuine message):
+the SESSION may execute the ENFORCE flip itself **without returning to ask** — but ONLY when the objective
+gate below is ALL-GREEN, and NEVER a flip in anticipation. If any criterion is red/unmeasured, ENFORCE stays
+OFF; the session keeps the engine in SHADOW and keeps collecting evidence. This authorization is conditional
+on the gate, not a blanket unlock. (Any change to the engine's legal _content/logic_ still re-opens the
+gate — a green gate certifies the engine as it was measured, not future edits.)
+
+**Prerequisites (both must hold before the gate can even be evaluated):**
+
+- PR4 #2804 merged to main ✅ (2026-07-19, squash `4f8f40ee48` — bitemporal substrate live on main).
+- SHADOW wiring LIVE on the real surface (STEP-6c): engine runs on real end-user requests, output written to
+  the audit log / `visa_decisions` ONLY, never rendered to the client. Until this is live there is no
+  evidence to measure, so the gate is trivially red.
+
+**The four criteria (ALL must be objectively green, measured from the SHADOW audit log):**
+
+- **G-a — VOLUME (threshold proposed + set by the session, per Zero's instruction).** ≥ **1,000** distinct
+  real end-user requests processed end-to-end by the engine in SHADOW (each producing a tri-state verdict +
+  an audit record), accumulated over a window of **≥ 7 consecutive days** (not a single-day burst — catches
+  day-boundary / regulatory-delta edges), AND with breadth ≥ **all 7 interview categories** exercised and
+  **≥ 30 distinct visa codes** hit (so the volume is not concentrated on 2–3 popular paths). Rationale: 1k
+  real requests over a week across ≥30 codes exercises the decision tree's live branches well beyond the 20
+  gold personas' designed cases, surfacing the long tail before any client sees an ENFORCE verdict.
+- **G-b — GOLD PERSONAS.** 20/20 gold personas replay through the engine with **zero unexplained
+  divergences** (any divergence from the expected verdict must have a written, accepted explanation — a
+  regulation change, a deliberate design correction — never an unexplained mismatch).
+- **G-c — GROUNDING.** Every SHADOW verdict in the window carries **valid citations** and **zero ungrounded
+  claims** (no verdict asserts a rule/number/eligibility without a resolvable, in-force source; abstention
+  where evidence is thin is a PASS, not a divergence).
+- **G-d — ROLLBACK PROVEN.** The ENFORCE→OFF rollback flag is **drilled and proven instantaneous** (a
+  recorded drill: flip ENFORCE, then flip back to OFF, confirm the public surface stops consulting the
+  engine immediately — no redeploy, no cache lag). ENFORCE is never armed without a proven kill-switch.
+
+**GATE STATUS: 🔴 RED (2026-07-21 — STEP-6c code is merged, but production collection is still dark).**
+Fly has the trust-store secret but neither `VISA_ENGINE_MATCH_MODE` nor
+`VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`; the Match path therefore defaults OFF and fails closed before
+writing evidence. G-a/G-c are red/unmeasured, G-b has a green local canonical-suite preflight but no accepted
+independent replay artifact, and G-d is unmeasured. Current collection design/receipt:
+`research/visa/2026-07-21-shadow-evidence-collection.md`. The session updates this line as criteria go green,
+with the evidence pointer (audit-log query + gold-persona replay report + rollback-drill capture) for each.
+Evidence is collected from the SHADOW audit substrate; nothing here is self-attested — each green needs a
+re-runnable measurement (generator≠grader on G-b/G-c: the grader is not the engine).
+
+**Flip procedure (when GATE STATUS goes 🟢 all-green):** the session executes the flip itself, captures the
+before/after (flag state, a live ENFORCE verdict on a real request, the audit record), and reports the
+outcome to Zero — flip done + evidence, not a request for permission. Then it stands ready to execute the
+G-d rollback on any anomaly.
+
 ## Established truths (GROUND 2026-07-17, scout-verified file:line)
 
 - **v1 is LIVE, not missing** — www.balizero.com/visa, last touched 2026-07-14, 29 commits/90d.
@@ -110,8 +161,262 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-17: TRACK C claimed by Pro/2026-07-17 — experience track active in worktree `mouth-visa-experience-c1` (lane mouth; relocated from `mouth-visa-experience` after a twin-session filesystem race — twin's untracked work at `apps/mouth/src/app/(visa-oracle)/` left intact, candidate salvage for PR C2 once that session ends). PR C1: vo2 design tokens + mock interview model + `/visa-v2` prototype route (noindex, mock-only; engine wiring deferred until PR1 engine contracts land on main). C1 diff passed independent Codex GPT-5.6-sol review (6 P1 findings, all fixed in-PR).
 - 2026-07-17: FASE 1 COMPLETE — `research/visa/2026-07-17-bridging-visa-branch-d7ab-diaspora-closeout.md` closes all 3 open Table-2 items: D7A/D7B/D8A/D8B RESOLVED-EXIST (per-code body-content discriminator, 2 dead-code negative controls), Bridging Visa fact-base primary-grounded (Permenkumham 11/2024 + Permen Imipas 3/2025 Pasal 45 partial-revocation resolved), diaspora COVERED (product-level, Kepmen-gated). Real cross-family adversarial review: Codex (gpt-5.6 refused locally, ran codex-mini-latest), 3 passes — 2 REFUTED-and-fixed, final pass REFUTED only on 2 wording nits, ALL load-bearing claims explicitly not refuted. PR #2607 open, auto-merge armed (SQUASH), all 40 CI checks green except "Backend Tests (Python)" still running (docs-only diff, no code touched). FASE 2 (7 interview categories) STAYS GATED: PR #2602 (bonifica, branch `agent/air-m5/mouth/visa-catalog-bonifica`) is still OPEN and now shows `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` — out of this track's scope to resolve (different lane/owner), flagging as external blocker.
 - 2026-07-17 (night): PR #2617 E2E red diagnosed (Pro): CI-only — Next 16 dev blocks cross-origin dev resources for 127.0.0.1 baseURL, React never hydrates; visa-oracle-v2.spec.ts is the only CI e2e exercising hydration (latent repo-wide CI blind spot). Fix: allowedDevOrigins in apps/mouth/next.config.ts, verified locally (5/5 on 127.0.0.1). Pushed to the same branch; automerge already armed.
+- 2026-07-18: TRACK C increment C3 shipped (Pro, worktree `mouth-visa-experience`, branch `agent/nuzantara/mouth/visa-experience-c3`) — verdict tree→card morph (View Transitions API + FLIP-style shared `view-transition-name`, feature-detected, spring-reveal fallback, reduced-motion instant swap), tree tap-to-edit (completed trunk steps are real buttons dispatching the existing EDIT action, guarded by new `isEditableTreeStep`), a real scannable QR (`qrcode` npm, reuse-first from `apps/wa-mirror`, synchronous SSR-safe SVG render — no canvas/network) beside the still-visible wa.me link, and a checkable + printable document checklist (real checkboxes, `window.print()` + dedicated `@media print` stylesheet, copy-summary with visible confirmation). Mock-only, single all-inclusive price untouched, EN/ID both updated. 58 unit + 9 e2e passing.
 - 2026-07-18: TRACK C SHIPPED — PR #2617 (C2, consolidated living-tree experience) merged 00:21 WITA and proven live: `https://www.balizero.com/visa-oracle` (200, noindex meta present) is now the single Track C foundation; `/visa-v2` 308-redirects there and C1 artifacts were removed in the consolidation. Experience is mock-only (5-state RecommendState, 12-card catalog, EN/ID, WCAG AA); real engine wiring stays gated on PR1 engine contracts landing on main. Worktree `mouth-visa-experience` intentionally kept alive for the sibling session's post-merge follow-up (widening CI e2e coverage back to the 4 interactive tests).
 - 2026-07-18: PR #2602 (bonifica) MERGED 2026-07-17T15:51Z — FASE 2 gate OPEN. PR #2607 had gone DIRTY after the night's LIVE-STATE merges (#2602/#2606/#2627/#2628 touch the same skill files); resolved the legal way (merge of origin/main into the branch, LIVE STATE lines reconciled, no force-push), automerge still armed.
+- 2026-07-18 (S3 engine lane): TWIN-PR COLLISION ADJUDICATED by Zero (Legge 5): **ADOPT_A** — PR #2654 (M5 tree "A") MERGED to main (f73cbb4a); S3's PR #2718 (tree "B") CLOSED, its branch `agent/nuzantara/mouth/visa-engine-pr1-0718` intentionally KEPT as the PR3 seed (strong-Kleene evaluator + truth-table tests). Binding order from Zero: (1) correctness HOTFIX first — Codex gaps confirmed live in A, fix+guilt+innocence same commit; (2) PR1b port-list from B (only proven incremental value); (3) PR2 signed-bundle re-adapted to A's API with REDONE 3-seat verify; (4) PR3 from seed. Comparative A-vs-B report: `research/visa/2026-07-18-visa-oracle-v2-pr1-a-vs-b-portlist.md`. Hotfix branch `agent/nuzantara/mouth/visa-engine-hotfix-0718` in flight: 4 live gaps (canonical-date-literal P0, ordering-ops-on-enum-strings P1, GLOBAL+explicit-null P1, country-code-format P1).
+- 2026-07-18 (S3, STEP 1 SHIPPED): hotfix **PR #2739 MERGED** to main 12:44Z (`8ac3184ce`) — 4 gaps fixed TDD-style (date literals P0 / ordering fail-closed P1 / country-code shape P1 / KnownDate calendar P0, the last found by the GLM refutation pass); **Gap C (Codex #8 GLOBAL+explicit-null) REFUTED at implementation** — deliberate round-4/5 schema design, evidence re-verified on disk, recorded in the report's §Post-implementation correction. Suite 235→258. 4-stage generator≠grader chain held (Sonnet implementer → GLM report pass → Codex sol-xhigh diff SHIP → Fable final gate). STEP 2 (PR1b) in flight on branch `agent/nuzantara/mouth/visa-engine-pr1b-0718`: 7/8 port-list items done (item 1 product_code dedup SKIPPED with evidence — bitemporal multi-version per product_code is the evaluator's intended §4.3 pattern; the B port would have broken it), suite 258→293, GLM diff review pending.
+- 2026-07-18 (S3, STEP 2 + STEP 3): **STEP 2 SHIPPED** — PR1b **#2745 MERGED** to main (`8ac3184ce`→squash) 14:17Z: 9 hardening commits (F6 quote↔candidate, StrictBool×5, alias-only wire, registry (kind,value_format) consistency, +2 GLM-prescribed P2: `_DATETIME_SHAPE` ASCII, duplicate-candidate-id guard); item-1 product_code dedup SKIPPED, skip **independently confirmed** by GLM (SKIP-RATIONALE CONFIRMED) — follow-up for PR3: enforce uniqueness of the effective+ACTIVE slice per product_code. Suite 258→300. **STEP 3 (PR2 signed bundle) in flight** on branch `agent/nuzantara/mouth/visa-engine-pr2b-clean-0718` (the `-pr2b-0718` branch was W88-rebased onto fresh main to drop the now-squashed PR1b commits): `bundle.py` re-adapted to A's API, **fresh 3-seat verify** (GLM SHIP / Codex FIX-FIRST(1,4,5,6) / Gemini FIX-FIRST) → 11 FIX-NOW hardening applied (TOCTOU, env-bound keys, future-skew on signed_at, unsigned-into-PROD refusal, …), **3 findings REFUTED on the real model** (Codex bootstrap-sequence — model already enforces it; Gemini env-defaults-to-PROD and hex-uppercase — both blocked upstream). FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD). Suite 300→385. rfc8785+rfc3339-validator declared, lock honors manifest (W98). Round-4 regulatory recheck persisted on the closed B branch (M.IP-08/2025 effective 2025-06-02 per dictum KELIMA; BVK Permenimipas 10/2026 adds Macau — 19-state official list; number-collision trap with Permenkumham 10/2026 Second Home) — to be re-landed with a later PR.
+- 2026-07-19: TRACK A key ceremony DONE — 2 kids minted (`2026-07-test-1`/TEST, `2026-07-prod-1`/PRODUCTION); private-key custody M5 `~/.config/nuzantara/visa-signing/` (0600/0700, not in Keychain, not on Pro/Mini); Fly secret `VISA_ENGINE_TRUST_STORE_KEYS_JSON` staged on `nuzantara-rag` (digest `a68f076bc9993f0c`) — inert until SHADOW wiring. Runbook: `docs/runbooks/visa-engine-key-ceremony.md`. Engine chain complete on main: PR1 #2654, PR1b #2745 (+residual #2795), PR2b #2757, PR3 #2773. Next: RulePack legal authoring + SHADOW wiring.
+- 2026-07-19: TRACK A **AUTHORING claimed by M5** — RulePack authoring+signing pipeline is bound to M5 by key custody (private Ed25519 keys exist only on M5); next increment: offline authoring/signing tool + first signed TEST pack from the bonified catalog. S3/other lanes: coordinate here before touching authoring.
+- 2026-07-18: TRACK A PR1 foundations pushed (M5) — merge commits against origin/main resolved by regenerating docs_sync markers (README/AI_ONBOARDING quick-numbers) rather than picking a side; PR #2654 open, automerge armed.
+- 2026-07-18: TRACK A PR1 MERGED — dual-PR1 collision (M5 #2654 vs sibling S3 #2718, same
+  visa_engine foundations scope) adjudicated ADOPT_A via independent cross-family comparative
+  review (Codex sol xhigh; verdict with file:line evidence posted on #2718, now closed as
+  superseded). #2654 merged to main, merge commit f73cbb4a7b. Branch
+  `agent/nuzantara/mouth/visa-engine-pr1-0718` (the S3 tree) intentionally preserved, not deleted —
+  its strong-Kleene evaluator + truth-table tests are the PR3 seed.
+- 2026-07-18: TRACK A next — PR1b port-list BEFORE PR2: (1) canonical YYYY-MM-DD literal
+  validation, (2) semantic STAGE_ORDER (WARNING: the two trees disagree on ELIGIBILITY vs
+  HUMAN_REVIEW precedence — arbitrate against
+  research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-concretization.md before porting),
+  (3) StrictBool on wire-level booleans, (4) common residual: JSON Schema `integer` accepts 2.0
+  while StrictInt rejects (schema-valid/model-invalid gap). Then PR2 signing (Ed25519, RFC8785,
+  anti-rollback). CodeQL note: iterate enums via `list(Enum)` in tests —
+  py/non-iterable-in-for-loop is a required-check failure class (S3 cured it on their tree in
+  commit 1a4360dc1b; A-tree tests should adopt the same pattern in PR1b).
+
+- 2026-07-19: **TRACK A PR1b ARBITRATION RESOLVED + STAGE_ORDER CORRECTED.** The 2026-07-18 line
+  126-134 WARNING above ("the two trees disagree on ELIGIBILITY vs HUMAN_REVIEW precedence —
+  arbitrate against the round-2 spec") was itself resolved WRONG the first time: the M5 lane's PR1b
+  attempt (worktree `backend-rag-visa-engine-pr1b`) arbitrated to the enum-DECLARATION order
+  (HARD_FILTER→ELIGIBILITY→HUMAN_REVIEW→RANKING, matching enums.py's literal source order + the
+  spec's JSON Schema enum listing) — flagged **P0 by tri-LLM review on its own PR #2781** and
+  independently re-verified by re-reading the spec's §4.2 `evaluate_product` ALGORITHM pseudocode
+  directly: the correct order is **HARD_FILTER→HUMAN_REVIEW→ELIGIBILITY→RANKING**, exactly what
+  sibling PR #2773 already shipped (commit message: "the prior docstring's 'evaluated in this strict
+  order' claim was wrong"). Declaration order ≠ processing order — do not re-litigate this without
+  re-reading §4.2 fresh. Meanwhile a sibling S3 lane had independently re-shipped the whole PR1b
+  port-list as **PR #2745 MERGED 2026-07-18T14:17:49Z** (after hotfix #2739, before PR2b #2757 and
+  PR3 #2773 — all 4 verified MERGED via `gh pr view` against `Balizero1987/Teman2`), making the M5
+  lane's #2781 a twin-race casualty: **CLOSED 2026-07-19T02:33:58Z**, no merge attempted, full
+  investigative writeup on the PR. Items 1 (canonical date literals) and 3 (StrictBool) were also
+  redundant against #2745's more mature equivalents. Only 2 of the original 5 port-list items were
+  genuinely still unclaimed after a fresh `origin/main` content grep (no merged commit, no open
+  PR/branch): CodeQL `list(Enum)` pattern (7 sites) and the JSON-Schema-vs-StrictInt integer-parity
+  documentation+pin (line 130-131's "common residual" above) — both shipped via branch
+  `agent/air-m5/backend-rag/visa-engine-pr1b-residual` (commit `fc24dc7913`, 492/492 suite green,
+  ruff clean, docs_sync clean).
+- 2026-07-19: **LEDGER GAP FLAGGED (not backfilled here — respecting "whoever changes state updates
+  this file")**: lines 116-118 above narrate Track A only through "STEP 3 (PR2 signed bundle) in
+  flight" — PR2b (#2757, merged 2026-07-18T17:45:52Z) and PR3 (#2773, strong-Kleene evaluator +
+  2-seat fixes, merged 2026-07-18T19:34:19Z) both already landed on main since then but have no
+  LIVE STATE entry recording it. Track A's own next-lane session should backfill STEP 4/5 entries.
+  **Verified standing blocker**: Ed25519 key ceremony remains explicitly operator-side and undone —
+  `bundle.py:269`'s own comment ("the key ceremony (generating...") plus the STEP-2/3 entry's
+  "FIREBREAK intact (no key ceremony, unsigned fail-closed behind flag, never PROD)" both confirm
+  signing code ships unarmed pending real production keys. With PR1→PR3 all merged, "Track A next"
+  is genuinely PR4-6 (undefined in this file) gated behind that ceremony — NOT "PR3 evaluator", which
+  is done.
+- 2026-07-19: GOLD HARNESS (G-b) shipped by M5 (`backend/tests/services/visa_engine/gold_harness/`)
+  — 20 self-authored personas + hand-designed rule pack + a Decision-agnostic thin adapter (built
+  because PR5 was OPEN, not merged, at task launch) + 3 real metamorphic property tests
+  (monotonicity, fact-order invariance, rule-order invariance, fixed seeded shuffles) + a
+  replay-report JSON evidence-artifact CLI.
+- 2026-07-20 (CORRECTION, discovered on merge — read this before citing G-b evidence): **PR5
+  merged overnight** (`c26211da2e`, #2841, "Decision evaluator — pure tri-state orchestrator") and
+  it ships its OWN canonical 20-gold-persona acceptance suite (spec §7's literal persona table,
+  `backend/tests/services/visa_engine/test_evaluator_gold.py` + `_gold_fixtures.py`) run directly
+  against the REAL `evaluator.evaluate()` — that suite, not M5's harness, is the stronger/primary
+  G-b evidence (real engine, not a stand-in adapter). M5's harness predates the merge and uses its
+  own non-canonical persona set + rule pack against its own adapter, so it should be read as
+  COMPLEMENTARY evidence, not the G-b primary satisfier: it adds two things PR5's suite does not
+  have — per-product proof-state assertions (PR5 asserts global `DecisionState` only) and genuine
+  input-order metamorphic invariance (PR5's `test_evaluator_determinism.py` proves repeat-call
+  purity, not fact-dict-order/rule-declaration-order invariance). Follow-up owed: port the
+  fact-order/rule-order metamorphic properties onto the real `evaluator.evaluate()` directly (the
+  highest-value reconciliation) and settle G-b's canonical evidence pointer — likely PR5's suite
+  plus a ported property-test file, with M5's `gold_harness/` package retired or kept only as
+  design reference. Do not cite M5's harness alone as "G-b satisfied."
+- 2026-07-20 (M5, overnight coordinator sweep): ceremony runbook **#2861 MERGED** (`1f16223335`),
+  gold-harness package **#2876 MERGED** (`1606f7af25`); RulePack authoring pipeline
+  (`compile_pack.py` + offline `sign_pack.py` + first signed TEST fixture) **PR #2869 in flight**
+  (mergeable, CI running, 2 Codex adversarial rounds cured, round-3 confirm died on network —
+  shipped under authorized fallback with a transparent PR-body note). Both PRs fought the same
+  DOCSYNC conflict (`docs/DOCS_INVENTORY.md`) four times overnight as main advanced ~15 commits —
+  cured each time by regenerating via `scripts/docs_inventory_regen.sh`, never side-picking. A
+  **Kimi session** was independently reconciling the same two PR branches in parallel from
+  `/tmp/wt-2876-gold` — its commits carry the SAME git author identity as this machine's session
+  (Kimi inherits the global `git config user.name/email`, has no committer identity of its own),
+  which caused two pushes to be rejected as "behind" before the pattern was recognized; resolved
+  by fetch+legal-merge each time, never force-push, no work lost on either side. Detail:
+  memory `discovery_kimi_parallel_worktree_pr2876_2026_07_20`. SHADOW-wiring prerequisite for the
+  ENFORCE-GATE (STEP-6c) still not live — S3/Pro's PR #2824 (migration 252 SHADOW substrate)
+  remains the actual blocker for evaluating any gate criterion, G-b included.
+- 2026-07-21 (Pro, SHADOW evidence lane): prior blocker superseded — **#2916 MERGED**
+  (`8b28ac418481`, STEP-6c Match wiring), **#2930 MERGED** (`09f7cd2273c9`, real HMAC
+  facts-fingerprint provider), and **#2952 MERGED** (`60c6f348c9a4`, finite activation-system-period
+  guard). Production release 3888 is deployed, but collection remains dark: Fly has only the Visa trust
+  store, while Match mode and the facts-fingerprint key are absent. Read-only DB proof is separately
+  blocked because the `nuzantara_readonly` Keychain password is absent; no write-capable fallback used.
+  Worktree `backend-rag-visa-oracle-shadow-evidence` now prepares migration 255 plus a PII-free,
+  fail-closed G-a/G-c collector and CLI; 1,070 Visa-engine tests collected with all runnable tests green
+  (one pre-existing executor-role skip). **No PR, merge, deploy, secret change, SHADOW activation, or
+  ENFORCE activation performed.** Receipt:
+  `research/visa/2026-07-21-shadow-evidence-collection.md`.
+- 2026-07-22 (Pro, SHADOW evidence lane): Kimi review follow-up adds direct G-c,
+  collector, CLI, and legacy fail-closed coverage; `duplicate_evaluations` now counts only
+  repeated valid 32-byte fingerprints. The focused local-test-DB suite is green (57 tests;
+  SHADOW evidence module 85.30% branch coverage). **L3/L4 remain deferred; ENFORCE remains OFF.**
+- 2026-07-23 (M5, Kimi architect session): full state-analysis + 4-seat adversarial panel
+  (gemini/codex/design-house/web-grounded — GLM seat degraded, Keychain token absent via SSH)
+  synthesized into the definitive correction+completion plan:
+  `research/visa/2026-07-23-architect-review-synthesis.md` (analysis + 4 lane files alongside).
+  Verified discoveries: (1) **v1 funnel dead since 2026-04-25** — the auth floor (PR #108)
+  never registered `/api/visa/*` in `public_endpoints.py`; POST 401s through the catch-all
+  proxy; 28 `visa_checks` rows total, all ≤2026-04-21; sibling endpoints clock/match-hash
+  equally dead. (2) **SHADOW-on-v1 feeds only 3/35 FactPaths** — weak gate evidence; plan
+  moves SHADOW to a new full-fact evaluate read-path API (gate-blocking, Track A). (3) Gate
+  "7 categories" matches no vocabulary (255 enum=8 incl. `other`; v2 interview=10; business/
+  diaspora uninstrumented). (4) Kepmen M.IP-08.GR.01.01/2025 **effective 2025-06-01** (dictum
+  KELIMA, primary source; B211\* death = dictum KEEMPAT); "Permenkumham 10/2026 Second Home"
+  REFUTED (notary PMPJ — the parked round-4 recheck note must be corrected before re-landing);
+  BVK = 19 states/SARs + 1 entity (Permen Imipas 10/2026, effective 2026-07-09). Plan forks on
+  **owner decisions D1 (G-a semantics/threshold vs ~7/day organic traffic) / D2 (110-code pack
+  for ENFORCE) / D3 (adopt 9 E-gates)**. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-23: correction+completion plan lands as PR (research/docs-only, no automerge);
+  next executable items: P0-1 registry fix `/api/visa/*` + telemetry, P0-3 read-path API,
+  P0-4 RulePack first slice (E28/E33/BVK/Bridging mandated), P1-1 G-b independent replay.
+- 2026-07-23 (late): **FABLE 5 FINAL GATE on the plan** (seat `zero@balizero.com`, requested
+  by Zero) — verdict **FIX-FIRST**: plan adopted with **7 deltas** (full report
+  `research/visa/2026-07-23-architect-review-fable5.md`, addendum in the synthesis). Headline
+  blind spot: under D1(c) as written **G-a and G-b collapse into the same test** (facts
+  collectible for only 3/10 interview categories + no synthetic marker → breadth could only
+  come from the same corpus G-b replays). Deltas adopted: migration 256 `is_synthetic`/
+  `traffic_source` column; G-a split into `G-a-vol` (real, owner-set) + `G-a-breadth`
+  (corpus, labeled); P0-3 must emit `request_category` + 10-tile→8-enum mapping + explicit
+  business/diaspora ruling; DAG names the window's traffic source; D2 coupled with Track B
+  FASE 2 (110 codes AND behavioral trees per launched category); NEEDS_INPUT disclaimer fix
+  (`OutcomeSheet.tsx:455`, Law-2-adjacent) promoted into the P0-1 batch; DB/Fly facts marked
+  receipt-owed for the D1 threshold decision. Fable D-recs: D1(c) split as above / D2 adopt
+  with FASE-2 coupling / D3 adopt with tiers (E-a/E-e/E-g blocking; E-b/E-f fast-follow).
+  Conflict adjudicated: Gemini's deadlock claim WRONG (evaluate endpoint ≠ UI launch),
+  Codex/design/orchestrator RIGHT. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-24 (M5, Kimi orchestrator): **WAVE 0 + W1a LANDED on main.** Merged: #3032
+  (`8875b95ad35b`, `/api/visa/*` public — **v1 funnel resurrected**, live smoke 201 + row 29
+  in `visa_checks` after 3 months dead), #3033 (`0185dc5c9c24`, disclaimer all-5-states +
+  PII-free `app_form_submit_failed`), #3038 (`6e88b24b6773`, next-steps gated on
+  SUPPORTED_CANDIDATES — Fable MEDIUM, owner call "fai tu"), #3046 (`7f99e570147d`,
+  migration 256 `traffic_source` + collector G-a-vol/G-a-breadth split). All Fable-gated
+  SHIP, all merged by the **delegated Opus verifier** (new pattern per Zero: "io non faccio
+  review, chiedi a opus" — build=agents, gate=Fable, merge=Opus seat `claude-zero-team`;
+  note the seat caps ~4:20 WITA reset and acct2/3/4 are NOT logged in). **Codex CLI auth
+  DEAD on M5** (401, operator re-login needed — graders fall back to Opus per Zero).
+  **W1b in flight** (evaluate read-path API, agent lane `visa-evaluate-endpoint`).
+  #3034 (G-b) still open on the docsync treadmill (3rd regen pushed; content SHIP-verified
+  twice). #3028 (this corpus) R1-green but blocked by a **main-side npm-audit failure**
+  (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
+  R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
+  (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
+file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  GATE STATUS unchanged: 🔴 RED.
+- 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
+  "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
+  #3038, #3046 (mig 256), #3028 (corpus), #3060 (mig 257, owner-merged), #3061 (**evaluate
+  read-path API live on Fly** — prod smoke: strict no-echo validation, fail-closed
+  TEMP/`CURATED`, 0 rows), #3034 (G-b metamorphic+replay), #3079 (runbook+reports). Gemini
+  adversarial pass on W1b caught 5 real findings (chunked-OOM, rollback rows, synthetic
+  abuse, param echo, blind hint) — all cured and Opus-verified SOLID pre-merge; Opus is the
+  delegated merger (Zero: "io non faccio review"); codex CLI still dead; Opus seat caps
+  ~4-5h cadence; prettier-3.8.4-vs-main skew and docsync/inventory date-drift are the two
+  recurring repo-wide friction points (both flagged for infra). **W2 RulePack factory
+  started**: 4 research lanes in flight (E28+ BVK via Gemini/agy; E33 + Bridging via house
+  seats) producing per-code fact-bases (`research/visa/2026-07-24-w2-factbase-*.md`) for the
+  30-priority-code pack; signing stays M5 (Track A), FASE 2 trees stay Mini (Track B).
+  Next: rule authoring → sign → activate → arm SHADOW per
+  `research/visa/2026-07-24-shadow-arming-runbook.md`. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~04:00 WITA): **W2 FIRST PACK SIGNED + ON MAIN.**
+  `#3092` (`c33c183ad8ea`, 12 fact-bases corpus) and `#3090` (`3c412c96b085`, first signed
+  PRODUCTION RulePack: **38 products / 110 rules / 28 sources**, `compile_pack` zero errors,
+  kid `prod-2026-07-1`, `payload_sha256 47a97c32…`, Fable gate SHIP with adversarial
+  counter-probe) both merged. Chain: 8 fact-bases (live primary sources 2026-07-24, 2
+  Gemini grade rounds with dispositions) → 2 authoring agents (A1 18p/47r, A2 20p/63r, zero
+  overlap) → assemble → compile → sign → verify. **Kid-pattern bug found+fixed at first
+  signing** (ceremony kids start with a digit, fail the engine's `IDENTIFIER_PATTERN`;
+  relabeled `test-2026-07-1`/`prod-2026-07-1` same key material; Fly trust store re-staged
+  digest `ab319439ecf92a0f`; errata in `docs/runbooks/visa-engine-key-ceremony.md`).
+  **Detect-secrets cure**: pack hashes audited in baseline + naming-scoped triage rule
+  (`contracts/packs/rulepack-*.json`). **Next: activation addendum
+  (`research/visa/2026-07-25-activation-addendum.md`)** — provision `visa_activation_executor`
+  (one-time, operator), build the small `activate_pack.py` ops tool, activate, then the 3
+  SHADOW secrets + smoke per the arming runbook. GATE STATUS unchanged: 🔴 RED.
+- 2026-07-25 (M5, Kimi orchestrator, ~12:30 WITA): **SHADOW IS LIVE IN PRODUCTION — first
+  real evidence row.** The full activation arc is done: `activate_pack.py` ops CLI built
+  (PR #3101, 8/8 tests, dry-run verified); fingerprint HMAC key store minted (kid
+  `fp-2026-07-1`, M5 custody) + 3 secrets set on Fly (`VISA_ENGINE_EVALUATE_MODE=SHADOW`,
+  `VISA_ENGINE_FACTS_FINGERPRINT_KEYS_JSON`, `VISA_ENGINE_DRIVER_TOKEN`); roles provisioned
+  on prod PG (`visa_activation_executor` NOLOGIN + grants on `nuzantara_rag`, ops role
+  `visa_activation_operator` LOGIN granted executor — Fly PG is 2-machine HA, primary
+  `5683e090f3d228`, `OPERATOR_PASSWORD` from keeper environ; `fly pg connect` hangs on
+  wireguard — use `fly ssh console -C` + `fly ssh sftp put` with `--machine` pinning, sftp
+  never overwrites); **pack ACTIVATED** (`activation_id bb35cb81-276d-4a6e-8570-e46a2c692777`,
+  actor token `operator.zero-2026-07`). **Smoke green end-to-end:**
+  `POST /api/visa-oracle/evaluate` now returns a real engine verdict
+  (`HUMAN_REVIEW_REQUIRED` + `BRIDGING_FROM_VISIT_ITK_PROHIBITED`, `mode:CURATED`,
+  `rule_pack 446ee4ee seq 1`, HMAC fingerprint `fp-2026-07-1`) and the FIRST row landed in
+  `visa_decisions` (`RECOMMEND`/`SHADOW`, `long_tourism`, 32-byte fingerprint,
+  `ruleset_activation_id` set). The collection window is accumulating from real traffic.
+  GATE STATUS unchanged: 🔴 RED (volume/breadth = 1 row so far).
+- 2026-07-25 (M5, Kimi orchestrator, consolidation): **FINAL LEDGER of the two-day run.**
+  **12 PRs merged**: #3032 `8875b95a` (funnel v1 resurrected, live-smoked 201 + DB row),
+  #3033 `0185dc5c` (disclaimer all-5-states + PII-free submit-failure telemetry), #3038
+  `6e88b24b` (next-steps gated on SUPPORTED_CANDIDATES), #3046 `7f99e570` (mig 256
+  traffic_source + G-a-vol/breadth split), #3028 `8b5dffbd` (architect corpus + definitive
+  plan), #3060 `35da9284` (mig 257 business/diaspora categories), #3061 `726dbc93`
+  (**evaluate read-path API**), #3034 `dbb31e4d` (G-b metamorphic + canonical replay CLI),
+  #3079 `f43f04c1` (SHADOW arming runbook), #3092 `c33c183a` (12 W2 fact-bases), #3090
+  `3c412c96` (**first signed PRODUCTION RulePack** 38p/110r/28s, kid prod-2026-07-1),
+  #3101 `6893ea5d` (activate_pack ops CLI). **Production state**: endpoint live serving
+  real verdicts in SHADOW+CURATED; pack `446ee4ee` seq 1 ACTIVE (activation bb35cb81);
+  secrets staged: trust store (relabeled kids), EVALUATE_MODE=SHADOW, FINGERPRINT_KEYS,
+  DRIVER_TOKEN; roles: visa_activation_executor (NOLOGIN, grants on nuzantara_rag),
+  visa_activation_operator (LOGIN, custody M5); `visa_decisions` accumulating.
+  **Standing bugs fixed en route**: key-ceremony digit-start kids (errata + relabel),
+  detect-secrets pack-hash baseline (+ triage rule), docsync/inventory date-drift pattern,
+  prettier-3.8.4-vs-main skew (3 files, flagged for infra), `fly pg connect` wireguard
+  hang (use fly ssh console -C + sftp put --machine). **Open items**: D1/D2/D3 owner
+  decisions (pack in `research/visa/2026-07-23-d1-decision-pack.md`); W1c persona breadth
+  extension (after window data); Track C wiring 4a/4b (Pro, briefed); Track B FASE 2
+  (Mini, briefed); G-d drill + flip only at all-green. Seat status: codex CLI dead on M5,
+  GLM Keychain-only, Opus caps ~4-5h — graders fall back to Opus/Fable per Zero.
+
+## TRACKS — parallel work groups (multi-session coordination)
+
+The v2 program runs as separate tracks, one per surface, coordinated ONLY through this skill. Any
+session on any machine: load /visaoracle → read LIVE STATE → claim a free track → work exclusively
+inside that track's path scope. Scopes are disjoint by construction, so parallel tracks cannot
+merge-conflict.
+
+| Track               | Path scope (exclusive)                                | Home machine | Dependencies                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A — Engine**      | `apps/backend-rag/backend/services/visa_engine/**`    | M5           | Serial chain: PR1 → PR2 (signing) → PR3 (evaluator) → PR4-6. Never parallelize within the chain.                                                                                      |
+| **B — Content**     | `research/visa/**` (later curated kb via its own PRs) | Mini         | Bridging Visa branch, D7A/D7B + diaspora gap research: free NOW. The 7 interview categories: only AFTER PR #2602 (catalog bonifica) merges.                                           |
+| **C — Experience**  | `apps/mouth/**` visa-oracle surfaces                  | Pro          | Prototypes/design-system with mock data: free NOW. Wiring to the real engine contract: only AFTER PR1 merges (schemas in `apps/backend-rag/backend/services/visa_engine/contracts/`). |
+| **D — Ditjen demo** | (defined later)                                       | —            | Blocked until green gold-harness.                                                                                                                                                     |
+
+**Claim protocol**
+
+1. A track with an open `TRACK <X> claimed by …` line in LIVE STATE is TAKEN — pick another or coordinate.
+2. Claiming = adding `TRACK <X> claimed by <machine>/<date>` to LIVE STATE in your track's FIRST PR; release it in the PR that closes the track.
+3. Every PR from a track updates its own LIVE STATE lines (standing rule: whoever changes state updates this file).
+
+**Quality invariants (identical for every track — parallelism never relaxes them)**
+
+- Own worktree via `scripts/agent_start.py`; the main checkout stays read-only.
+- generator≠grader before every push: cross-family adversarial review (Codex or Gemini seat) of the track's diff; the author never grades its own work.
+- Final on-disk gate = a Fable session per track; never delegated to the implementer.
+- Pre-push runs on the track's own machine (3 machines = 3 independent push queues). On M5: quiet-window rule — first loadavg value < 8 and zero real pytest processes before pushing.
+- All established truths in this skill bind every track — including the single all-inclusive client price ruling (never a PNBP-vs-fee split).
 
 ## PENDING (W81 ledger, project-scoped)
 

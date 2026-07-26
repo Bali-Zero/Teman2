@@ -1,0 +1,228 @@
+{
+  "_doc": "GARUDA-FILIERA per-ancestor RESTORE compiler spec (2026-07-18) — 49213 'Angkutan Perkotaan' graduates from detach (fase1_collisions.json, per_skala -> []) to RESTORE (per_skala <- the per-ancestor merged PP28 rows), per the signed conductor adjudication research/operations/2026-07-18-kbli-batch-a-plan.md §A-6(b)-RESOLVED (PR #2721/#2740). This file is scripts/kbli_filiera/cure_restore_per_ancestor.py's INPUT: it NEVER authors a new licensing value from plausibility (rule #9) — every per_skala row below is transcribed verbatim from an image-verified PP28 render (sha256 in adjudication.renders below), and the compiler is pure spec-driven write, never invents content. per_skala_disputed_pp28_collision (the OLD wrong-vintage AKDP-collision block) is left completely untouched by this restore — it stays as the historical audit trail. 49213 is REMOVED from fase1_collisions.json's codes list in this same PR (see that file's own _doc) so the generic detach compiler never re-quarantines the restored data.",
+  "_provenance": "Conductor image-verified all 5 renders on 300dpi PP 28/2025 Lampiran I.I (doc BPK 394945) THIS session (2026-07-18) — see adjudication.renders for per-file sha256 + page + ancestor. Do NOT edit the served dataset by hand — data-plane guard #2550 blocks it; route changes through the compiler.",
+  "version": 1,
+  "action": "restore_per_skala_per_ancestor",
+  "code": "49213",
+  "judul": "Angkutan Perkotaan",
+  "disputed_key": "per_skala_disputed_pp28_collision",
+  "pp28_sources": ["49214", "49219", "49413"],
+  "scope_note": "49219 'Angkutan Bus Dalam Trayek Lainnya' carries THREE territorial tiers in PP 28/2025 (row 11, p.I.I.51): antar-provinsi -> Menteri/Kepala Badan; dalam-provinsi -> Gubernur; kabupaten/kota -> Bupati/Wali Kota. Only the kabupaten/kota tier applies to 49213's intra-city scope (Angkutan Perkotaan); the other two tiers (inter-provincial, intra-provincial) describe route classes 49213 does not cover and are deliberately excluded from this restore's scope_index=1 rows.",
+  "per_skala": [
+    {
+      "skala_usaha": ["Mikro"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 0,
+      "scope_uraian": "Angkutan Bus Kota",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Kecil"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 0,
+      "scope_uraian": "Angkutan Bus Kota",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Menengah"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 0,
+      "scope_uraian": "Angkutan Bus Kota",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Besar"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 0,
+      "scope_uraian": "Angkutan Bus Kota",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Mikro"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 1,
+      "scope_uraian": "Angkutan Bus Dalam Trayek Lainnya",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Kecil"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 1,
+      "scope_uraian": "Angkutan Bus Dalam Trayek Lainnya",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Menengah"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 1,
+      "scope_uraian": "Angkutan Bus Dalam Trayek Lainnya",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Besar"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 1,
+      "scope_uraian": "Angkutan Bus Dalam Trayek Lainnya",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Bupati/Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Mikro"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 2,
+      "scope_uraian": "Angkutan Perkotaan Bukan Bus, Dalam Trayek",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Kecil"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 2,
+      "scope_uraian": "Angkutan Perkotaan Bukan Bus, Dalam Trayek",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Menengah"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 2,
+      "scope_uraian": "Angkutan Perkotaan Bukan Bus, Dalam Trayek",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    },
+    {
+      "skala_usaha": ["Besar"],
+      "kategori_risiko": "Menengah Tinggi",
+      "jangka_waktu": "5 Hari",
+      "scope_index": 2,
+      "scope_uraian": "Angkutan Perkotaan Bukan Bus, Dalam Trayek",
+      "perizinan": ["NIB dan Sertifikat Standar"],
+      "persyaratan": [],
+      "kewajiban": [],
+      "kewenangan": ["Wali Kota"],
+      "jangka_waktu_source": "pp28_lampiran_image_verified",
+      "fiktif_positif": true
+    }
+  ],
+  "data_note": "KBLI 2025 code 49213 'Angkutan Perkotaan' (intra-city urban bus transport on a fixed trayek) had per_skala detached 2026-07-17 after a code-number collision was found: the old served per_skala carried KBLI-2020 code 49213 = 'Angkutan Bus Antarkota Dalam Provinsi (AKDP)' (inter-city, Gubernur authority), the wrong regulatory basis for an intra-city activity (preserved unchanged under per_skala_disputed_pp28_collision as a historical audit trail — never reused). Per-ancestor adjudication (research/operations/2026-07-18-kbli-batch-a-plan.md §A-6(b)-RESOLVED; conductor gate PR #2721/#2740) determined the correct regulatory basis for this intra-city scope is the MERGE of 3 PP 28/2025 Lampiran I.I rows whose regimes are substantially identical for the urban scope, each image-verified on the official BPK render (doc 394945): 49214 'Angkutan Bus Kota' (row 9, p.I.I.40-41), 49219 'Angkutan Bus Dalam Trayek Lainnya' (row 11, p.I.I.51 — ONLY its kabupaten/kota tier; the antar-provinsi/Menteri and dalam-provinsi/Gubernur tiers of 49219 do not apply to this intra-city scope and are excluded from the restore), and 49413 'Angkutan Perkotaan Bukan Bus, Dalam Trayek' (row 14, p.I.I.65-66). All 3 confirm the same regime for the urban scope: Ruang Lingkup Seluruh, Skala Usaha Mikro+Kecil+Menengah+Besar, Kategori Risiko Menengah Tinggi, Perizinan NIB dan Sertifikat Standar, Jangka Waktu 5 Hari, PB UMKU none, and municipal-level Kewenangan (Bupati/Wali Kota for 49214 and the used 49219 tier; Wali Kota for 49413). per_skala restored from these 3 per-ancestor rows (12 rows: 3 scopes x 4 skala tiers); persyaratan/kewajiban bullet text for these rows was not transcribed in this pass and is left empty pending a follow-up extraction, not fabricated here. The OLD per_skala_disputed_pp28_collision block is preserved verbatim and untouched by this restore.",
+  "adjudication": {
+    "refs": [
+      "research/operations/2026-07-18-kbli-batch-a-plan.md §A-6(b)-RESOLVED",
+      "PR #2721 (conductor gate report)",
+      "PR #2740 (Batch-A governance v2, A-6(b) halt lifted)"
+    ],
+    "doc": "BPK 394945, PP 28/2025 Lampiran I.I",
+    "ancestors": {
+      "49214": {
+        "judul": "Angkutan Bus Kota",
+        "page": "I.I.40-41",
+        "row": 9
+      },
+      "49219": {
+        "judul": "Angkutan Bus Dalam Trayek Lainnya",
+        "page": "I.I.51",
+        "row": 11,
+        "note": "49219 'Angkutan Bus Dalam Trayek Lainnya' carries THREE territorial tiers in PP 28/2025 (row 11, p.I.I.51): antar-provinsi -> Menteri/Kepala Badan; dalam-provinsi -> Gubernur; kabupaten/kota -> Bupati/Wali Kota. Only the kabupaten/kota tier applies to 49213's intra-city scope (Angkutan Perkotaan); the other two tiers (inter-provincial, intra-provincial) describe route classes 49213 does not cover and are deliberately excluded from this restore's scope_index=1 rows."
+      },
+      "49413": {
+        "judul": "Angkutan Perkotaan Bukan Bus, Dalam Trayek",
+        "page": "I.I.65-66",
+        "row": 14
+      }
+    },
+    "renders": [
+      {
+        "file": "/Users/nuzantara/nuzantara/.worktrees/kbli-pilota-a1-0718/.wt-tmp/evid/resolve-49213/q-040.png",
+        "sha256": "be8383c0ecfd98540813e87c54c5ed72e8033d01f315e271c285246b1938ffa4",
+        "page": 40,
+        "ancestor": "49214"
+      },
+      {
+        "file": "/Users/nuzantara/nuzantara/.worktrees/kbli-pilota-a1-0718/.wt-tmp/evid/resolve-49213/pp28-49214-p41-041.png",
+        "sha256": "4179ef42ebccd39d5160e76cbbf5161bee4faf867f19a512ee4ad9f4b580984b",
+        "page": 41,
+        "ancestor": "49214"
+      },
+      {
+        "file": "/Users/nuzantara/nuzantara/.worktrees/kbli-pilota-a1-0718/.wt-tmp/evid/resolve-49213/p-051.png",
+        "sha256": "0a4bff1940eff8938d19b29dcdeb4676227a0bcc52906690be75e95646e90267",
+        "page": 51,
+        "ancestor": "49219"
+      },
+      {
+        "file": "/Users/nuzantara/nuzantara/.worktrees/kbli-pilota-a1-0718/.wt-tmp/evid/pilot/49213/pp28/394945_p65-065.png",
+        "sha256": "762b60f2f444f868e1e34e6f3b943d263ffcf2e05987ddd39139f3d0d6da857d",
+        "page": 65,
+        "ancestor": "49413"
+      },
+      {
+        "file": "/Users/nuzantara/nuzantara/.worktrees/kbli-pilota-a1-0718/.wt-tmp/evid/resolve-49213/pp28-49413-p66-066.png",
+        "sha256": "c336c6f32439d17e0ce87d9b4072558b2b943337c6d4099faa31bb79b3b04053",
+        "page": 66,
+        "ancestor": "49413"
+      }
+    ]
+  }
+}

@@ -26,13 +26,15 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 import sys
 import time
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
@@ -42,8 +44,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_carousel_ir as ir  # noqa: E402  (Phase 1 — typed Carousel IR, pure/zero-I/O)
+import wr2_creative_ledger as wcl  # noqa: E402  (Phase 4 — Creative Ledger, DB-read only, best-effort)
+import wr2_editorial_pregate as pregate  # noqa: E402  (Phase 2 — deterministic pre-gate, pure/zero-I/O)
 import wr2_grounding as wg  # noqa: E402  (pure, side-effect-free: is_citations_only_the_facts SSOT)
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
+import wr2_planner_writer as pw  # noqa: E402  (Phase 3 — planner/writer split, pure/zero-I/O)
 import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
@@ -54,6 +60,33 @@ from backend.llm.claude_oauth_client import (  # noqa: E402
 logger = logging.getLogger("wr2.draft_generator")
 
 MAX_DRAFTS_PER_RUN = 2
+
+# ── Engine kill-switch (production cutover, 2026-07-21) ────────────────────
+# `planner_writer` = the new plan->write->pregate(+repair) engine (Phases
+# 1-3, spec `.claude/skills/wr2/_research/2026-07-21-editorial-intelligence-
+# design.md` §3 rollout step 3: "poi cutover"). `monolith` = the ORIGINAL
+# single-`claude_compose_slides`-call path — every line below this comment
+# through `_process_one_monolith`'s body is BYTE-IDENTICAL to what
+# `_process_one` was before this cutover (a pure rename + the shared
+# brief-parsing/park-check hoisted into the new thin `_process_one`
+# dispatcher) — instant rollback via `WR2_COMPOSE_ENGINE=monolith`, no code
+# change, no redeploy of a different commit. Any value other than the two
+# recognized ones falls back to `planner_writer` (the new default) with a
+# WARN log, never to a silent no-op.
+WR2_COMPOSE_ENGINE_MONOLITH = "monolith"
+WR2_COMPOSE_ENGINE_PLANNER_WRITER = "planner_writer"
+_VALID_COMPOSE_ENGINES = {WR2_COMPOSE_ENGINE_MONOLITH, WR2_COMPOSE_ENGINE_PLANNER_WRITER}
+
+
+def _resolve_compose_engine() -> str:
+    raw = os.environ.get("WR2_COMPOSE_ENGINE", WR2_COMPOSE_ENGINE_PLANNER_WRITER).strip().lower()
+    if raw not in _VALID_COMPOSE_ENGINES:
+        logger.warning(
+            "WR2_COMPOSE_ENGINE=%r not recognized (valid: %s) — falling back to %r",
+            raw, sorted(_VALID_COMPOSE_ENGINES), WR2_COMPOSE_ENGINE_PLANNER_WRITER,
+        )
+        return WR2_COMPOSE_ENGINE_PLANNER_WRITER
+    return raw
 VALID_TONES = {
     "rituale",
     "analitico",
@@ -313,6 +346,42 @@ def _send_telegram(text: str) -> None:
 # Claude prompt (English output)
 # ─────────────────────────────────────────────────────────────────────────
 
+# ── Kicker/subhead variety (2026-07-20) ─────────────────────────────────────
+# PR #2544 (2026-07-16) banned "OUR TAKE"/"OUR READ"/"OUR VIEW" and added an
+# example kicker list to rule #7 below — since then 3/3 decks used "THE
+# SIGNAL: …" (the FIRST example in that list). Root cause: variety
+# instructions were prompt-only prose with NO memory of previous output —
+# every fixed example becomes the new invariant because it is the only
+# concrete thing the model can anchor on. This mirrors the ONE axis that
+# already has a proven DB-armed lookback (register/image-mode, P-4 Art 10.6:
+# `fetch_recent_same_domain` + `_build_avoid_steer` below) and extends the
+# same pattern to the take-slide kicker and the cover subhead, PLUS
+# de-anchors the static example list itself (`_render_kicker_examples`) so
+# no single example can calcify again. 2026-07-20 red-team MAJOR #3: the
+# Structure JSON worked example (below, slide 2) had its OWN static anchor
+# ("THE NET EFFECT: ...") — same disease, second site — so it gets its own
+# token + single-kicker sample via the same exclusion logic.
+_KICKER_EXAMPLES_TOKEN = "__KICKER_EXAMPLES__"
+_KICKER_EXAMPLE_TAKE_TOKEN = "__KICKER_EXAMPLE_TAKE__"
+
+KICKER_EXAMPLE_VOCABULARY: tuple[str, ...] = (
+    "THE UPSHOT",
+    "WHERE THIS LANDS",
+    "THE NET EFFECT",
+    "THE STAKES",
+    "THE SIGNAL",
+    "BETWEEN THE LINES",
+    "WHAT CHANGES NOW",
+    "THE QUIET PART",
+    "READ THE FINE PRINT",
+    "THE REAL COST",
+    "FOLLOW THE MONEY",
+    "THE PRECEDENT",
+    "WHY NOW",
+    "THE CATCH",
+    "THE TRADE-OFF",
+)
+
 SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zero (https://balizero.com).
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
@@ -446,17 +515,19 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    needed.
 
 7. Bali Zero "take" slides (typically slide 2 and the last slide): open the
-   headline with a short UPPERCASE editorial-stance kicker (2-3 words —
-   e.g. "THE UPSHOT", "WHERE THIS LANDS", "THE NET EFFECT", "THE STAKES",
-   "THE SIGNAL", "BETWEEN THE LINES", "WHAT CHANGES NOW" — or coin a new
-   one in the same register if none fits this angle), then continue in
-   first-person editorial voice, NOT as a third-party legal summary. Pick
-   the kicker that fits THIS carousel; never default to the same one two
-   carousels running. NEVER use "OUR TAKE" / "OUR READ" / "OUR VIEW" —
-   those were single-example placeholders that became an invariant because
-   they were the only example ever shown, not a fixed slot to fill in. Also
-   NEVER "THE BOTTOM LINE" — that's a banned filler heading pattern
-   elsewhere in the doctrine (2026-07-16 red-team finding #3).
+   headline with a short UPPERCASE editorial-stance kicker (2-4 words —
+   __KICKER_EXAMPLES__), then continue in first-person editorial voice,
+   NOT as a third-party legal summary. Pick the kicker that fits THIS
+   carousel; never default to the same one two carousels running. NEVER use
+   "OUR TAKE" / "OUR READ" / "OUR VIEW" — those were single-example
+   placeholders that became an invariant because they were the only
+   example ever shown, not a fixed slot to fill in. Also NEVER "THE BOTTOM
+   LINE" — that's a banned filler heading pattern elsewhere in the doctrine
+   (2026-07-16 red-team finding #3). (2026-07-20: the example list above is
+   ROTATED per generation and EXCLUDES recently-used kickers — a static
+   example list is exactly how a single entry calcifies into a new
+   invariant, the same failure mode this rule already fixed once for the
+   OUR-TAKE family.)
 
 8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
@@ -490,7 +561,7 @@ Structure:
       "slide_type": "take",
       "is_cover": false,
       "is_hero_image": false,
-      "headline": "THE NET EFFECT: ...",
+      "headline": "__KICKER_EXAMPLE_TAKE__: ...",
       "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
     {
@@ -555,6 +626,189 @@ ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
 HERO slides — use at least 4 DISTINCT modes per carousel; never let one scene
 type dominate the whole carousel.
 """
+
+
+# ── Kicker toolkit (2026-07-20) ─────────────────────────────────────────────
+# Pure, side-effect-free helpers shared by the DB lookback (fetch_recent_
+# editorial_signatures below), the regen guard (_kicker_collision, wired into
+# _process_one's generation loop) and the prompt-example de-anchor
+# (_render_kicker_examples). Grouped here, next to SYSTEM_INSTRUCTIONS, since
+# they all operate on the rule #7 kicker shape ("UPPERCASE KICKER: rest of
+# the sentence") that lives in that prompt text.
+
+
+def _normalize_kicker(text: str) -> str:
+    """Whole-string normalization for kicker collision matching. Mirrors
+    `wr2_html_renderer.composer._normalize_take_label` verbatim (NFKC fold,
+    whitespace collapse, terminal-punctuation strip, casefold) — duplicated
+    rather than imported: the composer module sits behind the Playwright
+    render-path import chain, which this launchd-invoked cron entry
+    deliberately avoids (see the BRAND_SUFFIX comment above re: why
+    backend.services.visual is inlined instead of imported). NFKC folds
+    NBSP and other compatibility-whitespace lookalikes to plain ASCII space;
+    `\\s+` collapse catches doubled/embedded whitespace; the terminal-punct
+    strip catches a trailing colon/dash a writer tacked on ("THE SIGNAL:");
+    casefold is the Unicode-correct case fold. Still whole-STRING, never
+    substring — callers only ever use this before an exact-set membership
+    check (scar family #3 over-match discipline)."""
+    normalized = unicodedata.normalize("NFKC", text)
+    normalized = re.sub(r"\s+", " ", normalized)
+    normalized = normalized.strip(" \t\r\n:;,.-–—")
+    return normalized.casefold()
+
+
+def _extract_take_kicker(headline: str) -> str | None:
+    """Pull the editorial kicker off a take-slide headline (rule #7's
+    "UPPERCASE 2-4 word kicker, then a colon, then the take" shape — e.g.
+    "THE SIGNAL: A headline, not a rule" -> "THE SIGNAL").
+
+    NFKC-normalizes the headline BEFORE partitioning on ":" (2026-07-20
+    red-team MINOR #5): a fullwidth colon (U+FF1A, "："), which NFKC folds
+    to ASCII ":", would otherwise bypass extraction entirely — the colon
+    branch below never triggers on a fullwidth colon in the RAW string, so
+    the whole headline falls through to the no-colon path instead and can
+    get rejected as too long. Casing is untouched by NFKC, so the returned
+    text still reads naturally.
+
+    The colon-prefix path requires 2-5 words (2026-07-20 MINOR #6): a
+    single word before the colon ("BALI: THE DOOR JUST CLOSED") is a
+    scene-setter/dateline, not a kicker — rule #7's kicker is always a
+    short PHRASE. Falls back to the WHOLE headline when there is no colon,
+    but only if it is itself short enough to plausibly BE a kicker (1-5
+    words) — matches the take_label convention headlines sometimes use
+    without a colon separator. A long colon-less headline, a 1-word colon
+    prefix, or an over-long prefix before the colon, is not a kicker — just
+    an unusual take-slide the model wrote — so we skip it (return None)
+    rather than mis-signature it: a wrong signature would falsely accuse a
+    later attempt of colliding on words it never actually coined."""
+    headline = (headline or "").strip()
+    if not headline:
+        return None
+    normalized_headline = unicodedata.normalize("NFKC", headline)
+    prefix, sep, _rest = normalized_headline.partition(":")
+    if sep:
+        prefix = prefix.strip()
+        if prefix and 2 <= len(prefix.split()) <= 5:
+            return prefix
+        return None
+    if 1 <= len(normalized_headline.split()) <= 5:
+        return normalized_headline
+    return None
+
+
+def _kicker_collision(
+    slides: list[dict[str, Any]], recent_kickers: list[str]
+) -> str | None:
+    """Whole-string collision check between THIS deck's take-slide kicker(s)
+    and the recent-history kickers. Never substring (scar family #3:
+    "TAKEAWAY FOR SELLERS" contains "TAKE" but must not match; "THE SIGNAL
+    TODAY" must NOT match "THE SIGNAL" — both compared as complete
+    normalized strings via set membership, not `in`). Returns the offending
+    kicker verbatim (this deck's own casing, for the log/steer message) or
+    None."""
+    if not recent_kickers:
+        return None
+    recent_normalized = {_normalize_kicker(k) for k in recent_kickers if k}
+    if not recent_normalized:
+        return None
+    for slide in slides:
+        if slide.get("slide_type") != "take":
+            continue
+        kicker = _extract_take_kicker(str(slide.get("headline") or ""))
+        if kicker and _normalize_kicker(kicker) in recent_normalized:
+            return kicker
+    return None
+
+
+def _sample_kickers(recent_kickers: list[str] | None, k: int) -> list[str]:
+    """Sample up to `k` kickers from KICKER_EXAMPLE_VOCABULARY, EXCLUDING
+    (normalized) any kicker used by a recent carousel. Shared by
+    `_render_kicker_examples` (rule #7's "e.g." list, k=3) and
+    `_render_schema_kicker` (the Structure JSON worked example's take-slide
+    headline, k=1 — 2026-07-20 red-team MAJOR #3) so neither prompt surface
+    ever teaches a kicker the variety steer just banned in the SAME
+    prompt. Returns FEWER than k (down to zero) if the pool is exhausted
+    after exclusion — callers decide how to degrade (MINOR #7: falling
+    back to the full, recently-used vocabulary here would silently
+    reintroduce a banned kicker)."""
+    excluded = {_normalize_kicker(k_) for k_ in (recent_kickers or []) if k_}
+    pool = [v for v in KICKER_EXAMPLE_VOCABULARY if _normalize_kicker(v) not in excluded]
+    return random.sample(pool, k=min(k, len(pool)))
+
+
+def _render_kicker_examples(recent_kickers: list[str] | None = None) -> str:
+    """Render up to 3 example kickers from KICKER_EXAMPLE_VOCABULARY as a
+    quoted, comma-joined string for rule #7's "e.g. ..." list — the
+    de-anchoring fix: a STATIC example list is exactly how "THE SIGNAL"
+    became the new invariant after PR #2544 banned "OUR READ" (it was the
+    first, and only ever, example).
+
+    Returns "" when `_sample_kickers` exhausts the pool (2026-07-20
+    red-team MINOR #7) — the caller, `_render_kicker_examples_clause`,
+    degrades the surrounding sentence to a no-examples instruction rather
+    than ever falling back to the full (recently-used) vocabulary. Callers
+    that need determinism (tests) seed the module `random` instance before
+    calling; production calls take whatever PRNG state the process is
+    on — this is example ROTATION, not a security surface."""
+    sampled = _sample_kickers(recent_kickers, 3)
+    return ", ".join(f'"{k}"' for k in sampled)
+
+
+def _render_kicker_examples_clause(recent_kickers: list[str] | None = None) -> str:
+    """Render rule #7's full "e.g. ... — or coin a new one..." clause as a
+    grammatical instruction in BOTH modes (2026-07-20 red-team MINOR #7):
+    when `_render_kicker_examples` has examples to show, and when recent
+    history has exhausted the vocabulary and it returns "". A naive
+    "e.g.  — or coin a new one..." (empty examples spliced into the static
+    template) would read as broken prompt text."""
+    examples = _render_kicker_examples(recent_kickers)
+    if examples:
+        return (
+            f"e.g. {examples} — or coin a new one in the same register if "
+            "none fits this angle"
+        )
+    return (
+        "coin a new one in the same register that fits this angle — recent "
+        "carousels have already used up the usual examples"
+    )
+
+
+# Round-2 red-team (2026-07-20): the round-1 fallback "YOUR FRESH KICKER"
+# was ITSELF a static, teachable-looking string — same disease one level
+# down, and never checked against history either. An angle-bracket
+# TEMPLATE SLOT reads unambiguously as "fill this in", never as a literal
+# kicker to imitate, so once the pool is exhausted this needs no history
+# check at all — it can never coincide with a real kicker by construction.
+_SCHEMA_KICKER_FALLBACK = "<COIN A FRESH 2-4 WORD KICKER>"
+
+
+def _render_schema_kicker(recent_kickers: list[str] | None = None) -> str:
+    """Sample ONE kicker for the Structure JSON worked example's take-slide
+    headline (2026-07-20 red-team MAJOR #3): the schema example used to
+    teach a literal "THE NET EFFECT" kicker regardless of history — a
+    second static anchor point, identical in kind to the rule #7 list this
+    whole patch de-anchors. Falls back to `_SCHEMA_KICKER_FALLBACK` — an
+    angle-bracket template slot, not a candidate kicker — when the pool is
+    exhausted (MINOR #7's degrade policy applied here too)."""
+    sampled = _sample_kickers(recent_kickers, 1)
+    return sampled[0] if sampled else _SCHEMA_KICKER_FALLBACK
+
+
+def _render_system_instructions(recent_kickers: list[str] | None = None) -> str:
+    """SYSTEM_INSTRUCTIONS with rule #7's example-kicker placeholder AND the
+    Structure JSON example's take-slide-headline placeholder filled in for
+    this generation call. Kept as a function rather than baked into the
+    SYSTEM_INSTRUCTIONS constant itself: test_wr2_draft_generator_
+    json_example.py imports SYSTEM_INSTRUCTIONS directly and asserts on its
+    static "Structure:" JSON example — that contract must keep working
+    without a live random/DB call (the two tokens remain literal, unquoted
+    text inside a JSON string value there, so json.loads() still parses
+    the un-substituted constant)."""
+    return (
+        SYSTEM_INSTRUCTIONS
+        .replace(_KICKER_EXAMPLES_TOKEN, _render_kicker_examples_clause(recent_kickers))
+        .replace(_KICKER_EXAMPLE_TAKE_TOKEN, _render_schema_kicker(recent_kickers))
+    )
 
 
 def _build_enriched_brief(enrichment: dict[str, Any], live_reasons: list[str] | None) -> str:
@@ -660,6 +914,7 @@ def _build_draft_prompt(
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
     liveness_tier: str = "",
+    recent_kickers: list[str] | None = None,
 ) -> str:
     """Build the slide-composition prompt.
 
@@ -680,6 +935,12 @@ def _build_draft_prompt(
       - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
     Falls back to the enriched brief alone when `summary` is empty.
+
+    `recent_kickers` (2026-07-20): optional list of take-kickers used by
+    recent carousels, threaded through to `_render_system_instructions` so
+    rule #7's worked example list never suggests a kicker that's also
+    banned by the variety steer in `avoid_steer`. Defaults to None so
+    existing call sites are unaffected.
     """
     use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
@@ -723,7 +984,9 @@ def _build_draft_prompt(
         "breaking": "6-7", "developing": "7-8", "evergreen": "9-10",
     }.get(liveness_tier, "6-8")
 
-    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{steer_block}
+    system_instructions = _render_system_instructions(recent_kickers)
+
+    return f"""{system_instructions}{avoid_steer}{steer_block}
 
 ---
 
@@ -844,11 +1107,13 @@ async def claude_compose_slides(
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
     liveness_tier: str = "",
+    recent_kickers: list[str] | None = None,
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
         avoid_steer=avoid_steer, liveness_tier=liveness_tier,
+        recent_kickers=recent_kickers,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -1307,6 +1572,211 @@ def _build_avoid_steer(recent: list[dict[str, Any]]) -> str:
     )
 
 
+async def fetch_recent_editorial_signatures(
+    conn: asyncpg.Connection, limit: int = 10
+) -> dict[str, list[str]]:
+    """Last-N rendered/published drafts' take-slide kickers + cover subheads,
+    newest-first (2026-07-20 — extends the P-4 pattern above to the axis
+    that had NO DB-armed lookback: see the module comment above
+    KICKER_EXAMPLE_VOCABULARY for why).
+
+    Returns {"kickers": [...], "subheads": [...]}, both order-preserving and
+    deduped case-insensitively (keeps the FIRST occurrence's original casing
+    for display in the steer block — see `_build_variety_steer`).
+
+    Best-effort like its sibling `fetch_recent_same_domain`: any
+    CONNECTION-level exception (table/column not migrated yet on this DB,
+    network drop) returns the empty shape so generation is NEVER blocked
+    by this lookback. A single malformed ROW (bad JSON, unexpected shape)
+    is isolated per-row (2026-07-20 red-team MAJOR #2): it's skipped and
+    logged at debug, but the OTHER rows' history still survives — the
+    original single try/except around the whole loop meant one bad legacy
+    row could silently zero out an otherwise-healthy history.
+
+    `created_at DESC` orders by draft-CREATION time, not by when the
+    carousel actually rendered/published (MINOR #10) — an older draft that
+    finishes rendering later than a newer one can be shadowed out of the
+    top-`limit` window. Accepted as an approximation, not fixed: the drift
+    is bounded by the WR2 pipeline's own processing latency (hours, not
+    days) and self-heals as soon as it renders.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT slides_json
+              FROM war_room_drafts
+             WHERE status IN ('rendered', 'published')
+               AND slides_json IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT $1
+            """,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — connection-level, never block generation
+        logger.warning("fetch_recent_editorial_signatures failed: %s", exc)
+        return {"kickers": [], "subheads": []}
+
+    kickers: list[str] = []
+    kickers_seen: set[str] = set()
+    subheads: list[str] = []
+    subheads_seen: set[str] = set()
+
+    for row in rows:
+        try:
+            # slides_json arrives as a dict OR a JSON string depending on the
+            # asyncpg codec registration on this connection — mirrors the
+            # exact defensive pattern wr2_daily_reconciler.py /
+            # wr2_fact_checker.py already use for the same column.
+            blob = row["slides_json"]
+            if isinstance(blob, str):
+                blob = json.loads(blob)
+            slides = blob.get("slides") if isinstance(blob, dict) else blob
+            if not isinstance(slides, list):
+                continue
+
+            for slide in slides:
+                if not isinstance(slide, dict):
+                    continue
+                if slide.get("slide_type") == "take":
+                    kicker = _extract_take_kicker(str(slide.get("headline") or ""))
+                    if kicker:
+                        key = _normalize_kicker(kicker)
+                        if key not in kickers_seen:
+                            kickers_seen.add(key)
+                            kickers.append(kicker)
+                # planner_writer engine (production cutover, 2026-07-21):
+                # a fact_stack slide's take_label (wr2_carousel_ir.to_
+                # composer_dict projects it verbatim, evidence-carved
+                # family) is the shape-equivalent of the monolith's
+                # slide_type=="take" kicker — a short editorial tag, same
+                # collision/variety semantics, different field name because
+                # the two engines never share a slide_type vocabulary.
+                # Extracted unconditionally (not gated on layout_family, so
+                # a manual/interactive-path evidence-carved slide with a
+                # take_label is picked up too) via the SAME whole-string
+                # `_normalize_kicker` dedup key as the monolith branch above
+                # — the two sources share one seen-set so a kicker used by
+                # EITHER engine is never suggested again by either.
+                take_label = str(slide.get("take_label") or "").strip()
+                if take_label:
+                    key = _normalize_kicker(take_label)
+                    if key not in kickers_seen:
+                        kickers_seen.add(key)
+                        kickers.append(take_label)
+                if slide.get("is_cover"):
+                    subhead = str(slide.get("subhead") or "").strip()
+                    if subhead:
+                        key = _normalize_kicker(subhead)
+                        if key not in subheads_seen:
+                            subheads_seen.add(key)
+                            subheads.append(subhead)
+        except Exception as exc:  # noqa: BLE001 — isolate one bad row, keep the rest
+            logger.debug("fetch_recent_editorial_signatures: skipping malformed row: %s", exc)
+            continue
+
+    return {"kickers": kickers, "subheads": subheads}
+
+
+async def fetch_recent_arcs(conn: asyncpg.Connection, limit: int = 8) -> list[str]:
+    """Last-N rendered/published drafts' chosen `arc` (planner_writer engine
+    only — a monolith-composed draft's `council_debate_json` has no `arc`
+    key at all, so it is silently absent here, never a malformed row: cold
+    start is the expected, honest state until enough planner_writer decks
+    have rendered), newest-first — mirrors `fetch_recent_editorial_
+    signatures`'s own query shape/error discipline exactly (same table,
+    same best-effort-empty-on-connection-error contract, same per-row
+    isolation so one malformed `council_debate_json` blob never zeroes the
+    whole lookback).
+
+    Read from `council_debate_json` (NOT `slides_json`, NOT a new column —
+    production cutover GROUND: 'brief_json or a sensible existing JSON
+    column — least-invasive; NO schema migration'). `council_debate_json`
+    already exists and is written unconditionally by `_persist_ready` for
+    EVERY draft, monolith or planner_writer — `_process_one_planner_writer`
+    below adds `arc`/`arc_reason`/`spine` keys to that same dict; a
+    monolith row's dict simply never had them, so `.get("arc")` is None and
+    the row contributes nothing, exactly like cold-start.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT council_debate_json
+              FROM war_room_drafts
+             WHERE status IN ('rendered', 'published')
+               AND council_debate_json IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT $1
+            """,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — connection-level, never block generation
+        logger.warning("fetch_recent_arcs failed: %s", exc)
+        return []
+
+    arcs: list[str] = []
+    for row in rows:
+        try:
+            blob = row["council_debate_json"]
+            if isinstance(blob, str):
+                blob = json.loads(blob)
+            if not isinstance(blob, dict):
+                continue
+            arc = blob.get("arc")
+            if isinstance(arc, str) and arc.strip():
+                arcs.append(arc.strip())
+        except Exception as exc:  # noqa: BLE001 — isolate one bad row, keep the rest
+            logger.debug("fetch_recent_arcs: skipping malformed row: %s", exc)
+            continue
+    return arcs
+
+
+_VARIETY_STEER_KICKER_CAP = 12
+
+
+def _build_variety_steer(sig: dict[str, list[str]]) -> str:
+    """Render the recent take-kicker + cover-subhead history as a soft-steer
+    block, mirroring `_build_avoid_steer`'s shape. Empty history (both lists
+    empty) -> empty string, so this never touches the prompt when there's
+    nothing to steer away from.
+
+    The kicker line is phrased as a MUST-NOT (whole-phrase match, enforced
+    by `_kicker_collision`'s regen guard in the generation loop). The
+    subhead line is phrased as a softer "avoid the same formula" nudge —
+    spec calls for a ban only on kickers; subheads have no regen guard.
+
+    The MUST-NOT kicker list is capped at `_VARIETY_STEER_KICKER_CAP`
+    (2026-07-20 red-team MINOR #8): `fetch_recent_editorial_signatures`
+    can return up to ~2x its draft `limit` (a draft's cover AND closer are
+    both often "take"-type slides), and an uncapped list bloats the prompt
+    without adding real steering value beyond the most recent handful. The
+    cap is local to THIS rendering — `_kicker_collision`'s regen guard and
+    `_render_system_instructions`'s example de-anchor still see the FULL
+    uncapped history via `sig["kickers"]` directly."""
+    kickers = (sig.get("kickers") or [])[:_VARIETY_STEER_KICKER_CAP]
+    subheads = sig.get("subheads") or []
+    if not kickers and not subheads:
+        return ""
+
+    lines = ["\n\nEDITORIAL VARIETY (2026-07-20):"]
+    if kickers:
+        kicker_list = ", ".join(f"{k!r}" for k in kickers)
+        lines.append(
+            f"the last {len(kickers)} take-slide kickers we used were: "
+            f"{kicker_list}. The take-slide kicker in THIS carousel MUST NOT "
+            "be any of these (whole-phrase match) — coin a FRESH kicker that "
+            "fits THIS carousel's specific angle."
+        )
+    if subheads:
+        subhead_list = ", ".join(f"{s!r}" for s in subheads)
+        lines.append(
+            f"Recent cover subheads were: {subhead_list} — avoid repeating "
+            'the same formula (e.g. don\'t produce yet another "X ALERT" if '
+            "the recent list is saturated with ALERT/UPDATE variants). "
+            "Subheads are a soft steer here, not a ban."
+        )
+    return "\n".join(lines)
+
+
 async def _persist_ready(
     conn: asyncpg.Connection,
     draft_id: uuid.UUID,
@@ -1379,7 +1849,522 @@ async def _mark_parked(
 _ProcessOutcome = Literal["success", "parked", "failed"]
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# planner_writer engine wiring (production cutover, 2026-07-21)
+#
+# The engine pieces themselves (wr2_carousel_ir / wr2_editorial_pregate /
+# wr2_planner_writer, imported as `ir`/`pregate`/`pw` above) stay pure and
+# zero-I/O by design (their own module docstrings). Everything below is the
+# I/O-bearing, async-bridging, DB-touching WIRING that makes them live —
+# kept entirely in THIS file so none of the three sibling modules had to
+# change its own zero-I/O invariant to get wired into production.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class PregateRepairExhausted(RuntimeError):
+    """Raised by `_generate_planner_writer_deck` when the deterministic
+    pre-gate (`wr2_editorial_pregate.pregate_typed`) still returns FAIL
+    after every repair round is spent. The caller (`_process_one_planner_
+    writer`) catches this and PARKS the draft — same B2 facts-first park
+    backstop philosophy the monolith path already uses: never ship a
+    failing deck, never silently degrade a slide's locked kind to force a
+    pass."""
+
+    def __init__(self, message: str, *, report: "pregate.PregateReport", plan: "ir.DeckPlan"):
+        super().__init__(message)
+        self.report = report
+        self.plan = plan
+
+
+# The closer (last slot) MUST be a kind the pregate's own check_cta_presence
+# already accepts as a valid ending (cta-kind slide, or a closer whose kind
+# is "statement") — every other kind maps to a family with no CTA/closing
+# semantics (Art 9.5 hard rule: the last slide is the carousel's close).
+# Enforced here as a cheap PLAN-level fail-fast (before spending N writer
+# calls on a deck that can never pass check_cta_presence): a plan whose
+# closer kind sits outside this set gets ONE re-plan attempt, never a
+# forced kind (chi propone != chi dispone still holds — this only asks the
+# planner to try again, it never picks the kind FOR it).
+_CLOSER_SAFE_KINDS = frozenset({"cta", "statement"})
+
+_SLIDE_REF_RE = re.compile(r"\bslide (\d+)\b")
+
+
+def _pregate_fail_reasons_by_slot(report: "pregate.PregateReport") -> dict[int, list[str]]:
+    """Map every FAILing check's reason strings back to the slot_id(s) they
+    name ("slide N" — every check_* function in wr2_editorial_pregate.py
+    names the offending slide index in its reason text this way; verified
+    against that module's own source for check_duplicate_slides/
+    check_bullet_promise/check_caps_policy/check_cta_presence/
+    check_kicker_unique/check_spine_echo). A check whose reason names TWO
+    slides (check_duplicate_slides: "slide i vs slide j") maps to BOTH —
+    repairing either one alone cannot resolve a near-duplicate pair."""
+    out: dict[int, list[str]] = {}
+    for check in report.checks:
+        if check.verdict != "FAIL":
+            continue
+        for reason in check.reasons:
+            for m in _SLIDE_REF_RE.finditer(reason):
+                sid = int(m.group(1))
+                out.setdefault(sid, []).append(f"{check.check}: {reason}")
+    return out
+
+
+def _pregate_failing_slot_ids(report: "pregate.PregateReport") -> set[int]:
+    return set(_pregate_fail_reasons_by_slot(report))
+
+
+# ── Constitutional constraints loader (GROUND-4) ────────────────────────────
+# Mirrors scripts/wr2_html_renderer/composer.py's `_load_forbidden_phrases`
+# (same repo-first path resolution, same Article 7 section-heading parse) —
+# DUPLICATED, not imported: composer.py pulls in `.renderer` (Playwright),
+# and this cron entry deliberately avoids that whole import chain (same
+# rationale as the BRAND_SUFFIX/inline-4-layer-prompt-builder comment
+# above). UNLIKE composer.py's own fail-CLOSED policy (composer.py is the
+# actual render-time enforcement point — it must refuse to render without
+# the list), this loader is fail-OPEN: it only feeds the writer PROMPT with
+# advisory guidance to cut retry churn. The real hard gate still lives in
+# composer.py regardless of whether this loader succeeds, so a missing/
+# unparseable constitution.md here degrades prompt quality, never safety.
+_REPO_ROOT_FOR_CONSTITUTION = Path(__file__).resolve().parent.parent
+_CONSTITUTION_PATH_FOR_WRITER = _REPO_ROOT_FOR_CONSTITUTION / "skills" / "bali-zero-brand" / "constitution.md"
+_ARTICLE_7_RE = re.compile(r"## Article 7 — Forbidden phrases \(closed list\)(.*?)(?=\n## )", re.DOTALL)
+
+
+def _load_forbidden_phrases_for_writer(path: Path | None = None) -> list[str]:
+    p = path or _CONSTITUTION_PATH_FOR_WRITER
+    try:
+        text = p.read_text(encoding="utf-8")
+        m = _ARTICLE_7_RE.search(text)
+        if not m:
+            logger.warning("Article 7 section not found in %s — writer prompts get no phrase list", p)
+            return []
+        phrases = re.findall(r"`([^`]+)`", m.group(1))
+        if not phrases:
+            logger.warning("Article 7 section in %s parsed but yielded zero phrases", p)
+        return phrases
+    except OSError as exc:
+        logger.warning(
+            "constitution.md unreadable at %s (%s) — writer prompts proceed with no phrase list; "
+            "the render-time Article 7 gate in composer.py is unaffected and still enforces",
+            p, exc,
+        )
+        return []
+
+
+# ── brief_ctx builder (GROUND: "build brief_ctx exactly as today") ─────────
+def _build_brief_ctx(
+    topic: str,
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> str:
+    """The planner_writer engine's brief context — reuses the EXACT same
+    facts-first composition `_build_draft_prompt` already does for the
+    monolith (B1, 2026-07-17: article summary LEADS, enriched brief
+    SUPPORTS — never the reverse) plus the A1 liveness framing line, minus
+    the SYSTEM_INSTRUCTIONS/schema/kicker-example scaffolding that belongs
+    to the monolith's single-call prompt shape specifically (the planner
+    and writer stages build their OWN prompts around this brief_ctx, in
+    `wr2_planner_writer._build_planner_prompt`/`_build_writer_prompt`).
+    A DELIBERATE small duplication of `_build_draft_prompt`'s body-assembly
+    logic (not a call into it) so the monolith's prompt function stays
+    completely untouched — touching it would risk the kill-switch's
+    'monolith path preserved verbatim' guarantee."""
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
+    enriched_body = ""
+    if use_full_enriched and enrichment:
+        enriched_body = _build_enriched_brief(enrichment, live_reasons)
+
+    facts_first = bool(summary and summary.strip()) and bool(enriched_body)
+    if facts_first:
+        body = (
+            "### Source article (the real event — ground who/what/when in this)\n"
+            f"{summary[:3500]}\n\n"
+            "### Supporting brief (citations, editorial take, practice notes — "
+            "background only, never a substitute for the article above)\n"
+            f"{enriched_body}"
+        )
+    elif enriched_body:
+        body = enriched_body
+    else:
+        body = summary[:3500]
+
+    framing = _LIVENESS_FRAMING.get(liveness_tier, "")
+    header = f"Title: {topic}\n\nSource: {source_url or 'n/a'}\n"
+    if framing:
+        header = f"{framing}\n\n{header}"
+    return f"{header}\nContent:\n{body}"
+
+
+# ── register selection (Mossa B keeps DeckPlan register-free by design) ────
+def _pick_register_for_planner_writer(liveness_tier: str, recent_registers: list[str]) -> str:
+    """DeckPlan is deliberately register-free (spec §2 Mossa B: 'zero-prose,
+    no voice-register field' — register comes from 'the same upstream
+    source production already resolves it from today'). For a historical
+    replay that source is a persisted value; for a FRESH draft there is
+    none to read, so this reuses the existing A3 tier-preference heuristic
+    (`_TONE_PREFERENCE`) as a firm deterministic pick instead of a soft LLM
+    nudge — favouring whichever of the tier's preferred tones was NOT most
+    recently used in this domain (anti-sameness), falling back to the full
+    VALID_TONES set for an unknown/manual tier. This is a DELIBERATE
+    simplification versus the monolith (which lets Claude pick register
+    from full content judgment in the same call) — flagged, not hidden;
+    see the cutover PR description for the follow-up option (a dedicated
+    tiny register field on a future DeckPlan revision, Zero-gated since it
+    touches the ratified spec's 'zero-prose' Mossa-B contract)."""
+    prefs = _TONE_PREFERENCE.get(liveness_tier) or tuple(sorted(VALID_TONES))
+    for candidate in prefs:
+        if candidate not in recent_registers:
+            return candidate
+    return prefs[0]
+
+
+# ── guard adapters (accessor keys differ: to_composer_dict projections have
+#    no slide_type/tonal_palette/image_mode; kicker lives in take_label, not
+#    a colon-prefixed headline) ──────────────────────────────────────────────
+def _closer_word_count_typed(projected_slides: list[dict[str, Any]]) -> int:
+    """Adapter for `_closer_too_long`'s CLOSER_MAX_WORDS guard on a
+    `to_composer_dict`-projected deck. The monolith's `_closer_word_count`
+    reads only `.get("body")` (its closer is always a statement-bomb-shaped
+    flat dict with body text); the new engine's closer can be kind="cta"
+    (elegant-close, its punch line is `invite`) or kind="statement"
+    (statement-bomb, `statement`) — mirrors composer._slide_body_word_count's
+    OWN statement/headline/body precedence, extended with `invite` for the
+    one kind that field precedence does not cover."""
+    if not projected_slides:
+        return 0
+    last = projected_slides[-1]
+    text = last.get("statement") or last.get("invite") or last.get("headline") or last.get("body") or ""
+    return len(str(text).split())
+
+
+def _closer_too_long_typed(projected_slides: list[dict[str, Any]]) -> bool:
+    return _closer_word_count_typed(projected_slides) > CLOSER_MAX_WORDS
+
+
+def _kicker_collision_typed(
+    projected_slides: list[dict[str, Any]], recent_kickers: list[str]
+) -> str | None:
+    """Adapter for `_kicker_collision`: the monolith sources a kicker from a
+    `slide_type == "take"` slide's colon-prefixed headline; the new
+    engine's equivalent shape is a fact_stack slide's `take_label`
+    (evidence-carved family — see `fetch_recent_editorial_signatures`'s own
+    extension for the same field). Whole-string comparison only via the
+    SAME `_normalize_kicker`, never substring (scar family #3)."""
+    if not recent_kickers:
+        return None
+    recent_normalized = {_normalize_kicker(k) for k in recent_kickers if k}
+    if not recent_normalized:
+        return None
+    for slide in projected_slides:
+        take_label = str(slide.get("take_label") or "").strip()
+        if take_label and _normalize_kicker(take_label) in recent_normalized:
+            return take_label
+    return None
+
+
+# ── sync engine core (plan -> write -> pregate -> repair) ──────────────────
+def _generate_planner_writer_deck(
+    brief_ctx: str,
+    register: str,
+    liveness_tier: str,
+    recent_arcs: list[str],
+    planner_fn: "Callable[[str], str]",
+    writer_fn: "Callable[[str], str]",
+    forbidden_phrases: list[str],
+    *,
+    reward_by_arc: dict[str, float] | None = None,
+    engagement_hint: str = "",
+    max_repair_rounds: int = 2,
+    max_plan_attempts: int = 2,
+) -> tuple["ir.SlideDeck", dict[str, Any]]:
+    """Pure(ish) sync core — no DB/network of its own beyond what
+    `planner_fn`/`writer_fn` do internally, exactly mirroring
+    `wr2_planner_writer`'s own call_fn-injection discipline so this
+    function is unit-testable with plain fakes (see
+    scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py).
+
+    1. plan_deck, with ONE cheap re-plan attempt if the closer's kind isn't
+       in `_CLOSER_SAFE_KINDS` (fail-fast — the plan-level defect no amount
+       of slot repair could fix, since repair never changes a locked kind).
+    2. write_slot for every slot (sequential, per-kind constitutional
+       constraints threaded in).
+    3. pregate_typed the assembled deck; on FAIL, re-write ONLY the failing
+       slots (mapped from the FAIL reasons via `_pregate_fail_reasons_by_
+       slot`) up to `max_repair_rounds` times, re-pregating after each
+       round. Never degrades a slot's kind to force a pass.
+    4. Returns (deck, meta) on PASS/WARN. Raises `PregateRepairExhausted`
+       when still FAIL after every repair round — the caller parks.
+    """
+    plan: "ir.DeckPlan | None" = None
+    for plan_attempt in range(1, max_plan_attempts + 1):
+        candidate = pw.plan_deck(
+            brief_ctx, liveness_tier, recent_arcs, planner_fn,
+            max_retries=3, reward_by_arc=reward_by_arc,
+            engagement_hint=engagement_hint,
+        )
+        plan = candidate
+        closer = max(candidate.slides, key=lambda s: s.slot_id)
+        if closer.kind in _CLOSER_SAFE_KINDS:
+            break
+        logger.warning(
+            "planner_writer: plan attempt %d/%d closer kind=%r not in %s — replanning",
+            plan_attempt, max_plan_attempts, closer.kind, sorted(_CLOSER_SAFE_KINDS),
+        )
+    assert plan is not None  # loop always assigns on the first iteration
+
+    logger.info(
+        "planner_writer: arc=%s arc_reason=%r spine=%r slides=%d",
+        plan.arc, plan.arc_reason[:120], plan.spine[:80], len(plan.slides),
+    )
+
+    ordered_slots = sorted(plan.slides, key=lambda s: s.slot_id)
+    slot_by_id = {s.slot_id: s for s in ordered_slots}
+    slides_by_id: dict[int, "ir.Slide"] = {}
+    for slot in ordered_slots:
+        sibling_intents = [s.heading_intent for s in ordered_slots if s.slot_id != slot.slot_id]
+        slides_by_id[slot.slot_id] = pw.write_slot(
+            brief_ctx, plan, slot, sibling_intents, writer_fn, max_retries=3,
+            forbidden_phrases=forbidden_phrases,
+        )
+
+    repair_rounds_used = 0
+    report: "pregate.PregateReport | None" = None
+    for round_idx in range(max_repair_rounds + 1):
+        deck = ir.SlideDeck(
+            register=register,
+            slides=[slides_by_id[sid] for sid in sorted(slides_by_id)],
+            spine=plan.spine,
+            arc=plan.arc,
+        )
+        report = pregate.pregate_typed(deck, spine=plan.spine)
+        logger.info(
+            "planner_writer: pregate round=%d verdict=%s checks=%s",
+            round_idx, report.verdict,
+            {c.check: c.verdict for c in report.checks},
+        )
+        if report.verdict != "FAIL":
+            return deck, {
+                "arc": plan.arc,
+                "arc_reason": plan.arc_reason,
+                "pregate_verdict": report.verdict,
+                "repair_rounds": repair_rounds_used,
+                "pregate_checks": [c.to_dict() for c in report.checks],
+            }
+        if round_idx == max_repair_rounds:
+            break
+        failing_ids = set(_pregate_fail_reasons_by_slot(report)) & set(slot_by_id)
+        if not failing_ids:
+            # A FAIL verdict whose reasons name no slide this deck actually
+            # has (should not happen given every FAIL check's reasons name
+            # an index) — nothing addressable to repair; stop retrying
+            # rather than loop uselessly, let the exhaustion path below
+            # park honestly.
+            break
+        repair_rounds_used += 1
+        reasons_by_slot = _pregate_fail_reasons_by_slot(report)
+        for sid in sorted(failing_ids):
+            slot = slot_by_id[sid]
+            note = "; ".join(reasons_by_slot.get(sid, []))
+            annotated_ctx = f"{brief_ctx}\n\nPREGATE FEEDBACK — fix this in your rewrite: {note}"
+            sibling_intents = [s.heading_intent for s in ordered_slots if s.slot_id != sid]
+            slides_by_id[sid] = pw.write_slot(
+                annotated_ctx, plan, slot, sibling_intents, writer_fn, max_retries=3,
+                forbidden_phrases=forbidden_phrases,
+            )
+            logger.info("planner_writer: repaired slot %d (round %d)", sid, repair_rounds_used)
+
+    assert report is not None
+    raise PregateRepairExhausted(
+        f"pregate still FAIL after {repair_rounds_used} repair round(s): "
+        f"{[c.to_dict() for c in report.checks if c.verdict == 'FAIL']}",
+        report=report,
+        plan=plan,
+    )
+
+
+# ── async->sync OAuth-CLI bridge (production wiring only, not unit-tested
+#    beyond a smoke import — asyncio.to_thread runs this in a worker thread
+#    that has NO running event loop of its own, so `asyncio.run()` inside it
+#    is legal; calling this directly from the `run()` event loop would raise
+#    "asyncio.run() cannot be called from a running event loop") ───────────
+def _make_sync_call_fn(model: str, *, timeout_s: int = 300, endpoint: str = "wr2_draft_generator") -> "Callable[[str], str]":
+    def _call(prompt: str) -> str:
+        async def _do() -> str:
+            resp = await complete_async(prompt, model=model, timeout_s=timeout_s, endpoint=endpoint)
+            return resp.text
+        return asyncio.run(_do())
+    return _call
+
+
+async def _process_one_planner_writer(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    topic: str,
+    brief: dict[str, Any],
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> _ProcessOutcome:
+    """The new plan->write->pregate(+repair) engine — default path
+    (`WR2_COMPOSE_ENGINE=planner_writer` or unset)."""
+    prospective_domain = tt.derive_domain(topic)
+    recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
+    recent_registers = [r.get("register") for r in recent if r.get("register")]
+    editorial_signatures = await fetch_recent_editorial_signatures(conn, limit=10)
+
+    # Creative Ledger (Fase 4, spec §Mossa-D): ONE multi-axis snapshot replaces
+    # the standalone fetch_recent_arcs at this call site — it also recovers arcs
+    # LLM-backfilled onto monolith-era decks (council_debate_json.backfill.arc),
+    # so the cooldown finally sees the deck history that predates planner_writer.
+    # reward_by_arc is the DORMANT reward socket: {} today (war_room_posts empty,
+    # operator-gated) → build_arc_priors is byte-identical to the pre-Fase-4 path.
+    ledger = await wcl.fetch_creative_ledger(conn, limit=8)
+    recent_arcs = ledger.recent_arcs(limit=8)
+    reward_by_arc = ledger.reward_by_arc()
+
+    # Fase 4b (spec §Mossa-D): SOFT per-axis engagement nudge from the review
+    # queue's PUBLISHED history — real IG reach the war_room_posts reward can't
+    # see (those posts carry no draft_id/arc, so they feed layout/tone, not arc).
+    # Best-effort + off-thread (file read): unreadable/cold queue → empty hint →
+    # planner prompt byte-identical to the no-hint path (falsifiable, spec §5).
+    axis_engagement = await asyncio.to_thread(wcl.fetch_axis_engagement)
+    engagement_hint = wcl.build_engagement_hint(axis_engagement)
+
+    brief_ctx = _build_brief_ctx(topic, summary, source_url, enrichment, live_reasons, liveness_tier)
+    register = _pick_register_for_planner_writer(liveness_tier, recent_registers)
+    forbidden_phrases = _load_forbidden_phrases_for_writer()
+
+    planner_fn = _make_sync_call_fn(pw.DEFAULT_PLANNER_MODEL)
+    writer_fn = _make_sync_call_fn(pw.DEFAULT_WRITER_MODEL)
+
+    # reward_live=0 is the honest DORMANT state (cicatrix #2: a dormant organ
+    # must expose its own liveness, never merely look healthy). This line is
+    # the socket's self-probe — when it prints reward_live>0 the loop has closed.
+    logger.info(
+        "Draft %s planner_writer: register=%s liveness_tier=%s recent_arcs=%s "
+        "ledger_entries=%d reward_live=%d engagement_signal=%s(n=%d,injected=%s) "
+        "forbidden_phrases=%d",
+        draft_id, register, liveness_tier or "(none)", recent_arcs,
+        len(ledger.entries), ledger.reward_live_count,
+        # has_signal alone would LIE now (cicatrix #2): since the baseline filter
+        # landed, an axis can rank values and still name none of them (nothing
+        # beats the corpus median) — signal=True while the prompt gets NOTHING.
+        # `injected` is the honest probe: it reports what actually reached the
+        # planner, not what was merely aggregated. (red-team finding #6b.)
+        axis_engagement.has_signal, axis_engagement.total_posts,
+        bool(engagement_hint),
+        len(forbidden_phrases),
+    )
+
+    try:
+        deck, meta = await asyncio.to_thread(
+            _generate_planner_writer_deck,
+            brief_ctx, register, liveness_tier, recent_arcs,
+            planner_fn, writer_fn, forbidden_phrases,
+            reward_by_arc=reward_by_arc,
+            engagement_hint=engagement_hint,
+        )
+    except (pw.PlanValidationExhausted, pw.SlotWriteExhausted) as e:
+        logger.error("Draft %s planner_writer generation exhausted: %s", draft_id, e)
+        await _mark_rejected(conn, draft_id, f"planner_writer_exhausted: {e}")
+        return "failed"
+    except PregateRepairExhausted as e:
+        reason = f"planner_writer pregate FAIL after repair: {str(e)[:800]}"
+        logger.warning("Draft %s parked: %s", draft_id, reason)
+        await _mark_parked(conn, draft_id, reason)
+        return "parked"
+    except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+        logger.error("Draft %s planner_writer Claude OAuth failed: %s", draft_id, e)
+        await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
+        _send_telegram(f"WR2 draft_generator (planner_writer) Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
+        return "failed"
+
+    projected = [
+        ir.to_composer_dict(slide, index=i, total=len(deck.slides))
+        for i, slide in enumerate(deck.slides, start=1)
+    ]
+
+    # Existing guards, adapted (accessor keys differ — see the _typed
+    # adapter docstrings above). WARN-only, exactly like the monolith path:
+    # Legge 5 (human review at the queue gate) is the backstop, never a
+    # hard reject here.
+    if _closer_too_long_typed(projected):
+        logger.warning(
+            "Draft %s (planner_writer) closer too long (%d words > %d) — WARN only, "
+            "Legge 5 backstop at the review gate.",
+            draft_id, _closer_word_count_typed(projected), CLOSER_MAX_WORDS,
+        )
+    collision_kicker = _kicker_collision_typed(projected, editorial_signatures.get("kickers") or [])
+    if collision_kicker:
+        logger.warning(
+            "Draft %s (planner_writer) take_label kicker collision (%r already used) — "
+            "WARN only, Legge 5 backstop at the review gate.",
+            draft_id, collision_kicker,
+        )
+
+    cover_scene = projected[0].get("image_prompt") or topic
+    cover_url, cover_err = await generate_cover_image(scene_core=cover_scene, draft_id=str(draft_id))
+    if cover_url:
+        projected[0]["image_url"] = cover_url
+    else:
+        logger.warning("Cover failed: %s", cover_err)
+        projected[0]["image_url"] = None
+        projected[0]["image_prompt_fallback"] = True
+
+    council_meta = {
+        "engine": WR2_COMPOSE_ENGINE_PLANNER_WRITER,
+        "register_reason": (
+            f"deterministic A3 tier-preference pick (planner_writer engine, liveness_tier="
+            f"{liveness_tier or 'unknown'!r}, recent_registers_avoided={recent_registers})"
+        ),
+        "spine": deck.spine,
+        "arc": deck.arc,
+        "arc_reason": meta.get("arc_reason"),
+        "pregate_verdict": meta.get("pregate_verdict"),
+        "pregate_repair_rounds": meta.get("repair_rounds"),
+        "cover_url": cover_url,
+        "cover_error": cover_err,
+        "composed_at": datetime.now(timezone.utc).isoformat(),
+        "liveness_tier": liveness_tier or None,
+        "slide_count": len(projected),
+    }
+    await _persist_ready(conn, draft_id, register, projected, council_meta)
+    logger.info(
+        "Draft %s → status=drafts (engine=planner_writer, arc=%s, pregate=%s, repair_rounds=%s)",
+        draft_id, deck.arc, meta.get("pregate_verdict"), meta.get("repair_rounds"),
+    )
+
+    cover_status = "OK" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
+    body_count = len(projected) - 1
+    _send_telegram(
+        "WR2 draft pronto per Canva (planner_writer)\n"
+        f"Topic: {topic[:120]}\n"
+        f"Register: {register} · Arc: {deck.arc}\n"
+        f"Cover: {cover_status}\n"
+        f"Slide body ({body_count}): prompt inline, da generare a mano\n"
+        f"Draft: {draft_id}\n"
+        "Canva Renderer ogni 5 min",
+    )
+    return "success"
+
+
 async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _ProcessOutcome:
+    """Thin dispatcher (production cutover, 2026-07-21): parses the row +
+    runs the SHARED B2 park backstop ONCE (both engines must never invent a
+    story for a news-shaped topic with no usable source — that check does
+    not belong to either engine specifically), then routes to
+    `_process_one_monolith` (the ORIGINAL single-call path, byte-identical
+    body to what lived directly in this function before the cutover) or
+    `_process_one_planner_writer` (the new plan->write->pregate engine) per
+    `WR2_COMPOSE_ENGINE` (`_resolve_compose_engine`, default
+    `planner_writer`; `monolith` = instant rollback, no redeploy of a
+    different commit)."""
     draft_id: uuid.UUID = row["id"]
     topic: str = row["topic"]
     brief_raw = row["brief_json"]
@@ -1397,18 +2382,20 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
     # A1 keystone: the selector already put this in brief_json — read it (was dropped).
     liveness_tier = _normalise_liveness_tier(brief.get("liveness_tier"))
 
+    engine = _resolve_compose_engine()
     logger.info(
-        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s",
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s engine=%s",
         draft_id, topic[:80],
         bool(enrichment), brief.get("live_news_score"),
-        liveness_tier or "(none)",
+        liveness_tier or "(none)", engine,
     )
 
     # ── B2 refuse-to-guess backstop (park, never draft) ────────────────────
-    # Checked BEFORE any Claude call: a news-shaped draft with no usable source
-    # anywhere (empty article_summary AND enrichment that's citations-only) has
-    # nothing for B1's facts-first fix to lead with — composing would mean
-    # inventing the story (the 2026-07-16 failure, draft 1229c367). Park it.
+    # Checked BEFORE any Claude call, SHARED by both engines: a news-shaped
+    # draft with no usable source anywhere (empty article_summary AND
+    # enrichment that's citations-only) has nothing for B1's facts-first fix
+    # to lead with — composing would mean inventing the story (the
+    # 2026-07-16 failure, draft 1229c367). Park it.
     if _is_news_shaped(brief, liveness_tier, topic) and not _has_usable_source(summary, enrichment):
         reason = (
             "news-shaped draft has no usable source content: empty article_summary "
@@ -1418,6 +2405,35 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
         await _mark_parked(conn, draft_id, reason)
         return "parked"
 
+    if engine == WR2_COMPOSE_ENGINE_MONOLITH:
+        return await _process_one_monolith(
+            conn, draft_id, topic, brief, summary, source_url,
+            enrichment, live_reasons, liveness_tier,
+        )
+    return await _process_one_planner_writer(
+        conn, draft_id, topic, brief, summary, source_url,
+        enrichment, live_reasons, liveness_tier,
+    )
+
+
+async def _process_one_monolith(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    topic: str,
+    brief: dict[str, Any],
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None,
+    live_reasons: list[Any],
+    liveness_tier: str,
+) -> _ProcessOutcome:
+    """The ORIGINAL single-`claude_compose_slides`-call engine — kill-switch
+    rollback target (`WR2_COMPOSE_ENGINE=monolith`). Body below this
+    docstring is UNCHANGED from what `_process_one` did before the
+    production cutover (2026-07-21): only the function name + the shared
+    setup/park-check hoisted into the new `_process_one` dispatcher above
+    moved; every line of actual generation logic — the regen loop, the 3
+    guards, persistence, Telegram — is byte-identical."""
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
     # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
     # look up the last-2 rendered same-domain carousels, and tell the model to
@@ -1427,14 +2443,47 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
     # real data. The "unknown" domain bucket is never constrained.
     prospective_domain = tt.derive_domain(topic)
     recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
-    avoid_steer = _build_avoid_steer(recent)
+
+    # ── Kicker/subhead variety lookback (2026-07-20) ────────────────────────
+    # ALWAYS ON (unlike the domain anti-sameness above, whose HARD reject
+    # loop only engages when WR2_ANTIMONOTONE_ENFORCE=true) — see the module
+    # comment above KICKER_EXAMPLE_VOCABULARY for why this axis needed its
+    # own DB-armed lookback. `editorial_signatures["kickers"]` also threads
+    # into claude_compose_slides below so rule #7's worked-example list
+    # never suggests a kicker this same steer just banned.
+    editorial_signatures = await fetch_recent_editorial_signatures(conn, limit=10)
+
+    # `base_steer` is the ALWAYS-ON portion (domain anti-sameness + editorial
+    # variety), computed ONCE. Per-attempt regen feedback lives in
+    # `escalations` below and is APPENDED on top of this every attempt — it
+    # is never rebuilt from scratch (2026-07-20 red-team MAJOR #1: the old
+    # anti-sameness retry rebuilt `avoid_steer = _build_avoid_steer(recent) +
+    # (...)`, which silently discarded the EDITORIAL VARIETY block and any
+    # closer/kicker escalation accumulated on prior attempts — a "steer
+    # reset" bug).
+    base_steer = _build_avoid_steer(recent) + _build_variety_steer(editorial_signatures)
+
     enforce = os.environ.get("WR2_ANTIMONOTONE_ENFORCE", "false").lower() == "true"
     max_regen = 2  # => up to 3 total generation attempts
 
     parsed: dict[str, Any] | None = None
     register = ""
     slides: list[dict[str, Any]] = []
+    # Regen-feedback accumulator, keyed by guard name (2026-07-20 red-team
+    # MAJOR #1, refined round-2 MINOR "clear-on-pass"). Each guard that
+    # fires on an attempt SETS its own key, replacing any PREVIOUS message
+    # from the SAME guard (so repeated A4 failures don't duplicate lines);
+    # each guard that does NOT fire POPS its own key (so a RESOLVED
+    # objection — one whose "Your PREVIOUS attempt..." wording would
+    # otherwise go stale and misdescribe the attempt that's actually about
+    # to be retried — disappears instead of riding along forever). Every
+    # OTHER guard's entry is left untouched either way — the next attempt's
+    # prompt is `base_steer` plus only the escalations still LIVE, from any
+    # guard, in guard-name order.
+    escalations: dict[str, str] = {}
     for attempt in range(max_regen + 1):
+        avoid_steer = base_steer + "".join(escalations.values())
+
         # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
         # had zero writer before this). Wraps the single Claude call that stands
         # in for the interactive path's brief_interpreter (this script composes
@@ -1448,6 +2497,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
                 topic=topic, summary=summary, source_url=source_url,
                 enrichment=enrichment, live_reasons=live_reasons,
                 avoid_steer=avoid_steer, liveness_tier=liveness_tier,
+                recent_kickers=editorial_signatures.get("kickers"),
             )
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
             _wom_error = e
@@ -1485,11 +2535,28 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
             await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
             return "failed"
 
+        # Evaluate ALL regen guards against THIS attempt's slides — never
+        # short-circuit on the first hit (2026-07-20 red-team MAJOR #1: the
+        # old structure had each guard `continue` immediately on firing,
+        # which meant a long closer STARVED the kicker-collision and
+        # anti-sameness guards of ever running on that attempt's output —
+        # a real defect could ship because only the FIRST guard in source
+        # order ever got a chance to object). `fired` collects every guard
+        # that objected; the retry/accept decision is made ONCE at the end,
+        # after all three have had a look.
+        fired = False
+
         # A4 closer guard (tier-independent, flag-independent): if the closing
         # statement-bomb body is too long it wraps into a text-brick. WARN + a
         # targeted regen asking the model to compress it — never a hard reject.
-        # Checked BEFORE anti-sameness so it works even with WR2_ANTIMONOTONE off.
         if _closer_too_long(slides):
+            fired = True
+            escalations["closer"] = (
+                "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
+                f"({_closer_word_count(slides)} words). Rewrite the closer as a "
+                f"single-line bold statement of at most {CLOSER_MAX_WORDS} words "
+                "(apply any other corrections requested below/above as well)."
+            )
             if attempt < max_regen:
                 logger.warning(
                     "Draft %s closer too long (%d words > %d) — regenerating for a "
@@ -1497,48 +2564,92 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
                     draft_id, _closer_word_count(slides), CLOSER_MAX_WORDS,
                     attempt + 1, max_regen,
                 )
-                avoid_steer = avoid_steer + (
-                    "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
-                    f"({_closer_word_count(slides)} words). Rewrite ONLY the closer as a "
-                    f"single-line bold statement of at most {CLOSER_MAX_WORDS} words."
+            else:
+                logger.warning(
+                    "Draft %s closer still too long (%d words) after %d retries — "
+                    "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
+                    draft_id, _closer_word_count(slides), max_regen,
                 )
-                continue  # regenerate
-            logger.warning(
-                "Draft %s closer still too long (%d words) after %d retries — "
-                "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
-                draft_id, _closer_word_count(slides), max_regen,
-            )
+        else:
+            # Resolved: this guard no longer objects, so its (possibly
+            # stale, "PREVIOUS attempt"-worded) message must not ride the
+            # next prompt (2026-07-20 red-team round-2 MINOR).
+            escalations.pop("closer", None)
 
-        # Derived signature of THIS draft for the anti-sameness check.
+        # Kicker-collision regen guard (2026-07-20, mirrors A4 above: tier-
+        # and flag-INDEPENDENT — this must fire even when
+        # WR2_ANTIMONOTONE_ENFORCE is off, unlike the domain anti-sameness
+        # check below it). WARN + a single targeted regen, never a hard
+        # reject; Legge 5 (human review) is the backstop if it persists.
+        collision_kicker = _kicker_collision(
+            slides, editorial_signatures.get("kickers") or []
+        )
+        if collision_kicker:
+            fired = True
+            escalations["kicker"] = (
+                f"\n\nYour PREVIOUS attempt reused the kicker {collision_kicker!r} "
+                "which recent carousels already used. Choose a DIFFERENT "
+                "kicker — coin a fresh one for this angle."
+            )
+            if attempt < max_regen:
+                logger.warning(
+                    "Draft %s take-kicker collision (%r already used by a "
+                    "recent carousel) — regenerating for a fresh kicker "
+                    "(attempt %d/%d).",
+                    draft_id, collision_kicker, attempt + 1, max_regen,
+                )
+            else:
+                logger.warning(
+                    "Draft %s take-kicker collision persisted after %d retries "
+                    "(%r) — proceeding anyway (WARN); Legge 5 backstop at the "
+                    "review gate.",
+                    draft_id, max_regen, collision_kicker,
+                )
+        else:
+            escalations.pop("kicker", None)
+
+        # P-4 anti-sameness (constitution Art 10.6): the HARD reject only
+        # engages when WR2_ANTIMONOTONE_ENFORCE=true (default OFF) — when
+        # off, `antimonotone_collision` is always False, matching the
+        # original "always accept on this axis" behaviour.
         slides_envelope = {"slides": slides}
         dominant_mode = tt.derive_dominant_mode(slides_envelope)
-
-        if (
-            not enforce
-            or prospective_domain == tt.UNKNOWN
-            or not tt.collides_with_recent(register, dominant_mode, recent)
-        ):
-            break  # accepted (enforcement off, unknown domain, or no collision)
-
-        if attempt < max_regen:
-            logger.warning(
-                "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
-                "%s — regenerating (attempt %d/%d).",
-                prospective_domain, register, dominant_mode, recent,
-                attempt + 1, max_regen,
-            )
-            # Strengthen the steer on retry so the model does not repeat itself.
-            avoid_steer = _build_avoid_steer(recent) + (
+        antimonotone_collision = (
+            enforce
+            and prospective_domain != tt.UNKNOWN
+            and tt.collides_with_recent(register, dominant_mode, recent)
+        )
+        if antimonotone_collision:
+            fired = True
+            escalations["antimonotone"] = (
                 "\n\nYour PREVIOUS attempt repeated a forbidden combination. "
                 f"Do NOT use register={register!r} with image-mode={dominant_mode!r} "
                 "again. Change at least one of them."
             )
+            if attempt < max_regen:
+                logger.warning(
+                    "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
+                    "%s — regenerating (attempt %d/%d).",
+                    prospective_domain, register, dominant_mode, recent,
+                    attempt + 1, max_regen,
+                )
+            else:
+                logger.warning(
+                    "Anti-sameness collision persisted after %d retries "
+                    "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
+                    max_regen, prospective_domain, register, dominant_mode,
+                )
         else:
-            logger.warning(
-                "Anti-sameness collision persisted after %d retries "
-                "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
-                max_regen, prospective_domain, register, dominant_mode,
-            )
+            escalations.pop("antimonotone", None)
+
+        if not fired:
+            break  # accepted — no guard objected to this attempt's output
+
+        if attempt < max_regen:
+            continue  # regenerate with every guard's accumulated escalation
+        # Last attempt exhausted: every guard that still objects has already
+        # logged its own "proceeding anyway" WARN above — fall out of the
+        # loop and ship what we have (Legge 5 backstop at the review gate).
 
     assert parsed is not None  # loop always sets parsed or returns
 

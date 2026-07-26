@@ -117,6 +117,7 @@ FUNNEL_APP_EVENTS: frozenset[str] = frozenset(
         "app_branch_selected",
         "app_form_started",
         "app_form_submitted",
+        "app_form_submit_failed",
         "app_wizard_step_completed",
         "app_wizard_abandoned",
         "app_result_viewed",

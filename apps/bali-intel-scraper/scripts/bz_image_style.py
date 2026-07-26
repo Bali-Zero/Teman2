@@ -55,10 +55,46 @@ CRISIS LIGHT:     harsh fluorescent, cold teal dominant, overcast moody,
 """
 
 import hashlib
+import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
+
+
+def _run_process_group(
+    cmd: list[str],
+    *,
+    timeout: float,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a CLI in its own session and reap its full process tree on timeout."""
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        else:
+            time.sleep(0.1)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 # ── Mood classification ──────────────────────────────────────────────────────
 
@@ -403,72 +439,192 @@ def _build_llm_user_prompt(title: str, category: str, summary: str, mood: str) -
 # ── Core generation functions ────────────────────────────────────────────────
 
 _IMG_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|hit your limit|"
+    r"usage limit|weekly limit|timeout after 90s|possibly rate limit|"
+    r"capacity|overloaded",
     re.IGNORECASE,
 )
+_IMG_AUTH_RE = re.compile(
+    r"authentication (?:failed|required|expired)|auth required|login required|"
+    r"please (?:log in|login)|not logged in|not authenticated|"
+    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token|"
+    r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
+    re.IGNORECASE,
+)
+_IMG_RATE_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:rate.?limit(?:ed| reached| exceeded)?|"
+    r"too many requests|(?:http(?: status)?\s*)?429(?:\b.*)?|"
+    r"(?:quota|usage limit|weekly limit|capacity)\s+"
+    r"(?:exhausted|exceeded|reached|unavailable)(?:\b.*)?|"
+    r"(?:you(?:'ve| have)\s+)?hit your limit(?:\b.*)?|"
+    r"out of extra usage(?:\b.*)?|service (?:is )?overloaded(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
+_IMG_AUTH_DIAGNOSTIC_RE = re.compile(
+    r"\s*(?:error(?:\s*[:\-]\s*|\s+))?(?:401\s+unauthori[sz]ed(?:\b.*)?|"
+    r"unauthori[sz]ed(?:\b.*)?|authentication (?:failed|required|expired)(?:\b.*)?|"
+    r"auth required(?:\b.*)?|login required(?:\b.*)?|"
+    r"please (?:log in|login)(?:\b.*)?|not (?:logged in|authenticated)(?:\b.*)?|"
+    r"invalid[_ ](?:grant|token)(?:\b.*)?|token[_ ]revoked(?:\b.*)?|"
+    r"refresh_token(?:\b.*)?)\s*",
+    re.IGNORECASE | re.DOTALL,
+)
 _IMG_EXHAUSTED_TOKENS: dict[str, str] = {}
+_OAUTH_SCRUB_KEYS = frozenset({
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUD_ML_REGION",
+    "GOOGLE_API_KEY",
+})
+_OAUTH_SCRUB_PREFIXES = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_",
+    "ANTHROPIC_",
+    "AWS_",
+    "VERTEX_AI_",
+    "OPENAI_",
+    "OPENROUTER_",
+    "GEMINI_",
+    "DEEPSEEK_",
+    "TOGETHER_",
+    "FIREWORKS_",
+    "MISTRAL_",
+    "COHERE_",
+    "GROQ_",
+    "XAI_",
+    "PERPLEXITY_",
+)
+
+
+def _img_oauth_env(token: str) -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _OAUTH_SCRUB_KEYS
+        and not key.startswith(_OAUTH_SCRUB_PREFIXES)
+    }
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    else:
+        env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    return env
 
 
 def _load_img_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) for image prompt generation."""
     chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3):
+    seen: set[str] = set()
+    for i in (1, 2, 3, 4, 5):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
+        if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
+            seen.add(tok)
     legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
+    if legacy and legacy not in seen:
         chain.append(("token_legacy", legacy))
     chain.append(("keychain", ""))
     return chain
 
 
+def _img_retry_reason(stdout: str, stderr: str) -> str | None:
+    if _IMG_RATE_LIMIT_RE.search(stderr or ""):
+        return "rate_limit"
+    if _IMG_AUTH_RE.search(stderr or ""):
+        return "auth"
+    stripped = (stdout or "").strip()
+    if not stripped:
+        return None
+    try:
+        envelope = json.loads(stripped)
+    except json.JSONDecodeError:
+        envelope = None
+    if isinstance(envelope, dict) and (
+        envelope.get("is_error")
+        or envelope.get("type") == "error"
+        or (
+            envelope.get("type") == "result"
+            and envelope.get("subtype") not in (None, "success")
+        )
+    ):
+        diagnostic = " ".join(
+            str(envelope.get(key, ""))
+            for key in ("error", "message", "result", "subtype")
+        )
+        if _IMG_RATE_LIMIT_RE.search(diagnostic):
+            return "rate_limit"
+        if _IMG_AUTH_RE.search(diagnostic):
+            return "auth"
+        return None
+    if _IMG_RATE_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "rate_limit"
+    if _IMG_AUTH_DIAGNOSTIC_RE.fullmatch(stripped):
+        return "auth"
+    return None
+
+
 def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> str | None:
     """Call Claude Haiku via CLI subprocess to generate visual concept.
-    Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→5→legacy→keychain.
     Returns the raw prompt string, or None if CLI unavailable/failed."""
     user_msg = _build_llm_user_prompt(title, category, summary, mood)
     combined = f"{_VISUAL_DIRECTOR_SYSTEM}\n\n{user_msg}"
     chain = _load_img_token_chain()
+    deadline = time.monotonic() + 45
 
-    for label, token in chain:
+    for position, (label, token) in enumerate(chain):
         if label in _IMG_EXHAUSTED_TOKENS:
             continue
-
-        # Strip ANTHROPIC_API_KEY — claude CLI uses OAuth (Max subscription)
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempt_timeout = max(0.1, remaining / (len(chain) - position))
 
         try:
-            result = subprocess.run(
+            result = _run_process_group(
                 ["claude", "--print", "--model", "claude-haiku-4-5-20251001", combined],
-                capture_output=True, text=True, timeout=45, env=env,
+                timeout=attempt_timeout,
+                env=_img_oauth_env(token),
             )
         except subprocess.TimeoutExpired:
-            print(f"  claude CLI: {label} timeout after 45s", file=sys.stderr)
+            print(f"  claude CLI: {label} timed out", file=sys.stderr)
             _IMG_EXHAUSTED_TOKENS[label] = "timeout"
             continue
         except FileNotFoundError:
             print("  claude CLI: not found in PATH", file=sys.stderr)
             return None
-        except Exception as e:
-            print(f"  claude CLI: {label} {e}", file=sys.stderr)
+        except Exception as exc:
+            print(
+                f"  claude CLI: {label} failed ({type(exc).__name__})",
+                file=sys.stderr,
+            )
             return None
 
-        output_combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _IMG_RATE_LIMIT_RE.search(output_combined):
-            print(f"  claude CLI: {label} rate-limited — trying next", file=sys.stderr)
+        retry_reason = _img_retry_reason(result.stdout, result.stderr)
+        if retry_reason == "rate_limit":
+            print(
+                f"  claude CLI: {label} rate-limited — trying next",
+                file=sys.stderr,
+            )
             _IMG_EXHAUSTED_TOKENS[label] = "rate_limit"
+            continue
+        if retry_reason == "auth":
+            print(
+                f"  claude CLI: {label} auth failed — trying next",
+                file=sys.stderr,
+            )
+            _IMG_EXHAUSTED_TOKENS[label] = "auth"
             continue
 
         if result.returncode == 0:
             output = result.stdout.strip()
             if output and len(output) > 30:
                 return output
+            if not output:
+                print(
+                    f"  claude CLI: {label} returned empty output — trying next",
+                    file=sys.stderr,
+                )
+                _IMG_EXHAUSTED_TOKENS[label] = "empty_output"
+                continue
 
         print(f"  claude CLI: {label} rc={result.returncode}", file=sys.stderr)
         return None  # Non-rate-limit error — stop trying

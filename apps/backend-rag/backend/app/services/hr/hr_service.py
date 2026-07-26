@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import calendar
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -19,6 +19,22 @@ from backend.app.utils.hr_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Bali Zero runs on WITA (UTC+8). `awarded_at` is a timestamptz and the Fly
+# Postgres session is UTC, so extracting the month straight off the column cuts
+# it at 08:00 WITA — a bonus awarded at 00:30 on the 1st is billed to the
+# PREVIOUS month. Every month/year bucket over `awarded_at` must therefore pass
+# through `AT TIME ZONE 'Asia/Makassar'` first, so payroll, the bonus summary,
+# the dashboard and the /hr/bonuses page all agree on which month a bonus
+# belongs to. The conversion is written out literally at every call site (never
+# interpolated) so a static scan can see it — see
+# test_bonus_month_bucketing_is_wita.py.
+BUSINESS_TZ = "Asia/Makassar"
+
+
+def business_today() -> date:
+    """Today's date in WITA — the server clock is UTC, the business is not."""
+    return (datetime.now(timezone.utc) + timedelta(hours=8)).date()
 
 
 class HRService:
@@ -188,14 +204,49 @@ class HRService:
                 idx += 1
 
             if month is not None and year is not None:
-                query += f" AND EXTRACT(MONTH FROM bl.awarded_at) = ${idx}"
+                query += (
+                    " AND EXTRACT(MONTH FROM"
+                    f" (bl.awarded_at AT TIME ZONE 'Asia/Makassar')) = ${idx}"
+                )
                 params.append(month)
                 idx += 1
-                query += f" AND EXTRACT(YEAR FROM bl.awarded_at) = ${idx}"
+                query += (
+                    " AND EXTRACT(YEAR FROM"
+                    f" (bl.awarded_at AT TIME ZONE 'Asia/Makassar')) = ${idx}"
+                )
                 params.append(year)
                 idx += 1
 
             query += " ORDER BY bl.awarded_at DESC"
+            rows = await conn.fetch(query, *params)
+            return [dict(r) for r in rows]
+
+    async def list_bonus_historical(
+        self,
+        year: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """List the pre-system bonus recaps imported from PDF (migration 099).
+
+        These rows are an accounting record of what was paid BEFORE the bonus
+        ledger existed. They are a SEPARATE source from ``hr_bonus_ledger`` and
+        the two overlap on some months with different totals — callers must
+        present them side by side for reconciliation and must NEVER sum them.
+        """
+        async with self.db_pool.acquire() as conn:
+            query = """
+                SELECT h.id, h.employee_name, h.employee_id,
+                       h.bonus_month, h.bonus_year, h.total_amount_idr,
+                       h.task_count, h.source_pdf, h.accounting_total_data,
+                       h.accounting_not_paid, h.accounting_paid,
+                       h.imported_at, h.notes
+                FROM hr_bonus_historical h
+            """
+            params: list[Any] = []
+            if year is not None:
+                query += " WHERE h.bonus_year = $1"
+                params.append(year)
+
+            query += " ORDER BY h.bonus_year DESC, h.bonus_month DESC, h.employee_name"
             rows = await conn.fetch(query, *params)
             return [dict(r) for r in rows]
 
@@ -235,8 +286,8 @@ class HRService:
                     COALESCE(SUM(amount_idr), 0) as grand_total
                 FROM hr_bonus_ledger
                 WHERE employee_id = $1
-                  AND EXTRACT(MONTH FROM awarded_at) = $2
-                  AND EXTRACT(YEAR FROM awarded_at) = $3
+                  AND EXTRACT(MONTH FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $2
+                  AND EXTRACT(YEAR FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $3
             """,
                 employee_id,
                 month,
@@ -302,8 +353,8 @@ class HRService:
                         FROM hr_bonus_ledger
                         WHERE employee_id = $1
                           AND status IN ('approved', 'paid')
-                          AND EXTRACT(MONTH FROM awarded_at) = $2
-                          AND EXTRACT(YEAR FROM awarded_at) = $3
+                          AND EXTRACT(MONTH FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $2
+                          AND EXTRACT(YEAR FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $3
                     """,
                         emp_id,
                         month,
@@ -818,7 +869,7 @@ class HRService:
 
     async def get_admin_dashboard(self) -> dict[str, Any]:
         """Admin dashboard summary."""
-        today = date.today()
+        today = business_today()
         async with self.db_pool.acquire() as conn:
             emp_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM hr_employees WHERE is_active = TRUE"
@@ -850,7 +901,7 @@ class HRService:
 
     async def get_my_dashboard(self, employee_id: int) -> dict[str, Any]:
         """Personal dashboard for a team member."""
-        today = date.today()
+        today = business_today()
         async with self.db_pool.acquire() as conn:
             # Current month bonuses
             bonuses = await conn.fetchrow(
@@ -858,8 +909,8 @@ class HRService:
                 SELECT COUNT(*) as count, COALESCE(SUM(amount_idr), 0) as total
                 FROM hr_bonus_ledger
                 WHERE employee_id = $1
-                  AND EXTRACT(MONTH FROM awarded_at) = $2
-                  AND EXTRACT(YEAR FROM awarded_at) = $3
+                  AND EXTRACT(MONTH FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $2
+                  AND EXTRACT(YEAR FROM (awarded_at AT TIME ZONE 'Asia/Makassar')) = $3
             """,
                 employee_id,
                 today.month,

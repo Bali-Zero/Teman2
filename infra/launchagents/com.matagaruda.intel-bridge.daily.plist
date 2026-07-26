@@ -25,8 +25,12 @@
     <string>/Users/nuzantara/logs/matagaruda-intel-bridge.error.log</string>
     <key>EnvironmentVariables</key>
     <dict>
+        <key>GARUDA_REDIS_HOST</key>
+        <string>nuzantara.tail461666.ts.net</string>
         <key>HOME</key>
         <string>/Users/nuzantara</string>
+        <key>MATAGARUDA_FETCH_CONTENT</key>
+        <string>1</string>
         <key>PATH</key>
         <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>

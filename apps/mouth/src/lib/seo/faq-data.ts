@@ -107,6 +107,51 @@ export const BUSINESS_FAQS: FAQItem[] = [
   },
 ];
 
+// Second Home Visa (E33) FAQs — mirrored by the localized FAQ section on
+// /visa/second-home. Every claim is checked against
+// research/secondhome/e33-fact-registry.json (2026-07-24):
+// no BSI/sharia equivalence, no split deposits, no ITAP conversion, no
+// "any bank" placement — those stay forbidden until the official letters
+// answer. Price is the single all-inclusive figure, never decomposed.
+export const SECOND_HOME_FAQS: FAQItem[] = [
+  {
+    question: "What is the E33 Second Home Visa for Indonesia?",
+    answer:
+      "The E33 Second Home Visa is a long-term residence permit for financially established applicants. The first grant is up to 5 years and it is renewable, with a 10-year cumulative cap. It is a pure residence permit and does not authorize employment in Indonesia.",
+    category: "visas",
+  },
+  {
+    question: "How do I qualify for the Second Home Visa?",
+    answer:
+      "Two qualifying routes: a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata-title property (hak milik atas satuan rumah susun). Off-plan and leasehold property do not qualify.",
+    category: "visas",
+  },
+  {
+    question: "Can I work in Indonesia on a Second Home Visa?",
+    answer:
+      "No. The E33 is a residence permit only — it does not authorize employment. Paid work in Indonesia requires a separate work permit/KITAS.",
+    category: "visas",
+  },
+  {
+    question: "Is there a senior option for the Second Home Visa?",
+    answer:
+      "Yes. E33E (age 55+, 5 years) requires a USD 50,000 deposit at a state-owned bank plus USD 3,000/month income. E33F (age 55+, 1 year) requires USD 3,000/month income only, with no deposit.",
+    category: "visas",
+  },
+  {
+    question: "Can my family join me on a Second Home Visa?",
+    answer:
+      "A family add-on is available — eligible family members can join through dependent routes. The current dependent rules and costs are confirmed individually during the free fit memo.",
+    category: "visas",
+  },
+  {
+    question: "How much does the Second Home Visa cost with Bali Zero?",
+    answer:
+      "IDR 39,000,000 all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free.",
+    category: "visas",
+  },
+];
+
 // Generate JSON-LD schema from FAQ items
 export function generateFAQSchema(items: FAQItem[]) {
   return {

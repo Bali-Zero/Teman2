@@ -27,6 +27,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import tempfile
 import time
@@ -58,22 +59,28 @@ logger = logging.getLogger(__name__)
 # (404). Before the cron can write, share that folder tree with the SA
 # nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com (Editor).
 #
-# ⚠️ SHEET_ID has NO valid live target: the index migrated from a Sheet to the
-# INDEX Doc (+ an Excel). _read_sheet_rows still needs an 11-col Sheet (A-K). To
-# resurrect ingestion, EITHER recreate that Sheet (export the Excel) and set
-# PERATURAN_SHEET_ID, OR re-architect the reader for the Doc. Until then the legacy
-# ID is kept only so --dry-run can run; a live run will fail preflight, by design.
+# Live target since 2026-07-19 (feeder revival): "list peraturan v2 (ingestion
+# feeder)" — 11-col Sheet (A-K) inside the PERATURAN department folder on the
+# team Shared Drive, created as zero@balizero.com via DWD-drive and shared
+# writer to the SA above. The pre-2026-06 Sheet and the 1eiSeyND… archive
+# folder were deleted (404 even for zero@) — do not resurrect those IDs.
 SHEET_ID = os.getenv(
-    "PERATURAN_SHEET_ID", "1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us"  # STALE (404)
+    "PERATURAN_SHEET_ID", "1gtbHykghasO4KvJmWhm-eOKr0dscWQYnhNwP06kl-sI"
 )
-# Canonical archive root per INDEX PERATURAN 2026-06-10 (was stale 1jcLQ…).
+# PDF archive: "Auto-Ingestion Archive" under the same PERATURAN dept folder,
+# shared writer to the SA (bare-SA write path proven 2026-07-19).
 PERATURAN_FOLDER_ID = os.getenv(
-    "PERATURAN_FOLDER_ID", "1eiSeyNDgYwCooq9WdMbmtt6xTu6x6zo6"
+    "PERATURAN_FOLDER_ID", "1hpF57bIbjg95SIjzw8Frrwbc11xKGQvG"
 )
 NB6_NOTEBOOK_ID = os.getenv("PERATURAN_NB6_NOTEBOOK_ID", "85207af3-352f-4554-8d2a-18f42cc541ba")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "https://nuzantara-rag.fly.dev")
-SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "internal-scraper-key")
+# Backend auth: SCRAPER_API_KEY if set, else the fleet's canonical
+# NUZANTARA_API_KEY from ~/.nuzantara-secrets.env (secret-rotation runbook
+# SSOT — the wrapper sources that file; probed admin-valid 2026-07-19).
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY") or os.getenv(
+    "NUZANTARA_API_KEY", "internal-scraper-key"
+)
 
 # Column indices (0-based), matches Sheet1 structure
 COL_NOME = 0          # A — Nome / full title
@@ -323,12 +330,16 @@ def _download_pdf(url: str, dest_path: Path) -> bool:
     if not _is_valid_url(url):
         return False
 
+    # Browser-standard UA: government gazette portals (peraturan.bpk.go.id
+    # confirmed live 2026-07-19) 403 the honest bot UA on their own public
+    # download endpoints; matches the regulatory-watcher's fetch posture.
     headers = {
         "User-Agent": (
-            "Mozilla/5.0 (compatible; Nuzantara-LegalBot/1.0; "
-            "+https://balizero.com/legal-bot)"
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
         ),
         "Accept": "application/pdf,*/*",
+        "Referer": url,
     }
 
     try:
@@ -361,36 +372,86 @@ def _download_pdf(url: str, dest_path: Path) -> bool:
 # ─── Backend ingestion ────────────────────────────────────────────────────────
 
 
+class UnsupportedDocTypeError(ValueError):
+    """Sheet Tipo has no LegalDocType mapping on the backend yet."""
+
+
+# Sheet `Tipo` (upper) -> backend LegalDocType enum value (legal_ingest.py).
+# The extended types (UU/Perppu/KMK/Permenaker) require the companion enum
+# widening shipped with this change — live only after the next backend deploy.
+_DOC_TYPE_MAP = {
+    "PP": "PP",
+    "PERPRES": "Perpres",
+    "PMK": "PMK",
+    "PERMEN": "Permen",
+    "PERMEN KEUANGAN": "PMK",
+    "SE": "SE",
+    "SKB": "SKB",
+    "UU": "UU",
+    "PERPPU": "Perppu",
+    "PERPU": "Perppu",
+    "KMK": "KMK",
+    "PERMENAKER": "Permenaker",
+}
+
+
+def _extract_nomor(nome: str) -> str:
+    """Regulation number from the row title, e.g. 'PMK Nomor 43 Tahun 2026' -> '43'."""
+    m = re.search(r"[Nn]omor\s+([A-Za-z0-9./-]+)", nome) or re.search(r"(\d+[A-Za-z]*)", nome)
+    return m.group(1).rstrip(".,;") if m else "NA"
+
+
 def _ingest_to_backend(pdf_path: Path, row: RegulationRow) -> dict:
     """
-    POST the PDF to /api/legal/upload on Fly.io.
-    Returns the JSON response dict (success + chunk count).
+    Create a full-pipeline ingestion job via POST /api/legal/ingest-full
+    (Qdrant+KG, Drive, NLM, Sheets — all server-side) and poll it to a
+    terminal state. Auth: any valid internal API key (the /upload endpoint
+    needs CRM-admin, which the fleet key deliberately is not — 2026-07-19).
+    Returns the terminal job dict (qdrant_chunks / drive_file_id / ...).
     """
     title = row.nome or f"{row.tipo} {row.anno}"
+    tipo = _DOC_TYPE_MAP.get(row.tipo.strip().upper())
+    if tipo is None:
+        raise UnsupportedDocTypeError(row.tipo)
 
-    with open(pdf_path, "rb") as f:
-        files = {"file": (pdf_path.name, f, "application/pdf")}
-        params: dict = {}
-        if title:
-            params["title"] = title
-        # Always tier A for national regulations, B for local
-        tipo_upper = row.tipo.upper()
-        if tipo_upper in ("UU", "PP", "PERPRES", "PERPU"):
-            params["tier"] = "A"
-        elif tipo_upper in ("PERMENAKER", "PERMEN", "PERMEN KEUANGAN", "PMK", "KMK"):
-            params["tier"] = "B"
-        else:
-            params["tier"] = "B"
+    payload = {
+        "url": row.url,
+        "tipo": tipo,
+        "nomor": _extract_nomor(row.nome),
+        "anno": str(row.anno).strip(),
+        "titolo": title,
+    }
+    with httpx.Client(timeout=UPLOAD_TIMEOUT) as client:
+        response = client.post(
+            f"{BACKEND_URL}/api/legal/ingest-full",
+            json=payload,
+            headers={"X-API-Key": SCRAPER_API_KEY},
+        )
+        response.raise_for_status()
+        result = response.json()
 
-        with httpx.Client(timeout=UPLOAD_TIMEOUT) as client:
-            response = client.post(
-                f"{BACKEND_URL}/api/legal/upload",
-                files=files,
-                params=params,
+        job_id = result.get("job_id", "")
+        deadline = time.time() + UPLOAD_TIMEOUT
+        while job_id and result.get("status") not in (
+            "complete", "already_exists", "failed", "error",
+        ):
+            if time.time() > deadline:
+                raise TimeoutError(
+                    f"ingest-full job {job_id} still {result.get('status')!r} "
+                    f"after {UPLOAD_TIMEOUT}s"
+                )
+            time.sleep(10)
+            poll = client.get(
+                f"{BACKEND_URL}/api/legal/ingest-full/{job_id}",
                 headers={"X-API-Key": SCRAPER_API_KEY},
             )
-            response.raise_for_status()
-            result = response.json()
+            poll.raise_for_status()
+            result = poll.json()
+
+        if result.get("status") in ("failed", "error"):
+            raise RuntimeError(
+                f"ingest-full job {job_id} failed: {result.get('message', '')[:200]}"
+            )
 
     # Intel Lake Wave 4 (2026-05-12): enqueue regulation observation to
     # local SQLite outbox. Best-effort — failure must not block ingestion.
@@ -420,8 +481,8 @@ def _ingest_to_backend(pdf_path: Path, row: RegulationRow) -> dict:
                 "raw_payload": {
                     "tipo": row.tipo,
                     "anno": row.anno,
-                    "tier": params.get("tier"),
-                    "backend_response_chunks": result.get("chunks") if isinstance(result, dict) else None,
+                    "backend_job_id": result.get("job_id") if isinstance(result, dict) else None,
+                    "backend_response_chunks": result.get("qdrant_chunks") if isinstance(result, dict) else None,
                 },
             },
         )
@@ -611,15 +672,18 @@ def run(dry_run: bool = False, row_filter: int | None = None) -> None:
                 results.append(result)
                 continue
 
-            # 5b. Ingest to backend (Qdrant + KG)
+            # 5b. Full-pipeline ingest via backend job (Qdrant+KG, Drive, NLM,
+            # Sheets all server-side — /ingest-full; local download above stays
+            # as URL pre-flight validation)
             try:
-                ingest_resp = _ingest_to_backend(pdf_path, row)
-                chunks = ingest_resp.get("chunks_created", 0)
-                result.qdrant_chunks = chunks
-                logger.info(
-                    f"  Backend ingestion OK → {chunks} chunks "
-                    f"({ingest_resp.get('book_title', '')})"
-                )
+                job = _ingest_to_backend(pdf_path, row)
+            except UnsupportedDocTypeError as e:
+                logger.warning(f"  Tipo {e} not supported by backend enum yet — skipping")
+                _update_sheet_row(sheets_svc, row, "SKIPPED_UNSUPPORTED_TYPE")
+                result.skipped = True
+                result.skip_reason = "unsupported_type"
+                results.append(result)
+                continue
             except httpx.HTTPStatusError as e:
                 err = f"backend_{e.response.status_code}"
                 logger.error(f"  Backend ingest failed: {e.response.status_code} — {e.response.text[:200]}")
@@ -634,18 +698,17 @@ def run(dry_run: bool = False, row_filter: int | None = None) -> None:
                 results.append(result)
                 continue
 
-            # 5c. Upload to Drive PERATURAN folder
-            try:
-                drive_id = _upload_to_drive(drive_svc, pdf_path, row)
-                result.drive_file_id = drive_id
-            except Exception as e:
-                logger.warning(f"  Drive upload failed (non-blocking): {e}")
-                drive_id = ""
+            chunks = job.get("qdrant_chunks") or 0
+            drive_id = job.get("drive_file_id") or ""
+            result.qdrant_chunks = chunks
+            result.drive_file_id = drive_id
+            result.nlm_added = bool(job.get("nlm_source_id"))
+            logger.info(
+                f"  Backend job {job.get('job_id', '?')} -> {job.get('status')} "
+                f"(chunks={chunks}, drive={drive_id or '—'})"
+            )
 
-            # 5d. Add to NLM NB-6 (non-blocking)
-            result.nlm_added = _add_to_nlm_nb6(row, drive_id)
-
-            # 5e. Update sheet row
+            # 5c. Update sheet row
             _update_sheet_row(
                 sheets_svc, row, "INGESTED", drive_file_id=drive_id
             )

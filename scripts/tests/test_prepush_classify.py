@@ -129,18 +129,41 @@ def test_guilt_classifier_self_edit() -> None:
 
 
 def test_guilt_tests_workflow_file() -> None:
+    """v3 (task #43) makes this the LOAD-BEARING proof, not a redundant one:
+    .github/workflows is now a broadly-allowlisted prefix (.yml suffix), so
+    this specifically proves the NEVER_INNOCENT_EXACT_PATHS exact-path
+    override for tests.yml — the workflow that DEFINES the required test
+    run — still wins over the broader rule (checked first in
+    _innocent_reason, before the allowlist loop is ever reached)."""
     verdict, _ = pc.classify([".github/workflows/tests.yml"])
     assert verdict == pc.VERDICT_FULL
 
 
-def test_guilt_other_github_workflow_file() -> None:
-    """Under the allowlist inversion, ALL of .github/** forces full — not
-    just tests.yml (the original mandate's narrower rule). No .github/**
-    path is ever allowlisted (panel point 4: 'reusable Actions' is an
-    easily-forgotten path), so this is strictly MORE conservative than the
-    pre-inversion design, in the safe direction."""
-    verdict, _ = pc.classify([".github/workflows/immune-enforcement.yml"])
+def test_guilt_github_workflows_non_yml_file() -> None:
+    """.github/workflows/ is scoped to .yml ONLY (v3) — the 1 real .txt file
+    verified living in that directory must not be swept in by a
+    directory-only rule."""
+    verdict, unknown = pc.classify([".github/workflows/catE-paid-anthropic-baseline.txt"])
     assert verdict == pc.VERDICT_FULL
+    assert unknown == [".github/workflows/catE-paid-anthropic-baseline.txt"]
+
+
+def test_guilt_github_dir_outside_workflows() -> None:
+    """The v3 rule's prefix is .github/workflows specifically, not .github
+    wholesale — a path elsewhere under .github/ (CODEOWNERS, actions/**)
+    must still force full."""
+    verdict, unknown = pc.classify([".github/CODEOWNERS"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".github/CODEOWNERS"]
+
+
+def test_guilt_github_workflows_lookalike_prefix() -> None:
+    """cicatrix-superscar.md #3 (guard over-match) on the new rule: a longer
+    sibling directory name that merely STARTS WITH '.github/workflows' must
+    not match."""
+    verdict, unknown = pc.classify([".github/workflows-archive/old.yml"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".github/workflows-archive/old.yml"]
 
 
 def test_guilt_frontend_app_file() -> None:
@@ -220,6 +243,51 @@ def test_guilt_launchagents_python_script_suffix_mismatch() -> None:
     verdict, unknown = pc.classify(["infra/launchagents/chronic_failure_digest.py"])
     assert verdict == pc.VERDICT_FULL
     assert unknown == ["infra/launchagents/chronic_failure_digest.py"]
+
+
+def test_guilt_scripts_tests_shell_script_suffix_mismatch() -> None:
+    """scripts/tests/ is scoped to .py ONLY (v3) — the 1 real .sh file
+    verified living in that directory must not be swept in by a
+    directory-only rule."""
+    verdict, unknown = pc.classify(["scripts/tests/test_prepush_failclosed.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/tests/test_prepush_failclosed.sh"]
+
+
+def test_guilt_scripts_tests_conftest_still_forced_full() -> None:
+    """Directly-scoped proof (not just 'anywhere' via
+    test_guilt_conftest_anywhere_forces_full_even_under_docs) that the v3
+    scripts/tests/ allowlist entry does not swallow the one file it must
+    never swallow: scripts/tests/conftest.py, a REAL file on disk, stays
+    forced full via NEVER_INNOCENT_BASENAMES, checked before the allowlist
+    loop."""
+    verdict, unknown = pc.classify(["scripts/tests/conftest.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/tests/conftest.py"]
+
+
+def test_guilt_scripts_tests_lookalike_prefix() -> None:
+    """cicatrix-superscar.md #3 (guard over-match) on the new rule: a longer
+    sibling directory name that merely STARTS WITH 'scripts/tests' must not
+    match."""
+    verdict, unknown = pc.classify(["scripts/testsuite/foo.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/testsuite/foo.py"]
+
+
+def test_guilt_scripts_tests_prefix_not_at_path_start() -> None:
+    verdict, _ = pc.classify(["vendor/mirror/scripts/tests/foo.py"])
+    assert verdict == pc.VERDICT_FULL
+
+
+def test_guilt_scripts_non_tests_python_file_still_forces_full() -> None:
+    """task #43 mandate, verbatim: 'a .py under scripts/ that is NOT
+    scripts/tests/ still escalates to full'. The prefix is scripts/tests
+    specifically, not scripts/ wholesale — a sibling script one directory up
+    must not be swept in. Real file, verified on disk."""
+    verdict, unknown = pc.classify(["scripts/agent_start.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/agent_start.py"]
 
 
 def test_guilt_non_root_markdown_file_forces_full() -> None:
@@ -507,6 +575,67 @@ def test_innocence_infra_launchagents_plist() -> None:
 def test_innocence_infra_launchagents_wrapper_sh() -> None:
     verdict, _ = pc.classify(["infra/launchagents/some_wrapper.sh"])
     assert verdict == pc.VERDICT_SKIP
+
+
+def test_innocence_github_workflows_yml() -> None:
+    """v3 (task #43): a .yml file under .github/workflows/, OTHER than
+    tests.yml (see test_guilt_tests_workflow_file for that exempted case),
+    now skips — measured 2026-07-26 to be structurally incapable of
+    affecting `pytest backend/tests/`'s outcome (module docstring, 'v3
+    EXTENSION'). This is the same real file the pre-v3 guilt test used,
+    now moved to innocence because the rule it demonstrated changed."""
+    verdict, unknown = pc.classify([".github/workflows/immune-enforcement.yml"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_scripts_tests_test_file() -> None:
+    """v3 (task #43): a scripts/tests/test_*.py file — the 235-file suite
+    audited in task #16 — now skips. Real file, verified on disk."""
+    verdict, unknown = pc.classify(["scripts/tests/test_guardrail_liveness.py"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_workflow_only_diff_skips() -> None:
+    """task #43 mandate, verbatim: 'a workflow-only diff ... skip[s]'. A
+    real multi-file diff touching only .github/workflows/*.yml files (not
+    tests.yml) must skip as a whole, not just file-by-file."""
+    verdict, unknown = pc.classify(
+        [
+            ".github/workflows/scripts-tests-sweep.yml",
+            ".github/workflows/immune-enforcement.yml",
+            ".github/workflows/actionlint.yml",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_scripts_tests_only_diff_skips() -> None:
+    """task #43 mandate, verbatim: 'a scripts/tests-only diff ... skip[s]'.
+    A real multi-file diff touching only scripts/tests/test_*.py files must
+    skip as a whole."""
+    verdict, unknown = pc.classify(
+        [
+            "scripts/tests/test_guardrail_liveness.py",
+            "scripts/tests/test_prepush_classify.py",
+            "scripts/tests/test_modus_green_gate.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_scripts_tests_init_py() -> None:
+    """scripts/tests/__init__.py is admitted by the same .py suffix rule as
+    any other file in the directory — deliberate, not an oversight: verified
+    empty on disk, and additionally unreachable from `pytest backend/tests/`
+    by the same import-chain argument as the test_*.py files (module
+    docstring, 'v3 EXTENSION')."""
+    verdict, unknown = pc.classify(["scripts/tests/__init__.py"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
 
 
 def test_innocence_root_level_markdown() -> None:

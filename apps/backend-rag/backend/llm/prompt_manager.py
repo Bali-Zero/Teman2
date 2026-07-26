@@ -23,19 +23,154 @@ logger = logging.getLogger(__name__)
 # - v3: v2 + concrete worked examples per domain (pricing/visa/tax/kbli/
 #       escalation/identity-lock in it/en/id) — short-circuits the
 #       abstract policy → concrete behaviour translation step
+# - v4: v3 + unified prompt door (this module IS that door — see
+#       backend/services/rag/agentic/prompt_builder.py, which used to import
+#       ZANTARA_MASTER_TEMPLATE directly from v1, bypassing this env var
+#       entirely) + {today_wita} date-injection placeholder + corrected
+#       worked examples (phantom KBLI codes, invalid get_pricing() call
+#       shapes) + deadline-neutral KBLI migration guidance.
+# - v5: audience-COMPOSED prompt (backend/prompts/zantara_core_v5.py) — no
+#       single flat template. SYSTEM = CORE_FACTUAL + AUDIENCE_VOICE[audience]
+#       + CAPABILITY_BLOCK[audience], built by build_master_template(audience).
+#       ZANTARA_MASTER_TEMPLATE below stays bound (for legacy/non-audience-
+#       aware consumers) to the "client" build — the most-restricted, fail-
+#       safe audience, NEVER team/creator. Audience-aware consumers must call
+#       get_master_template(audience) instead (defined near the bottom of
+#       this module) to get the team/creator capability set.
 # Default is v1. Each newer version falls back gracefully to the previous
 # one if its module import fails (defensive against partial deploys).
-_PROMPT_VERSION = os.environ.get("ZANTARA_PROMPT_VERSION", "v1").lower()
+# NOTE: this fallback is silent-by-design for partial-deploy resilience, but
+# an EXPLICITLY requested version that fails to import is logged at ERROR
+# (not WARNING) — an operator who set ZANTARA_PROMPT_VERSION=v4 and is
+# silently served v3 needs that to be loud, not buried in info-level noise.
+_RAW_PROMPT_VERSION = os.environ.get("ZANTARA_PROMPT_VERSION")
+_PROMPT_VERSION = (_RAW_PROMPT_VERSION or "v1").lower()
 
-if _PROMPT_VERSION == "v3":
+_KNOWN_PROMPT_VERSIONS: tuple[str, ...] = ("v1", "v2", "v3", "v4", "v5")
+
+# Fail LOUD (not silently) when an EXPLICITLY-SET, non-empty
+# ZANTARA_PROMPT_VERSION doesn't match any known version — e.g. a typo'd Fly
+# secret ("v04", "V4 ", "latest"). An UNSET variable (_RAW_PROMPT_VERSION is
+# None) keeps today's meaning EXACTLY unchanged: silent default to v1. This
+# only adds visibility for a value someone actually TYPED and got wrong — it
+# still serves v1 (the safest, best-tested default) rather than crashing the
+# process, but a typo that silently downgrades prod's prompt must be loud,
+# not discovered days later.
+if _RAW_PROMPT_VERSION and _PROMPT_VERSION not in _KNOWN_PROMPT_VERSIONS:
+    logger.error(
+        "PromptManager: ZANTARA_PROMPT_VERSION=%r is not a recognised "
+        "version (available: %s) — silently falling back to v1 would look "
+        "like success. Serving v1; fix the env var if a newer prompt was "
+        "intended.",
+        _RAW_PROMPT_VERSION,
+        ", ".join(_KNOWN_PROMPT_VERSIONS),
+    )
+
+# The version actually served after import-time resolution — may differ from
+# _PROMPT_VERSION if a requested version's import fails and this module
+# falls back to an earlier one (see the except clauses below). Consumers
+# that need to know whether v5's audience-composed shape is active
+# (prompt_builder.py, to avoid double-applying the persona layer v5 already
+# bakes into build_master_template()) read THIS, not _PROMPT_VERSION.
+PROMPT_VERSION_ACTIVE: str = "v1"
+
+if _PROMPT_VERSION == "v5":
+    try:
+        from backend.prompts.zantara_core_v4 import (
+            today_wita_string as get_today_wita,
+        )
+        from backend.prompts.zantara_core_v5 import (
+            build_master_template as _build_master_template_v5,
+        )
+
+        # ZANTARA_MASTER_TEMPLATE stays bound for legacy/non-audience-aware
+        # consumers (e.g. PromptManager.get_system_prompt below) — bound to
+        # the "client" build, the most-restricted/fail-safe audience, NEVER
+        # team/creator. Audience-aware callers use get_master_template()
+        # instead (defined near the bottom of this module).
+        ZANTARA_MASTER_TEMPLATE = _build_master_template_v5("client")
+        PROMPT_VERSION_ACTIVE = "v5"
+        logger.info(
+            "PromptManager: using zantara_core_v5 (ZANTARA_PROMPT_VERSION=v5, "
+            "audience-composed)",
+        )
+    except ImportError as exc:  # pragma: no cover — defensive fallback
+        logger.error(
+            "PromptManager: ZANTARA_PROMPT_VERSION=v5 requested but "
+            "zantara_core_v5 import failed (%s) — falling back to v4. "
+            "This is a REGRESSION — investigate before trusting prod is on v5.",
+            exc,
+        )
+        try:
+            from backend.prompts.zantara_core_v4 import (
+                ZANTARA_MASTER_TEMPLATE,
+            )
+            from backend.prompts.zantara_core_v4 import (
+                today_wita_string as get_today_wita,
+            )
+
+            PROMPT_VERSION_ACTIVE = "v4"
+        except ImportError:
+            try:
+                from backend.prompts.zantara_core_v3 import (
+                    ZANTARA_MASTER_TEMPLATE,
+                )
+
+                PROMPT_VERSION_ACTIVE = "v3"
+            except ImportError:
+                try:
+                    from backend.prompts.zantara_core_v2 import (
+                        ZANTARA_MASTER_TEMPLATE,
+                    )
+
+                    PROMPT_VERSION_ACTIVE = "v2"
+                except ImportError:
+                    ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+                    PROMPT_VERSION_ACTIVE = "v1"
+elif _PROMPT_VERSION == "v4":
+    try:
+        from backend.prompts.zantara_core_v4 import (
+            ZANTARA_MASTER_TEMPLATE,
+        )
+        from backend.prompts.zantara_core_v4 import (
+            today_wita_string as get_today_wita,
+        )
+
+        logger.info("PromptManager: using zantara_core_v4 (ZANTARA_PROMPT_VERSION=v4)")
+        PROMPT_VERSION_ACTIVE = "v4"
+    except ImportError as exc:  # pragma: no cover — defensive fallback
+        logger.error(
+            "PromptManager: ZANTARA_PROMPT_VERSION=v4 requested but "
+            "zantara_core_v4 import failed (%s) — falling back to v3. "
+            "This is a REGRESSION (v3 has known-fixed bugs re-appearing) — "
+            "investigate before trusting prod is on v4.",
+            exc,
+        )
+        try:
+            from backend.prompts.zantara_core_v3 import (
+                ZANTARA_MASTER_TEMPLATE,
+            )
+
+            PROMPT_VERSION_ACTIVE = "v3"
+        except ImportError:
+            try:
+                from backend.prompts.zantara_core_v2 import (
+                    ZANTARA_MASTER_TEMPLATE,
+                )
+
+                PROMPT_VERSION_ACTIVE = "v2"
+            except ImportError:
+                ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+elif _PROMPT_VERSION == "v3":
     try:
         from backend.prompts.zantara_core_v3 import (
             ZANTARA_MASTER_TEMPLATE,
         )
 
         logger.info("PromptManager: using zantara_core_v3 (ZANTARA_PROMPT_VERSION=v3)")
+        PROMPT_VERSION_ACTIVE = "v3"
     except ImportError as exc:  # pragma: no cover — defensive fallback
-        logger.warning(
+        logger.error(
             "PromptManager: ZANTARA_PROMPT_VERSION=v3 requested but "
             "zantara_core_v3 import failed (%s) — falling back to v2.",
             exc,
@@ -44,6 +179,8 @@ if _PROMPT_VERSION == "v3":
             from backend.prompts.zantara_core_v2 import (
                 ZANTARA_MASTER_TEMPLATE,
             )
+
+            PROMPT_VERSION_ACTIVE = "v2"
         except ImportError:
             ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
 elif _PROMPT_VERSION == "v2":
@@ -53,8 +190,9 @@ elif _PROMPT_VERSION == "v2":
         )
 
         logger.info("PromptManager: using zantara_core_v2 (ZANTARA_PROMPT_VERSION=v2)")
+        PROMPT_VERSION_ACTIVE = "v2"
     except ImportError as exc:  # pragma: no cover — defensive fallback
-        logger.warning(
+        logger.error(
             "PromptManager: ZANTARA_PROMPT_VERSION=v2 requested but "
             "zantara_core_v2 import failed (%s) — falling back to v1.",
             exc,
@@ -62,6 +200,50 @@ elif _PROMPT_VERSION == "v2":
         ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
 else:
     ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+
+# get_today_wita: only bound when v4 successfully imports (above). Consumers
+# that need date-injection regardless of the active version should import
+# backend.prompts.zantara_core_v4.today_wita_string directly (it has no
+# dependency on which version is selected) rather than relying on this
+# module-level name being present.
+if "get_today_wita" not in globals():
+
+    def get_today_wita() -> str:  # simple passthrough fallback
+        """Fallback when v4 isn't the active/importable version.
+
+        Still returns a real WITA date string (not a placeholder) so a
+        consumer that unconditionally calls this never gets a broken value —
+        it just means the *template* in use may not have a place to put it.
+        """
+        from backend.prompts.zantara_core_v4 import today_wita_string
+
+        return today_wita_string()
+
+
+def get_master_template(audience: str | None = None) -> str:
+    """Return the master template for the currently ACTIVE prompt version.
+
+    v5 (``PROMPT_VERSION_ACTIVE == "v5"``) is audience-composed: SYSTEM =
+    CORE_FACTUAL + AUDIENCE_VOICE[audience] + CAPABILITY_BLOCK[audience].
+    ``audience`` is threaded straight to
+    ``zantara_core_v5.build_master_template``, which already fails SAFE
+    (unrecognised/absent → "client", the most-restricted voice and the
+    emptiest capability set — see that function's docstring). A ``None``
+    audience passed here is likewise treated as "client".
+
+    v1-v4 (every other resolvable version) have no audience axis — this
+    returns the SAME module-level ``ZANTARA_MASTER_TEMPLATE`` regardless of
+    ``audience``, byte-identical to calling that name directly (unchanged
+    from before this function existed). Persona layering for those versions
+    still happens at the call site (prompt_builder.py's CREATOR_PERSONA/
+    TEAM_PERSONA prepend), which stays in place for v1-v4 and is skipped
+    only when ``PROMPT_VERSION_ACTIVE == "v5"`` (v5 already bakes the
+    audience voice into the string this function returns).
+    """
+    if PROMPT_VERSION_ACTIVE == "v5":
+        return _build_master_template_v5(audience or "client")
+    return ZANTARA_MASTER_TEMPLATE
+
 
 # ToneStyle is imported at runtime to avoid circular import
 # The TONE_PROMPTS dict uses string keys at module level, mapped to ToneStyle at runtime

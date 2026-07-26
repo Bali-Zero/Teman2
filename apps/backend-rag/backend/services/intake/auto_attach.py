@@ -48,6 +48,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.intake import client_enricher
 from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
 from backend.services.intake.routing import _match_sender_phone, normalize_sender_phone
@@ -239,6 +240,205 @@ async def evaluate_concordance(
     }
 
 
+# Re-validation queries for strong-id ownership at COMMIT time — each mirrors the
+# matcher's own normalization EXACTLY (routing._match_person_strong), so "still
+# owned" means "the matcher would still resolve this value to this client today".
+# ``FOR UPDATE`` locks the current owner rows so a concurrent TX cannot move the
+# identifier off them until this commit lands (the acquire-new-owner direction is
+# closed by the per-value advisory lock below, shared with client_enricher).
+_STRONG_ID_REVALIDATORS: dict[str, str] = {
+    "passport_number": """
+        SELECT id FROM clients
+        WHERE deleted_at IS NULL
+          AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
+        ORDER BY id
+        FOR UPDATE
+    """,
+    "kitas_number": """
+        SELECT id FROM clients
+        WHERE deleted_at IS NULL
+          AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
+        ORDER BY id
+        FOR UPDATE
+    """,
+    "npwp": """
+        SELECT id FROM clients
+        WHERE deleted_at IS NULL
+          AND npwp IS NOT NULL
+          AND REGEXP_REPLACE(npwp, '[^0-9]', '', 'g') = $1
+        ORDER BY id
+        FOR UPDATE
+    """,
+}
+
+# The live resolver treats the same NPWP on a company AND a person as a
+# cross-table collision → AMBIGUOUS (routing.resolve_entity). Revalidation must
+# apply the same semantics: a company that acquired the digits after routing
+# invalidates the person match (Codex 2026-07-19 round 3, F1).
+_NPWP_COMPANY_COLLISION_SQL = """
+    SELECT id FROM companies
+    WHERE npwp_company IS NOT NULL
+      AND REGEXP_REPLACE(npwp_company, '[^0-9]', '', 'g') = $1
+    ORDER BY id
+    FOR UPDATE
+"""
+
+_STRONG_ID_LOCK_KIND = {
+    "passport_number": "passport",
+    "kitas_number": "kitas",
+    "npwp": "npwp",
+}
+
+_ID_NORM_RE = re.compile(r"[\s.\-/]")
+
+
+def _matched_value_is_valid(method: str, value: str) -> bool:
+    """Mirror the matcher's own validity gate on a persisted matched_value.
+
+    A malformed persisted candidate (e.g. a 14-digit npwp stored before the
+    m248 exact-length gate existed) would produce NO strong candidate in
+    today's matcher — so it must not pass revalidation either (round-3 F4).
+    """
+    if method == "npwp":
+        digits = re.sub(r"[^0-9]", "", value)
+        return digits == value and len(digits) in (15, 16)
+    # passport_number / kitas_number: matcher compares the separator-stripped,
+    # upper-cased projection — a stored matched_value must already BE that
+    # normalized form (idempotent), and non-empty.
+    norm = _ID_NORM_RE.sub("", value).upper()
+    return bool(norm) and norm == value
+
+
+async def _strong_id_still_owned(
+    conn: asyncpg.Connection,
+    entity_resolution: dict[str, Any],
+    client_id: int,
+) -> tuple[bool, str]:
+    """Re-verify, inside the commit TX, that the proposal's strong-id evidence
+    STILL resolves uniquely to the target client.
+
+    A persisted proposal can be arbitrarily stale: ``ON CONFLICT DO NOTHING``
+    preserves an old row over a fresh re-resolution, and the backlog bridge
+    selects eligible proposals with no freshness bound (Codex 2026-07-19). If
+    the CRM was corrected meanwhile (the id moved to another client, became a
+    duplicate, or now collides with a company book entry), committing on the
+    stored candidate would be a WRONG attach. Fail-closed: a proposal whose
+    candidates carry no revalidatable strong-id (pre-m248 shape, no
+    ``matched_value``) goes to a human instead.
+    """
+    cands = entity_resolution.get("candidates") or []
+    strong = [
+        c
+        for c in cands
+        if isinstance(c, dict)
+        and c.get("table") == "clients"
+        and c.get("method") in _STRONG_ID_REVALIDATORS
+    ]
+    if not strong:
+        return (
+            False,
+            "no revalidatable strong-id candidate on the proposal "
+            "(stale/pre-m248 shape) — needs human",
+        )
+    # Deterministic lock order across candidates, keyed on the CANONICAL
+    # (kind, projected value) — the same ordering the enricher uses — so two
+    # multi-value transactions can never interleave AB-BA.
+    strong.sort(
+        key=lambda c: (
+            _STRONG_ID_LOCK_KIND[c["method"]],
+            client_enricher.strong_id_lock_value(
+                _STRONG_ID_LOCK_KIND[c["method"]], str(c.get("matched_value"))
+            ),
+        )
+    )
+    for c in strong:
+        method = c["method"]
+        value = c.get("matched_value")
+        if not value:
+            return (
+                False,
+                f"strong-id candidate (method={method}) lacks "
+                "matched_value — cannot re-verify ownership, needs human",
+            )
+        value = str(value)
+        if not _matched_value_is_valid(method, value):
+            return (
+                False,
+                f"strong-id candidate (method={method}) carries a value the "
+                "matcher would reject today (malformed/pre-gate) — needs human",
+            )
+        # Serialize with every other verifier/writer of this value (enricher
+        # takes the same lock before writing the column).
+        await client_enricher.acquire_strong_id_lock(
+            conn, _STRONG_ID_LOCK_KIND[method], value
+        )
+        rows = await conn.fetch(_STRONG_ID_REVALIDATORS[method], value)
+        owners = [r["id"] for r in rows]
+        if owners != [client_id]:
+            return (
+                False,
+                f"strong-id ownership changed since routing: method={method} "
+                f"now resolves to {len(owners)} client(s), not the routed one — needs human",
+            )
+        if method == "npwp":
+            company_rows = await conn.fetch(_NPWP_COMPANY_COLLISION_SQL, value)
+            if company_rows:
+                return (
+                    False,
+                    "npwp now collides with the company book "
+                    f"({len(company_rows)} companies) — resolver semantics say "
+                    "AMBIGUOUS, needs human",
+                )
+    return (True, "strong-id ownership re-verified in-TX")
+
+
+_MISSING = object()
+
+
+def _fresh_vs_locked_divergence(
+    payload: dict[str, Any],
+    locked_decision: str | None,
+    locked_client_id: int | None,
+) -> str | None:
+    """Detect a caller payload (the FRESH resolution) disagreeing with the
+    persisted row the gate is about to trust.
+
+    The post-route hook passes the fresh in-memory proposal; when
+    ``ON CONFLICT DO NOTHING`` preserved an OLD row, the two can name different
+    decisions or clients. Either direction of trust would be wrong — divergence
+    means the resolution is contested, so a human decides. Only callers that
+    pass NO fresh resolution at all (``{"id": ...}``) skip this check: an
+    explicit ``client_id=None`` in a present routing payload is a REAL fresh
+    value (an unresolved target) and participates in the comparison
+    (round-3 F3).
+    """
+    fresh_routing = intake_writer._as_dict(payload.get("routing"))
+    fresh_entity = intake_writer._as_dict(payload.get("entity_resolution"))
+    if not fresh_routing and not fresh_entity:
+        return None  # id-only caller: nothing fresh to compare
+
+    fresh_decision: Any = _MISSING
+    if fresh_entity and "decision" in fresh_entity:
+        fresh_decision = fresh_entity["decision"]
+    elif fresh_routing and "decision" in fresh_routing:
+        fresh_decision = fresh_routing["decision"]
+    fresh_client: Any = _MISSING
+    if fresh_routing and "client_id" in fresh_routing:
+        fresh_client = fresh_routing["client_id"]
+
+    if fresh_decision is not _MISSING and fresh_decision != locked_decision:
+        return (
+            f"fresh resolution decision={fresh_decision} diverges from persisted "
+            f"row decision={locked_decision} (stale proposal) — needs human"
+        )
+    if fresh_client is not _MISSING and fresh_client != locked_client_id:
+        return (
+            f"fresh resolution client={fresh_client} diverges from persisted "
+            f"row client={locked_client_id} (stale proposal) — needs human"
+        )
+    return None
+
+
 def _as_reason_text(reason: Any) -> str:
     if isinstance(reason, dict):
         return str(reason.get("reason") or "")
@@ -288,6 +488,12 @@ def _extracted_subject_name(stage_output: Any) -> str | None:
         return None
     fields = intake_writer._as_dict((intake_writer._as_dict(so.get("extract")) or {}).get("fields"))
     name = fields.get("name") if fields else None
+    if isinstance(name, dict):
+        # FASE-3 stores every extracted field as {"value": X, "confidence": ..,
+        # "source_page": ..} (extract.py:252). Unwrap like every other consumer
+        # (routing._field_value, client_enricher._unwrap) — str() on the raw dict
+        # would tokenize {"value", "confidence", ...} noise into the name compare.
+        name = name.get("value")
     return str(name).strip() if name and str(name).strip() else None
 
 
@@ -549,6 +755,35 @@ async def try_auto_attach(
     *,
     sender_phone: str | None,
 ) -> dict[str, Any]:
+    """Public LEVA-2 gate — see :func:`_try_auto_attach_inner` for the logic.
+
+    The only added behavior: a strong-id advisory-lock wait exceeding its bound
+    (round-5 F9) surfaces as a BENIGN skip instead of an exception — the value
+    is contended by a concurrent TX, the proposal stays review_pending, and no
+    worker retry attempt is burned on what is ordinary lock contention.
+    """
+    proposal_id = dict(proposal).get("id")
+    try:
+        return await _try_auto_attach_inner(proposal, pool, sender_phone=sender_phone)
+    except client_enricher.StrongIdLockBusy:
+        logger.info(
+            "auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
+            "(bounded wait exceeded — will be re-evaluated later)",
+            proposal_id,
+        )
+        return {
+            "committed": False,
+            "skipped": "strong_id_lock_busy",
+            "proposal_id": proposal_id,
+        }
+
+
+async def _try_auto_attach_inner(
+    proposal: dict[str, Any] | asyncpg.Record,
+    pool: asyncpg.Pool,
+    *,
+    sender_phone: str | None,
+) -> dict[str, Any]:
     """Attempt a double-concordant auto-attach for one review_pending proposal.
 
     Idempotent + safe-by-default. Returns a verdict dict; ``committed`` is True
@@ -560,10 +795,6 @@ async def try_auto_attach(
     """
     p = dict(proposal)
     proposal_id = p["id"]
-    routing = intake_writer._as_dict(p.get("routing"))
-    entity_resolution = intake_writer._as_dict(p.get("entity_resolution"))
-    decision = entity_resolution.get("decision") or routing.get("decision")
-    client_id = routing.get("client_id")
 
     if not auto_attach_enabled():
         return {"committed": False, "skipped": "killswitch_off", "proposal_id": proposal_id}
@@ -573,21 +804,12 @@ async def try_auto_attach(
         return {"committed": False, "skipped": "writer_off", "proposal_id": proposal_id}
 
     async with pool.acquire() as conn:
-        verdict = await evaluate_concordance(
-            conn, decision=decision, client_id=client_id, sender_phone=sender_phone
-        )
-        if not verdict["concordant"]:
-            logger.info(
-                "auto_attach.skip proposal=%s reason=%s", proposal_id, verdict["reason"]
-            )
-            return {
-                "committed": False,
-                "skipped": "not_concordant",
-                "reason": verdict["reason"],
-                "proposal_id": proposal_id,
-            }
-
-        # Gate passed — commit atomically, advancing review_pending → auto_routed.
+        # Lock FIRST, evaluate from the PERSISTED row (same shape as LEVA-3): the
+        # caller's payload may diverge from the surviving proposal (ON CONFLICT
+        # rework can keep a row whose routing targets a different client than the
+        # fresh in-memory resolution). Concordance proven against the payload but
+        # committed against the row would attach the wrong client — so both the
+        # gate inputs and the commit read the same locked truth (Codex 2026-07-19).
         async with conn.transaction():
             # Re-read FOR UPDATE so a human who claimed/approved it meanwhile wins
             # the race (we must NOT auto-commit a proposal already being handled).
@@ -608,6 +830,51 @@ async def try_auto_attach(
                     "committed": False,
                     "skipped": "not_review_pending",
                     "status": locked["status"],
+                    "proposal_id": proposal_id,
+                }
+
+            routing = intake_writer._as_dict(locked["routing"])
+            entity_resolution = intake_writer._as_dict(locked["entity_resolution"])
+            decision = entity_resolution.get("decision") or routing.get("decision")
+            client_id = routing.get("client_id")
+
+            divergence = _fresh_vs_locked_divergence(p, decision, client_id)
+            if divergence:
+                logger.info(
+                    "auto_attach.skip proposal=%s reason=%s", proposal_id, divergence
+                )
+                return {
+                    "committed": False,
+                    "skipped": "stale_row_divergence",
+                    "reason": divergence,
+                    "proposal_id": proposal_id,
+                }
+
+            verdict = await evaluate_concordance(
+                conn, decision=decision, client_id=client_id, sender_phone=sender_phone
+            )
+            if not verdict["concordant"]:
+                logger.info(
+                    "auto_attach.skip proposal=%s reason=%s", proposal_id, verdict["reason"]
+                )
+                return {
+                    "committed": False,
+                    "skipped": "not_concordant",
+                    "reason": verdict["reason"],
+                    "proposal_id": proposal_id,
+                }
+
+            owned, own_reason = await _strong_id_still_owned(
+                conn, entity_resolution, client_id
+            )
+            if not owned:
+                logger.info(
+                    "auto_attach.skip proposal=%s reason=%s", proposal_id, own_reason
+                )
+                return {
+                    "committed": False,
+                    "skipped": "strong_id_stale",
+                    "reason": own_reason,
                     "proposal_id": proposal_id,
                 }
 
@@ -796,6 +1063,31 @@ async def try_nameid_auto_attach(
     proposal: dict[str, Any] | asyncpg.Record,
     pool: asyncpg.Pool,
 ) -> dict[str, Any]:
+    """Public LEVA-3 gate — see :func:`_try_nameid_auto_attach_inner`.
+
+    Same benign-skip contract as :func:`try_auto_attach` for a bounded
+    advisory-lock wait (round-5 F9).
+    """
+    proposal_id = dict(proposal).get("id")
+    try:
+        return await _try_nameid_auto_attach_inner(proposal, pool)
+    except client_enricher.StrongIdLockBusy:
+        logger.info(
+            "nameid_auto_attach.skip proposal=%s reason=strong-id advisory lock busy "
+            "(bounded wait exceeded — will be re-evaluated later)",
+            proposal_id,
+        )
+        return {
+            "committed": False,
+            "skipped": "strong_id_lock_busy",
+            "proposal_id": proposal_id,
+        }
+
+
+async def _try_nameid_auto_attach_inner(
+    proposal: dict[str, Any] | asyncpg.Record,
+    pool: asyncpg.Pool,
+) -> dict[str, Any]:
     """Attempt opt-in LEVA-3 auto-catalog for a no-phone AUTO_ATTACH proposal.
 
     Same idempotent, safe-by-default contract as :func:`try_auto_attach`:
@@ -844,10 +1136,25 @@ async def try_nameid_auto_attach(
 
             routing = intake_writer._as_dict(locked["routing"])
             entity_resolution = intake_writer._as_dict(locked["entity_resolution"])
+            locked_decision = entity_resolution.get("decision") or routing.get("decision")
+            locked_client_id = routing.get("client_id")
+
+            divergence = _fresh_vs_locked_divergence(p, locked_decision, locked_client_id)
+            if divergence:
+                logger.info(
+                    "nameid_auto_attach.skip proposal=%s reason=%s", proposal_id, divergence
+                )
+                return {
+                    "committed": False,
+                    "skipped": "stale_row_divergence",
+                    "reason": divergence,
+                    "proposal_id": proposal_id,
+                }
+
             verdict = await evaluate_nameid_concordance(
                 conn,
-                decision=entity_resolution.get("decision") or routing.get("decision"),
-                client_id=routing.get("client_id"),
+                decision=locked_decision,
+                client_id=locked_client_id,
                 sender_phone=locked["sender_phone"],
                 extracted_name=_extracted_subject_name(locked["stage_output"]),
             )
@@ -861,6 +1168,20 @@ async def try_nameid_auto_attach(
                     "committed": False,
                     "skipped": "not_concordant",
                     "reason": verdict["reason"],
+                    "proposal_id": proposal_id,
+                }
+
+            owned, own_reason = await _strong_id_still_owned(
+                conn, entity_resolution, locked_client_id
+            )
+            if not owned:
+                logger.info(
+                    "nameid_auto_attach.skip proposal=%s reason=%s", proposal_id, own_reason
+                )
+                return {
+                    "committed": False,
+                    "skipped": "strong_id_stale",
+                    "reason": own_reason,
                     "proposal_id": proposal_id,
                 }
 

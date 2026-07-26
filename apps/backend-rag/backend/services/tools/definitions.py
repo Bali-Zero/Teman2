@@ -114,6 +114,16 @@ class AgentState:
     # authorizer in tool_executor.execute_tool. Typed as Any to avoid
     # coupling this module to backend.services.agents.team_agent_config.
     agent_role: Any | None = None  # AgentRole | None — see services.agents.team_agent_config
+    # WA team-assistant Phase 2 (2026-07-20): the resolved caller profile
+    # dict (`{"role": "team"|"creator", "name"?, "email"?}`) carried the
+    # same way `agent_role` is — set once by OrchestratorCore.process_query_core
+    # (from `user_context["profile"]`, itself V1's identity-resolved,
+    # router-trust-gated field), read by reasoning.py at each execute_tool
+    # call site and forwarded as `_caller_profile` so team_crm_tools.py's
+    # tools can self-scope without ever trusting an LLM-supplied arg. None
+    # for every caller except the WA bot's team/creator senders (complete
+    # no-op elsewhere — mirrors `agent_role`'s additive contract).
+    caller_profile: dict[str, Any] | None = None
 
 
 class BaseTool(ABC):

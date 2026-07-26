@@ -20,6 +20,10 @@
 #   data/source_documents/KBLI_2025_FINAL_CLEAN.json    (tracked, secondary fallback)
 #   apps/mouth/data/KBLI_2025_FINAL_CLEAN.json          (tracked, balizero.com/kbli prod)
 #   apps/backend-rag/backend/data/KBLI_2025_FINAL_CLEAN.json  (gitignored, was MARCIA zombie)
+#   apps/kbli-navigator/data/kbli-2025.json             (tracked, knowledge.balizero.com —
+#     DIFFERENT basename than canonical, same {metadata,data:[...]} shape/records; was
+#     `git rm --cached`'d in ab1d5b02c0 (2026-03-28) and quietly rotted to that snapshot
+#     ever since — no build step ever regenerated it. Re-tracked 2026-07-19, scar #1.)
 #
 # REPAIRED:
 #   apps/backend-rag/source_documents/KBLI_2025_FINAL_CLEAN.json
@@ -28,8 +32,9 @@
 #
 # OUT OF SCOPE (handled by the native-app deploy script, not the repo):
 #   ~/Desktop/kbli-navigator-app/Resources/KBLI_2025_FINAL_CLEAN.json
-#     — lives outside the repo; deploy/install-3mac.sh copies it from the app's own
-#       Resources/. If you change canonical, re-run the app build+deploy to refresh it.
+#     — the standalone macOS app (OUTSIDE this repo, NOT apps/kbli-navigator/ above).
+#       deploy/install-3mac.sh copies it from the app's own Resources/. If you change
+#       canonical, re-run the app build+deploy to refresh it.
 #
 # Usage:
 #   scripts/sync_kbli_dataset.sh           # propagate canonical → all consumers
@@ -49,6 +54,7 @@ CONSUMERS=(
   "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
   "apps/backend-rag/backend/data/KBLI_2025_FINAL_CLEAN.json"
   "apps/backend-rag/source_documents/KBLI_2025_FINAL_CLEAN.json"
+  "apps/kbli-navigator/data/kbli-2025.json"
 )
 
 MODE="${1:-sync}"

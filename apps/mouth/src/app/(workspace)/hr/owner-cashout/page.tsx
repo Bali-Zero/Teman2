@@ -20,7 +20,7 @@ const MarginTrendChart = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-full w-full animate-pulse rounded bg-zinc-800/50"
+        className="h-full w-full animate-pulse rounded bg-[var(--bz-glass-rim)]"
         aria-hidden="true"
       />
     ),
@@ -33,7 +33,7 @@ const TopVisaChart = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-full w-full animate-pulse rounded bg-zinc-800/50"
+        className="h-full w-full animate-pulse rounded bg-[var(--bz-glass-rim)]"
         aria-hidden="true"
       />
     ),
@@ -47,7 +47,7 @@ import type {
   OwnerCashoutWeek,
 } from "@/types/owner-cashout";
 import { OwnerCashoutRefreshButton } from "@/components/hr/OwnerCashoutRefreshButton";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
 function formatShort(v: number): string {
   if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}B`;
@@ -56,20 +56,26 @@ function formatShort(v: number): string {
   return String(v);
 }
 
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
 function KpiCard({
   label,
   value,
   sub,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   sub?: string;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-      <div className="text-xs text-zinc-400 mb-1">{label}</div>
-      <div className="text-2xl font-bold text-zinc-100">{value}</div>
-      {sub && <div className="text-xs text-zinc-500 mt-1">{sub}</div>}
+    <div className="border rounded-xl p-5" style={PANEL}>
+      <div className="text-xs text-[var(--bz-text-2)] mb-1">{label}</div>
+      <div className="text-2xl font-bold text-[var(--bz-text-1)]">{value}</div>
+      {sub && <div className="text-xs text-[var(--bz-text-3)] mt-1">{sub}</div>}
     </div>
   );
 }
@@ -114,12 +120,13 @@ export default function OwnerCashoutPage() {
   if (loading && !overview) {
     return (
       <div className="space-y-6">
-        <div className="h-8 bg-zinc-800 rounded w-64 animate-pulse" />
+        <div className="h-8 bg-[var(--bz-glass-rim)] rounded w-64 animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 h-28 animate-pulse"
+              className="border rounded-xl p-5 h-28 animate-pulse"
+              style={PANEL}
             />
           ))}
         </div>
@@ -129,7 +136,7 @@ export default function OwnerCashoutPage() {
 
   if (error) {
     return (
-      <div className="bg-red-900/20 border border-red-800 rounded-xl p-6 text-red-400">
+      <div className="bg-[var(--state-danger)]/10 border border-[var(--state-danger)]/30 rounded-xl p-6 text-[var(--state-danger)]">
         <h2 className="font-semibold mb-2">Error</h2>
         <p>{error}</p>
       </div>
@@ -142,11 +149,11 @@ export default function OwnerCashoutPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100 flex items-center gap-2">
-            <Lock size={20} className="text-amber-400" />
+          <h1 className="text-2xl font-bold text-[var(--bz-text-1)] flex items-center gap-2">
+            <Lock size={20} className="text-[var(--bz-accent)]" />
             Owner Cashout
           </h1>
-          <div className="text-xs text-zinc-500 mt-1">
+          <div className="text-xs text-[var(--bz-text-3)] mt-1">
             Last sync: {lastSync}
           </div>
         </div>
@@ -156,17 +163,17 @@ export default function OwnerCashoutPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Margin BZ Total"
-          value={formatIDR(overview.kpi.margin_bz_total_idr)}
+          value={<Money value={overview.kpi.margin_bz_total_idr} />}
           sub={`${overview.total_weeks} weeks`}
         />
         <KpiCard
           label="Margin BZ Last Week"
-          value={formatIDR(overview.kpi.margin_bz_last_week_idr)}
+          value={<Money value={overview.kpi.margin_bz_last_week_idr} />}
           sub={`${overview.kpi.practices_last_week} practices`}
         />
         <KpiCard
           label="Margin BS Total"
-          value={formatIDR(overview.kpi.margin_bs_total_idr)}
+          value={<Money value={overview.kpi.margin_bs_total_idr} />}
         />
         <KpiCard
           label="Total Practices"
@@ -174,10 +181,10 @@ export default function OwnerCashoutPage() {
         />
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+      <div className="border rounded-xl p-5" style={PANEL}>
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={16} className="text-emerald-400" />
-          <h2 className="text-sm font-semibold text-zinc-200">
+          <TrendingUp size={16} className="text-[var(--state-success)]" />
+          <h2 className="text-sm font-semibold text-[var(--bz-text-1)]">
             Margin trend (weekly)
           </h2>
         </div>
@@ -186,10 +193,10 @@ export default function OwnerCashoutPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+      <div className="border rounded-xl p-5" style={PANEL}>
         <div className="flex items-center gap-2 mb-4">
-          <Banknote size={16} className="text-emerald-400" />
-          <h2 className="text-sm font-semibold text-zinc-200">
+          <Banknote size={16} className="text-[var(--state-success)]" />
+          <h2 className="text-sm font-semibold text-[var(--bz-text-1)]">
             Top visa types by MBZ
           </h2>
         </div>
@@ -198,15 +205,15 @@ export default function OwnerCashoutPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 p-5 border-b border-zinc-800">
-          <UsersIcon size={16} className="text-emerald-400" />
-          <h2 className="text-sm font-semibold text-zinc-200">
+      <div className="border rounded-xl overflow-hidden" style={PANEL}>
+        <div className="flex items-center gap-2 p-5 border-b border-[var(--bz-border)]">
+          <UsersIcon size={16} className="text-[var(--state-success)]" />
+          <h2 className="text-sm font-semibold text-[var(--bz-text-1)]">
             Weekly breakdown
           </h2>
         </div>
         <table className="w-full text-sm">
-          <thead className="text-xs text-zinc-500 uppercase border-b border-zinc-800">
+          <thead className="text-xs text-[var(--bz-text-3)] uppercase border-b border-[var(--bz-border)]">
             <tr>
               <th className="text-left px-4 py-3">Week</th>
               <th className="text-right px-4 py-3">Practices</th>
@@ -216,16 +223,16 @@ export default function OwnerCashoutPage() {
               <th className="w-8" />
             </tr>
           </thead>
-          <tbody className="text-zinc-300">
+          <tbody className="text-[var(--bz-text-1)]">
             {weeks.map((w) => (
               <tr
                 key={w.id}
-                className="border-b border-zinc-800 hover:bg-zinc-800/40"
+                className="border-b border-[var(--bz-border)] hover:bg-[var(--bz-glass-rim)]"
               >
                 <td className="px-4 py-3">
                   <Link
                     href={`/hr/owner-cashout/${w.id}`}
-                    className="hover:text-emerald-400"
+                    className="hover:text-[var(--state-success)]"
                   >
                     {new Date(w.week_start).toLocaleDateString("en-GB", {
                       day: "2-digit",
@@ -236,15 +243,15 @@ export default function OwnerCashoutPage() {
                 </td>
                 <td className="text-right px-4 py-3">{w.total_practices}</td>
                 <td className="text-right px-4 py-3">
-                  {formatIDR(w.total_income_idr)}
+                  <Money value={w.total_income_idr} />
                 </td>
-                <td className="text-right px-4 py-3 text-emerald-400">
-                  {formatIDR(w.total_margin_bz_idr)}
+                <td className="text-right px-4 py-3 text-[var(--state-success)]">
+                  <Money value={w.total_margin_bz_idr} />
                 </td>
-                <td className="text-right px-4 py-3 text-amber-400">
-                  {formatIDR(w.total_margin_bs_idr)}
+                <td className="text-right px-4 py-3 text-[var(--state-warning)]">
+                  <Money value={w.total_margin_bs_idr} />
                 </td>
-                <td className="px-4 py-3 text-zinc-600">
+                <td className="px-4 py-3 text-[var(--bz-text-3)]">
                   <Link href={`/hr/owner-cashout/${w.id}`}>
                     <ChevronRight size={16} />
                   </Link>

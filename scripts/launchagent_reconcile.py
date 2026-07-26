@@ -431,8 +431,23 @@ def reconcile(
                 continue
             if _is_under(rp, agents_dir.resolve()):
                 continue
+            norm = _normalize_home_path(rp, home)
+            in_declared_lives = norm is not None and norm in declared_lives
+            # "allow"-only match (not a declared pair): a human already ruled this
+            # HOME path unrelated to the repo (TCC bridge, vendor binary,
+            # separate-repo tool with no canon by design). _repo_canon_for() matches
+            # by BASENAME ALONE — a generic name like "run.sh" can coincidentally
+            # collide with an unrelated repo file and produce a spurious "canon", which
+            # must never override that human ruling (guard-over-match, superscar #3
+            # sibling: same-name ≠ same-entity). A declared PAIR's real canon is
+            # untouched by this branch — its DIVERGED check still fires below.
+            allow_only = not in_declared_lives and _is_declared_or_allowed(
+                rp, home, set(), home_fork_allow
+            )
             canon = _repo_canon_for(rp)
-            if canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
+            if allow_only:
+                pass
+            elif canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
                 canon_paired.append({"label": label, "file": f.name, "target": t,
                                      "canon": str(canon.relative_to(repo_root))})
             elif canon is None and _is_declared_or_allowed(

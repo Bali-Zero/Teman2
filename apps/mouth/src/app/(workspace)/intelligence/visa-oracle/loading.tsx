@@ -13,7 +13,10 @@ export default function VisaOracleLoading() {
       </div>
       <div className="space-y-2">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 rounded-lg border p-4">
+          <div
+            key={i}
+            className="flex items-center gap-4 rounded-lg border p-4"
+          >
             <Skeleton variant="circular" width={40} height={40} />
             <div className="flex-1 space-y-1">
               <Skeleton variant="text" width={200} />

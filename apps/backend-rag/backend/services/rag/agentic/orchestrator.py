@@ -348,6 +348,9 @@ class AgenticRAGOrchestrator:
         conversation_history: list[dict] | None = None,
         start_time: float | None = None,
         session_id: str | None = None,
+        profile: dict[str, Any] | None = None,
+        max_steps: int | None = None,
+        agent_role: Any | None = None,
     ) -> CoreResult:
         """
         Process query with full RAG pipeline - Delegates to OrchestratorCore.
@@ -358,6 +361,25 @@ class AgenticRAGOrchestrator:
             conversation_history: Optional conversation history
             start_time: Optional start time (defaults to now)
             session_id: Optional session ID
+            profile: Optional caller-supplied profile override (WA
+                team-assistant V1 — merged into user_context["profile"] by
+                OrchestratorCore, on top of whatever the DB-keyed context
+                lookup found). None is a no-op for every existing caller.
+            max_steps: Optional ReAct step-cap override for latency-sensitive
+                callers (e.g. WhatsApp). OrchestratorCore only ever LOWERS
+                the default cap with this value, never raises it. None is a
+                no-op for every existing caller.
+            agent_role: T4 unified principal (2026-07-25). The caller's
+                `AgentRole` from `team_agent_config`, server-derived by the
+                caller (workspace-stream JWT path, or — flag-gated — the
+                trusted WA sender profile). Forwarded to
+                `OrchestratorCore.process_query_core`, which stamps it onto
+                `AgentState.agent_role` the same way `stream_query` already
+                does for the streaming path — the single field
+                `tool_authorizer.py` reads for RBAC. None (every caller
+                except an authenticated/trusted principal) is a complete
+                no-op, matching `agent_role`'s pre-existing streaming-only
+                contract.
 
         Returns:
             CoreResult with answer, sources, and metadata
@@ -390,6 +412,9 @@ class AgenticRAGOrchestrator:
                 start_time=start_time,
                 session_id=session_id,
                 tool_execution_counter=tool_execution_counter,
+                profile=profile,
+                max_steps=max_steps,
+                agent_role=agent_role,
             )
 
             # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)

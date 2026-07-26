@@ -75,6 +75,10 @@ class MultiAgentState(TypedDict):
     Attributes:
         query: Original user query
         user_context: User metadata (citizenship, intent, etc.)
+        grounding_context: Pre-vetted evidence from the orchestrator (curated_qa
+            blocks + KG context + workflow summary); empty string when none.
+            (consumed by LegalAgent + Synthesizer only; FinancialAgent is
+            PricingService-SSOT, TimelineAgent inherits via legal_analysis)
         legal_analysis: Output from LegalAgent
         financial_breakdown: Output from FinancialAgent
         timeline_estimate: Output from TimelineAgent
@@ -85,6 +89,7 @@ class MultiAgentState(TypedDict):
 
     query: str
     user_context: dict[str, Any]
+    grounding_context: str
     legal_analysis: str
     financial_breakdown: str
     timeline_estimate: str
@@ -184,10 +189,20 @@ class LegalAgent:
                     + "\n- ".join(entity_names)
                 )
 
+            grounding = state.get("grounding_context", "")
+            grounding_block = ""
+            if grounding:
+                grounding_block = (
+                    "\n\nPre-vetted evidence from Bali Zero's knowledge base "
+                    "(HIGH PRIORITY — prefer these facts over your own recall when they conflict):\n"
+                    f"{grounding}"
+                )
+
             prompt = (
                 f"You are a legal requirements analyst for Indonesian business and immigration.\n\n"
                 f'Query: "{query}"\n'
-                f"{entity_summary}\n\n"
+                f"{entity_summary}"
+                f"{grounding_block}\n\n"
                 f"List the required documents and compliance steps in order.\n"
                 f"Focus on: required documents (NPWP, Akta, passport, etc.), "
                 f"legal entities involved (PT PMA, Perorangan, etc.), "
@@ -211,6 +226,7 @@ class LegalAgent:
                         "agent": "legal",
                         "output": analysis,
                         "entities_used": len(legal_entities),
+                        "had_grounding": bool(grounding),
                         "duration_s": round(duration, 2),
                     },
                 ],
@@ -530,13 +546,22 @@ class MultiAgentCoordinator:
         start_time = time.time()
 
         try:
+            grounding = state.get("grounding_context", "")
+            grounding_block = ""
+            if grounding:
+                grounding_block = (
+                    "\n\nPre-vetted evidence (HIGH PRIORITY — the final answer must not "
+                    f"contradict these facts):\n{grounding}\n"
+                )
+
             prompt = (
                 f"You are a senior business consultant for Bali Zero, "
                 f"helping clients with Indonesian business and immigration.\n\n"
                 f'User query: "{state["query"]}"\n\n'
                 f"**Legal Analysis:**\n{state.get('legal_analysis', 'Not available')}\n\n"
                 f"**Financial Breakdown:**\n{state.get('financial_breakdown', 'Not available')}\n\n"
-                f"**Timeline Estimate:**\n{state.get('timeline_estimate', 'Not available')}\n\n"
+                f"**Timeline Estimate:**\n{state.get('timeline_estimate', 'Not available')}\n"
+                f"{grounding_block}\n"
                 f"Synthesize these into a coherent, actionable answer for the client.\n"
                 f"Format:\n"
                 f"**Legal Requirements:** ...\n"
@@ -580,6 +605,7 @@ class MultiAgentCoordinator:
         self,
         query: str,
         user_context: dict[str, Any] | None = None,
+        grounding_context: str = "",
     ) -> dict[str, Any]:
         """
         Run multi-agent workflow for a complex query.
@@ -587,6 +613,10 @@ class MultiAgentCoordinator:
         Args:
             query: User query requiring multi-domain expertise
             user_context: Optional user metadata
+            grounding_context: Optional pre-vetted evidence from the caller
+                (orchestrator's curated_qa + KG + workflow context) — passed
+                through to LegalAgent and the Synthesizer as HIGH PRIORITY
+                evidence. Empty string means no grounding available.
 
         Returns:
             Dict with keys: query, legal_analysis, financial_breakdown,
@@ -599,6 +629,7 @@ class MultiAgentCoordinator:
         initial_state: MultiAgentState = {
             "query": query,
             "user_context": user_context or {},
+            "grounding_context": grounding_context,
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",

@@ -22,6 +22,10 @@ on:
       - "scripts/verify_the_verifiers.py"
       - "scripts/verify_the_verifiers_gates.yaml"
       - ".github/workflows/hot-zone-pr-gate.yml"
+      - ".github/workflows/token-lint.yml"
+      - "scripts/token_lint.py"
+      - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
 
 concurrency:
   group: verify-the-verifiers-${{ github.ref }}
@@ -30,6 +34,7 @@ concurrency:
 jobs:
   verify-the-verifiers:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -52,14 +57,14 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/verify_the_verifiers\.py|scripts/verify_the_verifiers_gates\.yaml|\.github/verify-the-verifiers\.sha256|\.github/workflows/verify-the-verifiers\.yml|\.github/workflows/hot-zone-pr-gate\.yml|scripts/tests/test_verify_the_verifiers\.py|scripts/tests/test_wr3_reflexion_synthesis\.py|scripts/wr3_reflexion_synthesis\.py|scripts/wr2_reflexion_synthesis\.py|scripts/test_wr2_reflexion_cabling\.py|scripts/lib/reflexion\.py)$'; then
+            '^(scripts/verify_the_verifiers\.py|scripts/verify_the_verifiers_gates\.yaml|\.github/verify-the-verifiers\.sha256|\.github/workflows/verify-the-verifiers\.yml|\.github/workflows/hot-zone-pr-gate\.yml|\.github/workflows/token-lint\.yml|scripts/token_lint\.py|scripts/tests/test_token_lint\.py|scripts/tests/conftest\.py|scripts/tests/test_verify_the_verifiers\.py|scripts/tests/test_wr3_reflexion_synthesis\.py|scripts/wr3_reflexion_synthesis\.py|scripts/wr2_reflexion_synthesis\.py|scripts/test_wr2_reflexion_cabling\.py|scripts/lib/reflexion\.py)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "::notice::no relevant paths changed — sentinel success"
           fi
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: steps.relevant.outputs.run == 'true'
         with:
           python-version: "3.11"

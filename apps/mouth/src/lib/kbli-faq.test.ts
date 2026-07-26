@@ -76,11 +76,13 @@ describe("buildKbliFaq", () => {
   });
 
   it("declares the licensing gap on every cure-detached subtype — never 'special regime', never asserting regulatory absence", () => {
-    // Real cured pilot codes across cause subtypes: 49213 (authority
-    // collision), 60312 (unlocatable source), 64310 (wrong-pointer
+    // Real cured pilot codes across cause subtypes still genuinely detached
+    // (per_skala empty): 60312 (unlocatable source), 64310 (wrong-pointer
     // transplant). The class answer must be the weakest common truthful
     // claim: about OUR verification, not about the regulation (Codex gate F1).
-    for (const c of ["49213", "60312", "64310"]) {
+    // 49213 (authority collision) is NOT in this list — it graduated to a
+    // RESTORE (see the "graduates 49213" test below).
+    for (const c of ["60312", "64310"]) {
       const cured = getCode(c);
       expect(cured, `code ${c}`).toBeDefined();
       expect(cured!.provenance?.state, `code ${c}`).toBe("not_classifiable");
@@ -92,6 +94,23 @@ describe("buildKbliFaq", () => {
       expect(licenseAnswer).not.toContain("not yet defined");
       expect(licenseAnswer).not.toContain("does not apply");
     }
+  });
+
+  it("graduates 49213 to a real licensing answer — its historical collision marker stays an audit trail, not an active gap", () => {
+    // 49213 was RESTORED (not detached) via the per-ancestor cure spec
+    // (scripts/kbli_filiera/cure_specs/restore_49213.json): per_skala now
+    // serves real PP28-image-verified rows, so the licensing answer must
+    // show them, never the gap-language above. The record's
+    // `per_skala_disputed_pp28_collision` key deliberately stays on the
+    // record (historical audit trail per the cure spec's own _doc), so
+    // provenance.state alone would still read "not_classifiable" — the
+    // licensing answer must branch on served rows, not that marker alone.
+    const restored = getCode("49213");
+    expect(restored).toBeDefined();
+    const licenseAnswer = buildKbliFaq(restored as KBLICode)[1].answer;
+    expect(licenseAnswer).toContain("Menengah Tinggi");
+    expect(licenseAnswer).not.toContain("could not be verified");
+    expect(licenseAnswer).not.toContain("Regulatory Divergence");
   });
 
   it("innocence: a legit no-OSS-rows code keeps the special-regime answer", () => {

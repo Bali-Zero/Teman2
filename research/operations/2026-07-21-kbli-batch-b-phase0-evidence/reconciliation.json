@@ -1,0 +1,203 @@
+{
+  "summary": {
+    "tuning": {
+      "pages": 10,
+      "a_edges": 207,
+      "b_edges": 208,
+      "matched": 207,
+      "a_only": 0,
+      "b_only": 1
+    },
+    "holdout": {
+      "pages": 10,
+      "a_edges": 218,
+      "b_edges": 218,
+      "matched": 218,
+      "a_only": 0,
+      "b_only": 0
+    }
+  },
+  "detail": {
+    "tuning": {
+      "139": {
+        "split": "tuning",
+        "a_edge_count": 16,
+        "b_edge_count": 16,
+        "matched_count": 16,
+        "a_only": [],
+        "b_only": []
+      },
+      "142": {
+        "split": "tuning",
+        "a_edge_count": 17,
+        "b_edge_count": 17,
+        "matched_count": 17,
+        "a_only": [],
+        "b_only": []
+      },
+      "171": {
+        "split": "tuning",
+        "a_edge_count": 23,
+        "b_edge_count": 23,
+        "matched_count": 23,
+        "a_only": [],
+        "b_only": []
+      },
+      "214": {
+        "split": "tuning",
+        "a_edge_count": 20,
+        "b_edge_count": 20,
+        "matched_count": 20,
+        "a_only": [],
+        "b_only": []
+      },
+      "217": {
+        "split": "tuning",
+        "a_edge_count": 25,
+        "b_edge_count": 25,
+        "matched_count": 25,
+        "a_only": [],
+        "b_only": []
+      },
+      "382": {
+        "split": "tuning",
+        "a_edge_count": 19,
+        "b_edge_count": 19,
+        "matched_count": 19,
+        "a_only": [],
+        "b_only": []
+      },
+      "390": {
+        "split": "tuning",
+        "a_edge_count": 17,
+        "b_edge_count": 17,
+        "matched_count": 17,
+        "a_only": [],
+        "b_only": []
+      },
+      "438": {
+        "split": "tuning",
+        "a_edge_count": 33,
+        "b_edge_count": 33,
+        "matched_count": 33,
+        "a_only": [],
+        "b_only": []
+      },
+      "440": {
+        "split": "tuning",
+        "a_edge_count": 19,
+        "b_edge_count": 19,
+        "matched_count": 19,
+        "a_only": [],
+        "b_only": []
+      },
+      "441": {
+        "split": "tuning",
+        "a_edge_count": 18,
+        "b_edge_count": 19,
+        "matched_count": 18,
+        "a_only": [],
+        "b_only": [
+          {
+            "key": [
+              "UNREADABLE",
+              "UNREADABLE"
+            ],
+            "edge": {
+              "lampiran": 10,
+              "pdf_page": 441,
+              "code_2020": "UNREADABLE",
+              "code_2025": "UNREADABLE",
+              "sebagian": false,
+              "relation_shape": "1:N",
+              "confidence": "low",
+              "notes": "Page-boundary continuation row: only the tail of the KBLI 2025 title ('dan Rumah Tangga, Mobil, serta Sepeda Motor') is shown; both code cells and the KBLI 2020 title cell are empty because the row started on the previous page (contextually part of the 95400 group)."
+            }
+          }
+        ]
+      }
+    },
+    "holdout": {
+      "131": {
+        "split": "holdout",
+        "a_edge_count": 29,
+        "b_edge_count": 29,
+        "matched_count": 29,
+        "a_only": [],
+        "b_only": []
+      },
+      "202": {
+        "split": "holdout",
+        "a_edge_count": 15,
+        "b_edge_count": 15,
+        "matched_count": 15,
+        "a_only": [],
+        "b_only": []
+      },
+      "238": {
+        "split": "holdout",
+        "a_edge_count": 13,
+        "b_edge_count": 13,
+        "matched_count": 13,
+        "a_only": [],
+        "b_only": []
+      },
+      "240": {
+        "split": "holdout",
+        "a_edge_count": 25,
+        "b_edge_count": 25,
+        "matched_count": 25,
+        "a_only": [],
+        "b_only": []
+      },
+      "242": {
+        "split": "holdout",
+        "a_edge_count": 32,
+        "b_edge_count": 32,
+        "matched_count": 32,
+        "a_only": [],
+        "b_only": []
+      },
+      "330": {
+        "split": "holdout",
+        "a_edge_count": 19,
+        "b_edge_count": 19,
+        "matched_count": 19,
+        "a_only": [],
+        "b_only": []
+      },
+      "370": {
+        "split": "holdout",
+        "a_edge_count": 24,
+        "b_edge_count": 24,
+        "matched_count": 24,
+        "a_only": [],
+        "b_only": []
+      },
+      "392": {
+        "split": "holdout",
+        "a_edge_count": 19,
+        "b_edge_count": 19,
+        "matched_count": 19,
+        "a_only": [],
+        "b_only": []
+      },
+      "411": {
+        "split": "holdout",
+        "a_edge_count": 21,
+        "b_edge_count": 21,
+        "matched_count": 21,
+        "a_only": [],
+        "b_only": []
+      },
+      "415": {
+        "split": "holdout",
+        "a_edge_count": 21,
+        "b_edge_count": 21,
+        "matched_count": 21,
+        "a_only": [],
+        "b_only": []
+      }
+    }
+  }
+}

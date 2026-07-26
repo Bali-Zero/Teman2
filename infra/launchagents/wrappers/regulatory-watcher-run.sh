@@ -1,6 +1,6 @@
 #!/bin/zsh
 # regulatory-watcher cron wrapper — multi-LLM cascade
-# Order: Claude OAuth (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
+# Order: all Claude OAuth seats (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
 # Cost: 0$ (4 tier all subscription/free/local)
 #
 # TAC-2 A4 (2026-07-05) — the 07-05 run failure taught four lessons, all cured here:
@@ -151,6 +151,8 @@ PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian busines
 TMPOUT=$(mktemp)
 SUCCESS=0
 USED_LLM=""
+CASCADE_BIN="${REGWATCH_CLAUDE_CASCADE_BIN:-$HOME/scripts/claude-cascade.sh}"
+[ -x "$CASCADE_BIN" ] || CASCADE_BIN="$HOME/nuzantara/infra/launchagents/wrappers/claude-cascade.sh"
 
 # Stdlib-only python for the output-extractor (json only — no redis needed here).
 # The pyenv pin below (eventbus block) stays Pro-specific; this one must work on
@@ -227,28 +229,60 @@ ensure_delta() {
     return 1
 }
 
-# W84 trampoline follow-up (2026-07-06): in the sshd context the login Keychain
-# is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
-# "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
-# MAX-3 env token from ~/.nuzantara-secrets.env (verified working in sshd:
-# TOKEN1-OK). The Keychain is locked in EVERY sshd session, not only the
-# trampolined one — a manual `ssh pro '…run.sh'` run died "Not logged in" at
-# 09:20 (2026-07-06) with the token available but the gate closed. Gate on
-# SSH_CONNECTION too; gui/launchd contexts keep the healthy Keychain path.
-if { [ -n "${REGWATCH_TRAMPOLINED:-}" ] || [ -n "${SSH_CONNECTION:-}" ]; } && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
-    echo "[$(date)] sshd context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
-fi
+# 2026-07-20 live find: a delta can satisfy the schema (new_today_count + deltas
+# keys) while the model admits `partial:true` — proved live when Claude+agy+Codex
+# all missed on the same run and ollama qwen3.5 (no web access) answered "I cannot
+# browse JDIH/peraturan.go.id... I will provide a JSON structure reflecting zero
+# new findings" and then emitted a schema-valid {new_today_count:0, partial:true}
+# stub. ensure_delta()'s schema check (has the right KEYS) cannot tell that stub
+# apart from a real completed scan that genuinely found nothing — only `partial`
+# does. A false "0 new" is worse than a visible gap: a gap is honestly absent,
+# this looks like a clean day and silently is not one.
+delta_is_partial() {
+    [ -f "$DELTA_JSON" ] || return 1
+    "$PYBIN" -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+sys.exit(0 if d.get("partial") else 1)
+' "$DELTA_JSON"
+}
 
-# Tier 1: Claude OAuth Sonnet
-echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
-"$HOME/.local/bin/claude" --print --model claude-sonnet-5 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
-EXIT=$?
-if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+# Tiers 1-3 use this: a partial stub does NOT count as success — remove it (so
+# the next tier's ensure_delta() does not short-circuit on the stale file via
+# its own "[ -f "$DELTA_JSON" ] && return 0" check) and let the cascade continue.
+# Tier 4 (last resort, nothing left to cascade to) calls plain ensure_delta()
+# and handles partial-acceptance itself (DEGRADED, never silent-clean).
+ensure_full_delta() {
+    local _out="$1"
+    ensure_delta "$_out" || return 1
+    if delta_is_partial; then
+        echo "[$(date)] delta landed but partial=true (tier admitted incomplete/no-access scan) — rejecting, cascading to next tier" >> "$LOG"
+        rm -f "$DELTA_JSON"
+        return 1
+    fi
+    return 0
+}
+
+# Tier 1: every isolated Claude OAuth seat. `--claude-only` is load-bearing:
+# this wrapper owns the cross-provider tiers because each has a different
+# prompt and file-landing contract. The canonical cascade must stop before
+# Gemini/Kimi/Codex/Ollama so ensure_full_delta remains the sole success gate.
+echo "[$(date)] tier 1 — Claude subscription seat cascade" >> "$LOG"
+if [ -x "$CASCADE_BIN" ]; then
+    "$CASCADE_BIN" "$PROMPT_CLAUDE" --claude-only --model claude-sonnet-5 >"$TMPOUT" 2>&1
+    EXIT=$?
+else
+    echo "canonical Claude cascade missing: $CASCADE_BIN" >"$TMPOUT"
+    EXIT=127
+fi
+if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
     SUCCESS=1
-    USED_LLM="claude-sonnet-5"
+    USED_LLM="claude-sonnet-5-subscription-cascade"
 elif [ $EXIT -eq 0 ]; then
-    echo "[$(date)] tier 1 exit 0 but NO delta file landed (hallucinated/backgrounded output?) — cascading" >> "$LOG"
+    echo "[$(date)] Claude seat cascade exit 0 but NO delta file landed (hallucinated/backgrounded output?) — cascading cross-provider" >> "$LOG"
 fi
 cat "$TMPOUT" >> "$LOG"
 
@@ -258,7 +292,7 @@ if [ $SUCCESS -eq 0 ]; then
     > "$TMPOUT"
     printf '%s' "$PROMPT_GENERIC" | /Users/nuzantara/.local/bin/agy -p --print-timeout 5m >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="gemini-3.1-pro-agy"
     fi
@@ -274,14 +308,19 @@ if [ $SUCCESS -eq 0 ]; then
     # contexts run from $HOME which is not a trusted repo → --skip-git-repo-check.
     /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="codex-gpt-5.5"
     fi
     cat "$TMPOUT" >> "$LOG"
 fi
 
-# Tier 4: Ollama local (always available, lower quality but free + unlimited)
+# Tier 4: Ollama local (always available, lower quality but free + unlimited).
+# Last resort — nothing left to cascade to, so a partial result is accepted
+# rather than discarded, but it is marked DEGRADED (never silently "clean")
+# so proprioception/heartbeat can distinguish "genuinely 0 new" from "no tier
+# could actually check".
+DEGRADED=0
 if [ $SUCCESS -eq 0 ]; then
     echo "[$(date)] tier 3 failed/exhausted — falling back to ollama qwen3.5:9b local" >> "$LOG"
     > "$TMPOUT"
@@ -290,11 +329,18 @@ if [ $SUCCESS -eq 0 ]; then
     if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="ollama-qwen3.5:9b-local"
+        if delta_is_partial; then
+            DEGRADED=1
+            echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+        fi
     fi
     cat "$TMPOUT" >> "$LOG"
 fi
 
-if [ $SUCCESS -eq 1 ]; then
+if [ $SUCCESS -eq 1 ] && [ $DEGRADED -eq 1 ]; then
+    echo "[$(date)] regulatory-watcher run DEGRADED — used: $USED_LLM (partial: no tier completed a real scan)" >> "$LOG"
+    organism_hb_set degraded "used ${USED_LLM}, partial=true — no tier completed a real scan"
+elif [ $SUCCESS -eq 1 ]; then
     echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM" >> "$LOG"
     organism_hb_set ok "used ${USED_LLM}"
 

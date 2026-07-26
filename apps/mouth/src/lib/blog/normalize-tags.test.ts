@@ -69,4 +69,57 @@ describe("normalizeTags", () => {
       expect(() => out.join(",")).not.toThrow();
     }
   });
+
+  // ── 2026-07-21 "/insights?tag= prompt leak" regression guard ────────────
+  // An old translation pipeline wrote raw LLM chain-of-thought into `tags:`
+  // frontmatter; those tags rendered as /insights?tag=<garbage> URLs Google
+  // crawled. normalizeTags is the last boundary before a tag becomes a URL.
+
+  it("drops unmistakable reasoning-leak tags (guilt)", () => {
+    expect(
+      normalizeTags([
+        "immigration",
+        "Wait, the input text is:",
+        "Input:",
+        "Output: ONLY the translation",
+        "Thinking...",
+        "Wait, looking at the source:",
+        "The input has no MDX syntax (no #, **, [], etc), just new lines.",
+        "kitas",
+      ]),
+    ).toEqual(["immigration", "kitas"]);
+  });
+
+  it("keeps legit tags, incl. multi-word and vat-input/output (innocence)", () => {
+    expect(
+      normalizeTags([
+        "immigration",
+        "pt pma",
+        "second home visa",
+        "digital nomad",
+        "output vat", // "output" WITHOUT a colon is a real tax term
+        "input tax",
+        "bali_news",
+      ]),
+    ).toEqual([
+      "immigration",
+      "pt pma",
+      "second home visa",
+      "digital nomad",
+      "output vat",
+      "input tax",
+      "bali_news",
+    ]);
+  });
+
+  it("strips title-split punctuation artefacts and de-dups after cleaning", () => {
+    // Real EN source tags were title-word-split: ["unexpected:", "roots:"].
+    expect(normalizeTags(["unexpected:", "roots:", "tempeh's"])).toEqual([
+      "unexpected",
+      "roots",
+      "tempeh's",
+    ]);
+    // "roots:" cleans to "roots" — must not duplicate a bare "roots".
+    expect(normalizeTags(["roots:", "roots"])).toEqual(["roots"]);
+  });
 });

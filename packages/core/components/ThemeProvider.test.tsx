@@ -39,6 +39,7 @@ describe("ThemeProvider", () => {
     act(() => {
       getByTestId("set-light").click();
     });
+    expect(localStorage.getItem("bz-theme")).toBe("light");
     expect(localStorage.getItem("theme")).toBe("light");
     expect(document.documentElement.dataset.theme).toBe("light");
   });

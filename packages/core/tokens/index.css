@@ -1,11 +1,14 @@
 /*
  * @balizero/core — token entry point.
- * Import order matters: primitives → semantic → themes.
+ * Import order matters: primitives → semantic → operative → themes.
  * Themes override semantic values; semantic references primitives.
+ * Operative (--bz-*) is self-contained and theme-scoped via its own
+ * [data-theme="light"] block; themes may still cascade after it.
  */
 
 @import "./primitives.css";
 @import "./semantic.css";
+@import "./operative.css";
 @import "./themes/dark.css";
 @import "./themes/light.css";
 @import "./themes/editorial.css";

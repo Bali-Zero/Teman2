@@ -189,8 +189,8 @@ function PricingPage() {
 #### Compliance
 
 - `getComplianceDeadlines(request?: ComplianceDeadlinesRequest): Promise<ComplianceItem[]>`
-- `getComplianceAlerts(clientId?: string, status?: string): Promise<ComplianceAlert[]>`
-- `acknowledgeAlert(alertId: string): Promise<{ success: boolean }>`
+- `getComplianceAlerts(clientId?: string, status?: string, limit?: number, offset?: number): Promise<ComplianceAlert[]>` (unwraps the backend `{ items, limit, offset }` page)
+- `acknowledgeAlert(alertId: string): Promise<{ alert_id: string; outcome: "acknowledged"; status: "acknowledged" }>`
 
 #### Pricing
 

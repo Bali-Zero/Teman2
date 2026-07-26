@@ -309,7 +309,7 @@ async def compose_article(
 
     Migrated from Claude Max OAuth (which hangs inside Fly containers on
     Linux non-TTY — see ``memory/feedback_claude_cli_linux_hang.md``) to
-    ``deepseek-chat`` (~100x cheaper, structured JSON output, clean exit).
+    ``deepseek-v4-flash`` (~100x cheaper, structured JSON output, clean exit).
     """
     start_time = time.time()
 
@@ -368,11 +368,11 @@ async def compose_article(
         # Call Claude with retry logic
         logger.info(
             "Calling Claude API",
-            extra={"request_id": request_id, "model": "deepseek-chat"},
+            extra={"request_id": request_id, "model": "deepseek-v4-flash"},
         )
         message = await call_claude_with_retry(
             prompt=prompt,
-            model="deepseek-chat",
+            model="deepseek-v4-flash",
             max_tokens=4096,
         )
 
@@ -398,7 +398,7 @@ async def compose_article(
             return ComposeResponse(success=False, error=error, request_id=request_id)
 
         # Calculate approximate cost.
-        # DeepSeek V3.2 `deepseek-chat`: $0.28/1M input (cache miss),
+        # DeepSeek V3.2 `deepseek-v4-flash`: $0.28/1M input (cache miss),
         # $0.42/1M output. That's ~100x cheaper than Claude Sonnet 4.6.
         input_tokens = message.usage.input_tokens
         output_tokens = message.usage.output_tokens
@@ -528,7 +528,7 @@ async def compose_status() -> dict[str, Any]:
         "configured": bool(api_key),
         "api_key_set": bool(api_key),
         "provider": "deepseek",
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "estimated_cost_per_article": "$0.0001-0.0005",
         "cache_enabled": cache_service.enabled,
         "rate_limit": "10 requests/minute per IP",

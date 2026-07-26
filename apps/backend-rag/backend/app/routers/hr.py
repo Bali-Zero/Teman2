@@ -259,6 +259,24 @@ async def list_bonuses(
     return {"bonuses": bonuses, "count": len(bonuses)}
 
 
+@router.get("/bonuses/historical")
+async def list_bonus_historical(
+    year: int | None = Query(None, ge=2000),
+    current_user: dict[str, Any] = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Pre-system bonus recaps imported from PDF (admin only).
+
+    A SEPARATE source from the bonus ledger, kept for reconciliation: the two
+    overlap on some months with different totals. Consumers show them side by
+    side and never add them together.
+    """
+    _require_hr_admin(current_user)
+    service = _get_hr_service(db_pool)
+    records = await service.list_bonus_historical(year)
+    return {"records": records, "count": len(records)}
+
+
 @router.post("/bonuses/{bonus_id}/approve")
 async def approve_bonus(
     bonus_id: int,

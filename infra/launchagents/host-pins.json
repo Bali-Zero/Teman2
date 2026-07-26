@@ -1,0 +1,4 @@
+{
+  "_comment": "labels pinned to specific hosts — plist_watchdog only heals a pinned label on its declared host(s). Hostname normalized: lowercase, strip .local. Pro=nuzantara, Mini=mini-pro2.",
+  "com.matagaruda.kg-query-api": ["mini-pro2"]
+}

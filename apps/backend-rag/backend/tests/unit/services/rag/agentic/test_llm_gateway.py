@@ -185,15 +185,25 @@ class TestCircuitBreaker:
         assert gateway._is_circuit_open("test_model") is False
 
     def test_record_success(self, gateway):
+        circuit = gateway._get_circuit_breaker("test_model")
+        circuit.record_failure()  # seed a failure to prove the reset below
+        assert circuit.failure_count == 1
+
         gateway._record_success("test_model")
-        # Should not raise
+
+        assert circuit.failure_count == 0
 
     @patch("backend.services.rag.agentic.llm_gateway.ErrorClassifier")
     @patch("backend.services.rag.agentic.llm_gateway.get_error_context")
     def test_record_failure(self, mock_ctx, mock_classifier, gateway):
         mock_classifier.classify_error.return_value = ("transient", "low")
         mock_ctx.return_value = {}
+
         gateway._record_failure("test_model", Exception("test error"))
+
+        circuit = gateway._get_circuit_breaker("test_model")
+        assert circuit.failure_count == 1
+        mock_classifier.classify_error.assert_called_once()
 
 
 # ============================================================================
@@ -334,6 +344,75 @@ class TestSendMessage:
         )
         call_kwargs = gateway._send_with_fallback.call_args[1]
         assert call_kwargs["images"] is not None
+
+
+# ============================================================================
+# send_message latency telemetry (2026-07-18)
+#
+# The two biggest single LLM calls in the ReAct loop (final-answer synthesis
+# + self-correction rephrase) go through send_message, which previously had
+# ZERO latency logging — unlike genai_client.generate_content's "LLM call"
+# logger. Mirror that pattern: one INFO line with model/tier/latency_ms on
+# success, and latency_ms in the "All LLM models failed" log on total
+# failure.
+# ============================================================================
+
+
+class TestSendMessageTelemetry:
+    @pytest.mark.asyncio
+    async def test_send_message_logs_latency_on_success(self, gateway, caplog):
+        mock_usage = MagicMock()
+        mock_usage.cost_usd = 0.001
+        mock_usage.prompt_tokens = 42
+        mock_usage.completion_tokens = 7
+        gateway._send_with_fallback = AsyncMock(
+            return_value=("response text", "gemini-3-flash", MagicMock(), mock_usage),
+        )
+
+        with caplog.at_level("INFO"):
+            await gateway.send_message(chat=None, message="Hello", tier=TIER_FLASH)
+
+        records = [r for r in caplog.records if r.message == "LLM gateway call"]
+        assert len(records) == 1
+        assert records[0].latency_ms >= 0
+        assert records[0].model == "gemini-3-flash"
+        assert records[0].provider == "gemini"
+        assert records[0].prompt_tokens == 42
+        assert records[0].completion_tokens == 7
+
+    @pytest.mark.asyncio
+    async def test_send_message_emits_metric_on_success(self, gateway):
+        mock_usage = MagicMock()
+        mock_usage.cost_usd = 0.0
+        mock_usage.prompt_tokens = 10
+        mock_usage.completion_tokens = 5
+        gateway._send_with_fallback = AsyncMock(
+            return_value=("response text", "openrouter", None, mock_usage),
+        )
+
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.emit_llm_metric",
+            new_callable=AsyncMock,
+        ) as mock_emit:
+            await gateway.send_message(chat=None, message="Hello", tier=TIER_FLASH)
+
+        mock_emit.assert_awaited_once()
+        assert mock_emit.call_args.kwargs["provider"] == "openrouter"
+        assert mock_emit.call_args.kwargs["model"] == "openrouter"
+        assert mock_emit.call_args.kwargs["prompt_tokens"] == 10
+        assert mock_emit.call_args.kwargs["completion_tokens"] == 5
+        assert mock_emit.call_args.kwargs["latency_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_send_message_logs_latency_on_total_failure(self, gateway, caplog):
+        gateway._send_with_fallback = AsyncMock(side_effect=RuntimeError("All failed"))
+
+        with caplog.at_level("ERROR"), pytest.raises(RuntimeError, match="All LLM models failed"):
+            await gateway.send_message(chat=None, message="Hello")
+
+        records = [r for r in caplog.records if r.message == "All LLM models failed"]
+        assert len(records) == 1
+        assert records[0].latency_ms >= 0
 
 
 # ============================================================================

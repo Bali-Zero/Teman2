@@ -1,0 +1,342 @@
+"""Unit tests for the E33 runtime claim guard (task 1.3, armed task 2026-07-25).
+
+Covers ``check_e33_claims`` (per-pattern positives, negation guards, E33
+context gating), ``guard_e33_answer``/``guard_e33_answer_detailed`` (log +
+fallback note, never raises), and ``apply_guard_enforcement`` (the pure
+abstain/HUMAN_REVIEW routing decision gated by the ``E33_CLAIM_GUARD_ENFORCE``
+kill-switch). Uses the trimmed registry fixture at
+``fixtures/e33_fact_registry.json`` — tests never touch the sibling worktree
+path.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+
+import pytest
+
+from backend.services.visa_check.e33_claim_guard import (
+    E33_ABSTAIN_REASON,
+    E33_FORBIDDEN_PATTERNS,
+    E33_SAFE_FALLBACK_NOTE,
+    LEGACY_ERROR_REF,
+    GuardOutcome,
+    apply_guard_enforcement,
+    check_e33_claims,
+    guard_e33_answer,
+    guard_e33_answer_detailed,
+)
+
+FIXTURE_REGISTRY = Path(__file__).parent / "fixtures" / "e33_fact_registry.json"
+
+_E33 = "About the E33 Second Home visa: "
+
+# (pattern_id, violating text). Every sample is E33-contextual unless the
+# pattern is context-free by design.
+POSITIVE_CASES: list[tuple[str, str]] = [
+    (
+        "e33f_superseded_income_usd1500",
+        _E33 + "the E33F retirement route requires USD 1,500/month passive income.",
+    ),
+    (
+        "second_home_any_bank",
+        _E33 + "you can place the USD 130,000 deposit at any Indonesian bank.",
+    ),
+    (
+        "second_home_any_bank",
+        _E33 + "the deposit may sit at any bank of your choice.",
+    ),
+    (
+        "e33_itap_kitap_automatic_promise",
+        _E33 + "after 3 years you are eligible for KITAP conversion.",
+    ),
+    (
+        "e33_itap_kitap_automatic_promise",
+        _E33 + "KITAP is automatic after the first grant.",
+    ),
+    (
+        "e33_permits_local_work",
+        "The E33 permits you to work for a local employer.",
+    ),
+    (
+        "e33_permits_local_work",
+        "You can work legally in Indonesia on an E33 visa.",
+    ),
+    (
+        "bsi_sharia_equivalence",
+        _E33 + "a BSI deposit qualifies as the state-owned bank deposit.",
+    ),
+    (
+        "split_deposit_accepted",
+        _E33 + "you may split the deposit across two BUMN banks.",
+    ),
+    (
+        "lps_full_coverage",
+        _E33 + "the deposit is safe because LPS fully covers it.",
+    ),
+    (
+        "approval_guaranteed",
+        _E33 + "with our package, approval is guaranteed.",
+    ),
+    (
+        "idr_2m_fee_error",
+        _E33 + "the government fee is IDR 2,000,000.",
+    ),
+    (
+        "second_home_first_grant_5_10_years",
+        _E33 + "the first grant is 5-10 years depending on the case.",
+    ),
+]
+
+# Correct cautionary phrasing must NOT be flagged (negation guards).
+NEGATIVE_CASES: list[str] = [
+    _E33 + "it is a pure residence permit — it does NOT authorize employment.",
+    _E33 + "you cannot work in Indonesia on an E33; paid work needs a separate KITAS.",
+    _E33 + "approval is not guaranteed; the decision rests with immigration.",
+    _E33 + "LPS does not fully cover the deposit — a cap applies.",
+    _E33 + "the deposit cannot be split across banks (unconfirmed).",
+    _E33 + "the E33F route requires USD 3,000/month passive income.",
+    _E33 + "a USD 130,000 deposit in your own name at a state-owned (BUMN) "
+    "Indonesian bank, or USD 1,000,000 qualifying strata-title property.",
+    _E33 + "first grant is up to 5 years, renewable per prevailing regulations.",
+    # No E33 context at all -> context-gated patterns stay silent.
+    "The consulting retainer is USD 1,500/month and approval is guaranteed.",
+    "",
+]
+
+
+class TestCheckE33Claims:
+    @pytest.mark.parametrize(("pattern_id", "text"), POSITIVE_CASES)
+    def test_flags_forbidden_claim(self, pattern_id: str, text: str) -> None:
+        violations = check_e33_claims(text)
+        flagged = {v.pattern_id for v in violations}
+        assert pattern_id in flagged, f"expected '{pattern_id}' in {flagged} for: {text!r}"
+
+    @pytest.mark.parametrize("text", NEGATIVE_CASES)
+    def test_clean_text_passes(self, text: str) -> None:
+        assert check_e33_claims(text) == [], f"unexpected violations for: {text!r}"
+
+    def test_violation_shape(self) -> None:
+        text = _E33 + "deposit at any Indonesian bank is fine."
+        (violation,) = check_e33_claims(text)
+        assert violation.pattern_id == "second_home_any_bank"
+        assert violation.matched_text.lower() == "any indonesian bank"
+        assert 0 <= violation.start < violation.end <= len(text)
+        assert violation.registry_ref == "e33_base_deposit_amount"
+
+    def test_legacy_error_ref_sentinel(self) -> None:
+        (violation,) = check_e33_claims(_E33 + "fee is IDR 2.000.000 flat.")
+        assert violation.registry_ref == LEGACY_ERROR_REF
+
+
+class TestGuardE33Answer:
+    def test_clean_answer_returned_unchanged(self) -> None:
+        answer = _E33 + "first grant is up to 5 years; it does not authorize employment."
+        assert guard_e33_answer(answer) == answer
+
+    def test_violation_appends_fallback_note(self, caplog: pytest.LogCaptureFixture) -> None:
+        answer = _E33 + "deposit at any Indonesian bank."
+        with caplog.at_level(logging.WARNING):
+            guarded = guard_e33_answer(answer)
+        assert guarded.startswith(answer)
+        assert E33_SAFE_FALLBACK_NOTE in guarded
+        assert "[E33Guard]" in caplog.text
+        assert "second_home_any_bank" in caplog.text
+
+    def test_empty_answer_passthrough(self) -> None:
+        assert guard_e33_answer("") == ""
+
+
+class TestGuardE33AnswerDetailed:
+    """``guard_e33_answer_detailed`` must be byte-identical to
+    ``guard_e33_answer`` on ``.answer`` and additionally expose the raw
+    violations the enforcement decision needs.
+    """
+
+    def test_positive_corpus_covers_all_ten_patterns(self) -> None:
+        """Sanity check on the corpus itself: every registered pattern_id
+        has at least one GUILT case — the precondition the two corpus tests
+        below rely on."""
+        covered = {pid for pid, _ in POSITIVE_CASES}
+        registered = {p.pattern_id for p in E33_FORBIDDEN_PATTERNS}
+        assert covered == registered, (
+            f"POSITIVE_CASES does not cover exactly the registered patterns: "
+            f"missing={registered - covered} extra={covered - registered}"
+        )
+
+    @pytest.mark.parametrize(("pattern_id", "text"), POSITIVE_CASES)
+    def test_guilt_case_reports_violation(self, pattern_id: str, text: str) -> None:
+        """GUILT corpus (10/10 patterns): each forbidden claim must trip the
+        detailed guard, append the note, and never touch the model's own text."""
+        outcome = guard_e33_answer_detailed(text)
+        assert outcome.has_violation
+        assert pattern_id in {v.pattern_id for v in outcome.violations}
+        assert outcome.answer.startswith(text.rstrip())
+        assert E33_SAFE_FALLBACK_NOTE in outcome.answer
+
+    @pytest.mark.parametrize("text", NEGATIVE_CASES)
+    def test_innocence_case_reports_no_violation(self, text: str) -> None:
+        """INNOCENCE corpus: adjacent legitimate phrasing (correct negations,
+        no-E33-context mentions, empty string) must never trip the guard —
+        answer passed through byte-for-byte, no note appended."""
+        outcome = guard_e33_answer_detailed(text)
+        assert not outcome.has_violation
+        assert outcome.violations == ()
+        assert outcome.answer == text
+
+    def test_outcome_is_immutable_and_stdlib_only(self) -> None:
+        outcome = guard_e33_answer_detailed(_E33 + "deposit at any Indonesian bank.")
+        assert isinstance(outcome, GuardOutcome)
+        with pytest.raises(Exception):  # frozen dataclass -> FrozenInstanceError
+            outcome.answer = "tampered"  # type: ignore[misc]
+
+    def test_guard_e33_answer_and_detailed_agree_on_text(self) -> None:
+        for text in [*[t for _, t in POSITIVE_CASES], *NEGATIVE_CASES]:
+            assert guard_e33_answer(text) == guard_e33_answer_detailed(text).answer
+
+
+class TestApplyGuardEnforcement:
+    """Pure decision function — no I/O, no CoreResult. GUILT = violation
+    found AND kill-switch armed routes to abstain; INNOCENCE = every other
+    combination (switch off, or no violation) leaves abstain untouched."""
+
+    # --- GUILT: enforcement fires ---
+    def test_violation_plus_enforce_sets_new_reason(self) -> None:
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=True, existing_abstain_reason=None
+        )
+        assert reason == E33_ABSTAIN_REASON
+
+    def test_violation_plus_enforce_combines_with_existing_reason(self) -> None:
+        """A query that already abstained on low evidence score must keep
+        that reason visible, not have it silently clobbered."""
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=True, existing_abstain_reason="low_confidence"
+        )
+        assert reason == f"low_confidence+{E33_ABSTAIN_REASON}"
+
+    # --- INNOCENCE: enforcement must NOT fire ---
+    def test_violation_but_kill_switch_off_is_noop(self) -> None:
+        """The default (dark-ship) shape: a real violation, switch OFF ->
+        no abstain routing. This is the CURRENT behaviour the kill-switch
+        must preserve by default."""
+        reason = apply_guard_enforcement(
+            has_violation=True, enforce=False, existing_abstain_reason=None
+        )
+        assert reason is None
+
+    def test_no_violation_even_when_armed_is_noop(self) -> None:
+        """A clean, legitimate answer must never be routed to abstain even
+        when enforcement is armed — the guard only acts on real violations."""
+        reason = apply_guard_enforcement(
+            has_violation=False, enforce=True, existing_abstain_reason=None
+        )
+        assert reason is None
+
+    def test_no_violation_and_switch_off_is_noop(self) -> None:
+        reason = apply_guard_enforcement(
+            has_violation=False, enforce=False, existing_abstain_reason="low_confidence"
+        )
+        assert reason is None
+
+
+class TestApplyE33ClaimGuardCallSite:
+    """Integration test against the real orchestrator_core.py wiring
+    (``_apply_e33_claim_guard``), using a bare ``CoreResult`` — no
+    ``OrchestratorCore``/``AgentState`` construction needed. Proves the
+    kill-switch's default-OFF behaviour end-to-end, not just via the pure
+    helper in isolation.
+    """
+
+    def test_default_kill_switch_is_off(self) -> None:
+        """Module-level constant must default to False when
+        E33_CLAIM_GUARD_ENFORCE is unset — 'ship dark' precondition."""
+        from backend.services.rag.agentic import orchestrator_core as oc
+
+        assert oc._E33_CLAIM_GUARD_ENFORCE is False
+
+    def test_violation_default_off_appends_note_but_does_not_abstain(self) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        result = CoreResult(answer=_E33 + "deposit at any Indonesian bank.")
+        oc._apply_e33_claim_guard(result)
+
+        assert E33_SAFE_FALLBACK_NOTE in result.answer
+        assert result.abstain is False
+        assert result.abstain_reason is None
+
+    def test_violation_armed_routes_to_abstain(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        result = CoreResult(answer=_E33 + "with our package, approval is guaranteed.")
+        oc._apply_e33_claim_guard(result)
+
+        assert result.abstain is True
+        assert result.abstain_reason == E33_ABSTAIN_REASON
+        assert E33_SAFE_FALLBACK_NOTE in result.answer  # note-append still happens
+
+    def test_violation_armed_preserves_existing_abstain_reason(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        result = CoreResult(
+            answer=_E33 + "with our package, approval is guaranteed.",
+            abstain=True,
+            abstain_reason="low_confidence",
+        )
+        oc._apply_e33_claim_guard(result)
+
+        assert result.abstain is True
+        assert result.abstain_reason == f"low_confidence+{E33_ABSTAIN_REASON}"
+
+    def test_clean_answer_armed_does_not_abstain(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """INNOCENCE at the call site: even with enforcement armed, a
+        legitimate answer must sail through untouched — the failure mode of
+        a false positive here is 'parked for human review', not this path
+        firing on correct text."""
+        from backend.services.rag.agentic import orchestrator_core as oc
+        from backend.services.rag.agentic.schema import CoreResult
+
+        monkeypatch.setattr(oc, "_E33_CLAIM_GUARD_ENFORCE", True)
+        clean = _E33 + "first grant is up to 5 years; it does not authorize employment."
+        result = CoreResult(answer=clean)
+        oc._apply_e33_claim_guard(result)
+
+        assert result.answer == clean
+        assert result.abstain is False
+        assert result.abstain_reason is None
+
+
+class TestRegistryFixture:
+    def test_fixture_covers_guard_registry_refs(self) -> None:
+        fixture = json.loads(FIXTURE_REGISTRY.read_text())
+        fact_ids = {f["id"] for f in fixture["facts"]}
+        for pattern in E33_FORBIDDEN_PATTERNS:
+            if pattern.registry_ref != LEGACY_ERROR_REF:
+                assert pattern.registry_ref in fact_ids
+
+    def test_fixture_marks_pending_facts_forbidden(self) -> None:
+        fixture = json.loads(FIXTURE_REGISTRY.read_text())
+        forbidden_fact_ids = {
+            f["id"] for f in fixture["facts"] if "FORBIDDEN" in f.get("notes", "")
+        }
+        # The three registry facts explicitly marked FORBIDDEN in their notes.
+        assert {
+            "bsi_sharia_accepted",
+            "split_deposit_accepted",
+            "itap_after_3y_criteria",
+        } <= forbidden_fact_ids
+
+    def test_fixture_documents_legacy_errors(self) -> None:
+        fixture = json.loads(FIXTURE_REGISTRY.read_text())
+        legacy = " ".join(fixture["forbidden_legacy_errors"]).lower()
+        for keyword in ("1,500", "2,000,000", "lps", "guaranteed", "kitap", "work"):
+            assert keyword in legacy

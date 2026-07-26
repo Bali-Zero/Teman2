@@ -1,0 +1,20 @@
+{
+  "schema_version": "asset-upload.v2",
+  "packet_id": "asset-packet-python-fixture",
+  "asset_id": "asset-python-fixture",
+  "source_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "source_byte_count": 345678,
+  "source_mime_type": "image/jpeg",
+  "source_width": 1920,
+  "source_height": 1080,
+  "captured_at": "2026-07-19T00:00:00Z",
+  "alt_text": "Bali Zero editorial briefing image",
+  "source": "Bali Zero editorial desk",
+  "source_url": "https://balizero.com/editorial/source",
+  "rights_basis": "internal-owned",
+  "rights_status": "approved",
+  "usage_status": "approved",
+  "dlp_status": "passed",
+  "sanitization_status": "passed",
+  "perceptual_dedup_status": "unique"
+}

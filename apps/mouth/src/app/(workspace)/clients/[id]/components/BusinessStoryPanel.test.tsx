@@ -103,7 +103,9 @@ const giuliaMap: TaxCompanyPilotMap = {
     status: "needs_review",
     score: 76,
     label: "Needs review",
-    reasons: ["Confirm current company tax standing before the next LKPM cycle."],
+    reasons: [
+      "Confirm current company tax standing before the next LKPM cycle.",
+    ],
   },
   business_story: [
     "Bimala is visible through a person-first path, not a company-only archive.",
@@ -238,9 +240,7 @@ describe("BusinessStoryPanel", () => {
       />,
     );
 
-    expect(
-      screen.getByText("No company linked yet"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No company linked yet")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Connect this person to a company, then the CRM can build the tax story.",

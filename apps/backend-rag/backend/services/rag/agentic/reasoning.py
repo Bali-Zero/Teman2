@@ -75,6 +75,7 @@ from backend.services.rag.agentic.reasoning_utils import (
     is_valid_tool_call,  # noqa: F401  re-exported for _reasoning_loop_helpers late-lookup + test patches
 )
 from backend.services.rag.agentic.response_processor import post_process_response
+from backend.services.rag.agentic.team_crm_tools import filter_gemini_tools_for_caller
 from backend.services.rag.agentic.tool_executor import (
     execute_tool,
     parse_tool_call,  # noqa: F401  re-exported for _reasoning_loop_helpers late-lookup + test patches
@@ -240,6 +241,22 @@ class ReasoningEngine:
         model_used_name = "unknown"
         accumulated_usage = TokenUsage()  # Track total token usage across ReAct loop
 
+        # T-VIS (W0 safety pre-arm, 2026-07-25): narrow the Gemini tool
+        # declarations to this caller's audience ONCE, computed fresh for
+        # THIS request from the trusted, server-resolved
+        # `state.caller_profile` (set by OrchestratorCore.process_query_core
+        # — never a client-settable field). `llm_gateway.gemini_tools` is
+        # the orchestrator-wide, construction-time list shared across every
+        # concurrent request; this filtered COPY is what actually gets sent
+        # to Gemini for the ONE call in this loop that has
+        # enable_function_calling=True (every other send_message call below
+        # passes enable_function_calling=False and never reaches the tools
+        # branch, so it needs no override).
+        _scoped_gemini_tools = filter_gemini_tools_for_caller(
+            getattr(llm_gateway, "gemini_tools", None),
+            getattr(state, "caller_profile", None),
+        )
+
         # ==================== REACT LOOP ====================
         # 🔍 TRACING: Span for entire ReAct loop
         with trace_span(
@@ -280,6 +297,7 @@ class ReasoningEngine:
                             system_prompt,
                             tier=model_tier,
                             enable_function_calling=True,
+                            gemini_tools=_scoped_gemini_tools,
                         )
 
                         # Accumulate token usage
@@ -355,6 +373,13 @@ class ReasoningEngine:
                                     # _prepare_react_loop from the workspace
                                     # endpoint chain. None for legacy /stream.
                                     agent_role=getattr(state, "agent_role", None),
+                                    # WA team-assistant Phase 2 (2026-07-20):
+                                    # forward the resolved caller profile so
+                                    # team_crm_tools.py can self-scope.
+                                    # state.caller_profile is set by
+                                    # OrchestratorCore.process_query_core.
+                                    # None everywhere else (complete no-op).
+                                    caller_profile=getattr(state, "caller_profile", None),
                                 )
                                 return tc, result, duration
                             except Exception as e:
@@ -905,11 +930,34 @@ Make it feel natural and helpful, not forced.
                     }
 
                     # Run through pipeline
+                    verify_start = time.perf_counter()
                     processed = await self.response_pipeline.process(pipeline_data)
+                    verify_duration = time.perf_counter() - verify_start
+                    correct_duration = 0.0
+                    reverify_duration = 0.0
                     set_span_attribute("verification_score", processed.get("verification_score", 0))
+                    verdict_available = processed.get("verdict_available", True)
+                    verification_score = processed.get("verification_score", 1.0)
+                    set_span_attribute("verdict_available", verdict_available)
 
-                    # Handle verification failure (self-correction)
-                    if processed.get("verification_score", 1.0) < 0.7 and state.context_gathered:
+                    # Handle verification failure (self-correction) — ONLY when
+                    # the verifier actually produced a verdict. An empty/
+                    # unparseable verifier response (verdict_available=False)
+                    # must never trigger self-correction: the placeholder
+                    # score=0.5 is not a real judgment, and rephrasing on top
+                    # of it wastes a full rephrase+re-verify round-trip
+                    # (~23s — the verifier hits the same empty-response bug on
+                    # retry, so the loop "corrects" an answer that was never
+                    # actually rejected). See verification_service.py.
+                    if not verdict_available:
+                        if verification_score < 0.7 and state.context_gathered:
+                            logger.info(
+                                "🛡️ [Pipeline] Verifier unavailable — skipping "
+                                "self-correction (placeholder score=%.2f is not a "
+                                "real verdict).",
+                                verification_score,
+                            )
+                    elif verification_score < 0.7 and state.context_gathered:
                         verification = processed.get("verification", {})
                         logger.warning(
                             f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
@@ -932,6 +980,7 @@ Do not invent information. If the context is insufficient, admit it.
 """
 
                         # Retry with same model (disable function calling for final answer)
+                        correct_start = time.perf_counter()
                         corrected_answer, _, _, correction_usage = await llm_gateway.send_message(
                             chat,
                             rephrase_prompt,
@@ -939,17 +988,65 @@ Do not invent information. If the context is insufficient, admit it.
                             tier=model_tier,
                             enable_function_calling=False,
                         )
+                        correct_duration = time.perf_counter() - correct_start
                         accumulated_usage = accumulated_usage + correction_usage
                         logger.info("🛡️ [Pipeline] Self-correction applied.")
 
                         # Re-run pipeline on corrected answer
                         pipeline_data["response"] = corrected_answer
+                        reverify_start = time.perf_counter()
                         processed = await self.response_pipeline.process(pipeline_data)
+                        reverify_duration = time.perf_counter() - reverify_start
+
+                    # ⏱️ Per-substep self-correction timing (durations only — never
+                    # log answer/context text, UU PDP PII boundary). Emitted for
+                    # EVERY substantial-answer pipeline pass, not just rejections:
+                    # correct/reverify stay 0.00 on the no-rejection path so the
+                    # log line is directly comparable across queries and reveals
+                    # the real 23s split in prod (increment-1, #self-correct-speed).
+                    logger.info(
+                        "⏱️ [self-correct] verify=%.2fs correct=%.2fs reverify=%.2fs total=%.2fs",
+                        verify_duration,
+                        correct_duration,
+                        reverify_duration,
+                        verify_duration + correct_duration + reverify_duration,
+                    )
 
                     # Update state with processed results
                     state.final_answer = processed["response"]
                     if "citations" in processed:
                         state.sources = processed["citations"]
+
+                    # Dead-wiring fix (2026-07-20): this is the AUTHORITATIVE
+                    # `processed` result for the answer actually being
+                    # returned above — if self-correction ran, `processed`
+                    # was reassigned to the retry pipeline's fresh verdict on
+                    # the CORRECTED answer; re-reading here (rather than
+                    # persisting the pre-correction verification_score local
+                    # from before the retry) is what keeps the score
+                    # attached to the text it actually describes. Before
+                    # this fix, verification_score/verdict_available were
+                    # computed but never survived past this function —
+                    # orchestrator_response.py's CoreResult reads
+                    # getattr(state, "verification_score", 0.0), and nothing
+                    # ever set that attribute, so every response reported
+                    # 0.0 regardless of the real score. Only persist when
+                    # verdict_available: an unparseable/placeholder score is
+                    # not a real judgment, and reporting it as the
+                    # client-facing verification_status would swap one lie
+                    # ("always 0.0") for another ("fake pass/fail"). Leaving
+                    # state at its default keeps CoreResult's derived
+                    # verification_status="unchecked" — the honest label for
+                    # "we never got a real verdict".
+                    final_verdict_available = processed.get(
+                        "verdict_available",
+                        verdict_available,
+                    )
+                    if final_verdict_available:
+                        state.verification_score = processed.get(
+                            "verification_score",
+                            verification_score,
+                        )
 
                     logger.info(
                         f"✅ [Pipeline] Response processed: "
@@ -997,6 +1094,16 @@ Do not invent information. If the context is insufficient, admit it.
             Events with types: "thinking", "tool_call", "observation", "token"
         """
         language = detect_query_language(query)
+
+        # T-VIS (W0 safety pre-arm, 2026-07-25): same per-request narrowing
+        # as execute_react_loop — see that function's comment for the full
+        # rationale. Computed once for this request from the trusted
+        # `state.caller_profile`.
+        _scoped_gemini_tools = filter_gemini_tools_for_caller(
+            getattr(llm_gateway, "gemini_tools", None),
+            getattr(state, "caller_profile", None),
+        )
+
         # ==================== REACT LOOP ====================
         while state.current_step < state.max_steps:
             state.current_step += 1
@@ -1023,6 +1130,7 @@ Do not invent information. If the context is insufficient, admit it.
                     tier=model_tier,
                     enable_function_calling=True,
                     images=step_images,
+                    gemini_tools=_scoped_gemini_tools,
                 )
 
             except (

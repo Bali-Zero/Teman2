@@ -1,0 +1,59 @@
+{
+  "run_at": "2026-07-19T07:06:10+08:00",
+  "today": "2026-07-19",
+  "yesterday_seen_count": 21,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (HTTP 403)",
+    "https://muc.co.id/article (HTTP 403)",
+    "https://ikpi.or.id/news/ (HTTP 404)",
+    "https://ortax.org/news (HTTP 200 but client-side SPA shell, title 'Artikel tidak ditemukan')",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (HTTP 200 but zero PMK-2026 string matches in 48h window)",
+    "https://www.pajak.go.id/peraturan (HTTP 200 but zero extractable dated entries in 48h window, JS-rendered table)"
+  ],
+  "deltas": [
+    {
+      "citation": "PP 30/2026",
+      "title_id": "Peraturan Pemerintah Nomor 30 Tahun 2026 tentang Jenis dan Tarif atas Jenis Penerimaan Negara Bukan Pajak yang Berlaku pada Kementerian Hukum",
+      "title_en": "Government Regulation No. 30/2026 on Types and Tariffs of Non-Tax State Revenue (PNBP) applicable at the Ministry of Law",
+      "service_line": [
+        "company"
+      ],
+      "severity": "medium",
+      "impact_note": "Restructures PNBP fees for legal-entity, intellectual-property, and legislative-drafting services at Kementerian Hukum (successor references to Kemenkumham/AHU) effective 1 Aug 2026, replacing PP 45/2024 - sets Rp0 tariff for company-status blocking/unblocking (PT, yayasan, persekutuan perdata, firma, CV) and for koperasi akta pendirian/anggaran dasar/pembubaran; full tariff annex (lampiran) not yet reviewed, so Bali Zero should verify whether standard PT PMA/company-service fees it quotes changed before pricing post-1-Aug-2026 cases.",
+      "summary": "New PP restructures Kementerian Hukum's non-tax revenue (PNBP) fee schedule across 5 service clusters (legal services, regulatory-drafting training, IP services, facility use, legislative services), replacing PP 45/2024; notably sets several company-status and cooperative-related services to Rp0.",
+      "source": "DDTC News | https://news.ddtc.co.id/berita/nasional/1820941/pp-302026-terbit-jenis-dan-tarif-pnbp-kementerian-hukum-diatur-ulang",
+      "verbatim_excerpt": "Pemerintah mengatur kembali jenis dan tarif penerimaan negara bukan pajak (PNBP) yang berlaku pada Kementerian Hukum (Kemenkum). Pembaruan tersebut dilakukan melalui penerbitan Peraturan Pemerintah (PP) 30/2026... 'Bahwa dengan adanya perubahan struktur organisasi pada Kementerian Hukum dan untuk melakukan penyesuaian jenis dan tarif atas jenis PNBP..., perlu mengatur kembali jenis dan tarif atas jenis PNBP yang berlaku pada Kementerian Hukum,' bunyi pertimbangan PP No. 30/2026... PP 30/2026 ini diundangkan pada 2 Juli 2026 dan berlaku setelah 30 hari terhitung sejak tanggal diundangkan. Dengan demikian, PP 30/2026 akan berlaku efektif mulai 1 Agustus 2026.",
+      "first_seen_at": "2026-07-19T07:06:10+08:00",
+      "confidence": "medium"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026",
+    "SE-8/PJ/2026",
+    "PP 30/2026"
+  ],
+  "note": "NB-INTEL-Regulation/Press/Immigration all returned 'nessuna novita' for the 24-48h window. NB-INTEL-Tax also returned 'nessuna novita' but surfaced a headline-only mention ('Kantor Virtual bisa jadi alamat PKP, DJP terbitkan aturan baru...', ANTARA News Riau, 17 Jul 2026) with no citable regulation number in-notebook; follow-up query confirmed the NB holds only the article title, not the underlying DJP rule text, so per hard rule 2 (no speculation) it was DROPPED rather than surfaced as a delta. Web sweep: Hukumonline 403 (unchanged pattern), MUC 403 (unchanged), IKPI 404 (unchanged), Ortax /news still SPA shell 'Artikel tidak ditemukan' (unchanged) - DDTC was again the only functioning primary source. DDTC's own-site widget also re-surfaced SE-8/PJ/2026 (23 jam lalu at fetch time) and PMK 44/2026 (already in seen_citations from prior runs) plus an unrelated POJK 10/2026 (OJK carbon-trading rule, outside Bali Zero service-line filter) - both correctly deduped/filtered. Backup gov portals checked since primary sources yielded <3 deltas: peraturan.go.id (200, 75KB, no 'PP 30' or 2026-07-1x string matches - index still lagging JDIH), peraturan.bpk.go.id (200, zero PMK-2026 string matches in-window), pajak.go.id (200, JS-rendered table, zero static matches), imigrasi.go.id (200, 154KB - only 2 dated hits, both 1 Jul 2026 internal-compliance press releases, outside the 48h window and not a regulatory delta) all confirmed no additional deltas. One delta today (PP 30/2026, Kementerian Hukum PNBP restructuring, company service line), single-source (DDTC only - other primaries blocked) so marked confidence:medium per cross-validation rule. Zero truncated.",
+  "confidence_note": "PP 30/2026 is single-source (DDTC) - hukumonline/muc/ikpi/ortax all unreachable or broken this run, so cross-validation could not be attempted against a second independent outlet."
+}

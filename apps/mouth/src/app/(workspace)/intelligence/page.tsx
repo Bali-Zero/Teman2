@@ -11,10 +11,13 @@ const TRINITY = [
     icon: Shield,
     description:
       "Review visa & immigration regulation changes detected on imigrasi.go.id and approve updates.",
-    gradient: "from-sky-500/20 via-sky-600/10 to-transparent",
-    glow: "rgba(14,165,233,0.15)",
-    iconColor: "#38bdf8",
-    borderColor: "rgba(14,165,233,0.15)",
+    // Documented one-off (WS2 slice 3): sky identity — no operative token
+    // covers the sky hue; pinned by the intelligence drain-guard test.
+    overlayGradient:
+      "linear-gradient(to bottom right, rgba(14,165,233,0.2), rgba(14,165,233,0.1) 50%, transparent)", // token-lint-ok: sky one-off, no token covers the hue
+    glow: "rgba(14,165,233,0.15)", // token-lint-ok: sky one-off, no token covers the hue
+    iconColor: "#38bdf8", // token-lint-ok: sky-400 one-off accent, no token covers the hue
+    borderColor: "rgba(14,165,233,0.15)", // token-lint-ok: sky one-off, no token covers the hue
     step: "01",
   },
   {
@@ -23,10 +26,11 @@ const TRINITY = [
     icon: Newspaper,
     description:
       "Curate AI-scraped Bali news & visa intel. Edit, add cover images, and publish to the live site.",
-    gradient: "from-emerald-500/20 via-emerald-600/10 to-transparent",
-    glow: "rgba(16,185,129,0.15)",
-    iconColor: "#34d399",
-    borderColor: "rgba(16,185,129,0.15)",
+    overlayGradient:
+      "linear-gradient(to bottom right, color-mix(in srgb, var(--state-success) 20%, transparent), color-mix(in srgb, var(--state-success) 10%, transparent) 50%, transparent)",
+    glow: "color-mix(in srgb, var(--state-success) 15%, transparent)",
+    iconColor: "var(--state-success)",
+    borderColor: "color-mix(in srgb, var(--state-success) 15%, transparent)",
     step: "02",
   },
   {
@@ -35,10 +39,11 @@ const TRINITY = [
     icon: PenTool,
     description:
       "Transform raw content into polished Bali Zero Executive Briefs with AI-powered enrichment.",
-    gradient: "from-violet-500/20 via-violet-600/10 to-transparent",
-    glow: "rgba(139,92,246,0.15)",
-    iconColor: "#a78bfa",
-    borderColor: "rgba(139,92,246,0.15)",
+    overlayGradient:
+      "linear-gradient(to bottom right, color-mix(in srgb, var(--bz-neon-purple) 20%, transparent), color-mix(in srgb, var(--bz-neon-purple) 10%, transparent) 50%, transparent)",
+    glow: "color-mix(in srgb, var(--bz-neon-purple) 15%, transparent)",
+    iconColor: "var(--bz-neon-purple)",
+    borderColor: "color-mix(in srgb, var(--bz-neon-purple) 15%, transparent)",
     step: "03",
     badge: "AI",
   },
@@ -52,8 +57,9 @@ export default function IntelligencePage() {
         <div
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[11px] font-medium"
           style={{
-            background: "rgba(212,132,90,0.1)",
-            border: "1px solid rgba(212,132,90,0.2)",
+            background: "var(--bz-accent-subtle)",
+            border:
+              "1px solid color-mix(in srgb, var(--bz-accent) 20%, transparent)",
             color: "var(--bz-accent)",
           }}
         >
@@ -64,7 +70,7 @@ export default function IntelligencePage() {
           className="text-[40px] font-bold tracking-tight leading-none mb-3"
           style={{
             background:
-              "linear-gradient(135deg, #f0ede8 0%, #d4845a 60%, #e8b48a 100%)",
+              "linear-gradient(135deg, var(--bz-text-1) 0%, var(--bz-accent) 60%, color-mix(in srgb, var(--bz-accent) 55%, var(--bz-text-pure)) 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -108,7 +114,8 @@ export default function IntelligencePage() {
               >
                 {/* Subtle gradient overlay */}
                 <div
-                  className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-60 pointer-events-none`}
+                  className="absolute inset-0 opacity-60 pointer-events-none"
+                  style={{ background: tool.overlayGradient }}
                 />
 
                 {/* Step number */}

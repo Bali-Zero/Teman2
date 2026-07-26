@@ -820,6 +820,41 @@ class TestSearchService:
         result = search_service._init_reranker()
         assert result is mock_reranker
 
+    def test_init_reranker_respects_enable_reranker_false(self, search_service):
+        """2026-07-18 honesty fix (reranker illusion, scar family #2): before
+        the fix, _init_reranker() hardcoded enabled=True regardless of
+        settings.enable_reranker, so the prod default (False — model not
+        bundled, saves ~5GB) was silently ignored: CrossEncoderReranker
+        tried to import sentence_transformers on every call, failed, and
+        returned zero scores while claiming to be "initialized". Uses the
+        REAL CrossEncoderReranker (not mocked) — with enabled=False it
+        never touches sentence_transformers, so this stays fast/offline.
+        """
+        if hasattr(search_service, "_reranker"):
+            delattr(search_service, "_reranker")
+
+        with patch("backend.services.search.search_service.settings") as mock_settings:
+            mock_settings.reranker_backend = "cross-encoder"
+            mock_settings.enable_reranker = False
+
+            result = search_service._init_reranker()
+
+        assert result.enabled is False
+
+    def test_init_reranker_respects_enable_reranker_true(self, search_service):
+        """Innocence: settings.enable_reranker=True — behavior unchanged
+        from before the fix (reranker constructed enabled)."""
+        if hasattr(search_service, "_reranker"):
+            delattr(search_service, "_reranker")
+
+        with patch("backend.services.search.search_service.settings") as mock_settings:
+            mock_settings.reranker_backend = "cross-encoder"
+            mock_settings.enable_reranker = True
+
+            result = search_service._init_reranker()
+
+        assert result.enabled is True
+
     @pytest.mark.asyncio
     async def test_search_with_reranking_reranker_enabled(self, search_service):
         """Test search_with_reranking when reranker is enabled"""

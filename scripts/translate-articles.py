@@ -103,6 +103,27 @@ def patch_frontmatter_locale(fm_block: str, locale: str) -> str:
     return fm_block.rstrip().rsplit("---", 1)[0] + f'locale: "{locale}"\n---\n'
 
 
+# Post-generation guard (scar 2026-07-21). The old pipeline wrote raw
+# reasoning-model chain-of-thought straight into 20 .id.mdx files (``Thinking...``,
+# ``Wait, looking at the input:``, ``TESTO DA TRADURRE``). ``think: false`` +
+# the "no preamble" prompt make that rare now, but a model can still ignore both
+# — so we REFUSE to write output that narrates its own translation process.
+_REASONING_LEAK_RE = re.compile(
+    r"thinking\.\.\.|<think>|\bwait,\s+(looking at|the input|the source|the original|the prompt)"
+    r"|\bthe (input|source) text is\b|\blooking at the (input|source|prompt|original)\b"
+    r"|\bonly the translation\b|\bno explanations?\b[\s.,:*]*(only|output|the translation)"
+    r"|\brispondi solo con la traduzione\b|\btesto da tradurre\b|\bas an ai\b"
+    r"|\*+\s*self[-\s]?correction|\bthe user (provided|forgot|wants|hasn'?t)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_reasoning_leak(text: str) -> str | None:
+    """Return the offending snippet if the model leaked its reasoning, else None."""
+    m = _REASONING_LEAK_RE.search(text)
+    return m.group(0) if m else None
+
+
 def call_ollama(prompt: str, timeout: float = 1200) -> str:
     """Call Ollama chat API. Returns the generated text."""
     payload = {
@@ -173,8 +194,14 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
             logger.info(f"  SKIP (exists, use --force to replace): {out_path.name}")
             return False
 
-    # Read source
-    source = src_path.read_text(encoding="utf-8")
+    # Read source — an index entry whose .mdx vanished (e.g. a deleted
+    # test/ article) must skip, not kill the whole run for every article
+    # after it (translate_hourly heartbeat was degraded exactly this way).
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        logger.warning(f"  SKIP (source vanished): {src_path}")
+        return False
     fm_block, body = split_frontmatter(source)
 
     if not body.strip():
@@ -202,6 +229,13 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
 
     if not translated or len(translated) < 50:
         logger.error(f"  FAIL: Translation too short ({len(translated)} chars) for {slug}")
+        return False
+
+    leak = looks_like_reasoning_leak(translated)
+    if leak:
+        # Never persist chain-of-thought as an article (scar 2026-07-21). Fail
+        # loudly so a re-run/human handles it — do NOT write partial garbage.
+        logger.error(f"  FAIL: reasoning leak in output for {slug} [{leak!r}] — not written")
         return False
 
     # Build output

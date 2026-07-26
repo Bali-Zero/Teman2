@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Portal LKPM Submit — quarterly investment activity data form.
+ *
+ * WS3 slice 8 (GARUDA Day Edition, 2026-07-27): day-theme token alignment,
+ * mirroring slice 5 (lkpm list, PR #3066) and slice 7 (profile form inputs,
+ * PR #3071). Masthead = copper rule + Cormorant serif (--font-serif) in
+ * --tx-pure; form sections read --bz-card / --bz-border + the concept .panel
+ * shadow; fields/selects/textareas sit on --glass-rim with token borders and
+ * a --bz-copper focus ring (slice-7 profile pattern); the warm submit button
+ * carries --bz-on-warm text (4.86:1 on daylight gold / 8.43:1 on dark sand,
+ * slice 6). No hardcoded hexes.
+ */
+
 import React, { useState } from "react";
 import { Loader2, Send, ArrowLeft, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -97,6 +110,26 @@ const T = {
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
 
+// Day form section (GARUDA Day concept .panel): white card on warm paper,
+// hairline warm border, soft navy shadow (near-invisible on dark).
+const FORM_SECTION_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
+  backdropFilter: "blur(24px)",
+} as const;
+
+// Day field (slice-7 profile pattern): recessed token tint, hairline token
+// border, ink text; the copper focus ring rides on the className.
+const FIELD_STYLE = {
+  background: "var(--glass-rim)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+} as const;
+
+const FIELD_FOCUS_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]";
+
 export default function LKPMSubmitPage() {
   const router = useRouter();
   const { error, success } = useToast();
@@ -184,7 +217,7 @@ export default function LKPMSubmitPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
+      {/* Header — day masthead: copper rule + Cormorant serif in --tx-pure */}
       <section className="flex items-center gap-3">
         <Link href="/portal/lkpm">
           <ArrowLeft
@@ -193,16 +226,27 @@ export default function LKPMSubmitPage() {
           />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-          <p style={{ color: "var(--bz-text-2)" }}>{t.subtitle}</p>
+          <div
+            aria-hidden="true"
+            className="w-14 h-[3px] rounded-sm mb-3 bg-[var(--bz-copper)]"
+          />
+          <h1
+            className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
+            {t.title}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--bz-text-2)" }}>
+            {t.subtitle}
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setLang(lang === "en" ? "id" : "en")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border self-start ${FIELD_FOCUS_CLASS}`}
           style={{
-            background: "rgba(255,255,255,0.03)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--glass-rim)",
+            borderColor: "var(--bz-border)",
             color: "var(--bz-text-2)",
           }}
         >
@@ -215,11 +259,7 @@ export default function LKPMSubmitPage() {
         {/* Period */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <h2 className="text-lg font-semibold">{t.period}</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -235,11 +275,8 @@ export default function LKPMSubmitPage() {
                 id="lkpm-quarter"
                 value={quarter}
                 onChange={(e) => setQuarter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               >
                 {QUARTERS.map((q) => (
                   <option key={q} value={q}>
@@ -260,11 +297,8 @@ export default function LKPMSubmitPage() {
                 id="lkpm-year"
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               >
                 {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
                   <option key={y} value={y}>
@@ -279,11 +313,7 @@ export default function LKPMSubmitPage() {
         {/* Modal Tetap */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <h2 className="text-lg font-semibold">{t.modalTetap}</h2>
           <div className="grid grid-cols-1 gap-4">
@@ -319,11 +349,8 @@ export default function LKPMSubmitPage() {
                     updateInvestment(`${cat.key}_domestic`, e.target.value)
                   }
                   placeholder="0"
-                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    borderColor: "rgba(255,255,255,0.05)",
-                  }}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-right ${FIELD_FOCUS_CLASS}`}
+                  style={FIELD_STYLE}
                 />
                 <input
                   type="text"
@@ -334,11 +361,8 @@ export default function LKPMSubmitPage() {
                     updateInvestment(`${cat.key}_import`, e.target.value)
                   }
                   placeholder="0"
-                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    borderColor: "rgba(255,255,255,0.05)",
-                  }}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-right ${FIELD_FOCUS_CLASS}`}
+                  style={FIELD_STYLE}
                 />
               </div>
             ))}
@@ -364,11 +388,8 @@ export default function LKPMSubmitPage() {
                   value={formatNumber(investment[field.key])}
                   onChange={(e) => updateInvestment(field.key, e.target.value)}
                   placeholder="0"
-                  className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    borderColor: "rgba(255,255,255,0.05)",
-                  }}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2 ${FIELD_FOCUS_CLASS}`}
+                  style={FIELD_STYLE}
                 />
               </div>
             ))}
@@ -378,11 +399,7 @@ export default function LKPMSubmitPage() {
         {/* Modal Kerja */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <div>
             <h2 className="text-lg font-semibold">{t.modalKerja}</h2>
@@ -402,22 +419,15 @@ export default function LKPMSubmitPage() {
               updateInvestment("working_capital", e.target.value)
             }
             placeholder={t.modalKerjaPlaceholder}
-            className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              borderColor: "rgba(255,255,255,0.05)",
-            }}
+            className={`w-full rounded-lg border px-3 py-2 text-sm text-right ${FIELD_FOCUS_CLASS}`}
+            style={FIELD_STYLE}
           />
         </section>
 
         {/* Employment */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <h2 className="text-lg font-semibold">{t.employment}</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -436,11 +446,8 @@ export default function LKPMSubmitPage() {
                 value={tki || ""}
                 onChange={(e) => setTki(Number(e.target.value) || 0)}
                 placeholder={t.tkiPlaceholder}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
             <div>
@@ -458,11 +465,8 @@ export default function LKPMSubmitPage() {
                 value={tka || ""}
                 onChange={(e) => setTka(Number(e.target.value) || 0)}
                 placeholder={t.tkaPlaceholder}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
           </div>
@@ -471,11 +475,7 @@ export default function LKPMSubmitPage() {
         {/* Revenue */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <h2 className="text-lg font-semibold">{t.revenue}</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -498,11 +498,8 @@ export default function LKPMSubmitPage() {
                   )
                 }
                 placeholder="0"
-                className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm text-right ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
             <div>
@@ -524,11 +521,8 @@ export default function LKPMSubmitPage() {
                   )
                 }
                 placeholder="0"
-                className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm text-right ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
           </div>
@@ -537,11 +531,7 @@ export default function LKPMSubmitPage() {
         {/* Narrative */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
+          style={FORM_SECTION_STYLE}
         >
           <h2 className="text-lg font-semibold">{t.narrative}</h2>
           <div className="space-y-4">
@@ -559,11 +549,8 @@ export default function LKPMSubmitPage() {
                 onChange={(e) => setObstacles(e.target.value)}
                 placeholder={t.obstaclesPlaceholder}
                 rows={3}
-                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm resize-none ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
             <div>
@@ -580,11 +567,8 @@ export default function LKPMSubmitPage() {
                 onChange={(e) => setPlans(e.target.value)}
                 placeholder={t.plansPlaceholder}
                 rows={3}
-                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm resize-none ${FIELD_FOCUS_CLASS}`}
+                style={FIELD_STYLE}
               />
             </div>
           </div>
@@ -595,8 +579,13 @@ export default function LKPMSubmitPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50"
-            style={{ background: "var(--bz-accent-warm)" }}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 ${FIELD_FOCUS_CLASS}`}
+            style={{
+              background: "var(--bz-accent-warm)",
+              // --bz-on-warm: white on daylight gold (4.86:1), near-black on
+              // dark sand (8.43:1) — AA in both themes (slice 6 token).
+              color: "var(--bz-on-warm)",
+            }}
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />

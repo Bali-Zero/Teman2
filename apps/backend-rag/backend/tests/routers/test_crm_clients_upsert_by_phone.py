@@ -108,6 +108,7 @@ def test_insert_new_lead(client: TestClient, write_enabled: None, mock_db_pool) 
         "action": "inserted",
         "matched_count": 0,
         "recap_applied": False,
+        "was_archived": False,
     }
     assert conn.fetchval.await_count == 1
 
@@ -222,6 +223,108 @@ def test_multi_match_reports_count(client: TestClient, write_enabled: None, mock
     body = resp.json()
     assert body["matched_count"] == 2
     assert body["client_id"] == 1  # acts on the first (live, most-recent) row
+
+
+def test_reject_ambiguous_refuses_before_any_mutation(
+    client: TestClient, write_enabled: None, mock_db_pool
+) -> None:
+    """Round-6 F10 guilt: with `reject_ambiguous` and a shared phone (2 live
+    rows) the endpoint must refuse BEFORE any restore/rename/update — the
+    rows[0] pick is arbitrary and a caller that resolves identity by phone
+    (intake delivery) must never mutate or receive an arbitrary client."""
+    _pool, conn = mock_db_pool
+    conn.fetch.return_value = [
+        {"id": 1, "full_name": "Spouse A", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+        {"id": 2, "full_name": "Spouse B", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+    ]
+    resp = client.post(
+        "/api/crm/clients/upsert-by-phone",
+        json={
+            "phone_normalized": "6281234567",
+            "full_name": "Marco Bianchi",
+            "notes_append": "x",
+            "reject_ambiguous": True,
+        },
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body == {
+        "client_id": None,
+        "was_created": False,
+        "action": "rejected_ambiguous",
+        "matched_count": 2,
+        "recap_applied": False,
+        "was_archived": False,
+    }
+    # ONLY the advisory-lock executes ran (legacy digits key + phonecore key) —
+    # no UPDATE, no INSERT.
+    executed = [str(c.args[0]) for c in conn.execute.await_args_list]
+    assert conn.execute.await_count == 2
+    assert all("pg_advisory_xact_lock" in s for s in executed)
+    assert conn.fetchval.await_count == 0
+
+
+def test_archived_sole_match_readonly_and_reported(
+    client: TestClient, write_enabled: None, mock_db_pool
+) -> None:
+    """Round-9 F14: with restore disabled, an ARCHIVED match is READ-ONLY —
+    no restore, no rename, no notes/recap (the caller's local identity may not
+    be this card's person) — and the response says so (`was_archived: true`,
+    action `skipped_archived`) so identity resolvers fail closed on it."""
+    _pool, conn = mock_db_pool
+    conn.fetch.return_value = [
+        {"id": 5, "full_name": "Archived Person", "notes": "", "deleted_at": "2026-01-01",
+         "strategic_recap_source": None, "updated_at": None},
+    ]
+    resp = client.post(
+        "/api/crm/clients/upsert-by-phone",
+        json={
+            "phone_normalized": "6281234567",
+            "full_name": "Wrong Local Identity",
+            "notes_append": "x",
+            "restore_if_archived": False,
+        },
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["was_archived"] is True
+    assert body["client_id"] == 5
+    assert body["action"] == "skipped_archived"
+    # ZERO mutations: the only executes are the 2 advisory locks (legacy digits
+    # key + canonical phonecore key) — no UPDATE of any kind.
+    executed = [str(c.args[0]) for c in conn.execute.await_args_list]
+    assert conn.execute.await_count == 2
+    assert all("pg_advisory_xact_lock" in s for s in executed)
+    assert conn.fetchval.await_count == 0  # no INSERT either
+
+
+def test_reject_ambiguous_single_match_still_enriches(
+    client: TestClient, write_enabled: None, mock_db_pool
+) -> None:
+    """Round-6 F10 innocence: `reject_ambiguous` with exactly ONE match is not
+    ambiguous — the normal enrich path must proceed."""
+    _pool, conn = mock_db_pool
+    conn.fetch.return_value = [
+        {"id": 4242, "full_name": "Lead +6281234567", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+    ]
+    resp = client.post(
+        "/api/crm/clients/upsert-by-phone",
+        json={
+            "phone_normalized": "6281234567",
+            "full_name": "Marco Bianchi",
+            "reject_ambiguous": True,
+        },
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["client_id"] == 4242
+    assert body["action"] == "enriched"
 
 
 def test_update_only_mode_skips_when_not_found(

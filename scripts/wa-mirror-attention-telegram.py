@@ -20,6 +20,7 @@ State: ~/.cache/wa-mirror-attention-state.json
 from __future__ import annotations
 import asyncio
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -181,7 +182,12 @@ async def cmd_realtime(force: bool = False):
     finally:
         await pool.close()
 
-    alerted = 0
+    # PASS 1 — decide WHO is due, without sending anything yet. A scan that
+    # finds N due contacts used to send N separate P0s: on 2026-07-26 that was
+    # 8 messages in 60 seconds, which ate the gateway's whole daily P0 budget
+    # (12) by 02:01 and pushed every later alert of the day into the 12h
+    # digest. One scan is one event — it gets ONE message.
+    due = []
     for it in items:
         critical = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
         if not critical:
@@ -193,27 +199,60 @@ async def cmd_realtime(force: bool = False):
             try:
                 last_ts = datetime.fromisoformat(last_ts_str)
                 if now - last_ts < DEDUP_WINDOW:
-                    continue  # dedup
+                    continue  # dedup — per contact, unchanged
             except Exception:
                 pass
+        due.append((key, it, sorted(critical)))
 
-        display = it.get("crm_name") or f"+{phone}"
-        crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
-        n_high = it["n_high"]
-        msg = (
-            "🚨 HIGH attention\n"
-            f"{display} — {mask_phone(phone)}\n"
-            f"{crm_tag} · {n_high} unresolved msg\n"
-            f"Reasons: {', '.join(sorted(critical))}\n"
-            f"→ {DASHBOARD_URL}"
-        )
-        if send_telegram(msg, tier="p0", dedup_key=f"wa-attention:{key}"):
-            last_alerted[key] = now.isoformat()
-            alerted += 1
+    # PASS 2 — one message for the whole scan. The per-contact 4h dedup window
+    # above is untouched: grouping changes HOW MANY messages carry the news,
+    # never WHICH contacts are considered due.
+    alerted = 0
+    if due:
+        msg = _compose_realtime_alert(due)
+        # Keyed on the exact set of contacts, so a scan repeating the same set
+        # collapses into a counter at the gateway instead of a new message.
+        sig = hashlib.sha256(",".join(sorted(k for k, _, _ in due)).encode()).hexdigest()[:12]
+        if send_telegram(msg, tier="p0", dedup_key=f"wa-attention:set:{sig}"):
+            for key, _, _ in due:
+                last_alerted[key] = now.isoformat()
+            alerted = len(due)
 
     state["last_alerted"] = last_alerted
     save_state(state)
-    print(json.dumps({"alerted": alerted, "high_open": len(items), "ts": now.isoformat()}))
+    print(json.dumps({"alerted": alerted, "messages": 1 if alerted else 0,
+                      "high_open": len(items), "ts": now.isoformat()}))
+
+
+def _compose_realtime_alert(due: list) -> str:
+    """One contact keeps the full detail; several become a compact roster.
+
+    Same OSINT envelope as before either way: display name, masked phone,
+    reason codes, unresolved count, dashboard link. No free text ever.
+    """
+    if len(due) == 1:
+        _, it, critical = due[0]
+        phone = it["phone"]
+        display = it.get("crm_name") or f"+{phone}"
+        crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
+        return (
+            "🚨 HIGH attention\n"
+            f"{display} — {mask_phone(phone)}\n"
+            f"{crm_tag} · {it['n_high']} unresolved msg\n"
+            f"Reasons: {', '.join(critical)}\n"
+            f"→ {DASHBOARD_URL}"
+        )
+    lines = [f"🚨 HIGH attention — {len(due)} contacts"]
+    for _, it, critical in due:
+        phone = it["phone"]
+        display = it.get("crm_name") or f"+{phone}"
+        crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
+        lines.append(
+            f"• {display} — {mask_phone(phone)}\n"
+            f"  {crm_tag} · {it['n_high']} unresolved · {', '.join(critical)}"
+        )
+    lines.append(f"→ {DASHBOARD_URL}")
+    return "\n".join(lines)
 
 
 async def cmd_digest():

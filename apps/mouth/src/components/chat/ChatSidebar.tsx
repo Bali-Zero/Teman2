@@ -74,6 +74,7 @@ export function ChatSidebar({
 
       {/* Sidebar */}
       <aside
+        inert={!isOpen ? true : undefined}
         className={`fixed left-0 top-0 h-full w-72 bg-[var(--background)] border-r border-white/5 z-50 transform transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -96,6 +97,7 @@ export function ChatSidebar({
               onClick={onClose}
               className="p-2 hover:bg-white/5 rounded-lg transition-colors focus-ring"
               aria-label="Close sidebar"
+              title="Close sidebar"
             >
               <X className="w-5 h-5 text-gray-400" />
             </button>
@@ -155,6 +157,7 @@ export function ChatSidebar({
                       onClick={(e) => onDeleteConversation(conv.id, e)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-ring"
                       aria-label={`Delete conversation: ${conv.title || "Untitled"}`}
+                      title={`Delete conversation: ${conv.title || "Untitled"}`}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>

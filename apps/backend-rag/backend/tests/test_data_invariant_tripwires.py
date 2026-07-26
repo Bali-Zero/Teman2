@@ -15,6 +15,7 @@ Born 2026-07-16 from two real gaps found the same day:
 from __future__ import annotations
 
 import inspect
+import json
 import re
 from pathlib import Path
 
@@ -122,4 +123,108 @@ def test_openai_embedding_model_is_frozen() -> None:
         "The OpenAI embedding dimensions changed away from the FROZEN 1536. "
         "Mismatched dims corrupt every similarity search against the existing "
         "index."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 3 — authoritative pricing JSON never regresses to the retired
+# WhatsApp/location contact block (2026-07-18)
+# ---------------------------------------------------------------------------
+
+_RETIRED_WHATSAPP = "+62 813 3805 1876"
+_RETIRED_LOCATION = "Canggu, Bali, Indonesia"
+
+
+def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None:
+    """``bali_zero_official_prices_2026.json`` — the file `PricingService`
+    loads and ``scripts/prepare_payloads.py`` embeds into
+    ``bali_zero_pricing_hybrid`` — must never regress to the retired
+    WhatsApp/location.
+
+    That retired string lived for months as stale text inside
+    ALREADY-UPSERTED Qdrant vectors (payload-only patched 2026-07-18 by
+    ``scripts/patch_pricing_contact_block.py``) even though this JSON's
+    generator had already moved on to the correct contact info — the JSON
+    was never the bug. A regression here would silently re-poison the
+    collection on the next `prepare_payloads.py` regeneration.
+
+    Deliberately does NOT check ``bali_zero_official_prices_2025.json`` —
+    that file is an intentionally-frozen rollback artefact (see
+    ``apps/backend-rag/backend/data/PRICING_DEPRECATED_2025.md``) and is
+    excluded from every production code path by contract, not by accident.
+    """
+    from backend.app.core.config import settings
+
+    data_path = (
+        _repo_root() / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
+    )
+    assert data_path.exists(), f"authoritative pricing JSON missing at {data_path}"
+
+    contact = json.loads(data_path.read_text(encoding="utf-8"))["metadata"]["contact"]
+
+    assert contact["whatsapp"] == settings.SUPPORT_WHATSAPP, (
+        f"{data_path.name} contact.whatsapp={contact['whatsapp']!r} does not "
+        f"match settings.SUPPORT_WHATSAPP={settings.SUPPORT_WHATSAPP!r} (the "
+        "Meta-verified Bali Zero number) — PricingService answers and the "
+        "RAG-embedded text would drift from the number the bot itself "
+        "advertises."
+    )
+    assert contact["whatsapp"] != _RETIRED_WHATSAPP
+    assert contact.get("location") != _RETIRED_LOCATION
+
+
+# ---------------------------------------------------------------------------
+# Invariant 4 — kbli_documents (Postgres) is NOT the flat KBLI payload
+# CLAUDE.md §9 describes (lever #8, 2026-07-19 KB activation-plan audit)
+# ---------------------------------------------------------------------------
+
+
+def test_kbli_documents_queries_read_metadata_not_flat_business_columns() -> None:
+    """`kbli_documents` (Postgres) has exactly 6 columns — `kode_kbli`, `judul`,
+    `content`, `metadata` (jsonb), `created_at`, `updated_at` — verified live
+    2026-07-21 via `information_schema.columns`. Business fields (`sektor_id`,
+    `pma_status`, `per_skala`, ...) live INSIDE `metadata`, which is under
+    active, evolving cure work by the kbli-navigator lane — this test does
+    NOT pin metadata's internal keys (a moving target), only the container
+    shape the router's queries depend on.
+
+    CLAUDE.md §9 used to claim this table was flat with literal `sektor_id`/
+    `pma_status`/`skala_usaha`/`kategori_risiko` columns — false; it was
+    conflating this table with the genuinely-flat Qdrant KBLI payload (see
+    `reindex_kbli_2025_final.py::build_payload`, "KBLI flat-payload golden
+    rule"), an unrelated store. `kbli_notebook_chat.py` already queries this
+    table correctly (`metadata` jsonb, not flat columns) — this test pins
+    that contract so a future edit trusting the old (wrong) invariant can't
+    silently reintroduce a query for a column that doesn't exist here.
+    """
+    router_path = (
+        _repo_root() / "apps/backend-rag/backend/app/routers/kbli_notebook_chat.py"
+    )
+    assert router_path.exists(), f"kbli_notebook_chat.py router missing at {router_path}"
+    src = router_path.read_text(encoding="utf-8")
+
+    queries = re.findall(r"SELECT\s+([^\"']*?)\s+FROM\s+kbli_documents", src)
+    assert queries, (
+        "No `SELECT ... FROM kbli_documents` found in kbli_notebook_chat.py — "
+        "the router stopped reading this table, or the query moved elsewhere. "
+        "Update this test's target file if the query relocated."
+    )
+
+    false_flat_columns = {"sektor_id", "pma_status", "skala_usaha", "kategori_risiko"}
+    for q in queries:
+        selected = {c.strip() for c in q.split(",")}
+        bad = selected & false_flat_columns
+        assert not bad, (
+            f"Query selects {bad} as if they were flat top-level columns on "
+            f"kbli_documents — they don't exist there (nested inside `metadata` "
+            f"jsonb, if present at all). Query: SELECT {q} FROM kbli_documents. "
+            "This is the exact mistake CLAUDE.md §9's old invariant would cause "
+            "— see lever #8, research/operations/2026-07-19-balizero-kb-"
+            "activation-plan.md."
+        )
+
+    assert any("metadata" in q for q in queries), (
+        "None of the kbli_documents queries select `metadata` — either the "
+        "router no longer reads business fields from this table (fine, update "
+        "this test), or it started assuming a flat schema that doesn't exist."
     )

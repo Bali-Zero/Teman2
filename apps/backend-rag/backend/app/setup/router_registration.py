@@ -143,6 +143,7 @@ def include_routers(api: FastAPI) -> None:
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
+        visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         voice,
         wa_actions,
         wa_dashboard_stream,
@@ -470,6 +471,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
+    # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
+    # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
+    api.include_router(visa_oracle_evaluate.router)
 
 
 def include_light_routers(api: FastAPI) -> None:
@@ -521,6 +525,7 @@ def include_light_routers(api: FastAPI) -> None:
         crm_tax_pilot,
         debug,
         documents_proxy,
+        dynamic_pricing,  # public price lookup (/api/pricing/service) — _API
         event_bus,
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
@@ -583,6 +588,7 @@ def include_light_routers(api: FastAPI) -> None:
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
+        visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         wa_actions,
         wa_dashboard_stream,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
@@ -739,6 +745,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(zoho_email.router)
     api.include_router(google_drive.router)
     api.include_router(documents_proxy.router)
+    api.include_router(dynamic_pricing.router)
     api.include_router(team_drive.router)
     api.include_router(sheets.router)
 
@@ -823,6 +830,9 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Visa Oracle — public product (no auth required, light deps only)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
+    # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
+    # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
+    api.include_router(visa_oracle_evaluate.router)
 
     # intel/intel_scraper/intel_analytics serve on rag process (need /data volume for staging files)
 

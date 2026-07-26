@@ -32,6 +32,75 @@ from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
 
+_RESERVED_ARG_PREFIX = "_"
+
+
+def _strip_reserved_args(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Drop any LLM-supplied key that looks like a server-reserved field.
+
+    Security (P0-ARG containment, 2026-07-24): `execute_tool` injects
+    server-controlled context (`_user_id`, `_caller_profile`) into
+    `arguments` near the end, but only when ITS OWN server-derived value
+    is truthy — see the two `if ...: arguments["_..."] = ...` lines below.
+    Before this fix, if the LLM's tool-call `arguments` dict (attacker-
+    steerable via prompt injection in the conversation) already contained
+    a same-named key, that injected value survived untouched whenever the
+    server had nothing of its own to overwrite it with — a client/unknown
+    caller's crafted `_caller_profile={"role": "creator"}` argument would
+    reach `tool.execute(**arguments)` unfiltered. Stripping every leading-
+    underscore key from the LLM-supplied dict — before the authorizer even
+    sees it, AND again immediately before the trusted re-injection — makes
+    every server-injected field structurally unforgeable: no LLM-facing
+    tool schema declares a leading-underscore parameter (verified across
+    `backend/services/tools/` 2026-07-24), so this never drops a
+    legitimate argument.
+    """
+    return {k: v for k, v in arguments.items() if not k.startswith(_RESERVED_ARG_PREFIX)}
+
+
+# P0-DENY (2026-07-25): the string returned by every denial-shaped branch
+# below is a tool OBSERVATION handed straight back to the LLM, which then
+# paraphrases it to whoever is asking. For an authenticated/team caller
+# (`agent_role` resolved) that is useful — "you don't have permission to
+# call X, try Y". For a NO-PRINCIPAL caller (client / unknown WA sender /
+# public blog-ask — `agent_role is None`) it turned the assistant into a
+# probing oracle: a synthetic client-role caller asked a production bot
+# "quanti clienti attivi abbiamo adesso?" and the bot narrated back that a
+# CRM database exists and that an authorization control blocked the call.
+# The DATA never leaked (SENSITIVE_TOOLS correctly denied), but the DENIAL
+# did. This constant is the fixed, non-diagnostic string every anonymous
+# caller gets instead — it names no tool, no control, no internal system,
+# so the model has nothing interesting to narrate.
+_ANONYMOUS_DENIAL_OBSERVATION = "This capability is not available in this conversation."
+
+
+def _denial_observation(agent_role: Any | None, detail: str) -> str:
+    """Render a denial-shaped tool observation, audience-aware.
+
+    `detail` is always the full, informative reason (never pre-redacted by
+    the caller). With a resolved `agent_role` (authenticated/team caller)
+    this returns the same `"Tool execution denied: {detail}"` shape every
+    call site returned before this fix — byte-identical, so the team
+    assistant does not regress. With `agent_role=None` (no principal) it
+    returns the fixed neutral string above, dropping `detail` entirely.
+
+    Applied uniformly to EVERY denial-shaped return in `execute_tool`
+    (not just the primary is_denied branch) so a future code path can't
+    silently reopen the leak in one of the others — this repo has been
+    bitten before by a fix applied to 1 of N equivalent paths (cicatrix
+    #3, guard-over/under-match family).
+
+    Server-side fidelity is preserved: `metrics_collector.record_tool_call`
+    and a `logger.warning`/`logger.info` call at every denial-shaped site
+    (including `is_denied`, which previously had none) still log the full
+    reason, PII-free — only the string handed back to the LLM is redacted
+    here.
+    """
+    if agent_role is None:
+        return _ANONYMOUS_DENIAL_OBSERVATION
+    return f"Tool execution denied: {detail}"
+
+
 # Module-level singletons — set by service_initializer.py at app startup.
 # Before Phase 3 wiring, the authorizer was a bare ToolAuthorizer() with no
 # dependencies. Now it may have a ConfirmationService. Both are replaced once
@@ -189,6 +258,7 @@ async def execute_tool(
     tool_execution_counter: dict[str, int] | None = None,
     agent_role: Any | None = None,
     confirmation_emitter: Any | None = None,
+    caller_profile: dict[str, Any] | None = None,
 ) -> tuple[str, float]:
     """
     Execute tool with rate limiting and RBAC authorization.
@@ -213,6 +283,14 @@ async def execute_tool(
             reasoning.py — would duplicate authorizer logic and pollute
             args. This single optional kwarg keeps the authorizer as the
             single source of truth for confirmation decisions.
+        caller_profile: WA team-assistant Phase 2 (2026-07-20). The
+            resolved sender profile dict (`{"role": "team"|"creator", ...}`)
+            from `AgentState.caller_profile` — injected into `arguments` as
+            `_caller_profile` the SAME way `user_id` is injected as
+            `_user_id` below (after the authorizer, so neither the LLM nor
+            the authorizer ever see a server-controlled field mixed into
+            LLM-supplied args). Only `team_crm_tools.py`'s tools read it;
+            every other tool's `**kwargs` silently absorbs it as a no-op.
 
     Returns:
         Tuple of (tool execution result as string, execution duration in seconds)
@@ -221,6 +299,11 @@ async def execute_tool(
         RuntimeError: If rate limit exceeded (10 per query)
     """
     start_time = time.time()
+
+    # P0-ARG containment: strip any LLM-supplied reserved-prefix key BEFORE
+    # anything (including the authorizer below) sees `arguments` — see
+    # `_strip_reserved_args` docstring.
+    arguments = _strip_reserved_args(arguments)
 
     # Security: Rate limiting - max 10 tool executions per query
     if tool_execution_counter is not None:
@@ -260,8 +343,24 @@ async def execute_tool(
     )
     if auth_result.is_denied:
         metrics_collector.record_tool_call(tool_name, "denied")
+        # P0-DENY audit (2026-07-25): this is the most common denial path —
+        # SENSITIVE_TOOLS hit anonymously — and this chokepoint had no
+        # logger call of its own (ToolAuthorizer._audit() does log the deny
+        # decision one layer down, but a second explicit trace here, scoped
+        # to exactly what reaches the model, is worth the redundancy — and
+        # keeps the docstring above true regardless of which authorizer is
+        # wired in). NEVER log `user_id`/`user_email` here — on the
+        # WhatsApp path it's `whatsapp_<phone>`, which is PII (UU PDP /
+        # SYMBIOSIS Law 2); `agent_role is not None` is a safe role-shape
+        # boolean, not an identifier.
+        logger.warning(
+            "tool_authz: denied %s (principal_present=%s): %s",
+            tool_name,
+            agent_role is not None,
+            auth_result.reason,
+        )
         return (
-            f"Tool execution denied: {auth_result.reason}",
+            _denial_observation(agent_role, auth_result.reason),
             time.time() - start_time,
         )
     if auth_result.needs_confirmation:
@@ -280,7 +379,10 @@ async def execute_tool(
             )
             metrics_collector.record_tool_call(tool_name, "denied")
             return (
-                f"Tool execution denied: confirmation service unavailable for '{tool_name}'",
+                _denial_observation(
+                    agent_role,
+                    f"confirmation service unavailable for '{tool_name}'",
+                ),
                 time.time() - start_time,
             )
         try:
@@ -299,8 +401,10 @@ async def execute_tool(
                 exc,
             )
             return (
-                f"Tool execution denied: confirmation system unavailable "
-                f"(Redis down) for '{tool_name}'",
+                _denial_observation(
+                    agent_role,
+                    f"confirmation system unavailable (Redis down) for '{tool_name}'",
+                ),
                 time.time() - start_time,
             )
         except ConfirmationTimeout:
@@ -310,8 +414,10 @@ async def execute_tool(
                 tool_name,
             )
             return (
-                f"Tool execution denied: user did not confirm "
-                f"'{tool_name}' within the allowed time",
+                _denial_observation(
+                    agent_role,
+                    f"user did not confirm '{tool_name}' within the allowed time",
+                ),
                 time.time() - start_time,
             )
         if not approved:
@@ -321,7 +427,7 @@ async def execute_tool(
                 tool_name,
             )
             return (
-                f"Tool execution denied: user rejected '{tool_name}'",
+                _denial_observation(agent_role, f"user rejected '{tool_name}'"),
                 time.time() - start_time,
             )
         metrics_collector.record_tool_call(tool_name, "confirmed")
@@ -329,6 +435,10 @@ async def execute_tool(
     # Authoritative args after the authorizer (possibly mutated in
     # Phase 3+; Phase 2 returns args unchanged).
     arguments = auth_result.args
+    # P0-ARG containment: strip again immediately before the trusted
+    # re-injection below — defense in depth against a future authorizer
+    # mutation accidentally echoing a reserved-looking key back unchanged.
+    arguments = _strip_reserved_args(arguments)
 
     try:
         # Pass user_id to tools that need it (e.g., MCPSuperTool for admin
@@ -336,6 +446,8 @@ async def execute_tool(
         # sees server-controlled fields mixed in with LLM-supplied args.
         if user_id:
             arguments["_user_id"] = user_id
+        if caller_profile:
+            arguments["_caller_profile"] = caller_profile
         result = await tool.execute(**arguments)
         duration = time.time() - start_time
 

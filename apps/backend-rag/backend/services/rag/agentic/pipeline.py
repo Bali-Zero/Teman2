@@ -94,6 +94,7 @@ class VerificationStage(PipelineStage):
             logger.debug(f"[{self.name}] Skipping verification (response too short or no context)")
             data["verification_score"] = 1.0
             data["verification_status"] = "skipped"
+            data["verdict_available"] = True
             return data
 
         try:
@@ -109,19 +110,27 @@ class VerificationStage(PipelineStage):
                 "score": verification.score,
                 "reasoning": verification.reasoning,
                 "missing_citations": verification.missing_citations,
+                "verdict_available": verification.verdict_available,
             }
             data["verification_score"] = verification.score
             data["verification_status"] = verification.status.value
+            data["verdict_available"] = verification.verdict_available
 
             logger.info(
                 f"[{self.name}] Verification complete: "
-                f"status={verification.status.value}, score={verification.score:.2f}",
+                f"status={verification.status.value}, score={verification.score:.2f}, "
+                f"verdict_available={verification.verdict_available}",
             )
 
         except (ValueError, RuntimeError, KeyError) as e:
+            # verification_service.verify_response() is designed to never
+            # raise (it fails-open internally); this is a defense-in-depth
+            # net. Same rule applies: no real verdict here → never gate
+            # self-correction on the placeholder score.
             logger.warning(f"[{self.name}] Verification failed: {e}", exc_info=True)
             data["verification_score"] = 0.5
             data["verification_status"] = "error"
+            data["verdict_available"] = False
 
         return data
 

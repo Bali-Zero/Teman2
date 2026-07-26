@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Portal Billing — invoices and payments.
+ *
+ * WS3 slice 3 (GARUDA Day Edition, 2026-07-24): day-theme token alignment,
+ * mirroring slice 1 (portal home, PR #3050) and slice 2 (matters, PR #3051).
+ * Masthead = copper rule + Cormorant serif (--font-serif) in --tx-pure;
+ * surfaces read --bz-card / --bz-border; invoice state colors read the
+ * semantic --state-* tokens (WS2 operative-light AA overrides); copper small
+ * text reads --bz-copper-text (armed in globals.css by slice 1;
+ * --tx-secondary fallback keeps AA until that merges). Amounts render via
+ * the shared <Money> component (tabular-nums). No hardcoded hexes.
+ */
+
 import React from "react";
 import { Download, FileText, Receipt, AlertTriangle } from "lucide-react";
 import { usePortalBilling } from "@/hooks/usePortalBilling";
@@ -14,7 +27,29 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { PortalInvoice } from "@/lib/api/portal/portal.types";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
+
+// Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
+// per concept (--font-serif, wired on <html>); Inter everywhere else.
+function BillingMasthead() {
+  return (
+    <section>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        Billing
+      </h1>
+      <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        Your invoices and payments
+      </p>
+    </section>
+  );
+}
 
 export default function BillingPage() {
   const { data, isLoading, isError, error } = usePortalBilling();
@@ -57,17 +92,18 @@ export default function BillingPage() {
   if (isError) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        <section>
-          <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
-        </section>
+        <BillingMasthead />
         <section
           className="rounded-xl border p-8 text-center"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
           }}
         >
-          <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-amber-400" />
+          <AlertTriangle
+            className="w-12 h-12 mx-auto mb-3"
+            style={{ color: "var(--state-warning)" }}
+          />
           <p>
             {error instanceof Error
               ? error.message
@@ -91,10 +127,7 @@ export default function BillingPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <section>
-        <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>Your invoices and payments</p>
-      </section>
+      <BillingMasthead />
 
       {/* Summary Cards */}
       {summary && summary.count > 0 && (
@@ -102,55 +135,59 @@ export default function BillingPage() {
           <div
             className="rounded-xl border p-5"
             style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total Invoiced
             </p>
-            <p className="text-xl font-bold font-mono">
-              {formatIDR(summary.total_invoiced)}
-            </p>
-            <p className="text-xs mt-1" style={{ color: "var(--bz-text-3)" }}>
+            <Money
+              value={summary.total_invoiced}
+              className="block text-xl font-bold font-mono"
+            />
+            {/* --bz-text-2 (7.64:1 on card): --bz-text-3 (#7a8aa6) computes
+                3.49:1 on white cards — below the 4.5:1 small-text floor. */}
+            <p className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
               {summary.count} invoice{summary.count !== 1 ? "s" : ""}
             </p>
           </div>
           <div
             className="rounded-xl border p-5"
             style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Paid
             </p>
-            <p
-              className="text-xl font-bold font-mono"
-              style={{ color: "#34d399" }}
-            >
-              {formatIDR(summary.total_paid)}
-            </p>
+            <Money
+              value={summary.total_paid}
+              className="block text-xl font-bold font-mono"
+              style={{ color: "var(--state-success)" }}
+            />
           </div>
           <div
             className="rounded-xl border p-5"
             style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
             }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Outstanding
             </p>
-            <p
-              className="text-xl font-bold font-mono"
+            <Money
+              value={summary.total_pending}
+              className="block text-xl font-bold font-mono"
               style={{
-                color: summary.total_pending > 0 ? "#fbbf24" : "#34d399",
+                color:
+                  summary.total_pending > 0
+                    ? "var(--state-warning)"
+                    : "var(--state-success)",
               }}
-            >
-              {formatIDR(summary.total_pending)}
-            </p>
+            />
           </div>
         </section>
       )}
@@ -169,18 +206,21 @@ export default function BillingPage() {
               key={invoice.id}
               className="rounded-lg border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
+                background: "var(--bz-card)",
+                borderColor: "var(--bz-border)",
               }}
             >
               <div className="flex items-start gap-3">
                 <div
                   className="p-2 rounded-md"
-                  style={{ background: "rgba(201,169,110,0.12)" }}
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--bz-copper) 12%, transparent)",
+                  }}
                 >
                   <FileText
                     className="w-5 h-5"
-                    style={{ color: "var(--bz-accent-warm)" }}
+                    style={{ color: "var(--bz-copper)" }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -197,9 +237,10 @@ export default function BillingPage() {
                     {invoice.practice_name} ({invoice.practice_category})
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold font-mono">
-                      {formatIDR(invoice.amount_idr)}
-                    </span>
+                    <Money
+                      value={invoice.amount_idr}
+                      className="text-lg font-bold font-mono"
+                    />
                     {invoice.generated_at && (
                       <CountdownChip date={invoice.generated_at} mode="age" />
                     )}
@@ -207,7 +248,7 @@ export default function BillingPage() {
                   {invoice.generated_at && (
                     <p
                       className="text-xs mt-0.5"
-                      style={{ color: "var(--bz-text-3)" }}
+                      style={{ color: "var(--bz-text-2)" }}
                     >
                       Issued:{" "}
                       {new Date(invoice.generated_at).toLocaleDateString(
@@ -237,15 +278,20 @@ export default function BillingPage() {
         )}
       </section>
 
-      {/* Help Notice */}
+      {/* Help Notice — small copper text reads --bz-copper-text (slice-1
+          daylight step, 5.05:1 on paper); --tx-secondary fallback keeps AA
+          until that merge lands. */}
       <section
         className="rounded-lg border p-4"
         style={{
-          background: "rgba(201,169,110,0.06)",
-          borderColor: "rgba(201,169,110,0.3)",
+          background: "color-mix(in srgb, var(--bz-copper) 6%, transparent)",
+          borderColor: "var(--bz-border-accent)",
         }}
       >
-        <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
+        <p
+          className="text-sm"
+          style={{ color: "var(--bz-copper-text, var(--tx-secondary))" }}
+        >
           For payment inquiries or to request a receipt, please contact your
           account manager or send us a message through Chat.
         </p>

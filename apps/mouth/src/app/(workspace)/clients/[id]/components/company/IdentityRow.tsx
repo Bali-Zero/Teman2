@@ -26,7 +26,8 @@ export function IdentityRow({ nib, npwp, companyType }: IdentityRowProps) {
       style={crystalCard}
     >
       {/* NIB */}
-      <div className="px-[22px] py-5 border-b md:border-b-0 md:border-r border-[var(--kbli-border)] flex flex-col gap-1 transition-colors hover:bg-white/[0.03] group cursor-pointer"
+      <div
+        className="px-[22px] py-5 border-b md:border-b-0 md:border-r border-[var(--kbli-border)] flex flex-col gap-1 transition-colors hover:bg-white/[0.03] group cursor-pointer"
         onClick={() => nib && copyToClipboard(nib)}
       >
         <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
@@ -44,7 +45,8 @@ export function IdentityRow({ nib, npwp, companyType }: IdentityRowProps) {
       </div>
 
       {/* NPWP */}
-      <div className="px-[22px] py-5 border-b md:border-b-0 md:border-r border-[var(--kbli-border)] flex flex-col gap-1 transition-colors hover:bg-white/[0.03] group cursor-pointer"
+      <div
+        className="px-[22px] py-5 border-b md:border-b-0 md:border-r border-[var(--kbli-border)] flex flex-col gap-1 transition-colors hover:bg-white/[0.03] group cursor-pointer"
         onClick={() => npwp && copyToClipboard(npwp)}
       >
         <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">

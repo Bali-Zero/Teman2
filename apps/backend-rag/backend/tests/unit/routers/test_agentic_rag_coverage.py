@@ -310,3 +310,102 @@ class TestGetConversationHistory:
             db_pool=pool,
         )
         assert result == []
+
+
+# ============================================================================
+# query_agentic_rag — ab_config.rerank honesty (2026-07-18)
+#
+# `rerank_config` is the A/B experiment's randomly-assigned INTENDED variant
+# (e.g. "with_rerank" -> {"use_reranking": True}) — it is never actually
+# wired into orchestrator.process_query and does not reflect whether
+# reranking really ran. search_service._init_reranker() used to hardcode
+# enabled=True regardless of settings.enable_reranker, so a query could
+# report "with_rerank" here while the cross-encoder silently failed to
+# import sentence_transformers and returned zero scores. debug_info must
+# also carry the REAL global on/off switch.
+# ============================================================================
+
+
+class TestQueryAgenticRagRerankHonesty:
+    def _mock_result(self) -> MagicMock:
+        result = MagicMock()
+        result.answer = "answer"
+        result.sources = []
+        result.document_count = 0
+        result.timings = {"total": 0.1}
+        result.route_used = "flash"
+        result.tools_called = []
+        result.model_used = "gemini-3-flash"
+        result.cache_hit = False
+        result.abstain = False
+        result.abstain_reason = None
+        result.evidence_score = 0.9
+        result.workflow = None
+        result.reasoning = None
+        result.entities = {}
+        result.confidence_score = 0.9
+        return result
+
+    def _mock_ab_manager(self) -> MagicMock:
+        manager = MagicMock()
+        manager.assign_variant.return_value = "with_rerank"
+        manager.get_variant_config.side_effect = lambda exp, variant: (
+            {"use_reranking": True, "top_k": 5} if exp == "reranking_on_off" else {}
+        )
+        manager.metrics_tracker.record_query_metrics = AsyncMock()
+        return manager
+
+    @pytest.mark.asyncio
+    async def test_reports_actual_state_false_even_when_ab_says_with_rerank(
+        self, monkeypatch
+    ):
+        """Guilt: A/B bucket says 'with_rerank' but the real global switch
+        is off — debug_info must surface the real state, not just the A/B
+        intent."""
+        from backend.app.routers import agentic_rag as router_module
+
+        orchestrator = AsyncMock()
+        orchestrator.process_query = AsyncMock(return_value=self._mock_result())
+
+        monkeypatch.setattr(
+            router_module, "get_ab_test_manager", lambda: self._mock_ab_manager()
+        )
+        monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
+        monkeypatch.setattr(router_module.settings, "enable_reranker", False)
+
+        request = router_module.AgenticQueryRequest(query="what is KITAS?")
+        response = await router_module.query_agentic_rag(
+            request=request,
+            current_user=None,
+            orchestrator=orchestrator,
+            db_pool=None,
+        )
+
+        rerank_debug = response.debug_info["ab_config"]["rerank"]
+        assert rerank_debug["use_reranking"] is True  # A/B intent preserved
+        assert rerank_debug["reranker_actually_enabled"] is False  # real state
+
+    @pytest.mark.asyncio
+    async def test_reports_actual_state_true_when_setting_enabled(self, monkeypatch):
+        """Innocence: when settings.enable_reranker=True, the honesty field
+        reflects that too — behavior for the True case is unchanged."""
+        from backend.app.routers import agentic_rag as router_module
+
+        orchestrator = AsyncMock()
+        orchestrator.process_query = AsyncMock(return_value=self._mock_result())
+
+        monkeypatch.setattr(
+            router_module, "get_ab_test_manager", lambda: self._mock_ab_manager()
+        )
+        monkeypatch.setattr(router_module, "_lf_enabled", lambda: False)
+        monkeypatch.setattr(router_module.settings, "enable_reranker", True)
+
+        request = router_module.AgenticQueryRequest(query="what is KITAS?")
+        response = await router_module.query_agentic_rag(
+            request=request,
+            current_user=None,
+            orchestrator=orchestrator,
+            db_pool=None,
+        )
+
+        assert response.debug_info["ab_config"]["rerank"]["reranker_actually_enabled"] is True

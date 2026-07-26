@@ -61,7 +61,7 @@ def retry_qdrant(max_retries=3, delay=2):
 import asyncpg
 import httpx
 
-from backend.llm.genai_client import get_genai_client
+from backend.llm.genai_client import GenAIClient, get_genai_client
 from backend.llm.ollama_client import ollama_chat_kg
 
 try:
@@ -927,7 +927,12 @@ async def main():
                 return
         else:
             try:
-                gemini = get_genai_client()
+                # Prefer a KG-dedicated key (KG_GOOGLE_API_KEY) so this feeder can
+                # be isolated from the WhatsApp bot's shared GOOGLE_API_KEY without
+                # touching bot code. Falls back to the shared settings chain (same
+                # as get_genai_client()) until KG_GOOGLE_API_KEY is set anywhere.
+                kg_api_key = os.environ.get("KG_GOOGLE_API_KEY")
+                gemini = GenAIClient(api_key=kg_api_key) if kg_api_key else get_genai_client()
                 if getattr(gemini, "is_available", True):
                     logger.info("✅ GenAI Client initialized")
                 else:

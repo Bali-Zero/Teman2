@@ -67,6 +67,8 @@ jobs:
               scripts/tests/test_adversarial_review_gate.py|\
               scripts/tests/test_jules_dispatch.py|\
               scripts/tests/test_codex_autofix_selector.py|\
+              scripts/codex_tri_llm_review.py|\
+              scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
               infra/doc-lint/*|\
@@ -84,6 +86,18 @@ jobs:
               scripts/prepush_classify.py|\
               scripts/tests/test_prepush_classify.py|\
               .husky/pre-push|\
+              scripts/docs_audit.py|\
+              scripts/docs_inventory_refresh_liveness.py|\
+              scripts/docs_inventory_regen.sh|\
+              scripts/tests/test_docs_audit.py|\
+              scripts/tests/test_docs_inventory_refresh_liveness.py|\
+              scripts/tests/test_docs_inventory_regen.py|\
+              scripts/lib/fly_credential.sh|\
+              scripts/test_fly_credential.sh|\
+              scripts/fly-pg-backup.sh|\
+              scripts/wr2-cron-wrapper.sh|\
+              scripts/cron-wrapper.sh|\
+              scripts/tests/test_fly_backup_timeouts.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -94,7 +108,7 @@ jobs:
           echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
           echo "::notice::immune-relevant=$RELEVANT ($(printf '%s\n' "$CHANGED" | grep -c . ) changed files)"
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -112,6 +126,7 @@ jobs:
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
+            scripts/tests/test_tri_llm_claude_seat_token.py \
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
@@ -119,6 +134,10 @@ jobs:
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
             scripts/tests/test_prepush_classify.py \
+            scripts/tests/test_docs_audit.py \
+            scripts/tests/test_docs_inventory_refresh_liveness.py \
+            scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_fly_backup_timeouts.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -129,6 +148,15 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # W106: shipped with #3176 and named by NO workflow until now, so its 24 checks
+          # ran nowhere — a test no workflow names is not coverage, it only looks like it.
+          # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
+          # deleted corpus must go red rather than quietly pass.
+          bash scripts/test_fly_credential.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

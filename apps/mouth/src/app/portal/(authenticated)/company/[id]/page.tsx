@@ -7,6 +7,15 @@
  * (imported from components/portal/company/*). Staff-only edit affordances
  * (EditCompanyModal, DocUpload) are intentionally omitted: shareholders see
  * the same rich view but cannot mutate.
+ *
+ * WS3 slice 9 (GARUDA Day Edition, 2026-07-24): license cards read the theme
+ * surface (--bz-card / --bz-border + concept .panel shadow) and license
+ * statuses reuse the shared StatusBadge on the semantic --state-* tokens
+ * (was hardcoded neon rgba tints + hex fg — 1.7-2.5:1 on operative-light
+ * paper). The editorial components themselves (EditorialHero, FactBoxes,
+ * PeopleColumn, …) were moved to the same state/copper tokens in this slice —
+ * they are shared with the workspace CompanyTab, and on dark the state
+ * primitives reproduce the previous neon hues.
  */
 
 import React, { useEffect, useState } from "react";
@@ -21,6 +30,7 @@ import {
   PortalBackButton,
   PortalEmptyState,
   PortalPageLoader,
+  StatusBadge,
 } from "@/components/portal";
 
 // Above-fold components: eager (first paint)
@@ -281,8 +291,13 @@ export default function CompanyDetailPage() {
                 key={lic.id}
                 className="rounded-xl border p-4"
                 style={{
-                  background: "rgba(30,30,35,0.7)",
-                  borderColor: "rgba(255,255,255,0.05)",
+                  /* WS3 slice 9: theme surface instead of the dark-only
+                     rgba(30,30,35,0.7) glass + white hairline; shadow =
+                     concept .panel (soft navy on paper, near-invisible on
+                     dark). */
+                  background: "var(--bz-card)",
+                  borderColor: "var(--bz-border)",
+                  boxShadow: "0 14px 34px rgba(22, 33, 58, 0.07)",
                   backdropFilter: "blur(24px)",
                 }}
               >
@@ -298,25 +313,11 @@ export default function CompanyDetailPage() {
                         ` · ${lic.daysRemaining}d left`}
                     </p>
                   </div>
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
-                    style={{
-                      background:
-                        lic.status === "active"
-                          ? "rgba(52,211,153,0.1)"
-                          : lic.status === "expiring"
-                            ? "rgba(251,191,36,0.1)"
-                            : "rgba(248,113,113,0.1)",
-                      color:
-                        lic.status === "active"
-                          ? "#34d399"
-                          : lic.status === "expiring"
-                            ? "#fbbf24"
-                            : "#f87171",
-                    }}
-                  >
-                    {lic.status}
-                  </span>
+                  {/* Shared StatusBadge: active/expiring/expired are all in
+                      its STATUS_MAP and render the semantic --state-* tokens
+                      with the AA-verified 12% color-mix tint (was hardcoded
+                      neon rgba + hex fg — 1.7-2.5:1 on paper). */}
+                  <StatusBadge status={lic.status} />
                 </div>
               </div>
             ))}

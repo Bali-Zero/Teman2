@@ -11,6 +11,8 @@ def format_search_results(
     raw_results: dict[str, Any],
     collection_name: str,
     primary_collection: str | None = None,
+    *,
+    query: str | None = None,
 ) -> list[dict[str, Any]]:
     """Format raw vector database results with score boosting and metadata enrichment.
 
@@ -35,6 +37,10 @@ def format_search_results(
             - ids (list[str]): Document IDs
         collection_name: Source collection name for this batch
         primary_collection: If set, boost results from this collection
+        query: Original user query text. Gates the pricing boost (see
+            "Pricing boost" below) — omit only for callers that don't have
+            the raw query in scope, which keeps the pre-gate behavior
+            (boost always applied) for backwards compatibility.
 
     Returns:
         List of formatted result dicts:
@@ -62,6 +68,12 @@ def format_search_results(
         >>> print(results[0]["score"])  # 0.9185 (base + pricing boost)
     """
     from backend.app.core.constants import SearchConstants
+    from backend.services.misc.pricing_intent import has_pricing_intent
+
+    # Gate the pricing boost on actual price-intent (scar #3, guard-over-match
+    # discipline): query=None means the caller can't tell us the raw query —
+    # keep the old unconditional-boost behavior rather than silently starving it.
+    apply_pricing_boost = query is None or has_pricing_intent(query)
 
     formatted_results = []
 
@@ -78,7 +90,7 @@ def format_search_results(
         if primary_collection and collection_name == primary_collection:
             score = min(SearchConstants.MAX_SCORE, score * SearchConstants.PRIMARY_COLLECTION_BOOST)
 
-        if collection_name == "bali_zero_pricing_hybrid":
+        if collection_name == "bali_zero_pricing_hybrid" and apply_pricing_boost:
             score = min(SearchConstants.MAX_SCORE, score + SearchConstants.PRICING_SCORE_BOOST)
 
         if collection_name == "bali_zero_team":

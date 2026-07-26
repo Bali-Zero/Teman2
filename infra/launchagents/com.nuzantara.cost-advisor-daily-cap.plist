@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.cost-advisor-daily-cap</string>
+	<!--
+	  Routed through wr2-cron-wrapper.sh (not bash -lc + bare venv python):
+	  the login-shell path let pydantic settings resolve DATABASE_URL from a
+	  stale source and the job died daily with InvalidPasswordError for
+	  backend_rag_v2 (observed 2026-07-18). The wrapper sources
+	  ~/.nuzantara-secrets.env and forces DATABASE_URL=DATABASE_URL_LOCAL —
+	  the same live combo every healthy WR2 cron already uses (W87 class:
+	  one true way to reach the pg-proxy).
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+		<string>backend.scripts.cost_advisor_cli</string>
+		<string>--check-daily-cap</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/Library/Logs/cost-advisor-daily.err</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/Library/Logs/cost-advisor-daily.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>8</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+</dict>
+</plist>

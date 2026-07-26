@@ -112,6 +112,22 @@ One-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     them with PII-safe transport context (direct/group + identity policy) without
     copying raw group JIDs, raw group subjects, or extra phone values.
 
+``--backfill-identity`` (intake-v2 PR-2, 2026-07-18)
+    Stamps ``client_id_hint`` on already-enqueued whatsapp docs that carry a
+    ``sender_phone`` but no hint, via the same ``contact_autocreate.
+    resolve_or_create_contact`` primitive the live entry points use. Scoped to
+    official-line rows unconditionally (the resolver's own roster gate
+    protects them) and to wa-mirror rows ONLY when ``source_context.
+    routing_identity_policy = 'sender_phone_enabled'`` (excludes group/
+    internal-forward/untagged rows — run ``--scrub-group-phone`` and
+    ``--backfill-source-context`` first; this mode runs after them in
+    ``main()`` for that reason). Dry-run is a GUARANTEED zero-write (the
+    resolver's CREATE branch is force-disabled, not just env-gated). Does
+    NOT retroactively re-route an already-built stale proposal — reports
+    ``stale_proposals_need_reprocess`` and expects a follow-up ``--reprocess``
+    pass for that subset. Batched via ``--identity-limit``, resumable via
+    ``--identity-after-id``.
+
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
 
@@ -143,6 +159,7 @@ import httpx
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.classify import (
     VISION_CLASSIFY_CONF,
     TEXT_LLM_CLASSIFY_CONF,
@@ -240,6 +257,250 @@ UPDATE intake_queue
        last_error      = NULL,
        pipeline_version = $2
  WHERE id = ANY($1::bigint[])
+"""
+
+# --reroute-drive-folder: Drive 0-candidate rows re-routed through the fixed
+# m227 multi-segment folder matcher (PR #2664). ROUTE-ONLY resume: unlike
+# REPROCESS_RESET_SQL this MUST NOT wipe stage_output — 97.7% of these rows'
+# blobs are retention-evicted, so the saved OCR/extract fields are the ONLY
+# copy; a full re-run would fail at preprocess AND destroy them. Resuming at
+# status='validated' makes the worker run exactly one stage (route → fase4
+# resolve_entity with source_path) against the preserved fields.
+REROUTE_DRIVE_FOLDER_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
+           p.entity_resolution AS entity_resolution
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE q.source = 'drive'
+       AND q.source_path IS NOT NULL
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND (entity_resolution->>'decision') = 'NO_MATCH'
+   AND jsonb_array_length(
+         COALESCE(entity_resolution->'candidates', '[]'::jsonb)) = 0
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
+# Reset-eligibility lock (Codex round-2, m248): a queue row actively LEASED by
+# the worker must never be yanked mid-flight, and the whole
+# select→supersede→reset must be one transaction. FOR UPDATE SKIP LOCKED makes
+# concurrent reroute invocations safe too.
+REROUTE_ELIGIBLE_LOCK_SQL = """
+SELECT id
+  FROM intake_queue
+ WHERE id = ANY($1::bigint[])
+   AND (lease_owner IS NULL OR lease_expires_at <= now())
+ FOR UPDATE SKIP LOCKED
+"""
+
+# Supersede is a TWO-STEP under one transaction (Codex round-3): first the
+# EXACT selected latest proposal, by id — its RETURNING confirms atomically
+# that it was still review_pending (a reviewer claim in the gap = no
+# confirmation = the queue row is left completely alone). Only then the
+# confirmed queue rows get their OLDER review_pending siblings swept (an
+# older sibling must never, alone, confirm a reset: the reviewer may be
+# working the newer claimed one).
+REROUTE_SUPERSEDE_SELECTED_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE id = ANY($1::bigint[])
+   AND status = 'review_pending'
+RETURNING id, queue_id
+"""
+
+# Sibling sweep is bounded to ids OLDER than the confirmed selected proposal
+# (id < pid): a proposal born between SELECT and sweep is never touched. An
+# older sibling that got review_claimed in the gap is skipped by the status
+# filter and stays with its reviewer — the writer's own FOR-UPDATE
+# revalidation guards the eventual commit against the fresh proposal.
+REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal p
+   SET status = 'superseded'
+  FROM (SELECT unnest($1::bigint[]) AS qid, unnest($2::bigint[]) AS pid) sel
+ WHERE p.queue_id = sel.qid
+   AND p.id < sel.pid
+   AND p.status = 'review_pending'
+"""
+
+REROUTE_DRIVE_FOLDER_RESET_SQL = """
+UPDATE intake_queue
+   SET status           = 'validated',
+       stage            = 'validate',
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = now(),
+       last_error       = NULL,
+       pipeline_version = $2,
+       updated_at       = now()
+ WHERE id = ANY($1::bigint[])
+"""
+
+# m248: route-only resume of review_pending rows whose extracted npwp is a
+# full 15/16-digit value — the person matcher now consults clients.npwp
+# (previously invisible locally; 291 alive clients carry one after the
+# 2026-07-18 snapshot refresh). No source / candidate-count filter: the docs
+# that can gain the npwp strong-id signal already HAVE folder/fuzzy candidates
+# (measured: 3/131 match a client; 0 in the 0-candidate pool). Reuses the
+# folder-mode supersede+reset SQL (both are generic by queue_id; the reset
+# NEVER touches stage_output).
+REROUTE_NPWP_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
+           COALESCE(
+             p.routing->'fields'->'npwp_number'->>'value',
+             p.routing->'fields'->>'npwp_number',
+             q.stage_output->'extract'->'fields'->'npwp_number'->>'value',
+             q.stage_output->'extract'->'fields'->>'npwp_number'
+           ) AS npwp_raw
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND npwp_raw IS NOT NULL
+   AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) IN (15, 16)
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
+# Route-only resume for proposals that can benefit from a passport/KITAS
+# written by intake_identity_backfill.py. The scope deliberately requires:
+#   * the latest proposal is still review_pending;
+#   * its existing candidate already points at the backfilled client;
+#   * the document carries the same kind of identity field that was backfilled;
+#   * the current client value and non-reverted provenance still exist.
+# This avoids rerouting every pending document for a backfilled client while
+# preserving stage_output for retention-evicted blobs. Malformed historical
+# JSON is treated as ineligible instead of aborting the whole dry-run.
+REROUTE_IDENTITY_BACKFILL_SELECT_SQL = """
+WITH backfilled_clients AS (
+    SELECT *
+      FROM (
+        SELECT id,
+               (
+                 NULLIF(btrim(passport_number), '') IS NOT NULL
+                 AND jsonb_typeof(
+                       custom_fields#>'{identity_backfill,passport_number}'
+                     ) = 'object'
+                 AND custom_fields#>>'{identity_backfill,passport_number,reverted}'
+                       IS DISTINCT FROM 'true'
+               ) AS has_backfilled_passport,
+               (
+                 NULLIF(btrim(kitas_number), '') IS NOT NULL
+                 AND jsonb_typeof(
+                       custom_fields#>'{identity_backfill,kitas_number}'
+                     ) = 'object'
+                 AND custom_fields#>>'{identity_backfill,kitas_number,reverted}'
+                       IS DISTINCT FROM 'true'
+               ) AS has_backfilled_kitas
+          FROM clients
+         WHERE deleted_at IS NULL
+      ) flags
+     WHERE has_backfilled_passport OR has_backfilled_kitas
+),
+latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id,
+           q.id AS queue_id,
+           p.status AS proposal_status,
+           p.entity_resolution AS entity_resolution,
+           (
+             CASE
+               WHEN jsonb_typeof(q.stage_output->'extract'->'fields') = 'object'
+                 THEN q.stage_output->'extract'->'fields'
+               ELSE '{}'::jsonb
+             END
+             ||
+             CASE
+               WHEN jsonb_typeof(p.routing->'fields') = 'object'
+                 THEN p.routing->'fields'
+               ELSE '{}'::jsonb
+             END
+           ) AS extracted_fields
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND EXISTS (
+         SELECT 1
+           FROM jsonb_array_elements(
+                  CASE
+                    WHEN jsonb_typeof(entity_resolution->'candidates') = 'array'
+                      THEN entity_resolution->'candidates'
+                    ELSE '[]'::jsonb
+                  END
+                ) AS cand
+           JOIN backfilled_clients bc
+             ON bc.id = CASE
+                  WHEN (cand->>'id') ~ '^[0-9]+$'
+                    THEN (cand->>'id')::bigint
+                  ELSE NULL
+                END
+          WHERE cand->>'table' = 'clients'
+            AND COALESCE(cand->>'method', '')
+                  !~ '(^|[+])(passport_number|kitas_number)([+]|$)'
+            AND (
+              (
+                bc.has_backfilled_passport
+                AND EXISTS (
+                  SELECT 1
+                    FROM jsonb_each(extracted_fields) AS field(key, value)
+                   WHERE field.key IN ('passport_no', 'passport_number')
+                     AND NULLIF(
+                           btrim(
+                             CASE
+                               WHEN jsonb_typeof(field.value) = 'object'
+                                 THEN field.value->>'value'
+                               WHEN jsonb_typeof(field.value) IN ('string', 'number')
+                                 THEN field.value#>>'{}'
+                               ELSE NULL
+                             END
+                           ),
+                           ''
+                         ) IS NOT NULL
+                )
+              )
+              OR
+              (
+                bc.has_backfilled_kitas
+                AND EXISTS (
+                  SELECT 1
+                    FROM jsonb_each(extracted_fields) AS field(key, value)
+                   WHERE field.key IN (
+                           'kitas_no', 'kitas_number', 'itap_no', 'itk_no',
+                           'stay_permit_no'
+                         )
+                     AND NULLIF(
+                           btrim(
+                             CASE
+                               WHEN jsonb_typeof(field.value) = 'object'
+                                 THEN field.value->>'value'
+                               WHEN jsonb_typeof(field.value) IN ('string', 'number')
+                                 THEN field.value#>>'{}'
+                               ELSE NULL
+                             END
+                           ),
+                           ''
+                         ) IS NOT NULL
+                )
+              )
+            )
+       )
+ ORDER BY queue_id
+ LIMIT $1
 """
 
 # Same v2 reset contract, but for targeted retry lanes that must be observable
@@ -600,6 +861,49 @@ SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
          WHERE q.source_ref = 'wa-mirror:' || w.baileys_message_id
    )
  ORDER BY w.id ASC
+"""
+
+# intake-v2 PR-2 (2026-07-18): already-enqueued whatsapp docs that carry a
+# sender_phone but never got a client_id_hint stamped — the identity
+# backfill population. Batched (LIMIT $2) + resumable (id > $1, the caller
+# passes the last-processed id back in as --identity-after-id).
+#
+# Scope (P0-2 adversarial-review fix): source='whatsapp' + a real sender_phone
+# is NOT enough on its own — historical wa-mirror rows can carry a leaked
+# sender_phone from BEFORE the group/internal-sender suppression guards
+# existed (that is exactly what --scrub-group-phone exists to clean; its
+# SELECT below proves such rows exist). Restricting to
+# source_context->>'routing_identity_policy' = 'sender_phone_enabled' for
+# wa-mirror rows closes that gap: a group row's policy is
+# 'disabled_for_group'/'group_participant_phone_suppressed', an internal-
+# forward row's is 'disabled_internal_sender'/'internal_sender_suppressed',
+# and a row that predates source_context entirely has NO policy at all
+# (NULL != 'sender_phone_enabled') — none of those match. Official-line rows
+# (source_ref NOT LIKE 'wa-mirror:%', i.e. 'whatsapp-live:*') don't carry a
+# wa-mirror source_context at all; their ONLY identity risk is a staff/team
+# phone, which resolve_or_create_contact ALWAYS checks first (roster gate),
+# so they are safe to include unconditionally.
+BACKFILL_IDENTITY_SELECT_SQL = """
+SELECT id, sender_phone
+  FROM intake_queue
+ WHERE source = 'whatsapp'
+   AND sender_phone IS NOT NULL
+   AND client_id_hint IS NULL
+   AND id > $1
+   AND (
+        source_ref NOT LIKE 'wa-mirror:%'
+     OR source_context->>'routing_identity_policy' = 'sender_phone_enabled'
+   )
+ ORDER BY id ASC
+ LIMIT $2
+"""
+
+BACKFILL_IDENTITY_APPLY_SQL = """
+UPDATE intake_queue
+   SET client_id_hint = $2,
+       updated_at = now()
+ WHERE id = $1
+   AND client_id_hint IS NULL
 """
 
 SCRUB_GROUP_PHONE_SELECT_SQL = """
@@ -1896,6 +2200,188 @@ async def run_reprocess(pool: asyncpg.Pool, pipeline_version: str, apply: bool) 
     return counts
 
 
+async def _run_route_only_reroute(
+    pool: asyncpg.Pool,
+    *,
+    mode: str,
+    select_sql: str,
+    pipeline_version: str,
+    limit: int,
+    apply: bool,
+) -> dict[str, int]:
+    """Shared route-only reroute engine (m227 folder / m248 npwp).
+
+    One transaction end-to-end (Codex round-2): the SELECT, the
+    lease-eligibility lock (FOR UPDATE SKIP LOCKED — a row the worker is
+    actively processing is skipped, never yanked), the proposal supersede and
+    the queue reset all commit or roll back together. stage_output is NEVER
+    touched (locked by contract test).
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            rows = await conn.fetch(select_sql, limit)
+            queue_ids = sorted({r["queue_id"] for r in rows})
+
+            counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
+            if not apply:
+                logger.info(
+                    "[%s][DRY-RUN] would supersede %d proposals and resume %d "
+                    "queue rows at route (pipeline_version=%s, limit=%d) "
+                    "(pass --apply to execute)",
+                    mode, counts["proposals"], counts["queue_rows"],
+                    pipeline_version, limit,
+                )
+                return counts
+
+            eligible_rows = await conn.fetch(REROUTE_ELIGIBLE_LOCK_SQL, queue_ids)
+            eligible = set(r["id"] for r in eligible_rows)
+            counts["lease_skipped"] = len(queue_ids) - len(eligible)
+
+            # Confirm-supersede the EXACT selected latest proposals, by id.
+            # A proposal a reviewer claimed in the gap (review_pending →
+            # review_claimed) returns nothing → its queue row is left
+            # completely alone (no sibling sweep, no reset).
+            selected_pids = sorted(
+                r["proposal_id"] for r in rows if r["queue_id"] in eligible
+            )
+            confirmed = await conn.fetch(
+                REROUTE_SUPERSEDE_SELECTED_SQL, selected_pids
+            )
+            superseded_qids = sorted({r["queue_id"] for r in confirmed})
+            counts["claim_skipped"] = len(eligible) - len(superseded_qids)
+
+            # Sweep OLDER review_pending siblings only on confirmed rows
+            # (id-bounded below each confirmed proposal), so the review feed
+            # doesn't keep stale duplicates of what the worker re-proposes.
+            confirmed_pids = [r["id"] for r in confirmed]
+            confirmed_qids_arr = [r["queue_id"] for r in confirmed]
+            sibling_swept = await conn.execute(
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL,
+                confirmed_qids_arr,
+                confirmed_pids,
+            )
+            reset = await conn.execute(
+                REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids, pipeline_version
+            )
+        counts["superseded"] = len(confirmed)
+        counts["sibling_swept"] = (
+            int(sibling_swept.split()[-1]) if sibling_swept else 0
+        )
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[%s] superseded=%d proposals, resumed=%d queue rows at route "
+        "(pipeline_version=%s, lease_skipped=%d, claim_skipped=%d)",
+        mode, counts.get("superseded", 0), counts.get("reset", 0),
+        pipeline_version, counts.get("lease_skipped", 0),
+        counts.get("claim_skipped", 0),
+    )
+    return counts
+
+
+async def run_reroute_drive_folder(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route Drive 0-candidate proposals through the fixed m227 folder matcher.
+
+    Route-only resume (status='validated', stage_output PRESERVED — the saved
+    OCR/extract fields are the only copy left after blob retention). Supersedes
+    the stale NO_MATCH proposals and lets the live worker re-run fase-4
+    resolve_entity with source_path, so client folders at any depth (PR #2664)
+    produce LINK_CANDIDATE/AMBIGUOUS proposals. Candidates feed the normal
+    review tier; any auto-attach still requires the concordance gates.
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-drive-folder",
+        select_sql=REROUTE_DRIVE_FOLDER_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
+async def run_reroute_npwp(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route review_pending rows carrying a full extracted npwp (m248).
+
+    Route-only resume, identical contract to --reroute-drive-folder
+    (stage_output PRESERVED, supersede stale proposals, worker re-runs fase-4
+    where _match_person_strong now consults clients.npwp). A unique npwp hit
+    adds a CONF_STRONG_EXACT candidate; duplicate-npwp and person/company
+    npwp collisions degrade to AMBIGUOUS downstream. NOTE: the live worker
+    runs with the auto-attach killswitches ON — an AUTO_ATTACH decision plus
+    phone/subject-name concordance CAN commit (reversible via
+    intake_commit_audit + rollback_commit).
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-npwp",
+        select_sql=REROUTE_NPWP_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
+async def run_reroute_identity_backfill(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route stale proposals that can use a backfilled passport/KITAS.
+
+    This reuses the route-only engine: saved extraction remains intact while
+    fase-4 entity resolution runs again. GATE-11 keeps an explicitly
+    unverified backfill at LINK_CANDIDATE; a backfill already promoted by a
+    real committed document follows the normal auto-attach gates. This mode
+    does not bypass either path.
+    """
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-identity-backfill",
+        select_sql=REROUTE_IDENTITY_BACKFILL_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
+    )
+
+
+UNDELIVERED_REPORT_SQL = """
+SELECT a.id AS audit_id, a.proposal_id, a.queue_id, a.client_id, a.doc_id
+  FROM intake_commit_audit a
+ WHERE a.outcome = 'committed'
+   AND a.dry_run = false
+   AND a.plan->'crm_push'->>'status' = 'identity_unresolved'
+ ORDER BY a.id
+"""
+
+
+async def run_report_undelivered(pool: asyncpg.Pool) -> dict[str, int]:
+    """Operator consumer for the ``intake.delivery.identity_unresolved`` marker.
+
+    Read-only, integer ids only (Law 2). Lists committed documents whose Kita
+    delivery failed identity resolution — the rows to redeliver AFTER the
+    identity mapping (client phone / dedup) is fixed. Blind auto-redelivery
+    stays forbidden by design: a retry cannot succeed until the mapping itself
+    changes.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(UNDELIVERED_REPORT_SQL)
+    # Integer ids ONLY (Law 2): committed_by carries the reviewer's e-mail on
+    # HITL commits — it must never reach report/log output (Codex r7 F8-NIT).
+    for r in rows:
+        logger.info(
+            "[report-undelivered] audit=%s proposal=%s queue=%s client=%s doc=%s",
+            r["audit_id"],
+            r["proposal_id"],
+            r["queue_id"],
+            r["client_id"],
+            r["doc_id"],
+        )
+    logger.info("[report-undelivered] total=%d (full list, no display cap)", len(rows))
+    return {"undelivered": len(rows)}
+
+
 async def run_revive_stub(
     pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
 ) -> dict[str, int]:
@@ -2142,6 +2628,157 @@ async def run_backfill(
             counts["already"],
             counts["blob_missing"],
             counts["errors"],
+        )
+    return counts
+
+
+async def _count_stale_proposals(pool: asyncpg.Pool, queue_ids: list[int]) -> int:
+    """Among these queue rows, how many ALREADY have a review_pending proposal
+    stuck at NO_MATCH/AMBIGUOUS (P0-3 adversarial-review finding).
+
+    ``route_stage`` never reads ``client_id_hint`` (verified: zero references
+    across routing.py/auto_attach.py/gate_evaluator.py/writer.py/worker.py) —
+    stamping the hint alone does NOT retroactively re-run a proposal that was
+    already built before the client existed. This is read-only visibility so
+    operators know which stamped rows need a FOLLOW-UP ``--reprocess`` pass
+    (the existing, tested mode that supersedes + resets exactly this bucket)
+    rather than silently believing the stamp alone fixed them.
+    """
+    if not queue_ids:
+        return 0
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            """
+            SELECT count(DISTINCT queue_id) FROM document_routing_proposal
+             WHERE queue_id = ANY($1::bigint[])
+               AND status = 'review_pending'
+               AND (entity_resolution->>'decision') IN ('NO_MATCH', 'AMBIGUOUS')
+            """,
+            queue_ids,
+        )
+
+
+async def run_backfill_identity(
+    pool: asyncpg.Pool,
+    after_id: int,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Stamp client_id_hint on already-enqueued whatsapp docs via sender_phone.
+
+    intake-v2 PR-2 (2026-07-18): identity capture at the door (contact_autocreate)
+    was wired into the live entry points AFTER a lot of whatsapp intake_queue rows
+    already existed with a sender_phone but no client_id_hint — a resolvable gap,
+    not a missing-blob one. This mode re-runs the SAME resolve_or_create_contact
+    primitive over that backlog, batched (LIMIT) + resumable (id > after_id).
+
+    Dry-run counts candidates by resolution kind only and is GUARANTEED
+    zero-write: ``force_no_create=True`` makes the resolver's CREATE branch
+    structurally unreachable regardless of INTAKE_AUTOCREATE_CONTACT_ENABLED
+    (P0-1 adversarial-review fix — previously a dry-run with the env flag
+    armed silently created real clients rows before the ``if not apply``
+    gate was ever checked). --apply stamps client_id_hint for every kind
+    that yields a client_id (existing match, or a newly auto-created contact
+    if the flag is armed) — the kill-switch inside resolve_or_create_contact
+    is the sole gate, never re-implemented here. Never overwrites a
+    client_id_hint that is already set (WHERE client_id_hint IS NULL in both
+    the SELECT and the UPDATE) — verified per-row (P1: only counts ``stamped``
+    when the UPDATE actually touched a row, since a concurrent writer could
+    race the same row to a non-NULL hint between our SELECT and UPDATE).
+
+    IMPORTANT LIMITATION (P0-3, adversarial review, documented not silently
+    fixed): stamping client_id_hint does NOT retroactively re-route a queue
+    row whose ``document_routing_proposal`` was already built before the
+    client existed — ``route_stage`` never reads client_id_hint (the hint is
+    forward-looking future insurance + a candidate signal for resolve_entity,
+    see ``routing.resolve_entity``'s client_id_hint parameter). This function
+    reports ``stale_proposals_need_reprocess`` — the count of stamped rows
+    whose existing proposal is stuck at NO_MATCH/AMBIGUOUS — as an explicit
+    follow-up signal; run ``--reprocess`` afterward to actually re-route them.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(BACKFILL_IDENTITY_SELECT_SQL, after_id, limit)
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "by_kind": {},
+        "stamped": 0,
+        "errors": 0,
+        "max_id_seen": after_id,
+        "stale_proposals_need_reprocess": 0,
+    }
+    stamped_queue_ids: list[int] = []
+
+    for r in rows:
+        queue_id = int(r["id"])
+        counts["max_id_seen"] = max(counts["max_id_seen"], queue_id)
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                resolution = await resolve_or_create_contact(
+                    conn, sender_phone=r["sender_phone"], force_no_create=not apply,
+                )
+        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            counts["errors"] += 1
+            logger.error(
+                "[backfill-identity] resolver failed for queue row %d, error_type=%s",
+                queue_id, type(exc).__name__,
+            )
+            continue
+
+        counts["by_kind"][resolution.kind] = counts["by_kind"].get(resolution.kind, 0) + 1
+        if resolution.client_id is None:
+            continue
+        if not apply:
+            continue
+        try:
+            async with pool.acquire() as conn:
+                status = await conn.execute(
+                    BACKFILL_IDENTITY_APPLY_SQL, queue_id, resolution.client_id
+                )
+        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            counts["errors"] += 1
+            logger.error(
+                "[backfill-identity] UPDATE failed for queue row %d, error_type=%s",
+                queue_id, type(exc).__name__,
+            )
+            continue
+        # asyncpg execute() returns a status tag e.g. "UPDATE 1"/"UPDATE 0" —
+        # only count a REAL write (P1: a concurrent writer could have raced
+        # this row to a non-NULL client_id_hint between our SELECT and this
+        # UPDATE; the WHERE client_id_hint IS NULL guard would then affect
+        # zero rows and reporting "stamped" would be a lie).
+        if status == "UPDATE 1":
+            counts["stamped"] += 1
+            stamped_queue_ids.append(queue_id)
+
+    if apply and stamped_queue_ids:
+        counts["stale_proposals_need_reprocess"] = await _count_stale_proposals(
+            pool, stamped_queue_ids
+        )
+
+    if not apply:
+        # force_no_create=True during dry-run (P0-1) means a phone that WOULD
+        # auto-create if --apply were passed is indistinguishable here from
+        # one where the killswitch is genuinely off — both report "disabled".
+        # would_stamp is therefore a FLOOR (existing-match only), not the full
+        # count --apply would produce; this is the honest price of a dry-run
+        # that is actually guaranteed never to write.
+        logger.info(
+            "[backfill-identity][DRY-RUN] candidates=%d (id > %d, limit=%d) by_kind=%s "
+            "would_stamp_at_least=%d errors=%d — resume with --identity-after-id %d "
+            "(pass --apply to execute; 'disabled' may include phones that would "
+            "auto-create under --apply if the flag is armed)",
+            counts["candidates"], after_id, limit, counts["by_kind"],
+            counts["by_kind"].get("existing", 0),
+            counts["errors"], counts["max_id_seen"],
+        )
+    else:
+        logger.info(
+            "[backfill-identity] candidates=%d by_kind=%s stamped=%d errors=%d "
+            "stale_proposals_need_reprocess=%d — resume with --identity-after-id %d",
+            counts["candidates"], counts["by_kind"], counts["stamped"],
+            counts["errors"], counts["stale_proposals_need_reprocess"],
+            counts["max_id_seen"],
         )
     return counts
 
@@ -3013,9 +3650,72 @@ def build_parser() -> argparse.ArgumentParser:
         help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows",
     )
     p.add_argument(
+        "--reroute-drive-folder",
+        action="store_true",
+        help=(
+            "route-only resume of Drive 0-candidate review_pending rows through "
+            "the fixed m227 folder matcher (stage_output preserved, never wiped)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-npwp",
+        action="store_true",
+        help=(
+            "route-only resume of review_pending rows with a full extracted "
+            "npwp through the m248 person-npwp matcher (stage_output preserved)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-identity-backfill",
+        action="store_true",
+        help=(
+            "route-only resume of review_pending rows whose existing client "
+            "candidate can gain a passport/KITAS strong-id match from "
+            "identity-backfill provenance (stage_output preserved)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-limit",
+        type=int,
+        default=30000,
+        help=(
+            "max rows selected per --reroute-drive-folder / --reroute-npwp / "
+            "--reroute-identity-backfill run"
+        ),
+    )
+    p.add_argument(
+        "--reroute-pipeline-version",
+        default=None,
+        help=(
+            "pipeline_version stamped on rerouted rows (fresh routing_key); "
+            "defaults per mode: v2.2-m227-folder (drive-folder), v2.3-npwp (npwp), "
+            "v2.4-identity-backfill (identity-backfill)"
+        ),
+    )
+    p.add_argument(
         "--backfill",
         action="store_true",
         help="enqueue historical wa-mirror media skipped by the watermark seed",
+    )
+    p.add_argument(
+        "--backfill-identity",
+        action="store_true",
+        help=(
+            "stamp client_id_hint on already-enqueued whatsapp docs that carry a "
+            "sender_phone but no client_id_hint (intake-v2 PR-2 identity backfill)"
+        ),
+    )
+    p.add_argument(
+        "--identity-after-id",
+        type=int,
+        default=0,
+        help="resume cursor for --backfill-identity: only rows with id > this (default 0)",
+    )
+    p.add_argument(
+        "--identity-limit",
+        type=int,
+        default=500,
+        help="batch size for --backfill-identity (default 500)",
     )
     p.add_argument(
         "--scrub-group-phone",
@@ -3267,6 +3967,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--media-types", default=None, help="comma list for --backfill (default document,image)"
     )
+    p.add_argument(
+        "--report-undelivered",
+        action="store_true",
+        help=(
+            "operator report (read-only, ids only): committed documents whose "
+            "Kita delivery failed identity resolution (crm_push status "
+            "identity_unresolved in the audit) — the consumer for the "
+            "intake.delivery.identity_unresolved marker"
+        ),
+    )
     return p
 
 
@@ -3279,7 +3989,11 @@ async def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     needs_db = (
         args.reprocess
+        or args.reroute_drive_folder
+        or args.reroute_npwp
+        or args.reroute_identity_backfill
         or args.backfill
+        or args.backfill_identity
         or args.scrub_group_phone
         or args.backfill_source_context
         or args.revive_stub
@@ -3294,10 +4008,12 @@ async def main(argv: list[str] | None = None) -> int:
         or args.auto_attach_direct_phone
         or args.promote_direct_new_prospects
         or args.review_backlog_report
+        or args.report_undelivered
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
-            "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
+            "nothing to do: pass --backfill, --backfill-identity, --reprocess, --reroute-drive-folder, "
+            "--reroute-npwp, --reroute-identity-backfill, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3317,8 +4033,15 @@ async def main(argv: list[str] | None = None) -> int:
     db_url = os.getenv("INTAKE_DATABASE_URL", os.getenv("DATABASE_URL", DEFAULT_DSN))
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=3)
     try:
-        # Backfill FIRST (puts historical rows in the queue), then reprocess
-        # (resets the weak proposals) — matches the rollout runbook order.
+        # Backfill FIRST (puts historical rows in the queue), then
+        # scrub/source-context (clean up unsafe/untagged wa-mirror rows),
+        # THEN identity backfill (P0-2 adversarial-review fix: --backfill-
+        # identity's SELECT scope depends on source_context.
+        # routing_identity_policy already being correct/populated — running
+        # it before scrub/backfill-source-context risked picking up a
+        # not-yet-cleaned or not-yet-tagged wa-mirror row in the same
+        # invocation), then reprocess (resets the weak proposals) — matches
+        # the rollout runbook order.
         if args.backfill:
             watermark = args.watermark if args.watermark is not None else read_watermark()
             if watermark is None:
@@ -3329,8 +4052,38 @@ async def main(argv: list[str] | None = None) -> int:
             await run_scrub_group_phone(pool, args.apply)
         if args.backfill_source_context:
             await run_backfill_source_context(pool, args.apply)
+        if args.backfill_identity:
+            await run_backfill_identity(
+                pool,
+                max(args.identity_after_id, 0),
+                max(args.identity_limit, 1),
+                args.apply,
+            )
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
+        if args.reroute_drive_folder:
+            await run_reroute_drive_folder(
+                pool,
+                args.reroute_pipeline_version or "v2.2-m227-folder",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
+        if args.report_undelivered:
+            await run_report_undelivered(pool)
+        if args.reroute_npwp:
+            await run_reroute_npwp(
+                pool,
+                args.reroute_pipeline_version or "v2.3-npwp",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
+        if args.reroute_identity_backfill:
+            await run_reroute_identity_backfill(
+                pool,
+                args.reroute_pipeline_version or "v2.4-identity-backfill",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
         if args.autocatalog_direct_unknown_text:
             await run_autocatalog_direct_unknown_text(
                 pool,

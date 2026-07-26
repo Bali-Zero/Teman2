@@ -933,22 +933,30 @@ class QdrantClient:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}/points"
 
-            # Qdrant retrieve endpoint
-            payload = {"ids": ids}
+            # Qdrant retrieve endpoint (POST /collections/{name}/points).
+            # BUG FIX (2026-07-19, verified live task #22): with_payload/with_vector
+            # are JSON BODY fields on this endpoint, NOT query params — Qdrant's
+            # REST API silently ignores them when sent as query params, so any
+            # caller passing include=[...] got 200 OK with the flags dropped
+            # (empty payload/vectors, scar family #2 "green but not working").
+            # Ref: https://api.qdrant.tech/api-reference/points/get-points
+            # (PointRequest schema: ids / with_payload / with_vector — singular
+            # "with_vector", not "with_vectors").
+            payload: dict[str, Any] = {"ids": ids}
             if include:
-                # Map Qdrant include to Qdrant with_payload/with_vectors
+                # Map Qdrant-compatible include to Qdrant with_payload/with_vector
                 with_payload = "payload" in include or "metadatas" in include
-                with_vectors = "embeddings" in include
-                params = {}
+                with_vector = "embeddings" in include
                 if with_payload:
-                    params["with_payload"] = True
-                if with_vectors:
-                    params["with_vectors"] = True
+                    payload["with_payload"] = True
+                if with_vector:
+                    payload["with_vector"] = True
             else:
-                params = {"with_payload": True, "with_vectors": True}
+                payload["with_payload"] = True
+                payload["with_vector"] = True
 
             try:
-                response = await client.post(url, json=payload, params=params)
+                response = await client.post(url, json=payload)
                 response.raise_for_status()
 
                 results = response.json().get("result", [])

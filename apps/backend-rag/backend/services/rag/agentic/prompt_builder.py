@@ -22,13 +22,63 @@ import time
 from typing import Any
 
 from backend.app.core.config import settings
-from backend.prompts.zantara_core import (
-    CREATOR_PERSONA,
-    TEAM_PERSONA,
-    ZANTARA_MASTER_TEMPLATE,
-)
+
+# ZANTARA_MASTER_TEMPLATE MUST come from prompt_manager (the versioned door),
+# never imported directly from a zantara_core* module — see
+# research/operations/2026-07-17-zantara-prompt-v4-design.md §1 F1 and §4.
+# This was the split-brain: ZANTARA_PROMPT_VERSION had no effect on the WA
+# bot's brain (this class) because it bypassed prompt_manager entirely.
+# CREATOR_PERSONA/TEAM_PERSONA stay sourced from v1 directly — they are
+# persona overlays, not versioned templates (v2/v3/v4 all re-export them
+# unchanged, never redefine), so this is not a second instance of the bug.
+#
+# v5 (audience-composed, see backend/prompts/zantara_core_v5.py) has no
+# single flat ZANTARA_MASTER_TEMPLATE — the `prompt_manager` MODULE object
+# is imported too (not just the constant) so `prompt_manager.PROMPT_VERSION_ACTIVE`
+# and `prompt_manager.get_master_template(audience)` below are read LIVE at
+# call time via attribute access, never snapshotted at this file's import
+# time (a plain `from ... import PROMPT_VERSION_ACTIVE` would freeze a copy
+# of whatever value was active when this module first loaded). The name
+# below is otherwise unused in this file now (superseded by
+# get_master_template(audience)) but the import itself must stay — it's
+# the anchor test_prompt_source_parity.py::test_prompt_builder_uses_the_
+# versioned_door asserts on (the F1 split-brain regression guard).
+from backend.llm import prompt_manager
+from backend.llm.prompt_manager import ZANTARA_MASTER_TEMPLATE  # noqa: F401
+from backend.prompts.zantara_core import CREATOR_PERSONA, TEAM_PERSONA
+from backend.prompts.zantara_core_v4 import today_wita_string
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_template_fill(template: str, **kwargs: str) -> str:
+    """Fill only the known {placeholder} tokens in ZANTARA_MASTER_TEMPLATE,
+    leaving every other brace in the text untouched.
+
+    ``str.format()`` is unsafe here: it requires EVERY ``{...}`` pair in the
+    ENTIRE template to be valid format syntax. v3's (and v4's, which inherits
+    v3's WORKED_EXAMPLES) worked examples intentionally embed illustrative
+    JSON as prose for the model to read, e.g. ``Tool returns:
+    {"price_idr": 1700000, ...}`` — that text survives v3/v4's OWN f-string
+    escaping (which resolves to single literal braces) but is then invisible
+    to a later ``.format()`` call, which raises ``KeyError('"price_idr"')``
+    on the first query.
+
+    Found live 2026-07-17/18 while verifying the v4 lane: this crash was
+    dormant because prompt_builder.py used to import ZANTARA_MASTER_TEMPLATE
+    directly from v1 (the F1 split-brain this PR fixes) — v1 has no such
+    JSON examples, so `.format()` never saw the problem. Once F1's fix
+    routes any selected version (v2/v3/v4) through here, and prod's
+    ZANTARA_PROMPT_VERSION Fly secret is ALREADY set to v3, `.format()`
+    would have taken down system-prompt generation on every one of the 4
+    live channels immediately on deploy. Plain substring replacement (not a
+    regex, not format()) sidesteps the whole class of "the template contains
+    braces I don't control" bugs without editing any zantara_core*.py file.
+    """
+    result = template
+    for key, value in kwargs.items():
+        result = result.replace("{" + key + "}", value)
+    return result
 
 
 class SystemPromptBuilder:
@@ -181,7 +231,19 @@ class SystemPromptBuilder:
         is_creator = False
         is_team = False
 
-        if user_email:
+        # Explicit signal from a resolved sender identity (WA team-assistant
+        # V1 — backend/services/whatsapp_identity.py resolves phone→role and
+        # wa_inbox_bot.py forwards it as profile.role="creator"/"team") takes
+        # priority over the email heuristics below. Additive only: when
+        # profile.role is absent or some other value (e.g. "admin"), this is
+        # a no-op and the existing heuristics run exactly as before.
+        profile_role = str(profile.get("role", "")).lower() if profile else ""
+        if profile_role == "creator":
+            is_creator = True
+        elif profile_role == "team":
+            is_team = True
+
+        if not is_creator and not is_team and user_email:
             email_lower = user_email.lower()
             if "antonello" in email_lower or "siano" in email_lower:
                 is_creator = True
@@ -191,6 +253,16 @@ class SystemPromptBuilder:
                 and "admin" in str(profile.get("role", "")).lower())
             ):
                 is_team = True
+
+        # Audience for the v5 (audience-composed) prompt door — see
+        # backend.prompts.zantara_core_v5.build_master_template. Unresolved/
+        # unknown role MUST fall to "client" (fail-safe: fewest capabilities,
+        # most locked-down voice) — never "team"/"creator" by omission. This
+        # is a pure function of is_creator/is_team, already part of the
+        # cache key below, so no separate cache-key entry is needed. No-op
+        # for v1-v4: prompt_manager.get_master_template() ignores this value
+        # unless PROMPT_VERSION_ACTIVE == "v5".
+        audience = "creator" if is_creator else "team" if is_team else "client"
 
         # Detect language EARLY for cache key
         query_lower = query.lower() if query else ""
@@ -337,7 +409,32 @@ class SystemPromptBuilder:
         timeline_hash = _stable_hash(timeline_summary)
         ctx_hash = _stable_hash(additional_context)
 
-        cache_key = f"{user_id}:{deep_think_mode}:{facts_hash}:{coll_facts_hash}:{timeline_hash}:{is_creator}:{is_team}:{ctx_hash}:{lang_key}"
+        # Compute today's WITA date ONCE here (not a separate date.today() call
+        # later) so the cache-key date bucket and the <date_context> text
+        # injected into the prompt can never desync across a midnight boundary
+        # or a process/container timezone mismatch (panel finding #2,
+        # 2026-07-17 design doc). The bucket is the ISO date prefix of the
+        # same string that gets injected into the template.
+        today_wita_str = today_wita_string()
+        date_bucket = today_wita_str.split(" ", 1)[0]
+
+        # rag_results/query are ALREADY baked into the cached final_prompt via
+        # .format() below, but were NOT previously part of the cache key —
+        # meaning a second, different question from the same user within the
+        # 5-minute TTL could be served the FIRST question's system prompt
+        # (stale query context + stale RAG grounding). Verified pre-existing
+        # bug, found while adding the date bucket to this same key (panel
+        # finding #1) — fixed here as a strict superset addition (more
+        # granularity, never fewer correct cache hits, cannot serve a wrong
+        # answer, can only reduce hit rate).
+        rag_results = context.get("rag_results", "{rag_results}")
+        query_hash = _stable_hash(query)
+        rag_hash = _stable_hash(rag_results)
+
+        cache_key = (
+            f"{user_id}:{deep_think_mode}:{facts_hash}:{coll_facts_hash}:{timeline_hash}:"
+            f"{is_creator}:{is_team}:{ctx_hash}:{lang_key}:{date_bucket}:{query_hash}:{rag_hash}"
+        )
 
         if cache_key in self._cache:
             cached_prompt, cached_time = self._cache[cache_key]
@@ -387,7 +484,7 @@ class SystemPromptBuilder:
         user_memory_text = "\n\n".join(memory_parts) if memory_parts else "No specific memory yet."
 
         # Build Final Prompt using Master Template
-        rag_results = context.get("rag_results", "{rag_results}")
+        # (rag_results already extracted above, before the cache-key computation)
 
         # DeepThink Mode Instruction (if activated)
         deep_think_instr = ""
@@ -397,14 +494,39 @@ class SystemPromptBuilder:
         # NOTE: Language detection already done BEFORE cache check (lines 342-366)
         # Variable `detected_lang` is already set with descriptive names
 
+        # Resolve the master template through the versioned door, threading
+        # `audience` for v5 (a no-op for v1-v4 — see get_master_template's
+        # docstring). Computed once and reused by both branches below.
+        master_template = prompt_manager.get_master_template(audience)
+
+        # v5 bakes CREATOR_PERSONA/TEAM_PERSONA straight into master_template
+        # (v1-v4 instead prepend them AFTER the Jaksel-phrase strip below —
+        # see the "Inject Creator/Team Persona" comment further down). That
+        # ordering means CREATOR_PERSONA's own tone line ("you can still use
+        # a bit of Jaksel flair... dev-to-dev") is immune to the strip today
+        # — a blind strip over the WHOLE composed v5 template would silently
+        # delete that instruction for every non-Indonesian-language creator
+        # query, a real behaviour regression vs today's v4. Protect the
+        # persona segment from the strip below, mirroring the immunity it
+        # already has in v1-v4 (TEAM_PERSONA carries no such phrase today,
+        # but is included for the same reason, defensively).
+        _v5_persona_voice: str | None = None
+        if prompt_manager.PROMPT_VERSION_ACTIVE == "v5":
+            if audience == "creator":
+                _v5_persona_voice = CREATOR_PERSONA
+            elif audience == "team":
+                _v5_persona_voice = TEAM_PERSONA
+
         # Build prompt with language handling
         if detected_lang:
             # For non-Indonesian queries, use a STRIPPED version of the template
             # Remove Jaksel references that make Gemini respond in Indonesian
-            stripped_template = ZANTARA_MASTER_TEMPLATE.format(
+            stripped_template = _safe_template_fill(
+                master_template,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
+                today_wita=today_wita_str,
             )
             # Remove Jaksel-specific instructions
             jaksel_phrases = [
@@ -429,8 +551,17 @@ class SystemPromptBuilder:
                 '"lho"',
                 '"kok"',
             ]
-            for phrase in jaksel_phrases:
-                stripped_template = stripped_template.replace(phrase, "")
+            if _v5_persona_voice and _v5_persona_voice in stripped_template:
+                # Split around the (single, verbatim) persona segment, strip
+                # everywhere EXCEPT inside it, then reassemble.
+                _voice_head, _voice_tail = stripped_template.split(_v5_persona_voice, 1)
+                for phrase in jaksel_phrases:
+                    _voice_head = _voice_head.replace(phrase, "")
+                    _voice_tail = _voice_tail.replace(phrase, "")
+                stripped_template = _voice_head + _v5_persona_voice + _voice_tail
+            else:
+                for phrase in jaksel_phrases:
+                    stripped_template = stripped_template.replace(phrase, "")
 
             # Add strong language instruction
             language_header = f"""
@@ -443,10 +574,12 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 """
             final_prompt = language_header + stripped_template
         else:
-            final_prompt = ZANTARA_MASTER_TEMPLATE.format(
+            final_prompt = _safe_template_fill(
+                master_template,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
+                today_wita=today_wita_str,
             )
 
         if deep_think_instr:
@@ -466,8 +599,20 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             final_prompt += no_greeting_warning
             logger.debug("🚫 [PromptBuilder] Injected no-greeting warning (already greeted)")
 
-        # Inject Creator/Team Persona if applicable
-        if is_creator:
+        # Inject Creator/Team Persona if applicable.
+        # v5 (PROMPT_VERSION_ACTIVE == "v5") already composed the audience
+        # voice into master_template above — CREATOR_PERSONA/TEAM_PERSONA
+        # for team/creator, a dedicated client voice otherwise (see
+        # zantara_core_v5.build_master_template) — so prepending here again
+        # would duplicate that section. This branch is precisely what v5
+        # replaces; v1-v4 keep today's behaviour unchanged.
+        if prompt_manager.PROMPT_VERSION_ACTIVE == "v5":
+            logger.debug(
+                "🧬 [PromptBuilder] v5 active — audience '%s' voice already "
+                "composed into master_template, skipping legacy persona prepend",
+                audience,
+            )
+        elif is_creator:
             final_prompt = CREATOR_PERSONA + "\n\n" + final_prompt
             logger.info("🧬 [PromptBuilder] Activated CREATOR Mode for %s", user_id)
         elif is_team:

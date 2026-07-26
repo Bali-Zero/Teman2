@@ -259,6 +259,24 @@ class BaseMigration:
             return safe_url
         return url
 
+    # A CREATE TRIGGER declares WHEN it fires via a trigger-EVENT clause:
+    # `{BEFORE|AFTER} <event>[ OR <event> ...] ON <table>`. `BEFORE TRUNCATE
+    # ON public.foo` / `AFTER INSERT OR TRUNCATE ON public.foo` contain the
+    # substring "TRUNCATE" but declare a WIPE GUARD (a trigger that runs
+    # before/after a TRUNCATE, typically to reject it -- see migration 252's
+    # `*_no_wipe` triggers on the visa write substrate), never a destructive
+    # `TRUNCATE [TABLE] [ONLY] <relation>` statement. A bare substring check
+    # can't tell these apart (cicatrix family #3, guard-over-match) -- so
+    # match on what follows TRUNCATE instead: a destructive TRUNCATE
+    # statement is followed by TABLE/ONLY/a bare relation name, while a
+    # trigger-event TRUNCATE is always followed by the keyword ON (the
+    # table clause) or OR (chained with another event). Word-boundaried so
+    # "ONLY" doesn't get mistaken for "ON".
+    _DANGEROUS_TRUNCATE_STATEMENT_RE = re.compile(
+        r"\bTRUNCATE\b(?!\s+(?:ON|OR)\b)",
+        re.IGNORECASE,
+    )
+
     def _validate_sql(self, sql: str) -> None:
         """
         Validate SQL file is safe to execute.
@@ -269,12 +287,14 @@ class BaseMigration:
         sql_upper = sql.upper()
         for pattern in self.DANGEROUS_PATTERNS:
             if pattern in sql_upper:
-                # Allow TRUNCATE if it's in a comment or part of a safe operation
+                # Allow TRUNCATE if it's in a comment, or if it's a trigger
+                # EVENT declaration rather than a destructive statement.
                 if pattern == "TRUNCATE":
-                    # Check if it's in a comment
-                    lines = sql.split("\n")
-                    for line in lines:
-                        if "TRUNCATE" in line.upper() and not line.strip().startswith("--"):
+                    for line in sql.split("\n"):
+                        stripped = line.strip()
+                        if not stripped or stripped.startswith("--"):
+                            continue
+                        if self._DANGEROUS_TRUNCATE_STATEMENT_RE.search(line):
                             raise MigrationError(
                                 f"SQL contains potentially dangerous pattern: {pattern}. "
                                 "If this is intentional, add a comment explaining why.",

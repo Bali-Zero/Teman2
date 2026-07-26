@@ -44,7 +44,7 @@ def _write(tmp_path: Path, rel: str, content: str) -> Path:
     return p
 
 
-VALID_FRONTMATTER = "---\ndate: 2026-07-06\nadversarial_review: deepseek-v4-pro\n---\n"
+VALID_FRONTMATTER = "---\ndate: 2026-07-06\nadversarial_review: kimi-k3\n---\n"
 VALID_SECTION = "\n# Title\n\n## Adversarial review\n\nnone survived, 2 raised\n"
 
 
@@ -90,6 +90,20 @@ def test_guilt_unknown_seat(tmp_path):
         tmp_path,
         "research/operations/x.md",
         "---\ndate: 2026-07-06\nadversarial_review: my-cousin\n---\n\n"
+        "# Title\n\n## Adversarial review\n\nnone survived.\n",
+    )
+    v = car.evaluate_file(p)
+    assert v.ok is False
+    assert "not a known seat" in v.reason
+
+
+def test_guilt_retired_deepseek_seat(tmp_path):
+    # DeepSeek API retired 2026-07-19 (Zero's order) — the seat was removed from
+    # KNOWN_SEATS and must now fail like any unknown seat.
+    p = _write(
+        tmp_path,
+        "research/operations/x.md",
+        "---\ndate: 2026-07-06\nadversarial_review: deepseek-v4-pro\n---\n\n"
         "# Title\n\n## Adversarial review\n\nnone survived.\n",
     )
     v = car.evaluate_file(p)
@@ -158,7 +172,7 @@ def test_innocence_seat_token_case_insensitive(tmp_path):
     p = _write(
         tmp_path,
         "research/operations/x.md",
-        "---\ndate: 2026-07-06\nadversarial_review: DeepSeek-V4-Pro\n---\n\n"
+        "---\ndate: 2026-07-06\nadversarial_review: Kimi-K3\n---\n\n"
         "# Title\n\n## ADVERSARIAL REVIEW\n\nnone survived.\n",
     )
     v = car.evaluate_file(p)

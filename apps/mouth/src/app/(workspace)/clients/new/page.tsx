@@ -353,13 +353,13 @@ export default function NewClientPage() {
   const FieldError = ({ field }: { field: string }) => {
     const msg = fieldErrors[field];
     if (!msg) return null;
-    return <p className="text-xs text-red-400 mt-1">{msg}</p>;
+    return <p className="text-xs text-[var(--state-danger)] mt-1">{msg}</p>;
   };
 
   const inputClass =
     "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all";
   const inputErrorClass =
-    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-red-500 bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all";
+    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--state-danger)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--state-danger)]/50 transition-all";
   const selectClass =
     "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 appearance-none cursor-pointer transition-all";
   const labelClass =
@@ -463,7 +463,7 @@ export default function NewClientPage() {
                 <Icon className="w-4 h-4" />
                 {label}
                 {key === "basic" && ocrApplied && (
-                  <span className="ml-1 text-xs text-green-400 font-normal">
+                  <span className="ml-1 text-xs text-[var(--state-success)] font-normal">
                     *
                   </span>
                 )}
@@ -475,7 +475,7 @@ export default function NewClientPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Form-level error */}
             {fieldErrors._form && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+              <div className="rounded-lg border border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] p-4 text-sm text-[var(--state-danger)]">
                 {fieldErrors._form}
               </div>
             )}
@@ -507,7 +507,7 @@ export default function NewClientPage() {
                         type="button"
                         onClick={removeAvatar}
                         aria-label="Remove avatar"
-                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[var(--state-danger)] text-white flex items-center justify-center hover:opacity-90 transition-opacity"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -536,7 +536,8 @@ export default function NewClientPage() {
                   {/* Full Name */}
                   <div className="md:col-span-2">
                     <label className={labelClass}>
-                      Full Name <span className="text-red-500">*</span>
+                      Full Name{" "}
+                      <span className="text-[var(--state-danger)]">*</span>
                     </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
@@ -594,7 +595,7 @@ export default function NewClientPage() {
                   <div>
                     <label className={labelClass}>WhatsApp</label>
                     <div className="relative">
-                      <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                      <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--accent-whatsapp)]" />
                       <input
                         name="whatsapp"
                         value={formData.whatsapp}
@@ -961,12 +962,12 @@ export default function NewClientPage() {
                   <span
                     className={`px-2 py-1 rounded ${
                       formData.status === "lead"
-                        ? "bg-blue-500/20 text-blue-400"
+                        ? "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)]"
                         : formData.status === "active"
-                          ? "bg-green-500/20 text-green-400"
+                          ? "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)]"
                           : formData.status === "completed"
-                            ? "bg-purple-500/20 text-purple-400"
-                            : "bg-gray-500/20 text-gray-400"
+                            ? "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)]"
+                            : "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)] text-[var(--bz-text-2)]"
                     }`}
                   >
                     {
@@ -990,7 +991,7 @@ export default function NewClientPage() {
                 )}
                 {formData.service_interest &&
                   formData.service_interest.length > 0 && (
-                    <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400">
+                    <span className="px-2 py-1 rounded bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)]">
                       {formData.service_interest.length} service(s)
                     </span>
                   )}

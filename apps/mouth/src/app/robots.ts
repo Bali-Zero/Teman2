@@ -14,6 +14,13 @@ import type { MetadataRoute } from "next";
 const ALLOW = ["/", "/_next/static/", "/_next/image"];
 
 const DISALLOW = [
+  // Tag-filtered listing URLs (`/insights?tag=`, `/?tag=`) are duplicate-content
+  // parameter pages that nothing on the site actually consumes (no searchParams
+  // reader). They are pure crawl-budget waste — and the 2026-07-21 leak turned
+  // them into `/insights?tag=<raw-LLM-reasoning>` URLs Google indexed. Block the
+  // param outright; canonical content lives at the un-parametrised path.
+  "/*?tag=",
+  "/*&tag=",
   "/dashboard",
   "/clients",
   "/chat",

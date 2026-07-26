@@ -687,23 +687,31 @@ Rules:
             logger.error("NPWP OCR: JSON parsing failed")
             return NpwpExtractResponse(success=False, message="Could not parse OCR response")
 
-        # Clean NPWP (remove dots, keep only digits)
+        # Clean NPWP — ASCII-only projection, same class as the intake strong-id
+        # matcher (m248: Unicode-aware \D would let non-ASCII digits survive).
+        # A valid NPWP is EXACTLY 15 (legacy) or 16 (NIK-format) digits; anything
+        # else is an incomplete/garbled OCR read: still RETURNED for the human to
+        # see, but NEVER written to the card — clients.npwp is a strong-id key the
+        # intake matcher corroborates against, and a stored fragment poisons it.
         npwp = extracted.get("npwp", "")
+        npwp_to_save: str | None = None
         if npwp:
-            npwp_clean = re.sub(r"\D", "", npwp)
-            # Validate 15 digits
-            if len(npwp_clean) != 15:
-                logger.warning("NPWP OCR: extracted value doesn't have 15 digits")
-                npwp = npwp_clean  # Keep original but cleaned
+            npwp_clean = re.sub(r"[^0-9]", "", npwp)
+            npwp = npwp_clean
+            if len(npwp_clean) in (15, 16):
+                npwp_to_save = npwp_clean
             else:
-                npwp = npwp_clean
+                logger.warning(
+                    "NPWP OCR: incomplete read (%d digits) — returned but NOT saved",
+                    len(npwp_clean),
+                )
 
-        # Save to DB if extracted successfully
-        if npwp:
+        # Save to DB only when the read is a complete, valid NPWP
+        if npwp_to_save:
             async with db_pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE clients SET npwp = $1, updated_at = NOW() WHERE id = $2",
-                    npwp,
+                    npwp_to_save,
                     request.client_id,
                 )
                 logger.info(f"Saved NPWP for client {request.client_id}")

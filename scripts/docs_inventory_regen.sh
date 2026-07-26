@@ -33,17 +33,98 @@
 #      git-mv'ing orphans into docs/archive/. Physical archival remains
 #      scripts/docs_guardian.sh's weekly L1 job — this script only cures the TABLE drift.
 #
-# Exit code: always 0 on a completed run (regardless of whether content changed) — both
-# underlying tools return RC=1 BY DESIGN when they rewrite content ("drift detected" is
-# not a failure). Callers must check `git diff --quiet` on the working tree afterward to
-# detect real drift; this script does not make that decision.
+# P3-prime (2026-07-17, research/operations/2026-07-17-push-pipeline-optimization-spec.md
+# §P3): docs_audit.py --regen-only runs in a "write mode" that deterministically stamps
+# `orphan_flipped_on` on any doc that just crossed its `orphan_eligible_on` date. If
+# $DOCS_AUDIT_STATS_JSON is set, the --json stats payload (includes
+# `flips_this_run`/`flipped_paths`) is captured there for the calling workflow to surface
+# in its PR body/log — see .github/workflows/docs-inventory-refresh.yml. Unset by default
+# so this script's plain-usage contract (scripts/docs_guardian.sh does NOT use this script
+# today, but a future caller that doesn't care about the flip count pays zero extra cost)
+# is unchanged.
 #
-# Usage: scripts/docs_inventory_regen.sh   (no args; run from anywhere, cd's to repo root)
+# DEFAULT MODE vs --organ (footgun fix, 2026-07-19 — PR #2626 landing incident):
+#   default (no args): GATE-CONSISTENT — passes docs_audit.py --gate-consistent, which
+#     never invents a fresh orphan flip and reads provenance from --trusted-ref
+#     (origin/main), i.e. exactly the computation `inventory-check` (docs-guardian.yml)
+#     itself verifies. Safe to run on a PR branch and commit the result: the incident this
+#     cures was this script's OLD default silently consulting real wall-clock ("today"),
+#     which could advance orphan flips a contributor never intended and the PR gate
+#     (which NEVER consults wall-clock, --check is always as_of=None) would then reject as
+#     drift ON THE SAME PR that just ran this script. This is now the recommended
+#     contributor path — also what `inventory-check`'s own failure message points at.
+#   --organ: the OLD dated/wall-clock behavior, explicitly opted into — passes
+#     docs_audit.py --as-of "$(date -u +%Y-%m-%d)" (real "today"; this is the ONE
+#     legitimate place in the whole pipeline allowed to consult wall-clock for the
+#     orphan-eligibility TIME-CROSSING decision — --check, the PR gate, never does). ONLY
+#     the scheduled refresh organ (.github/workflows/docs-inventory-refresh.yml) should
+#     pass this — it is the one caller whose entire job IS advancing flips from real time.
+#
+# Exit code (revised BLOCKER-3, red-team 2026-07-18): 0 on a completed run, REGARDLESS
+# of whether content changed — docs_sync.py (write mode) and docs_audit.py --regen-only
+# both return RC=1 BY DESIGN when they rewrite content ("drift detected" is not a
+# failure) and this script swallows exactly that expected 1. Callers must check
+# `git diff --quiet` on the working tree afterward to detect real drift; this script
+# does not make that decision. A GENUINE crash in either tool (docs_sync.py returning
+# non-zero at all — it never legitimately does in this write-mode call — or
+# docs_audit.py returning >1, its own dedicated crash code) now PROPAGATES as this
+# script's own non-zero exit instead of being silently absorbed: the old blanket
+# `|| true` could not distinguish "1 = expected drift" from "1 or more = actually
+# crashed", so a real crash used to look identical to "ran fine, nothing changed" —
+# invisible to any caller checking only this script's exit code, and invisible to the
+# P3-prime liveness guardian, which only sees whether the calling GH Actions STEP
+# succeeded, not what happened inside it.
+#
+# Usage: scripts/docs_inventory_regen.sh            (no args; gate-consistent; run from
+#                                                      anywhere, cd's to repo root)
+#        scripts/docs_inventory_regen.sh --organ     (dated/wall-clock mode; scheduled
+#                                                      refresh organ ONLY)
+#        DOCS_AUDIT_STATS_JSON=/path/to/out.json scripts/docs_inventory_regen.sh [--organ]
+#          (also writes the --json stats payload to that path)
+#
+# Arg parsing is STRICT (R1 review, 2026-07-20): anything other than zero
+# args or exactly `--organ` (unknown flag, `--organ` misplaced as $2, a
+# typo) exits 2 with an explicit error — it never silently falls through to
+# gate-consistent mode.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
+
+# Strict arg validation (R1 red-team, 2026-07-20, PR #2863 review): the
+# original version only ever inspected `${1:-}` — any OTHER argument
+# (typo'd flag, `--organ` passed as $2, an unrelated flag like `--quiet`)
+# silently fell through to the ORGAN_MODE=false branch with zero error,
+# meaning a misconfigured caller silently got gate-consistent mode instead
+# of organ mode (or vice versa) with no signal anything was wrong — the
+# same "footgun via silent default" class this script exists to cure, just
+# one layer up at the CLI-parsing level. Now: accept ONLY zero args or
+# exactly one arg that is literally `--organ`; anything else is a hard
+# usage error (exit 2), never a silent fallback.
+ORGAN_MODE=false
+case "$#" in
+  0)
+    ;;
+  1)
+    if [[ "$1" == "--organ" ]]; then
+      ORGAN_MODE=true
+    else
+      echo "docs_inventory_regen.sh: unknown argument '$1' (only '--organ' is accepted, or no arguments at all)" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "docs_inventory_regen.sh: too many arguments — only a single optional '--organ' is accepted, got: $*" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$ORGAN_MODE" == "true" ]]; then
+  TIME_MODE_ARGS=(--as-of "$(date -u +%Y-%m-%d)")
+else
+  TIME_MODE_ARGS=(--gate-consistent)
+fi
 
 # Kept identical to .github/workflows/docs-guardian.yml's inventory-check step args —
 # see LOCKSTEP NOTICE above.
@@ -62,10 +143,45 @@ CLUSTER_ARGS=(
 )
 
 echo "docs_inventory_regen: syncing DOCSYNC markers..." >&2
-python3 scripts/docs_sync.py --quiet || true
+# BLOCKER-3 fix (red-team 2026-07-18): the old `|| true` swallowed ANY
+# non-zero exit here, but this write-mode call (no --check/--diff) legitimately
+# ALWAYS returns 0 on a clean run (see docs_sync.py main()'s final `return 0`
+# fallthrough — `return 1` only exists under --check, never reached here). So
+# a non-zero exit can ONLY mean docs_sync.py CRASHED — that must fail this
+# wrapper loud (a swallowed crash here means DOCSYNC markers silently did not
+# refresh, on an apparently-green run), not be silently absorbed. No `-e` is
+# set (see `set -uo pipefail` above), so this is an explicit $? check, not a
+# no-op comment: removing `|| true` alone would NOT propagate the failure.
+python3 scripts/docs_sync.py --quiet
+sync_rc=$?
+if [[ "$sync_rc" -ne 0 ]]; then
+  echo "docs_inventory_regen: docs_sync.py CRASHED (exit $sync_rc) — propagating failure (BLOCKER-3 fix)." >&2
+  exit "$sync_rc"
+fi
 
 echo "docs_inventory_regen: regenerating docs/DOCS_INVENTORY.md (table-only, --regen-only)..." >&2
-python3 scripts/docs_audit.py --regen-only --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
+# BLOCKER-3 fix: docs_audit.py's exit code is OVERLOADED even in write mode —
+# 0 = no drift, 1 = drift detected (intentional, NOT a failure: this
+# wrapper's whole job is to regen content, so "content changed" is the
+# expected/successful outcome), 2 = CRASHED (docs_audit.py's own __main__
+# crash boundary, P3-prime fix). The old `|| true` swallowed 1 and 2
+# identically — a crash silently became "nothing to see here" on a green
+# workflow run. Only the EXPECTED 1 is swallowed below; anything higher
+# propagates as a real failure.
+if [[ -n "${DOCS_AUDIT_STATS_JSON:-}" ]]; then
+  # --json instead of --quiet: stdout (JSON only) goes to the stats file,
+  # stderr (including docs_audit's own "advanced N flip(s)..." line, P3-prime)
+  # still flows to the caller's log normally.
+  python3 scripts/docs_audit.py --regen-only --json "${TIME_MODE_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" \
+    >"$DOCS_AUDIT_STATS_JSON"
+else
+  python3 scripts/docs_audit.py --regen-only --quiet "${TIME_MODE_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}"
+fi
+audit_rc=$?
+if [[ "$audit_rc" -gt 1 ]]; then
+  echo "docs_inventory_regen: docs_audit.py CRASHED (exit $audit_rc) — not a content-drift signal, propagating failure (BLOCKER-3 fix)." >&2
+  exit "$audit_rc"
+fi
 
 echo "docs_inventory_regen: done." >&2
 exit 0

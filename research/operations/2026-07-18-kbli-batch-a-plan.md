@@ -194,6 +194,216 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   `38222`, `39001`. Control limits (m1-m5, `data/kbli-filiera/batch-reports/batchA-calibration.json`)
   are unchanged by this amendment.
 
+- **A-3 (2026-07-18, conductor) — canonical pin is the BLOB, not the commit (W88).** The signed
+  calibration artifact pins the canonical to git revision `45bbc1f42a…` — a lane PR-head that is
+  unreachable from main after the squash-merge, so any §4 emit fencing keyed on that commit-SHA
+  would fail spuriously (scar #9/W88: an SHA-ancestor proxy lies where the content arrived by
+  another path). Rule, effective immediately: **the content-authoritative canonical pin for Batch A
+  is the blob sha `3cfe8134d` (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`); any commit-SHA
+  recorded alongside it is informative only.** Verified this session: `git rev-parse
+  origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json` = `3cfe8134d` — byte-identical to
+  the calibration's intent (the artifact itself already records "(blob 3cfe8134d)" in PR #2695's
+  grounding). The filiera compilers already validate content-aware (`_validate_membership_pin`,
+  W88-aware) — no compiler change needed; the calibration artifact is NOT edited (it stays
+  historically accurate; this amendment governs its interpretation). Emit fencing (§4) shall
+  compare the canonical BLOB at emit time against `3cfe8134d`, re-basing if it moved.
+
+- **A-4 (2026-07-18, conductor; REVISED same day after the Codex sol red-team of the conductor-gate
+  report — the first version of this amendment mislabeled m1 as PASSED, called the lot "true-random",
+  and proposed a post-hoc floor re-registration; all three were red-team findings and are corrected
+  here, not papered over) — m1 AND m2 control-limit BREACHES on Lot 1: acknowledged, adjudicated,
+  root-caused (conductor-signed note per calibration §5).**
+  **m1 BREACH:** the preregistered m1 measure is the IAA between the two INDEPENDENT extractors
+  (lane D1 vs blind cross-family GLM). Measured: **5/13 = 0.385 < floor 0.75**. The first draft of
+  this amendment reported 0.923 as m1 "PASSED" — that figure is GLM vs the FINAL adjudication, which
+  is neither the preregistered comparison nor independent (the GLM findings informed that
+  adjudication). Declared verdict: **m1 ❌ BREACH**. Root cause is the same driver as m2: the lane's
+  same-family D1/D5 pair was systematically blind to content-level disease (it verified crosswalk
+  STRUCTURE, never payload CONTENT or source existence), so the blind cross-family extractor
+  legitimately disagreed on 8/13 codes — the breach measures the lane's blindness, not seat drift,
+  and is exactly the alarm m1 exists to raise. It fires the same protocol consequence: no silent
+  resume, lane protocol upgraded (GO package: cross-family image-grounded D5 becomes part of the
+  lane itself).
+  **m2 BREACH:** final conductor-adjudicated certification rate for Lot 1 is **0/13 = 0.000** (after
+  the A-6 divergence-rule flip of 19206; 1/13 = 0.077 pre-flip), below the m2 floor 0.20. Root
+  cause is **population disease, not seat drift**: the cross-family tightening exposed that all 13
+  codes carry uncertifiable per_skala — 8 with payload content that does not substantively cover
+  the 2025 activity (seed-certification blobs on 02402/02201, a salt-extraction marine regime on
+  peat 08920, a mining-concession regime on beneficiation 05102, generic-B3 on radioactive
+  38122/38222, generic agriculture on narcotic-crop 01287, storage-exploration + marine-pollution
+  rows on capture code 39001), 4 with unresolvable PP28 source pointers or non-inheritable
+  ancestry (05200, 36003 not-retrievable-as-hunted; 01700 6-way merge; 02409 many-to-many), and 1
+  with a generic pre-split basket payload plus false mapping metadata (19206, A-6). Every flip was conductor-verified BY EYE on the canonical payloads
+  and vault records — the seats' claims were re-grounded, never trusted (W65).
+  **Sampling scope (corrected):** Lot 1 is a **contiguous taxonomy-ordered segment (divisions
+  01→39)** per this plan's own lot rule — NOT a random sample. 13/13 measures prevalence in THIS
+  segment only; divisions 01→39 may over-represent agriculture/forestry/extraction contamination,
+  and no extrapolation beyond it is claimed — the Batch-A remainder lots (101 codes) measure the
+  rest of the 114 A-serving codes; the ~107 A-empty no-scope codes are a separate watchlist
+  OUTSIDE Batch A (§1) and are not measured by this batch at all.
+  **Disposition (no floor re-registration):** the earlier proposal to re-register m2 as
+  advisory-floor 0.0 is WITHDRAWN — it would disarm the very drift alarm m2 provides, on the
+  strength of a non-random sample. m1 and m2 remain in **declared-BREACH state**: every subsequent
+  lot's conductor gate must explicitly adjudicate its own m1/m2 readings against the original
+  limits and sign the resume note; the limits themselves change only via a registry amendment
+  (A-6) that Zero's GO explicitly covers. No silent resume in any form.
+
+- **A-5 (2026-07-18, conductor) — m3 new-category pause: acknowledged, triaged, registry extension
+  proposed.** Lot 1's conductor adjudication surfaced refutation shapes not in the m3 closed list:
+  **`payload_cross_contamination`** — a per_skala whose CONTENT belongs to a different activity
+  (seed-certification on 02402/02201, salt-extraction marine regime on 08920, generic agriculture on
+  01287), behind a structurally-plausible pointer — and **`unresolvable_source_pointer`** — a
+  pp28_sources locator whose cited row is not retrievable from the pinned corpus as hunted (05200,
+  36003). Terminology note (red-team finding): the earlier label "phantom_source_pointer" implied
+  source NONEXISTENCE, which text-hunt evidence (11,208-page scan) cannot establish under this
+  plan's own A5 image-grade rule — "unresolvable ... as hunted" is what the evidence supports;
+  upgrading an instance to an earned ABSENT verdict requires the A5 image-grade scan of the relevant
+  annexes. Per calibration m3 this is an automatic pause + conductor triage: the triage happened
+  in-gate (every instance conductor-verified by eye on the canonical payloads; see the conductor-gate
+  report). Proposal for the remainder: add `payload_cross_contamination`,
+  `unresolvable_source_pointer` and the metadata flavor `mapping_metadata_false` (status_mapping /
+  intel.whatChanged contradicting the adjudicated crosswalk, seen on 47732/28262 gold collaterals
+  and Lot-1 05102/02409/19206) to the m3 registry. No silent resume: Lot 2 is firebreak-gated on
+  Zero's GO **and on A-6's registry precondition**.
+
+- **A-6 (2026-07-18, conductor; post-red-team) — divergence-rule flip of 19206 + calibration
+  registry closure as a Lot-2 PRECONDITION + m5 NEG halt.**
+  **(a) 19206 flip:** this plan's §3 rule is binding — "Divergence → QUARANTINE, never averaged or
+  picked." Two independent cross-family seats flagged 19206 against the conductor's initial clean
+  (Codex refuter dissent; blind GLM `needs_quarantine=true`, licensing payload = generic pre-split
+  19291 basket, Besar row not on the pinned page, status_mapping 'CODICE_RINUMERATO' contradicted
+  by the image-verified 3-way split). The conductor's initial clean was itself a "picked" verdict
+  in divergence — exactly what §3 forbids. 19206 is QUARANTINED (cure spec entry 13); Lot 1 final:
+  **13/13 quarantine, 0 certified**.
+  **(b) m5 NEG breach + HALT:** blind-GLM on NEG control 49213 returned `gap_confirmed=false` /
+  `licensing_inherits=true` (it holds the predecessor path 49413 licensable) — a formal NEG miss
+  under §5's any-miss-halts rule, so **m5 is ❌ BREACH (7/8 formal NEG survival), and the halt is
+  DECLARED AND IN EFFECT**: no Lot 2 until the 49213 finding is resolved (either an image-grade
+  adjudication that certifies the 49413→49213 licensing path as a data-plane cure, or a ruling that
+  re-affirms the honest-gap; conductor + Zero). The earlier report framing ("a candidate, not a gap
+  violation") understated this: the preregistered rule does not distinguish evidenced completion
+  paths from fills, and the distinction — if wanted — must enter the registry by amendment, not by
+  in-gate interpretation.
+  **(b)-RESOLVED (2026-07-18, same session, post-GO — conductor per-ancestor image-grade
+  adjudication): HALT LIFTED.** Zero issued the GO; the conductor then ran the full per-ancestor
+  check the 01700 lesson mandates (a MERGE never inherits from a single ancestor). KBLI-2025 49213
+  "Angkutan Perkotaan" = MERGE of THREE 2020 ancestors (BPS Lampiran 10 printed p.385 / PDF p.399,
+  read by eye): 49214 "Angkutan Bus Kota", 49219 "Angkutan Bus Dalam Trayek Lainnya", 49413
+  "Angkutan Perkotaan Bukan Bus, Dalam Trayek". ALL THREE PP28 I.I rows were rendered at 300 dpi
+  and read by eye (49214: p.40 row 9 · 49219: p.51 row 11 · 49413: p.65 row 14; digits verified
+  against the OCR trap — text layer shows `492L4`/`492t9`): the three regimes are SUBSTANTIVELY
+  IDENTICAL — Menengah Tinggi · 'NIB dan Sertifikat Standar' · 5 Hari · municipal authority for
+  the urban scope (Wali Kota / Bupati-Wali Kota; 49219 grades by territory, its kabupaten/kota
+  tier converges). Unlike 01700 (divergent ancestor regimes → non-inheritable), this merge is
+  regulatorily homogeneous → the completion path is **CERTIFIED**. Disposition: the GLM NEG "miss"
+  is adjudicated a TRUE FINDING; the 49213 honest-gap stays LIVE until a provenance-backed RESTORE
+  ships as its own data-plane cure (spec-driven compiler extension, per-ancestor pp28_sources
+  ['49214','49219','49413'], row content transcribed from the three renders — scheduled, NOT
+  applied in-gate). m5 stays recorded as ❌ BREACH for Lot 1 honesty, but the HALT is lifted; the
+  registry ruling for the remainder (A-6(c)): a NEG miss raising an evidenced completion path is
+  adjudicated per-ancestor image-grade by the conductor — certified → scheduled restore (never an
+  in-gate fill), refuted → halt stands.
+  **(c) Registry closure precondition:** before ANY Lot 2 work, the calibration registry
+  (`data/kbli-filiera/batch-reports/batchA-calibration.json` successor artifact) must be re-emitted
+  to carry: the m3 category extensions (A-5), the m1 measure formalized as cross-family
+  extractor-vs-extractor IAA, the m1/m2 declared-BREACH state + per-lot explicit adjudication rule
+  (A-4), and the m5 NEG wording ruling from (b). Zero's GO for the remainder is only actionable
+  AFTER this registry re-emission is merged — a GO issued before it is a GO to close the registry
+  first, not to start Lot 2.
+
+- **A-7 (2026-07-18, conductor) — Lot 2 (42999→59131) conductor-signed D6 verdict + control
+  limits + m5 deviation declared. TWO INDEPENDENT LANES, CONVERGENT VERDICT.**
+
+  Two independent conductor lanes ran Lot 2 in parallel: M5 session f5892d39 (workflow
+  `wf_1ce36fab-e85`, innocence controls 47111/56101, cross-family seat Codex gpt-5.6
+  image-grounded) and a Pro lane per the second-signed gate doc
+  `research/operations/2026-07-18-kbli-batch-a-lot2-conductor-gate.md` / PR #2753 (innocence
+  controls 46100/52101, cross-family seat GLM-vision). **Both converged on the SAME verdict:
+  13/13 quarantined, 0 certified** — independent-lane convergence is itself evidence the
+  disease call is real, not an artifact of either lane's specific extraction path.
+
+  **Innocence-layer finding CONFIRMED ACROSS BOTH LANES independently:** M5's 56101 AND Pro's
+  46100/52101 innocence controls ALL carry crosswalk-metadata disease (56101's provenance
+  pointer falsely credited 56103/56104; 46100 and 52101 are merge-undercounts caught only on
+  the REVERSE BPS table). The "presumed healthy" stratum is diseased at the metadata layer too
+  — supports PR #2753's FATAL-4 candidate (a crosswalk-metadata contamination axis separate
+  from the per_skala/licensing-payload axis this program has measured so far).
+
+  **This lane's (M5) verdict table — 13 quarantined, 0 certified:**
+
+  | Category | Codes | Count |
+  |---|---|---|
+  | `source_absent_in_vault` | 42999, 47771, 49233, 50113, 52105, 52219, 52299, 59131 | 8 |
+  | `payload_cross_contamination` | 49296, 52103, 52211, 52232 | 4 |
+  | `mapping_metadata_false` | 52239 | 1 |
+
+  Plus a **56101 metadata-only cure** (innocence-violation finding, NOT a detach — per_skala
+  substance independently verified correct and left untouched): `pp28_sources` corrected
+  `['56101','56104','56103','56109']` → `['56101','56102','56109']`, `aggregation_note` and
+  `intel_2026.whatChanged` corrected to credit KBLI-2020 56102 ("Rumah/Warung Makan") as the true
+  omitted ancestor instead of the false 56103/56104 claim (BPS Tabel Konversi Vol.2, Lampiran 5
+  p.211/printed-197 + Lampiran 10 p.407, conductor eye-verified). Also cured in the same PR
+  (value-in-place, `apps/mouth/data/kbli-gold-all.json`, NOT data-plane-guarded, Codex-gated
+  generator≠grader, 2 review rounds both PASS): 49296.whatYouNeed + 50113.whatYouNeed honest-gap
+  (gold masks canonical intel_2026 on the live page, 49213/50115 precedent) and 56101.whatChanged
+  mirror of the metadata correction.
+
+  **Control limits (per-lot adjudication against the A-4 declared-BREACH state, no silent
+  resume):**
+  - **m1** cross-family IAA **10/13 = 0.769 PASS** (≥0.75 floor) — the FIRST m1 PASS of the
+    program (Lot 1 was 0.385/0.538 BREACH). Cross-family seat = Codex gpt-5.6 blind
+    image-grounded extractor per plan A-4. The 3 structural disagreements are content-level
+    contamination confirmed by conductor eye-verify, not extractor noise. **Gotcha-in-the-gotcha**:
+    the cross-family seat itself misread a digit on 49296 (49224 vs the true 49424) — caught only
+    by the conductor's own image-verify against the pinned PP28 renders. Scar discipline "digits
+    from scans: image-verify" (kbli-navigator §4 rule 5) applies to the CHECKER too, not just the
+    original extraction.
+  - **m2** = **0.000, declared BREACH** — population disease, not lot noise (per A-4's per-lot
+    adjudication rule; the floor is not re-registered, the breach is recorded and the lot proceeds
+    under the existing signed exception).
+  - **m3** no new categories beyond the A-5 registry extension (`payload_cross_contamination`,
+    `unresolvable_source_pointer`/`source_absent_in_vault` naming, `mapping_metadata_false`) — all
+    13 Lot 2 findings classify cleanly into the existing closed-7 registry.
+  - **m4** ≈197k tokens/dossier average, **PASS** (≤400k ceiling).
+  - **m5 NOT MEASURED IN THIS LANE — declared deviation, not a silent skip.** The digest-salted
+    gold sets (negative/positive controls per emit_batch_calibration_v2) were not embedded into
+    this lane's conductor-eye adjudication process; instead the conductor served a hand-picked
+    innocence pair (47111 — clean, untouched by any finding; 56101 — a TRUE POSITIVE at the
+    *metadata* layer, not the per_skala layer) as the innocence check. This means the innocence
+    set ITSELF carries the July-disease pattern (a record can be simultaneously "per_skala clean"
+    and "metadata contaminated") — a finding worth recording in its own right, not just a
+    control-limit shortfall. **The Pro lane's Appendix A (PR #2753) independently measured its
+    own m5 = 1.00 on valid controls** (4/4 after disqualifying one contaminated control, same
+    disease pattern as this lane's 56101 finding) — so the program-level m5 gap this lane
+    declares is closed by the sibling lane, not by this one. **Disposition:** this M5 lane's own
+    deviation is recorded here for audit honesty; no future reader should mistake THIS lane's m5
+    silence for a clean PASS, even though the sibling lane's measurement covers the gap.
+
+  **SCOPE BOUNDARY (read before treating Lot 2 as closed):** this PR ships ONLY the original
+  13-code detach + the 56101 metadata cure described above. It does **NOT** satisfy PR #2753's
+  fuller "Lot 2 cure shipped" bar — that report additionally requires (1) an upgraded disposition
+  for 47771 (`mapping_metadata_false` primary: detach, already done here, PLUS a metadata
+  correction — status_mapping → MERGE-aware, the 4 BPS parents 47892/47919/47996/47771 recorded
+  as crosswalk ancestors, explicitly NOT as pp28_sources — NOT done here) and (2) three standalone
+  metadata-fix cures outside this lot's 13-code scope: 46100 (2-parent merge, Lampiran 10 p.356),
+  52101 (5-parent merge, Lampiran 10 p.389), and 10433 (Appendix A finding — pp28_sources
+  wrongly associates 10490 with the wrong child, Lampiran 10 p.326). These four items are a
+  **follow-up PR, gated before Lot 3**, owned by the conductor lane (re-pull evidence via
+  dossier_pull + image-verify citations directly — not delegated to an apply-only session, per
+  the same-digit/image-verify discipline this program runs on).
+  - **Disposition:** SIGNED — Fable conductor session f5892d39, 2026-07-18 (M5 lane); convergent
+    with the Pro lane's second signing, PR #2753.
+
+- **A-10 (2026-07-19, M5 conductor):** Third twin-race of the lot — while #2754 fought a
+  dropped-at-open CI event plus two pre-push gate cycles, the Pro lane landed #2761 (same 13-code
+  detach + 47771 metadata fix, codex+GLM gated). M5 concedes the apply on content-equivalence (all
+  13 verified detached on main; 47771 verified cured) and reworks #2754 down to its orthogonal
+  delta: the 56101 metadata cure (the innocence-violation finding of the M5 lane, absent from
+  #2761), its compiler, and the registry reconcile. Category-split divergence between the two
+  signed verdicts (M5: 8 source_absent/4 payload/1 metadata; Pro: 4 source_absent/8 payload/1
+  metadata-on-47771) is recorded as a report-level divergence with identical data-plane action —
+  detach; it does not affect the shipped state.
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the

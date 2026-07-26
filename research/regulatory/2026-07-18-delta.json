@@ -1,0 +1,54 @@
+{
+  "run_at": "2026-07-18T07:04:18+08:00",
+  "today": "2026-07-18",
+  "yesterday_seen_count": 21,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (HTTP 403)",
+    "https://muc.co.id/article (HTTP 403)",
+    "https://ikpi.or.id/news/ (HTTP 404)",
+    "https://ortax.org/news (HTTP 200 but client-side SPA shell, title 'Artikel tidak ditemukan')",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (HTTP 200 but zero PMK-2026 string matches in 48h window)",
+    "https://www.pajak.go.id/peraturan (HTTP 200 but zero extractable dated entries in 48h window, JS-rendered table)"
+  ],
+  "deltas": [
+    {
+      "citation": "SE-8/PJ/2026",
+      "title_id": "Surat Edaran Direktur Jenderal Pajak Nomor SE-8/PJ/2026",
+      "title_en": "Directorate General of Taxes Circular Letter No. SE-8/PJ/2026",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "impact_note": "DJP introduces automated taxpayer supervision via its internal information system, new criteria determining which taxpayers fall under 'penelitian komprehensif' (comprehensive examination), CSQA/PSQA quality-assurance frameworks for audit staff, and coordinated simultaneous supervision of taxpayer groups (relevant to PT PMA group structures) — clients should be briefed on the new audit-trigger criteria even though no fee or filing deadline changes.",
+      "summary": "New DJP circular overhauls tax supervision/audit methodology: automated system-driven monitoring, revised comprehensive-examination criteria, quality-assurance certification (CSQA/PSQA) for supervising officers, and coordinated group-taxpayer oversight.",
+      "source": "NB-INTEL-Tax | https://news.ddtc.co.id/berita/nasional/1820920/kantor-pajak-terapkan-pengawasan-otomatis-lewat-sistem-informasi-djp | https://news.ddtc.co.id/berita/nasional/1820915/jamin-mutu-pengawasan-pajak-djp-perkenalkan-csqa-dan-psqa | https://news.ddtc.co.id/berita/nasional/1820911/ada-se-baru-ini-kriteria-wp-yang-tercakup-penelitian-komprehensif | https://news.ddtc.co.id/berita/nasional/1820918/se-baru-mungkinkan-pengawasan-wp-grup-secara-simultan-terkoordinasi",
+      "verbatim_excerpt": "SE-8/PJ/2026 — Kantor Pajak Terapkan Pengawasan Otomatis lewat Sistem Informasi DJP; Jamin Mutu Pengawasan Pajak, DJP Perkenalkan CSQA dan PSQA; Ada SE Baru, Ini Kriteria WP yang Tercakup Penelitian Komprehensif; SE Baru Mungkinkan Pengawasan WP Grup secara Simultan & Terkoordinasi",
+      "first_seen_at": "2026-07-18T07:04:18+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026",
+    "SE-8/PJ/2026"
+  ],
+  "note": "NB-INTEL-Regulation/Press/Immigration returned 'nessuna novita' for the 24-48h window. NB-INTEL-Tax flagged SE-8/PJ/2026 (DJP circular, 15-17 Jul 2026) with a follow-up offer; cross-validated HIGH-CONFIDENCE against 4 independent news.ddtc.co.id articles (all PUBLISH_TIMESTAMP 2026-07-17 12:00-16:30 WIB, well inside the 48h window) covering the same circular from different angles (automated supervision, CSQA/PSQA quality assurance, comprehensive-examination criteria, coordinated group-taxpayer supervision). Classified tax/medium: procedural audit-methodology change, no fee/deadline shift, but new comprehensive-examination criteria are worth flagging to clients proactively. Primary web sweep: Hukumonline 403 (unchanged pattern), MUC 403 (unchanged), IKPI 404 (unchanged), Ortax /news still SPA shell 'Artikel tidak ditemukan' (unchanged) - DDTC was again the only functioning primary source and supplied this run's sole delta. Backup gov portals checked since primary sources yielded <3 deltas: peraturan.go.id (200, 12.5KB static) resurfaced only the same stale 'UPDATE TERBARU' block seen on prior runs (oldest item 10 months ago, newest 2 months ago) - no 2026-07 entries, nothing new. pajak.go.id (200, JS-rendered table, zero static matches), peraturan.bpk.go.id (200, zero PMK-2026 string matches in-window), imigrasi.go.id (200, 70KB text, zero dated matches in 15-18 Jul window) all confirmed no additional deltas. No source contradicted the single confirmed delta. One delta today, zero truncated."
+}
