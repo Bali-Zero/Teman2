@@ -60,8 +60,7 @@ log "Starting Fly.io PostgreSQL backup..."
 # this replaces, and it would abort ~15 minutes later with a misleading message.
 _fly_cred_lib=""
 for _cand in "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/fly_credential.sh" \
-             "$HOME/nuzantara/scripts/lib/fly_credential.sh" \
-             "$HOME/Desktop/nuzantara/scripts/lib/fly_credential.sh"; do
+             "$HOME/nuzantara/scripts/lib/fly_credential.sh"; do
     if [ -f "$_cand" ]; then _fly_cred_lib="$_cand"; break; fi
 done
 if [ -z "$_fly_cred_lib" ]; then
