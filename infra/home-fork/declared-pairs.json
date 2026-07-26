@@ -441,6 +441,12 @@
       "repo": "scripts/fly-pg-backup.sh",
       "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup — the W106 shape.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-state.sh",
+      "repo": "scripts/cron-state.sh",
+      "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day — the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
+      "machines": ["pro"]
     }
   ],
   "allow": [
