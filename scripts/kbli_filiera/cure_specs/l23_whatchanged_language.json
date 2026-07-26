@@ -19,7 +19,14 @@
     "than letting it pass as covered. Reporting a bound, not a truth: 346 is a FLOOR derived from",
     "literal matching; a looser word-list matcher scored ~353, and a looser matcher can also score",
     "false positives. Never cite either number as 'the number of Italian records'.",
-    "Same discipline the corner already records for the tier-claim matcher (19 <= truth <= 152)."
+    "Same discipline the corner already records for the tier-claim matcher (19 <= truth <= 152).",
+    "",
+    "REV 2 (2026-07-26) widens the cure beyond whatChanged to whatYouNeed / baliContext /",
+    "zantaraOpener, where the SAME internal enum tokens were reaching clients. 34 (record,field)",
+    "pairs: 24 need the nine rules added in this revision, 10 were already covered by the rules",
+    "above once they were allowed to run on those fields. The widening is NOT free — see FIELDS in",
+    "the compiler: whitespace normalisation is now per-field, because those three are markdown",
+    "whose indentation is structure, and a record is written back only when a rule actually fired."
   ],
   "_the_trap_guarded_here": [
     "One record carries an ENGLISH audit note that QUOTES the Italian label as history:",
@@ -29,7 +36,7 @@
     "or a 5-digit code operand) so it CANNOT fire inside a quoted historical label. The innocence",
     "corpus pins this: superscar #3 says match the entity, never the bare substring."
   ],
-  "version": 1,
+  "version": 4,
   "rules": [
     {
       "id": "mapping_codice_rinumerato",
@@ -151,6 +158,90 @@
       "pattern": "Cleaned: removed invalid \\[[^\\]]*\\]\\s*",
       "replacement": "",
       "note": "9 records. DELETED, not translated — deliberately. This is internal pipeline bookkeeping about a code the cleaner dropped; it is not information a client can act on, and it was never meant to reach a public page. The fact itself is not lost: which 2020 codes a record does and does not carry is recorded structurally in the crosswalk fields (pp28_sources / kbli_2020_source), which is where an audit trail belongs. This is the one rule that removes rather than renders, and it is called out here so the removal is a recorded decision rather than a silent side effect."
+    },
+    {
+      "id": "enum_bold_bps_only_dash",
+      "pattern": "\\*\\*BPS_ONLY\\*\\* — ",
+      "replacement": "**New in KBLI 2025** — ",
+      "note": "12 (record,field) pairs across whatYouNeed on both surfaces. The bold markers are load-bearing: the page renders this field as markdown, so dropping them would silently de-emphasise the lead sentence. Wording follows STATUS_MAP['BPS_ONLY'] in apps/backend-rag/scripts/kbli_enrichment_pipeline.py:99 ('New in KBLI 2025 ...'), which is where the authentic English for this status already lives — so one page can never say it two ways."
+    },
+    {
+      "id": "enum_bold_marked_as",
+      "pattern": "marked \\*\\*BPS_ONLY\\*\\*",
+      "replacement": "marked **new in KBLI 2025**",
+      "note": "3 pairs (85510, 85579 canonical, 85579 gold). Lower-case here because the token sits mid-sentence ('This code is marked ...'), unlike the sentence-leading form above."
+    },
+    {
+      "id": "enum_bold_bps_only_code_perskala",
+      "pattern": "\\*\\*BPS_ONLY code\\*\\* — no `per_skala` data in KBLI 2025 JSON\\.",
+      "replacement": "**New in KBLI 2025** — no PP28/2025 risk classification is published for this code yet.",
+      "note": "2 pairs (gold 65121, 72201). This one carries a SECOND leak class the rest do not: `per_skala` is our pipeline's column name and 'KBLI 2025 JSON' is our source file, so the client was reading our implementation notes. Replaced with the fact the sentence was trying to convey, in the register the rest of the page uses. Cannot collide with enum_bold_bps_only_dash: that rule needs ** immediately after BPS_ONLY, and here the next characters are ' code**'."
+    },
+    {
+      "id": "enum_since_its_bps_only",
+      "pattern": "Since it's BPS_ONLY \\(",
+      "replacement": "Since it's new in KBLI 2025 (",
+      "note": "1 pair (canonical 96230 baliContext)."
+    },
+    {
+      "id": "enum_the_bps_only_status",
+      "pattern": "The BPS_ONLY status",
+      "replacement": "The new-in-2025 status",
+      "note": "2 pairs (gold 60390 and 82400, both baliContext). 82400 is the record the residue probe was BLIND to before the bounded-strip fix: a possessive apostrophe in \"Bali's\" paired with one 468 characters later and swallowed this leak whole. It was found because the rules fired 24 times while the probe had located only 23 targets — a firing with no matching finding means the finder is blind, not that the rule is greedy."
+    },
+    {
+      "id": "enum_bps_only_means_uncertainty",
+      "pattern": "\\*\\*BPS_ONLY code means uncertainty:\\*\\*",
+      "replacement": "**New code, so licensing is still uncertain:**",
+      "note": "1 pair (gold 72201 baliContext). A bullet heading; the colon and bold are part of the list's structure."
+    },
+    {
+      "id": "enum_bps_only_for_now",
+      "pattern": "\\. BPS_ONLY for now, so expect",
+      "replacement": ". It is new in KBLI 2025, so expect",
+      "note": "1 pair (gold 72201 zantaraOpener). zantaraOpener was recorded as leak-free in the first census, which measured CANONICAL only — gold leaks there and canonical never does. The two surfaces do not share a field distribution; each is measured separately now."
+    },
+    {
+      "id": "enum_the_bps_only_intermediation",
+      "pattern": "the BPS_ONLY intermediation code",
+      "replacement": "the new-in-2025 intermediation code",
+      "note": "1 pair (gold 82400 zantaraOpener)."
+    },
+    {
+      "id": "enum_bloccato_classe_rischio",
+      "pattern": "The local status is BLOCCATO_CLASSE_RISCHIO, meaning",
+      "replacement": "The local status is a risk-class block, meaning",
+      "note": "1 pair (canonical 55300 whatYouNeed) and the only non-BPS_ONLY token in this lot. It appears in NO whatChanged record, which is why curing whatChanged alone could never have surfaced it — and it sits in the LICENSING field, the most consequential one on the page. The trailing ', meaning' is inside the pattern on purpose: the sentence goes on to DEFINE the term ('a moratorium (effective 13 May 2026) prevents ...'), so only the identifier is replaced and the explanation the client actually needs is preserved untouched."
+    },
+    {
+      "id": "enum_paren_bps_only_code",
+      "pattern": "\\(BPS_ONLY code",
+      "replacement": "(new in KBLI 2025",
+      "note": "2 firings, BOTH inside gold 72201.whatYouNeed — 'expect NIB-only for now (BPS_ONLY code)' and 'Authority: TBD (BPS_ONLY code - licensing pathway not fully defined)'. Found by the residue probe, not by the census, and that is the point worth recording: the census counted (record,field) PAIRS while the cure operates on OCCURRENCES. 33 pairs carry exactly one token and one pair carries three, so the true occurrence count is 36, not 34. A unit mismatch between what you measure and what you fix reads as complete when it is not. The pattern intentionally does not close the parenthesis, so it covers both the bare '(BPS_ONLY code)' and the em-dash continuation; it cannot collide with enum_bold_bps_only_code_perskala, which requires ** immediately before the token."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_only",
+      "pattern": "\\s*\\(OK_or_HIGHER_RISK\\)",
+      "replacement": "",
+      "note": "1 firing (canonical 84111.whatYouNeed): 'the activity is not blocked by a local moratorium (OK_or_HIGHER_RISK), but that does not override the national prohibition'. DELETED rather than relabelled because the clause immediately before it already states the fact in plain English — inserting 'Registrable in Bali' would make the sentence say the same thing twice, and would also read as a green light in a sentence whose whole point is that national ownership is CLOSED."
+    },
+    {
+      "id": "enum_bali_ok_parenthetical_lead",
+      "pattern": "\\(OK_or_HIGHER_RISK, ",
+      "replacement": "(",
+      "note": "1 firing (canonical 84144.whatYouNeed): '(OK_or_HIGHER_RISK, medium-high risk but verifiable per address)'. The parenthesis keeps its remaining, genuinely informative content; only the symbol leaves."
+    },
+    {
+      "id": "enum_bali_ok_lists_it_as",
+      "pattern": "lists it as OK_or_HIGHER_RISK",
+      "replacement": "lists it as registrable in Bali",
+      "note": "1 firing (canonical 84146.whatYouNeed): 'Bali's current assessment lists it as OK_or_HIGHER_RISK - it is not blocked by the local moratorium but is considered medium-high to high risk'. Here the symbol IS the object of the sentence, so it must be rendered rather than deleted. Wording mirrors BALI_STATUS_CONFIG.OK_or_HIGHER_RISK.label ('Registrable in Bali') in apps/mouth/src/lib/kbli-status-labels.ts, lower-cased to sit mid-sentence, so the prose and the BaliStatusBadge on the same page cannot disagree."
+    },
+    {
+      "id": "enum_bali_blocked_scare_quoted",
+      "pattern": "as 'BLOCCATO_CLASSE_RISCHIO'",
+      "replacement": "as blocked in Bali by the risk-class moratorium",
+      "note": "1 firing (canonical 47249.whatYouNeed): 'classifying this retail trade as BLOCCATO_CLASSE_RISCHIO' with the symbol in single quotes. Those are SCARE-QUOTES around an internal identifier, not an audit citation — a client reads the raw symbol either way. This is the record that proved the probe's quoted-token exemption was hiding a real leak rather than protecting evidence. Wording mirrors BALI_STATUS_CONFIG.BLOCCATO_CLASSE_RISCHIO.label ('Blocked in Bali (risk-class moratorium)')."
     }
   ]
 }

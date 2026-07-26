@@ -81,6 +81,83 @@ def cure(mod, rules, text: str) -> str:
         ("New code in KBLI 2025 (BPS_ONLY with PP28 data).", "new in KBLI 2025, with PP28 data", "BPS_ONLY"),
         ("This is a BPS_ONLY code — it exists in 2025.", "a code new in KBLI 2025", "BPS_ONLY"),
         ("maintains the classification as BPS_ONLY, meaning detail is absent.", "as new in KBLI 2025", "BPS_ONLY"),
+        # ---- L2.4: the same leak OUTSIDE whatChanged (whatYouNeed / baliContext /
+        # zantaraOpener). Every `before` below is lifted verbatim from the real
+        # corpus, not invented — these are sentences clients were reading.
+        (
+            "**BPS_ONLY** — no PP28/2025 licensing data exists yet.",
+            "**New in KBLI 2025** — ",
+            "BPS_ONLY",
+        ),
+        (
+            "This code is marked **BPS_ONLY**. It is a new KBLI 2025 classification.",
+            "marked **new in KBLI 2025**",
+            "BPS_ONLY",
+        ),
+        (
+            "**BPS_ONLY code** — no `per_skala` data in KBLI 2025 JSON. This means the OSS pathway is undefined.",
+            "no PP28/2025 risk classification is published for this code yet.",
+            "per_skala",
+        ),
+        (
+            "Since it's BPS_ONLY (no PP28 licensing data yet), the requirements are pending.",
+            "Since it's new in KBLI 2025 (",
+            "BPS_ONLY",
+        ),
+        (
+            "The BPS_ONLY status makes this a 'watch and wait' code.",
+            "The new-in-2025 status",
+            "BPS_ONLY",
+        ),
+        (
+            "- **BPS_ONLY code means uncertainty:** 72201 is a new code without defined licensing.",
+            "**New code, so licensing is still uncertain:**",
+            "BPS_ONLY",
+        ),
+        (
+            "72201 is the code. BPS_ONLY for now, so expect NIB-only registration.",
+            "It is new in KBLI 2025, so expect",
+            "BPS_ONLY",
+        ),
+        (
+            "82400 is the BPS_ONLY intermediation code — no PP28 requirements yet.",
+            "the new-in-2025 intermediation code",
+            "BPS_ONLY",
+        ),
+        (
+            "The local status is BLOCCATO_CLASSE_RISCHIO, meaning a moratorium prevents registration.",
+            "The local status is a risk-class block, meaning a moratorium prevents",
+            "BLOCCATO_CLASSE_RISCHIO",
+        ),
+        (
+            "expect NIB-only for now (BPS_ONLY code) for the moment",
+            "(new in KBLI 2025)",
+            "BPS_ONLY",
+        ),
+        # ---- Bali-status symbols. Found only after the probe stopped being
+        # shape-based: OK_or_HIGHER_RISK is not SCREAMING_SNAKE (lower-case
+        # "or"), so a \b[A-Z]{3,}(?:_[A-Z]+)+\b matcher walks straight past the
+        # most common internal symbol in the catalogue.
+        (
+            "the activity is not blocked by a local moratorium (OK_or_HIGHER_RISK), but the ban stands.",
+            "not blocked by a local moratorium, but the ban stands.",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "the moratorium does not block this code (OK_or_HIGHER_RISK, medium-high risk), so there is no extra wall.",
+            "(medium-high risk), so there is no extra wall.",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "Bali's current assessment lists it as OK_or_HIGHER_RISK — it is not blocked by the moratorium.",
+            "lists it as registrable in Bali",
+            "OK_or_HIGHER_RISK",
+        ),
+        (
+            "classifying this retail trade as 'BLOCCATO_CLASSE_RISCHIO'.",
+            "as blocked in Bali by the risk-class moratorium.",
+            "BLOCCATO_CLASSE_RISCHIO",
+        ),
     ],
 )
 def test_guilt_rule_fires_on_the_real_defect(mod, rules, before, must_contain, must_not_contain):
@@ -220,3 +297,255 @@ def test_the_guilt_corpus_is_not_vacuous(mod, rules):
         exercised |= set(hits)
     declared = {r["id"] for r in rules}
     assert declared - exercised == set(), f"rules with no guilt case: {sorted(declared - exercised)}"
+
+
+# ==========================================================================
+# L2.4 — the cure widened past whatChanged. Each test below pins one thing
+# that measurement (not intuition) said would otherwise go wrong.
+# ==========================================================================
+
+GOLD = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-gold-all.json"
+
+
+@pytest.fixture(scope="module")
+def gold_payload():
+    return json.loads(GOLD.read_text(encoding="utf-8"))
+
+
+def test_the_field_policy_is_explicit_and_only_whatChanged_normalises(mod):
+    """Whitespace normalisation is a per-FIELD property, not a global.
+
+    `whatChanged` is machine-templated single-paragraph text where collapsing
+    space runs is safe. The other three are editorial markdown whose two-space
+    indentation is structure.
+    """
+    policy = dict(mod.FIELDS)
+    assert policy == {
+        "whatChanged": True,
+        "whatYouNeed": False,
+        "baliContext": False,
+        "zantaraOpener": False,
+    }
+
+
+def test_markdown_indentation_survives_on_the_rich_text_fields(mod, rules):
+    """The 184-record collateral this cure was redesigned to avoid.
+
+    Measured 2026-07-26: running the rules over the three rich-text fields with
+    normalisation ON mutates 184 records that contain NO enum leak at all,
+    against 10 real hits — an 18:1 collateral-to-signal ratio, delivered inside
+    a PR that claims only to remove enum tokens.
+    """
+    md = "Licensing:\n  Obligations: keep records\n  Requirements: bukti penguasaan lahan"
+    assert mod.cure_text(md, rules, Counter(), normalize_whitespace=False) == md
+    # ...and the whatChanged policy is genuinely different, so the test is not vacuous
+    assert mod.cure_text(md, rules, Counter(), normalize_whitespace=True) != md
+
+
+def test_a_record_is_written_only_when_a_rule_fired(mod, rules, gold_payload):
+    """Structural guard on top of the whitespace policy.
+
+    "the cure changed it" and "a declared rule changed it" must be the SAME set.
+    If they ever diverge, something other than a reviewed rule is rewriting
+    client-facing prose.
+    """
+    import copy
+
+    before = copy.deepcopy(gold_payload)
+    after = copy.deepcopy(gold_payload)
+    changed, hits, _ = mod.cure_dataset(mod.gold_pairs(after), rules, None, "gold")
+
+    mutated = {
+        (code, field)
+        for (code, b), (_, a) in zip(mod.gold_pairs(before), mod.gold_pairs(after))
+        if isinstance(b, dict) and isinstance(a, dict)
+        for field, _ in mod.FIELDS
+        if b.get(field) != a.get(field)
+    }
+    assert len(mutated) == changed, f"collateral: {len(mutated)} mutated vs {changed} reported"
+    assert sum(hits.values()) >= changed, "a rewrite happened with no rule firing"
+
+
+def test_zantaraOpener_is_actually_reached(mod, rules, gold_payload):
+    """The field the first census declared empty.
+
+    It measured CANONICAL — where zantaraOpener genuinely never leaks — and
+    extrapolated to gold, which leaked there twice (72201, 82400). Gold MASKS
+    intel_2026 on /kbli/<code>, so a gold-only leak is a RENDERED leak.
+
+    GUILT IS ON A FIXTURE, deliberately. The first version of this test asserted
+    that live gold still contained a zantaraOpener leak — which was true when
+    written and false the moment the cure ran, i.e. self-inverting in exactly
+    the way test_the_applied_dataset_is_a_FIXED_POINT_of_the_cure warns about
+    twenty lines up. Writing that same bug in the same file while fixing the
+    field it describes is worth leaving on the record.
+
+    So: the fixture proves the field is IN SCOPE and gets cured, and live gold
+    carries the durable claim — nothing leaks there.
+    """
+    assert "zantaraOpener" in dict(mod.FIELDS)
+    normalize = dict(mod.FIELDS)["zantaraOpener"]
+    assert normalize is False, "zantaraOpener is editorial prose; it must not be reflowed"
+
+    fixture = "82400 is the BPS_ONLY intermediation code — no PP28 requirements yet."
+    assert mod.enum_residue(fixture), "fixture must actually contain the defect"
+    cured = mod.cure_text(fixture, rules, Counter(), normalize_whitespace=normalize)
+    assert not mod.enum_residue(cured), f"zantaraOpener text was not cured: {cured!r}"
+
+    still = [
+        code
+        for code, intel in mod.gold_pairs(gold_payload)
+        if isinstance(intel, dict)
+        and isinstance(intel.get("zantaraOpener"), str)
+        and mod.enum_residue(intel["zantaraOpener"])
+    ]
+    assert not still, f"gold zantaraOpener still leaks for: {still}"
+
+
+# --------------------------------------------------------------------------
+# The residue probe's own guilt and innocence — it was BLIND, and a blind
+# probe is worse than none: it certifies.
+# --------------------------------------------------------------------------
+
+def test_probe_guilt_a_possessive_apostrophe_no_longer_swallows_the_leak(mod):
+    """The exact shape that hid a real leak in gold 82400.baliContext.
+
+    The old strip was `'[^']*'`, which in English prose is not a quote stripper
+    but a PROSE stripper: the apostrophe in "Bali's" paired with one 468 chars
+    later and swallowed everything between, leak included, reporting CLEAN.
+    """
+    text = (
+        "A platform serving Bali's freelancer economy could operate under 82400. "
+        "The BPS_ONLY status means low regulatory overhead. "
+        "Think of it as the 'business services marketplace' code."
+    )
+    assert mod.enum_residue(text) == ["BPS_ONLY"], "the probe is blind to a leak after a possessive"
+
+
+def test_probe_innocence_the_italian_citation_is_still_not_residue(mod):
+    """The over-match the Italian strip exists to prevent must stay prevented.
+
+    Deleting that strip to fix the under-match would corrupt an audit trail: a
+    record CITES the old Italian label as history, and that citation is preserved
+    text. Both signs of superscar #3 held by one pair of tests.
+
+    NOTE the asymmetry, which is deliberate and was corrected on measurement:
+    quoting exempts an ITALIAN LABEL from residue_markers, but it does NOT exempt
+    an internal ENUM token from enum_residue — see the next test.
+    """
+    assert not mod.residue_markers("the previous 'match con aggregazione' label was stale")
+
+
+def test_probe_a_scare_quoted_enum_is_a_leak_not_a_citation(mod):
+    """Quoting does not make an internal symbol client-appropriate.
+
+    The first version of enum_residue skipped any immediately-wrapped token, by
+    analogy with the Italian citation above. Measured across all four cured
+    fields on both surfaces, exactly ONE immediately-quoted enum token existed —
+    canonical 47249.whatYouNeed, "classifying this retail trade as
+    'BLOCCATO_CLASSE_RISCHIO'" — and it was scare-quotes in client prose, not
+    evidence. The exemption protected nothing and hid a real leak.
+    """
+    leak = "classifying this retail trade as 'BLOCCATO_CLASSE_RISCHIO'."
+    assert mod.enum_residue(leak) == ["BLOCCATO_CLASSE_RISCHIO"]
+
+
+def test_probe_sees_symbols_that_are_not_screaming_snake(mod):
+    """OK_or_HIGHER_RISK is the most common internal symbol in the catalogue and
+    a \\b[A-Z]{3,}(?:_[A-Z]+)+\\b matcher cannot see it — the lower-case "or"
+    breaks the shape. Three real prose leaks (84111, 84144, 84146) hid behind
+    exactly that assumption. Shape is not entity; this is the third time in this
+    lane that mistake surfaced."""
+    assert mod.enum_residue("the moratorium does not block it (OK_or_HIGHER_RISK)") == [
+        "OK_or_HIGHER_RISK"
+    ]
+    # ...and the shape catch-all still works for tokens nobody has catalogued
+    assert mod.enum_residue("status is SOME_FUTURE_SYMBOL now") == ["SOME_FUTURE_SYMBOL"]
+
+
+def test_the_probe_agrees_with_the_frontend_about_what_an_internal_symbol_is(mod):
+    """Two tools that must agree should not each invent an answer.
+
+    apps/mouth/src/lib/kbli-status-labels.ts is the AUTHORITY: BaliStatusBadge,
+    TransitionBadge and the render-layer cure all read it. This test parses that
+    file and asserts every symbol it lists is visible to enum_residue, so the
+    Python mirror cannot silently drift from the TypeScript source. Terms of art
+    (TERBUKA/TERTUTUP/TERBATAS) are excluded there by design — they are the
+    official Indonesian vocabulary the product deliberately teaches — so they are
+    excluded here too, and asserted to be SPARED.
+    """
+    import re
+
+    src = (REPO_ROOT / "apps" / "mouth" / "src" / "lib" / "kbli-status-labels.ts").read_text(
+        encoding="utf-8"
+    )
+    block = src[src.index("BALI_STATUS_CONFIG") : src.index("MAPPING_STATUS_LABELS")]
+    terms_of_art = {"TERBUKA", "TERTUTUP", "TERBATAS"}
+    symbols = [k for k in re.findall(r"^\s{2}([A-Za-z0-9_]+):\s*\{", block, re.M)]
+    symbols += ["MATCH_LANGSUNG", "CODICE_RINUMERATO", "MATCH_CON_AGGREGAZIONE", "BPS_ONLY"]
+    watched = [s for s in symbols if s not in terms_of_art]
+    assert len(watched) >= 15, f"parsed too few symbols ({len(watched)}) — the parse broke, not the code"
+
+    blind = [s for s in watched if mod.enum_residue(f"status is {s} today") != [s]]
+    assert not blind, f"enum_residue cannot see these internal symbols: {blind}"
+
+    # INNOCENCE: the terms of art must NOT be flagged — they are vocabulary.
+    for term in terms_of_art:
+        assert mod.enum_residue(f"ownership is {term} at 100%") == []
+
+
+def test_probe_still_sees_italian_residue_after_the_bound(mod):
+    """The bounded strip must not have blinded the Italian probe either."""
+    assert mod.residue_markers("Il KBLI 2025 mantiene 46442 separato da 46441.")
+
+
+# --------------------------------------------------------------------------
+# Whole-corpus invariants for the widened scope
+# --------------------------------------------------------------------------
+
+def test_no_enum_token_survives_on_any_cured_field_either_surface(
+    mod, rules, canonical_records, gold_payload
+):
+    """The claim this lot actually makes, measured in OCCURRENCES not records.
+
+    That distinction is not pedantry: the census counted (record,field) PAIRS
+    and reported 34, while the corpus holds 36 TOKENS — gold 72201.whatYouNeed
+    carries three. Two leaks survived the first rule set and were caught by the
+    probe, not the census. A unit mismatch between what you measure and what you
+    fix reads as complete when it is not.
+    """
+    survivors = []
+    for rec in canonical_records:
+        intel = rec.get("intel_2026") or {}
+        for field, norm in mod.FIELDS:
+            v = intel.get(field)
+            if isinstance(v, str) and v:
+                after = mod.cure_text(v, rules, Counter(), normalize_whitespace=norm)
+                survivors += [(rec.get("kode_kbli_2025"), field, t) for t in mod.enum_residue(after)]
+    for code, intel in mod.gold_pairs(gold_payload):
+        if not isinstance(intel, dict):
+            continue
+        for field, norm in mod.FIELDS:
+            v = intel.get(field)
+            if isinstance(v, str) and v:
+                after = mod.cure_text(v, rules, Counter(), normalize_whitespace=norm)
+                survivors += [(code, field, t) for t in mod.enum_residue(after)]
+    assert not survivors, f"internal enum tokens still reach clients: {survivors[:6]}"
+
+
+def test_no_field_is_left_with_unbalanced_bold_markers(mod, rules, gold_payload):
+    """A half-applied bold rule leaves a stray `**` and silently italicises the
+    rest of the paragraph. Cheap invariant, catches exactly that class."""
+    bad = []
+    for code, intel in mod.gold_pairs(gold_payload):
+        if not isinstance(intel, dict):
+            continue
+        for field, norm in mod.FIELDS:
+            v = intel.get(field)
+            if not isinstance(v, str) or not v:
+                continue
+            before_n = v.count("**")
+            after = mod.cure_text(v, rules, Counter(), normalize_whitespace=norm)
+            if after != v and after.count("**") % 2 != before_n % 2:
+                bad.append((code, field))
+    assert not bad, f"cure changed the bold-marker parity of: {bad[:6]}"
