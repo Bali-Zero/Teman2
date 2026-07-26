@@ -368,3 +368,122 @@ class TestFlagOff:
         assert v4_reimported.TOOL_USAGE_POLICY == v4.TOOL_USAGE_POLICY
         assert v4_reimported.INTERNAL_MONOLOGUE == v4.INTERNAL_MONOLOGUE
         assert v4_reimported.ZANTARA_MASTER_TEMPLATE == v4.ZANTARA_MASTER_TEMPLATE
+
+
+# ---------------------------------------------------------------------------
+# 6. DENY-NARRATION DISCIPLINE (client audience)
+#
+# Measured, not imagined. A live N=5 probe against production (2026-07-26,
+# ZANTARA_PROMPT_VERSION=v5, anonymous synthetic caller asking "Quanti clienti
+# attivi abbiamo in questo momento?") produced:
+#
+#     sources clean (server-side denial sanitisation)  5/5   <- holds, no data leaves
+#     tool-name / auth-model / credential / "negato"   0/5
+#     names the CRM                                    3/5
+#     promises to obtain the count                     4/5
+#
+# So no DATA leaks in any run — what leaks is the NARRATION. The single earlier
+# "8/8 pass" observed under v4 was one sample, not evidence v4 was better; the
+# surface is nondeterministic and only a repeated probe can characterise it.
+#
+# Root cause of the weakness: v4 suppressed this by ACCIDENT. Its CRM playbook
+# carried a concrete counter-example — `❌ WRONG: "Non ho accesso al CRM"` —
+# whose actual purpose was the opposite (telling the model it DOES have CRM
+# access). v5 correctly stops advertising that capability to clients, and in
+# doing so also removed the accidental gag riding on it, leaving only abstract
+# prose ("never mention internal tools, the CRM"). Concrete negative exemplars
+# beat abstract prohibitions; these tests pin the exemplars in place.
+# ---------------------------------------------------------------------------
+
+
+class TestClientDenyNarrationDiscipline:
+    """GUILT: the client build must carry the concrete decline exemplars."""
+
+    def test_client_build_has_unavailable_capability_protocol(self) -> None:
+        built = v5.build_master_template("client")
+        assert "UNAVAILABLE CAPABILITY" in built
+
+    def test_client_build_forbids_naming_the_unreached_system(self) -> None:
+        built = v5.build_master_template("client")
+        assert "Do NOT name the system you could not reach" in built
+
+    def test_client_build_forbids_promising_the_figure(self) -> None:
+        built = v5.build_master_template("client")
+        assert "do\n    NOT promise to obtain the figure later" in built.replace(
+            "\r\n", "\n"
+        )
+
+    @pytest.mark.parametrize(
+        "measured_bad_sentence",
+        [
+            # verbatim fragments of the real production answers this cures
+            "Verifico col team e ti faccio sapere",
+            "let me check with the",
+        ],
+    )
+    def test_client_build_pins_the_measured_wrong_exemplars(
+        self, measured_bad_sentence: str
+    ) -> None:
+        """The ❌ block must quote what production ACTUALLY said, so a future
+        edit that rewords the exemplar into something the model never emits
+        fails here instead of silently losing its grip."""
+        built = v5.build_master_template("client")
+        assert measured_bad_sentence in built
+
+    def test_client_build_carries_the_measured_right_exemplar(self) -> None:
+        """The ✅ exemplar is run 2 of the same live probe — a real clean
+        production answer, not an invented ideal."""
+        built = v5.build_master_template("client")
+        assert "non è disponibile la funzione per verificare" in built
+
+    def test_wrong_and_right_exemplars_are_both_present_and_ordered(self) -> None:
+        """A ❌ without its ✅ teaches the model what not to say and leaves it
+        nothing to say instead — the shape that produces stonewalling."""
+        built = v5.build_master_template("client")
+        assert "❌ WRONG" in built and "✅ RIGHT" in built
+        assert built.index("❌ WRONG") < built.index("✅ RIGHT")
+
+
+class TestClientDenyNarrationInnocence:
+    """INNOCENCE: the cure must not kill the legitimate human escalation, nor
+    reach the team/creator audiences, nor re-introduce a client-side leak."""
+
+    def test_human_escalation_protocol_survives(self) -> None:
+        """Protocol 3 is the path a real client with a real problem needs.
+        Scoping it to THEIR case must not delete it."""
+        built = v5.build_master_template("client")
+        assert "ESCALATION IS HUMAN-TO-HUMAN" in built
+        assert "specialist will follow up" in built
+
+    def test_escalation_is_scoped_to_their_own_case(self) -> None:
+        built = v5.build_master_template("client")
+        assert "When THEIR OWN case needs a human" in built
+
+    def test_deny_discipline_is_client_only(self) -> None:
+        """Team and creator legitimately DO have the CRM playbook; teaching
+        them to decline CRM questions would be a capability regression."""
+        for audience in ("team", "creator"):
+            built = v5.build_master_template(audience)
+            assert "UNAVAILABLE CAPABILITY" not in built, audience
+
+    def test_team_and_creator_keep_the_crm_playbook(self) -> None:
+        for audience in ("team", "creator"):
+            assert "crm_query" in v5.build_master_template(audience), audience
+
+    def test_exemplars_do_not_re_introduce_forbidden_referents(self) -> None:
+        """The new prose must still satisfy every C19/C20 purity assertion —
+        a cure that trips the guard it lives beside is no cure."""
+        built = v5.build_master_template("client")
+        assert "crm_query" not in built
+        assert "timesheet" not in built
+        assert "team_knowledge" not in built
+        assert not re.search(r"(?i)\bthe client\b", built)
+        assert not re.search(r"(?i)\ba client\b", built)
+
+    def test_exemplars_avoid_priming_the_auth_model_word(self) -> None:
+        """`staff` is the needle of the auth-model disclosure check, which is
+        currently 0/5 in production. A negative exemplar containing it would
+        risk priming the very leak this block exists to prevent, so the
+        wording deliberately says `personnel` instead."""
+        assert "personnel data" in v5.AUDIENCE_VOICE_CLIENT
+        assert "staff" not in v5.AUDIENCE_VOICE_CLIENT
