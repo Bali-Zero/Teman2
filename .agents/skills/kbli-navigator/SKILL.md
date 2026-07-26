@@ -26,7 +26,71 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-25 — keep current)
+## 1. LIVE STATE (last update 2026-07-26 — keep current)
+
+**L2 EDITORIAL-HONESTY SWEEP — 2026-07-26. The claims were cured by W1; this lane cures the
+LANGUAGE the claims are written in.** Four lots, all driven by `scripts/kbli_filiera/` compilers
+with spec-authored exact rules — never a hand-edit, never a regex invented at the keyboard.
+
+- **L2.1** false renumbering / contradicted predecessors / mid-word truncation — PR #3179 MERGED,
+  KG arm APPLIED and re-verified through the read-only role (not the applier's own report).
+- **L2.2** the licensing disclosure, 152 codes — PR #3181 MERGED, **PROVEN-LIVE**: `/kbli/72201`
+  and `/kbli/79909` served 0 occurrences of "Risk tier under review" at the pre-merge baseline and
+  serve it after the rebuild.
+- **L2.3** `whatChanged` spoke Italian and leaked internal enum tokens — PR #3196 MERGED
+  (`9583709d9f`), 576 records (465 canonical + 111 gold), 20 rules, 0 enum tokens on either
+  surface. One residue is DECLARED not hidden: `/kbli/46442` still carries hand-written Italian
+  editorial prose, which a template map cannot translate without inventing it; the compiler PRINTS
+  it every run (ledger line open).
+- **L2.4** the same leak OUTSIDE `whatChanged` — **38 (record,field) pairs / 40 occurrences** across
+  `whatYouNeed` (30), `baliContext` (6), `zantaraOpener` (2), both surfaces. 14 new rules.
+
+**Four findings from L2.4 that generalise past KBLI — this is the part worth re-reading:**
+
+1. **The two surfaces do not share a field distribution.** The first census measured CANONICAL and
+   extrapolated to gold; gold leaks in `zantaraOpener`, canonical never does. Caught only because a
+   prod baseline curl showed `BPS_ONLY` on `/kbli/72201`, a code absent from the population list.
+   Gold MASKS `intel_2026` on the page (`goldEntry ? {…} : {…}` is a mask, not a merge), so a
+   gold-only leak is a RENDERED leak. Measure each surface; never extrapolate.
+2. **The residue probe was blind twice, in two different ways, and both were self-inflicted.**
+   First it stripped quoted spans with `'[^']*'` — which in English prose is not a quote stripper
+   but a PROSE stripper, because `'` is the possessive apostrophe: in `82400.baliContext` the one in
+   _"Bali's"_ paired with one 468 chars later and swallowed a real leak, reporting CLEAN. Then, once
+   bounded, it still exempted _immediately_-quoted tokens as "citations" — but the single such token
+   in the whole corpus was scare-quotes around an identifier in client prose, not evidence. **How
+   both surfaced: the rules fired more often than the probe had found targets. A firing with no
+   matching finding means the FINDER is blind, not the rule greedy.** Chase that gap; never
+   reconcile it by assumption.
+3. **Shape is not entity — third instance in this lane.** The probe defined an internal symbol as
+   `SCREAMING_SNAKE`, and the catalogue's most common one, **`OK_or_HIGHER_RISK`**, has a lower-case
+   `or`. Three client-facing prose leaks (84111/84144/84146) hid behind that assumption. The probe
+   now recognises symbols by NAME, mirroring `apps/mouth/src/lib/kbli-status-labels.ts`, with the
+   shape kept as a fail-closed catch-all — and a test parses that TS file so the two cannot drift.
+4. **A guard whose GUILT depends on production still being broken deletes itself the day you fix
+   production.** `kbli-internal-leak.test.ts` proved the render-layer cure worked by asserting the
+   raw gold file still leaked. L2.4 fixed the data; the guard went red without any regression. Guilt
+   moved to a fixture; the live file now carries the stronger claim (clean at rest AND after
+   render). The new `zantaraOpener` test made the identical mistake twenty lines below the comment
+   warning against it — recorded because that is how easy it is.
+
+Also: the naive `FIELD` → `FIELDS` widening was **rejected on measurement**. Over all 7,641
+(record,field) pairs of the new fields the rules fire 10 times while `cure_text`'s trailing
+whitespace-collapse mutates **184** records with no leak at all — markdown indentation in
+`whatYouNeed` is structure. Normalisation is now per-field and a record is written back only when a
+rule fired; both pinned by tests that go red under mutation.
+
+**Still open (ledger, not lost):** `kbli_documents` — the 4th surface — never received the L2.2
+disclosure: 152 disclosed / 119 marked / **98 curable**, 54 structurally outside the tool's scope.
+BLOCKED because no machine in the fleet currently holds a Fly credential that can see
+`nuzantara-rag` (M5 none · Pro's token scoped to `nuzantara-postgres` · Mini, the only good one, is
+down and unreachable from both). Also open: Qdrant `whatChanged` re-index needs `--only` on
+`index_kbli_gold_content.py`.
+
+**Method note:** a curl PROVE-LIVE on `/kbli/<code>` proves the DATA, not the RENDER —
+`LicensingSection.tsx:16` loads `react-markdown` with `ssr: false`, so the server HTML carries raw
+markdown and `**bold**` in a curl is expected, not a leak. A visual check needs a browser.
+
+---
 
 **RENDER-TRUTH PASS — 2026-07-25. Two defects found by PROBING THE LIVE PRODUCT, both invisible to
 every existing gate, both measured on the real data before a line was written.**
