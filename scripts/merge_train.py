@@ -196,7 +196,7 @@ def decide_head(
     main_green: bool,
     deploy_in_flight: bool,
     is_revert: bool,
-    failed_required: list[str],
+    blocking_required: dict[str, str],
     rerolled_already: bool,
     missing_required: list[str] | None = None,
     update_for_missing_already: bool = False,
@@ -225,18 +225,20 @@ def decide_head(
             )},
         )
 
-    if failed_required:
+    if blocking_required:
         if not rerolled_already:
             return Decision("reroll_failed", pr=n, reason="red_checks_first_seen",
-                            details={"failed": failed_required})
+                            details={"blocking": blocking_required})
+        states = ", ".join(f"{name}: {state}" for name, state in sorted(blocking_required.items()))
         return Decision(
             "comment_and_skip",
             pr=n,
             reason="red_checks",
             details={"comment": (
-                "merge-train: required checks failed twice on this head — "
-                "fix and push to re-enter the queue."
-            ), "failed": failed_required},
+                "merge-train: required checks are still blocking this head after a "
+                f"retry — {states} — fix (or, for a stuck run, re-trigger it) and "
+                "push to re-enter the queue."
+            ), "blocking": blocking_required},
         )
 
     if state == "BEHIND":
@@ -266,9 +268,10 @@ def decide_head(
     if state == "UNKNOWN":
         return Decision("wait", pr=n, reason="merge_state_recalculating")
 
-    # BLOCKED with no failed required checks = checks still running (or
-    # human-review policy, which auto-merge will hold anyway) → wait.
-    # CLEAN/HAS_HOOKS/UNSTABLE → GitHub's own auto-merge completes it.
+    # BLOCKED with nothing in blocking_required = every required context is
+    # OK or still progressing (or human-review policy, which auto-merge will
+    # hold anyway) → wait. CLEAN/HAS_HOOKS/UNSTABLE → GitHub's own
+    # auto-merge completes it.
     return Decision("wait" if state == "BLOCKED" else "none", pr=n, reason=state.lower())
 
 
@@ -298,21 +301,72 @@ def required_contexts() -> set[str]:
     return set(data.get("contexts", []))
 
 
-def failed_required_checks(detail: dict[str, Any], required: set[str]) -> list[str]:
-    """Only REQUIRED contexts count (spec §10.3 / Codex 15)."""
-    out = []
+# Task #40 (2026-07-26): PR #3146 sat armed 12h because its required context
+# "P6 parallelize-hypothesis falsifiable gates" went CANCELLED — a terminal
+# state the old `failed_required_checks` (below, now replaced) never named,
+# because it enumerated exactly one bad state (FAILURE). That was the THIRD
+# state in one night to block a PR invisibly: FAILURE (red, the one everyone
+# checks for) -> MISSING (zero-check trap, a calm list of green third-party
+# checks) -> CANCELLED (greyed, reads like "hasn't finished", never retried).
+# Each was invisible to the detector built for the one before it. The cure
+# is to stop enumerating bad states — the list is open-ended and its next
+# member costs another stuck PR to discover — and instead enumerate the
+# required contexts and demand SUCCESS/NEUTRAL/SKIPPED, treating anything
+# else (named or not) as blocking. Fail-closed on the unknown state, exactly
+# as every other guard in this repo does.
+_OK_CONCLUSIONS = frozenset({"SUCCESS", "NEUTRAL", "SKIPPED"})
+_PROGRESSING_STATES = frozenset({"QUEUED", "IN_PROGRESS", "PENDING"})
+
+
+def _rollup_state(entry: dict[str, Any]) -> str:
+    """The one authoritative state string for a statusCheckRollup entry.
+
+    `statusCheckRollup` mixes two GraphQL types in one array and they
+    disagree about which field is authoritative — reading `.conclusion`
+    first is the trap (a still-running CheckRun carries `conclusion: ""`,
+    an empty string, not null, so a naive `.conclusion or .state` fallback
+    silently returns "" instead of falling through). Branch on the type
+    FIRST, verified live against real rollup entries on this repo's open
+    PRs (2026-07-26):
+      - StatusContext (e.g. Vercel): `status` is absent/None, `conclusion`
+        is absent too — the real value lives in `.state`.
+      - CheckRun, still running: `status` is QUEUED/IN_PROGRESS, `conclusion`
+        is the empty string — the real value is `.status` itself.
+      - CheckRun, completed: `status` is COMPLETED — the real value is
+        `.conclusion` (SUCCESS/FAILURE/CANCELLED/NEUTRAL/SKIPPED/TIMED_OUT/
+        ACTION_REQUIRED/STALE/...).
+    """
+    status = entry.get("status")
+    if status is None:
+        return (entry.get("state") or "").upper()
+    if status != "COMPLETED":
+        return status.upper()
+    return (entry.get("conclusion") or "").upper()
+
+
+def blocking_required_checks(detail: dict[str, Any], required: set[str]) -> dict[str, str]:
+    """Required contexts present on this head whose state is neither OK
+    (SUCCESS/NEUTRAL/SKIPPED) nor progressing (QUEUED/IN_PROGRESS/PENDING).
+    Returns {name: literal_state}, so a state this function has never seen
+    named still shows up — fail-closed, not fail-silent. Contexts with NO
+    rollup entry at all are a DIFFERENT case (the zero-check trap) and stay
+    the job of `missing_required_contexts` below."""
+    out: dict[str, str] = {}
     for c in detail.get("statusCheckRollup") or []:
         name = c.get("name") or c.get("context") or ""
-        conclusion = (c.get("conclusion") or c.get("state") or "").upper()
-        if name in required and conclusion == "FAILURE":
-            out.append(name)
-    return sorted(set(out))
+        if name not in required:
+            continue
+        state = _rollup_state(c)
+        if state in _OK_CONCLUSIONS or state in _PROGRESSING_STATES:
+            continue
+        out[name] = state
+    return out
 
 
 def missing_required_contexts(detail: dict[str, Any], required: set[str]) -> list[str]:
     """Required contexts with NO rollup entry at all on this head (the
     workflow never started — e.g. protection gained new required checks
-    after the PR's last push). Distinct from failed_required_checks."""
+    after the PR's last push). Distinct from blocking_required_checks."""
     present = {
         c.get("name") or c.get("context") or ""
         for c in detail.get("statusCheckRollup") or []
@@ -360,20 +414,40 @@ def update_branch(number: int, expected_head_sha: str) -> bool:
         raise
 
 
+# REST Actions API conclusion values are lowercase (GraphQL's are upper).
+# Same inversion as blocking_required_checks above, at this layer: name the
+# OK set, treat everything else on a completed run as reroll-worthy —
+# task #40 exists because the PREVIOUS version of this function named only
+# "failure" and silently ignored a CANCELLED run for twelve hours.
+_OK_CONCLUSIONS_REST = frozenset({"success", "neutral", "skipped"})
+
+
 def reroll_failed_runs(number: int, head_sha: str) -> list[int]:
-    """Re-run the exact failed run IDs attached to this head (Codex 13)."""
+    """Re-run every non-OK completed run attached to this head (Codex 13,
+    widened by task #40). `--failed` (re-run only the failed jobs) is kept
+    for an actual `failure` conclusion — proven, minimizes cost. Anything
+    else (cancelled/timed_out/action_required/stale/unrecognized) gets a
+    full rerun with no `--failed` flag: a run with zero jobs marked
+    "failed" (e.g. everything CANCELLED) has nothing for `--failed` to
+    select, and a full rerun is exactly the fix verified live on PR #3146
+    (`POST .../actions/runs/<id>/rerun`, the REST equivalent of this call)."""
     runs = gh_json([
         "api",
         f"repos/{REPO}/actions/runs?head_sha={head_sha}&status=completed&per_page=50",
     ])
     rerolled = []
     for r in runs.get("workflow_runs", []):
-        if r.get("conclusion") == "failure":
-            try:
-                gh(["run", "rerun", str(r["id"]), "--repo", REPO, "--failed"])
-                rerolled.append(r["id"])
-            except RuntimeError:
-                pass
+        conclusion = (r.get("conclusion") or "").lower()
+        if conclusion in _OK_CONCLUSIONS_REST:
+            continue
+        cmd = ["run", "rerun", str(r["id"]), "--repo", REPO]
+        if conclusion == "failure":
+            cmd.append("--failed")
+        try:
+            gh(cmd)
+            rerolled.append(r["id"])
+        except RuntimeError:
+            pass
     return rerolled
 
 
@@ -446,7 +520,7 @@ def run_tick() -> dict[str, Any]:
 
     is_revert = REVERT_LABEL in {lbl["name"] for lbl in head_summary.get("labels", [])}
     required = required_contexts()
-    failed = failed_required_checks(detail, required)
+    blocking = blocking_required_checks(detail, required)
     reroll_key = f"reroll:{n}:{detail['headRefOid']}"
     rerolled_already = reroll_key in prev.get("rerolls", {})
     missing = missing_required_contexts(detail, required)
@@ -460,7 +534,7 @@ def run_tick() -> dict[str, Any]:
         main_green=main_suite_green(),
         deploy_in_flight=deploy_in_flight(),
         is_revert=is_revert,
-        failed_required=failed,
+        blocking_required=blocking,
         rerolled_already=rerolled_already,
         missing_required=missing,
         update_for_missing_already=missing_key in state["missing_updates"],
