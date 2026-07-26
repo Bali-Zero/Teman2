@@ -38,25 +38,36 @@ export function MarginTrendChart({ data }: { data: TrendPoint[] }) {
   return (
     <ResponsiveContainer>
       <LineChart data={data}>
-        <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-        <XAxis dataKey="week_start" stroke="#71717a" fontSize={11} />
-        <YAxis stroke="#71717a" fontSize={11} tickFormatter={formatShort} />
+        <CartesianGrid stroke="var(--bz-border)" strokeDasharray="3 3" />
+        <XAxis
+          dataKey="week_start"
+          stroke="var(--bz-text-muted)"
+          fontSize={11}
+        />
+        <YAxis
+          stroke="var(--bz-text-muted)"
+          fontSize={11}
+          tickFormatter={formatShort}
+        />
         <Tooltip
-          contentStyle={{ background: "#18181b", border: "1px solid #27272a" }}
+          contentStyle={{
+            background: "var(--bz-bg-elevated)",
+            border: "1px solid var(--bz-border)",
+          }}
           formatter={formatTooltipIDR}
         />
         <Legend />
         <Line
           type="monotone"
           dataKey="margin_bz"
-          stroke="#34d399"
+          stroke="var(--bz-chart-2)"
           name="Margin BZ"
           strokeWidth={2}
         />
         <Line
           type="monotone"
           dataKey="margin_bs"
-          stroke="#fbbf24"
+          stroke="var(--bz-chart-3)"
           name="Margin BS"
           strokeWidth={2}
         />
@@ -74,25 +85,32 @@ export function TopVisaChart({ data }: { data: VisaPoint[] }) {
   return (
     <ResponsiveContainer>
       <BarChart data={data} layout="vertical">
-        <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+        <CartesianGrid stroke="var(--bz-border)" strokeDasharray="3 3" />
         <XAxis
           type="number"
-          stroke="#71717a"
+          stroke="var(--bz-text-muted)"
           fontSize={11}
           tickFormatter={formatShort}
         />
         <YAxis
           type="category"
           dataKey="process"
-          stroke="#71717a"
+          stroke="var(--bz-text-muted)"
           fontSize={11}
           width={130}
         />
         <Tooltip
-          contentStyle={{ background: "#18181b", border: "1px solid #27272a" }}
+          contentStyle={{
+            background: "var(--bz-bg-elevated)",
+            border: "1px solid var(--bz-border)",
+          }}
           formatter={formatTooltipIDR}
         />
-        <Bar dataKey="margin_bz_total_idr" fill="#34d399" name="MBZ" />
+        <Bar
+          dataKey="margin_bz_total_idr"
+          fill="var(--bz-chart-2)"
+          name="MBZ"
+        />
       </BarChart>
     </ResponsiveContainer>
   );

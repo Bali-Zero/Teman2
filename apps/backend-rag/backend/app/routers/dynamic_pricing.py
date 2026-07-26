@@ -13,9 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user
+from backend.services.pricing.pricing_service import get_pricing_service
 
 OptionalUser = dict | None  # User dict from get_current_user, or None if unauthenticated
-from backend.services.pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,42 @@ async def search_pricing(
     if "error" in result:
         raise HTTPException(status_code=503, detail=result["error"])
     return result
+
+
+@router.get("/service")
+async def get_service_price(
+    key: str = Query(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Exact catalogue key, e.g. 'E33 Second Home (5 Years)'",
+    ),
+) -> dict[str, Any]:
+    """Return the official price for ONE service, by exact catalogue key.
+
+    This is the only pricing route reachable without auth (registered in
+    `backend/app/auth/public_endpoints.py`), because it is what the public
+    website needs to render a price instead of a hardcoded literal — Golden
+    Rule #11 says prices come from PricingTool, and until this existed there
+    was no public surface through which they could.
+
+    Exact-key only, deliberately. `/search` scores and guesses, which is right
+    for a human typing a keyword and wrong for a page rendering a number: a
+    near-miss shown as "the price" is worse than no price at all.
+
+    404 for an unknown key, 503 when the catalogue itself failed to load — the
+    caller must be able to tell "this service does not exist" from "the price
+    source is down", because only the second one should fall back to a cached
+    literal.
+    """
+    svc = get_pricing_service()
+    if not svc.loaded:
+        raise HTTPException(status_code=503, detail="Official prices not loaded")
+
+    entry = svc.get_service_by_key(key)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"Unknown service key: {key}")
+    return entry
 
 
 class ScenarioPricingRequest(BaseModel):

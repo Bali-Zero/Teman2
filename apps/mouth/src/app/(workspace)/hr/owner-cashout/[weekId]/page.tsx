@@ -9,10 +9,16 @@ import type {
   OwnerCashoutRow,
   OwnerCashoutWeekDetail,
 } from "@/types/owner-cashout";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
 
 const SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1OZzgvDLgf3yd9eUh5CyADjHCHLoXmE5nIRoJlut_jBE/edit";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
 
 function EntityTable({
   title,
@@ -27,12 +33,18 @@ function EntityTable({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-      <h3 className="text-sm font-semibold text-zinc-200 p-5 border-b border-zinc-800">
+    <div className="border rounded-xl overflow-hidden" style={PANEL}>
+      <h3
+        className="text-sm font-semibold p-5 border-b"
+        style={{ color: "var(--bz-text-1)", borderColor: "var(--bz-border)" }}
+      >
         {title}
       </h3>
       <table className="w-full text-sm">
-        <thead className="text-xs text-zinc-500 uppercase border-b border-zinc-800">
+        <thead
+          className="text-xs uppercase border-b"
+          style={{ color: "var(--bz-text-2)", borderColor: "var(--bz-border)" }}
+        >
           <tr>
             <th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Visa</th>
@@ -47,35 +59,49 @@ function EntityTable({
             <th className="text-left px-4 py-3">Note</th>
           </tr>
         </thead>
-        <tbody className="text-zinc-300">
+        <tbody style={{ color: "var(--bz-text-1)" }}>
           {rows.map((r, idx) => (
             <tr
               key={`${r.entity}-${r.row_index}-${idx}`}
-              className="border-b border-zinc-800 last:border-b-0"
+              className="border-b last:border-b-0"
+              style={{ borderColor: "var(--bz-border)" }}
             >
               <td className="px-4 py-2">{r.client_name}</td>
-              <td className="px-4 py-2 text-zinc-400">{r.process || "—"}</td>
-              <td className="text-right px-4 py-2">{formatIDR(r.pnbp_idr)}</td>
+              <td className="px-4 py-2" style={{ color: "var(--bz-text-2)" }}>
+                {r.process || "—"}
+              </td>
               <td className="text-right px-4 py-2">
-                {r.urgent_idr > 0 ? formatIDR(r.urgent_idr) : "—"}
+                <Money value={r.pnbp_idr} />
+              </td>
+              <td className="text-right px-4 py-2">
+                {r.urgent_idr > 0 ? <Money value={r.urgent_idr} /> : "—"}
               </td>
               {showTotalIncome && (
                 <td className="text-right px-4 py-2">
-                  {formatIDR(r.total_income_idr)}
+                  <Money value={r.total_income_idr} />
                 </td>
               )}
-              <td className="text-right px-4 py-2 text-amber-400">
-                {formatIDR(r.margin_bs_idr)}
+              <td className="text-right px-4 py-2">
+                <Money
+                  value={r.margin_bs_idr}
+                  style={{ color: "var(--state-warning)" }}
+                />
               </td>
-              <td className="text-right px-4 py-2 text-emerald-400">
-                {formatIDR(r.margin_bz_idr)}
+              <td className="text-right px-4 py-2">
+                <Money
+                  value={r.margin_bz_idr}
+                  style={{ color: "var(--state-success)" }}
+                />
               </td>
               {showFinalPrice && (
                 <td className="text-right px-4 py-2">
-                  {formatIDR(r.final_price_idr)}
+                  <Money value={r.final_price_idr} />
                 </td>
               )}
-              <td className="px-4 py-2 text-xs text-zinc-500">
+              <td
+                className="px-4 py-2 text-xs"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {r.note || ""}
               </td>
             </tr>
@@ -117,15 +143,30 @@ export default function OwnerCashoutWeekDetailPage({
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 bg-zinc-800 rounded w-80 animate-pulse" />
-        <div className="h-64 bg-zinc-900 rounded-xl animate-pulse" />
+        <div
+          className="h-8 rounded w-80 animate-pulse"
+          style={{
+            background:
+              "color-mix(in srgb, var(--bz-text-pure) 6%, transparent)",
+          }}
+        />
+        <div className="h-64 border rounded-xl animate-pulse" style={PANEL} />
       </div>
     );
   }
 
   if (error || !detail) {
     return (
-      <div className="bg-red-900/20 border border-red-800 rounded-xl p-6 text-red-400">
+      <div
+        className="border rounded-xl p-6"
+        style={{
+          background:
+            "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+          borderColor:
+            "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+          color: "var(--state-danger)",
+        }}
+      >
         <Link
           href="/hr/owner-cashout"
           className="inline-flex items-center gap-2 text-sm mb-3"
@@ -143,11 +184,14 @@ export default function OwnerCashoutWeekDetailPage({
         <div>
           <Link
             href="/hr/owner-cashout"
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 mb-2"
+            className="inline-flex items-center gap-2 text-sm text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] mb-2"
           >
             <ArrowLeft size={14} /> Back to Owner Cashout
           </Link>
-          <h1 className="text-2xl font-bold text-zinc-100">
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             Week of{" "}
             {new Date(detail.week.week_start).toLocaleDateString("en-GB", {
               day: "2-digit",
@@ -155,7 +199,7 @@ export default function OwnerCashoutWeekDetailPage({
               year: "numeric",
             })}
           </h1>
-          <div className="text-xs text-zinc-500 mt-1">
+          <div className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
             Tabs: {detail.week.tab_name_bz || "—"} /{" "}
             {detail.week.tab_name_bs || "—"}
           </div>
@@ -164,56 +208,81 @@ export default function OwnerCashoutWeekDetailPage({
           href={SHEET_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg border border-zinc-700 text-sm"
+          className="inline-flex items-center gap-2 px-3 py-2 bg-[rgba(35,35,40,0.65)] hover:bg-[var(--surface-raised)] text-[var(--bz-text-1)] rounded-lg border border-[var(--bz-border)] text-sm transition-colors"
         >
           <ExternalLink size={14} /> Open in Sheets
         </a>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="text-xs text-zinc-400">Practices</div>
-          <div className="text-xl font-bold text-zinc-100">
+        <div className="border rounded-xl p-4" style={PANEL}>
+          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            Practices
+          </div>
+          <div
+            className="text-xl font-bold"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             {detail.week.total_practices}
           </div>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="text-xs text-zinc-400">Total Income</div>
-          <div className="text-xl font-bold text-zinc-100">
-            {formatIDR(detail.week.total_income_idr)}
+        <div className="border rounded-xl p-4" style={PANEL}>
+          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            Total Income
           </div>
+          <Money
+            value={detail.week.total_income_idr}
+            className="block text-xl font-bold"
+            style={{ color: "var(--bz-text-1)" }}
+          />
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="text-xs text-zinc-400">Margin BZ</div>
-          <div className="text-xl font-bold text-emerald-400">
-            {formatIDR(detail.week.total_margin_bz_idr)}
+        <div className="border rounded-xl p-4" style={PANEL}>
+          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            Margin BZ
           </div>
+          <Money
+            value={detail.week.total_margin_bz_idr}
+            className="block text-xl font-bold"
+            style={{ color: "var(--state-success)" }}
+          />
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="text-xs text-zinc-400">Margin BS</div>
-          <div className="text-xl font-bold text-amber-400">
-            {formatIDR(detail.week.total_margin_bs_idr)}
+        <div className="border rounded-xl p-4" style={PANEL}>
+          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            Margin BS
           </div>
+          <Money
+            value={detail.week.total_margin_bs_idr}
+            className="block text-xl font-bold"
+            style={{ color: "var(--state-warning)" }}
+          />
         </div>
       </div>
 
       {detail.subtotals_by_process.length > 0 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-zinc-200 mb-3">
+        <div className="border rounded-xl p-5" style={PANEL}>
+          <h2
+            className="text-sm font-semibold mb-3"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             Subtotals by visa type
           </h2>
           <div className="flex flex-wrap gap-2">
             {detail.subtotals_by_process.map((s) => (
               <div
                 key={s.process}
-                className="px-3 py-2 bg-zinc-800 rounded-lg border border-zinc-700 text-xs"
+                className="px-3 py-2 rounded-lg border text-xs"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
               >
-                <span className="text-zinc-400">{s.process}: </span>
-                <span className="text-zinc-100">{s.count}</span>
-                <span className="text-zinc-500"> · </span>
-                <span className="text-emerald-400">
-                  {formatIDR(s.margin_bz_idr)}
-                </span>
+                <span style={{ color: "var(--bz-text-2)" }}>{s.process}: </span>
+                <span style={{ color: "var(--bz-text-1)" }}>{s.count}</span>
+                <span style={{ color: "var(--bz-text-3)" }}> · </span>
+                <Money
+                  value={s.margin_bz_idr}
+                  style={{ color: "var(--state-success)" }}
+                />
               </div>
             ))}
           </div>

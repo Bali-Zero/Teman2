@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Shield,
   Key,
@@ -11,11 +11,11 @@ import {
   Save,
   AlertTriangle,
   CheckCircle2,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { api } from "@/lib/api";
 
 interface Session {
   id: string;
@@ -34,37 +34,40 @@ export default function SecuritySettingsPage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
-    currentPin: '',
-    newPin: '',
-    confirmPin: '',
+    currentPin: "",
+    newPin: "",
+    confirmPin: "",
   });
 
   const [sessions] = useState<Session[]>([
     {
-      id: '1',
-      device: 'MacBook Pro',
-      browser: 'Chrome 120',
-      location: 'Bali, Indonesia',
-      lastActive: 'Now',
+      id: "1",
+      device: "MacBook Pro",
+      browser: "Chrome 120",
+      location: "Bali, Indonesia",
+      lastActive: "Now",
       isCurrent: true,
     },
     {
-      id: '2',
-      device: 'iPhone 14',
-      browser: 'Safari Mobile',
-      location: 'Bali, Indonesia',
-      lastActive: '2 hours ago',
+      id: "2",
+      device: "iPhone 14",
+      browser: "Safari Mobile",
+      location: "Bali, Indonesia",
+      lastActive: "2 hours ago",
       isCurrent: false,
     },
   ]);
 
   const handleChangePassword = async () => {
     if (passwordForm.newPin !== passwordForm.confirmPin) {
-      toastError('PINs do not match', 'Please make sure both PIN fields match.');
+      toastError(
+        "PINs do not match",
+        "Please make sure both PIN fields match.",
+      );
       return;
     }
     if (passwordForm.newPin.length !== 6) {
-      toastError('Invalid PIN', 'PIN must be exactly 6 digits.');
+      toastError("Invalid PIN", "PIN must be exactly 6 digits.");
       return;
     }
     setIsSaving(true);
@@ -72,22 +75,25 @@ export default function SecuritySettingsPage() {
     setTimeout(() => {
       setIsSaving(false);
       setShowPasswordForm(false);
-      setPasswordForm({ currentPin: '', newPin: '', confirmPin: '' });
-      success('PIN updated', 'Your login PIN has been changed successfully.');
+      setPasswordForm({ currentPin: "", newPin: "", confirmPin: "" });
+      success("PIN updated", "Your login PIN has been changed successfully.");
     }, 500);
   };
 
   const revokeSession = (_sessionId: string) => {
-    warning('Not yet available', 'Session revocation will be enabled in a future update.');
+    warning(
+      "Not yet available",
+      "Session revocation will be enabled in a future update.",
+    );
   };
 
   useEffect(() => {
     if (!api.isAuthenticated()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/chat');
+      router.push("/chat");
       return;
     }
     setIsAuthorized(true);
@@ -101,15 +107,21 @@ export default function SecuritySettingsPage() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/settings")}
+        >
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Shield className="w-6 h-6 text-green-400" />
+            <Shield className="w-6 h-6 text-[var(--bz-accent)]" />
             Security Settings
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">Manage your account security</p>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Manage your account security
+          </p>
         </div>
       </div>
 
@@ -117,9 +129,11 @@ export default function SecuritySettingsPage() {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Key className="w-5 h-5 text-amber-400" />
+            <Key className="w-5 h-5 text-[var(--bz-accent)]" />
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">PIN Code</h2>
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                PIN Code
+              </h2>
               <p className="text-sm text-[var(--foreground-muted)]">
                 Change your 6-digit login PIN
               </p>
@@ -145,7 +159,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    currentPin: e.target.value.replace(/\D/g, ''),
+                    currentPin: e.target.value.replace(/\D/g, ""),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -163,7 +177,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    newPin: e.target.value.replace(/\D/g, ''),
+                    newPin: e.target.value.replace(/\D/g, ""),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -181,7 +195,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    confirmPin: e.target.value.replace(/\D/g, ''),
+                    confirmPin: e.target.value.replace(/\D/g, ""),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -191,9 +205,12 @@ export default function SecuritySettingsPage() {
             <div className="flex gap-2">
               <Button onClick={handleChangePassword} disabled={isSaving}>
                 <Save className="w-4 h-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Update PIN'}
+                {isSaving ? "Saving..." : "Update PIN"}
               </Button>
-              <Button variant="ghost" onClick={() => setShowPasswordForm(false)}>
+              <Button
+                variant="ghost"
+                onClick={() => setShowPasswordForm(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -205,7 +222,7 @@ export default function SecuritySettingsPage() {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Smartphone className="w-5 h-5 text-purple-400" />
+            <Smartphone className="w-5 h-5 text-[var(--bz-neon-purple)]" />
             <div>
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Two-Factor Authentication
@@ -222,20 +239,20 @@ export default function SecuritySettingsPage() {
               checked={twoFactorEnabled}
               onChange={() => setTwoFactorEnabled(!twoFactorEnabled)}
             />
-            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+            <div className="w-11 h-6 bg-[var(--background)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--bz-border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
           </label>
         </div>
         {twoFactorEnabled && (
-          <div className="mt-4 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-            <div className="flex items-center gap-2 text-green-400">
+          <div className="mt-4 p-4 rounded-lg bg-[var(--state-success)]/10 border border-[var(--state-success)]/30">
+            <div className="flex items-center gap-2 text-[var(--state-success)]">
               <CheckCircle2 className="w-4 h-4" />
               <span className="text-sm font-medium">2FA is enabled</span>
             </div>
           </div>
         )}
         {!twoFactorEnabled && (
-          <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <div className="flex items-center gap-2 text-yellow-400">
+          <div className="mt-4 p-4 rounded-lg bg-[var(--state-warning)]/10 border border-[var(--state-warning)]/30">
+            <div className="flex items-center gap-2 text-[var(--state-warning)]">
               <AlertTriangle className="w-4 h-4" />
               <span className="text-sm font-medium">
                 2FA is recommended for additional security
@@ -248,9 +265,11 @@ export default function SecuritySettingsPage() {
       {/* Active Sessions */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Monitor className="w-5 h-5 text-cyan-400" />
+          <Monitor className="w-5 h-5 text-[var(--bz-accent)]" />
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Active Sessions</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              Active Sessions
+            </h2>
             <p className="text-sm text-[var(--foreground-muted)]">
               Manage devices logged into your account
             </p>
@@ -269,9 +288,11 @@ export default function SecuritySettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--foreground)]">{session.device}</span>
+                    <span className="font-medium text-[var(--foreground)]">
+                      {session.device}
+                    </span>
                     {session.isCurrent && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--state-success)]/15 text-[var(--state-success)]">
                         Current
                       </span>
                     )}
@@ -290,7 +311,7 @@ export default function SecuritySettingsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-400 hover:text-red-300"
+                    className="text-[var(--state-danger)]"
                     onClick={() => revokeSession(session.id)}
                   >
                     Revoke
@@ -306,7 +327,8 @@ export default function SecuritySettingsPage() {
       <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6 text-center">
         <Shield className="w-10 h-10 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
         <p className="text-sm text-[var(--foreground-muted)]">
-          Your account security is important. Enable 2FA and regularly review your active sessions.
+          Your account security is important. Enable 2FA and regularly review
+          your active sessions.
         </p>
       </div>
     </div>
