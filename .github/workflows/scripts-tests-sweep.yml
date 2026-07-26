@@ -1,0 +1,162 @@
+name: scripts/tests/ sweep (report-only)
+
+# STAGE 1 of the fix in task #16 / cicatrix superscar #2 (exists != armed) applied
+# to the immune system's own test suite.
+#
+# MEASURED (re-verified 2026-07-26 in a fresh worktree, method + blind spots
+# declared in the task #16 report): scripts/tests/ has 235 test_*.py files.
+# Exactly 61 are named by a file in .github/workflows/ — 174 are named by
+# NOTHING (this count drifted from an earlier 225/51 measurement the task was
+# opened with; the orphan total happened to stay 174 but 2 members changed —
+# a number matching for the wrong reason is worse than one that differs, it
+# certifies staleness rather than confirming it). No workflow swept the
+# directory before this file, and .husky/pre-push only covers backend/tests/.
+# The repo runs a required check literally named "Every guard proves guilt
+# AND innocence" that verifies these test files EXIST — nothing had ever
+# executed 174 of them, including the tests OF THE GUARDS
+# (test_guardrail_liveness.py, test_kbli_dataset_lint_guards.py,
+# test_modus_green_gate.py, ...).
+#
+# THIS WORKFLOW DOES NOT GATE ANYTHING. It is intentionally informational:
+#   - the pytest step is `continue-on-error: true`, so this job's conclusion is
+#     always success/neutral regardless of what the 174 untested files do —
+#     a first full run WILL include stale, broken, and environment-dependent
+#     tests, and discovering that inside a required gate would hard-block the
+#     entire merge queue.
+#   - it is NOT added to branch-protection required_status_checks. Do not add
+#     it there until a human/agent has triaged the report (see below).
+#
+# TRIGGER: `schedule:` + `workflow_dispatch:`, deliberately NOT `pull_request:`.
+# What this job answers ("which of the 174 pass") is a property of `main`, not
+# of each PR — a nightly run learns it exactly as well as 40 per-PR runs, at
+# 1/40th the slots. Verified 2026-07-26: of the last 20 push-runs of the real
+# `tests.yml` on `main`, 15 were CANCELLED (queued run superseded before it
+# started) and main's last COMPLETED test verdict was 03:59Z with roughly a
+# dozen commits landed since with no verdict at all. `pull_request:` on this
+# job would feed the exact starvation that is already eating main's own test
+# results — `schedule:` sidesteps it entirely.
+#
+# NO top-level `paths:` filter either way, on purpose: a required context
+# whose workflow never fires (diff didn't touch a listed path) never reports
+# at all — the PR sits BLOCKED with no red check to explain why (cicatrix
+# W102 family). Moot for `schedule:` (no diff to filter on), kept as a note
+# for whoever eventually promotes individual files to per-PR enforcing jobs.
+#
+# READER REQUIREMENT (do not ship without it — Zero/team-lead ruling
+# 2026-07-26): a scheduled report-only job with `continue-on-error: true`
+# that nobody reads is cicatrix superscar #2 (exists != armed) rebuilt in a
+# fresh file. `main-push-failure-watch.yml` will NOT see this job's failures
+# — it filters on `event == 'push'` (lines 155-159), and this workflow never
+# fires on push. Coordinated with task #41 (pr3165-cure: main-side verdict
+# liveness + a scheduled main-integration lane with the same alerting gap)
+# before arming this — see that lane's work for the actual reader.
+#
+# STAGED PLAN (do not skip ahead):
+#   1. (this file) Run report-only nightly, gather real signal on 174
+#      previously-mute tests, `continue-on-error: true`.
+#   2. Triage the artifact's junit XML: genuinely-passing -> promote to a real
+#      per-file workflow entry (or a scoped `pull_request:` job, guarded by
+#      the paths-filter caveat above) for the tests that should block a PR;
+#      broken-but-wanted -> fix; intentionally-local-only -> mark with a
+#      pytest marker and exclude EXPLICITLY (declared exclusion, not an
+#      accidental one).
+#   3. Only after triage — never on a same-night green — consider adding any
+#      individual test's context to required_status_checks. The durable fix
+#      is this DIRECTORY sweep staying the visibility net; enumerating 174
+#      filenames one at a time recreates the exact hole this file closes.
+#
+# Ranked by what each orphan guards (task #16 deliverable 2, 2026-07-26):
+# Tier 1 meta-verifiers/guards-of-guards (34, e.g. launchd_liveness_detector's
+# module is 3 wired / 4 orphaned — the exact module task #38 leaned on that
+# night) triage first, then Tier 2 security/credentials (13), then Tier 3
+# data-invariant tripwires (21, incl. test_kbli_whatchanged_false_renumber.py
+# — the guard written THIS session for the PR #3179 fix, itself orphaned
+# until this workflow runs). Tier 4 (106, mostly WhatsApp-corpus + WR2/WR3
+# business-vertical tests) stays orphaned-and-known, not rushed.
+#
+# Related: task #23 (nothing watches workflow failures generically), task #17
+# (same scripts/cron-agent-python/ tree, a different angle on the same gap).
+
+on:
+  schedule:
+    - cron: "15 2 * * *" # 02:15 UTC = 10:15 WITA daily, clear of the 22:00-23:30 UTC cron pile-up
+  workflow_dispatch:
+
+concurrency:
+  group: scripts-tests-sweep
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    name: scripts/tests sweep (report-only, non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (uv, lock-pinned — same manifest as Backend Tests)
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip uv
+          uv pip install --system -r requirements.lock.txt
+          uv pip install --system -e ../../packages/cell-core
+          uv pip install --system pytest pytest-asyncio pytest-mock fakeredis
+
+      - name: Run scripts/tests/ (full directory, report-only)
+        id: sweep
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          PYTHONPATH=. python -m pytest scripts/tests/ \
+            -q -ra --no-header --tb=short --durations=25 \
+            --continue-on-collection-errors \
+            --junit-xml=scripts-tests-report.xml
+
+      - name: Report-only reminder
+        if: always()
+        run: |
+          echo "::notice title=REPORT-ONLY::This job never blocks a PR. Step outcome: ${{ steps.sweep.outcome }}. See the artifact / log above for real pass/fail counts. Do NOT add this workflow to required_status_checks until the failures above have been triaged (task #16)."
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scripts-tests-sweep-report
+          path: scripts-tests-report.xml
