@@ -280,6 +280,16 @@ def test_guilt_scripts_tests_prefix_not_at_path_start() -> None:
     assert verdict == pc.VERDICT_FULL
 
 
+def test_guilt_scripts_non_tests_python_file_still_forces_full() -> None:
+    """task #43 mandate, verbatim: 'a .py under scripts/ that is NOT
+    scripts/tests/ still escalates to full'. The prefix is scripts/tests
+    specifically, not scripts/ wholesale — a sibling script one directory up
+    must not be swept in. Real file, verified on disk."""
+    verdict, unknown = pc.classify(["scripts/agent_start.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/agent_start.py"]
+
+
 def test_guilt_non_root_markdown_file_forces_full() -> None:
     """Only ROOT-level *.md is allowlisted — a nested one is not covered by
     that rule (though it may separately be covered by docs/** etc. if it
@@ -583,6 +593,36 @@ def test_innocence_scripts_tests_test_file() -> None:
     """v3 (task #43): a scripts/tests/test_*.py file — the 235-file suite
     audited in task #16 — now skips. Real file, verified on disk."""
     verdict, unknown = pc.classify(["scripts/tests/test_guardrail_liveness.py"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_workflow_only_diff_skips() -> None:
+    """task #43 mandate, verbatim: 'a workflow-only diff ... skip[s]'. A
+    real multi-file diff touching only .github/workflows/*.yml files (not
+    tests.yml) must skip as a whole, not just file-by-file."""
+    verdict, unknown = pc.classify(
+        [
+            ".github/workflows/scripts-tests-sweep.yml",
+            ".github/workflows/immune-enforcement.yml",
+            ".github/workflows/actionlint.yml",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_scripts_tests_only_diff_skips() -> None:
+    """task #43 mandate, verbatim: 'a scripts/tests-only diff ... skip[s]'.
+    A real multi-file diff touching only scripts/tests/test_*.py files must
+    skip as a whole."""
+    verdict, unknown = pc.classify(
+        [
+            "scripts/tests/test_guardrail_liveness.py",
+            "scripts/tests/test_prepush_classify.py",
+            "scripts/tests/test_modus_green_gate.py",
+        ]
+    )
     assert verdict == pc.VERDICT_SKIP
     assert unknown == []
 
