@@ -38,7 +38,18 @@ FLY_BIN="${FLY_BIN:-/opt/homebrew/bin/fly}"
 KEEP_LOCAL=7
 KEEP_REMOTE=30
 MAX_RETRIES=3
-DUMP_TIMEOUT=900   # in-machine pg_dump+gzip wall-clock cap
+# A timeout is a CEILING for a hung job, not a claim about how long the work takes.
+# Both of these were sized against a ~90s dump. Timed end-to-end on 2026-07-26 (one dump
+# alive, counted on the machine, so the rate is not self-contention): the SAME dump of the
+# SAME 2749MB database on the SAME shared-cpu-2x machine took ~1150s to produce a complete
+# 385,503,996-byte file — rate swinging between ~660 and ~130 KB/s within the single run,
+# while the primary's own `cpu` health check was failing ("system spent 3.13s of the last
+# 10 seconds waiting on cpu"; vm check 2/3, replica 3/3 and idle). The old 900s cap would
+# have killed it at ~78% of the work — and the OUTER wrapper cap, also 900s, would have
+# fired sooner still. Raised to ~2x the measured slow run so a worse CPU-neighbour day
+# cannot silently eat the backup. If the machine is healthy the job finishes early: a
+# ceiling costs nothing when it is not reached. The slowness itself is NOT diagnosed here.
+DUMP_TIMEOUT=2400  # in-machine pg_dump+gzip wall-clock cap (~1150s measured 2026-07-26)
 SFTP_TIMEOUT=900   # SFTP transfer wall-clock cap (~5min observed for ~360MB over DERP)
 
 # Tigris credentials (set by fly storage create)
@@ -69,6 +80,25 @@ if [ -z "$_fly_cred_lib" ]; then
 fi
 # shellcheck source=lib/fly_credential.sh
 source "$_fly_cred_lib"
+
+# Same lookup for the off-site verifier (2026-07-27). Also fatal-if-absent: without
+# it this script would go back to judging itself by reaching its own last line.
+_offsite_lib=""
+for _cand in "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/offsite_verify.sh" \
+             "$HOME/nuzantara/scripts/lib/offsite_verify.sh"; do
+    if [ -f "$_cand" ]; then _offsite_lib="$_cand"; break; fi
+done
+if [ -z "$_offsite_lib" ]; then
+    log "ERROR: scripts/lib/offsite_verify.sh not found — cannot verify the artifact. Aborting."
+    exit 1
+fi
+# shellcheck source=lib/offsite_verify.sh
+source "$_offsite_lib"
+
+# Set to 1 ONLY by a remote listing that shows tonight's object. Every path that
+# ends without it is a night with no off-site backup, and must exit non-zero so the
+# alarm in cron-wrapper.sh fires. See the header of lib/offsite_verify.sh.
+OFFSITE_OK=0
 # Probe with the job, not with `auth whoami`: a token scoped to a DIFFERENT app
 # passes whoami and then dies on "Could not find App". Listing this app's
 # machines is the cheapest call that proves the credential can do the work —
@@ -249,15 +279,32 @@ elif command -v aws &> /dev/null; then
         log "WARN: Local backup retained at $BACKUP_FILE — restore manually if needed."
         log "WARN: Fix: regenerate Tigris creds via 'fly storage update nuzantara-backups' or reconcile keys in ~/Desktop/secretkey.env."
     else
-        AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
+        # 2026-07-27: the rc used to be discarded (`2>/dev/null`, no check) and the
+        # "Uploaded" line printed unconditionally — a claim, not an observation.
+        set +e
+        UPLOAD_OUT=$(AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
         AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
         aws s3 cp "$BACKUP_FILE" \
             "s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")" \
             --endpoint-url "$TIGRIS_ENDPOINT" \
-            --region auto 2>/dev/null
-        log "Uploaded to Tigris: s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")"
+            --region auto 2>&1)
+        UPLOAD_RC=$?
+        set -e
+        [ $UPLOAD_RC -ne 0 ] && log "WARN: upload rc=$UPLOAD_RC: $(echo "$UPLOAD_OUT" | tail -2 | tr '\n' ' ')"
 
-        # Cleanup old remote backups (keep last KEEP_REMOTE)
+        # Ask the REMOTE, always — including when the upload claimed success.
+        if AWS_ACCESS_KEY_ID="$TIGRIS_KEY" AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
+           verify_offsite_object "$TIGRIS_BUCKET" "$TIGRIS_ENDPOINT" "$(basename "$BACKUP_FILE")"; then
+            OFFSITE_OK=1
+            log "Verified off-site: s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")"
+        else
+            log "ERROR: upload finished but the object is NOT in the bucket."
+        fi
+
+        # Cleanup old remote backups (keep last KEEP_REMOTE) — only once tonight's
+        # object is confirmed present. Pruning after a FAILED upload would delete a
+        # good old backup to make room for one that never arrived.
+        if [ "$OFFSITE_OK" -eq 1 ]; then
         AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
         AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
         aws s3 ls "s3://$TIGRIS_BUCKET/postgres/" \
@@ -270,6 +317,7 @@ elif command -v aws &> /dev/null; then
                 --region auto 2>/dev/null
             log "Removed old remote: $old"
         done
+        fi
     fi
 else
     log "WARN: aws CLI not found, skipping Tigris upload. Install: brew install awscli"
@@ -279,4 +327,16 @@ fi
 ls -t "$BACKUP_DIR"/nuzantara-fly-*.sql.gz 2>/dev/null | tail -n +$((KEEP_LOCAL + 1)) | xargs rm -f 2>/dev/null || true
 log "Local backups kept: $KEEP_LOCAL"
 
-log "Backup complete ✅"
+# The single verdict. Before 2026-07-27 every branch above fell through to an
+# unconditional "Backup complete ✅" and exit 0 — including the one that skipped the
+# upload entirely on a failed credentials preflight. Since the only alarm in this chain
+# fires on a non-zero exit (cron-wrapper.sh:276), a dead Tigris credential produced a
+# GREEN night with no off-site copy, and the local copy is pruned after KEEP_LOCAL days.
+# Measured: 2026-07-15 has no object for either nightly run, and nothing said so.
+if [ "$OFFSITE_OK" -eq 1 ]; then
+    log "Backup complete ✅"
+else
+    log "ERROR: NO OFF-SITE BACKUP TONIGHT — a local-only copy is not a backup."
+    log "ERROR: local file kept at $BACKUP_FILE (pruned after KEEP_LOCAL=$KEEP_LOCAL days)."
+    exit 1
+fi

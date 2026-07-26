@@ -10,9 +10,33 @@ Provides:
 IMPORT SHIELDING
 -----------------
 backend.services.crm.__init__ pulls in the entire CRM stack (langgraph,
-google-genai, qdrant-client, etc.). We pre-populate sys.modules with bare
-namespace packages BEFORE any backend import fires, so Python skips executing
-that heavy __init__ when we import the partners sub-package.
+google-genai, qdrant-client, etc.). We pre-populate sys.modules with a bare
+namespace package for "backend.services.crm" (and "backend" itself, on the
+rare chance nothing has touched it yet) BEFORE any backend import fires, so
+Python skips executing that heavy __init__ when we import the partners
+sub-package. We deliberately do NOT shield "backend.services" — its real
+__init__.py is a no-op docstring (the barrel re-export was removed
+2026-03-08 specifically because it "polluted sys.modules during test
+collection"), so it's always cheap and side-effect-free to let it import
+for real. Shielding it anyway used to leave a hollow, ownerless
+"backend.services" sitting in sys.modules for the rest of the pytest
+session: any OTHER test file that, during collection, genuinely imported
+something under backend.services (e.g. backend.services.integrations.*)
+got that submodule linked as an attribute of OUR temporary hollow object —
+then once we tore the hollow stub down, a later `monkeypatch.setattr(
+"backend.services.integrations....")` in a THIRD, unrelated test would
+resolve a brand-new real "backend.services" that had never heard of
+"integrations", and blow up with an AttributeError that had nothing to do
+with CRM at all. Scoping the shield to exactly the one package that's
+actually expensive removes that cross-file failure mode at the root instead
+of chasing it downstream.
+
+The stubs are torn down in `pytest_collection_finish` — i.e. the instant
+pytest finishes collecting the WHOLE session (which always happens before
+ANY test body runs; see that hook's docstring below) — not merely at
+`pytest_unconfigure` (end of the whole process). That keeps the shield
+scoped to exactly the collection-time work it exists for, regardless of
+which order test paths are passed to pytest.
 """
 
 import os
@@ -101,22 +125,58 @@ _BACKEND_RAG_DIR = os.path.dirname(
     )
 )
 
-# Shield the heavy CRM package and its ancestors BEFORE any backend import fires.
-# __path__ must point to the actual directory so sub-package discovery works;
-# the __init__.py in each directory is NOT executed (we bypass it entirely by
-# pre-populating sys.modules before any import statement fires).
+# Shield the heavy CRM package (and "backend" itself, defensively) BEFORE any
+# backend import fires. __path__ must point to the actual directory so
+# sub-package discovery still works; the __init__.py is NOT executed (we
+# bypass it entirely by pre-populating sys.modules before any import
+# statement fires). "backend.services" is intentionally NOT shielded — see
+# the module docstring above.
 _shield("backend", [os.path.join(_BACKEND_RAG_DIR, "backend")])
-_shield("backend.services", [os.path.join(_BACKEND_RAG_DIR, "backend", "services")])
 _shield("backend.services.crm", [os.path.join(_BACKEND_RAG_DIR, "backend", "services", "crm")])
 
 
-def pytest_unconfigure(config: object) -> None:  # noqa: ARG001
-    """Remove shielded stubs after test session so subsequent test runs
-    (or long-lived pytest sessions) don't leak hollow modules."""
+def _teardown_shield() -> None:
+    """Remove our hollow stubs from sys.modules so no other test — anywhere
+    else in the session — ever sees them.
+
+    Idempotent (safe to call more than once): once a name is gone from
+    sys.modules, `sys.modules.get(name)` is None and the loop body no-ops
+    for it. `_SHIELDED` is cleared so a second call is a fast no-op.
+    """
     for name in _SHIELDED:
-        if name in sys.modules and not hasattr(sys.modules[name], "__file__"):
+        mod = sys.modules.get(name)
+        if mod is not None and not hasattr(mod, "__file__"):
             # only remove if still the hollow stub (real modules have __file__)
             del sys.modules[name]
+    _SHIELDED.clear()
+
+
+def pytest_collection_finish(session: object) -> None:  # noqa: ARG001
+    """Tear the shield down the instant the *whole session's* collection is
+    done — which pytest always completes, for every directory passed on the
+    command line, strictly BEFORE it executes a single test item (see
+    `Session.perform_collect()` calling `pytest_collection_finish` at its
+    very end, followed only later by `pytest_runtestloop`). That ordering
+    guarantee is what makes this deterministic regardless of which order
+    test paths were given to pytest: by the time ANY test body runs
+    (including ones in backend/tests/routers/ that do dotted
+    `monkeypatch.setattr("backend.services...")` resolution), the hollow
+    stubs this file installed for its own collection-time imports are
+    already gone — self-healing back to a real, fresh import on first
+    touch. Collection-time imports *within* this package (module-level
+    `from backend.services.crm.partners.X import Y` in the sibling
+    test_*.py files, which is when the shield is actually needed) already
+    ran by this point, so nothing here loses the protection the shield
+    exists for (see module docstring)."""
+    _teardown_shield()
+
+
+def pytest_unconfigure(config: object) -> None:  # noqa: ARG001
+    """Backstop only. `pytest_collection_finish` above already tears the
+    shield down before any test runs; this just guarantees nothing survives
+    to the end of the process even if collection_finish didn't fire (e.g. a
+    collection error aborting the session before the run phase)."""
+    _teardown_shield()
 
 
 _DEFAULT_DB_URL = os.environ.get(

@@ -76,7 +76,7 @@ describe("AppWhatsAppCTA", () => {
     });
   });
 
-  it("calls haptic on click", () => {
+  it("calls haptic on click", async () => {
     const { getByRole } = render(
       <AppWhatsAppCTA
         source="visa_match"
@@ -85,7 +85,30 @@ describe("AppWhatsAppCTA", () => {
         whatsappContext={[]}
       />,
     );
-    fireEvent.click(getByRole("button"));
+    const button = getByRole("button");
+    fireEvent.click(button);
     expect(navigator.vibrate).toHaveBeenCalled();
+    await waitFor(() => expect(button).not.toBeDisabled());
+  });
+
+  it("falls back to the canonical WhatsApp link when capture fails", async () => {
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("offline"));
+    const { getByRole } = render(
+      <AppWhatsAppCTA
+        source="visa_match"
+        headline="H"
+        description="D"
+        whatsappContext={[]}
+      />,
+    );
+
+    fireEvent.click(getByRole("button"));
+
+    await waitFor(() =>
+      expect(getByRole("alert").textContent).toContain(
+        "could not open WhatsApp",
+      ),
+    );
+    expect(window.location.href).toBe("https://wa.me/6282230102328");
   });
 });
