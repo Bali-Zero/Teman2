@@ -170,6 +170,129 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Case 8 (guilt, task #60, 2026-07-27): CLONE_DB used to be named only
+# nuzantara_test_run_$$ — PID alone, which recycles. When a new push's $$
+# collides with a STRANDED clone's old name (measured live: 15 stranded
+# clones, 561 MB, on this exact box), the CREATE loop below failed 3/3 with
+# NO exit 1 — the whole backend suite silently never ran and the push
+# succeeded anyway. This case reproduces the collision against REAL
+# Postgres (template0, always present, fast) and proves the OLD pattern
+# (CREATE with no defensive drop) genuinely fails on it — the failure mode
+# #60 exists to fix, not a synthetic stand-in for it. Requires local PG;
+# skips itself cleanly if unreachable (same posture the hook itself takes).
+# ---------------------------------------------------------------------------
+PGCHECK_BIN="$(command -v pg_isready || echo /opt/homebrew/opt/postgresql@17/bin/pg_isready)"
+if [ -x "$PGCHECK_BIN" ] && "$PGCHECK_BIN" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
+    PSQL_BIN="$(command -v psql || echo /opt/homebrew/opt/postgresql@17/bin/psql)"
+    PROBE_DB="nuzantara_pretest_probe_60_$$"
+    "$PSQL_BIN" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$PROBE_DB\" TEMPLATE template0;" >/dev/null 2>&1
+    "$PSQL_BIN" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$PROBE_DB\" TEMPLATE template0;" >/dev/null 2>&1
+    guilt_rc=$?
+    if [ "$guilt_rc" != "0" ]; then
+        note_pass "guilt (task #60, OLD pattern) — CREATE with no defensive drop fails on a name collision (rc=$guilt_rc), matching the real bug"
+    else
+        note_fail "guilt (task #60, OLD pattern) — expected CREATE to fail on collision, it succeeded (test setup itself may be broken)"
+    fi
+
+    # -----------------------------------------------------------------------
+    # Case 9 (innocence, task #60): same collision, NEW pattern — a
+    # defensive `DROP DATABASE IF EXISTS ... WITH (FORCE)` immediately
+    # before CREATE. Must succeed even though the name is currently taken by
+    # the stranded probe DB from Case 8 — proving the fix, not just its
+    # absence.
+    # -----------------------------------------------------------------------
+    "$PSQL_BIN" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$PROBE_DB\" WITH (FORCE);" >/dev/null 2>&1
+    "$PSQL_BIN" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$PROBE_DB\" TEMPLATE template0;" >/dev/null 2>&1
+    innocence_rc=$?
+    if [ "$innocence_rc" = "0" ]; then
+        note_pass "innocence (task #60, NEW pattern) — defensive DROP IF EXISTS then CREATE succeeds despite the collision"
+    else
+        note_fail "innocence (task #60, NEW pattern) — expected CREATE to succeed after the defensive drop, rc=$innocence_rc"
+    fi
+    "$PSQL_BIN" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$PROBE_DB\" WITH (FORCE);" >/dev/null 2>&1
+else
+    note_pass "guilt+innocence (task #60) — SKIPPED, no local PostgreSQL reachable (same graceful posture as the hook itself)"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 10 (tripwire, task #60): the LIVE hook must (a) generate CLONE_DB
+# with a random component alongside $$ (PID alone recycles — that is the
+# whole bug), and (b) run a defensive `DROP DATABASE IF EXISTS ... WITH
+# (FORCE)` on CLONE_DB before the CREATE retry loop, not after.
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire (task #60) — $HOOK_FILE not found (cannot verify)"
+else
+    clone_line="$(grep -n 'CLONE_DB="nuzantara_test_run_' "$HOOK_FILE" | head -1)"
+    if printf '%s' "$clone_line" | grep -q 'RANDOM'; then
+        note_pass "tripwire (task #60) — CLONE_DB includes a random component, not PID alone: $clone_line"
+    else
+        note_fail "tripwire (task #60) — CLONE_DB is PID-only again (recycling collision reintroduced): $clone_line"
+    fi
+
+    create_line="$(grep -n 'CREATE_OK=0' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    # NOTE: the bare literal 'DROP DATABASE IF EXISTS "$CLONE_DB" WITH
+    # (FORCE)' is NOT a unique anchor — cleanup_clone()'s pre-existing trap
+    # drop uses the exact same text (task #60's own guard-over-match bug,
+    # caught by the mandatory stash-and-rerun non-vacuousness check: this
+    # naive grep stayed green even with the fix reverted, because it always
+    # found cleanup_clone()'s unrelated drop instead). Anchor on the unique
+    # comment marker that only precedes the NEW pre-CREATE drop, then find
+    # the drop line nearest AFTER it.
+    predrop_marker_line="$(grep -n '# #60 (2026-07-27): defensive pre-drop' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    predrop_line=""
+    if [ -n "$predrop_marker_line" ]; then
+        predrop_offset="$(tail -n "+$predrop_marker_line" "$HOOK_FILE" | grep -n 'DROP DATABASE IF EXISTS \\"\$CLONE_DB\\" WITH (FORCE)' | head -1 | cut -d: -f1)"
+        if [ -n "$predrop_offset" ]; then
+            predrop_line=$((predrop_marker_line + predrop_offset - 1))
+        fi
+    fi
+    if [ -n "$predrop_line" ] && [ -n "$create_line" ] && [ "$predrop_line" -lt "$create_line" ]; then
+        note_pass "tripwire (task #60) — defensive DROP DATABASE IF EXISTS on CLONE_DB precedes the CREATE loop (line $predrop_line < $create_line)"
+    else
+        note_fail "tripwire (task #60) — defensive pre-drop missing or not before the CREATE loop (predrop=$predrop_line create=$create_line)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Case 11 (innocence, task #60): the deliberate "no local PostgreSQL" /
+# "not provisioned" / "no venv" skip branches must still be the FIRST
+# things checked — #60's new defensive-drop code must sit strictly INSIDE
+# the final `else`, never ahead of those three skip checks. A machine with
+# no local PG (a normal dev laptop) must keep degrading gracefully, not
+# start touching Postgres at all. Structural check: the "no local
+# PostgreSQL" skip message's line number must precede the defensive-drop
+# line's, with no unmatched top-level `fi` closing that if-chain in
+# between (which would mean the drop escaped the gate).
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire (task #60, no-PG skip ordering) — $HOOK_FILE not found (cannot verify)"
+else
+    nopg_line="$(grep -n 'SKIP Python tests — no local PostgreSQL' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    # Same non-unique-literal trap as Case 10 above — anchor on the unique
+    # comment marker, not the bare DROP text (matches cleanup_clone()'s
+    # pre-existing, unrelated trap drop too).
+    predrop_marker_line2="$(grep -n '# #60 (2026-07-27): defensive pre-drop' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    predrop_line2=""
+    if [ -n "$predrop_marker_line2" ]; then
+        predrop_offset2="$(tail -n "+$predrop_marker_line2" "$HOOK_FILE" | grep -n 'DROP DATABASE IF EXISTS \\"\$CLONE_DB\\" WITH (FORCE)' | head -1 | cut -d: -f1)"
+        if [ -n "$predrop_offset2" ]; then
+            predrop_line2=$((predrop_marker_line2 + predrop_offset2 - 1))
+        fi
+    fi
+    if [ -n "$nopg_line" ] && [ -n "$predrop_line2" ] && [ "$nopg_line" -lt "$predrop_line2" ]; then
+        between_bare_fi="$(sed -n "${nopg_line},${predrop_line2}p" "$HOOK_FILE" | grep -c '^fi$' || true)"
+        if [ "${between_bare_fi:-0}" -eq 0 ]; then
+            note_pass "innocence (task #60, no-PG skip ordering) — no local PostgreSQL skip (line $nopg_line) still precedes the clone logic (line $predrop_line2), same if-chain (0 closing 'fi' between)"
+        else
+            note_fail "innocence (task #60, no-PG skip ordering) — $between_bare_fi bare 'fi' between the skip check and the clone logic — the clone logic may have escaped the gate"
+        fi
+    else
+        note_fail "innocence (task #60, no-PG skip ordering) — could not locate both anchors (nopg=$nopg_line predrop=$predrop_line2)"
+    fi
+fi
+
 echo "---"
 echo "$pass passed, $fail failed"
 
