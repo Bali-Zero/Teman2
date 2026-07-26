@@ -129,8 +129,14 @@ async def cure(conn: asyncpg.Connection, spec: dict[str, Any], only: set[str], a
             "spec_id": spec.get("spec_id"),
             "applied_at": stamp,
         }
+        # `$1::text::jsonb`, not `$1::jsonb` (W89). This script opens a codec-LESS
+        # connection, where binding a json.dumps() string to `::jsonb` happens to be
+        # correct — but the cast that is correct on BOTH pools costs nothing, and the
+        # class-guard freezes that shape precisely so a later edit cannot move this
+        # write onto the codec-on pool and silently start double-encoding it into a
+        # jsonb string scalar, invisible to every ->>'key' reader downstream.
         await conn.execute(
-            "UPDATE kg_nodes SET properties = $1::jsonb, updated_at = now() "
+            "UPDATE kg_nodes SET properties = $1::text::jsonb, updated_at = now() "
             "WHERE entity_id = $2 AND entity_type = $3",
             json.dumps(properties, ensure_ascii=False),
             entity_id,
