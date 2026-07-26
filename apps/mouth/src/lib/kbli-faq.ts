@@ -1,5 +1,6 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import { baliBlockClause, shouldShowReason } from "@/lib/kbli-bali-block";
 
 export interface KbliFaqEntry {
   question: string;
@@ -39,7 +40,20 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const pmaAnswer =
     code.pma.status === "open"
       ? baliBlocked
-        ? `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but a PT PMA currently cannot register it in Bali (reserved for UMKM / 2026 moratorium). ${code.baliL4?.reason ?? "See the Bali status above."} Outside Bali it is open to a PT PMA with no local partner required.`
+        ? // The cause is DERIVED, and the record's own reason is gated by the same
+          // rule the licensing frame uses. Both were hardcoded here: the clause
+          // named UMKM and the 2026 moratorium together for EVERY blocking status
+          // (the literal is asserted absent by test, so it is not repeated here),
+          // and the reason was spliced unconditionally. Measured on the canonical of
+          // 2026-07-27: 455 pages reach this branch, 416 of them carry a status the
+          // hardcoded clause misnames, and `69104` served Italian ("Notaio/PPAT è
+          // ufficio personale e statale, solo WNI…") — in the visible answer AND in
+          // the FAQPage JSON-LD, which is the copy Google ingests.
+          `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+            shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+              ? ` ${code.baliL4?.reason}`
+              : ""
+          } Outside Bali it is open to a PT PMA with no local partner required.`
         : baliNonClassifiable
           ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
           : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
