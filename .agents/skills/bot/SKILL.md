@@ -22,6 +22,49 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
+- **🚫 DO NOT RE-OPEN: coalescing of a RETRYING outbox row is sound (REFUTED 2026-07-27).**
+  The suspicion was that `_coalesce_thread_bursts` kills a customer question that is only
+  waiting for its retry — its predicate filters `status='pending'` but not `attempts` or
+  `next_retry_at`. Measured instead of argued: **9 rows** ever carried
+  `error='superseded_by_coalescing'`; **7** had `attempts=0` (the intended burst case) and only
+  **2** were killed mid-backoff (outbox 161 on 07-19, 182 on 07-25). Both threads were answered
+  right after — 161→row 162 `done` at +49s, 182→183/184 `done` at +83s/+126s — and
+  `wa_inbox_bot._load_thread_context` keeps the superseded question in the model's context: it
+  loads `_HISTORY_TURNS + 1 = 13` messages and demotes the question from "the query" to a `user`
+  turn. Coalescing also RESETS the attempt budget (the successor starts at `attempts=0`), which
+  is better for the client than draining the victim's remaining attempts.
+  **Probe gotcha that cost an hour**: an earlier pass concluded "0 successful sends afterwards"
+  by counting `status='sent'`. This table only ever writes **`failed`** and **`done`** (verified
+  by `GROUP BY` over all 184 rows) — the zero was the wrong question, not an absence.
+  Residual, logged not fixed: the superseded question is answered as context rather than as the
+  question, so a reply may address a nudge ("ci sei?") instead of the substantive ask. Bounded by
+  the 12-turn window, unobserved in prod.
+
+- **🗣️ IN FLIGHT — PR #3260 (abstain voice + per-sender WA memory).** Two client-facing gaps:
+  (a) the refusal copy now names the stake, says a Bali Zero colleague must look at it, and asks
+  for a document or a reference date — and it deliberately does NOT promise "a colleague will
+  reply here", because nothing notifies a human today (`wa_outbox.apology_sent_at` /
+  `ack_sent_at` are **0-for-184 rows** since 2026-06-02); RUSSIAN + UKRAINIAN added to all four
+  stub keys, because `detect_query_language` emits ten values, the table carried three, and
+  `get_localized_stub` degrades to ENGLISH _silently_. (b) W-1 follow-up to P0-MEM #3036:
+  `derive_wa_memory_subject` keys long-term memory per sender as `wa:<32 hex>` — **HMAC**, not a
+  bare hash (a phone number has almost no entropy), trust taken from the dedicated
+  `X-WA-Bot-Profile-Key` and never from a body field, its OWN salt (rotating it is a memory
+  WIPE), fail-closed to today's containment when unset. Near-miss caught while wiring: gating the
+  read on the new subject alone would have handed every WA client the shared bucket's PROFILE and
+  HISTORY — FACTS and PROFILE/HISTORY now gate independently.
+
+- **⚙️ IN FLIGHT — PR #3261**: `security.yml` cancels superseded PR runs, never on main (it owns
+  4 of the 25 required checks). Honest limit recorded in the PR: `cancel-in-progress: false`
+  protects only a run that has already STARTED — a QUEUED run is superseded regardless.
+
+- **⚠️ COORDINATION: check main by CONTENT before building a bot-adjacent fix.** On 2026-07-27
+  three separate lanes independently built the same `<Money>` mock fix, and one branch was one
+  push away from DELETING a sibling's already-merged guard. Root cause measured: the pre-push
+  allowlist sends frontend-only diffs through the full backend suite, so the machine ran 6
+  concurrent pushes at load 33 — see memory
+  `discovery_the_prepush_allowlist_is_how_the_fleet_saturates_itself_2026_07_27`.
+
 - **🗣️ CLIENT VOICE: persona + greeting SHIPPED & PROVEN LIVE; deny narration NOT YET (2026-07-26).**
   Three things landed and were verified INSIDE the running container (`flyctl ssh` pinned to
   `--machine 1781e5eda03438`; the machine is picked at RANDOM without it), never from a merge status.
