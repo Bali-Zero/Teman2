@@ -70,7 +70,11 @@ if [ -z "$_fly_cred_lib" ]; then
 fi
 # shellcheck source=lib/fly_credential.sh
 source "$_fly_cred_lib"
-resolve_fly_credential "$FLY_BIN" || exit 1
+# Probe with the job, not with `auth whoami`: a token scoped to a DIFFERENT app
+# passes whoami and then dies on "Could not find App". Listing this app's
+# machines is the cheapest call that proves the credential can do the work —
+# and it is the very first thing this script does next anyway.
+resolve_fly_credential "$FLY_BIN" machine list --app "$FLY_APP" || exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # METHOD (rewritten 2026-06-03):
@@ -129,7 +133,13 @@ done
 if [ -z "$PRIMARY_MACHINE" ]; then
     log "ERROR: could not resolve primary machine for $FLY_APP — aborting."
     log "ERROR: 'fly machine list -j' returned no machine with a role=primary health check."
-    log "ERROR: most common cause: stale FLY_API_TOKEN in env ('unauthorized') — check ~/.nuzantara-secrets.env."
+    # NOT a credential guess. The resolver above already probed with this very
+    # command and logged which source it accepted, so by the time we get here
+    # auth is known-good and blaming a token would repeat the 2026-07-26 sin of
+    # accusing the credential that worked. What is left is genuinely the fleet:
+    # an HA fail-over with no primary elected yet, or a token whose scope covers
+    # the app but not this read.
+    log "ERROR: auth was already accepted (source: ${FLY_CREDENTIAL_SOURCE:-unknown}) — so this is the FLEET, not the token: check for an HA fail-over with no elected primary via 'fly status -a $FLY_APP'."
     exit 1
 fi
 log "Primary machine: $PRIMARY_MACHINE"

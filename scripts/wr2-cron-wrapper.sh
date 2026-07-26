@@ -85,7 +85,12 @@ if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
     fi
     # shellcheck source=lib/fly_credential.sh
     source "$_fly_cred_lib"
-    resolve_fly_credential "$(command -v fly)" || exit 74
+    # Probe against THIS app, not `auth whoami`. Pro's FLY_API_TOKEN is scoped
+    # to nuzantara-postgres only (ledgered 2026-07-25), so whoami would accept a
+    # credential that cannot see nuzantara-rag and the dispatch below would die
+    # on 'Could not find App' — the same wrong answer, one stage later. Failing
+    # here instead says WHICH credential and WHY, before spending the run.
+    resolve_fly_credential "$(command -v fly)" machine list -a nuzantara-rag || exit 74
     remote_cmd="python -m $MODULE"
     for arg in "$@"; do
         remote_cmd+=" $(printf '%q' "$arg")"
