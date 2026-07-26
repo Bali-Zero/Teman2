@@ -38,6 +38,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path as FileSystemPath
 from typing import Any
 
 import asyncpg
@@ -82,6 +83,75 @@ _INLINE_SAFE_MIME = frozenset(
 )
 
 
+def _review_blob_roots() -> tuple[FileSystemPath, ...]:
+    """Resolved filesystem roots from which review blobs may be served.
+
+    ``INTAKE_BLOB_ROOTS`` is an os.pathsep-separated full override. Without it,
+    preserve the legacy singular root plus the WhatsApp mirror media root. An
+    invalid root is ignored; no valid roots means the endpoint fails closed.
+    """
+    configured_roots = os.environ.get("INTAKE_BLOB_ROOTS")
+    if configured_roots:
+        raw_roots = [value for value in configured_roots.split(os.pathsep) if value.strip()]
+    else:
+        raw_roots = [
+            os.environ.get(
+                "INTAKE_BLOB_ROOT",
+                os.path.expanduser("~/.nuzantara/intake-blobs"),
+            ),
+            os.path.expanduser("~/wa-mirror-media"),
+        ]
+
+    roots: list[FileSystemPath] = []
+    for raw_root in raw_roots:
+        try:
+            roots.append(FileSystemPath(raw_root).expanduser().resolve())
+        except (OSError, RuntimeError):
+            continue
+    return tuple(roots)
+
+
+def _resolve_review_blob_path(blob_path: Any) -> FileSystemPath | None:
+    """Return a readable blob strictly contained by a managed root.
+
+    Resolve before containment and before ``is_file`` so symlinks cannot escape
+    a managed directory. The caller intentionally exposes only a generic 404
+    when this validation fails.
+    """
+    if not isinstance(blob_path, (str, os.PathLike)):
+        return None
+    try:
+        resolved = FileSystemPath(blob_path).expanduser().resolve()
+        if not resolved.is_file():
+            return None
+    except (OSError, RuntimeError):
+        return None
+
+    for root in _review_blob_roots():
+        try:
+            relative = resolved.relative_to(root)
+        except ValueError:
+            continue
+        if relative.parts:
+            return resolved
+    return None
+
+
+def _reviewer_identity(user: dict[str, Any]) -> tuple[bool, str]:
+    """Return the reviewer's role and normalized email, failing closed.
+
+    Every non-admin review operation is scoped by an email stored on the queue
+    or lease.  Treating two missing values as equal would turn legacy NULL/blank
+    rows into an authorization bypass, so an authenticated non-admin without a
+    usable email is never a valid reviewer.
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+    if not admin and not user_email:
+        raise HTTPException(status_code=403, detail="Reviewer email is required")
+    return admin, user_email
+
+
 # --------------------------------------------------------------------------- #
 # Shared RBAC guard (own-chat axis) — single source of truth
 # --------------------------------------------------------------------------- #
@@ -97,8 +167,9 @@ async def _require_own_chat_or_admin(
     Returns the joined row (proposal + queue context) on success. A non-admin
     may touch a proposal ONLY if it came from their own chat
     (``intake_queue.received_by == caller``). NULL received_by (shared business
-    line + Drive, pre-backfill) never matches → admin-only. One helper instead
-    of four hand-rolled copies (detail/claim/blob/queue) so the rule cannot drift.
+    line + Drive, pre-backfill) never matches → admin-only. Identity validation
+    is centralised in ``_reviewer_identity``; this helper keeps proposal-level
+    ownership checks shared by the claim and blob paths.
     """
     row = await conn.fetchrow(
         """
@@ -115,8 +186,14 @@ async def _require_own_chat_or_admin(
     if row is None:
         raise HTTPException(status_code=404, detail="Proposal not found")
     if not admin:
-        received_by = (row["received_by"] or "").lower().strip()
-        if received_by != user_email:
+        caller_email = user_email.lower().strip()
+        received_by_value = row["received_by"]
+        received_by = (
+            received_by_value.lower().strip()
+            if isinstance(received_by_value, str)
+            else ""
+        )
+        if not caller_email or not received_by or received_by != caller_email:
             # Hide existence from non-authorised team members.
             raise HTTPException(status_code=403, detail="Not authorised for this proposal")
     return row
@@ -313,8 +390,7 @@ async def list_review_queue(
     AMBIGUOUS docs. NULL-received_by docs (shared business line + Drive) are
     admin-only.
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
 
     # Source gate (WhatsApp-only by default): an explicit ?source= still wins for
     # ad-hoc inspection, but MUST be inside the allowlist — a caller cannot ask
@@ -541,16 +617,15 @@ async def get_review_blob(
     persists anywhere else; ``no-store`` keeps every proxy/browser cache out
     (Law 2: PII in transit to the authenticated reviewer only).
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
 
     async with pool.acquire() as conn:
         row = await _require_own_chat_or_admin(
             conn, proposal_id, admin=admin, user_email=user_email
         )
 
-    blob_path = row["blob_path"]
-    if not blob_path or not os.path.isfile(blob_path):
+    blob_path = _resolve_review_blob_path(row["blob_path"])
+    if blob_path is None:
         raise HTTPException(status_code=404, detail="Blob not on disk")
 
     # XSS hardening: blobs are UNTRUSTED uploads (WhatsApp/Drive). Only types a
@@ -570,7 +645,7 @@ async def get_review_blob(
         blob_path,
         media_type=row["mime_type"] if inline_safe else "application/octet-stream",
         headers=headers,
-        filename=os.path.basename(blob_path),
+        filename=blob_path.name,
         content_disposition_type="inline" if inline_safe else "attachment",
     )
 
@@ -585,8 +660,7 @@ async def get_review_detail(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """Full review detail for a single proposal (READ-ONLY)."""
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -653,7 +727,6 @@ async def get_review_detail(
             "source_ref": row["source_ref"],
             "received_by": row["received_by"],
             "queue_status": row["queue_status"],
-            "blob_path": row["blob_path"],
             "mime_type": row["mime_type"],
             "byte_size": row["byte_size"],
             "decision": entity_resolution.get("decision"),
@@ -689,8 +762,7 @@ async def claim_review(
     your own claimed document renews the lease and returns a fresh token instead of
     409). A live, unexpired claim by a DIFFERENT reviewer → 409.
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
     token = uuid.uuid4()
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=CLAIM_TTL_MINUTES)
@@ -773,8 +845,7 @@ async def release_review(
     The claim-holder must present the claim_token (P0#5). Admins may force-release
     without a token (lease-reaper / abandoned reviewer).
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
 
     token_uuid: uuid.UUID | None = None
     if claim_token:
@@ -863,8 +934,7 @@ async def recover_from_quarantine(
     (``intake_queue.received_by == caller``); NULL-received_by (shared line +
     Drive) is admin-only. NO CRM writes.
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
 
     async with pool.acquire() as conn:
         # The own-chat RBAC gate lives on intake_queue.received_by — guard it in
@@ -941,7 +1011,14 @@ async def _require_active_claim(
     if lease_exp is None or lease_exp < now:
         raise HTTPException(status_code=409, detail="Claim lease expired - re-claim first.")
     if not admin:
-        if (prop["lease_owner"] or "").lower().strip() != user_email:
+        caller_email = user_email.lower().strip()
+        lease_owner_value = prop["lease_owner"]
+        lease_owner = (
+            lease_owner_value.lower().strip()
+            if isinstance(lease_owner_value, str)
+            else ""
+        )
+        if not caller_email or not lease_owner or lease_owner != caller_email:
             raise HTTPException(status_code=403, detail="You do not hold this claim.")
         if claim_token is None:
             raise HTTPException(status_code=400, detail="claim_token required.")
@@ -1047,8 +1124,7 @@ async def approve_review(
     body: {client_id?, practice_id?, document_category?, document_subtype?,
            final_fields?, claim_token?}
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
     claim_token = body.get("claim_token")
     override_client_id = body.get("client_id")
     # Practice override distinguishes ABSENT ("use routing's hint") from an
@@ -1167,8 +1243,7 @@ async def reject_review(
 
     body: {claim_token?, reason?}  — ``reason`` is persisted in the audit plan.
     """
-    admin = is_crm_admin(user)
-    user_email = (user.get("email") or "").lower().strip()
+    admin, user_email = _reviewer_identity(user)
     claim_token = body.get("claim_token")
     reason = body.get("reason")
 
