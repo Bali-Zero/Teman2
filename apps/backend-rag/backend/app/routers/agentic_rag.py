@@ -39,6 +39,7 @@ from backend.services.agents.team_agent_config import (
     get_agent_role,
 )
 from backend.services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.rag.agentic._memory_identity import derive_wa_memory_subject
 from backend.services.rag.evaluation import ABTestManager, MetricsTracker
 from backend.services.whatsapp_identity import resolve_sender_identity
 
@@ -366,6 +367,32 @@ async def _resolve_trusted_wa_profile(
     return None  # client / unknown → no privileged override
 
 
+def _derive_wa_memory_subject_for_request(
+    is_wa_inbox_bot: bool,
+    user_id: str | None,
+) -> str | None:
+    """Per-sender pseudonymous memory subject for THIS request, or None.
+
+    W-1 follow-up to P0-MEM (#3036), 2026-07-27. Deliberately independent of
+    `_resolve_trusted_wa_profile` / `resolve_sender_identity`: that path
+    exists to grant the owner/team PERSONA override and returns None for
+    "client / unknown" on purpose — clients must never get that persona.
+    Memory is the opposite case. Containment (#3036) removed long-term
+    memory from every WhatsApp sender alike, clients included — they are
+    the ones this item restores it for — so this function does not gate on
+    role at all, only on the same trust check every WA-only override uses
+    (the caller holds `X-WA-Bot-Profile-Key`) plus the salt being
+    provisioned. No DB round-trip: unlike the persona override, a memory
+    subject needs nothing beyond the phone number and the server secret.
+    """
+    phone = _extract_whatsapp_phone(user_id)
+    return derive_wa_memory_subject(
+        is_trusted_wa_bot=is_wa_inbox_bot,
+        phone=phone,
+        salt=getattr(settings, "wa_memory_subject_salt", None),
+    )
+
+
 def _derive_wa_agent_role(trusted_profile: dict[str, Any] | None) -> AgentRole | None:
     """Map the server-resolved WA profile onto a `team_agent_config.AgentRole`
     (T4, spec `research/operations/2026-07-24-zantara-bot-consultant-assistant-spec.md`
@@ -483,6 +510,14 @@ async def query_agentic_rag(
         is_wa_inbox_bot, request.user_id, db_pool
     )
 
+    # W-1 follow-up to P0-MEM (#3036), 2026-07-27: per-sender pseudonymous
+    # memory subject for the trusted WA bot. Independent of `trusted_profile`
+    # above — see `_derive_wa_memory_subject_for_request` docstring for why
+    # this does not gate on role. None unless BOTH the caller holds the
+    # dedicated WA-bot secret AND `wa_memory_subject_salt` is provisioned —
+    # unset salt is a complete no-op (today's containment behaviour).
+    wa_memory_subject = _derive_wa_memory_subject_for_request(is_wa_inbox_bot, request.user_id)
+
     # T4 unified principal (flag-gated, default OFF — see config.py
     # `wa_bot_agent_role_enabled`). Byte-identical to today when the flag
     # is off: `wa_agent_role` stays None, and `agent_role` is simply never
@@ -584,6 +619,12 @@ async def query_agentic_rag(
             query_kwargs["agent_role"] = wa_agent_role
         if request.max_steps is not None:
             query_kwargs["max_steps"] = request.max_steps
+        if wa_memory_subject is not None:
+            # W-1 follow-up to P0-MEM (#3036) — server-derived, never a
+            # request field. Threaded through OrchestratorCore to key the
+            # FACTS read and the memory-save dispatch on the per-sender
+            # subject instead of the shared wa-mirror-internal identity.
+            query_kwargs["memory_subject"] = wa_memory_subject
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
