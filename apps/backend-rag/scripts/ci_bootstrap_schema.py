@@ -373,12 +373,16 @@ def main() -> int:
     #   drive_folder_id         — legacy drive folder id (portal + events)
     #   drive_folder_url        — legacy drive folder url (documents)
     #   deleted_at              — soft-delete marker (portal, several routers)
+    #   date_of_birth           — CRM identity enrichment (legacy migration 033)
+    #   passport_expiry         — CRM renewal clock (legacy migration 033)
     with engine.begin() as conn:
         for stmt in (
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS google_drive_folder_id VARCHAR(100)",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_id VARCHAR(100)",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_url TEXT",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS date_of_birth DATE",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS passport_expiry DATE",
             # SQLModel's Client declares created_at/updated_at with a
             # Python-side default_factory=datetime.utcnow but no DB
             # server_default, so create_all() emits NOT NULL columns with
@@ -391,7 +395,10 @@ def main() -> int:
             "ALTER TABLE clients ALTER COLUMN updated_at SET DEFAULT NOW()",
         ):
             conn.execute(text(stmt))
-    print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
+    print(
+        "[bootstrap] clients prod-only columns ensured "
+        "(drive + deleted_at + identity dates + timestamp defaults)"
+    )
 
     # documents: prod-only legacy table, hand-created (no SQLModel class, no
     # migration file creates it). Router code (CRM enhanced documents,
@@ -417,7 +424,38 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] documents prod-only legacy table ensured (FK clients, for migration 217 + intake writer)")
+        # The minimal historical CREATE above is enough for migration 217, but
+        # not for the real intake writer or the document routers. Those columns
+        # came from old one-off Python/SQL migrations that the v2 runner cannot
+        # discover. Mirror the live dev/prod shape explicitly so a fresh CI DB
+        # exercises the same contract as the application instead of failing on
+        # the first missing column.
+        for stmt in (
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS practice_id INTEGER",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS storage_type VARCHAR(50)",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_id VARCHAR(255)",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_url TEXT",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_size_kb INTEGER",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100)",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS verified_by VARCHAR(255)",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS expiry_date DATE",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS notes TEXT",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS rejection_reason TEXT",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS user_profile_id UUID",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS client_visible BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS document_category VARCHAR(50)",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS family_member_id INTEGER",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS google_drive_file_url TEXT",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_source VARCHAR(50) DEFAULT 'team'",
+        ):
+            conn.execute(text(stmt))
+    print(
+        "[bootstrap] documents prod-only legacy table + writer/router columns ensured "
+        "(FK clients, for migration 217 + intake writer)"
+    )
 
     # team_members prod-only divergence.
     #

@@ -43,6 +43,14 @@ describe("funnel-view", () => {
     expect(body.event).toBe("kbli_code_viewed");
   });
 
+  it("keeps analytics failures silent", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    await expect(
+      trackFunnelEvent("tax_dashboard_viewed", { sessionId: "abc" }),
+    ).resolves.toBeUndefined();
+  });
+
   it("whitelist derives from the FUNNEL_EVENTS source — no hardcoded count", () => {
     // Representative events (one per funnel) that must always exist.
     // Containment is asserted per-event off this array — never off a magic number.

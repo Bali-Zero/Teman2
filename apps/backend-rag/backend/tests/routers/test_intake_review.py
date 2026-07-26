@@ -19,11 +19,13 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import AsyncMock
 
 import asyncpg
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -203,6 +205,68 @@ async def _crm_counts(pool: asyncpg.Pool) -> tuple[int, int]:
 
 
 # --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    ("received_by", "user_email"),
+    [
+        (None, ""),
+        (None, TEAM_OWNER["email"]),
+        ("", ""),
+        ("   ", "   "),
+        (TEAM_OWNER["email"], ""),
+    ],
+)
+async def test_own_chat_guard_fails_closed_without_both_email_identities(
+    received_by: str | None,
+    user_email: str,
+) -> None:
+    """Missing/blank caller and owner identities never compare equal."""
+    from backend.app.routers.intake_review import _require_own_chat_or_admin
+
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"received_by": received_by}
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _require_own_chat_or_admin(
+            conn,
+            42,
+            admin=False,
+            user_email=user_email,
+        )
+
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "json_body"),
+    [
+        ("GET", "/api/intake/review/queue", None),
+        ("GET", "/api/intake/review/42", None),
+        ("GET", "/api/intake/review/42/blob", None),
+        ("POST", "/api/intake/review/42/claim", None),
+        ("POST", f"/api/intake/review/42/release?claim_token={uuid.uuid4()}", None),
+        ("POST", "/api/intake/review/42/recover", None),
+        ("POST", "/api/intake/review/42/approve", {"claim_token": str(uuid.uuid4())}),
+        ("POST", "/api/intake/review/42/reject", {"claim_token": str(uuid.uuid4())}),
+    ],
+)
+async def test_review_endpoints_reject_non_admin_without_email_before_database_access(
+    method: str,
+    path: str,
+    json_body: dict | None,
+) -> None:
+    """Every email-scoped endpoint rejects an unusable principal consistently."""
+    pool = AsyncMock()
+    app = _make_app(pool, {"id": "missing-email", "email": "  ", "role": "user"})
+
+    async with _client(app) as client:
+        response = await client.request(method, path, json=json_body)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Reviewer email is required"
+    pool.acquire.assert_not_called()
+
+
+# --------------------------------------------------------------------------- #
 async def test_queue_admin_sees_all(pool, seed):
     """Admin sees every WhatsApp doc — every worker's, incl. NULL-received_by —
     but NOT Drive docs (source-gated out of the WhatsApp-only review queue).
@@ -325,6 +389,7 @@ async def test_detail_admin(pool, seed):
     assert body["extracted_fields"].get("npwp_number")
     assert body["ocr_pages"]  # OCR text surfaced for review
     assert any(c["client_id"] == seed["cid_owner"] for c in body["entity_candidates"])
+    assert "blob_path" not in body  # Never expose server filesystem layout.
 
 
 async def test_detail_ocr_from_classify_stage(pool, seed):
@@ -533,6 +598,126 @@ async def test_claim_steal_expired_lease(pool, seed):
         assert r2.json()["lease_owner"] == TEAM_OTHER["email"]
         await cl_other.post(f"/api/intake/review/{pid}/release",
                             params={"claim_token": new_token})
+
+
+@pytest.mark.parametrize(
+    ("lease_expires_at", "lease_owner", "claim_token", "expected_status"),
+    [
+        (None, TEAM_OWNER["email"], None, 409),
+        (
+            datetime.now(timezone.utc) - timedelta(minutes=1),
+            TEAM_OWNER["email"],
+            None,
+            409,
+        ),
+        (
+            datetime.now(timezone.utc) + timedelta(minutes=5),
+            TEAM_OTHER["email"],
+            None,
+            403,
+        ),
+        (
+            datetime.now(timezone.utc) + timedelta(minutes=5),
+            TEAM_OWNER["email"],
+            "not-a-uuid",
+            400,
+        ),
+        (
+            datetime.now(timezone.utc) + timedelta(minutes=5),
+            " ",
+            str(uuid.uuid4()),
+            403,
+        ),
+    ],
+)
+async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
+    lease_expires_at,
+    lease_owner,
+    claim_token,
+    expected_status,
+):
+    """The shared approve/reject guard fails closed for every invalid lease shape.
+
+    These are pure guard tests: they cover corrupted/missing lease state, an
+    expired claim, a live claim owned by another reviewer, and a malformed token
+    without touching the local intake DB. Endpoint-level happy paths and UUID
+    token mismatches are exercised separately below and in the reject tests.
+    """
+    from backend.app.routers.intake_review import _require_active_claim
+
+    active_token = uuid.uuid4()
+    prop = {
+        "status": "review_claimed",
+        "lease_expires_at": lease_expires_at,
+        "lease_owner": lease_owner,
+        "claim_token": active_token,
+    }
+    supplied_token = claim_token
+    if supplied_token is None and lease_expires_at is not None:
+        supplied_token = str(active_token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _require_active_claim(
+            prop,
+            admin=False,
+            user_email=TEAM_OWNER["email"],
+            claim_token=supplied_token,
+        )
+
+    assert exc_info.value.status_code == expected_status
+
+
+async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):
+    """An own-chat reviewer cannot approve a live lease currently held by admin."""
+    pid = seed["p_owner"]
+    before = await _crm_counts(pool)
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as admin_client:
+        claimed = await admin_client.post(f"/api/intake/review/{pid}/claim")
+    assert claimed.status_code == 200, claimed.text
+
+    owner_app = _make_app(pool, TEAM_OWNER)
+    async with _client(owner_app) as owner_client:
+        denied = await owner_client.post(
+            f"/api/intake/review/{pid}/approve",
+            json={"claim_token": claimed.json()["claim_token"]},
+        )
+    assert denied.status_code == 403, denied.text
+    assert await _crm_counts(pool) == before
+
+    async with _client(_make_app(pool, ADMIN)) as cleanup_client:
+        released = await cleanup_client.post(f"/api/intake/review/{pid}/release")
+    assert released.status_code == 200, released.text
+
+
+@pytest.mark.parametrize(
+    ("claim_token", "expected_status"),
+    [("not-a-uuid", 400), (str(uuid.uuid4()), 403)],
+)
+async def test_approve_rejects_malformed_and_wrong_claim_tokens(
+    pool,
+    seed,
+    claim_token,
+    expected_status,
+):
+    """Approve validates token syntax and equality before planning any CRM write."""
+    pid = seed["p_owner"]
+    before = await _crm_counts(pool)
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        claimed = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert claimed.status_code == 200, claimed.text
+        denied = await cl.post(
+            f"/api/intake/review/{pid}/approve",
+            json={"claim_token": claim_token},
+        )
+        assert denied.status_code == expected_status, denied.text
+        released = await cl.post(
+            f"/api/intake/review/{pid}/release",
+            params={"claim_token": claimed.json()["claim_token"]},
+        )
+    assert released.status_code == 200, released.text
+    assert await _crm_counts(pool) == before
 
 
 async def test_release_wrong_token_409(pool, seed):
@@ -779,13 +964,14 @@ async def test_router_registered_in_full_app(pool):
     assert "/api/intake/review/{proposal_id}/claim" in paths
 
 
-async def test_blob_endpoint_rbac_and_content(pool, seed, tmp_path):
+async def test_blob_endpoint_rbac_and_content(pool, seed, tmp_path, monkeypatch):
     """GET /{id}/blob: streams the original bytes with no-store; RBAC own-chat;
     404 when the blob is not on disk."""
     pid = seed["p_owner"]
     blob = tmp_path / "doc.pdf"
     payload = b"%PDF-1.4 test"
     blob.write_bytes(payload)
+    monkeypatch.setenv("INTAKE_BLOB_ROOTS", str(tmp_path))
     async with pool.acquire() as conn:
         qrow = await conn.fetchrow(
             "SELECT q.id AS qid, q.instance_id FROM intake_queue q "
@@ -819,6 +1005,184 @@ async def test_blob_endpoint_rbac_and_content(pool, seed, tmp_path):
     async with _client(_make_app(pool, TEAM_OWNER)) as cl3:
         r3 = await cl3.get(f"/api/intake/review/{seed['p_nomatch']}/blob")
     assert r3.status_code == 404, r3.text
+
+
+def test_blob_root_configuration_precedence_and_null_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The plural root setting fully overrides the legacy/default root pair."""
+    from backend.app.routers.intake_review import (
+        _resolve_review_blob_path,
+        _review_blob_roots,
+    )
+
+    singular_root = tmp_path / "singular"
+    override_a = tmp_path / "override-a"
+    override_b = tmp_path / "override-b"
+    monkeypatch.setenv("INTAKE_BLOB_ROOT", str(singular_root))
+    monkeypatch.setenv(
+        "INTAKE_BLOB_ROOTS",
+        os.pathsep.join((str(override_a), str(override_b))),
+    )
+
+    assert _review_blob_roots() == (override_a.resolve(), override_b.resolve())
+
+    monkeypatch.delenv("INTAKE_BLOB_ROOTS")
+    assert _review_blob_roots() == (
+        singular_root.resolve(),
+        Path("~/wa-mirror-media").expanduser().resolve(),
+    )
+    assert _resolve_review_blob_path(None) is None
+
+
+async def test_blob_endpoint_untrusted_mime_is_sandboxed_attachment(
+    pool,
+    seed,
+    tmp_path,
+    monkeypatch,
+):
+    """HTML/SVG-like uploads cannot render inline and leak no parent path.
+
+    The DB path is nested deliberately. The response must expose only the
+    basename, force opaque attachment semantics, disable sniffing, and sandbox
+    the untrusted payload.
+    """
+    pid = seed["p_owner"]
+    nested = tmp_path / "private-intake-area"
+    nested.mkdir()
+    blob = nested / "review-payload.html"
+    payload = b"<script>window.top.location='https://invalid.test'</script>"
+    blob.write_bytes(payload)
+    monkeypatch.setenv("INTAKE_BLOB_ROOTS", str(tmp_path))
+
+    async with pool.acquire() as conn:
+        qrow = await conn.fetchrow(
+            "SELECT q.id AS qid, q.instance_id FROM intake_queue q "
+            "JOIN document_routing_proposal p ON p.queue_id = q.id WHERE p.id=$1",
+            pid,
+        )
+        await conn.execute(
+            "UPDATE intake_queue SET blob_path=$2 WHERE id=$1",
+            qrow["qid"],
+            str(blob),
+        )
+        await conn.execute(
+            "UPDATE document_instances SET mime_type='text/html' WHERE id=$1",
+            qrow["instance_id"],
+        )
+
+    async with _client(_make_app(pool, TEAM_OWNER)) as cl:
+        response = await cl.get(f"/api/intake/review/{pid}/blob")
+
+    assert response.status_code == 200, response.text
+    assert response.content == payload
+    assert response.headers["content-type"].startswith("application/octet-stream")
+    disposition = response.headers["content-disposition"]
+    assert disposition.startswith("attachment;")
+    assert "review-payload.html" in disposition
+    assert "private-intake-area" not in disposition
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-security-policy"] == "sandbox; default-src 'none'"
+    assert "no-store" in response.headers["cache-control"]
+
+
+async def test_blob_endpoint_rejects_regular_file_outside_managed_roots(
+    pool,
+    seed,
+    tmp_path,
+    monkeypatch,
+):
+    """A valid file referenced by the DB is still unavailable outside the roots."""
+    pid = seed["p_owner"]
+    allowed_root = tmp_path / "managed"
+    allowed_root.mkdir()
+    outside_blob = tmp_path / "outside-secret.pdf"
+    secret = b"must-not-be-served"
+    outside_blob.write_bytes(secret)
+    monkeypatch.setenv("INTAKE_BLOB_ROOTS", str(allowed_root))
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE intake_queue SET blob_path=$2 WHERE id=("
+            "SELECT queue_id FROM document_routing_proposal WHERE id=$1)",
+            pid,
+            str(outside_blob),
+        )
+
+    async with _client(_make_app(pool, TEAM_OWNER)) as cl:
+        response = await cl.get(f"/api/intake/review/{pid}/blob")
+
+    assert response.status_code == 404, response.text
+    assert response.json() == {"detail": "Blob not on disk"}
+    assert secret not in response.content
+
+
+async def test_blob_endpoint_rejects_symlink_escape_from_managed_root(
+    pool,
+    seed,
+    tmp_path,
+    monkeypatch,
+):
+    """Resolving before containment blocks a symlink from escaping its root."""
+    pid = seed["p_owner"]
+    allowed_root = tmp_path / "managed"
+    allowed_root.mkdir()
+    outside_blob = tmp_path / "outside-secret.pdf"
+    secret = b"symlink-target-must-not-be-served"
+    outside_blob.write_bytes(secret)
+    symlink = allowed_root / "looks-managed.pdf"
+    symlink.symlink_to(outside_blob)
+    monkeypatch.setenv("INTAKE_BLOB_ROOTS", str(allowed_root))
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE intake_queue SET blob_path=$2 WHERE id=("
+            "SELECT queue_id FROM document_routing_proposal WHERE id=$1)",
+            pid,
+            str(symlink),
+        )
+
+    async with _client(_make_app(pool, TEAM_OWNER)) as cl:
+        response = await cl.get(f"/api/intake/review/{pid}/blob")
+
+    assert response.status_code == 404, response.text
+    assert response.json() == {"detail": "Blob not on disk"}
+    assert secret not in response.content
+
+
+@pytest.mark.parametrize(
+    ("method", "path_suffix", "request_kwargs"),
+    [
+        ("GET", "", {}),
+        ("GET", "/blob", {}),
+        ("POST", "/claim", {}),
+        ("POST", "/release", {}),
+        ("POST", "/approve", {"json": {}}),
+        ("POST", "/reject", {"json": {}}),
+    ],
+)
+async def test_missing_proposal_is_404_across_review_endpoints(
+    pool,
+    method,
+    path_suffix,
+    request_kwargs,
+):
+    """Every read/mutation surface returns a stable 404 for an absent proposal."""
+    async with pool.acquire() as conn:
+        missing_id = await conn.fetchval(
+            "SELECT COALESCE(max(id), 0) + 1000000 FROM document_routing_proposal"
+        )
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        response = await cl.request(
+            method,
+            f"/api/intake/review/{missing_id}{path_suffix}",
+            **request_kwargs,
+        )
+
+    assert response.status_code == 404, response.text
+    assert response.json()["detail"] == "Proposal not found"
 
 
 async def test_clients_search_endpoint(pool, seed):

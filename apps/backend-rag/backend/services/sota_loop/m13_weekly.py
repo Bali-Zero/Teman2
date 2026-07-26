@@ -31,12 +31,47 @@ logger = logging.getLogger("sota.m13.weekly")
 
 
 def _repo_root() -> Path:
-    """Resolve monorepo root — set by wr2-cron-wrapper.sh as NUZANTARA_REPO_ROOT."""
+    """Resolve monorepo root — set by wr2-cron-wrapper.sh as NUZANTARA_REPO_ROOT.
+
+    W105-shaped fix (2026-07-27): the wrapper resolves REPO_ROOT for its own
+    `cd` but historically never exported it, so this always fell through to a
+    `Path(__file__).resolve().parents[N]` guess — and that guess was itself
+    off by one (parents[4] from this file lands on `apps/`, not repo root),
+    which is exactly how `research/sota-social-2026-v1/` output ended up at
+    `apps/research/sota-social-2026-v1/` for weeks. Same shape as the cure in
+    scripts/agent_start.py (#3197, merge 3fbef8c085) — signature-guarded git
+    derivation instead of a fragile parents[N] count. Note the git PLUMBING
+    differs from infra/claude-hooks/worktree_isolation.py::_derive_repo_root
+    on purpose: that hook wants "where is MAIN" (so `--git-common-dir`, which
+    resolves to the shared admin dir even from inside a worktree, is correct
+    for it); this script wants "where is the checkout I am actually running
+    from" (so `--show-toplevel`, which resolves to the current worktree's own
+    root, is correct here) — verified they diverge inside a worktree. Two
+    tools solving different questions are allowed to pick different git
+    plumbing; they'd be wrong to invent two different answers to the SAME
+    question. The wrapper now also exports NUZANTARA_REPO_ROOT directly
+    (scripts/wr2-cron-wrapper.sh), so this derivation is the fallback path,
+    not the primary one in production.
+    """
     env = os.environ.get("NUZANTARA_REPO_ROOT")
     if env:
         return Path(env)
-    # Fallback: from backend/services/sota_loop/m13_weekly.py go 4 up.
-    return Path(__file__).resolve().parents[4]
+    try:
+        tl = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if tl.returncode == 0 and tl.stdout.strip():
+            root = Path(tl.stdout.strip())
+            if (root / "scripts" / "agent_start.py").is_file():
+                return root
+    except Exception:
+        pass
+    # Last-resort fallback: from backend/services/sota_loop/m13_weekly.py go 5 up.
+    return Path(__file__).resolve().parents[5]
 
 
 async def kill_switch_on(conn) -> bool:

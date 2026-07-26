@@ -105,14 +105,30 @@ function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
     });
   }
 
-  rows.push({
-    layer: "Foreign ownership (PMA)",
-    source: prov.pma.source ?? "Perpres 10/2021, 49/2021",
-    vintage: "KBLI 2020",
-    verdict: "pending",
-    detail:
-      "The investment-list annexes predate KBLI 2025; the per-code crosswalk audit of this layer is in progress. The value shown is the annex text, disclosed with its vintage.",
-  });
+  // Derived, not fixed. "Audit pending" is honest for a code with a recorded
+  // KBLI-2020 origin: the annexes predate KBLI 2025 and the per-code crosswalk is
+  // genuinely in progress. It is NOT honest for a code that records no 2020
+  // ancestry at all — there is no crosswalk to be pending ON, and "in progress"
+  // would promise work that cannot start. That is a declared gap.
+  rows.push(
+    prov.pma.status === "untraceable_basis"
+      ? {
+          layer: "Foreign ownership (PMA)",
+          source: prov.pma.source ?? "Perpres 10/2021, 49/2021",
+          vintage: "—",
+          verdict: "gap",
+          detail:
+            "Our sources record no KBLI-2020 predecessor for this code, so we cannot trace how the investment-list verdict shown here was assigned to it. The value is served as-is, not as a verified determination — confirm it at oss.go.id before relying on it.",
+        }
+      : {
+          layer: "Foreign ownership (PMA)",
+          source: prov.pma.source ?? "Perpres 10/2021, 49/2021",
+          vintage: "KBLI 2020",
+          verdict: "pending",
+          detail:
+            "The investment-list annexes predate KBLI 2025; the per-code crosswalk audit of this layer is in progress. The value shown is the annex text, disclosed with its vintage.",
+        },
+  );
 
   if (kbli.baliL4) {
     const m = kbli.baliL4.moratorium;

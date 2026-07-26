@@ -5,6 +5,7 @@ Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox.
 **M1 scope**: read-only SSE live stream of all team WA messages, RBAC-filtered server-side.
 
 ## Stack
+
 - Next.js 16 + React 19 + Tailwind v4
 - SSE via native EventSource → `/api/v1/wa-dashboard/stream`
 - Zustand store (1000-message rolling buffer)
@@ -25,6 +26,13 @@ For production backend:
 WA_DASHBOARD_BACKEND_URL=https://nuzantara-rag.fly.dev npm run dev
 ```
 
+Run the unit tests and the coverage gate for the inbox buffer and action API:
+
+```bash
+npm test
+npm run test:coverage
+```
+
 Auth: cookie-based JWT from `nuzantara-rag` backend. Browser must already
 have a valid session (login via main app first).
 
@@ -43,7 +51,9 @@ on reconnect, missed messages are replayed via the backend
 `fetch_replay()` query (devils-advocate v3 fix #11).
 
 ## What's NOT here (M1 scope boundary)
+
 - No outbound (POST /send is M3, gated on UU PDP compliance docs)
 - No thread/conversation grouping (M2 routers)
 - No search, no attention queue, no Web Components fancy chat bubbles
-- No tests (manual smoke for M1)
+- No browser end-to-end coverage yet (unit coverage protects the stream buffer
+  and action API contracts)
