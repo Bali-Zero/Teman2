@@ -58,10 +58,14 @@ il flip) non è ancora valutabile: la data utile è **≥ 2026-07-27**, non il 2
 Il suffisso v3 costruisce titoli come `Max {maxForeign}% Foreign Ownership`,
 `Blocked for PT PMA in Bali (2026)`, `{risk} Risk`, e la description aggiunge
 `license: {licenseType || "NIB"}`. Le sorgenti sono `pma.maxForeign/capVerified`,
-`baliL4.blocked`, `licensing[0].riskCategory/licenseType` — cioè proprio i campi rimessi a terra
-DOPO il 05/07: risoluzione PMA contro il lampiran Perpres 10/2021 (27/06) e i lot Batch A chiusi
-fino al 21/07, dove W100 ha trovato **13/13 quarantine nel Lot 1** su payload licensing
-(`payload_cross_contamination` / `unresolvable_source_pointer`).
+`baliL4.blocked`, `licensing[0].riskCategory/licenseType`. **Correzione (review Codex, vedi in
+fondo):** la prima stesura elencava sotto "rimessi a terra DOPO il 05/07" anche la risoluzione PMA
+contro il lampiran Perpres 10/2021, che è del **27/06** — otto giorni PRIMA della PR, quindi non
+"dopo". L'errore però non tocca l'argomento, perché tocca il campo sbagliato: la risoluzione PMA
+riguarda `pma.maxForeign/capVerified`, cioè **l'unico campo che il suffisso v3 già gate**. Ciò che
+è davvero posteriore al 05/07 sono i lot Batch A chiusi fino al **21/07**, dove W100 ha trovato
+**13/13 quarantine nel Lot 1** su payload licensing (`payload_cross_contamination` /
+`unresolvable_source_pointer`) — ed è esattamente da lì che vengono i tre campi NON gated.
 Il suffisso *è* prudente su `capVerified` (senza flag degrada a "Foreign Ownership Restricted"),
 ma **`baliL4.blocked`, `riskCategory` e `licenseType` non sono gated** — e finirebbero indicizzati
 in title/meta su 1.559 pagine. Regola di onestà regolatoria + W90/W100: un claim su cap/rischio/
@@ -122,6 +126,27 @@ PII history-purge (`ops_pii_history_purge_executed_proven_2026_07_13`, memoria d
 file di questo repo: `origin/main 2ae5e6fb → 33120add`, `enforce_admins=false`, filter-repo su 7837
 commit). Ventuno PR non si chiudono per ventuno decisioni indipendenti nello stesso secondo.
 
+**Perché non può essere invece UNA decisione sola — un ritiro in blocco deliberato durante il purge**
+(alternativa sollevata dalla review Codex, che il testo precedente non escludeva). Tre prove, tutte
+ri-eseguite:
+
+- **9 delle 21 sono PR di dependabot** (#2322 wrapt · #2321 protobuf · #2320 transformers ·
+  #2319 structlog · #2295 npm minor-and-patch · #2060 ai-sdk/react · #2059 ai · #2058 types/node ·
+  #2057 eslint). Nessuno "ritira deliberatamente" bump di dipendenza insieme a feature scritte a
+  mano — e sono proprio ciò che resta orfano quando ogni SHA cambia.
+- **Il cohort non ha tema**: wr2, backend-rag, docs, infra, mouth, dependabot. L'unico tratto
+  condiviso è *essere aperte in quell'istante*.
+- **18 su 21 sono state rifatte e sono atterrate nei giorni successivi.** Un ritiro deciso non si
+  rifà subito.
+
+Il campo `actor` **non** discrimina, ed è giusto dirlo: sia `closed` sia `base_ref_force_pushed`
+riportano `Balizero1987` (GitHub attribuisce la chiusura automatica a chi ha pushato). L'attore non
+è la prova; lo sono la composizione del cohort e il rework immediato.
+
+Lista completa delle 21, per rendere il conteggio verificabile invece che da credere: `:28Z` —
+2368, 2367, 2366, 2365, 2364, 2362, 2358, 2357, 2322, 2321, 2320, 2319, 2295, 2060, 2059, 2058,
+2057; `:29Z` — 2363, 2326, 2301, **1967**.
+
 Esito del ripristino, 13 giorni dopo:
 
 | | n | nota |
@@ -143,10 +168,36 @@ branch tagliato prima del purge, senza confrontare un solo blob**. Il "0 content
 83 branch" registrato quel giorno è quindi un artefatto del merge-base morto, non un fatto sul
 contenuto. Terzo grado della trappola W88: là il proxy era il three-dot, qui è il merge-base stesso.
 
-**Metodo corretto post-rewrite** (usato qui, e da usare in ogni riconciliazione): il file-set si
-prende dai **commit che il branch ha autorato** (`tip^..tip` per un branch mono-commit), poi
-blob-compare per file contro `origin/main`. Per #1967: 4/4 file DIFF → contenuto non su main,
-corroborato indipendentemente da `riskLabelEn` = 0 hit su `apps/mouth/src`.
+**Metodo corretto post-rewrite** (corretto una seconda volta dalla review Codex — vedi in fondo;
+la prima versione di questo paragrafo raccomandava `tip^..tip`, che **non è verificabile** dopo un
+rewrite):
+
+1. **Il file-set si prende da GitHub, non da git**: `gh api repos/<slug>/pulls/<n>/files`. È
+   l'unica sorgente indipendente dal rewrite. Per #1967 dà esattamente 4 path.
+   `tip^..tip` sembrava equivalente ma poggia su una premessa che la topologia locale non può
+   più confermare: `git merge-base --is-ancestor 969f1f82bc^ origin/main` risponde **NO**, perché
+   ogni SHA pre-purge è cambiato. Funzionava per #1967 solo perché sapevo da altrove che il branch
+   porta un commit solo.
+   **Trappola nella trappola:** l'endpoint gemello `/pulls/1967/commits` restituisce **30** commit,
+   quasi tutti estranei (è la storia del base al tempo della PR, congelata pre-rewrite). Il
+   file-set è affidabile, la lista commit no — due campi della stessa risposta, due gradi di verità.
+2. **Poi blob-compare per file contro un `origin/main` PINNATO** (senza pin il risultato non è
+   riproducibile: main si muove ogni pochi minuti). Contro `origin/main = e5b5459710`:
+
+   | file | branch `969f1f82bc` | main `e5b5459710` | |
+   |---|---|---|---|
+   | `apps/mouth/src/app/kbli/[code]/page.tsx` | `61368bca50` | `7af85131ae` | DIFF |
+   | `apps/mouth/src/lib/kbli-derive.ts` | `f71def21cd` | `a050602bfb` | DIFF |
+   | `apps/mouth/src/lib/kbli-derive.test.ts` | `8bbab4d5f1` | `db582f01ba` | DIFF |
+   | `research/seo/2026-07-05-batch3-title-meta-queue.md` | `53f405316e` | — | **ASSENTE** |
+
+   Cioè 3 DIFF + 1 assente, non "4/4 DIFF" come diceva la prima stesura.
+3. **Un blob diverso non prova che il comportamento manchi** (obiezione Codex, giusta): due vie
+   diverse possono produrre lo stesso effetto con byte diversi. Serve un controllo *semantico*, e
+   qui c'è: il simbolo introdotto dalla PR, `riskLabelEn`, ha **0 occorrenze** in `apps/mouth/src`
+   su main pinnato (`git grep -c` → rc=1, output vuoto) contro **13** sul branch
+   (`page.tsx` 2 · `kbli-derive.test.ts` 10 · `kbli-derive.ts` 1). Il blob-compare dice "i byte
+   differiscono"; è il grep sul simbolo a dire "la funzione non esiste da nessuna parte su main".
 
 ## A3. La riga 169 (META_EN) ha la sua prova sulla superficie, non nel codice
 
@@ -223,3 +274,34 @@ lo stesso pattern `closed` + `base_ref_force_pushed` co-occorrenti, stesso attor
 **Cosa NON è stato rivisto** (fuori mandato, dichiarato esplicitamente nel brief): §1-§4 e
 A3-A5 (il gate sui campi non verificati, il verdetto NO-GO, la lista di armamento) — solo la
 claim del force-push in §A1-A2 era in scope per questo seat.
+
+---
+
+## Adversarial review — secondo passaggio (Codex GPT-5.6 sol, xhigh)
+
+Il primo passaggio (GLM, sopra) aveva mandato **stretto**: falsificare la sola claim del
+force-push in §A1-A2, e dichiarava esplicitamente fuori scope §1-§4 e §A3-A5. Un documento con una
+sezione "adversarial review" che copre un quinto del testo passa il gate CI e *sembra* revisionato:
+è la firma di W100 ("anche la firma mente"). Da qui il secondo seat, di famiglia diversa e con
+mandato sull'INTERO documento.
+
+**Verdetto: UNSOUND**, 8 findings. Non un timbro — sei sono state accolte, due respinte con motivo.
+
+| # | finding | esito |
+|---|---|---|
+| 1 | un blob DIFF prova che i byte differiscono, non che il comportamento manchi | **accolta** — §A2 ora separa il blob-compare dal controllo semantico (`riskLabelEn` 0 su main pinnato vs 13 sul branch) e dice quale dei due porta la conclusione |
+| 2 | `tip^..tip` non è derivabile post-rewrite senza evidenza esterna | **accolta, ed era peggio del previsto** — verificato live: `merge-base --is-ancestor 969f1f82bc^ origin/main` = NO. Il metodo ora passa da `gh api /pulls/<n>/files`; scoperta collaterale: `/pulls/<n>/commits` restituisce 30 commit estranei |
+| 3 | chiusure allo stesso secondo non escludono un ritiro in blocco deliberato | **accolta** — §A1 ora porta le tre prove che lo escludono (9/21 dependabot, cohort senza tema, 18/21 rifatte subito) e ammette che il campo `actor` non discrimina |
+| 4 | «rimessi a terra DOPO il 05/07» include la risoluzione PMA del 27/06, che è precedente | **accolta** — errore reale, corretto in §3(b); non ribalta l'argomento perché quel campo è l'unico già gated |
+| 5 | il cohort è 22 ma la tabella ne spiega 21 | **già corretta** dal passaggio GLM prima del merge; Codex leggeva una copia locale antecedente |
+| 6 | i conteggi non sono verificabili senza la lista PR | **accolta** — le 21 sono ora elencate per numero e per secondo |
+| 7 | il blob audit non pinna lo SHA di `origin/main`, quindi non è riproducibile | **accolta** — pinnato a `e5b5459710`, con la tabella dei blob |
+| 8 | mancano confronto per-hunk e identità di chi ha chiuso | **parzialmente respinta** — l'attore è ora dichiarato (e dichiarato non-probante). Il confronto per-hunk è superfluo una volta che il simbolo introdotto ha 0 occorrenze su main: non c'è hunk da confrontare |
+
+**La lezione che vale più delle otto**: il primo seat ha risposto onestamente alla domanda che gli
+era stata posta, e la domanda copriva un quinto del documento. Uno scope stretto e dichiarato è
+corretto per il reviewer e ingannevole per il lettore, perché il gate CI vede una sezione
+"Adversarial review" presente e passa — la copertura non è un campo che il gate legga. Se una
+review è parziale, la parzialità va scritta **dove è visibile**, e per un documento che si conclude
+con un verdetto operativo il secondo seat non è lusso: è ciò che ha trovato l'errore di data, il
+metodo non riproducibile e l'inferenza troppo forte.
