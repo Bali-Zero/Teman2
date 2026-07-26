@@ -560,10 +560,38 @@ jobs:
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown" || true
 
+      # Task #19 follow-up (2026-07-26): this job's `if:` now runs even when a
+      # post-deploy migration failed (see the header comment above), but
+      # `success()` at step level reflects ONLY this job's own steps — it does
+      # NOT look at `needs.*.result`. Before this split, a migration failure
+      # meant this job was skipped entirely, so no success message could ever
+      # fire alongside a failure one. After the fix, a healthy service +
+      # failed migration produces BOTH: the migration job's own 🔴 alert, then
+      # this step's unqualified ✅ — a green message arriving after a red one
+      # reads as "resolved, disregard the above," which is false. So the two
+      # notification steps below are gated on the migration jobs' results, not
+      # just on step success: a genuinely clean deploy gets the unqualified ✅,
+      # a healthy-but-migration-failed deploy gets its own degraded message
+      # that says so explicitly.
       - name: Notifica Telegram — deploy OK
-        if: success()
+        if: |
+          success() &&
+          needs.run-python-migrations.result == 'success' &&
+          needs.run-sql-v2-migrations-post-deploy.result == 'success'
         run: |
-          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato. Migration post-deploy pulite.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+      - name: Notifica Telegram — deploy sano, migration post-deploy degradata
+        if: |
+          success() &&
+          (needs.run-python-migrations.result != 'success' ||
+           needs.run-sql-v2-migrations-post-deploy.result != 'success')
+        run: |
+          MESSAGE="⚠️ *Deploy Nuzantara — servizio sano, migration degradata*%0A%0AHealth check passato: il backend risponde. MA una o più migration post-deploy NON sono andate a buon fine.%0A%0Arun-sql-v2-migrations-post-deploy: \`${{ needs.run-sql-v2-migrations-post-deploy.result }}\`%0Arun-python-migrations: \`${{ needs.run-python-migrations.result }}\`%0A%0ASchema state NON verificato — non è 'tutto ok', è 'il servizio non è stato riavviato'. Investigare la migration fallita PRIMA di considerare il deploy completo.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
           curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
             -d "text=${MESSAGE}" \

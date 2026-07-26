@@ -37,6 +37,20 @@ Self-check: if a future edit changes this job's needs:/if: in the YAML,
 this script fails loudly (exit 2) instead of silently proving the wrong
 thing — it does not try to re-derive the logic below from the YAML, it
 only detects that the YAML no longer matches what the logic below assumes.
+
+Follow-up (2026-07-26, same task, reviewer-caught): the two success-
+notification steps are also modeled and self-checked below. Bug: the
+"Notifica Telegram — deploy OK" step's `if: success()` reflects only THIS
+job's own step outcomes — it does not read `needs.*.result` at all. Before
+this job could run on a migration-failure path (the fix above), that path
+always SKIPPED this job, so no success message could ever fire next to a
+failure one. After the fix, a healthy service + a failed migration produces
+BOTH: the migration job's own 🔴 alert, then an unqualified ✅ — a green
+message arriving after a red one reads as "resolved, disregard the above,"
+which is false. Fix: split into a clean-success step (gated on both
+migration jobs' results, not just step success) and a degraded-success step
+with its own message (service healthy, named migration failed, schema state
+unverified).
 """
 import re
 import sys
@@ -50,6 +64,31 @@ JOB_NAME = "post-deploy-health"
 
 EXPECTED_NEEDS = ["deploy", "run-sql-v2-migrations-post-deploy", "run-python-migrations"]
 EXPECTED_IF = "always() &&\nneeds.deploy.result == 'success'"
+
+CLEAN_SUCCESS_STEP = "Notifica Telegram — deploy OK"
+EXPECTED_CLEAN_SUCCESS_IF = (
+    "success() &&\n"
+    "needs.run-python-migrations.result == 'success' &&\n"
+    "needs.run-sql-v2-migrations-post-deploy.result == 'success'"
+)
+
+DEGRADED_SUCCESS_STEP = "Notifica Telegram — deploy sano, migration post-deploy degradata"
+EXPECTED_DEGRADED_SUCCESS_IF = (
+    "success() &&\n"
+    "(needs.run-python-migrations.result != 'success' ||\n"
+    "needs.run-sql-v2-migrations-post-deploy.result != 'success')"
+)
+
+
+def _normalize(s: str) -> str:
+    return re.sub(r"[ \t]+", "", s)
+
+
+def _step_by_name(job: dict, name: str) -> dict | None:
+    for step in job.get("steps") or []:
+        if step.get("name") == name:
+            return step
+    return None
 
 
 def self_check() -> None:
@@ -74,8 +113,7 @@ def self_check() -> None:
         sys.exit(2)
 
     if_raw = (job.get("if") or "").strip()
-    normalize = lambda s: re.sub(r"[ \t]+", "", s)
-    if normalize(if_raw) != normalize(EXPECTED_IF):
+    if _normalize(if_raw) != _normalize(EXPECTED_IF):
         print(
             f"FATAL: {JOB_NAME}.if drifted from what this script models.\n"
             f"  expected: {EXPECTED_IF!r}\n"
@@ -85,6 +123,32 @@ def self_check() -> None:
             file=sys.stderr,
         )
         sys.exit(2)
+
+    for step_name, expected_if in (
+        (CLEAN_SUCCESS_STEP, EXPECTED_CLEAN_SUCCESS_IF),
+        (DEGRADED_SUCCESS_STEP, EXPECTED_DEGRADED_SUCCESS_IF),
+    ):
+        step = _step_by_name(job, step_name)
+        if step is None:
+            print(
+                f"FATAL: step '{step_name}' not found in job '{JOB_NAME}'.\n"
+                "  This script's success-message split proof assumes this step\n"
+                "  exists by this exact name — a rename silently breaks it.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        step_if = (step.get("if") or "").strip()
+        if _normalize(step_if) != _normalize(expected_if):
+            print(
+                f"FATAL: step '{step_name}'.if drifted from what this script models.\n"
+                f"  expected: {expected_if!r}\n"
+                f"  actual:   {step_if!r}\n"
+                "  Update the EXPECTED_*_SUCCESS_IF constant and the\n"
+                "  success_message_kind() logic below to match the new YAML\n"
+                "  before trusting this script's verdict again.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
 
 def job_runs(deploy_result: str) -> bool:
@@ -110,6 +174,30 @@ def rollback_and_alert_fire(job_ran: bool, health_check_passed: bool) -> bool:
     if not job_ran:
         return False
     return not health_check_passed
+
+
+def success_message_kind(
+    job_ran: bool,
+    health_check_passed: bool,
+    py_migrations_result: str,
+    sqlv2_migrations_result: str,
+) -> str:
+    """Models the two success-notification steps' if: conditions.
+
+    Returns 'clean', 'degraded', or 'none'. Both steps share the same
+    `success()` gate (health_check passed, i.e. no prior step in this job
+    failed) — `success()` on its own cannot distinguish clean from degraded,
+    since it never reads `needs.*.result`. That is exactly the bug this
+    follow-up closes: the split reads the two migration jobs' results
+    explicitly, so a healthy-but-migration-failed deploy gets the degraded
+    message instead of silently reusing the unqualified one.
+    """
+    if not (job_ran and health_check_passed):
+        return "none"
+    migrations_clean = (
+        py_migrations_result == "success" and sqlv2_migrations_result == "success"
+    )
+    return "clean" if migrations_clean else "degraded"
 
 
 # (label, deploy, run_sql_v2_migrations_post_deploy, run_python_migrations,
@@ -157,6 +245,42 @@ DOWNSTREAM_SCENARIOS = [
     ),
 ]
 
+# (label, job_ran, health_check_passed, py_migrations_result,
+#  sqlv2_migrations_result, expect_kind)
+SUCCESS_MESSAGE_SCENARIOS = [
+    (
+        "GUILT — service healthy but run-python-migrations failed: MUST NOT be "
+        "an unqualified success (the contradiction the reviewer caught: a green "
+        "message after a red one reads as 'resolved, disregard the above')",
+        True, True, "failure", "success", "degraded",
+    ),
+    (
+        "GUILT — service healthy but run-sql-v2-migrations-post-deploy failed "
+        "(and run-python-migrations transitively skipped): MUST NOT be an "
+        "unqualified success",
+        True, True, "skipped", "failure", "degraded",
+    ),
+    (
+        "GUILT — service healthy but BOTH migration jobs failed: MUST NOT be an "
+        "unqualified success",
+        True, True, "failure", "failure", "degraded",
+    ),
+    (
+        "INNOCENCE — clean deploy: service healthy, both migration jobs "
+        "succeeded — the unqualified success message",
+        True, True, "success", "success", "clean",
+    ),
+    (
+        "INNOCENCE — health check itself failed: neither success step fires "
+        "(the failure+rollback path owns this case)",
+        True, False, "success", "success", "none",
+    ),
+    (
+        "INNOCENCE — job never reached: neither success step fires",
+        False, False, "success", "success", "none",
+    ),
+]
+
 
 def main() -> None:
     self_check()
@@ -183,7 +307,18 @@ def main() -> None:
         if not ok:
             failures.append(label)
 
-    total = len(JOB_SCENARIOS) + len(DOWNSTREAM_SCENARIOS)
+    print("\n== success-message split (clean vs degraded, 2026-07-26 follow-up) ==")
+    for label, job_ran, health_ok, py_res, sqlv2_res, expect_kind in SUCCESS_MESSAGE_SCENARIOS:
+        got = success_message_kind(job_ran, health_ok, py_res, sqlv2_res)
+        ok = got == expect_kind
+        print(f"[{'PASS' if ok else 'FAIL'}] {label}\n"
+              f"         job_ran={job_ran} health_check_passed={health_ok} "
+              f"py-migrations={py_res} sql-v2={sqlv2_res} "
+              f"-> kind={got!r} (expected {expect_kind!r})")
+        if not ok:
+            failures.append(label)
+
+    total = len(JOB_SCENARIOS) + len(DOWNSTREAM_SCENARIOS) + len(SUCCESS_MESSAGE_SCENARIOS)
     if failures:
         print(f"\n{len(failures)}/{total} scenarios FAILED", file=sys.stderr)
         sys.exit(1)
