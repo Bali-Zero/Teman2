@@ -71,10 +71,14 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "kbli_filiera"))
+from _prose_disclosure import split_disclosure  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LOT2_SPEC_PATH = REPO_ROOT / "scripts/kbli_filiera/cure_specs/batch_a_lot2.json"
@@ -266,7 +270,15 @@ def test_lot2_whatYouNeed_honest_gap(code: str):
     spec_by_code = _load_lot2_spec_by_code()
     rec = _load_record(CANONICAL_PATH, code)
     intel = rec.get("intel_2026") or {}
-    assert intel.get("whatYouNeed") == spec_by_code[code]["whatYouNeed"], (
+    # A SECOND writer appends a recorded risk-tier disclosure paragraph to this field
+    # (`cure_l3_prose_gap_disclosure.py`, 152 records, some of them lot-2 codes). The
+    # invariant this test exists for is that the lot compiler copies its spec text
+    # VERBATIM and never paraphrases or invents it — not that the body is frozen for
+    # all time. So compare the part the lot compiler owns; the appendix is checked
+    # against its own recorded wording by its own suite. Splitting via the SHARED rule
+    # in `_prose_disclosure`, so this test cannot drift from what the writers do.
+    base, _appendix = split_disclosure(intel.get("whatYouNeed"))
+    assert base == spec_by_code[code]["whatYouNeed"], (
         f"{code}: intel_2026.whatYouNeed does not match the spec's honest-gap "
         "text verbatim — the compiler must copy whatYouNeed verbatim, never "
         "paraphrase or invent it."

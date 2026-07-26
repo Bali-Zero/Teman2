@@ -273,18 +273,31 @@ def test_gold_total_record_count_unchanged():
 #    prose, never separate KBLI-2025 records) — pin both facts.
 # ---------------------------------------------------------------------------
 
-_56102_RECORD_SHA256 = (
-    "e0f73a3706433d8ad9c2716ad2d8705be79b5a669cb6be5896c862aea8d74c2b"
-)
-
-
 def test_56102_record_untouched():
+    """INNOCENCE: the 56101 provenance correction must never mutate the record it
+    re-credits — 56102 must be exactly what `origin/main` holds.
+
+    This used to pin a LITERAL sha256 of the record. That pin went stale the moment
+    56102 legitimately changed on main through some other lane, and the test then
+    failed on main itself and on every branch cut from it — accusing whoever pushed
+    next of a mutation they never made. Measured 2026-07-26: the frozen literal
+    (`e0f73a37…`) disagreed with origin/main's own 56102 (`06ec8504…`), while the
+    branch under test held a byte-identical copy of main's record.
+
+    Same disease and same cure as `test_canonical_diff_vs_origin_main_is_exactly_56101`
+    above, which was generalized off a hardcoded literal on 2026-07-19: compare against
+    the CONTENT of origin/main, which self-heals as main moves, instead of a constant
+    that can only rot (W88 — verify by content, never by a proxy for content).
+    """
+    main_by_code = _origin_main_canonical_by_code()
+    if main_by_code is None:
+        pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
     canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
     rec = _load_record(canonical, "56102")
-    assert _sha256(rec) == _56102_RECORD_SHA256, (
-        "56102: full-record content hash drifted — the 56101 provenance "
-        "correction must never mutate the record it re-credits, only 56101's "
-        "own pointer/prose fields."
+    assert _sha256(rec) == _sha256(main_by_code["56102"]), (
+        "56102: record content differs from origin/main — the 56101 provenance "
+        "correction must never mutate the record it re-credits, only 56101's own "
+        "pointer/prose fields."
     )
 
 
