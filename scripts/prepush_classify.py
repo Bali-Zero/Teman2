@@ -157,7 +157,13 @@ VERDICT_SKIP = "skip-backend"
 # old bare-prefix ALLOWLIST_INNOCENT_PREFIXES into the suffix-scoped
 # ALLOWLIST_PREFIX_SUFFIX_PAIRS mechanism (MUST-FIX: extension-blindness),
 # added `..`-traversal + embedded-newline rejection (HARDENING-2).
-ALLOWLIST_VERSION = 2
+# v3 (2026-07-26): added `.github/workflows/**.{yml,yaml}` and
+# `scripts/tests/**.py` — two directories the backend suite cannot judge. Both
+# are guarded by pre-existing never-innocent entries (`tests.yml` by exact path,
+# `conftest.py` by basename), so the extension leans on the module's own
+# belt-and-suspenders rather than trusting a prefix. Rationale + the extension
+# census that justifies the suffix scoping live beside the entries below.
+ALLOWLIST_VERSION = 3
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -250,6 +256,48 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (".claude/commands", (".md",)),
     (".claude/agents", (".md",)),
     ("infra/launchagents", (".plist", ".sh")),
+    # v3 (2026-07-26) — the two entries below are NOT a loosening of the
+    # fail-closed default; they name the two directories whose contents the
+    # backend suite is structurally incapable of judging.
+    #
+    #   .github/workflows/**.yml — a GitHub Actions YAML cannot change the
+    #     behaviour of apps/backend-rag/backend/. What a workflow edit can
+    #     break is CI, and CI's own guards catch that: `actionlint`, the
+    #     hot-zone gate, and CODEOWNERS-TIER1. Running an 11-32 minute Python
+    #     suite over it buys no signal at all — it is the single largest
+    #     source of wasted gate time in this repo, since CI/tooling PRs are a
+    #     large share of its traffic. Measured 2026-07-26: nine concurrent
+    #     `pytest backend/tests/` runs on M5, one of them 43 minutes deep,
+    #     each one triggered by a diff it could not speak about.
+    #     `.github/workflows/tests.yml` — the file that DEFINES the backend
+    #     suite — stays in NEVER_INNOCENT_EXACT_PATHS above, so the one
+    #     workflow whose edit really could hide a suite change is still full.
+    #
+    #   scripts/tests/**.py — tests OF scripts. They are not imported by the
+    #     backend suite, and nothing in backend/tests/ collects them (verified:
+    #     no workflow even runs this directory as a whole; every file there
+    #     runs only if some workflow names it by hand). `conftest.py` at ANY
+    #     level stays in NEVER_INNOCENT_BASENAMES, which covers the one shape
+    #     that could change pytest behaviour from inside this directory.
+    #
+    # Extension census re-run against the real tree today, per the same
+    # discipline the entries above were held to (golden rule #9 — the round-1
+    # red-team caught exactly the gap of checking a directory's PURPOSE
+    # instead of its actual file extensions):
+    #
+    #   .github/workflows/   78 .yml + 1 .txt (catE-paid-anthropic-baseline.txt,
+    #                        a baseline datafile, not a workflow) -> the .txt is
+    #                        correctly NOT allowlisted and falls to "unknown ->
+    #                        full", like any other unlisted suffix.
+    #   scripts/tests/       227 .py + 11 .md (docs_audit fixtures) + 1 .sh
+    #                        (test_prepush_failclosed.sh — the W101 tripwire for
+    #                        THIS very gate). Scoping to `.py` leaves both the
+    #                        fixtures and that tripwire outside the allowlist,
+    #                        which is the right answer for the tripwire: a
+    #                        change to the pre-push gate's own guard has every
+    #                        reason to run everything.
+    (".github/workflows", (".yml", ".yaml")),
+    ("scripts/tests", (".py",)),
 )
 
 

@@ -133,14 +133,83 @@ def test_guilt_tests_workflow_file() -> None:
     assert verdict == pc.VERDICT_FULL
 
 
-def test_guilt_other_github_workflow_file() -> None:
-    """Under the allowlist inversion, ALL of .github/** forces full — not
-    just tests.yml (the original mandate's narrower rule). No .github/**
-    path is ever allowlisted (panel point 4: 'reusable Actions' is an
-    easily-forgotten path), so this is strictly MORE conservative than the
-    pre-inversion design, in the safe direction."""
+def test_innocence_a_plain_workflow_yaml_no_longer_forces_full() -> None:
+    """NARROWED in v3 (2026-07-26). This test previously asserted the
+    opposite, on an explicit v2 rationale: "No .github/** path is ever
+    allowlisted (panel point 4: 'reusable Actions' is an easily-forgotten
+    path)". That concern is untouched here and is pinned by the test below —
+    v3 allowlists `.github/workflows/**` with a `.yml/.yaml` suffix, NOT
+    `.github/**`, so reusable actions, CODEOWNERS, dependabot.yml,
+    codeql-config.yml and verify-the-verifiers.sha256 all still force full.
+
+    What changed is the reason for the assertion, not the appetite for risk:
+    the local backend suite is structurally incapable of judging an Actions
+    YAML. It cannot tell you whether the workflow you edited is correct — CI,
+    `actionlint`, the hot-zone gate and CODEOWNERS do that — so the 11-32
+    minutes it costs buy no signal. Measured on 2026-07-26: nine concurrent
+    `pytest backend/tests/` runs on M5, one 43 minutes deep, several of them
+    triggered by diffs of exactly this shape.
+
+    The one workflow whose edit really could hide a suite change,
+    `.github/workflows/tests.yml`, remains in NEVER_INNOCENT_EXACT_PATHS —
+    see the test directly above, which is deliberately left untouched."""
     verdict, _ = pc.classify([".github/workflows/immune-enforcement.yml"])
+    assert verdict == pc.VERDICT_SKIP
+
+
+def test_guilt_github_paths_outside_workflows_still_force_full() -> None:
+    """Pins the v2 panel concern that v3 deliberately preserves: the
+    allowlist entry is scoped to `.github/workflows`, so nothing else under
+    `.github/` inherits innocence. `.github/actions/**` does not exist in the
+    tree today — which is exactly why it needs a test rather than a census:
+    the day someone adds a reusable action, it must land on the full side by
+    default, not because anyone remembered."""
+    for path in (
+        ".github/actions/setup/action.yml",
+        ".github/CODEOWNERS",
+        ".github/dependabot.yml",
+        ".github/codeql-config.yml",
+        ".github/verify-the-verifiers.sha256",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must never be innocent"
+
+
+def test_guilt_non_yaml_under_workflows_still_forces_full() -> None:
+    """Suffix scoping is the whole mechanism (v2 round-1 MUST-FIX). The real
+    tree carries one non-YAML file in that directory today —
+    `.github/workflows/catE-paid-anthropic-baseline.txt`, a baseline datafile
+    rather than a workflow — and it must fall to full like any unlisted
+    suffix, so a prefix match alone can never be what approves a file."""
+    verdict, _ = pc.classify([".github/workflows/catE-paid-anthropic-baseline.txt"])
     assert verdict == pc.VERDICT_FULL
+
+
+def test_innocence_a_scripts_tests_python_file_no_longer_forces_full() -> None:
+    """v3: `scripts/tests/**.py` are tests OF scripts. Nothing in
+    `backend/tests/` imports or collects them — separately measured, no
+    workflow even runs that directory as a whole; every file there executes
+    only if some workflow names it by hand — so the backend suite cannot
+    speak about a change to one."""
+    verdict, _ = pc.classify(["scripts/tests/test_docs_inventory_blame.py"])
+    assert verdict == pc.VERDICT_SKIP
+
+
+def test_guilt_scripts_tests_non_python_and_conftest_still_force_full() -> None:
+    """The two shapes inside `scripts/tests/` that must stay guilty.
+
+    `conftest.py` is covered by NEVER_INNOCENT_BASENAMES at any depth — it is
+    the one file in that directory able to change pytest's behaviour.
+    `test_prepush_failclosed.sh` is the W101 tripwire for THIS gate: a change
+    to the pre-push guard's own guard has every reason to run everything.
+    The docs_audit `.md` fixtures fall out by suffix scoping."""
+    for path in (
+        "scripts/tests/conftest.py",
+        "scripts/tests/test_prepush_failclosed.sh",
+        "scripts/tests/fixtures/docs_audit/README.md",
+    ):
+        verdict, _ = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must never be innocent"
 
 
 def test_guilt_frontend_app_file() -> None:
