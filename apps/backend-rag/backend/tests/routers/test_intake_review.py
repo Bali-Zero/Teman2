@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
@@ -600,38 +601,25 @@ async def test_claim_steal_expired_lease(pool, seed):
                             params={"claim_token": new_token})
 
 
+# Parametrize on an OFFSET, never on an absolute instant. A `datetime.now(...) +
+# timedelta(minutes=5)` written here is evaluated when pytest COLLECTS the module, not
+# when the case runs: in the full suite (~57 min) these three "live lease" cases executed
+# ~50 minutes later, by which time the lease had expired and the guard answered 409
+# instead of 403/400. Deterministic, not flaky — and it blocked every push whose suite
+# was slower than the margin. Same disease this repo files under W106: a measurement of
+# the world frozen into a constant and read later as if it still held.
 @pytest.mark.parametrize(
-    ("lease_expires_at", "lease_owner", "claim_token", "expected_status"),
+    ("lease_offset", "lease_owner", "claim_token", "expected_status"),
     [
         (None, TEAM_OWNER["email"], None, 409),
-        (
-            datetime.now(timezone.utc) - timedelta(minutes=1),
-            TEAM_OWNER["email"],
-            None,
-            409,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OTHER["email"],
-            None,
-            403,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OWNER["email"],
-            "not-a-uuid",
-            400,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            " ",
-            str(uuid.uuid4()),
-            403,
-        ),
+        (timedelta(minutes=-1), TEAM_OWNER["email"], None, 409),
+        (timedelta(minutes=5), TEAM_OTHER["email"], None, 403),
+        (timedelta(minutes=5), TEAM_OWNER["email"], "not-a-uuid", 400),
+        (timedelta(minutes=5), " ", str(uuid.uuid4()), 403),
     ],
 )
 async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
-    lease_expires_at,
+    lease_offset,
     lease_owner,
     claim_token,
     expected_status,
@@ -644,6 +632,9 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     token mismatches are exercised separately below and in the reject tests.
     """
     from backend.app.routers.intake_review import _require_active_claim
+
+    # Resolved HERE, at run time — see the note on the parametrize above.
+    lease_expires_at = None if lease_offset is None else datetime.now(timezone.utc) + lease_offset
 
     active_token = uuid.uuid4()
     prop = {
@@ -665,6 +656,44 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
         )
 
     assert exc_info.value.status_code == expected_status
+
+
+def _absolute_datetimes_in_parametrize(namespace):
+    """Absolute datetimes baked into the parametrize argvalues of `namespace`.
+
+    A datetime written inside a `@pytest.mark.parametrize` is evaluated at COLLECTION
+    time and then ages while the suite runs. Any assertion that depends on it still
+    being in the future silently flips once the run outlives the margin.
+    """
+    frozen = []
+    for name, obj in namespace:
+        for mark in getattr(obj, "pytestmark", None) or []:
+            if getattr(mark, "name", None) != "parametrize":
+                continue
+            argvalues = mark.args[1] if len(mark.args) > 1 else ()
+            for row in argvalues:
+                for cell in row if isinstance(row, (tuple, list)) else (row,):
+                    if isinstance(cell, datetime):
+                        frozen.append(f"{name} -> {cell!r}")
+    return frozen
+
+
+def test_parametrize_never_bakes_an_absolute_datetime():
+    """Guilt + innocence for the trap that made three cases in this file fail at ~50min.
+
+    Innocence: this module, as it stands, bakes none. Guilt: the detector must actually
+    see one when it is there — a check that has only ever met the passing case proves
+    nothing about what it would reject.
+    """
+    module = sys.modules[__name__]
+    assert _absolute_datetimes_in_parametrize(vars(module).items()) == []
+
+    class _Guilty:
+        pytestmark = [
+            pytest.mark.parametrize("lease", [(datetime.now(timezone.utc),)]).mark
+        ]
+
+    assert _absolute_datetimes_in_parametrize([("_Guilty", _Guilty)])
 
 
 async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):
