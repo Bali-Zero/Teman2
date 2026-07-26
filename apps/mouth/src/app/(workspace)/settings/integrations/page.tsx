@@ -41,7 +41,7 @@ export default function IntegrationsPage() {
       name: "WhatsApp Business",
       description: "Receive and send WhatsApp messages from clients",
       icon: MessageCircle,
-      iconColor: "#25D366",
+      iconColor: "#25D366", // token-lint-ok: third-party brand identity color (WhatsApp), not theme chrome
       status: "connected",
       lastSync: "5 minutes ago",
     },
@@ -50,7 +50,7 @@ export default function IntegrationsPage() {
       name: "Zoho Mail",
       description: "Email integration with Zoho Mail",
       icon: Mail,
-      iconColor: "#E42527",
+      iconColor: "#E42527", // token-lint-ok: third-party brand identity color (Zoho), not theme chrome
       status: "connected",
       lastSync: "10 minutes ago",
     },
@@ -59,7 +59,7 @@ export default function IntegrationsPage() {
       name: "Google Drive",
       description: "Store and access documents from Google Drive",
       icon: Cloud,
-      iconColor: "#4285F4",
+      iconColor: "#4285F4", // token-lint-ok: third-party brand identity color (Google), not theme chrome
       status: "disconnected",
     },
     {
@@ -67,7 +67,7 @@ export default function IntegrationsPage() {
       name: "Qdrant Vector DB",
       description: "Vector database for AI knowledge storage",
       icon: Database,
-      iconColor: "#7C3AED",
+      iconColor: "#7C3AED", // token-lint-ok: third-party brand identity color (Qdrant), not theme chrome
       status: "connected",
       lastSync: "Just now",
     },
@@ -76,7 +76,7 @@ export default function IntegrationsPage() {
       name: "Google Calendar",
       description: "Sync appointments and deadlines",
       icon: Calendar,
-      iconColor: "#4285F4",
+      iconColor: "#4285F4", // token-lint-ok: third-party brand identity color (Google), not theme chrome
       status: "disconnected",
     },
   ]);
@@ -168,7 +168,7 @@ export default function IntegrationsPage() {
     switch (status) {
       case "connected":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[var(--state-success)]/15 text-[var(--state-success)]">
             <CheckCircle2 className="w-3 h-3" />
             Connected
           </span>
@@ -182,7 +182,7 @@ export default function IntegrationsPage() {
         );
       case "error":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[var(--state-danger)]/15 text-[var(--state-danger)]">
             <XCircle className="w-3 h-3" />
             Error
           </span>
@@ -203,7 +203,7 @@ export default function IntegrationsPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <Plug className="w-6 h-6 text-cyan-400" />
+            <Plug className="w-6 h-6 text-[var(--bz-accent)]" />
             Integrations
           </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
@@ -224,7 +224,7 @@ export default function IntegrationsPage() {
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Active</p>
-          <p className="text-2xl font-bold text-green-400">
+          <p className="text-2xl font-bold text-[var(--state-success)]">
             {integrations.filter((i) => i.status === "connected").length}
           </p>
         </div>

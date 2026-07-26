@@ -18,14 +18,17 @@ for _secrets_file in "$HOME/.nuzantara-secrets.env" "$HOME/Desktop/secretkey.env
     fi
 done
 
-# FIX 2026-06-03 (root cause #2): ~/.nuzantara-secrets.env exports a STALE
-# FLY_API_TOKEN. `set -a; source` above exports it into our env, where it
-# SHADOWS fly's own valid auth in ~/.fly/config.yml → every `fly` call returns
-# "failed to list VMs: unauthorized" and the dump/SFTP silently fails. Drop it
-# so fly falls back to its config token. (Sister of cicatrix
-# lessons_fly_cli_token_regression_cascade.) If you ever WANT a token here,
-# set FLY_ACCESS_TOKEN to a fresh one before this line instead.
-unset FLY_API_TOKEN
+# CREDENTIAL: resolved below, after log()/FLY_BIN exist — see the
+# resolve_fly_credential call. Historical note, because it explains the shape:
+#   2026-06-03 — ~/.nuzantara-secrets.env exported a STALE FLY_API_TOKEN which
+#     SHADOWED valid auth in ~/.fly/config.yml, so every `fly` call answered
+#     "unauthorized" and the backup died silently for 5 days. Fix: bare
+#     `unset FLY_API_TOKEN` right here.
+#   2026-07-26 — the world INVERTED: the config token went dead ("no access
+#     token available") while the env token was valid. That unset was now
+#     throwing away the only working credential, and this script aborted on both
+#     nightly runs while its own error text blamed the env token.
+# Hardcoding which source is alive — in either direction — is the bug. We probe.
 
 BACKUP_DIR="$HOME/backups/fly-postgres"
 TIMESTAMP=$(date +%Y%m%d-%H%M)
@@ -49,6 +52,28 @@ mkdir -p "$BACKUP_DIR"
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 log "Starting Fly.io PostgreSQL backup..."
+
+# Which fly credential is actually alive? Ask fly — never assume (see note above).
+# The helper is looked up across the paths this script legitimately runs from
+# (repo checkout, or the ~/scripts copy the cron invokes). Not finding it is
+# FATAL on purpose: continuing with an unresolved credential is the very failure
+# this replaces, and it would abort ~15 minutes later with a misleading message.
+_fly_cred_lib=""
+for _cand in "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/fly_credential.sh" \
+             "$HOME/nuzantara/scripts/lib/fly_credential.sh"; do
+    if [ -f "$_cand" ]; then _fly_cred_lib="$_cand"; break; fi
+done
+if [ -z "$_fly_cred_lib" ]; then
+    log "ERROR: scripts/lib/fly_credential.sh not found — cannot resolve a fly credential. Aborting."
+    exit 1
+fi
+# shellcheck source=lib/fly_credential.sh
+source "$_fly_cred_lib"
+# Probe with the job, not with `auth whoami`: a token scoped to a DIFFERENT app
+# passes whoami and then dies on "Could not find App". Listing this app's
+# machines is the cheapest call that proves the credential can do the work —
+# and it is the very first thing this script does next anyway.
+resolve_fly_credential "$FLY_BIN" machine list --app "$FLY_APP" || exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # METHOD (rewritten 2026-06-03):
@@ -107,7 +132,13 @@ done
 if [ -z "$PRIMARY_MACHINE" ]; then
     log "ERROR: could not resolve primary machine for $FLY_APP — aborting."
     log "ERROR: 'fly machine list -j' returned no machine with a role=primary health check."
-    log "ERROR: most common cause: stale FLY_API_TOKEN in env ('unauthorized') — check ~/.nuzantara-secrets.env."
+    # NOT a credential guess. The resolver above already probed with this very
+    # command and logged which source it accepted, so by the time we get here
+    # auth is known-good and blaming a token would repeat the 2026-07-26 sin of
+    # accusing the credential that worked. What is left is genuinely the fleet:
+    # an HA fail-over with no primary elected yet, or a token whose scope covers
+    # the app but not this read.
+    log "ERROR: auth was already accepted (source: ${FLY_CREDENTIAL_SOURCE:-unknown}) — so this is the FLEET, not the token: check for an HA fail-over with no elected primary via 'fly status -a $FLY_APP'."
     exit 1
 fi
 log "Primary machine: $PRIMARY_MACHINE"

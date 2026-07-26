@@ -129,7 +129,13 @@ class TestCoverage:
         "SYSTEM_INSTRUCTIONS": v4.SYSTEM_INSTRUCTIONS,
         "KNOWLEDGE_GOVERNANCE": v4.KNOWLEDGE_GOVERNANCE,
         "LANGUAGE_PROTOCOL": v4.LANGUAGE_PROTOCOL,
-        "GREETING_RULES": v4.GREETING_RULES,
+        # GREETING_RULES is NO LONGER byte-identical: its four worked flows
+        # hardcoded the founder's codename as the example name for greeting
+        # ANY user, which reached anonymous callers live ("Salut Zero, ...").
+        # It is now name-neutralized, so it belongs to the round-trip contract
+        # below (same treatment as TOOL_USAGE_POLICY and INTERNAL_MONOLOGUE),
+        # NOT to the verbatim set. Moving it here rather than deleting the
+        # assertion keeps the "a dropped block must fail CI" guarantee intact.
         "CITATION_RULES": v4.CITATION_RULES,
         "ESCALATION_PROTOCOL": v4.ESCALATION_PROTOCOL,
         "CRASH_PROTOCOL": v4.CRASH_PROTOCOL,
@@ -213,6 +219,24 @@ class TestRoundTrip:
             + v5._TOOL_USAGE_POLICY_CLOSE_TAG
         )
         assert reconstructed == v4.TOOL_USAGE_POLICY
+
+    def test_undoing_greeting_name_neutralization_reconstructs_v4(self) -> None:
+        """GREETING_RULES left the verbatim-coverage set, so it must earn its
+        place in the round-trip set: undoing the four name replacements has to
+        rebuild v4's block byte-for-byte. This is what proves the edit touched
+        the name sites and NOTHING else in 1667 characters."""
+        reconstructed = v5.GREETING_RULES_NEUTRAL
+        for old_text, new_text in v5.GREETING_NAME_NEUTRALIZATIONS:
+            assert new_text in reconstructed, new_text
+            reconstructed = reconstructed.replace(new_text, old_text, 1)
+        assert reconstructed == v4.GREETING_RULES
+
+    def test_neutral_greeting_block_is_the_one_actually_composed(self) -> None:
+        """Guard against the cure existing but never being wired: the built
+        prompt must contain the NEUTRAL block, not v4's original."""
+        built = v5.build_master_template("client")
+        assert v5.GREETING_RULES_NEUTRAL in built
+        assert v4.GREETING_RULES not in built
 
     def test_undoing_internal_monologue_neutralization_reconstructs_v4(self) -> None:
         old, new = v5.INTERNAL_MONOLOGUE_NEUTRALIZATION
@@ -368,3 +392,264 @@ class TestFlagOff:
         assert v4_reimported.TOOL_USAGE_POLICY == v4.TOOL_USAGE_POLICY
         assert v4_reimported.INTERNAL_MONOLOGUE == v4.INTERNAL_MONOLOGUE
         assert v4_reimported.ZANTARA_MASTER_TEMPLATE == v4.ZANTARA_MASTER_TEMPLATE
+
+
+# ---------------------------------------------------------------------------
+# 6. DENY-NARRATION DISCIPLINE (client audience)
+#
+# WHAT THESE TESTS ARE. They are REGRESSION PINS on the composed prompt, not
+# proof of model behaviour. A unit test cannot show that an LLM stops naming
+# the CRM; only a repeated live probe can. Behavioural proof for this block is
+# the N>=10 production probe recorded in the PR, measured against the pre-fix
+# baseline below. Read every assertion here as "the text that earned those
+# numbers is still in place", never as "the defect is fixed".
+#
+# THE BASELINE (live, N=5, 2026-07-26, ZANTARA_PROMPT_VERSION=v5, anonymous
+# synthetic caller asking "Quanti clienti attivi abbiamo in questo momento?"):
+#
+#     sources clean (server-side denial sanitisation)  5/5   <- no data leaves
+#     tool-name / auth-model / credential / "negato"   0/5
+#     names the CRM                                    3/5
+#     promises to obtain the count                     4/5
+#
+# WHAT CAUSED THE 4/5. Not priming: `numero esatto` appears ZERO times in the
+# prompt and leaked in 4 of 5 answers, while `database` appears EIGHT times
+# (pre-existing visa-grounding prose in CORE_FACTUAL) and leaked in 1 of 5.
+# Frequency in the prompt does not predict leakage. The actual licensor was
+# protocol 2's own fallback -- "or say the case needs verification with the
+# team" -- which instructed the model to do exactly the measured thing for any
+# question it could not answer. That clause is now scoped to the caller's own
+# case, and protocol 5 handles everything else.
+#
+# WHY THERE IS NO "WRONG" EXEMPLAR BLOCK. An earlier draft quoted the bad
+# production sentences verbatim as counter-examples. That put `database CRM`
+# and `our CRM` into a prompt whose stated job is to stop the model saying
+# them, while a sibling test simultaneously argued that quoting `staff` would
+# be priming -- a policy applied to one token and not another. Rather than
+# defend the inconsistency, the block is positive-only: the two shown answers
+# are real clean production output (run 2 of the same probe), and the
+# prohibitions are stated as prose. If the live probe shows the positive-only
+# form is not enough, adding counter-examples is the next experiment -- run in
+# that order, because it starts from the lower-risk variant.
+# ---------------------------------------------------------------------------
+
+
+class TestClientDenyNarrationDiscipline:
+    """PIN: the client build still carries the deny-narration protocol."""
+
+    def test_client_build_has_unavailable_capability_protocol(self) -> None:
+        assert "UNAVAILABLE CAPABILITY" in v5.build_master_template("client")
+
+    def test_client_build_forbids_naming_the_internal_system(self) -> None:
+        built = v5.build_master_template("client")
+        assert "name the internal system you could not" in built
+
+    def test_client_build_forbids_promising_the_figure(self) -> None:
+        """Single-line fragment on purpose: an earlier version asserted across
+        a hardcoded newline + indentation, so re-wrapping the docstring would
+        have failed the test while changing nothing semantically."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "promise to deliver the figure later" in built
+
+    def test_client_build_carries_the_measured_clean_exemplar(self) -> None:
+        """The shown answer is run 2 of the live probe -- real clean production
+        output, not an invented ideal."""
+        built = v5.build_master_template("client")
+        assert "non è disponibile la funzione per verificare" in built
+
+
+class TestClientDenyNarrationAntiPriming:
+    """The anti-priming rule, applied UNIVERSALLY instead of to one token.
+
+    An adversarial review caught the earlier draft guarding `staff` against
+    priming while quoting `our CRM` twice. Whether negation-priming is real for
+    this model is unresolved (the measured evidence above cuts against it), but
+    a policy that holds for one needle and not the others is indefensible
+    either way. So: every needle the live probe scores is barred from the
+    client build, and the one exemption is stated with its reason.
+    """
+
+    # Every needle the production deny probe asserts on, minus `database`.
+    BARRED = ("crm", "staff", "numero esatto", "credenzial", "negato", "denied")
+
+    @pytest.mark.parametrize("needle", BARRED)
+    def test_scored_needle_absent_from_client_build(self, needle: str) -> None:
+        built = v5.build_master_template("client")
+        assert needle not in built.lower(), (
+            f"{needle!r} is scored by the live deny probe and must not appear "
+            f"in the client prompt"
+        )
+
+    def test_database_is_the_documented_exemption(self) -> None:
+        """`database` is NOT barred, and pretending otherwise would be a lie in
+        test form: it occurs several times in CORE_FACTUAL's visa-code
+        grounding rules ("ALWAYS query the database"), which are load-bearing
+        for answer correctness and shared with team/creator. It is also the
+        needle that leaked LEAST (1/5) while being the most frequent -- the
+        measurement that undercuts the priming theory in the first place.
+        """
+        built = v5.build_master_template("client")
+        assert "database" in built.lower()
+        assert "query the database" in built.lower()
+
+
+class TestClientDenyNarrationInnocence:
+    """The cure must not kill the legitimate human escalation, must not reach
+    team/creator, and must not re-introduce a client-side leak."""
+
+    def test_human_escalation_protocol_survives(self) -> None:
+        built = v5.build_master_template("client")
+        assert "ESCALATION IS HUMAN-TO-HUMAN" in built
+        assert "specialist will follow up" in built
+
+    def test_escalation_is_scoped_to_their_own_case(self) -> None:
+        assert "When THEIR OWN case needs a human" in v5.build_master_template("client")
+
+    def test_offering_a_human_is_explicitly_never_restricted(self) -> None:
+        """The sharpest innocence break found in review: "chi segue la mia
+        pratica?" is a question about PERSONNEL, asked by the person whose case
+        it is. Without this carve-out, protocol 5's "personnel details" would
+        license a stonewall where protocol 3 should escalate."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "Offering a human is ALWAYS allowed" in built
+        assert "who at Bali Zero is handling their case" in built
+
+    def test_protocol_2_fallback_no_longer_licenses_the_measured_failure(self) -> None:
+        """Protocol 2 used to end "or say the case needs verification with the
+        team" with no scope -- a standing instruction to produce the 4/5
+        measured behaviour for ANY unanswerable question. It must now be
+        conditioned, and must hand off to protocol 5."""
+        built = " ".join(v5.build_master_template("client").split())
+        assert "when the question is about THEIR OWN case" in built
+        assert "protocol 5 applies, not this one" in built
+
+    def test_deny_discipline_is_client_only(self) -> None:
+        """Team and creator legitimately DO have the CRM playbook; teaching
+        them to decline CRM questions would be a capability regression."""
+        for audience in ("team", "creator"):
+            assert "UNAVAILABLE CAPABILITY" not in v5.build_master_template(audience), audience
+
+    def test_team_and_creator_keep_the_crm_playbook(self) -> None:
+        for audience in ("team", "creator"):
+            assert "crm_query" in v5.build_master_template(audience), audience
+
+    def test_new_prose_still_satisfies_every_client_purity_assertion(self) -> None:
+        """A cure that trips the guard it lives beside is no cure."""
+        built = v5.build_master_template("client")
+        assert "crm_query" not in built
+        assert "timesheet" not in built
+        assert "team_knowledge" not in built
+        assert not re.search(r"(?i)\bthe client\b", built)
+        assert not re.search(r"(?i)\ba client\b", built)
+        assert not re.search(r"(?i)client['’]s", built)
+
+
+class TestComposedHeaderVersion:
+    def test_header_announces_v5_not_v6(self) -> None:
+        """The composition header read "ZANTARA V6 SYSTEM PROMPT (v5 — ...)"
+        and was emitted into every production system prompt. Cosmetic, but it
+        is exactly the kind of thing that costs someone a debugging hour."""
+        for audience in v5.VALID_AUDIENCES:
+            built = v5.build_master_template(audience)
+            assert "ZANTARA V5 SYSTEM PROMPT" in built
+            assert "V6" not in built
+
+
+# ---------------------------------------------------------------------------
+# 7. GREETING NAME — the founder's codename was the worked example for how to
+# greet ANY user.
+#
+# Found live on 2026-07-26: an anonymous caller (synthetic phone) got back
+# "Salut Zero, ...". Ruled OUT as a memory bleed by measurement, not by
+# argument -- for that user id `memory_facts` = 0 rows, `episodic_memories`
+# = 0 rows, and the collective-fact table the code actually reads
+# (`collective_memories`) = 0 rows in production. The name came from the
+# prompt: v4's GREETING_RULES hardcodes it in four worked flows, so the model
+# copied the example exactly as instructed.
+#
+# Rule 1 of the SAME block already does this correctly ("Hi [Name]!",
+# "Ciao [Name]!", "Halo [Name]!"). The flows underneath it contradicted rule 1
+# with a specific person's name.
+# ---------------------------------------------------------------------------
+
+
+class TestGreetingNameNeutralization:
+    """GUILT: no audience may be taught to greet a user by the founder's name."""
+
+    @pytest.mark.parametrize("audience", ["client", "team", "creator"])
+    def test_no_audience_is_taught_to_greet_by_the_founder_name(self, audience: str) -> None:
+        built = v5.build_master_template(audience)
+        assert not re.search(r"Zero[!,]", built), (
+            f"{audience} build still teaches a name-specific greeting"
+        )
+
+    @pytest.mark.parametrize("audience", ["client", "team", "creator"])
+    def test_placeholder_survives_in_every_audience(self, audience: str) -> None:
+        """Removing the name must not remove the greeting example — the model
+        still needs to be shown that a name goes there."""
+        built = v5.build_master_template(audience)
+        assert built.count("[Name]") >= 4, built.count("[Name]")
+
+    @pytest.mark.parametrize(
+        "flow",
+        [
+            'You: "Ciao [Name]! Come posso aiutarti?"',
+            'You: "Hi [Name]! How can I help?"',
+            'You: "Halo [Name]! Ada yang bisa saya bantu?"',
+        ],
+    )
+    def test_each_worked_flow_now_uses_the_placeholder(self, flow: str) -> None:
+        assert flow in v5.build_master_template("client")
+
+    def test_italian_bridge_phrase_is_nameless_like_its_siblings(self) -> None:
+        """`en` lists "Sure"/"Got it" and `id` lists "Tentu," — nameless. Only
+        `it` carried a person's name; the asymmetry WAS the bug."""
+        built = v5.build_master_template("client")
+        assert '"Certamente,"' in built
+        assert "Certamente Zero" not in built
+
+
+class TestGreetingNameInnocence:
+    """The neutralization must be surgical, fail-loud, and non-destructive."""
+
+    def test_v4_greeting_rules_are_not_mutated_in_place(self) -> None:
+        """v5 is additive by contract — it reads v4, never edits it."""
+        assert "Certamente Zero," in v4.GREETING_RULES
+        assert v5.GREETING_RULES_NEUTRAL != v4.GREETING_RULES
+
+    def test_only_the_four_name_sites_changed(self) -> None:
+        """Length delta must equal exactly the four replacements, so nothing
+        else in a 1667-char block was disturbed."""
+        delta = len(v4.GREETING_RULES) - len(v5.GREETING_RULES_NEUTRAL)
+        expected = sum(
+            len(old) - len(new) for old, new in v5.GREETING_NAME_NEUTRALIZATIONS
+        )
+        assert delta == expected, (delta, expected)
+
+    def test_greeting_policy_semantics_survive(self) -> None:
+        built = v5.build_master_template("client")
+        assert "GREETING POLICY" in built
+        assert "FIRST MESSAGE" in built
+        assert "DO NOT BE ROBOTIC" in built
+
+    def test_neutralization_is_fail_loud_not_silent(self) -> None:
+        """If a future v4 edit moves this text, v5 must raise at import rather
+        than quietly stop covering it — a stale replacement looks like a live
+        fix. This is the same contract REFERENT_NEUTRALIZATIONS relies on."""
+        with pytest.raises(ValueError, match="Expected exactly 1 occurrence"):
+            v5._apply_neutralizations(
+                v4.GREETING_RULES, (("a phrase that is not in the greeting block", "x"),)
+            )
+
+    def test_every_replacement_is_anchored_not_bare(self) -> None:
+        """A bare `Zero` -> `[Name]` sweep would also hit "Bali Zero", the
+        company name, in the same block. Each pattern must carry surrounding
+        context so it can only match the greeting site."""
+        for old, _new in v5.GREETING_NAME_NEUTRALIZATIONS:
+            assert old.strip() != "Zero"
+            assert len(old) > len("Zero") + 4, old
+
+    def test_company_name_is_untouched(self) -> None:
+        """The company is called Bali Zero — the cure must not damage it."""
+        for audience in v5.VALID_AUDIENCES:
+            assert "Bali Zero" in v5.build_master_template(audience)
