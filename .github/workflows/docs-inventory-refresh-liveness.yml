@@ -125,12 +125,33 @@ jobs:
         id: cooldown
         if: steps.check.outputs.overdue == 'true'
         run: |
+          # NOTE: `set -uo pipefail` here does NOT disable errexit — GitHub runs
+          # `run:` under `/usr/bin/bash -e {0}`, so -e is already on before the
+          # first line. That is what killed this step (scar W101, second organ):
+          # on a cache miss `touch` makes an EMPTY state file, `grep` finds
+          # nothing and exits 1, pipefail propagates it, and the bare assignment
+          # `LAST=$(...)` aborted the whole step BEFORE any check could run.
+          # Consequence: `Telegram alert` (a later step) was skipped, so the
+          # detector correctly saw docs-inventory-refresh die and could never
+          # say so — 9 days, 2026-07-22..26. Detection was never the problem;
+          # this step is on the ONLY path that carries the alarm out of Actions.
           set -uo pipefail
           STATE="$RUNNER_TEMP/cooldown.state"
           touch "$STATE"
           NOW=$(date +%s)
           KEY="overdue"
-          LAST=$(grep "^${KEY}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2)
+          # errexit-immune: no-match is the NORMAL first-run case, not an error.
+          LAST=""
+          LAST=$(grep "^${KEY}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2) || LAST=""
+
+          # A rate limiter in front of an ALARM must fail OPEN. Suppression is
+          # only ever safe when we positively know a recent alert went out; any
+          # unreadable/garbage state means we do NOT know, and the correct
+          # answer to "not sure whether the owner was told" is to tell them.
+          if [ -n "$LAST" ] && ! printf '%s' "$LAST" | grep -qE '^[0-9]+$'; then
+            echo "cooldown state unreadable ('${LAST}') — failing OPEN, alert will be sent"
+            LAST=""
+          fi
           if [ -n "${LAST:-}" ]; then
             AGE=$(( NOW - LAST ))
             if [ "$AGE" -lt "$COOLDOWN_SECONDS" ]; then
