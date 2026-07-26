@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main, web_fetch
 
 INCOMING_DIR = Path.home() / ".intel_scraper" / "incoming"
-INTEL_ROOT = Path.home() / "Desktop" / "nuzantara" / "apps" / "bali-intel-scraper"
+INTEL_ROOT = Path.home() / "nuzantara" / "apps" / "bali-intel-scraper"
 STAGING_DIR = INTEL_ROOT / "data" / "staging" / "news"
 PROCESSED_DIR = Path.home() / ".intel_scraper" / "processed"
 

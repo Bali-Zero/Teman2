@@ -35,7 +35,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main
 
-BACKEND_ROOT = Path.home() / "Desktop" / "nuzantara" / "apps" / "backend-rag"
+BACKEND_ROOT = Path.home() / "nuzantara" / "apps" / "backend-rag"
 SERVICES_DIR = BACKEND_ROOT / "backend" / "services"
 TESTS_DIR = BACKEND_ROOT / "backend" / "tests" / "services"
 

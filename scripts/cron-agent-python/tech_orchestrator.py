@@ -71,17 +71,27 @@ def diff_size_check() -> dict:
     """Returns {safe: bool, files: list, critical: list}."""
     try:
         r = subprocess.run(
-            ["git", "-C", str(Path.home() / "Desktop" / "nuzantara"),
+            ["git", "-C", str(Path.home() / "nuzantara"),
              "diff", "--name-only", "HEAD", "--", "apps/backend-rag/backend/"],
             capture_output=True, text=True, timeout=10,
         )
         # task #17/#20 fail-open fix (2026-07-26): `subprocess.run` here had no
         # `check=True`, so a nonzero returncode (dead/unreadable path — a stale
-        # `~/Desktop/nuzantara` compat symlink is the only thing standing
-        # between this and a permanently-open gate) never raised, and empty
-        # stdout on a failed `git diff` is byte-identical to empty stdout on a
-        # genuinely clean tree: `files = []` -> `safe = True`. A gate that
-        # cannot measure the diff must not authorise a deploy.
+        # compat-symlink target is the only thing standing between this and a
+        # permanently-open gate) never raised, and empty stdout on a failed
+        # `git diff` is byte-identical to empty stdout on a genuinely clean
+        # tree: `files = []` -> `safe = True`. A gate that cannot measure the
+        # diff must not authorise a deploy.
+        #
+        # Path fixed 2026-07-27 (#3259 antidotes): this HOME-fork promotion
+        # (task #17) had faithfully carried the live copy's old TCC-protected
+        # path literal (the repo's pre-2026-07-16 location, under the
+        # user's home Desktop folder), re-importing the exact TCC hazard
+        # (W84) that the repo's move to its current home-relative location
+        # exists to remove — promoting a HOME script does not make it a
+        # repo script; it still carries the environment it was written for.
+        # scripts/lint_tcc_desktop_paths.py is the standing gate that
+        # caught it.
         if r.returncode != 0:
             return {"safe": False, "files": [], "critical": [], "error": f"git diff exited {r.returncode}: {r.stderr.strip()}"}
         files = [f for f in r.stdout.strip().split("\n") if f]
