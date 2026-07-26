@@ -155,6 +155,60 @@ def is_team_or_creator_profile(profile: dict[str, Any] | None) -> bool:
     return str(profile.get("role", "")).strip().lower() in ("team", "creator")
 
 
+def filter_gemini_tools_for_caller(
+    gemini_tools: list[dict[str, Any]] | None,
+    profile: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Per-request Gemini function-declaration filter (T-VIS, W0 safety
+    pre-arm, 2026-07-25).
+
+    The moment WA_TEAM_CRM_TOOLS_ENABLED is armed, `create_agentic_rag()`
+    (`__init__.py`) appends these 4 tools' declarations to the ORCHESTRATOR-
+    WIDE `gemini_tools` list, which is computed ONCE at construction time
+    (`orchestrator.py.__init__` -> `AgenticRAGOrchestrator.gemini_tools` ->
+    `llm_gateway.set_gemini_tools`) and shared across every concurrent
+    request. Without this filter, EVERY caller — including anonymous
+    WhatsApp clients — would see the team-tool *schemas* in the LLM
+    function-declaration payload even though `execute()` already denies
+    them at call time (`_scope_from_kwargs`). Schema-visibility alone lets a
+    client-facing model be induced to call (or merely learn the existence
+    and shape of) an internal team tool — denying at execution time is not
+    the same as absence.
+
+    This function narrows the declarations sent to Gemini for THIS request
+    to the caller's audience, using the SAME trusted, server-resolved
+    `profile` dict `execute()` itself reads (never a client-settable
+    field — see `orchestrator_core.py`'s
+    `state.caller_profile = user_context.get("profile")`). It is called
+    fresh per request (see `reasoning.py`'s `execute_react_loop` /
+    `execute_react_loop_stream`), never memoized, so there is no cache to
+    key on audience mode.
+
+    Matches by EXACT tool `name` membership in `TEAM_CRM_TOOL_NAMES` — never
+    a substring — so no unrelated tool can be accidentally dropped
+    (cicatrix-superscar.md family #3: guard-over-match by substring is a
+    recurring scar class in this repo).
+
+    `execute()`'s own `_scope_from_kwargs` gate stays in place as
+    defense-in-depth — this function only shrinks what the MODEL SEES, it
+    does not replace the authorization check.
+
+    Args:
+        gemini_tools: The orchestrator-wide declarations
+            (`llm_gateway.gemini_tools`). `None` is treated as `[]`.
+        profile: The server-resolved caller profile (`state.caller_profile`).
+
+    Returns:
+        `gemini_tools` unchanged for a team/creator caller; with every
+        `TEAM_CRM_TOOL_NAMES` entry removed for anyone else. Always a list
+        (never `None`), even when `gemini_tools` is `None`.
+    """
+    tools = gemini_tools or []
+    if is_team_or_creator_profile(profile):
+        return tools
+    return [t for t in tools if t.get("name") not in TEAM_CRM_TOOL_NAMES]
+
+
 def _scope_from_kwargs(kwargs: dict[str, Any]) -> TeamCrmScope | None:
     """Pop `_caller_profile` (server-injected, see tool_executor.execute_tool)
     and resolve it. Never present in `parameters_schema` — an LLM cannot

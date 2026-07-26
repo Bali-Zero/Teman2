@@ -865,7 +865,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
             <div
               className="mb-3 inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs"
               style={{
-                borderColor: "rgba(255,255,255,0.08)",
+                borderColor: "var(--bz-border)",
                 color: "var(--bz-text-2)",
                 background: "rgba(255,255,255,0.03)",
               }}
@@ -884,7 +884,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
           <div
             className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
             style={{
-              borderColor: "rgba(255,255,255,0.08)",
+              borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
               background: "rgba(255,255,255,0.03)",
             }}
@@ -894,7 +894,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
               style={{
                 background:
                   lastResponse?.mode === "gemini"
-                    ? "var(--bz-green)"
+                    ? "var(--state-success)"
                     : "var(--bz-accent)",
               }}
             />
@@ -914,8 +914,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
           <Card
             className="overflow-hidden"
             style={{
-              borderColor: "rgba(255,255,255,0.08)",
-              background: "rgba(10,12,16,0.86)",
+              borderColor: "var(--bz-border)",
+              background: "rgba(35,35,40,0.65)",
             }}
           >
             <CardHeader>
@@ -929,7 +929,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
               <div
                 className="flex min-h-[300px] flex-1 flex-col gap-3 overflow-y-auto rounded-md border p-3"
                 style={{
-                  borderColor: "rgba(255,255,255,0.08)",
+                  borderColor: "var(--bz-border)",
                   background: "rgba(255,255,255,0.02)",
                 }}
               >
@@ -950,7 +950,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                       style={{
                         background:
                           message.role === "user"
-                            ? "rgba(212,132,90,0.18)"
+                            ? "color-mix(in srgb, var(--bz-accent) 18%, transparent)"
                             : "rgba(255,255,255,0.06)",
                         color: "var(--bz-text-1)",
                       }}
@@ -965,9 +965,12 @@ export function VoiceConciergeClient(): React.JSX.Element {
                 <div
                   className="rounded-md border px-3 py-2 text-sm"
                   style={{
-                    borderColor: "rgba(239,68,68,0.28)",
-                    color: "#fca5a5",
-                    background: "rgba(239,68,68,0.08)",
+                    borderColor:
+                      "color-mix(in srgb, var(--state-danger) 28%, transparent)",
+                    color:
+                      "color-mix(in srgb, var(--state-danger) 55%, var(--bz-text-pure))",
+                    background:
+                      "color-mix(in srgb, var(--state-danger) 8%, transparent)",
                   }}
                 >
                   {error}
@@ -1041,8 +1044,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
           <aside className="flex flex-col gap-5">
             <Card
               style={{
-                borderColor: "rgba(255,255,255,0.08)",
-                background: "rgba(10,12,16,0.76)",
+                borderColor: "var(--bz-border)",
+                background: "rgba(35,35,40,0.65)",
               }}
             >
               <CardHeader>
@@ -1069,8 +1072,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
 
             <Card
               style={{
-                borderColor: "rgba(255,255,255,0.08)",
-                background: "rgba(10,12,16,0.76)",
+                borderColor: "var(--bz-border)",
+                background: "rgba(35,35,40,0.65)",
               }}
             >
               <CardHeader>
@@ -1088,7 +1091,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     key={label}
                     className="grid grid-cols-[44px_1fr_auto] items-center gap-2 rounded-md border px-3 py-2"
                     style={{
-                      borderColor: "rgba(255,255,255,0.08)",
+                      borderColor: "var(--bz-border)",
                       background: "rgba(255,255,255,0.03)",
                     }}
                   >
@@ -1103,10 +1106,12 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     <span
                       className="rounded-md px-2 py-1 text-xs"
                       style={{
-                        color: provider?.available ? "#86efac" : "#fca5a5",
+                        color: provider?.available
+                          ? "color-mix(in srgb, var(--state-success) 55%, var(--bz-text-pure))"
+                          : "color-mix(in srgb, var(--state-danger) 55%, var(--bz-text-pure))",
                         background: provider?.available
-                          ? "rgba(34,197,94,0.12)"
-                          : "rgba(239,68,68,0.10)",
+                          ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
+                          : "color-mix(in srgb, var(--state-danger) 10%, transparent)",
                       }}
                     >
                       {provider?.available ? "ready" : "gated"}
@@ -1116,7 +1121,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                 <div
                   className="rounded-md border px-3 py-2"
                   style={{
-                    borderColor: "rgba(255,255,255,0.08)",
+                    borderColor: "var(--bz-border)",
                     color: "var(--bz-text-2)",
                     background: "rgba(255,255,255,0.03)",
                   }}
@@ -1137,7 +1142,9 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     <span style={{ color: "var(--bz-text-3)" }}>State</span>
                     <span
                       style={{
-                        color: isTtsReady ? "#86efac" : "#fca5a5",
+                        color: isTtsReady
+                          ? "color-mix(in srgb, var(--state-success) 55%, var(--bz-text-pure))"
+                          : "color-mix(in srgb, var(--state-danger) 55%, var(--bz-text-pure))",
                       }}
                     >
                       {isTtsReady ? "ready" : activeTtsDetail}
@@ -1147,7 +1154,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                 <div
                   className="rounded-md border px-3 py-2"
                   style={{
-                    borderColor: "rgba(255,255,255,0.08)",
+                    borderColor: "var(--bz-border)",
                     color: "var(--bz-text-2)",
                     background: "rgba(255,255,255,0.03)",
                   }}
@@ -1162,8 +1169,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
 
             <Card
               style={{
-                borderColor: "rgba(255,255,255,0.08)",
-                background: "rgba(10,12,16,0.76)",
+                borderColor: "var(--bz-border)",
+                background: "rgba(35,35,40,0.65)",
               }}
             >
               <CardHeader>
@@ -1192,8 +1199,8 @@ export function VoiceConciergeClient(): React.JSX.Element {
 
             <Card
               style={{
-                borderColor: "rgba(255,255,255,0.08)",
-                background: "rgba(10,12,16,0.76)",
+                borderColor: "var(--bz-border)",
+                background: "rgba(35,35,40,0.65)",
               }}
             >
               <CardHeader>

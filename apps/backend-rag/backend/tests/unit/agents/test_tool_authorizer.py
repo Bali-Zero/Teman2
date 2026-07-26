@@ -470,7 +470,15 @@ class TestSensitiveToolTourniquet:
 
     @pytest.mark.asyncio
     async def test_crm_query_denied_tool_never_executes_no_principal(self) -> None:
-        """Denied sensitive tool must never reach tool.execute() (defense in depth)."""
+        """Denied sensitive tool must never reach tool.execute() (defense in depth).
+
+        P0-DENY (2026-07-25): the denial observation itself must also stay
+        neutral for a no-principal caller — the DATA not leaking (this
+        assertion) is necessary but not sufficient; the fact that a CRM
+        database and an authorization control exist must not leak either.
+        See `discovery_p0deny_denial_narration_leak_2026_07_25` /
+        `backend/services/rag/agentic/tool_executor.py::_denial_observation`.
+        """
         tool = _NoopTool("crm_query")
         tool_map = {"crm_query": tool}
 
@@ -482,8 +490,10 @@ class TestSensitiveToolTourniquet:
             tool_execution_counter=None,
             agent_role=None,
         )
-        assert "denied" in result.lower()
         assert tool.execute_called is False, "sensitive tool must not reach tool.execute()"
+        lowered = result.lower()
+        for forbidden in ("denied", "permission", "authoriz", "crm", "database"):
+            assert forbidden not in lowered, f"leaked {forbidden!r} in anonymous denial: {result!r}"
 
 
 # ─────────────────────────────────────────────────────────────────────────

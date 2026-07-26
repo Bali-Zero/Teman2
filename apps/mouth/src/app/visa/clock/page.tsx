@@ -18,6 +18,7 @@ const VISA_OPTIONS = [
   { code: "C7A", label: "C7A Music/Art" },
   { code: "C7B", label: "C7B Sport" },
   { code: "E33G", label: "E33G Digital Nomad KITAS" },
+  { code: "E33", label: "E33 Second Home KITAS" },
   { code: "E28A", label: "E28A Investor KITAS" },
   { code: "E23", label: "E23 Work KITAS" },
   { code: "E33F", label: "E33F Retirement KITAS" },
