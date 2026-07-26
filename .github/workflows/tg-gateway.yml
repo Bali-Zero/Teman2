@@ -42,5 +42,10 @@ jobs:
 
       - name: Guard pins (pytest)
         run: |
-          python3 -m pip -q install pytest
-          python3 -m pytest scripts/tests/test_tg_gateway.py -q
+          # httpx/structlog: agent_job.py imports both at module level, and
+          # test_agent_job_telegram_gateway.py imports agent_job.py — without
+          # them the file below would ImportError, not merely "not run" (a
+          # loud CI failure, not a silent one, but still worth being explicit
+          # about why a Telegram-gateway CI job installs two extra packages).
+          python3 -m pip -q install pytest httpx structlog
+          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py -q

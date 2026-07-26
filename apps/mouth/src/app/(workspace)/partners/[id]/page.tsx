@@ -19,7 +19,6 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -33,15 +32,39 @@ import type {
   PartnerCommission,
   AuditLogEntry,
 } from "@/lib/api/partners/partners";
-import { formatIDR } from "@balizero/core/utils";
+import { Money } from "@balizero/core";
+
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
+};
+
+/** Inline danger strip (load/audit error). */
+const DANGER_STRIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+  borderColor: "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+  color: "var(--state-danger)",
+};
+
+/** State-tinted chip: 12% tint fill, 30% rim, state ink (portal idiom). */
+function stateChip(state: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, ${state} 12%, transparent)`,
+    color: state,
+    borderColor: `color-mix(in srgb, ${state} 30%, transparent)`,
+  };
+}
+
+/** Neutral chip for closed/inert statuses. */
+const NEUTRAL_CHIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--bz-text-pure) 6%, transparent)",
+  color: "var(--bz-text-2)",
+  borderColor: "var(--bz-border)",
+};
 
 type TabId =
-  | "profile"
-  | "fiscal"
-  | "payment"
-  | "referrals"
-  | "commissions"
-  | "audit";
+  "profile" | "fiscal" | "payment" | "referrals" | "commissions" | "audit";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User size={14} /> },
@@ -52,53 +75,57 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "audit", label: "Audit", icon: <FileText size={14} /> },
 ];
 
+// CRIT-8: aligned to backend PartnerStatus enum. Honestly mapped:
+// pending_approval -> warning, active -> success, inactive -> neutral.
 const STATUS_STYLES: Record<
   string,
-  { bg: string; text: string; label: string }
+  { style: React.CSSProperties; label: string }
 > = {
-  // CRIT-8: aligned to backend PartnerStatus enum
   pending_approval: {
-    bg: "bg-amber-500/20",
-    text: "text-amber-400",
+    style: stateChip("var(--state-warning)"),
     label: "Pending Approval",
   },
-  active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
-  inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
+  active: { style: stateChip("var(--state-success)"), label: "Active" },
+  inactive: { style: NEUTRAL_CHIP, label: "Inactive" },
 };
 
-const COMMISSION_STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  approved: { bg: "bg-blue-500/20", text: "text-blue-400" },
-  ready_to_pay: { bg: "bg-purple-500/20", text: "text-purple-400" },
-  paid: { bg: "bg-green-500/20", text: "text-green-400" },
-  clawback_pending: { bg: "bg-orange-500/20", text: "text-orange-400" },
-  clawed_back: { bg: "bg-red-500/20", text: "text-red-400" },
-  waived: { bg: "bg-gray-500/20", text: "text-gray-400" },
+// Commission pipeline statuses, honestly mapped: pending steps -> warning,
+// approved -> info, ready_to_pay -> neon purple (identity hue, kept from the
+// legacy palette), paid -> success, clawback steps -> warning/danger,
+// waived -> neutral.
+const COMMISSION_STATUS_STYLES: Record<string, React.CSSProperties> = {
+  pending_approval: stateChip("var(--state-warning)"),
+  approved: stateChip("var(--state-info)"),
+  ready_to_pay: stateChip("var(--bz-neon-purple)"),
+  paid: stateChip("var(--state-success)"),
+  clawback_pending: stateChip("var(--state-warning)"),
+  clawed_back: stateChip("var(--state-danger)"),
+  waived: NEUTRAL_CHIP,
 };
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between py-2 border-b border-zinc-800 last:border-0">
-      <span className="text-sm text-zinc-500 min-w-36">{label}</span>
-      <span className="text-sm text-zinc-200 text-right">
-        {value || <span className="text-zinc-600 italic">—</span>}
+    <div className="flex items-start justify-between py-2 border-b border-[var(--bz-border)] last:border-0">
+      <span className="text-sm text-[var(--bz-text-3)] min-w-36">{label}</span>
+      <span className="text-sm text-[var(--bz-text-1)] text-right">
+        {value || <span className="text-[var(--bz-text-3)] italic">—</span>}
       </span>
     </div>
   );
 }
 
 function ProfileTab({ partner }: { partner: Partner }) {
-  const statusStyle =
+  const statusEntry =
     STATUS_STYLES[partner.onboarding_status] || STATUS_STYLES.inactive;
   return (
     <div className="space-y-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
+      <div className="border rounded-xl p-4 space-y-0" style={PANEL}>
         <InfoRow label="Full Name" value={partner.full_name} />
         <InfoRow
           label="Email"
           value={
             <span className="flex items-center gap-1.5">
-              <Mail size={12} className="text-zinc-500" />
+              <Mail size={12} className="text-[var(--bz-text-3)]" />
               {partner.email}
             </span>
           }
@@ -108,7 +135,7 @@ function ProfileTab({ partner }: { partner: Partner }) {
           value={
             partner.phone && (
               <span className="flex items-center gap-1.5">
-                <Phone size={12} className="text-zinc-500" />
+                <Phone size={12} className="text-[var(--bz-text-3)]" />
                 {partner.phone}
               </span>
             )
@@ -122,9 +149,10 @@ function ProfileTab({ partner }: { partner: Partner }) {
           label="Status"
           value={
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
+              className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium"
+              style={statusEntry.style}
             >
-              {statusStyle.label}
+              {statusEntry.label}
             </span>
           }
         />
@@ -139,7 +167,13 @@ function ProfileTab({ partner }: { partner: Partner }) {
         {partner.default_commission_type && (
           <InfoRow
             label="Commission Policy"
-            value={`${partner.default_commission_value} ${partner.default_commission_type === "percentage" ? "%" : "IDR flat"}`}
+            value={
+              partner.default_commission_type === "percentage" ? (
+                `${partner.default_commission_value} %`
+              ) : (
+                <Money value={Number(partner.default_commission_value)} />
+              )
+            }
           />
         )}
         <InfoRow label="Assigned To" value={partner.assigned_to} />
@@ -147,12 +181,12 @@ function ProfileTab({ partner }: { partner: Partner }) {
           label="PDP Consent"
           value={
             partner.pdp_consent_at ? (
-              <span className="flex items-center gap-1 text-green-400">
+              <span className="flex items-center gap-1 text-[var(--state-success)]">
                 <CheckCircle size={12} /> Yes (
                 {new Date(partner.pdp_consent_at).toLocaleDateString()})
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-red-400">
+              <span className="flex items-center gap-1 text-[var(--state-danger)]">
                 <XCircle size={12} /> No
               </span>
             )
@@ -168,11 +202,11 @@ function ProfileTab({ partner }: { partner: Partner }) {
         />
       </div>
       {partner.notes && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500 mb-1 uppercase tracking-wide font-medium">
+        <div className="border rounded-xl p-4" style={PANEL}>
+          <p className="text-xs text-[var(--bz-text-3)] mb-1 uppercase tracking-wide font-medium">
             Notes
           </p>
-          <p className="text-sm text-zinc-300 whitespace-pre-wrap">
+          <p className="text-sm text-[var(--bz-text-1)] whitespace-pre-wrap">
             {partner.notes}
           </p>
         </div>
@@ -190,7 +224,7 @@ function FiscalTab({ partner }: { partner: Partner }) {
     exempt: "Exempt",
   };
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
+    <div className="border rounded-xl p-4 space-y-0" style={PANEL}>
       <InfoRow label="NPWP (Tax ID)" value={partner.npwp} />
       <InfoRow
         label="Withholding Category"
@@ -206,7 +240,10 @@ function FiscalTab({ partner }: { partner: Partner }) {
         />
       )}
       {partner.total_earned != null && (
-        <InfoRow label="Total Earned" value={formatIDR(partner.total_earned)} />
+        <InfoRow
+          label="Total Earned"
+          value={<Money value={partner.total_earned} />}
+        />
       )}
     </div>
   );
@@ -214,7 +251,7 @@ function FiscalTab({ partner }: { partner: Partner }) {
 
 function PaymentTab({ partner }: { partner: Partner }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
+    <div className="border rounded-xl p-4 space-y-0" style={PANEL}>
       <InfoRow label="Payment Method" value={partner.payment_method} />
       <InfoRow label="Bank Name" value={partner.bank_name} />
       <InfoRow label="Account Number" value={partner.bank_account_number} />
@@ -238,61 +275,62 @@ function ReferralsTab({ partnerId }: { partnerId: string }) {
   if (isLoading)
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="animate-spin text-amber-400" />
+        <Loader2 className="animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   if (referrals.length === 0)
     return (
-      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+      <div className="flex flex-col items-center py-12 gap-2 text-[var(--bz-text-3)]">
         <Handshake size={32} />
         <p className="text-sm">No referrals yet</p>
       </div>
     );
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+    <div className="border rounded-xl overflow-hidden" style={PANEL}>
       <table className="w-full">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+          <tr className="border-b border-[var(--bz-border)]">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Client
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Practice
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Commission
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Status
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-[var(--bz-border)]">
           {referrals.map((r) => {
-            const cs = COMMISSION_STATUS_STYLES[r.commission_status] || {
-              bg: "bg-gray-500/20",
-              text: "text-gray-400",
-            };
+            const cs =
+              COMMISSION_STATUS_STYLES[r.commission_status] || NEUTRAL_CHIP;
             return (
               <tr key={r.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
                   {r.referred_client_name ||
                     (r.referred_client_id
                       ? `Client ${r.referred_client_id.substring(0, 8)}…`
                       : "—")}
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-400">
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-2)]">
                   {r.practice_type_name || "—"}
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-300">
-                  {r.commission_amount != null
-                    ? formatIDR(r.commission_amount)
-                    : "—"}
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
+                  {r.commission_amount != null ? (
+                    <Money value={r.commission_amount} />
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${cs.bg} ${cs.text}`}
+                    className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium capitalize"
+                    style={cs}
                   >
                     {r.commission_status.replace(/_/g, " ")}
                   </span>
@@ -321,67 +359,65 @@ function CommissionsTab({ partnerId }: { partnerId: string }) {
   if (isLoading)
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="animate-spin text-amber-400" />
+        <Loader2 className="animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   if (commissions.length === 0)
     return (
-      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+      <div className="flex flex-col items-center py-12 gap-2 text-[var(--bz-text-3)]">
         <BarChart3 size={32} />
         <p className="text-sm">No commissions yet</p>
       </div>
     );
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+    <div className="border rounded-xl overflow-hidden" style={PANEL}>
       <table className="w-full">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+          <tr className="border-b border-[var(--bz-border)]">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Practice
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Gross
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Net
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Status
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Date
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-[var(--bz-border)]">
           {commissions.map((c) => {
-            const cs = COMMISSION_STATUS_STYLES[c.status] || {
-              bg: "bg-gray-500/20",
-              text: "text-gray-400",
-            };
+            const cs = COMMISSION_STATUS_STYLES[c.status] || NEUTRAL_CHIP;
             return (
               <tr key={c.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
                   {c.practice_type_name ||
                     (c.practice_id
                       ? `Practice ${c.practice_id.substring(0, 8)}…`
                       : "—")}
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-300">
-                  {formatIDR(c.gross_amount)}
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
+                  <Money value={c.gross_amount} />
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-300">
-                  {formatIDR(c.net_amount)}
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
+                  <Money value={c.net_amount} />
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}
+                    className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium"
+                    style={cs}
                   >
                     {c.status.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-500">
+                <td className="px-4 py-3 text-sm text-[var(--bz-text-3)]">
                   {new Date(c.created_at).toLocaleDateString()}
                 </td>
               </tr>
@@ -409,60 +445,63 @@ function AuditTab({ partnerId }: { partnerId: string }) {
   if (isLoading)
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="animate-spin text-amber-400" />
+        <Loader2 className="animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   if (error)
     return (
-      <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+      <div
+        className="flex items-center gap-3 p-4 border rounded-xl"
+        style={DANGER_STRIP}
+      >
         <AlertCircle size={16} />
         <span className="text-sm">{error}</span>
       </div>
     );
   if (auditEntries.length === 0)
     return (
-      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+      <div className="flex flex-col items-center py-12 gap-2 text-[var(--bz-text-3)]">
         <FileText size={32} />
         <p className="text-sm">No audit log entries yet</p>
       </div>
     );
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+    <div className="border rounded-xl overflow-hidden" style={PANEL}>
       <table className="w-full">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+          <tr className="border-b border-[var(--bz-border)]">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Action
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase hidden md:table-cell">
               Actor
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Reason
             </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+            <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase">
               Date
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-[var(--bz-border)]">
           {auditEntries.map((entry) => (
             <tr key={entry.id}>
-              <td className="px-4 py-3 text-sm font-medium text-zinc-200 capitalize">
+              <td className="px-4 py-3 text-sm font-medium text-[var(--bz-text-1)] capitalize">
                 {entry.action.replace(/_/g, " ")}
               </td>
-              <td className="px-4 py-3 text-xs text-zinc-500 hidden md:table-cell font-mono">
+              <td className="px-4 py-3 text-xs text-[var(--bz-text-3)] hidden md:table-cell font-mono">
                 {entry.actor_user_id
                   ? entry.actor_user_id.substring(0, 8) + "…"
                   : "—"}
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-400">
+              <td className="px-4 py-3 text-sm text-[var(--bz-text-2)]">
                 {entry.reason || (
-                  <span className="text-zinc-600 italic">—</span>
+                  <span className="text-[var(--bz-text-3)] italic">—</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-500">
+              <td className="px-4 py-3 text-sm text-[var(--bz-text-3)]">
                 {new Date(entry.at).toLocaleString()}
               </td>
             </tr>
@@ -561,7 +600,7 @@ export default function PartnerDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 size={32} className="animate-spin text-amber-400" />
+        <Loader2 size={32} className="animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   }
@@ -569,14 +608,11 @@ export default function PartnerDetailPage() {
   if (error || !partner) {
     return (
       <div className="flex flex-col items-center gap-4 py-16">
-        <AlertCircle size={32} className="text-red-400" />
-        <p className="text-zinc-400">{error || "Partner not found"}</p>
-        <Button
-          onClick={loadPartner}
-          variant="outline"
-          size="sm"
-          className="border-zinc-700 text-zinc-300"
-        >
+        <AlertCircle size={32} className="text-[var(--state-danger)]" />
+        <p className="text-[var(--bz-text-2)]">
+          {error || "Partner not found"}
+        </p>
+        <Button onClick={loadPartner} variant="outline" size="sm">
           <RefreshCw size={14} className="mr-1" /> Retry
         </Button>
       </div>
@@ -592,17 +628,17 @@ export default function PartnerDetailPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-zinc-400 hover:text-zinc-200"
+              className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
             >
               <ArrowLeft size={16} className="mr-1" />
               Partners
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-zinc-100">
+            <h1 className="text-xl font-bold text-[var(--bz-text-1)]">
               {partner.full_name}
             </h1>
-            <p className="text-sm text-zinc-500">{partner.email}</p>
+            <p className="text-sm text-[var(--bz-text-3)]">{partner.email}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -612,7 +648,13 @@ export default function PartnerDetailPage() {
               size="sm"
               disabled={isActioning}
               onClick={handleActivate}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="border text-[var(--state-success)]"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--state-success) 12%, transparent)",
+                borderColor:
+                  "color-mix(in srgb, var(--state-success) 30%, transparent)",
+              }}
             >
               {isActioning ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -628,7 +670,13 @@ export default function PartnerDetailPage() {
               variant="outline"
               disabled={isActioning}
               onClick={handleDeactivate}
-              className="border-red-700 text-red-400 hover:bg-red-900/20"
+              className="text-[var(--state-danger)]"
+              style={{
+                borderColor:
+                  "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+                background:
+                  "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+              }}
             >
               {isActioning ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -644,7 +692,6 @@ export default function PartnerDetailPage() {
               variant="outline"
               disabled={isActioning}
               onClick={handleReassign}
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
             >
               {isActioning ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -658,7 +705,6 @@ export default function PartnerDetailPage() {
             size="sm"
             variant="outline"
             onClick={() => router.push(`/partners/${partnerId}/edit`)}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
           >
             <Edit size={14} className="mr-1" />
             Edit
@@ -667,15 +713,18 @@ export default function PartnerDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1 overflow-x-auto">
+      <div
+        className="flex gap-1 border rounded-xl p-1 overflow-x-auto"
+        style={PANEL}
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
               activeTab === tab.id
-                ? "bg-amber-600 text-white"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                ? "bg-[var(--surface-selected)] text-[var(--bz-text-1)]"
+                : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-glass-rim)]"
             }`}
           >
             {tab.icon}

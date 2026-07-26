@@ -75,6 +75,132 @@ TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
 TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash
 
 
+# --- O1 (2026-07-25): Gemini quota-exhaustion operator alert -------------
+# Real incident 2026-07-22: the Gemini prepay balance hit zero, so BOTH the
+# primary and fallback tiers returned 429/RESOURCE_EXHAUSTED. The agentic
+# LLM couldn't drive tool retrieval, the WhatsApp bot silently abstained on
+# every question for hours, and nobody was paged. Zero has ruled the
+# architecture stays fail-closed on Gemini (no external LLM fallback), so
+# this alert IS the mitigation (spec item O1). Matched on the SDK's
+# structured `code`/`status` attributes, never a bare substring on one
+# sentence — cicatrix scar family #3 (guard-over-match) has bitten this
+# repo repeatedly on exactly that pattern.
+_QUOTA_ALERT_DEDUP_KEY = "gemini_quota_exhausted"
+
+
+def _is_429_signal(value: object) -> bool:
+    """True if `value` plausibly encodes an HTTP 429, whether the SDK/
+    exception put it there as an int or as a str, on whichever attribute
+    it chose (`.code` or `.status` both observed in the wild — see
+    `_classify_quota_exhaustion`). `bool` is excluded even though it's an
+    `int` subclass in Python (never a meaningful 429 signal).
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value == 429
+    if isinstance(value, str):
+        return value.strip() == "429"
+    return False
+
+
+def _classify_quota_exhaustion(exc: Exception) -> str | None:
+    """Return a quota-exhaustion subtype if `exc` represents a Gemini
+    429/RESOURCE_EXHAUSTED failure, else None (not a quota error at all).
+
+    Primary signal (structured, not text): the new google-genai SDK raises
+    `google.genai.errors.ClientError` (a subclass of `APIError`) for 4xx
+    responses, exposing `.code` (int HTTP status) and `.status` (the API's
+    error status string, e.g. "RESOURCE_EXHAUSTED") — verified live against
+    the installed google-genai==2.7.0. A 429 signal alone is sufficient:
+    HTTP 429 has no other meaning for this API. Some code paths have been
+    observed carrying the 429 as a string (`code = "429"`) or the status as
+    an int, so both attributes are checked for either representation
+    (`_is_429_signal`) rather than assuming the SDK's exact int/str
+    convention — a narrower check silently skips the alert on those shapes,
+    during the exact outage this guard exists to catch. The legacy
+    `google.api_core.exceptions.ResourceExhausted` class (already imported/
+    caught elsewhere in this file's fallback cascade) is matched too, for
+    defense-in-depth against any code path still raising it.
+
+    The exception message is used ONLY as a secondary signal, to pick a
+    human-readable subtype for the alert text (balance depletion vs a
+    transient per-minute rate limit) — never to decide whether to alert at
+    all. Rate-limit phrasing is checked BEFORE balance phrasing: a
+    transient 429 can mention "credit" in passing (e.g. a billing-quota
+    footnote), but "rate limit"/"per minute" is the more specific signal
+    that this is self-clearing, not a depleted prepay balance — matching on
+    the wrong order previously raised a false CRITICAL "top up the prepay
+    balance" alert for an ordinary rate-limit blip (cicatrix family #3,
+    guard over-match).
+    """
+    code = getattr(exc, "code", None)
+    status = getattr(exc, "status", None)
+    is_quota_error = (
+        _is_429_signal(code)
+        or _is_429_signal(status)
+        or (isinstance(status, str) and status.upper() == "RESOURCE_EXHAUSTED")
+        or isinstance(exc, ResourceExhausted)
+    )
+    if not is_quota_error:
+        return None
+
+    message = str(getattr(exc, "message", None) or exc).lower()
+    if any(hint in message for hint in ("per minute", "per-minute", "rate limit", "rate_limit")):
+        return "rate_limited"
+    if any(hint in message for hint in ("prepay", "balance", "credit")):
+        return "balance_depleted"
+    return "quota_exhausted"
+
+
+async def _alert_quota_exhausted(model_name: str, exc: Exception) -> None:
+    """Best-effort operator alert on Gemini quota exhaustion. Never raises —
+    alerting failures must never affect the original exception's propagation
+    (the caller always re-raises `exc` unchanged, alert or no alert).
+
+    No PII: metadata carries only the model name, error class/code/status,
+    and the derived subtype — never the user's query text, phone number, or
+    any client data (UU PDP hard boundary).
+    """
+    try:
+        subtype = _classify_quota_exhaustion(exc)
+        if subtype is None:
+            return
+
+        from backend.services.monitoring.alert_service import AlertLevel, get_alert_service
+
+        subtype_text = {
+            "balance_depleted": (
+                "prepay balance appears DEPLETED — this fails EVERY request "
+                "until topped up (2026-07-22 incident shape)"
+            ),
+            "rate_limited": "transient per-minute rate limit — should self-clear shortly",
+            "quota_exhausted": "quota exhausted (subtype undetermined from message text)",
+        }[subtype]
+
+        await get_alert_service().send_alert(
+            title="Gemini quota exhausted",
+            message=(
+                f"Model {model_name} returned 429/RESOURCE_EXHAUSTED. {subtype_text}. "
+                "Architecture is fail-closed by design (no external LLM fallback) — "
+                "this alert IS the mitigation (spec O1)."
+            ),
+            level=AlertLevel.CRITICAL,
+            metadata={
+                "model": model_name,
+                "error_class": type(exc).__name__,
+                "error_code": getattr(exc, "code", None),
+                "error_status": getattr(exc, "status", None),
+                "subtype": subtype,
+            },
+            dedup_key=f"{_QUOTA_ALERT_DEDUP_KEY}:{subtype}",
+        )
+    except Exception as alert_exc:  # pragma: no cover - defensive, must never break the call path
+        logger.warning(
+            "Failed to send quota-exhaustion alert for %s: %s", model_name, alert_exc,
+        )
+
+
 class LLMGateway:
     """
     Unified gateway for LLM interactions with intelligent fallback routing.
@@ -765,14 +891,20 @@ class LLMGateway:
 
             # 3. Call model with full history (with timeout to avoid hang)
             _llm_call_t0 = time.perf_counter()
-            response = await asyncio.wait_for(
-                client._client.aio.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                ),
-                timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
-            )
+            try:
+                response = await asyncio.wait_for(
+                    client._client.aio.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    ),
+                    timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
+                )
+            except Exception as gen_exc:
+                # O1: best-effort operator alert on quota exhaustion, then
+                # re-raise unchanged — never alters the fallback cascade.
+                await _alert_quota_exhausted(model_name, gen_exc)
+                raise
 
             # 4. Update chat history manually
             # Extract response text with safety checks
@@ -874,14 +1006,20 @@ class LLMGateway:
                 logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
 
             _llm_call_t0 = time.perf_counter()
-            response = await asyncio.wait_for(
-                client._client.aio.models.generate_content(
-                    model=model_name,
-                    contents=content,
-                    config=config,
-                ),
-                timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
-            )
+            try:
+                response = await asyncio.wait_for(
+                    client._client.aio.models.generate_content(
+                        model=model_name,
+                        contents=content,
+                        config=config,
+                    ),
+                    timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
+                )
+            except Exception as gen_exc:
+                # O1: best-effort operator alert on quota exhaustion, then
+                # re-raise unchanged — never alters the fallback cascade.
+                await _alert_quota_exhausted(model_name, gen_exc)
+                raise
 
             # Extract token usage from response
             prompt_tokens = 0

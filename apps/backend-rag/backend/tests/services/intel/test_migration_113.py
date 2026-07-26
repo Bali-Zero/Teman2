@@ -71,19 +71,51 @@ async def test_trend_signal_insert_sets_expires_at(conn):
 
 @pytest.mark.asyncio
 async def test_trend_insert_notifies_intel_event(conn):
+    # SYNCHRONISE, never sleep-and-hope. LISTEN/NOTIFY delivers only to sessions
+    # that are ALREADY listening — a payload sent before `add_listener` returns is
+    # gone for good, not delayed. This test used to give the listener a flat
+    # `sleep(0.2)` head start and then read for a flat `sleep(2.0)`, which is a
+    # race, not a wait: on a loaded machine (this repo's pre-push runs the full
+    # suite, and several sessions push at once — measured at load-average 50+ with
+    # 27 concurrent pre-push scripts) the connect+LISTEN does not finish inside
+    # 200ms, the INSERT fires into the void, and the test fails with a bare
+    # `assert False` on a completely healthy database.
+    #
+    # Now: the INSERT waits for the listener to be attached, and the assertion
+    # waits for the payload instead of for the clock. The deadline is generous
+    # because it is a failure ceiling, not a timing expectation — the happy path
+    # still returns in milliseconds. Nothing about what is asserted changed.
     received: list[dict] = []
+    attached = asyncio.Event()
+    delivered = asyncio.Event()
+
+    def is_trend_signal(event: dict) -> bool:
+        return event.get("event_type") == "trend_signal_detected"
+
+    def on_notify(_conn, _pid, _channel, payload):
+        event = json.loads(payload)
+        received.append(event)
+        # Stop on the event this test actually asserts on, not on the first
+        # payload of any kind — otherwise an unrelated notify that happens to
+        # land first would satisfy the wait and fail the assertion spuriously.
+        if is_trend_signal(event):
+            delivered.set()
 
     async def listener():
         listen_conn = await asyncpg.connect(TEST_DSN)
-        await listen_conn.add_listener(
-            "intel_event",
-            lambda c, pid, ch, payload: received.append(json.loads(payload)),
-        )
-        await asyncio.sleep(2.0)
-        await listen_conn.close()
+        try:
+            await listen_conn.add_listener("intel_event", on_notify)
+            attached.set()
+            try:
+                await asyncio.wait_for(delivered.wait(), timeout=30.0)
+            except asyncio.TimeoutError:
+                pass  # let the assertion below report it, with its own message
+        finally:
+            attached.set()  # never strand the inserter if connect/LISTEN raised
+            await listen_conn.close()
 
     task = asyncio.create_task(listener())
-    await asyncio.sleep(0.2)
+    await asyncio.wait_for(attached.wait(), timeout=30.0)
 
     await conn.execute("""
         INSERT INTO trend_signals (source, topic, urgency_score)
@@ -91,7 +123,9 @@ async def test_trend_insert_notifies_intel_event(conn):
     """)
 
     await task
-    assert any(p.get("event_type") == "trend_signal_detected" for p in received)
+    assert any(is_trend_signal(p) for p in received), (
+        f"no trend_signal_detected NOTIFY arrived within 30s; payloads seen: {received}"
+    )
 
 
 @pytest.mark.asyncio
