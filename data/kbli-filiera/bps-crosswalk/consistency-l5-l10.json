@@ -1,0 +1,14 @@
+{
+ "duplicate_pairs_l10": [],
+ "duplicate_pairs_l5": [],
+ "edges_l10": 2560,
+ "edges_l5": 2560,
+ "in_l10_only": [],
+ "in_l5_only": [],
+ "pairs_in_both": 2560,
+ "sebagian_flag_mismatches": [],
+ "unique_2020_codes_l5": 1789,
+ "unique_2025_codes_l10": 1559,
+ "unique_pairs_l10": 2560,
+ "unique_pairs_l5": 2560
+}
