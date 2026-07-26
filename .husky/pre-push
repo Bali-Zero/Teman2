@@ -135,6 +135,23 @@ else
                     DIFF_ERROR=1
                     break
                 fi
+
+                # FIRST-PUSH FRESHNESS (task #27, 2026-07-26) — warn-only,
+                # NEVER blocks the push and NEVER affects DIFF_ERROR/PREPUSH_RUN_BACKEND.
+                # The "zero-check trap": a first push whose fork point (RANGE_FROM,
+                # just computed above) has fallen behind origin/main's CURRENT tip
+                # can be conflicting the instant it lands — GitHub then never
+                # materialises refs/pull/N/merge, so every pull_request-triggered
+                # workflow silently never runs (ABSENT, not red) and auto-merge sits
+                # armed and inert. Deliberately not captured into a variable (see
+                # scripts/prepush_freshness.py's own docstring) so this line cannot
+                # reintroduce the task #39 / W101 bare-$(...)-under-sh-e failure mode.
+                if [ -n "$PYTHON_BIN" ]; then
+                    ORIGIN_MAIN_TIP="$(git rev-parse origin/main 2>/dev/null)" || ORIGIN_MAIN_TIP=""
+                    if [ -n "$ORIGIN_MAIN_TIP" ]; then
+                        "$PYTHON_BIN" scripts/prepush_freshness.py "$RANGE_FROM" "$ORIGIN_MAIN_TIP" || true
+                    fi
+                fi
             else
                 # Existing branch being updated — diff only the NEW commits
                 # since what the remote already has.
