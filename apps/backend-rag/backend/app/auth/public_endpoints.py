@@ -289,6 +289,19 @@ _CLIENT_PORTAL = (
 
 _PUBLIC_KNOWLEDGE = (
     PublicEndpoint(
+        "/api/pricing/service",
+        Category.PUBLIC_KNOWLEDGE,
+        "Single-service price lookup by exact catalogue key. The public website "
+        "must render prices from PricingTool rather than hardcoded literals "
+        "(Golden Rule #11), and its visitors are anonymous — without this entry "
+        "every client-facing price stays a hand-maintained copy that drifts from "
+        "the SSOT. EXACT match on purpose: /api/pricing/all, /search and "
+        "/scenario stay authenticated. The response carries catalogue rows only "
+        "(key, name, price, category, validity, notes) — the same figures already "
+        "published on balizero.com, no client or CRM data.",
+        match="exact",
+    ),
+    PublicEndpoint(
         "/api/knowledge/visa",
         Category.PUBLIC_KNOWLEDGE,
         "Public visa types knowledge base — informational content for website visitors",

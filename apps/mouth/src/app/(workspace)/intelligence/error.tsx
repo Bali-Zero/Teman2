@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Brain, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Brain, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function IntelligenceError({
   error,
@@ -13,7 +13,7 @@ export default function IntelligenceError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Intelligence Error', {}, error);
+    logger.error("Intelligence Error", {}, error);
   }, [error]);
 
   return (
@@ -23,10 +23,12 @@ export default function IntelligenceError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Intelligence Center Offline</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Intelligence Center Offline
+        </h2>
         <p className="text-muted-foreground">
-          The intelligence feed is currently unavailable. Our team has been notified and is working
-          on a fix.
+          The intelligence feed is currently unavailable. Our team has been
+          notified and is working on a fix.
         </p>
       </div>
 
