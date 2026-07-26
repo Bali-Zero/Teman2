@@ -130,7 +130,15 @@ else
             if [ "$remote_sha" = "$ZERO_SHA" ]; then
                 # New branch/ref not yet on the remote — diff from where it
                 # forked off main, i.e. every commit this push is introducing.
-                RANGE_FROM="$(git merge-base origin/main "$local_sha" 2>/dev/null)"
+                # W101 sibling (2026-07-26): a BARE X="$(...)" assignment takes the
+                # substitution's exit status under this wrapper's sh -e, so a failing
+                # `git merge-base` (no common ancestor, corrupt local_sha, etc.) would
+                # abort the whole hook HERE — before the `[ -z "$RANGE_FROM" ]` check
+                # two lines down ever runs, exactly as the already-fixed VERDICT_OUTPUT
+                # line 164 documents. `|| RANGE_FROM=""` makes the failure land IN the
+                # variable instead of killing the script, so the existing fail-closed
+                # check below still fires and degrades to the FULL suite as designed.
+                RANGE_FROM="$(git merge-base origin/main "$local_sha" 2>/dev/null)" || RANGE_FROM=""
                 if [ -z "$RANGE_FROM" ]; then
                     DIFF_ERROR=1
                     break
@@ -300,8 +308,15 @@ else
     # evaporates. The bug stayed latent from #2489 until nuzantara_test happened
     # to be re-created with owner=test — while template-owner == cloner nothing
     # showed. Deriving the owner keeps the clone faithful whoever pushes.
+    # Same bare-assignment shape as the two fixed above (W101 family). Not
+    # currently exploitable — the pipeline's exit status is `tr`'s, and `tr`
+    # with these fixed, valid arguments cannot itself fail — but that safety
+    # is INCIDENTAL to psql's success, not designed, and the `if [ -n ... ]`
+    # two lines down already documents "unreadable owner must not wedge the
+    # push" as the intent. Hardening removes the reliance on tr's behaviour
+    # rather than the documented `[ -n ]` check ever actually doing the job.
     TEMPLATE_OWNER="$("$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc \
-        "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$PRE_PUSH_DB';" 2>/dev/null | tr -d '[:space:]')"
+        "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$PRE_PUSH_DB';" 2>/dev/null | tr -d '[:space:]')" || TEMPLATE_OWNER=""
     if [ -n "$TEMPLATE_OWNER" ]; then
         OWNER_CLAUSE=" OWNER \"$TEMPLATE_OWNER\""
     else

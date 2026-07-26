@@ -1,0 +1,616 @@
+{
+  "_spec_id": "l3_prose_gap_disclosure_2026_07_26",
+  "_generated_by": "scripts/kbli_filiera/cure_l3_prose_gap_disclosure.py --emit-spec",
+  "_selection": "structural: l4_bali.reason startswith the l4bali disclosure prefix",
+  "_note": "Descriptive, not prescriptive. Editing this file does NOT change which records the cure touches — re-run --emit-spec to regenerate it.",
+  "codes": [
+    {
+      "code": "01700",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "02201",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "02402",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "02409",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "05102",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "05200",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "08920",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "19206",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "36003",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "38222",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "39001",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "42999",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "47771",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "49233",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "49296",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "50113",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52103",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52105",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52211",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52219",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52232",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52239",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "52299",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "60101",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "60103",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "60201",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "60203",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "60311",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "61905",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "61909",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64220",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64320",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64330",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64920",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64940",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64955",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64995",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "64996",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "64997",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "65123",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "66113",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66116",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66123",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66124",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66129",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66131",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66132",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66149",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66153",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66159",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66192",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66197",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66211",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66224",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66292",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66299",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "66309",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "68123",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "68125",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "68126",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "70100",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "72101",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "72103",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "72105",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "72201",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "72202",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "75001",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "75002",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "75009",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "77397",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "78109",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "79909",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "80190",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "82911",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "85103",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85104",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85203",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85204",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85313",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85314",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85317",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85318",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85323",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "85324",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "85330",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "85404",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "85581",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85582",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85583",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85584",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85585",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85586",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85587",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85589",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85691",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "85692",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "86109",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "86203",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "87101",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87102",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87202",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87302",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87991",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87992",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "87993",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88101",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88102",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88901",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88902",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88903",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88904",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "88905",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "90111",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "90113",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "90391",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "91212",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "91222",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "91300",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "91421",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "91422",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "91423",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "91424",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "91425",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "91426",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "93113",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93114",
+      "gap_basis": "detached_tier"
+    },
+    {
+      "code": "93115",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93121",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93122",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93123",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93124",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93125",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93126",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93127",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93128",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93129",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93192",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93193",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93194",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93195",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93197",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "93199",
+      "gap_basis": "disputed_key"
+    },
+    {
+      "code": "94110",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94121",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94122",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94200",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94910",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94920",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "94990",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "97000",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "98100",
+      "gap_basis": "no_oss_scope"
+    },
+    {
+      "code": "98200",
+      "gap_basis": "no_oss_scope"
+    }
+  ]
+}

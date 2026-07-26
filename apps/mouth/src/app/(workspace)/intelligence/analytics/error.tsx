@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, BarChart2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function IntelligenceAnalyticsError({
   error,
@@ -13,7 +13,7 @@ export default function IntelligenceAnalyticsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Intelligence Analytics Error', {}, error);
+    logger.error("Intelligence Analytics Error", {}, error);
   }, [error]);
 
   return (
@@ -23,10 +23,12 @@ export default function IntelligenceAnalyticsError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Couldn&apos;t Load Intelligence Analytics</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Couldn&apos;t Load Intelligence Analytics
+        </h2>
         <p className="text-muted-foreground">
-          There was an error loading this page. Please try again or contact support if the
-          problem persists.
+          There was an error loading this page. Please try again or contact
+          support if the problem persists.
         </p>
       </div>
 

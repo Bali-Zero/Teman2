@@ -15,7 +15,7 @@ const FunnelChart = dynamic(
     loading: () => (
       <div
         style={{ height: 300 }}
-        className="animate-pulse rounded bg-white/5"
+        className="animate-pulse rounded bg-[var(--bz-glass-rim)]"
         aria-hidden="true"
       />
     ),
@@ -77,7 +77,7 @@ export default function FunnelAnalyticsPage() {
         <p
           style={{
             margin: "4px 0 0",
-            color: "var(--color-text-secondary, #9ca3af)",
+            color: "var(--bz-text-2)",
           }}
         >
           Sessions and first-touch conversion attribution across funnels.
@@ -87,7 +87,7 @@ export default function FunnelAnalyticsPage() {
       {loading ? (
         <p>{STRINGS.common.loading}</p>
       ) : error ? (
-        <p role="alert" style={{ color: "var(--color-danger, #dc2626)" }}>
+        <p role="alert" style={{ color: "var(--state-danger)" }}>
           {STRINGS.common.errorPrefix}: {error}
         </p>
       ) : (
@@ -115,8 +115,8 @@ export default function FunnelAnalyticsPage() {
 
           <div
             style={{
-              background: "rgba(26,26,30,0.5)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(35,35,40,0.65)",
+              border: "1px solid var(--bz-border)",
               borderRadius: 12,
               padding: 16,
               minHeight: 360,
@@ -126,7 +126,7 @@ export default function FunnelAnalyticsPage() {
               {STRINGS.funnel.chartTitle}
             </h2>
             {merged.length === 0 ? (
-              <p style={{ color: "var(--color-text-secondary, #9ca3af)" }}>
+              <p style={{ color: "var(--bz-text-2)" }}>
                 {STRINGS.common.noData}
               </p>
             ) : (
@@ -143,17 +143,13 @@ function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        background: "rgba(26,26,30,0.5)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(35,35,40,0.65)",
+        border: "1px solid var(--bz-border)",
         borderRadius: 12,
         padding: 16,
       }}
     >
-      <div
-        style={{ fontSize: 12, color: "var(--color-text-secondary, #9ca3af)" }}
-      >
-        {label}
-      </div>
+      <div style={{ fontSize: 12, color: "var(--bz-text-2)" }}>{label}</div>
       <div style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{value}</div>
     </div>
   );

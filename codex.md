@@ -1,7 +1,7 @@
 # codex.md — Nuzantara Project Rules for Codex CLI
 
 > **Questo file viene letto automaticamente da Codex CLI quando lavora in questa directory.**
-> **Tu sei un worker sandboxato. Claude Code (Opus 4.6) è il senior che orchestra e approva.**
+> **Tu sei un worker sandboxato. Claude Code (Opus 5) è il senior che orchestra e approva.**
 
 ## 0. Ruolo
 
