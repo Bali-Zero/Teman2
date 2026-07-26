@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -437,3 +438,139 @@ def test_real_repo_slug_constant_is_the_correct_one():
     # --repo really is required, not just documented as such in prose.
     assert "--repo REPO" in result.stdout
     assert "[--repo" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# The alarm's own delivery path (2026-07-26)
+#
+# The detector above worked perfectly for nine days (2026-07-22..26) and told
+# nobody: `docs-inventory-refresh` died, the liveness run correctly computed
+# overdue=true, and then the *Cooldown gate* — the rate limiter sitting in
+# front of the Telegram alert — aborted, which left `Telegram alert` skipped.
+#
+# Mechanism (scar W101, second organ): GitHub runs `run:` under
+# `/usr/bin/bash -e`, so errexit is ALREADY on before the step's own
+# `set -uo pipefail`. On a cache miss the state file is empty, `grep` exits 1,
+# `pipefail` propagates, and a bare `LAST=$(...)` assignment killed the step
+# before any check could run.
+#
+# These tests execute the REAL shell out of the workflow file rather than a
+# copy, so a future edit that reintroduces the bare assignment fails here
+# instead of going quiet for another nine days.
+# ---------------------------------------------------------------------------
+
+LIVENESS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs-inventory-refresh-liveness.yml"
+
+
+def _extract_step_script(workflow: Path, step_name: str) -> str:
+    """Return the `run:` body of the named step, dedented.
+
+    Plain-text parsing on purpose: the CI job that runs this file installs
+    pytest and nothing else, so importing PyYAML here would make the test
+    error out on the very runner it is supposed to protect.
+    """
+    lines = workflow.read_text(encoding="utf-8").splitlines()
+    start = next(
+        (i for i, ln in enumerate(lines) if ln.strip() == f"- name: {step_name}"),
+        None,
+    )
+    assert start is not None, f"step {step_name!r} not found in {workflow}"
+
+    run_at = next(
+        (i for i in range(start, len(lines)) if lines[i].strip() == "run: |"), None
+    )
+    assert run_at is not None, f"step {step_name!r} has no `run: |` block"
+
+    body_indent = len(lines[run_at]) - len(lines[run_at].lstrip())
+    body: list[str] = []
+    for ln in lines[run_at + 1 :]:
+        if ln.strip() and (len(ln) - len(ln.lstrip())) <= body_indent:
+            break
+        body.append(ln[body_indent + 2 :] if ln.strip() else "")
+    script = "\n".join(body)
+    assert script.strip(), f"extracted an empty script for {step_name!r}"
+    return script
+
+
+def _run_cooldown(tmp_path: Path, state_contents: str | None) -> tuple[int, str]:
+    """Run the real Cooldown gate under `bash -e`, as GitHub does."""
+    script = tmp_path / "cooldown.sh"
+    script.write_text(_extract_step_script(LIVENESS_WORKFLOW, "Cooldown gate"))
+    state = tmp_path / "cooldown.state"
+    if state_contents is None:
+        state.unlink(missing_ok=True)
+    else:
+        state.write_text(state_contents)
+    out = tmp_path / "gh_output"
+    out.write_text("")
+
+    proc = subprocess.run(
+        ["bash", "-e", str(script)],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "COOLDOWN_SECONDS": "21600",
+            "GITHUB_OUTPUT": str(out),
+        },
+    )
+    return proc.returncode, out.read_text()
+
+
+def test_guilt_cooldown_gate_survives_an_empty_state_file(tmp_path):
+    """The exact nine-day outage: cache miss -> empty state -> grep finds nothing.
+
+    Pre-fix this exited 1 with GITHUB_OUTPUT untouched, so `send` was never set
+    and the Telegram step was skipped. The alarm must fire, not die.
+    """
+    rc, output = _run_cooldown(tmp_path, state_contents="")
+    assert rc == 0, f"cooldown gate died on an empty state file (rc={rc})"
+    assert "send=true" in output
+
+
+def test_guilt_cooldown_gate_fails_OPEN_on_unreadable_state(tmp_path):
+    """A rate limiter in front of an ALARM must fail open.
+
+    Suppressing is only safe when we positively know a recent alert went out.
+    Garbage state means we do not know, and the right answer to "not sure the
+    owner was told" is to tell them.
+    """
+    rc, output = _run_cooldown(tmp_path, state_contents="overdue:not-a-number\n")
+    assert rc == 0
+    assert "send=true" in output
+
+
+def test_innocence_cooldown_still_suppresses_a_recent_alert(tmp_path):
+    """Failing open must not degrade into never suppressing — it is still a
+    rate limiter, and a fresh alert inside the window stays suppressed."""
+    recent = int(time.time()) - 60
+    rc, output = _run_cooldown(tmp_path, state_contents=f"overdue:{recent}\n")
+    assert rc == 0
+    assert "send=false" in output
+
+
+def test_innocence_cooldown_re_alerts_once_the_window_has_passed(tmp_path):
+    """Past COOLDOWN_SECONDS (6h) a still-dead guardian must be re-reported."""
+    stale = int(time.time()) - 25200  # 7h
+    rc, output = _run_cooldown(tmp_path, state_contents=f"overdue:{stale}\n")
+    assert rc == 0
+    assert "send=true" in output
+
+
+def test_scar_pin_cooldown_capture_is_errexit_immune(tmp_path):
+    """Pin the SHAPE, not only the behaviour (scar W101).
+
+    The behavioural tests above would also pass if someone "fixed" this by
+    dropping `pipefail` — which would silently re-arm the same class of bug on
+    a different pipeline. What must hold is that the capture itself cannot
+    abort the step: the assignment carries its own `|| LAST=` fallback.
+    """
+    script = _extract_step_script(LIVENESS_WORKFLOW, "Cooldown gate")
+    capture = [ln for ln in script.splitlines() if ln.strip().startswith("LAST=$(")]
+    assert capture, "no LAST=$(...) capture found — did the step get rewritten?"
+    for line in capture:
+        assert "|| LAST=" in line, (
+            "bare command-substitution assignment under `bash -e` — this is the "
+            f"W101 shape that silenced the alarm for nine days: {line.strip()!r}"
+        )

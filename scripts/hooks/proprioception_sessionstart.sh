@@ -16,7 +16,9 @@
 set -o pipefail
 [[ "${PROPRIOCEPTION_RECEPTOR_ENABLED:-true}" == "false" ]] && exit 0
 
-REPORT="${HOME}/.nuzantara-proprioception/last.json"
+# PROPRIOCEPTION_REPORT_PATH: test-only override (scripts/tests/test_proprioception_receptor_ranking.sh).
+# Defaults identical to the always-live path — no production behavior change.
+REPORT="${PROPRIOCEPTION_REPORT_PATH:-${HOME}/.nuzantara-proprioception/last.json}"
 MAX_AGE_H="${PROPRIOCEPTION_MAX_AGE_H:-48}"
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
@@ -66,13 +68,41 @@ if not div:
         print(f"🧭 propriocezione: fresh ({age_h:.1f}h), all {n} probes reconciled{head_note}")
     sys.exit(0)
 print(f"🧭 PROPRIOCEZIONE: {len(div)} boundary divergence(s) ({len(unp)} unprobeable), report {age_h:.1f}h old{head_note}")
-for p in sorted(div, key=lambda x: x.get("severity", "P3"))[:4]:
+
+# #44 (2026-07-26): a report's per-item findings are snapshot assertions computed once at
+# {report_time}, not live facts — a home_fork_scripts DIVERGED was TRUE at snapshot time and
+# was cured 27 minutes later, well inside this receptor's own 48h "fresh" gate, and read as a
+# current fact by every session since. The number alone doesn't fix that: 4.6h reads as fresh
+# and gets acted on anyway. Every line now names itself as a claim to RE-DERIVE, not trust — a
+# reader who re-runs one sha256/git-status pays five seconds and cannot be wrong. That is
+# exactly what caught this incident.
+report_time = r.get("ts", "")[11:19] or "?"
+
+# a guardian's OWN cadence/self-freshness finding (probe id "guardian_freshness") is context
+# for every OTHER finding on this report, not a peer competing for the same print slots — the
+# severity-sort + hard [:4] cap could push it off-screen entirely behind enough P1s (W97: a
+# truncated list read downstream as complete). Exempt it from both: print first, unconditionally,
+# and only when it IS a finding — a fresh guardian emits none, so this stays silent rather than
+# becoming furniture nobody reads.
+self_finding = next((p for p in div if p.get("id") == "guardian_freshness"), None)
+other_div = [p for p in div if p is not self_finding]
+
+
+def _print_finding(p: dict) -> None:
     ev = p["evidence"][0] if p.get("evidence") else f"{p.get('n_findings', '?')} findings"
-    print(f"  !! [{p.get('severity')}] {p.get('id')}: {ev}")
+    print(f"  !! [{p.get('severity')}] {p.get('id')} (as of {report_time}, {age_h:.1f}h ago — re-verify before acting): {ev}")
     print(f"     fix: {p.get('fix_hint', '')}")
-more = len(div) - 4
-if more > 0:
-    print(f"  … +{more} more — cat ~/.nuzantara-proprioception/last.md")
+
+
+if self_finding is not None:
+    _print_finding(self_finding)
+ranked = sorted(other_div, key=lambda x: x.get("severity", "P3"))
+for p in ranked[:4]:
+    _print_finding(p)
+hidden = ranked[4:]
+if hidden:
+    hidden_ids = ", ".join(p.get("id", "?") for p in hidden)
+    print(f"  … +{len(hidden)} more ({hidden_ids}) — cat ~/.nuzantara-proprioception/last.md")
 PYEOF
 )"
 RC=$?
