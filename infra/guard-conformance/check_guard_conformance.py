@@ -282,6 +282,18 @@ def check_simple_surfaces(registry: dict[str, Any], wf_text: str) -> list[str]:
             elif not is_armed(t, wf_text):
                 violations.append(f"C4[guardrails] test {t} not reachable by any workflow")
 
+    dsk = registry["surfaces"].get("detect_secrets_content_keyed_rules")
+    if dsk:
+        if not (REPO_ROOT / dsk["source"]).exists():
+            violations.append(f"C1[detect-secrets-content-keyed] source missing: {dsk['source']}")
+        for t in dsk.get("tests", []):
+            if not (REPO_ROOT / t).exists():
+                violations.append(f"C3[detect-secrets-content-keyed] test file missing: {t}")
+            elif not is_armed(t, wf_text):
+                violations.append(
+                    f"C4[detect-secrets-content-keyed] test {t} not reachable by any workflow"
+                )
+
     for name, entry in registry["surfaces"].get("under_match_sentinels", {}).items():
         gate = entry.get("delegated_to", "")
         gate_path = REPO_ROOT / gate

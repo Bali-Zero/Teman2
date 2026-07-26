@@ -164,3 +164,17 @@ def test_drift_check_vs_canonical(lint, tmp_path):
     ]
     for s in test_strings:
         assert bool(lint.ROLLBACK_MARKER_RE.search(s)) == bool(canonical.search(s)), s
+
+
+def test_guilt_empty_migrations_dir_refuses_to_report_clean(lint, tmp_path, monkeypatch, capsys):
+    """An EXISTING but empty migrations dir must fail loud, not warn-and-pass.
+
+    cicatrix #4 / W84: "0 files traversed != clean". The missing-directory case
+    already exited 2; this closes the narrower sibling a partial/sparse checkout
+    produces — the directory is there, the .sql files are not.
+    """
+    monkeypatch.setattr(lint, "MIGRATIONS_DIR", tmp_path)
+    rc = lint.main()
+    captured = capsys.readouterr()
+    assert rc == 2, "a lint that read zero files must not report success"
+    assert "BLIND SCAN" in captured.err

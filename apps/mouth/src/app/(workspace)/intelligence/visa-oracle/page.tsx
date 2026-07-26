@@ -462,15 +462,16 @@ export default function VisaOraclePage() {
       <div
         className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
         style={{
-          borderColor: "rgba(255,255,255,0.07)",
+          borderColor: "var(--bz-border)",
           background: "rgba(255,255,255,0.01)",
         }}
       >
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
           style={{
-            background: "rgba(212,132,90,0.08)",
-            border: "1px solid rgba(212,132,90,0.15)",
+            background: "color-mix(in srgb, var(--bz-accent) 8%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--bz-accent) 15%, transparent)",
           }}
         >
           <Sparkles className="w-8 h-8" style={{ color: "var(--bz-accent)" }} />
@@ -494,7 +495,7 @@ export default function VisaOraclePage() {
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
           style={{
             color: "var(--bz-text-2)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid var(--bz-border)",
           }}
         >
           <RefreshCw className="w-3.5 h-3.5" /> Check Again
@@ -509,10 +510,10 @@ export default function VisaOraclePage() {
       <div
         className="flex items-center justify-between px-4 py-3 rounded-2xl border mb-2"
         style={{
-          background: "rgba(255,255,255,0.03)",
+          background: "rgba(35,35,40,0.65)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderColor: "rgba(255,255,255,0.07)",
+          borderColor: "var(--bz-border)",
         }}
       >
         <div className="flex items-center gap-4">
@@ -556,7 +557,7 @@ export default function VisaOraclePage() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.04]"
           style={{
             color: "var(--bz-text-2)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid var(--bz-border)",
           }}
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -568,10 +569,10 @@ export default function VisaOraclePage() {
       <div
         className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
         style={{
-          background: "rgba(255,255,255,0.03)",
+          background: "rgba(35,35,40,0.65)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderColor: "rgba(255,255,255,0.07)",
+          borderColor: "var(--bz-border)",
         }}
       >
         {/* Search input */}
@@ -587,8 +588,8 @@ export default function VisaOraclePage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              border: "1px solid var(--bz-border)",
               color: "var(--bz-text-1)",
             }}
           />
@@ -602,8 +603,8 @@ export default function VisaOraclePage() {
           <SelectTrigger
             className="w-[130px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
           >
@@ -628,8 +629,8 @@ export default function VisaOraclePage() {
           <SelectTrigger
             className="w-[140px] h-8 text-[11px] rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.07)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "var(--bz-border)",
               color: "var(--bz-text-2)",
             }}
           >
@@ -655,7 +656,7 @@ export default function VisaOraclePage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all hover:bg-white/[0.04]"
               style={{
                 color: "var(--bz-text-2)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid var(--bz-border)",
               }}
             >
               {selectedItems.size === filteredAndSortedItems.length ? (
@@ -673,9 +674,11 @@ export default function VisaOraclePage() {
               disabled={!!processing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
               style={{
-                background: "rgba(77,184,122,0.12)",
-                color: "var(--bz-green)",
-                border: "1px solid rgba(77,184,122,0.2)",
+                background:
+                  "color-mix(in srgb, var(--state-success) 12%, transparent)",
+                color: "var(--state-success)",
+                border:
+                  "1px solid color-mix(in srgb, var(--state-success) 20%, transparent)",
               }}
             >
               <Check className="w-3.5 h-3.5" /> Approve ({selectedItems.size})
@@ -685,9 +688,11 @@ export default function VisaOraclePage() {
               disabled={!!processing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
               style={{
-                background: "rgba(239,68,68,0.08)",
-                color: "rgba(239,68,68,0.8)",
-                border: "1px solid rgba(239,68,68,0.2)",
+                background:
+                  "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+                color: "var(--state-danger)",
+                border:
+                  "1px solid color-mix(in srgb, var(--state-danger) 20%, transparent)",
               }}
             >
               <X className="w-3.5 h-3.5" /> Reject ({selectedItems.size})
@@ -703,11 +708,11 @@ export default function VisaOraclePage() {
             key={item.id}
             className="rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg"
             style={{
-              background: "rgba(255,255,255,0.03)",
+              background: "rgba(35,35,40,0.65)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
-              borderColor: "rgba(255,255,255,0.07)",
-              borderLeft: `3px solid ${item.detection_type === "NEW" ? "rgba(212,132,90,0.8)" : "rgba(251,191,36,0.7)"}`,
+              borderColor: "var(--bz-border)",
+              borderLeft: `3px solid ${item.detection_type === "NEW" ? "color-mix(in srgb, var(--bz-accent) 80%, transparent)" : "color-mix(in srgb, var(--state-warning) 70%, transparent)"}`,
             }}
           >
             {/* Card header */}
@@ -739,14 +744,18 @@ export default function VisaOraclePage() {
                     style={
                       item.detection_type === "NEW"
                         ? {
-                            background: "rgba(212,132,90,0.12)",
+                            background:
+                              "color-mix(in srgb, var(--bz-accent) 12%, transparent)",
                             color: "var(--bz-accent)",
-                            border: "1px solid rgba(212,132,90,0.2)",
+                            border:
+                              "1px solid color-mix(in srgb, var(--bz-accent) 20%, transparent)",
                           }
                         : {
-                            background: "rgba(251,191,36,0.12)",
-                            color: "rgba(251,191,36,0.9)",
-                            border: "1px solid rgba(251,191,36,0.2)",
+                            background:
+                              "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+                            color: "var(--state-warning)",
+                            border:
+                              "1px solid color-mix(in srgb, var(--state-warning) 20%, transparent)",
                           }
                     }
                   >
@@ -785,7 +794,7 @@ export default function VisaOraclePage() {
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium transition-all hover:bg-white/[0.04]"
                   style={{
                     color: "var(--bz-text-2)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: "1px solid var(--bz-border)",
                   }}
                 >
                   Source <ExternalLink className="w-3 h-3" />
@@ -800,7 +809,7 @@ export default function VisaOraclePage() {
                   className="rounded-xl p-3"
                   style={{
                     background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    border: "1px solid var(--bz-border)",
                   }}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -835,7 +844,7 @@ export default function VisaOraclePage() {
             {/* Card footer */}
             <div
               className="flex items-center gap-2 px-4 py-3"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+              style={{ borderTop: "1px solid var(--bz-border)" }}
             >
               <button
                 onClick={() => handlePreview(item.id, item.type)}
@@ -851,9 +860,11 @@ export default function VisaOraclePage() {
                 disabled={!!processing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all"
                 style={{
-                  color: "rgba(239,68,68,0.8)",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                  background: "rgba(239,68,68,0.05)",
+                  color: "var(--state-danger)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--state-danger) 20%, transparent)",
+                  background:
+                    "color-mix(in srgb, var(--state-danger) 5%, transparent)",
                 }}
               >
                 <X className="w-3.5 h-3.5" /> Reject
@@ -863,9 +874,11 @@ export default function VisaOraclePage() {
                 disabled={!!processing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
                 style={{
-                  background: "rgba(77,184,122,0.15)",
-                  color: "var(--bz-green)",
-                  border: "1px solid rgba(77,184,122,0.25)",
+                  background:
+                    "color-mix(in srgb, var(--state-success) 15%, transparent)",
+                  color: "var(--state-success)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--state-success) 25%, transparent)",
                 }}
               >
                 {processing === item.id ? (

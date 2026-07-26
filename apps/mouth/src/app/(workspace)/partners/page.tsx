@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Handshake,
   Search,
-  Filter,
   Plus,
   Loader2,
   AlertCircle,
@@ -19,42 +18,80 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { Money } from "@balizero/core";
 import * as partnersApi from "@/lib/api/partners/partners";
 import type { Partner, PartnerFilters } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
-// Status badge styles — CRIT-8: aligned to backend PartnerStatus enum
-const STATUS_STYLES: Record<
-  string,
-  { bg: string; text: string; label: string }
-> = {
-  pending_approval: {
-    bg: "bg-amber-500/20",
-    text: "text-amber-400",
-    label: "Pending Approval",
-  },
-  active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
-  inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
+/** Dashboard panel recipe — mirrors the operative-dark kita surfaces. */
+const PANEL: React.CSSProperties = {
+  background: "rgba(35,35,40,0.65)",
+  borderColor: "var(--bz-border)",
 };
 
-const TIER_STYLES: Record<string, { bg: string; text: string }> = {
-  bronze: { bg: "bg-orange-900/30", text: "text-orange-400" },
-  silver: { bg: "bg-zinc-700/50", text: "text-zinc-300" },
-  gold: { bg: "bg-yellow-900/30", text: "text-yellow-400" },
-  platinum: { bg: "bg-blue-900/30", text: "text-blue-300" },
+/** Form controls on the panel surface. */
+const INPUT_STYLE: React.CSSProperties = {
+  background: "var(--bz-surface)",
+  borderColor: "var(--bz-border)",
+  color: "var(--bz-text-1)",
+};
+
+/** Inline danger strip (load error). */
+const DANGER_STRIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+  borderColor: "color-mix(in srgb, var(--state-danger) 30%, transparent)",
+  color: "var(--state-danger)",
+};
+
+/** State-tinted chip: 12% tint fill, 30% rim, state ink (portal idiom). */
+function stateChip(state: string): React.CSSProperties {
+  return {
+    background: `color-mix(in srgb, ${state} 12%, transparent)`,
+    color: state,
+    borderColor: `color-mix(in srgb, ${state} 30%, transparent)`,
+  };
+}
+
+/** Neutral chip for closed/inert statuses. */
+const NEUTRAL_CHIP: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--bz-text-pure) 6%, transparent)",
+  color: "var(--bz-text-2)",
+  borderColor: "var(--bz-border)",
+};
+
+// Status badge styles — CRIT-8: aligned to backend PartnerStatus enum.
+// Honestly mapped: pending_approval -> warning, active -> success,
+// inactive -> neutral.
+const STATUS_STYLES: Record<
+  string,
+  { style: React.CSSProperties; label: string }
+> = {
+  pending_approval: {
+    style: stateChip("var(--state-warning)"),
+    label: "Pending Approval",
+  },
+  active: { style: stateChip("var(--state-success)"), label: "Active" },
+  inactive: { style: NEUTRAL_CHIP, label: "Inactive" },
+};
+
+// Commission-tier identity chips (identity hues, not statuses):
+// bronze -> copper accent, silver -> neutral, gold -> muted editorial gold,
+// platinum -> editorial blue.
+const TIER_STYLES: Record<string, React.CSSProperties> = {
+  bronze: stateChip("var(--bz-accent)"),
+  silver: NEUTRAL_CHIP,
+  gold: stateChip("var(--accent-gold-muted)"),
+  platinum: stateChip("var(--accent-blue-editorial)"),
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] || {
-    bg: "bg-gray-500/20",
-    text: "text-gray-400",
-    label: status,
-  };
+  const entry = STATUS_STYLES[status] || { style: NEUTRAL_CHIP, label: status };
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${style.bg} ${style.text}`}
+      className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium"
+      style={entry.style}
     >
-      {style.label || status}
+      {entry.label || status}
     </span>
   );
 }
@@ -68,13 +105,11 @@ function formatCommission(value: number | string): string {
 }
 
 function TierBadge({ tier }: { tier: string }) {
-  const style = TIER_STYLES[tier] || {
-    bg: "bg-gray-500/20",
-    text: "text-gray-400",
-  };
+  const style = TIER_STYLES[tier] || NEUTRAL_CHIP;
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${style.bg} ${style.text}`}
+      className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium capitalize"
+      style={style}
     >
       {tier}
     </span>
@@ -190,22 +225,25 @@ export default function PartnersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-500/10">
-            <Handshake size={24} className="text-amber-400" />
+          <div className="p-2 rounded-lg bg-[var(--bz-accent-subtle)]">
+            <Handshake size={24} className="text-[var(--bz-accent)]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100">Partners</h1>
-            <p className="text-sm text-zinc-400">
+            <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+              Partners
+            </h1>
+            <p className="text-sm text-[var(--bz-text-2)]">
               {total} partner{total !== 1 ? "s" : ""} total
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Variant defaults are already token-driven (outline = --border,
+              default = copper --accent) — no per-button color overrides. */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => router.push("/partners/orphaned")}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
           >
             Orphaned
           </Button>
@@ -213,15 +251,10 @@ export default function PartnersPage() {
             variant="outline"
             size="sm"
             onClick={() => router.push("/partners/finance")}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
           >
             Finance Queue
           </Button>
-          <Button
-            onClick={() => router.push("/partners/new")}
-            size="sm"
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-          >
+          <Button onClick={() => router.push("/partners/new")} size="sm">
             <Plus size={16} className="mr-1" />
             New Partner
           </Button>
@@ -229,21 +262,22 @@ export default function PartnersPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+      <div className="border rounded-xl p-4" style={PANEL}>
         <div className="flex flex-wrap gap-3">
           {/* Search */}
           <form onSubmit={handleSearch} className="flex-1 min-w-48">
             <div className="relative">
               <Search
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--bz-text-3)]"
               />
               <input
                 type="text"
                 placeholder="Search name, email..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm placeholder:text-[var(--bz-text-3)] focus:outline-none focus:border-[var(--bz-accent)]"
+                style={INPUT_STYLE}
               />
             </div>
           </form>
@@ -252,7 +286,8 @@ export default function PartnersPage() {
           <select
             value={filters.status || ""}
             onChange={(e) => handleFilterChange("status", e.target.value)}
-            className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+            style={INPUT_STYLE}
           >
             <option value="">All statuses</option>
             {/* CRIT-8: aligned to backend PartnerStatus enum */}
@@ -265,7 +300,8 @@ export default function PartnersPage() {
           <select
             value={filters.assigned_to || ""}
             onChange={(e) => handleFilterChange("assigned_to", e.target.value)}
-            className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[var(--bz-accent)]"
+            style={INPUT_STYLE}
           >
             <option value="">All assignees</option>
             <option value="__orphaned__">Unassigned</option>
@@ -277,14 +313,19 @@ export default function PartnersPage() {
           </select>
 
           {/* Orphaned filter */}
-          <label className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg cursor-pointer">
+          <label
+            className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer"
+            style={INPUT_STYLE}
+          >
             <input
               type="checkbox"
               checked={!!filters.orphaned}
               onChange={(e) => handleFilterChange("orphaned", e.target.checked)}
-              className="rounded border-zinc-600 text-amber-500"
+              className="rounded border-[var(--bz-border-hover)] text-[var(--bz-accent)]"
             />
-            <span className="text-sm text-zinc-300">Orphaned only</span>
+            <span className="text-sm text-[var(--bz-text-1)]">
+              Orphaned only
+            </span>
           </label>
 
           {hasActiveFilters && (
@@ -292,7 +333,7 @@ export default function PartnersPage() {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-zinc-400 hover:text-zinc-200"
+              className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
             >
               <X size={14} className="mr-1" />
               Clear
@@ -303,7 +344,7 @@ export default function PartnersPage() {
             variant="ghost"
             size="sm"
             onClick={() => loadPartners(filters)}
-            className="text-zinc-400 hover:text-zinc-200"
+            className="text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
           >
             <RefreshCw size={14} />
           </Button>
@@ -313,72 +354,70 @@ export default function PartnersPage() {
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 size={32} className="animate-spin text-amber-400" />
+          <Loader2 size={32} className="animate-spin text-[var(--bz-accent)]" />
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+        <div
+          className="flex items-center gap-3 p-4 border rounded-xl"
+          style={DANGER_STRIP}
+        >
           <AlertCircle size={20} />
           <span>{error}</span>
         </div>
       ) : partners.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <Handshake size={48} className="text-zinc-600" />
-          <p className="text-zinc-400">No partners found</p>
+          <Handshake size={48} className="text-[var(--bz-text-3)]" />
+          <p className="text-[var(--bz-text-2)]">No partners found</p>
           {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="border-zinc-700 text-zinc-300"
-            >
+            <Button variant="outline" size="sm" onClick={clearFilters}>
               Clear filters
             </Button>
           )}
         </div>
       ) : (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="border rounded-xl overflow-hidden" style={PANEL}>
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-900/50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+              <tr className="border-b border-[var(--bz-border)]">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider">
                   Partner
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider hidden md:table-cell">
                   Contact
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider">
                   Status
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider hidden lg:table-cell">
                   Tier
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider hidden lg:table-cell">
                   Assigned To
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--bz-text-3)] uppercase tracking-wider hidden md:table-cell">
                   Referrals
                 </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-[var(--bz-border)]">
               {partners.map((partner) => (
                 <tr
                   key={partner.id}
                   onClick={() => router.push(`/partners/${partner.id}`)}
-                  className="hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                  className="hover:bg-[var(--bz-glass-rim)] cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                        <User size={14} className="text-amber-400" />
+                      <div className="w-8 h-8 rounded-full bg-[var(--bz-accent-muted)] flex items-center justify-center flex-shrink-0">
+                        <User size={14} className="text-[var(--bz-accent)]" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-zinc-100">
+                        <div className="text-sm font-medium text-[var(--bz-text-1)]">
                           {partner.full_name}
                         </div>
                         {partner.company_name && (
-                          <div className="text-xs text-zinc-500">
+                          <div className="text-xs text-[var(--bz-text-3)]">
                             {partner.company_name}
                           </div>
                         )}
@@ -387,12 +426,12 @@ export default function PartnersPage() {
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--bz-text-2)]">
                         <Mail size={12} />
                         <span>{partner.email}</span>
                       </div>
                       {partner.phone && (
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--bz-text-3)]">
                           <Phone size={12} />
                           <span>{partner.phone}</span>
                         </div>
@@ -407,28 +446,41 @@ export default function PartnersPage() {
                     {partner.commission_tier ? (
                       <TierBadge tier={partner.commission_tier} />
                     ) : (
-                      <span className="text-xs text-zinc-600 italic">
+                      <span className="text-xs text-[var(--bz-text-3)] italic">
                         {partner.default_commission_type &&
-                        partner.default_commission_value != null
-                          ? `${formatCommission(partner.default_commission_value)} ${partner.default_commission_type === "percentage" ? "%" : "IDR"}`
-                          : "—"}
+                        partner.default_commission_value != null ? (
+                          partner.default_commission_type === "percentage" ? (
+                            `${formatCommission(partner.default_commission_value)} %`
+                          ) : (
+                            <Money
+                              value={Number(partner.default_commission_value)}
+                            />
+                          )
+                        ) : (
+                          "—"
+                        )}
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-sm text-zinc-400">
+                    <span className="text-sm text-[var(--bz-text-2)]">
                       {partner.assigned_to || (
-                        <span className="text-zinc-600 italic">Unassigned</span>
+                        <span className="text-[var(--bz-text-3)] italic">
+                          Unassigned
+                        </span>
                       )}
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-sm text-zinc-400">
+                    <span className="text-sm text-[var(--bz-text-2)]">
                       {partner.referral_count ?? 0}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <ChevronRight size={16} className="text-zinc-600 ml-auto" />
+                    <ChevronRight
+                      size={16}
+                      className="text-[var(--bz-text-3)] ml-auto"
+                    />
                   </td>
                 </tr>
               ))}
@@ -437,8 +489,8 @@ export default function PartnersPage() {
 
           {/* Pagination */}
           {total > 50 && (
-            <div className="px-4 py-3 border-t border-zinc-800 flex items-center justify-between">
-              <span className="text-sm text-zinc-500">
+            <div className="px-4 py-3 border-t border-[var(--bz-border)] flex items-center justify-between">
+              <span className="text-sm text-[var(--bz-text-3)]">
                 Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} of{" "}
                 {total}
               </span>
@@ -452,7 +504,6 @@ export default function PartnersPage() {
                     setPage(newPage);
                     setFilters((prev) => ({ ...prev, page: newPage }));
                   }}
-                  className="border-zinc-700 text-zinc-300"
                 >
                   Previous
                 </Button>
@@ -465,7 +516,6 @@ export default function PartnersPage() {
                     setPage(newPage);
                     setFilters((prev) => ({ ...prev, page: newPage }));
                   }}
-                  className="border-zinc-700 text-zinc-300"
                 >
                   Next
                 </Button>

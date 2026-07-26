@@ -39,6 +39,7 @@ GATEWAY_ALLOWLIST = {
     "scripts/tg_digest_flush.py",  # its flusher
     "scripts/lint_tg_direct_senders.py",  # this lint (pattern is its constant)
     "scripts/tests/test_tg_gateway.py",   # the gateway's own test fixtures
+    "scripts/tests/test_agent_job_telegram_gateway.py",  # asserts the string's ABSENCE
 }
 
 
