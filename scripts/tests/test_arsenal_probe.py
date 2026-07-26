@@ -106,6 +106,7 @@ def test_quota_strings_classify_quota_dead():
         "429 too many requests",
         "rate limit exceeded",
         "quota exhausted",
+        "You've hit your weekly limit · resets 9am (Asia/Makassar)",
     ]:
         assert (
             ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.QUOTA_DEAD
@@ -122,6 +123,13 @@ def test_quota_dead_never_matches_401_evidence():
 
 def test_unrecognized_evidence_classifies_unknown_err():
     ev = "connection reset by peer, no idea why"
+    assert ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.UNKNOWN_ERR
+
+
+def test_weekly_word_alone_does_not_classify_quota_dead():
+    # innocence: "weekly" in an unrelated sentence must not fall through to
+    # quota-dead — only the "weekly limit" phrase (the real claude CLI wording) does.
+    ev = "weekly digest job completed successfully"
     assert ap.classify_generic(ev, live_signal=False, seat="claude", ssh_context=False) == ap.UNKNOWN_ERR
 
 
