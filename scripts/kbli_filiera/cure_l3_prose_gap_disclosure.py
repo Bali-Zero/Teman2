@@ -169,7 +169,20 @@ def sentence_for(basis: str) -> str:
 
 
 def sentence_sha(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    """`sha256:<hex>` — the prefix is load-bearing, not decoration.
+
+    A bare hex run in a committed data file reads as a "Hex High Entropy String" to
+    detect-secrets, and `Detect Secrets` is a REQUIRED check. Measured: of the 39 gold
+    markers this cure writes, exactly 3 scored above the entropy threshold and blocked
+    the PR — so WHICH ones trip is effectively a dice roll re-rolled on every run, and
+    the next wave would trip a different subset. `update_sidecar` below already writes
+    `f"sha256:{digest}"` for the same reason (`kbli-dataset-version.test.ts`: "the
+    `sha256:` prefix keeps secret scanners from flagging the bare hex"); this cure had
+    inherited that convention for the field it copied and missed it for the field it
+    invented. Prefixing fixes it at the source instead of widening the scanner's
+    auto-approve allowlist over a whole data file.
+    """
+    return f"sha256:{hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]}"
 
 
 def build_marker(basis: str, text: str) -> dict[str, Any]:

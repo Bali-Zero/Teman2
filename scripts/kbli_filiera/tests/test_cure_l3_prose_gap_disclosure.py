@@ -98,7 +98,7 @@ def test_reword_replaces_an_earlier_wording_instead_of_stacking():
     old = "\n\n**Risk tier under review.** Some older wording that the gate rejected."
     rec = _record("55555", prose="Body text." + old,
                   marker={"spec": cure.SPEC_ID, "basis": "disputed_key",
-                          "applied_on": "2026-07-26", "sentence_sha256": "deadbeefdeadbeef"})
+                          "applied_on": "2026-07-26", "sentence_sha256": "sha256:deadbeefdeadbeef"})
     plans, stats = _plan([rec])
     assert stats["canonical_reword"] == 1
     cure.apply_plan(plans)
@@ -149,7 +149,7 @@ def test_a_body_hand_touched_after_the_append_is_reported_not_reshaped():
             "\n\nA human added this paragraph afterwards.")
     rec = _record("88888", prose=body,
                   marker={"spec": cure.SPEC_ID, "basis": "disputed_key",
-                          "applied_on": "2026-07-26", "sentence_sha256": "deadbeefdeadbeef"})
+                          "applied_on": "2026-07-26", "sentence_sha256": "sha256:deadbeefdeadbeef"})
     plans, stats = _plan([rec])
     assert stats["canonical_wording_drift_unanchored"] == 1
     cure.apply_plan(plans)
