@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { e2eEmail, e2ePin } from "../support/credentials";
 
 /**
  * E2E Tests for Knowledge Base Main Page
@@ -11,7 +12,7 @@ test.describe("Knowledge Base Main Page", () => {
   test.beforeEach(async ({ page }) => {
     const mockUser = {
       id: "1",
-      email: "zero@balizero.com",
+      email: e2eEmail(),
       name: "Zero User",
       role: "user",
     };
@@ -121,8 +122,8 @@ test.describe("Knowledge Base Main Page", () => {
 
     // Login first
     await page.goto("/login");
-    await page.fill('input[name="email"]', "zero@balizero.com");
-    await page.fill('input[name="pin"]', "010719");
+    await page.fill('input[name="email"]', e2eEmail());
+    await page.fill('input[name="pin"]', e2ePin());
     await page.click('button[type="submit"]');
 
     // Wait for navigation - could be /chat or /dashboard

@@ -26,7 +26,81 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-26 — keep current)
+## 1. LIVE STATE (last update 2026-07-27 — keep current)
+
+**L2.10 — THE BLOCK-CAUSE WAS A CONSTANT ON SIX RENDER SITES (2026-07-27; four cured by
+#3262, the last two by #3275 — the "FOUR" this section first claimed was itself the defect,
+see the METHOD NOTE).** Every Bali-blocked page names WHY it is blocked.
+The dataset carries **six** distinct blocking statuses (372 `BLOCCATO_CLASSE_RISCHIO` · 68
+`TERTUTUP` · 39 `CHIUSO_PMA_NO_BESAR` · 35 `CHIUSO_MORATORIA_BALI` · 2
+`CHIUSO_REGOLATORE_SETTORIALE` · 1 `CHIUSO_BALI` · 1 `CHIUSO_BALI_PROPOSTO`), and **not one
+render site read the status.** Cured by one total function, `apps/mouth/src/lib/kbli-bali-block.ts`:
+
+| Site                                                                | What it asserted for EVERY blocked code                        | Wrong on                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `page.tsx` PMA verdict banner (above the fold, 456 pages)           | "reserved for MSMEs"                                           | **417**                                                                                                                                                                                                                    |
+| `LicensingSection` national-vs-Bali frame (gold layout)             | "under the 13 May 2026 moratorium"                             | **72** (58 of them next to a spliced reason ending `→ not blocked by moratorium` — the cause and its denial in one sentence)                                                                                               |
+| `rewritePmaLineForBali()`                                           | "(reserved UMKM / moratorium)" — two causes at once            | now **cause-free**: it never receives the status, so it asserts nothing                                                                                                                                                    |
+| `page.tsx` assistant opening line                                   | "(reserved UMKM / 2026 moratorium)"                            | seeds the CHAT context → a wrong cause here becomes a wrong cause in the answer                                                                                                                                            |
+| `kbli-faq.ts` — visible FAQ **and `FAQPage` JSON-LD** (455 answers) | "(reserved for UMKM / 2026 moratorium)"                        | **416** — and this is the copy that LEAVES the site, ingested by search engines. It also spliced `l4_bali.reason` with no `shouldShowReason` gate, so `69104` served Italian into the structured data                      |
+| `KBLIProvenancePanel` "Sources & Verification" row                  | `moratorium.rule` as the SOURCE + "derived from the risk tier" | **111** — and `moratorium.rule` is **one identical string on all 1,559 records**, so it can never explain a per-code verdict. Verified on prod: `/kbli/38122` (sector regulator) and `/kbli/11010` (ownership restriction) |
+
+Also cured: Italian reaching client pages (`69104` served _"Notaio/PPAT è ufficio personale e
+statale … PMA impossibile"_; marker list **validated against all 518 blocked reasons**, flags
+exactly 2 — the first draft included `solo` and would have eaten `86201`/`86202`'s English
+"cannot open a **solo** practice"); a proposed closure stated as in force (`79110`, travel
+agency); and **8** zero-row pages that walk a client through a licensing route the same page
+declares to have "No verified basis" (`72101`, `75001`, `75002`, `75009`, `86109`, `86202`,
+`86203`, `91222`).
+
+> **METHOD NOTE, worth more than the fix.** Sites 1, 3 and 4 were found only because the
+> PROVE-LIVE probe was run **before** the merge and its CONTROL came back silent: `01192`
+> (`BLOCCATO_CLASSE_RISCHIO`) rendered no licensing frame at all — because it has no gold entry
+> and takes a different layout. Chasing the control's silence, not the fix's success, exposed
+> 417 pages. A control that cannot see what it certifies is worth nothing; **an empty probe
+> accuses the selector.** (The probe itself lied twice first: a literal anchor that could never
+> match because tag-stripping turns `Bali</strong>,` into `Bali ,`.)
+>
+> **SECOND METHOD NOTE — the count above was WRONG when first written, and how it was wrong is
+> the reusable part.** This section originally said FOUR sites. There were six. Sites 5 and 6
+> were found hours later, while chasing an unrelated residual, because the sweep had enumerated
+> by **grepping the wording of the site already known** — which finds surfaces that phrase the
+> defect the same way and is structurally blind to one that phrases it differently. The
+> enumeration was over a FORM, not over the ENTITY "asserts why Bali blocks this code".
+> Re-running it by entity (every consumer of `baliL4`/`l4_bali` that emits prose) found both and
+> also CLEARED the rest — `KBLIStructuredData` and the OG-image chip are cause-free, verified
+> not assumed. Two corollaries paid for in this lot: (a) a surface that **documents itself as
+> mirroring another** (`kbli-faq.ts`'s header says its facts come "from … the PMA verdict
+> banner") is a site that a cure to that other one BREAKS — curing one put two copies of the
+> same claim in contradiction on one page; (b) a field cited as a per-code basis must be checked
+> for **distinct-value count** — one value on every record is a layer annotation, never
+> evidence, and the give-away is a fallback branch that can never fire.
+>
+> **A SEVENTH copy exists and is DORMANT** — `apps/kbli-navigator/app/kbli/[code]/page.tsx`
+> carries the same sentence verbatim. Deliberately not cured, verified three ways:
+> `/kbli-navigator/*` **308**s to `/kbli/*`, its own alias `kbli-navigator-rebuild.vercel.app`
+> **404**s, and no workflow deploys it. Declared rather than silently skipped — if it is ever
+> revived it starts out wrong.
+
+**RESIDUALS — recorded, NOT built (per Zero 2026-07-25: findings + options into the corner, no
+blocking question):**
+
+- **4 codes claim openness while `pma_status=TERTUTUP`** — `59111`, `59121`, `86101`, `91221`.
+  Needs per-code adjudication; for the two film codes the vintage-2020 `pma_status` may itself
+  be the wrong side of the contradiction. **AWAITS ZERO** (Legge 5 — it is a verdict change).
+- **Italian still in the DATA** (`l4_bali.reason` for `69104`, `79110`). Suppression now covers
+  all three render sites that splice the reason (licensing frame, banner, and — as of #3275 —
+  the FAQ and its JSON-LD), so no client sees it, but the field is still wrong at the source: a
+  data-plane repair for a `scripts/kbli_filiera/` compiler, not a frontend one. Note the shape:
+  the FAQ had to be found and fixed SEPARATELY even though the gate (`shouldShowReason`) already
+  existed — a guard is only applied where someone applied it.
+- **`49213`'s canonical prose declares a gap that was resolved 2026-07-18**, and canonical is
+  what feeds WhatsApp/RAG, where **no frame exists**. The frontend cure does not reach that
+  surface (consumer-map rule).
+- **`apps/mouth` is not on the pre-push allowlist** (`scripts/prepush_classify.py`, 9 entries,
+  zero mention of `apps/mouth`), so every frontend PR runs the full ~40-min backend suite and,
+  under fleet contention, gets SIGTERM'd mid-push. Innocence already measured: no backend test
+  reads a frontend file. Guard change → auto-merge OFF. No lane owns it.
 
 **L2 EDITORIAL-HONESTY SWEEP — 2026-07-26. The claims were cured by W1; this lane cures the
 LANGUAGE the claims are written in.** Four lots, all driven by `scripts/kbli_filiera/` compilers
