@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { e2eEmail, e2ePin } from "../support/credentials";
 
 /**
  * Direct Memory Test - Tests conversation save/retrieve directly via API
@@ -9,8 +10,8 @@ import { test, expect, Page } from "@playwright/test";
  */
 
 const TEST_CONFIG = {
-  email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
-  pin: process.env.E2E_TEST_PIN || "010719",
+  email: e2eEmail(),
+  pin: e2ePin(),
   baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com",
   apiUrl: process.env.NUZANTARA_API_URL || "https://nuzantara-rag.fly.dev",
   responseTimeout: 60000,
