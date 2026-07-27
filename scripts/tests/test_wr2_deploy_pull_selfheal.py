@@ -244,3 +244,68 @@ def test_present_deploy_dir_skips_bootstrap_entirely(tmp_path):
     log = _log_text(home)
     assert "bootstrapped deploy CLONE" not in log
     assert "github.com" not in log
+
+
+# ── C2 kickstart list: who gets woken on new code ────────────────────────
+#
+# Added 2026-07-27. The block's own comment names the disease it cures — a
+# long-running daemon "keeps executing the pre-pull code forever" — and the
+# list it iterated covered only the two WR2 daemons. Measured live on Pro:
+# four processes execute from the deploy tree; wr3_supervisor.py had been
+# running since 23 July on pre-pull code while the tree advanced hourly.
+# A list is a place where a member can go missing silently, so it gets a test.
+
+
+def _fake_launchctl(home: Path) -> tuple[Path, dict]:
+    """A launchctl on PATH that records its argv instead of touching launchd."""
+    bindir = home / "fakebin"
+    bindir.mkdir(parents=True, exist_ok=True)
+    calls = home / "launchctl.calls"
+    (bindir / "launchctl").write_text(
+        f'#!/bin/sh\necho "$@" >> {calls}\nexit 0\n', encoding="utf-8"
+    )
+    (bindir / "launchctl").chmod(0o755)
+    return bindir, {"calls": calls}
+
+
+def test_kickstart_wakes_the_wr3_supervisor_too(tmp_path):
+    home, src, origin, deploy = _setup_deploy_world(tmp_path)
+    _advance_remote(src, origin)
+    bindir, rec = _fake_launchctl(home)
+    _run_pull(
+        home,
+        origin,
+        deploy,
+        extra_env={
+            "WR2_DEPLOY_PULL_KICKSTART": "1",
+            # The wrapper rebuilds PATH itself (line ~72) and honours only this
+            # prefix seam — overriding PATH from the env is silently discarded,
+            # which is how the first draft of this test called the REAL
+            # launchctl. On Pro that would have restarted the live supervisors:
+            # a test writing production state (W96), from a test about deploys.
+            "WR2_DEPLOY_PULL_TEST_PATH_PREFIX": str(bindir),
+        },
+    )
+    calls = rec["calls"].read_text(encoding="utf-8") if rec["calls"].exists() else ""
+    assert "com.balizero.wr3.supervisor" in calls, (
+        "the WR3 supervisor is a long-running daemon off this same tree; "
+        f"kickstart calls were: {calls!r}"
+    )
+    # -k, not a plain kickstart: without it the process keeps its old modules.
+    assert "-k gui/" in calls
+    # innocence: the WR2 pair it joined must still be woken.
+    assert "com.balizero.wr2.supervisor" in calls
+
+
+def test_no_daemon_is_woken_when_the_flag_is_off(tmp_path):
+    """Innocence: the whole block stays opt-in, exactly as before."""
+    home, src, origin, deploy = _setup_deploy_world(tmp_path)
+    _advance_remote(src, origin)
+    bindir, rec = _fake_launchctl(home)
+    _run_pull(
+        home,
+        origin,
+        deploy,
+        extra_env={"WR2_DEPLOY_PULL_TEST_PATH_PREFIX": str(bindir)},
+    )
+    assert not rec["calls"].exists(), "kickstart ran with WR2_DEPLOY_PULL_KICKSTART unset"
