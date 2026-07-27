@@ -1162,6 +1162,21 @@ def test_innocence_real_v6_replay_flips_skip() -> None:
         assert unknown == []
 
 
+def test_innocence_both_v6_entries_in_one_diff_skip() -> None:
+    """COMPOSITION, not just each entry alone.
+
+    Ported from the stranded `99-allowlist-v6-gitignore-homefork` branch,
+    which reached the same two-entry design independently — this was the one
+    case its corpus had that the replay-driven corpus here did not. W94's
+    lesson: a corpus that tests each rule in isolation misses the shape where
+    two of them have to agree, and commit 2b5d2b915e is exactly that shape
+    (both entries in one diff).
+    """
+    verdict, unknown = pc.classify([".gitignore", "infra/home-fork/declared-pairs.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
 def test_guilt_nested_gitignore_under_backend_forces_full() -> None:
     """THE load-bearing guilt test for v6.
 
