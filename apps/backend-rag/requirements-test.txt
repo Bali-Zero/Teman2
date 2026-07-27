@@ -5,6 +5,29 @@
 testcontainers[postgres]>=4.0.0
 testcontainers[compose]>=4.0.0
 
+# Test-runtime deps that CI installs INLINE in .github/workflows/tests.yml
+# ("uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock
+# fakeredis"). Declared here because an inline workflow list is not a manifest:
+# nothing in the repo said the suite needs them, so no machine could rebuild
+# CI's test environment from the tree. Measured consequence (2026-07-27): Mini's
+# venv had no `fakeredis`, two test files ERRORed at collection, and the pre-push
+# gate rejected two branches that never touch them — a red owned by the machine,
+# not the diff. `scripts/tests/test_test_deps_declared.py` pins the two lists
+# together so they cannot drift again.
+pytest
+pytest-cov
+pytest-asyncio
+fakeredis
+# DO NOT add `fastmcp` here. An earlier draft of this file did, because the
+# sync-checker below originally scanned ALL of tests.yml and picked it up from
+# the separate `mcp-tests` job. It does not belong to backend-rag: it lives in
+# apps/nuzantara-mcp/ with its own venv, and requirements.txt removed it on
+# 2026-05-03 specifically to close 8 Dependabot alerts (1 critical + 4 high +
+# 3 medium — SSRF/path-traversal GHSA-vv7q-7jx5-f767, OAuth confused-deputy
+# GHSA-rww4-4w9c-7733/GHSA-c2jp-c369-7pvx, token reuse). Re-declaring it here
+# would drag all of that back into the backend test environment. Caught by
+# adversarial review before merge; the checker is now scoped to one job.
+
 # Additional test utilities
 pytest-mock>=3.15.1
 pytest-timeout>=2.4.0  # For timeout support (install separately if needed)
