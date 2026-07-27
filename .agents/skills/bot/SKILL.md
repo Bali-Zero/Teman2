@@ -98,7 +98,30 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   generation and does NOT consult `WA_INBOX_BOT_AUTOREPLY`, so a client can already have been
   told "checking on this…"; dropping it leaves that promise in permanent silence.
 
-  #31's remaining half is the sendable refusal, blocked on the abstain flag/text divergence.
+  **#31's remaining half is NOT an engineering blocker — it is a Legge-5 call for Zero.** An
+  earlier version of this bullet claimed the WhatsApp path could not send on abstain because
+  `abstain=True` might carry a full un-vetted answer. **That was wrong, and the repo says so in
+  plain text.** `test_abstain_threshold_convergence.py` documents the exact case above its own
+  fixture: _"KBLI query, score in (flat 0.15, kbli 0.20): generation gate PASSES, label gate
+  ABSTAINS. **Generated answer carrying an abstain=True flag.**"_ It is the CONTRACT, not a
+  divergence to repair: GENERATION decides whether to PRODUCE advice, LABEL only MARKS
+  confidence, and reasoning.py treats 0.15-0.50 as moderate evidence and deliberately writes a
+  cautious answer with a warning note. A fix built on the wrong premise was written, tested green
+  and DISCARDED after an adversarial seat returned DO-NOT-SHIP 7/7 (it would have turned the
+  label gate into a second generation gate on the sync path only, and — because the language
+  detector covers 8+ languages while the stub covers 3 — would have answered a Spanish question
+  with an English refusal).
+
+  So on abstain the bot is discarding content that is legitimate either way (a localized stub
+  below 0.15, a cautious answer above it). The open question is a product one:
+  **should the bot send a LOW-CONFIDENCE answer with a caution note on immigration/tax/company
+  questions, or keep today's silence?** Today's silence is not a decision — it is the `raise`,
+  written when abstain was assumed to mean "no content". Measurement that sizes the stakes:
+  abstain has fired ZERO times on WhatsApp in the entire recorded history.
+
+  **Do not "fix" the gates to make this easier.** §Established truth #4 already says the abstain
+  gates are the product; the divergence is panel-ruled (CLAUDE.md §9) and tidying it via the
+  answer TEXT is the same violation as tidying it via the numbers.
   There is also NO
   human-notification path anywhere (grepped worker + generator for telegram/alert/notify/
   escalate/CRM-assign), and the `apology_sent_at`/`ack_sent_at` code from migration 260 is armed
