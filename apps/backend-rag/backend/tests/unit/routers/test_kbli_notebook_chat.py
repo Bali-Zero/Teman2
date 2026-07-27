@@ -433,7 +433,13 @@ def test_known_kbli_codes_structure():
     from backend.app.routers.kbli_notebook_chat import KNOWN_KBLI_CODES
 
     assert isinstance(KNOWN_KBLI_CODES, dict)
-    assert "47911" in KNOWN_KBLI_CODES
+    # 47901, not 47911: this assertion is a structural sample (a code the dict
+    # holds), not a claim that any particular code belongs here. 47911 was a
+    # KBLI 2020 code, retired in 2025 and absent from the catalogue; whether a
+    # code is legitimate is asserted by
+    # test_kbli_hardcoded_fallback_matches_catalogue.py, which checks the whole
+    # dict against canonical instead of sampling it.
+    assert "47901" in KNOWN_KBLI_CODES
     assert "56301" in KNOWN_KBLI_CODES
     for _, data in KNOWN_KBLI_CODES.items():
         assert "title" in data

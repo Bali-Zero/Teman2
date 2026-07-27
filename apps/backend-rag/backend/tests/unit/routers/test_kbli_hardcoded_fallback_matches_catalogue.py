@@ -105,6 +105,41 @@ def test_every_keyword_target_is_a_real_code(catalogue: dict[str, dict]) -> None
     assert unknown == [], f"keyword map aims at code(s) absent from KBLI 2025: {unknown}"
 
 
+def test_no_prompt_constant_teaches_a_code_the_catalogue_lacks(catalogue: dict[str, dict]) -> None:
+    """The MASTER PROMPT is a third copy of these facts, and it is the one the LLM reads.
+
+    The first version of this guard checked `KNOWN_KBLI_CODES` and the keyword
+    map and declared the e-commerce defect cured. It was not: the module's
+    prompt constants independently carried ``- 47911 = ... PMA: TERBATAS`` in
+    the "KNOWN KBLI CODES" block and named 47911 again as the e-commerce
+    mapping and as the pass-through example. Fixing the dict while the prompt
+    still taught the retired code left the channel able to emit it — a cure
+    closed on three surfaces that still lied on the fourth.
+
+    A mention is GUILTY only when the line presents the code as real. A line
+    that names a code in order to retire it ("does NOT exist in KBLI 2025") is
+    innocent — that sentence is the cure, not the defect.
+    """
+    source = ROUTER_SOURCE.read_text()
+    RETIREMENT_MARKERS = ("does NOT exist", "never cite it", "retired in 2025")
+
+    offenders: list[tuple[int, str, str]] = []
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        if any(marker in line for marker in RETIREMENT_MARKERS):
+            continue  # INNOCENCE: the line exists to disown the code
+        cited = set(re.findall(r"KBLI (\d{5})", line)) | set(
+            re.findall(r'"-\s*(\d{5})\s*=', line)
+        )
+        for code in sorted(cited):
+            if code not in catalogue:
+                offenders.append((lineno, code, line.strip()[:90]))
+
+    assert offenders == [], (
+        "prompt text cites KBLI code(s) absent from the 2025 catalogue — the LLM "
+        f"is being taught they exist: {offenders}"
+    )
+
+
 def test_the_online_channel_answer_names_the_fork(catalogue: dict[str, dict]) -> None:
     """47901 is the marketplace OPERATOR; selling your own goods is the product code.
 
