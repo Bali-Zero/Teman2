@@ -187,6 +187,14 @@ changes at the Activation flip: today it merges directly once checks are green; 
 extra safe stop (the synthetic re-check against current `main`) in between. This is a strictly safer
 default, not a new manual step — nothing about the ship-lifecycle-ownership rule changes.
 
+**Post-Activation correction (measured live, 2026-07-27, PR #3347):** once the queue governs `main`,
+`gh pr merge --auto --squash` errors — `! The merge strategy for main is set by the merge queue` — and
+arms nothing (`autoMergeRequest` stays unset). The `--squash` flag now conflicts with the ruleset's own
+merge method (`MERGE`, not squash) instead of being redundant with it. The standing command is the bare
+**`gh pr merge --auto`** (no `--squash`); the queue's own configured strategy decides how the commit
+lands. Anyone still typing `--squash` from muscle memory gets a silent no-op, not an error worth missing
+— always confirm with `gh pr view <N> --json autoMergeRequest,mergeStateStatus` after arming.
+
 **Fork-PR exception — read before arming automerge on anything not from this repo's own branches.**
 This is a **public** repository, and `merge_group` (like `pull_request_target`, unlike plain
 `pull_request`) runs with repository secrets available to the check run. A fork PR that has not been
