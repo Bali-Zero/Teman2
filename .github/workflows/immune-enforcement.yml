@@ -102,6 +102,10 @@ jobs:
               scripts/fly-pg-backup.sh|\
               scripts/wr2-cron-wrapper.sh|\
               scripts/cron-wrapper.sh|\
+              scripts/cron-state.sh|\
+              scripts/test_cron_state_alert.sh|\
+              infra/scripts/fly-backup.sh|\
+              scripts/test_fly_backup_phases.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
@@ -172,6 +176,22 @@ jobs:
           # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
           # last line. Named here at birth, for the same reason as the corpus above.
           bash scripts/test_offsite_verify.sh
+
+      - name: cron-state failure alert corpus (guilt + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # cron-state.sh wrote a receipt and never spoke. The 03:00 Postgres backup runs
+          # under it, so its failure was silent while the 03:20 twin alerted. Named here at
+          # birth: an alarm nobody exercises is the thing it was built to prevent.
+          bash scripts/test_cron_state_alert.sh
+
+      - name: Backup phase composition corpus (one dead phase must not kill the other)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # `set -e` + a bare pipeline decapitated the PG_EXIT capture, so a failing
+          # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
+          # bucket: the qdrant nightly is missing for exactly the night PG failed.
+          bash scripts/test_fly_backup_phases.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
