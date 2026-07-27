@@ -80,6 +80,21 @@ updates:
           - "openai"
           - "langchain*"
           - "tiktoken"
+          # "anthropic" travels WITH langchain-anthropic or the group cannot
+          # resolve. langchain-anthropic 1.5.2 requires anthropic<1.0.0,>=0.120.0
+          # (verified on PyPI), so a group that raises langchain-anthropic while
+          # leaving anthropic pinned at the lock's 0.117.0 is unsatisfiable as a
+          # unit — uv's exact words on PR #3357: "Because langchain-anthropic
+          # >=1.5.2 depends on anthropic>=0.120.0 and you require
+          # anthropic==0.117.0 ... your requirements are unsatisfiable."
+          # This is the same shape as the fsspec/datasets, grpcio and websockets
+          # notes above; the difference is that those were cured by IGNORING the
+          # co-constrained package, which cannot work here — the constraint is a
+          # floor that rises, not a ceiling that blocks, so freezing anthropic
+          # would freeze langchain-anthropic with it. Group them instead.
+          # Safe for the third dependent: openinference-instrumentation-anthropic
+          # 1.0.6 asks only for anthropic>=0.84.0, no upper bound.
+          - "anthropic"
         update-types:
           - "minor"
           - "patch"
@@ -88,6 +103,10 @@ updates:
           - "openai"
           - "langchain*"
           - "tiktoken"
+          # mirrors the openai-stack patterns above — a package left in both
+          # groups is claimed by whichever matches first, which makes the pairing
+          # above depend on ordering instead of on the declaration.
+          - "anthropic"
         update-types:
           - "minor"
           - "patch"
