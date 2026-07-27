@@ -42,8 +42,9 @@ online 9-field wizard never had a mechanical "urgent" signal to begin with
 (no field in `VoaIntakeRequest` maps to `EligibilityInput.urgent_case`), so
 this gate is what actually governs how close to arrival an issuance request
 may be submitted. It does NOT touch the extension path: extensions require
-an in-person photo/interview (since 29 May 2025) and keep their own D-10
-runway gate + published D-7 filing deadline, both untouched by this ruling.
+an in-person photo/interview (since 29 May 2025) and keep their own runway
+gate — now identical to the published D-7 filing deadline itself (owner
+ruling 2026-07-27, see `eligibility.screen`) — untouched by this ruling.
 ``VoaVerdict.submit_by_date`` carries the one date this rule can ever show a
 visitor — Bali Zero's OWN operational commitment, never an immigration
 rule — and is ``None`` when it cannot be computed (see

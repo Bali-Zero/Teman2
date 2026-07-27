@@ -131,20 +131,45 @@ async def _statuses(pool: asyncpg.Pool, qids: list[int]) -> dict[str, int]:
     return {r["status"]: r["c"] for r in rows}
 
 
-async def _drive_to_done(workers, qids, pool, timeout=60.0):
-    """Run workers cooperatively until all qids are 'done'/'dead' or timeout."""
+async def _drive_to_done(workers, qids, pool, timeout=60.0, stall_timeout=20.0):
+    """Run workers cooperatively until all qids are 'done'/'dead'.
+
+    W58 (2026-07-27): a fixed wall-clock `timeout` for a fixed amount of work
+    is an assertion about the scheduler, not about the code under test — it
+    rejects genuinely correct, still-converging work under CPU contention
+    that has nothing to do with the diff being pushed (measured live: this
+    exact test failed once at "89 done, 9 pending, 2 extracted" under a busy
+    box, then passed in full on retry under *heavier* contention — the
+    relation is probabilistic, not a threshold). Fix: extend the deadline as
+    long as forward progress (more jobs reaching a terminal state) keeps
+    happening, so a slow-but-correct run gets the time it needs. Only a real
+    STALL — `stall_timeout` seconds with zero new terminal jobs — is treated
+    as a failure, which still catches a genuine hang/deadlock/lost-job bug
+    (the thing this test exists to guard). `timeout` remains a hard outer
+    ceiling against a truly wedged run.
+    """
     loop = asyncio.get_event_loop()
-    deadline = loop.time() + timeout
+    hard_deadline = loop.time() + timeout
+    last_terminal = -1
+    last_progress_at = loop.time()
 
     # Each worker keeps calling run_once until no work, then we re-check.
     async def drain(w):
-        while loop.time() < deadline:
+        nonlocal last_terminal, last_progress_at
+        while loop.time() < hard_deadline:
             did = await w.run_once()
             if not did:
                 # check if everything terminal
                 st = await _statuses(pool, qids)
-                if (st.get("done", 0) + st.get("dead", 0)) == len(qids):
+                terminal = st.get("done", 0) + st.get("dead", 0)
+                if terminal == len(qids):
                     return
+                now = loop.time()
+                if terminal != last_terminal:
+                    last_terminal = terminal
+                    last_progress_at = now
+                elif now - last_progress_at > stall_timeout:
+                    return  # genuine stall, not scheduling noise — let the caller's assert fail loud
                 await asyncio.sleep(0.05)
 
     await asyncio.gather(*(drain(w) for w in workers))
@@ -169,7 +194,7 @@ async def test_exactly_once_two_workers_100_jobs(pool, tmp_path):
         )
         w1 = IntakeWorker(pool, config=cfg, worker_id="w1")
         w2 = IntakeWorker(pool, config=cfg, worker_id="w2")
-        await _drive_to_done([w1, w2], qids, pool, timeout=90.0)
+        await _drive_to_done([w1, w2], qids, pool, timeout=180.0)  # W58: generous outer ceiling; stall_timeout does the real discriminating
 
         st = await _statuses(pool, qids)
         assert st.get("done", 0) == n, f"not all done: {st}"
@@ -245,7 +270,7 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
 
         # Wait out the lease, then the live worker reclaims + completes.
         await asyncio.sleep(lease_ttl + 0.5)
-        await _drive_to_done([live], qids, pool, timeout=30.0)
+        await _drive_to_done([live], qids, pool, timeout=60.0)  # W58: generous outer ceiling; stall_timeout does the real discriminating
 
         st = await _statuses(pool, qids)
         assert st.get("done", 0) == 1, f"job lost / not reclaimed: {st}"

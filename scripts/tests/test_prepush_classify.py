@@ -955,6 +955,138 @@ def test_allowlist_version_bumped_for_the_new_entry() -> None:
     rules change that does not bump it makes the log line unattributable."""
     assert pc.ALLOWLIST_VERSION >= 4
     assert ("apps/mouth/src", (".ts", ".tsx", ".css")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+# ===========================================================================
+# v5 — .agents/skills (.md) and scripts/ci (.sh)
+#
+# Why these entries exist: measured live 2026-07-27 on M5, load average 41,
+# 9 concurrent full `pytest backend/tests/` suites (one 1h21m in). Tracing
+# each running suite to its worktree/merge-base diff found 7 of the 9
+# guarded diffs contained ZERO backend files — two were pure markdown-only
+# diffs whose ONLY changed file sits under `.agents/skills/`, a third was
+# blocked solely by `scripts/ci/setup_merge_queue_ruleset.sh`.
+#
+# Why .agents/skills is safe: `.agents/skills/README.md` (verified on disk)
+# states this tree is the CANONICAL cross-agent skill store (established
+# 2026-07-23) — `.claude/skills/<name>` is a SYMLINK to it for 4 of 8
+# corners (bot/kbli-navigator/visaoracle/wr2, `git ls-tree` mode 120000
+# verified), so a SKILL.md edit through either path lands its `git diff` on
+# the `.agents/skills/**` blob, which the pre-v5 `.claude/skills` rule never
+# covered. Innocence measured on disk: zero matches for the DIRECTORY-
+# ANCHORED string `.agents/` anywhere under apps/backend-rag/backend/
+# (tests or modules) — a bare `\.agents` grep instead false-positives on
+# Python dotted-module paths like `backend.app.agents.graph`.
+#
+# Why scripts/ci is safe: mirrors the DECLARED .sh precedent already
+# accepted for infra/launchagents. Innocence measured on disk: zero matches
+# for the DIRECTORY-ANCHORED string `scripts/ci/` under
+# apps/backend-rag/backend/ — a bare `scripts/ci` grep instead
+# false-positives on the unrelated `apps/backend-rag/scripts/ci_bootstrap_
+# schema.py`. Also zero basename-only hits for each of the 3 real .sh
+# files, in case a test subprocess-invokes one without the dir prefix.
+# ===========================================================================
+
+
+def test_innocence_agents_skills_md_skips() -> None:
+    """The two live-worktree shapes the v5 measurement actually caught:
+    one-file SKILL.md-only diffs under the canonical .agents/skills store."""
+    for path in (
+        ".agents/skills/bot/SKILL.md",
+        ".agents/skills/kbli-navigator/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_innocence_scripts_ci_setup_merge_queue_ruleset_skips() -> None:
+    """The third v5-measurement diff: blocked solely by this one .sh file."""
+    verdict, unknown = pc.classify(["scripts/ci/setup_merge_queue_ruleset.sh"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_real_agents_one_file_diffs_skip() -> None:
+    """The two REAL one-file diffs measured live 2026-07-27
+    (docs-kbli-night-findings, ops-bot-corner-refresh worktrees) — each
+    changed exactly one .agents/skills/**/SKILL.md file and each had been
+    paying a full backend suite before this entry existed."""
+    for path in (
+        ".agents/skills/kbli-navigator/SKILL.md",
+        ".agents/skills/bot/SKILL.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP
+        assert unknown == []
+
+
+def test_innocence_real_pr_c_three_file_list_skips() -> None:
+    """PR-C's real 3-file diff — a workflow + a runbook + this PR's new
+    scripts/ci .sh entry, all three now provably innocent together."""
+    verdict, unknown = pc.classify(
+        [
+            ".github/workflows/merge-queue-watch.yml",
+            "docs/runbooks/merge-queue-discipline.md",
+            "scripts/ci/setup_merge_queue_ruleset.sh",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_agents_non_md_forces_full() -> None:
+    """Suffix scoping is the mechanism — the one real non-.md file that
+    lives under .agents/skills/ today must NOT be admitted just because its
+    directory is."""
+    path = ".agents/skills/wr2/_research/2026-07-21-ir-phase1-replay-metrics.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_scripts_ci_py_forces_full() -> None:
+    """Suffix scoping again — the 2 real .py utilities in scripts/ci/ stay
+    OUT, same shape as the infra/launchagents .py exclusion above."""
+    for path in (
+        "scripts/ci/l5_2_phase2b_auto_analyzer.py",
+        "scripts/ci/redis_lease_check.py",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_agents_mixed_with_backend_forces_full() -> None:
+    """One backend file anywhere in the diff still forces the full suite,
+    even alongside an otherwise-innocent .agents/skills edit."""
+    verdict, unknown = pc.classify(
+        [
+            ".agents/skills/bot/SKILL.md",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_prepush_classify_itself_forces_full() -> None:
+    """This very PR's own diff touches scripts/prepush_classify.py, a
+    NEVER_INNOCENT_EXACT_PATHS entry — correct by design, so this PR's own
+    push pays the full suite it is trying to spare OTHER diffs from."""
+    verdict, unknown = pc.classify(["scripts/prepush_classify.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/prepush_classify.py"]
+
+
+def test_allowlist_version_bumped_to_5_for_the_v5_entries() -> None:
+    """The skip-banner logs the allowlist version that approved a skip, so a
+    rules change that does not bump it makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 5
+    assert (".agents/skills", (".md",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("scripts/ci", (".sh",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
 # ---------------------------------------------------------------------------
 # The gate's INPUT, not its rules: `.husky/pre-push` must enumerate changed
 # files against the MERGE-BASE with origin/main, never against $remote_sha.

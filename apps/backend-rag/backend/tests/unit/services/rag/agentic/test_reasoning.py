@@ -7,6 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.services.rag.agentic._reasoning_stubs import (
+    PROTOCOL_LANGUAGES,
+    STUB_MESSAGES,
+    get_localized_stub,
+)
 from backend.services.rag.agentic.reasoning import (
     ReasoningEngine,
     _validate_context_quality,
@@ -108,43 +113,28 @@ class TestReasoningEngineContextQuality:
 
 
 class TestLocalizedStubs:
-    """Tests for localized stub message generation."""
+    """The engine's stub accessor must delegate faithfully to the table.
 
-    def test_abstain_italian(self, engine):
-        """Italian abstain message returned."""
-        msg = engine._get_localized_stub("abstain", "ITALIAN")
-        assert "dispiace" in msg.lower() or "informazioni" in msg.lower()
+    These used to assert single words of the copy ("dispiace", "sorry",
+    "maaf"). That made the wording of every client-facing refusal
+    unchangeable without editing tests here, and it tested the copywriting
+    rather than the method — the method's whole job is delegation.
 
-    def test_abstain_english(self, engine):
-        """English abstain message returned."""
-        msg = engine._get_localized_stub("abstain", "ENGLISH")
-        assert "sorry" in msg.lower() or "couldn't" in msg.lower()
+    The copy itself, its per-language coverage and its fallback contract are
+    pinned in ``test_reasoning_stubs_language_coverage.py``, which owns the
+    table. This class owns the accessor.
+    """
 
-    def test_abstain_indonesian(self, engine):
-        """Indonesian abstain message returned."""
-        msg = engine._get_localized_stub("abstain", "INDONESIAN")
-        assert "maaf" in msg.lower()
-
-    def test_abstain_detailed_italian(self, engine):
-        """Detailed Italian abstain with suggestions."""
-        msg = engine._get_localized_stub("abstain_detailed", "ITALIAN")
-        assert "visti" in msg.lower() or "kitas" in msg.lower()
-
-    def test_error_english(self, engine):
-        """English error message returned."""
-        msg = engine._get_localized_stub("error", "ENGLISH")
-        assert "try again" in msg.lower()
-
-    def test_confused_italian(self, engine):
-        """Italian confused message returned."""
-        msg = engine._get_localized_stub("confused", "ITALIAN")
-        assert "capito" in msg.lower() or "riformulare" in msg.lower()
+    @pytest.mark.parametrize("key", sorted(STUB_MESSAGES))
+    @pytest.mark.parametrize("language", PROTOCOL_LANGUAGES)
+    def test_accessor_returns_exactly_the_table_entry(self, engine, key, language):
+        assert engine._get_localized_stub(key, language) == get_localized_stub(key, language)
 
     def test_unknown_language_falls_back_to_english(self, engine):
         """Unknown language falls back to English."""
-        msg = engine._get_localized_stub("abstain", "KLINGON")
-        assert isinstance(msg, str)
-        assert len(msg) > 10
+        assert engine._get_localized_stub("abstain", "KLINGON") == get_localized_stub(
+            "abstain", "ENGLISH"
+        )
 
     def test_unknown_key_returns_generic(self, engine):
         """Unknown key returns generic fallback."""

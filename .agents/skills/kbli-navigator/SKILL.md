@@ -28,6 +28,199 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
+**🔴 L2.12 — THE GITHUB `deployments` API MEASURES VERCEL'S _REPORTING_, NOT ITS _DEPLOYING_.**
+Never conclude "the frontend is / is not live" from `gh api .../deployments`. **Prod is NOT
+frozen** — an earlier draft of this entry said it was, and that was wrong; the retraction is
+kept here because the probe that produced it is the one every session reaches for first.
+
+Measured: the newest **Production** deployment record is still `13265a2406` at
+**2026-07-26T19:57:32Z**, and no record has been created since. Yet the cured string
+`13 May 2026 moratorium` — introduced by `45444d21e9` (**23:05:17Z**, the L2.10 block-cause
+cure) and `07ab9d6d37` (**23:44:13Z**, #3275) — **is served by prod**, on a freshly rendered
+page. So Vercel deployed at least twice after the last record. What broke is the
+Vercel↔GitHub reporting integration, not the pipeline; nothing is blocked and no operator
+action is required for the product. (If the reporting gap is ever worth chasing, _that_ is a
+dashboard matter, `operator[gui]`.)
+
+**Two traps that made the wrong reading feel solid — both cost-free to avoid:**
+
+1. **`date + age` is not "now".** On HTTP response headers `date` **is** the moment of the
+   response; `age` is how long the cached copy has been held. Summing them moves your own
+   probe forward in time — here by ~1.5 h, which turned "I sampled 37 min after the merge and
+   got a cached pre-merge copy" (normal propagation) into "the render post-dates the merge and
+   is still stale" (a stall that never existed).
+2. **Two corroborations that sample the same instant are one corroboration.** "API frozen" and
+   "page stale" agreed only because both were read off the same wrong moment — they could not
+   have contradicted each other. Before trusting agreement, ask whether the second check could
+   have failed for a _different_ reason than the first.
+
+**The probe that actually settles it:** `curl` the page and grep for a string your own commit
+introduced (`git log -S "<string>" origin/main` gives you the commit and its merge time). Prod
+against prod — the same rule already paid for on the Fly side.
+
+**L2.11 — THE PMA CAP WAS A BINARY DERIVED FROM A TERNARY, ON BOTH PLANES (2026-07-27).**
+`pma_status` has three values and the code treated it as two, so the foreign-ownership figure
+was invented rather than read — even though the dataset already carries the adjudicated one
+(`pma_max_asing` + `pma_official_basis` citing the Perpres 10/2021 lampiran + `pma_cap_verified`).
+
+- **Backend** (`services/kbli_eye.py`): `max_foreign_ownership = 100 if TERBUKA else 0` served
+  a figure the dataset contradicts on **9 of the 10 TERBATAS codes**, 8 of them in the direction
+  that DENIES a lawful stake (the seven sea-cabotage codes `50111/50112/50113/50121/50122/50123/50126`
+  allow **49%**; `79110` allows **100%**; `47221` is a non-percentage "special" regime). The
+  decision matrix shared the defect: `not TERBUKA -> REJECTED` refused an activity where a PMA
+  may lawfully hold 49%. Now keyed on the CAP: 0% stays REJECTED (62 codes), limited-but-open
+  becomes WARNING/`PERPRES_10_2021_FOREIGN_CAP`. Exactly **9 codes leave** the REJECTED bucket,
+  none enters. `is_umkm_reserved` was `not is_open_pma` — "reserved for micro/small enterprise"
+  asserted on all 71 non-TERBUKA codes while the data names it on **2** (`47111`, `47222`, both
+  via the lampiran's `DIALOKASIKAN` column); it is now tri-state, `None` = undetermined.
+  Note `Kemitraan dengan UMKM/Koperasi` is a PARTNERSHIP duty, **not** a reservation — a bare
+  substring match on "UMKM" over-matches it (family #3).
+- **Frontend**: the cap was read in two places with different defaults —
+  `kbli-data.server.ts` used `raw.pma_max_asing || 0` (the 1,559 static pages + gold API +
+  sitemap) while `kbli-data.ts` used it bare (index, sectors, OG). On `01122` (the single
+  record with no cap field, TERBUKA) the coercion rendered **"0% Open"**. One resolver now:
+  `apps/mouth/src/lib/kbli-pma-cap.ts`, pinned by an INTERACTION test (neither layer may
+  re-derive it), with the same narrow status fallback the backend uses.
+- **The service had ZERO direct tests** (only downstream mocks) — that is why both survived.
+  20 added: guilt on every wrong verdict, innocence on every verdict that must not move, and
+  population pins over all 1,559 codes.
+
+**🔴 L2.11b — `KBLIEye` IS DEAD IN PRODUCTION, AND WAS DYING MUTE (`operator[business]` to revive).**
+Proven live on `nuzantara-rag` (machine `1781e5eda03438`): `/app/source_documents` **does not
+exist** and `python -m backend.services.kbli_eye` returns `{"state": "ERROR", "reason_code":
+"DATABASE_NOT_LOADED"}`. The KBLI dataset never enters the image — the Dockerfile's final stage
+copies `backend`/`scripts`/`training-data`/`*.py`, never `data/` (repo-root `source_documents`
+is a symlink into `data/`, which is not in the build context). So **both** consuming endpoints —
+`POST /api/dashboard/map/analyze-investment` and `POST /api/prime/v2/analyze` (called by
+`apps/mouth` via `/api/property/analyze`) — have been degrading their whole KBLI block to
+`state: "ERROR"` for an unknown period, and `_load_database()` announced it with a **bare
+`return`**. The refusal is now logged (family #2: a silent failure is not a failure seen).
+**Deliberately NOT revived here** — shipping the 35.3 MB dataset would resurrect a SECOND source
+of truth that contradicts the cured one: this service carries its own hardcoded Bali rules
+(9 gov-letter codes + 4 moratorium codes) against the navigator's 518-code overlay. The real
+choice is (a) ship the dataset and align its Bali rules to the overlay, (b) re-point it at the
+Postgres `kbli_documents` store that already exists in prod, or (c) retire it with its two
+endpoints. **Nothing renders its payload today** — censused: no frontend reads
+`max_foreign_ownership` or `kbli.state`; `DealFlowWizard` renders only `analysis.kbli?.code`,
+which survives the ERROR shape via the caller's fallback. So this is latent, not visible harm.
+
+**🟡 L2.11c — THE "UNVERIFIED CAP" QUALIFIER CANNOT RENDER ON ANY OF THE 1,559 PAGES — AWAITS ZERO.**
+`page.tsx` has an honest branch — `≈N% (unverified)` — nested inside `status === "restricted"`,
+so it needs a TERBATAS code with `capVerified === false`. All **10** TERBATAS codes carry
+`pma_cap_verified: True`; the only **2** records with an explicit `False` (`02101`, `03120`) are
+TERBUKA and render `"100% Open"`. Net: the qualifier renders on **0 of 1,559 pages** — a
+fallback that never fires, which is this project's own signature for "nobody looked at the data".
+Meanwhile `pma_cap_verified` is **ABSENT on 1,543 records** and the readers default
+`raw.pma_cap_verified !== false` → treated as verified. Note precisely what this does and does
+not mean **at the render level**: for `open` codes the page never prints the word "verified" (it
+prints `"N% Open"`), so the claim is not "1,543 pages assert a verified cap" — it is that the
+catalogue has **no way to say "we have not verified this"**, on a layer the corner itself flags
+as vintage-2020 and per-code-unadjudicated (FATAL-2). Making the qualifier reachable = re-labelling
+1,543 client-facing pages, which is the FATAL-2 re-label already reserved to Zero (Legge 5).
+**Options, none taken:** (a) flip the default so absent = not verified and let the qualifier
+speak on 1,543 pages; (b) keep the default and add a distinct third state ("source: blanket
+Perpres attribution") so "adjudicated" and "assumed" stop looking identical; (c) leave as-is and
+adjudicate the 1,543 first, per-code, so the qualifier becomes true rather than loud.
+
+**🔴 L2.11d — THE CHANNELS ANSWERED E-COMMERCE WITH A RETIRED 2020 CODE (2026-07-27, cured).**
+`kbli_notebook_chat.KNOWN_KBLI_CODES` is a hand-written dict consulted when a code misses BOTH
+PostgreSQL and Qdrant, and it is also injected by an activity-keyword map — so whatever it says
+lands directly in the LLM context answering on WhatsApp and web chat. **Proven live on prod before
+the fix**, `chat_kbli("I want to open an online shop in Bali as a foreigner…")` returned
+**`KBLI 47911`** with `sources: [{"title": "PP 28/2025"}]` and `pma_status: TERBATAS`.
+
+`47911` is a KBLI **2020** code, retired in 2025 and **absent from the catalogue** (re-verified).
+Being absent, it misses both stores _by construction_ — which made this dict its ONLY possible
+answer, with no retrieval able to correct it. Same structural blind spot as the phantom-code class
+(every cure tool keys off "a canonical record exists"), on a **fifth** surface the phantom census
+never covered: a hardcoded dict inside a router. It invented a restriction out of nothing AND
+fabricated provenance — a 2025 regulation cited for a code that 2025 deleted.
+
+Cure: repointed to **`47901`** (Platform Digital Intermediasi Perdagangan Eceran, TERBUKA — the
+successor citing 47911 in its `pp28_sources`), with the description carrying the **fork** rather
+than a replacement certainty: 47901 is the marketplace OPERATOR; a business selling its own goods
+online takes the PRODUCT-CATEGORY code and that category's restrictions (`47221` TERBATAS,
+`47222` TERTUTUP, most others TERBUKA — all re-verified against canonical). Also `56290`:
+hardcoded TERBATAS, catalogue says TERBUKA. The map's own comment asserted the inverse of the
+truth — _"prevents wrong codes (e.g. 47901 for online retail instead of 47911)"_ — and that belief
+is what put a dead code on the channel. **Structural guard added**
+(`test_kbli_hardcoded_fallback_matches_catalogue.py`): any entry naming a code the catalogue lacks,
+any PMA status the catalogue contradicts, or any keyword row aiming at an unknown code now fails
+CI. Verified to bite — replayed against the old values it flags both.
+
+**🔴 L2.11e — `kbli_documents` CALLS 17 CLOSED CODES OPEN, AND IT IS THE STORE FEEDING THE
+CHANNELS.** Censused read-only across the three stores carrying a PMA verdict:
+
+| store                                | TERBUKA | TERTUTUP | TERBATAS | "Verify at OSS" |
+| ------------------------------------ | ------- | -------- | -------- | --------------- |
+| canonical dataset (1,559)            | 1,488   | **61**   | 10       | —               |
+| `kg_nodes` (1,558 carry a PMA layer) | 1,484   | **61**   | 9        | 4               |
+| `kbli_documents` (1,563)             | 1,502   | **44**   | 13       | 4               |
+
+_(`kg_nodes` holds **13,491** rows with `entity_type='kbli'` — the known dedup disease; exactly
+1,558 of them carry a `pma_status`. Cite that number, not "1,558 nodes".)_
+
+**Canonical and the KG agree on all 61 — verified by MEMBERSHIP, not by count**: the two 61-code
+sets are identical, `A − B` and `B − A` both empty. Two same-size sets are not the same set, and
+this is the fact the whole "direction is decidable" argument rests on, so it is proven, not
+counted. **`kbli_documents` disagrees on 17** — and it is the store
+`chat_kbli` injects verbatim into the LLM context. Not an editorial fork: two independent sources
+concur and the odd one out is the client-facing one. The 17: `47222` (store says TERBATAS) plus 16
+reading TERBUKA — `59111`, `59121`, `85101`, `85201`, `85311`, `85315`, `85550`, `85560`, `86101`,
+`86104`, `87201`, `87301`, `91111`, `91121`, `91211`, `91221`. **All 16 are government activities
+by canonical title (16/16 carry `Pemerintah`)**: government hospitals and clinics, state
+kindergartens, primary and secondary schools, job-training centres, libraries, archives, museums
+and heritage sites — presented as 100% open to foreign ownership. Direction is unambiguous, so the
+fix is a data-plane sync of `kbli_documents` from canonical, **not** a Legge-5 judgment. Supersedes
+the narrower "4 codes claiming openness while `pma_status=TERTUTUP` — AWAITS ZERO": the population
+is **17** and the direction is decidable.
+
+**The divergence is not random — it tracks rows that were never re-seeded, and that names the
+cure.** Of those same 61 canonical-TERTUTUP codes, **6** are stored in Title Case with the full
+canonical title (`01287`, `59131`, `60311`, `85321`, `85401`, `85403`) — re-seeded rows — and
+**every one of them carries the correct TERTUTUP**. The other 55 are the original UPPERCASE seed,
+and **all 17 divergences live there**, zero in the re-seeded set. So a re-seed from canonical is
+already demonstrated to fix both fields, on 6 rows, in production. Corroborating the same story:
+**20 of the 61** store titles are strict truncations of the canonical title (word-boundary cut
+around ~55 chars), and on 5 of the 16 government codes the cut lands exactly past the word
+`Pemerintah` — e.g. `59111` "…DAN PROGRAM TELEVISI **OLEH**", `91221` "…MONUMEN YANG **DIKELOLA**".
+The truncation removes the one word that identifies the activity as governmental, so even the title
+in the client-facing store has stopped saying what the record means. _(Scope declared, not implied:
+truncation was measured exactly on these 61; the rate across all 1,563 rows is UNMEASURED — the
+length histogram peaks at 47-52 chars with a max of 104, so a fixed character cap is ruled out.)_
+
+**The cure needs NO code change, and the near-miss is worth recording.** The obvious read is that
+`kbli_documents_cure.py` cannot reach these 17 because they lack the `per_skala_disputed_*` marker
+— which would call for widening the tool, i.e. a fifth parallel cure path. **That read is wrong**,
+measured by running the tool's own decision function against the REAL production rows: the marker
+gates only the **`--all-quarantined` sweep selector** (119 codes, none of the 17 among them). The
+`--only` path has no such gate — `plan_cure` requires only that the code exist in canonical AND in
+the table, and `build_cured_metadata` writes canonical `pma_status` wholesale. Probed on the live
+metadata of `86101` and `47222`: cured `pma_status` → `TERTUTUP`, metadata differs → `update_row`
+True. **A skip is not an eligibility gate until you have read which selector produced it.**
+
+Exact delta the re-seed would write, measured across all 17 (read-only role, 2026-07-27):
+
+- **17** `pma_status` corrections (16 `TERBUKA` → `TERTUTUP`, `47222` `TERBATAS` → `TERTUTUP`).
+- **17** titles rewritten to the canonical Title Case, **5** of which are currently truncated past
+  the very word that identifies them as governmental (`59111`, `59121`, `87201`, `87301`, `91221`).
+- **12** already-detached rows get `licensing_status` `N/A` → `PENDING_REGULATION` (class-parity
+  with the KG cure's marker) — they do NOT lose licensing, they already have none.
+- **5** rows (`47222`, `59111`, `59121`, `86101`, `86104`) hold a **one-element** `per_skala` where
+  canonical carries 4/4/4/3/4 — the re-seed EXPANDS them; the seed had kept a single scale row.
+
+The **global detached invariant still holds** — re-verified this turn, **0 of the 217** canonical
+`per_skala == []` codes serve licensing in `kbli_documents` — so this lot does not re-open the
+4th-surface class closed on 2026-07-24; it is a distinct field (`pma_status`) on rows that were
+never re-seeded.
+
+**Coverage gap found in the same census (separate, honest-degrading):** 5 canonical codes have no
+PMA layer in the KG at all — `01122`, `47721`, `56101` (restaurant in a fixed building), `70201`
+(tourism management consulting), `79110` (travel agency). High-traffic Bali activities. The channel
+degrades correctly for them (`pma_status` defaults to `"Verify at OSS"`, an honest gap, never a
+guess), so this is missing coverage rather than a lie — but a client asking about a restaurant or a
+travel agency currently gets no PMA verdict from the KG.
+
 **L2.10 — THE BLOCK-CAUSE WAS A CONSTANT ON SIX RENDER SITES (2026-07-27; four cured by
 #3262, the last two by #3275 — the "FOUR" this section first claimed was itself the defect,
 see the METHOD NOTE).** Every Bali-blocked page names WHY it is blocked.
