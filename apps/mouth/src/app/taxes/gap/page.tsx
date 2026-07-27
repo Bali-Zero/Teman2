@@ -8,14 +8,14 @@ export const metadata: Metadata = {
   description:
     "Evaluasi kepatuhan pajak dan temukan potensi penghematan serta risiko pajak PT PMA Anda di Indonesia dengan analisis Tax Gap dari Bali Zero.",
   alternates: {
-    canonical: "https://kita.balizero.com/tax/gap",
+    canonical: "https://balizero.com/taxes/gap",
   },
   openGraph: {
     title:
       "Tax Gap Analysis — Periksa & Optimalkan Pajak Bisnis Anda | Bali Zero",
     description:
       "Evaluasi kepatuhan pajak dan temukan potensi penghematan serta risiko pajak PT PMA Anda di Indonesia dengan analisis Tax Gap dari Bali Zero.",
-    url: "https://kita.balizero.com/tax/gap",
+    url: "https://balizero.com/taxes/gap",
     siteName: "Bali Zero",
     type: "website",
   },
