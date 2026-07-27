@@ -189,6 +189,31 @@ in the client-facing store has stopped saying what the record means. _(Scope dec
 truncation was measured exactly on these 61; the rate across all 1,563 rows is UNMEASURED — the
 length histogram peaks at 47-52 chars with a max of 104, so a fixed character cap is ruled out.)_
 
+**The cure needs NO code change, and the near-miss is worth recording.** The obvious read is that
+`kbli_documents_cure.py` cannot reach these 17 because they lack the `per_skala_disputed_*` marker
+— which would call for widening the tool, i.e. a fifth parallel cure path. **That read is wrong**,
+measured by running the tool's own decision function against the REAL production rows: the marker
+gates only the **`--all-quarantined` sweep selector** (119 codes, none of the 17 among them). The
+`--only` path has no such gate — `plan_cure` requires only that the code exist in canonical AND in
+the table, and `build_cured_metadata` writes canonical `pma_status` wholesale. Probed on the live
+metadata of `86101` and `47222`: cured `pma_status` → `TERTUTUP`, metadata differs → `update_row`
+True. **A skip is not an eligibility gate until you have read which selector produced it.**
+
+Exact delta the re-seed would write, measured across all 17 (read-only role, 2026-07-27):
+
+- **17** `pma_status` corrections (16 `TERBUKA` → `TERTUTUP`, `47222` `TERBATAS` → `TERTUTUP`).
+- **17** titles rewritten to the canonical Title Case, **5** of which are currently truncated past
+  the very word that identifies them as governmental (`59111`, `59121`, `87201`, `87301`, `91221`).
+- **12** already-detached rows get `licensing_status` `N/A` → `PENDING_REGULATION` (class-parity
+  with the KG cure's marker) — they do NOT lose licensing, they already have none.
+- **5** rows (`47222`, `59111`, `59121`, `86101`, `86104`) hold a **one-element** `per_skala` where
+  canonical carries 4/4/4/3/4 — the re-seed EXPANDS them; the seed had kept a single scale row.
+
+The **global detached invariant still holds** — re-verified this turn, **0 of the 217** canonical
+`per_skala == []` codes serve licensing in `kbli_documents` — so this lot does not re-open the
+4th-surface class closed on 2026-07-24; it is a distinct field (`pma_status`) on rows that were
+never re-seeded.
+
 **Coverage gap found in the same census (separate, honest-degrading):** 5 canonical codes have no
 PMA layer in the KG at all — `01122`, `47721`, `56101` (restaurant in a fixed building), `70201`
 (tourism management consulting), `79110` (travel agency). High-traffic Bali activities. The channel
