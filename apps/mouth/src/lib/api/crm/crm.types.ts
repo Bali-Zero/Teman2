@@ -22,9 +22,9 @@ export interface Practice {
   payment_status: string;
   assigned_to?: string | null;
   start_date?: string | null;
-  completion_date?: string;
-  expiry_date?: string;
-  notes?: string;
+  completion_date?: string | null;
+  expiry_date?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at?: string;
   status_transitions?: StatusTransition[];

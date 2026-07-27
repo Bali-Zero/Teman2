@@ -95,7 +95,7 @@ export default function CaseDetailPage() {
 
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [practice, setPractice] = useState<Practice | null>(null);
-  const invalidateClient = useInvalidateClient(practice?.client_id ?? 0);
+  const invalidateClient = useInvalidateClient(practice?.client_id);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

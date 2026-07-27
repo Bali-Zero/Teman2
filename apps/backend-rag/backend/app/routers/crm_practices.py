@@ -58,7 +58,7 @@ MAX_LIMIT = 200
 async def _create_hr_bonus_on_completed(
     db_pool: asyncpg.Pool,
     practice_id: int,
-    practice_data: dict[str, Any],
+    assigned_to: str | None,
 ) -> None:
     """Auto-create HR bonus ledger entry when a practice is completed via UI.
 
@@ -66,7 +66,6 @@ async def _create_hr_bonus_on_completed(
     Guards: table existence, active rate, employee record, duplicate check.
     """
     try:
-        assigned_to = practice_data.get("assigned_to")
         if not assigned_to:
             return
 
@@ -1200,12 +1199,25 @@ async def update_practice(
             }
 
             update_set = updates.dict(exclude_unset=True)
-            non_clearable_fields = {"status", "priority", "payment_status"}
+            clearable_fields = {
+                "quoted_price",
+                "discount_amount",
+                "discount_reason",
+                "actual_price",
+                "paid_amount",
+                "assigned_to",
+                "start_date",
+                "completion_date",
+                "expiry_date",
+                "notes",
+                "internal_notes",
+                "client_summary",
+            }
             for field, value in update_set.items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
-                if value is None and field in non_clearable_fields:
+                if value is None and field not in clearable_fields:
                     raise HTTPException(
                         status_code=400,
                         detail=f"{field} cannot be null",
@@ -1528,7 +1540,11 @@ async def update_practice(
 
                 # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
                 spawn(
-                    _create_hr_bonus_on_completed(db_pool, practice_id, updated_practice),
+                    _create_hr_bonus_on_completed(
+                        db_pool,
+                        practice_id,
+                        updated_practice.get("assigned_to"),
+                    ),
                 )
 
             log_success(
@@ -1538,6 +1554,7 @@ async def update_practice(
                 updated_by=user_email,
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_practices_revenue_growth:*")
             await invalidate_cache("zantara:crm_clients_stats:*")
             return response_practice
 

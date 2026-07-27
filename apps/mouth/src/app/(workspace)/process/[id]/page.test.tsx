@@ -487,6 +487,10 @@ describe("CaseDetailPage", () => {
     expect(
       screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
     ).toBeInTheDocument();
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: "john@example.com" }),
+    ).toHaveAttribute("href", "mailto:john@example.com");
     expect(mocks.trackCaseUpdate).toHaveBeenCalledWith(
       42,
       ["priority", "quoted_price"],

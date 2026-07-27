@@ -105,14 +105,18 @@ export function useClientBusinessStory(
  * Returns a function that invalidates the client profile query,
  * refetching it even when it is currently inactive.
  */
-export function useInvalidateClient(clientId: string | number) {
+export function useInvalidateClient(clientId?: string | number | null) {
   const queryClient = useQueryClient();
-  return () =>
-    queryClient.invalidateQueries({
+  return () => {
+    if (!clientId || Number(clientId) <= 0) {
+      return Promise.resolve();
+    }
+    return queryClient.invalidateQueries({
       queryKey: clientDetailQueryKey(clientId),
       exact: true,
       refetchType: "all",
     });
+  };
 }
 
 export function useSetClientCache(clientId: string | number) {

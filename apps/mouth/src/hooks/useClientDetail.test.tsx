@@ -135,4 +135,19 @@ describe("client detail cache transitions", () => {
       refreshedProfile,
     );
   });
+
+  it("does not invalidate a synthetic client zero cache key", async () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useInvalidateClient(undefined), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(clientDetailQueryKey(0))).toBeUndefined();
+  });
 });
