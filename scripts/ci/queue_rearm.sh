@@ -46,7 +46,19 @@ POPULATION="$SCRIPT_DIR/queue_rearm_population.sh"
 # Patterns that identify a red NOT attributable to the diff. Widen ONLY with a
 # cause observed live, never by resemblance — every pattern here is a red this
 # fleet actually produced.
-INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container'
+# `gh-readonly-queue/.*not found` is the EJECTION'S OWN WAKE, added 2026-07-28 from a
+# cause observed live on #3372 — never by resemblance, which this list forbids. Order of
+# events, each measured: the P6 gate's `actions/checkout@v7` hung and was killed at 603s
+# against a 600s budget -> `cancelled` -> the cancelled REQUIRED check ejected the entry ->
+# the queue destroyed `gh-readonly-queue/main/pr-3372-<sha>` -> CodeQL, still running,
+# finished cleanly ("scanned 5703 out of 5703 Python files") and then FAILED uploading its
+# SARIF to a ref that no longer existed. Read without ordering, that reads as "Security
+# Scanning failed" and sends you debugging security for an event twelve minutes earlier in
+# a different workflow. It is a straggler tripping over the eject, and says nothing about
+# the pull request's health — so it must not be scored as a CODE red that forbids the
+# retry. Unanimity (rule 2 of the classifier) still protects this: one genuinely
+# non-infrastructural failure anywhere in the set still forbids the re-arm.
+INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container|ref .refs/heads/gh-readonly-queue/.*not found in the repository'
 
 # ---------------------------------------------------------------------------
 # 1. Who is IN the queue right now. Anyone inside is not orphaned, whatever

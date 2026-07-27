@@ -150,6 +150,49 @@ expect "timed_out proven infra -> INFRA" INFRA 0 <<EOF
 EOF
 
 echo
+# ---------------------------------------------------------------------------
+# INFRA_RE corpus. The classifier above is handed `infra_hit` already computed;
+# the thing that COMPUTES it is the regex in queue_rearm.sh, and a matcher that
+# decides "infrastructural or the diff's fault" is a guard like any other — it
+# does not ship without proof it fires on the guilty AND spares the innocent
+# (superscar #3). Read out of the real file rather than restated here, so the
+# corpus cannot pass against a copy while the live pattern drifts.
+# ---------------------------------------------------------------------------
+INFRA_RE=$(grep "^INFRA_RE=" "$SCRIPT_DIR/queue_rearm.sh" | sed "s/^INFRA_RE='//;s/'$//")
+if [[ -z "$INFRA_RE" ]]; then
+  echo "FAILED: could not read INFRA_RE out of queue_rearm.sh"
+  exit 1
+fi
+
+infra_case() { # <expect: yes|no> <name> <line>
+  local want="$1" name="$2" line="$3" got=no
+  printf '%s' "$line" | grep -qE "$INFRA_RE" && got=yes
+  if [[ "$got" == "$want" ]]; then
+    printf '  ✅ %s\n' "$name"
+  else
+    printf '  ❌ %s (want %s, got %s)\n' "$name" "$want" "$got"
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
+echo "INFRA_RE — guilt:"
+# The verbatim line from #3372, 2026-07-28: the queue destroyed its temporary
+# branch on ejection and a still-running CodeQL then failed uploading to it.
+infra_case yes "post-ejection ref vanished (#3372, verbatim)" \
+  "##[error]ref 'refs/heads/gh-readonly-queue/main/pr-3372-25cdf52620d89182ec184d90a0b9dad23d2af15d' not found in the repository"
+infra_case yes "docker.io container-init timeout (the original cause)" \
+  "Error response from daemon: registry-1.docker.io: context deadline exceeded"
+
+echo "INFRA_RE — innocence:"
+# The one that matters most: a MISSING REF is only infrastructural when it is
+# the queue's own temporary branch. Any other vanished ref is a real problem.
+infra_case no "an ordinary missing ref is NOT infra" \
+  "ref 'refs/heads/feature/my-branch' not found in the repository"
+infra_case no "a genuine test failure" "AssertionError: expected 3 items, got 4"
+infra_case no "a syntax error" "SyntaxError: invalid syntax at line 42"
+infra_case no "a lint rejection" "RH005: test function has no assertion"
+
+echo
 if (( FAILURES > 0 )); then
   echo "FAILED: $FAILURES case(s)"
   exit 1
