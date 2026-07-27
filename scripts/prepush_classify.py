@@ -217,7 +217,12 @@ VERDICT_SKIP = "skip-backend"
 # pushes to it. Innocence measured on disk (no backend test opens a file
 # under apps/mouth); .mdx deliberately excluded because a real reader
 # exists. See the allowlist table's `apps/mouth/src/**` entry.
-ALLOWLIST_VERSION = 4
+# v5 (2026-07-27, measured load-41 fleet night): added .agents/skills
+# (.md) and scripts/ci (.sh) — two more path classes measured (not
+# assumed) innocent w.r.t. `pytest backend/tests/`. See the allowlist
+# table's v5 section below for the 9-concurrent-suite / 7-of-9-zero-backend
+# measurement and the innocence method for both entries.
+ALLOWLIST_VERSION = 5
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -355,6 +360,71 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         dataset copies (37MB canonical + gold), which are
 #                         data-plane artifacts and must keep forcing full.
 #
+#   v5 (2026-07-27) — MEASURED, not hypothetical: load average 41 on M5,
+#   9 concurrent full `pytest backend/tests/` suites (~17k tests, 40-60min
+#   each under this contention; one had been running 1h21m). Tracing each
+#   running suite to its worktree and merge-base diff found 7 of the 9
+#   guarded diffs contained ZERO backend files. Two were pure markdown-only
+#   diffs whose ONLY changed file sits under `.agents/skills/` — a prefix
+#   the allowlist did not yet recognize; a third was blocked solely by
+#   `scripts/ci/setup_merge_queue_ruleset.sh`. Both added below, same
+#   innocence method as v3/v4: grep `apps/backend-rag/backend/`
+#   (tests + modules) for the DIRECTORY-BOUNDARY-ANCHORED path string
+#   (`.agents/` / `scripts/ci/`, trailing slash) — a bare substring grep
+#   without the anchor false-positives on Python dotted-module paths
+#   (`backend.app.agents.graph`) and unrelated files
+#   (`apps/backend-rag/scripts/ci_bootstrap_schema.py`), which is exactly
+#   the guard-over-match failure mode cicatrix-superscar.md #3 warns
+#   against for a *test* of innocence, not just the guard itself.
+#
+#   .agents/skills/**   Scoped to `.md` ONLY. `.agents/skills/README.md`
+#                       (verified on disk) states this tree is the
+#                       CANONICAL cross-agent skill store, established
+#                       2026-07-23 (skill-unification lane) — NOT a
+#                       duplicate of `.claude/skills/`. Proof: 4 of the 8
+#                       `.claude/skills/<name>` entries
+#                       (bot/kbli-navigator/visaoracle/wr2, verified via
+#                       `git ls-tree` mode 120000) are literal symlinks to
+#                       `../../.agents/skills/<name>`, so editing their
+#                       content through either path produces a `git diff`
+#                       on the REAL blob at `.agents/skills/<name>/…` — the
+#                       pre-v5 `.claude/skills` (.md) rule never covered
+#                       that path, which is why the two live worktrees in
+#                       the v5 measurement each paid a full suite for a
+#                       single SKILL.md edit. 15 tracked files total under
+#                       `.agents/`, all under `.agents/skills/`: 14 `.md` +
+#                       1 `.json` (`wr2/_research/…replay-metrics.json`,
+#                       correctly excluded by suffix scoping, falls to
+#                       "unknown -> full"). No `.agents/rules`,
+#                       `.agents/commands`, or `.agents/agents` tree exists
+#                       on disk today, so none of those prefixes are added
+#                       — an entry for a directory that does not exist is a
+#                       phantom, worse than a missing one. Innocence
+#                       MEASURED: zero matches for the anchored path string
+#                       `.agents/` anywhere under `apps/backend-rag/backend/`
+#                       (tests or modules); the only nearby hits are the
+#                       backend's OWN unrelated "skill" domain
+#                       (`skill_coach`, `catalog_initial_skills.py`, the
+#                       `skill` router — a DB-backed learner-skill entity,
+#                       not a filesystem SKILL.md corner), none of which
+#                       reference `.agents/` at all.
+#   scripts/ci/**       Scoped to `.sh` ONLY. Mirrors the DECLARED-choice
+#                       precedent of `infra/launchagents` (.sh is an
+#                       accepted innocent class there already). 5 tracked
+#                       files today: 3 `.sh` (`hotzone_changed_files.sh`,
+#                       `l5_2_phase2b_trigger_wrapper.sh`,
+#                       `test_hotzone_changed_files.sh`) + 2 `.py`
+#                       (`l5_2_phase2b_auto_analyzer.py`,
+#                       `redis_lease_check.py`) — the `.py` pair stays OUT
+#                       by suffix scoping, falls to "unknown -> full" like
+#                       any other `.py` change here would. Innocence
+#                       MEASURED: zero matches for the anchored path string
+#                       `scripts/ci/` under `apps/backend-rag/backend/`
+#                       (tests or modules), and zero basename-only hits for
+#                       any of the 3 `.sh` files individually (in case a
+#                       test subprocess-invokes one without the directory
+#                       prefix).
+#
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
 # `.claude/settings.json` + `.claude/settings.local.json` (+ .bak-*
@@ -380,6 +450,8 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (".github/workflows", (".yml",)),
     ("scripts/tests", (".py",)),
     ("apps/mouth/src", (".ts", ".tsx", ".css")),
+    (".agents/skills", (".md",)),
+    ("scripts/ci", (".sh",)),
 )
 
 
