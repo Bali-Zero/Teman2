@@ -17,38 +17,49 @@ import pytest
 class TestQueryPerformance:
     """Test KG query performance metrics"""
 
-    @pytest.mark.asyncio
-    async def test_simple_query_performance(self):
-        """Test performance of simple KG queries"""
-        mock_kg = AsyncMock()
+    # NOTE (2026-07-27): the two tests below used to carry wall-clock
+    # assertions — `duration < 0.1` and `duration < 1.0`. Both were removed
+    # because they measured the HARNESS, not the system: there is no KG here,
+    # only an AsyncMock, so the first timed how long Python takes to await a
+    # mock, and the second timed its own `asyncio.sleep(0.2)`. Neither could
+    # ever fail for a real performance regression, and the first DID block a
+    # push for 1h22 at `0.31 < 0.1` while the machine was running 21
+    # concurrent pushes — a pure false positive whose rate scales with fleet
+    # contention. A check that cannot detect the fault it names, but can fail
+    # for unrelated reasons, is worse than no check.
+    #
+    # A genuine KG latency budget needs a real (or containerised) graph and a
+    # machine that is not contended — it belongs in a dedicated serialized job,
+    # not in the pre-push suite. Tracked separately; deliberately NOT faked
+    # here with a looser bound, which would only make the no-signal permanent.
+    # What survives is what these tests can honestly assert: the call shape.
 
-        start = time.time()
+    @pytest.mark.asyncio
+    async def test_simple_query_returns_rows(self):
+        """A simple KG query is awaited and yields rows."""
+        mock_kg = AsyncMock()
         mock_kg.query.return_value = [{"id": "node1"}]
-        result = await mock_kg.query("MATCH (n:Visa) RETURN n LIMIT 10")
-        duration = time.time() - start
 
-        # Simple queries should be fast
-        assert duration < 0.1
+        result = await mock_kg.query("MATCH (n:Visa) RETURN n LIMIT 10")
+
         assert len(result) > 0
+        mock_kg.query.assert_awaited_once_with("MATCH (n:Visa) RETURN n LIMIT 10")
 
     @pytest.mark.asyncio
-    async def test_complex_query_performance(self):
-        """Test performance of complex KG queries"""
+    async def test_complex_query_returns_rows_with_relations(self):
+        """A multi-hop KG query is awaited and yields rows carrying relations."""
         mock_kg = AsyncMock()
 
-        # Simulate slower complex query
         async def slow_query(cypher):
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0)  # yield to the loop; no wall-clock claim
             return [{"id": "node1", "relations": []}]
 
         mock_kg.query = slow_query
 
-        start = time.time()
-        await mock_kg.query("MATCH (n)-[r*1..3]->(m) RETURN n,r,m")
-        duration = time.time() - start
+        result = await mock_kg.query("MATCH (n)-[r*1..3]->(m) RETURN n,r,m")
 
-        # Complex queries can be slower but should have threshold
-        assert duration < 1.0
+        assert len(result) == 1
+        assert "relations" in result[0]
 
     def test_query_complexity_scoring(self):
         """Test scoring query complexity"""

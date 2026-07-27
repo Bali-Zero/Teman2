@@ -103,6 +103,7 @@ on:
       - manual - fly api diagnostics
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
+      - Frontend Live Sentinel
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement
@@ -140,7 +141,6 @@ on:
       - Tests & Coverage
       - tg-gateway
       - token-lint
-      - Vercel Build Guard
       - Verify the Verifiers (meta-gate)
       - Watcher coverage (main-push-failure-watch self-conformance)
       - worker-plane review panel tests
@@ -152,6 +152,27 @@ on:
   # absence of an event, only events themselves.
   schedule:
     - cron: "*/15 * * * *"
+  # Red-path proof for #37/#41 (2026-07-26): the arithmetic was already
+  # verified by re-executing the shipped bash against real API data across
+  # a real stale window (see PR body) — what that could NOT prove is the
+  # WIRING: does this job actually run under GitHub Actions, does the
+  # Telegram step actually execute, do the secrets actually resolve, does
+  # a message actually arrive. `force_test_alert` closes that gap without
+  # touching the production threshold: it does NOT lower THRESHOLD_MINUTES
+  # (a committed lowered constant would be a live footgun — see below), it
+  # overrides only the final should_alert decision, on real current data,
+  # so the arithmetic stays exactly what ships to schedule/push. Default
+  # `false` means an ordinary manual dispatch (or none at all) changes
+  # nothing; only an explicit `true` input sends anything, and every such
+  # send is prefixed `[TEST]` so it can never be mistaken for a real alert
+  # in the chat history.
+  workflow_dispatch:
+    inputs:
+      force_test_alert:
+        description: "Send a clearly-labeled [TEST] verdict-liveness alert regardless of actual staleness (wiring/delivery proof only — never changes the scheduled production threshold or decision)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   # One in-flight job per commit — the coalescing mechanism. When several
@@ -169,8 +190,10 @@ concurrency:
   # runs of THIS workflow their own group instead, independent of
   # head_sha, so a `verdict-liveness` run in flight yields to a fresher
   # one rather than colliding with — or hiding behind — the alert job's
-  # per-commit grouping.
-  group: ${{ github.event_name == 'schedule' && 'main-push-failure-watch-verdict-liveness' || format('main-push-failure-watch-{0}', github.event.workflow_run.head_sha) }}
+  # per-commit grouping. `workflow_dispatch` (the #37/#41 red-path proof,
+  # added below) has the identical missing-payload problem and shares the
+  # same group for the same reason.
+  group: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'main-push-failure-watch-verdict-liveness' || format('main-push-failure-watch-{0}', github.event.workflow_run.head_sha) }}
   cancel-in-progress: true
 
 jobs:
@@ -300,7 +323,13 @@ jobs:
     # self-referential, see header comment), so a failure here is only
     # visible to whoever looks. Same class of gap as the `alert` job
     # itself; not solved here, named so it isn't mistaken for solved.
-    if: github.event_name == 'schedule'
+    # Widened to `workflow_dispatch` (2026-07-26, #37/#41 red-path proof —
+    # see the `on.workflow_dispatch` comment above): a manual dispatch runs
+    # this exact job, on real current data, through the real Actions
+    # environment — the one thing a local re-execution against the API
+    # cannot prove. `force_test_alert` only changes the Telegram step's
+    # send decision (below); the arithmetic here is untouched either way.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency:
       group: main-verdict-liveness
@@ -311,6 +340,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          FORCE_TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.force_test_alert == true }}
         run: |
           set -euo pipefail
           THRESHOLD_MINUTES=45
@@ -370,13 +400,6 @@ jobs:
             UNVERIFIED_SHA="${CURRENT_HEAD}"
           fi
 
-          {
-            echo "stale_minutes=${STALE_MINUTES}"
-            echo "last_verified_sha=${LAST_VERIFIED_SHA}"
-            echo "last_verified_at=${LAST_VERIFIED_AT}"
-            echo "unverified_sha=${UNVERIFIED_SHA}"
-          } >> "$GITHUB_OUTPUT"
-
           # STALE_MINUTES==999999 (no qualifying run found at all) is
           # handled BEFORE the escalation-boundary math, not through it:
           # "we don't even know when main last passed" is categorically
@@ -387,18 +410,40 @@ jobs:
           # check-interval of an escalation boundary, so it could go
           # silent on the one input most needing an alert.
           if [ "${STALE_MINUTES}" -ge 999999 ]; then
-            echo "should_alert=true" >> "$GITHUB_OUTPUT"
+            SHOULD_ALERT=true
           elif [ "${STALE_MINUTES}" -lt "${THRESHOLD_MINUTES}" ]; then
-            echo "should_alert=false" >> "$GITHUB_OUTPUT"
+            SHOULD_ALERT=false
           else
             OVERFLOW=$(( STALE_MINUTES - THRESHOLD_MINUTES ))
             BOUNDARY=$(( OVERFLOW % ESCALATION_MINUTES ))
             if [ "${OVERFLOW}" -lt "${CHECK_INTERVAL_MINUTES}" ] || [ "${BOUNDARY}" -lt "${CHECK_INTERVAL_MINUTES}" ]; then
-              echo "should_alert=true" >> "$GITHUB_OUTPUT"
+              SHOULD_ALERT=true
             else
-              echo "should_alert=false" >> "$GITHUB_OUTPUT"
+              SHOULD_ALERT=false
             fi
           fi
+
+          # #37/#41 red-path proof override: a manual dispatch with
+          # force_test_alert=true sends regardless of the real arithmetic
+          # above (which is left untouched — STALE_MINUTES/OVERFLOW/BOUNDARY
+          # are computed on genuinely current data either way, and appear
+          # in the [TEST]-prefixed message unchanged). This is the ONLY
+          # place production behavior could leak in, and it requires an
+          # explicit non-default workflow_dispatch input to trigger.
+          TEST_MODE=false
+          if [ "${FORCE_TEST_ALERT}" = "true" ]; then
+            TEST_MODE=true
+            SHOULD_ALERT=true
+          fi
+
+          {
+            echo "stale_minutes=${STALE_MINUTES}"
+            echo "last_verified_sha=${LAST_VERIFIED_SHA}"
+            echo "last_verified_at=${LAST_VERIFIED_AT}"
+            echo "unverified_sha=${UNVERIFIED_SHA}"
+            echo "should_alert=${SHOULD_ALERT}"
+            echo "test_mode=${TEST_MODE}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Telegram alert — main has an unverified commit sitting too long
         if: steps.check.outputs.should_alert == 'true'
@@ -409,6 +454,7 @@ jobs:
           LAST_SHA: ${{ steps.check.outputs.last_verified_sha }}
           LAST_AT: ${{ steps.check.outputs.last_verified_at }}
           UNVERIFIED_SHA: ${{ steps.check.outputs.unverified_sha }}
+          TEST_MODE: ${{ steps.check.outputs.test_mode }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -420,6 +466,9 @@ jobs:
           [ -n "${LAST_AT}" ] && LAST_DISPLAY="${LAST_DISPLAY} (${LAST_AT})"
           SHORT_UNVERIFIED="${UNVERIFIED_SHA:0:7}"
           TEXT="main has an unverified commit (${SHORT_UNVERIFIED}) with no completed tests.yml verdict in ${STALE} min — last verified: ${LAST_DISPLAY}. Runs may be queued-then-cancelled under load (task #41) -- https://github.com/${REPO}/commits/main"
+          if [ "${TEST_MODE}" = "true" ]; then
+            TEXT="[TEST — manual workflow_dispatch red-path proof, NOT a real alert] ${TEXT}"
+          fi
           curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
             --data-urlencode "chat_id=${CHAT}" \
             --data-urlencode "text=${TEXT}"

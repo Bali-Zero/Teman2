@@ -587,6 +587,7 @@ export interface DashboardSummary {
 export interface PortalMatter {
   id: number;
   title: string;
+  status: string;
   type: "visa" | "company" | "tax" | "property" | "other";
   progress: number;
   pending_docs: string[];

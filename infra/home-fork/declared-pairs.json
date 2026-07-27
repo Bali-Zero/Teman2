@@ -23,6 +23,12 @@
       "machines": ["pro", "m5"]
     },
     {
+      "live": "~/.claude/agents/regulatory-watcher.md",
+      "repo": ".claude/agents/regulatory-watcher.md",
+      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair; same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini).",
+      "machines": ["pro", "m5"]
+    },
+    {
       "live": "~/scripts/wr2-deploy-pull.sh",
       "repo": "scripts/wr2-deploy-pull.sh",
       "machines": ["pro"]
@@ -518,6 +524,24 @@
       "live": "~/scripts/cron-agent-python/tech_orchestrator.py",
       "repo": "scripts/cron-agent-python/tech_orchestrator.py",
       "_note": "task #17/#20 promotion (2026-07-26). Fixed in the same commit: diff_size_check()'s subprocess.run had no check=True, so a nonzero git-diff returncode never raised and empty stdout on failure was byte-identical to a genuinely clean tree — safe:True either way. Dormant in practice (0/3067 runs over 3.5mo acted) but a proven fail-open behind a door nobody has opened yet. Now returns safe:False with the git error surfaced. correlate() itself deliberately untouched. Meta-finding across this census: tech_orchestrator (3067 runs/0 actions), vision_doc_extractor (620/0), tdd_pipeline (42 attempts/18) — 2 of 3 never once entered their own core execution path in 3+ months, each hiding a latent defect nobody could discover because the trigger never fired.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-backup.sh",
+      "repo": "infra/scripts/fly-backup.sh",
+      "_note": "2026-07-27: the live copy had DIVERGED — 13 extra lines sourcing ~/Desktop/secretkey.env as a secondary credentials location, added 2026-05-27. That file no longer exists, so the block could never fire; realigned to a symlink after the nightly run completed. Declared so the next divergence is caught instead of discovered.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/fly-pg-backup.sh",
+      "repo": "scripts/fly-pg-backup.sh",
+      "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup — the W106 shape.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/cron-state.sh",
+      "repo": "scripts/cron-state.sh",
+      "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day — the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
       "machines": ["pro"]
     }
   ],

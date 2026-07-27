@@ -30,6 +30,50 @@ from backend.services.agents.confirmation_service import (
 # ─────────────────────────────────────────────────────────────────────────
 
 
+async def _wait_for_request_id(emitter, timeout: float = 4.0) -> str:
+    """Wait until `emitter` has actually been called, then return its request_id.
+
+    These helper tasks used `await asyncio.sleep(0.05)` as a synchronisation
+    primitive and then read `emitter.call_args` unconditionally. 50ms is enough
+    on an idle machine and not enough on a loaded one: `call_args` is still
+    None, the resolver never runs, and the `request_and_wait` under test dies on
+    its own 5s timeout with a message about the SERVICE rather than about the
+    test's own race. Observed live 2026-07-27 at 98% of a 40-minute suite.
+
+    Wait for the event, do not guess how long it takes.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while emitter.call_args is None:
+        if loop.time() > deadline:
+            raise AssertionError(f"emitter was never called within {timeout}s")
+        await asyncio.sleep(0.01)
+    return emitter.call_args[0][0]["data"]["request_id"]
+
+
+@pytest.mark.asyncio
+async def test_wait_for_request_id_survives_a_late_emit() -> None:
+    """Guilt + innocence for the helper that replaced `sleep(0.05)`.
+
+    Guilt: a 200ms emit — four times the old fixed sleep — must still be caught,
+    because that is exactly the case the old code got wrong under load. Innocence:
+    an emitter that is never called fails fast and says so, instead of leaving the
+    caller to die on the service's timeout and blame the service.
+    """
+    emitter = AsyncMock()
+
+    async def emit_late() -> None:
+        await asyncio.sleep(0.2)
+        await emitter({"data": {"request_id": "late-42"}})
+
+    task = asyncio.create_task(emit_late())
+    assert await _wait_for_request_id(emitter, timeout=4.0) == "late-42"
+    await task
+
+    with pytest.raises(AssertionError, match="never called"):
+        await _wait_for_request_id(AsyncMock(), timeout=0.05)
+
+
 class _FakeRedisManager:
     """Minimal RedisManager stand-in backed by fakeredis."""
 
@@ -88,10 +132,7 @@ class TestApproveReject:
         """Concurrent resolve(approve) → request_and_wait returns True."""
 
         async def approve_soon() -> None:
-            # Small sleep to let request_and_wait register the pending future
-            await asyncio.sleep(0.05)
-            # Find the request_id in the emitted events
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             result = await service.resolve_confirmation(
                 request_id=request_id,
                 decision="approve",
@@ -127,8 +168,7 @@ class TestApproveReject:
         emitter = AsyncMock()
 
         async def reject_soon() -> None:
-            await asyncio.sleep(0.05)
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             await service.resolve_confirmation(
                 request_id=request_id,
                 decision="reject",
@@ -200,8 +240,7 @@ class TestResolveEdgeCases:
         emitter = AsyncMock()
 
         async def wrong_user_resolve() -> None:
-            await asyncio.sleep(0.05)
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             # Try to resolve as a different user
             result = await service.resolve_confirmation(
                 request_id=request_id,
@@ -257,8 +296,7 @@ class TestRedisPersistence:
         emitter = AsyncMock()
 
         async def check_redis_then_resolve() -> None:
-            await asyncio.sleep(0.05)
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             client = redis_manager.get_async_client()
             raw = await client.get(f"{CONFIRMATION_KEY_PREFIX}{request_id}")
             assert raw is not None
@@ -274,13 +312,22 @@ class TestRedisPersistence:
             )
 
         task = asyncio.create_task(check_redis_then_resolve())
+        # W58 (2026-07-27): `timeout` here bounds asyncio.wait_for(future, ...) in
+        # request_and_wait — the background task only needs ~0.05s plus an
+        # in-process fakeredis round-trip (no real network I/O), but under CPU
+        # contention the event loop itself can go unscheduled for seconds, which
+        # is scheduler noise, not test signal. Unlike a "buggy code does 2x the
+        # work" case, a genuine wiring bug here means the future is NEVER
+        # resolved — any finite timeout still catches that identically, so a
+        # generous value loses no discriminating power (measured: this test hit
+        # ConfirmationTimeout on a busy box with a 5.0s bound).
         await service.request_and_wait(
             tool_name="image_generation",
             args={"prompt": "test"},
             user_email="damar@balizero.com",
             preview="test preview",
             emitter=emitter,
-            timeout=5.0,
+            timeout=30.0,
         )
         await task
 
@@ -299,8 +346,7 @@ class TestEmitterCallback:
         emitter = AsyncMock()
 
         async def resolve_quickly() -> None:
-            await asyncio.sleep(0.05)
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             await service.resolve_confirmation(
                 request_id=request_id,
                 decision="approve",
@@ -335,13 +381,23 @@ class TestEmitterCallback:
         """emitter=None → no SSE event, but request_and_wait still works."""
 
         async def resolve_quickly() -> None:
-            await asyncio.sleep(0.05)
-            # Without emitter we need another way to get request_id.
-            # Check the single pending key in Redis.
+            # Without emitter we need another way to get request_id: the single
+            # pending key in Redis. Wait for it to appear rather than assuming
+            # 50ms is always enough — same race as _wait_for_request_id above.
             client = service._get_client()
-            keys = []
-            async for key in client.scan_iter(match=f"{CONFIRMATION_KEY_PREFIX}*"):
-                keys.append(key)
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + 4.0
+            keys: list[str] = []
+            while not keys:
+                keys = [
+                    key
+                    async for key in client.scan_iter(match=f"{CONFIRMATION_KEY_PREFIX}*")
+                ]
+                if keys:
+                    break
+                if loop.time() > deadline:
+                    raise AssertionError("no pending confirmation key appeared within 4.0s")
+                await asyncio.sleep(0.01)
             assert len(keys) == 1
             request_id = keys[0].replace(CONFIRMATION_KEY_PREFIX, "")
             await service.resolve_confirmation(
@@ -388,8 +444,7 @@ class TestPubSubCrossProcess:
         emitter = AsyncMock()
 
         async def resolve_via_pubsub() -> None:
-            await asyncio.sleep(0.1)
-            request_id = emitter.call_args[0][0]["data"]["request_id"]
+            request_id = await _wait_for_request_id(emitter)
             # Directly publish (simulating a different process calling resolve)
             client = redis_manager.get_async_client()
             await client.publish(

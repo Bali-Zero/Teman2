@@ -138,8 +138,10 @@ def compute_stay(
             at=expiry - timedelta(days=PILOT_INTAKE_THRESHOLD_DAYS),
             kind="internal",
             client_facing=False,
-            note="Pilot intake threshold + internal escalation (SOP §1/§6). "
-            "Below this the pilot declines. Never quote to a client.",
+            note="Internal staff-escalation checkpoint (SOP §6) ONLY — NOT "
+            "the pilot's ACCEPT/DECLINE gate (owner ruling 2026-07-27 moved "
+            "that gate to the published D-7 filing deadline, see "
+            "eligibility.screen). Never quote to a client.",
         ),
         SafeCheckpoint(
             label=f"D-{PUBLISHED_FILING_DEADLINE_DAYS}",
