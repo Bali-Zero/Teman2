@@ -137,9 +137,39 @@ while IFS=$'\t' read -r n title; do
 
   # 3. This pull request's most recent merge_group runs. `pr-<n>-` is how the
   #    queue names its temporary branches.
+  #
+  # NO `--arg`: `gh run list` does not accept it. It is a `jq` flag, and `gh`
+  # only forwards the EXPRESSION to its embedded engine — passing it makes gh
+  # exit 1 with `unknown command "n" for "gh run list"`. Measured 2026-07-28,
+  # the day after this tool was armed: with `--arg` the query returned nothing
+  # for EVERY pull request, so every candidate was filed "no merge_group run
+  # found … LEAVING ALONE" and the tool could never reach a verdict on anything
+  # — including a pull request that had 20 such runs at that very moment. The
+  # re-armer was decorative by construction: the exact "exists != armed" disease
+  # it was built to cure, living inside the cure (superscar #2).
+  #
+  # `$n` is interpolated into the expression instead. It comes from this script's
+  # own jq extraction of `.number`, but it is re-asserted as digits below rather
+  # than trusted, so nothing can be smuggled into the expression.
+  if [[ ! "$n" =~ ^[0-9]+$ ]]; then
+    echo "  ❓ #$n is not a pull-request number — refusing to build a query from it"
+    undecided=$((undecided + 1))
+    continue
+  fi
   rows=$(gh run list --repo "$REPO" --event merge_group --limit 150 \
          --json databaseId,name,status,conclusion,headBranch,createdAt \
-         --jq --arg n "$n" '[.[]|select(.headBranch|test("pr-"+$n+"-"))]|sort_by(.createdAt)|reverse|.[0:25][]|"\(.databaseId)\t\(.status)\t\(.conclusion // "")\t\(.name)"' 2>/dev/null)
+         --jq "[.[]|select(.headBranch|test(\"pr-${n}-\"))]|sort_by(.createdAt)|reverse|.[0:25][]|\"\(.databaseId)\t\(.status)\t\(.conclusion // \"\")\t\(.name)\"" 2>/tmp/qr_runs.err)
+  runs_rc=$?
+
+  # A FAILED probe is not an EMPTY one. Swallowing gh's stderr into an empty
+  # string is precisely what let the `--arg` usage error masquerade as "this
+  # pull request has no runs" for as long as it did.
+  if (( runs_rc != 0 )); then
+    echo "  🔌 #$n run probe FAILED (rc=$runs_rc): $(tr '\n' ' ' < /tmp/qr_runs.err | cut -c1-120)"
+    echo "     no verdict for this pull request — a probe that could not read is never a clean read."
+    undecided=$((undecided + 1))
+    continue
+  fi
 
   if [[ -z "$rows" ]]; then
     echo "  ❓ #$n no merge_group run found — never queued, or too old to see. LEAVING ALONE ($title)"
