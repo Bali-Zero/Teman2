@@ -481,7 +481,7 @@ export default function CaseDetailPage() {
         user: user.email,
       });
 
-      const updatedPractice = await api.crm.updatePractice(caseId, updates);
+      await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/update",
@@ -492,10 +492,10 @@ export default function CaseDetailPage() {
         user.email,
       );
 
-      // The PATCH response is authoritative. Merge it into the loaded record so
-      // joined display fields remain available without a stale follow-up GET.
+      // Apply only fields submitted by this form. The PATCH endpoint returns a
+      // raw practices row whose legacy columns can shadow joined GET fields.
       setPractice((current) =>
-        current ? { ...current, ...updatedPractice } : updatedPractice,
+        current ? { ...current, ...updates } : current,
       );
       await invalidateClient();
 

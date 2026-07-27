@@ -426,14 +426,17 @@ describe("CaseDetailPage", () => {
     expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
-  it("closes an unchanged edit and renders the PATCH response without a stale reload", async () => {
+  it("merges submitted fields without a stale reload or losing joined labels", async () => {
     const original = makePractice();
-    const updated = makePractice({
+    const rawUpdateResponse = makePractice({
       priority: "urgent",
       quoted_price: 2_000_000,
+      // The live PATCH returns the legacy raw practices column, which is
+      // usually empty, rather than the joined practice_types.code from GET.
+      practice_type_code: undefined,
     });
     mocks.getPractice.mockResolvedValueOnce(original);
-    mocks.updatePractice.mockResolvedValueOnce(updated);
+    mocks.updatePractice.mockResolvedValueOnce(rawUpdateResponse);
     const user = userEvent.setup();
     render(<CaseDetailPage />);
     await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
@@ -477,6 +480,9 @@ describe("CaseDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Edit quoted price" }),
     ).toHaveTextContent("Rp 2.000.000");
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
     expect(mocks.trackCaseUpdate).toHaveBeenCalledWith(
       42,
       ["priority", "quoted_price"],
