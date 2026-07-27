@@ -149,6 +149,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   routes.push(...visaPaths.map((p) => ({ url: `${baseUrl}${p}` })));
 
+  routes.push({
+    url: `${baseUrl}/taxes/gap`,
+    lastModified: new Date(new Date().toISOString().split("T")[0]),
+  });
+
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
   try {
     routes.push({ url: `${baseUrl}/kbli/sectors` });

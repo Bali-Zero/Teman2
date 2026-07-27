@@ -282,6 +282,11 @@ const nextConfig: NextConfig = {
         destination: "/taxes/:slug*",
         permanent: true,
       },
+      {
+        source: "/tax/gap",
+        destination: "/taxes/gap",
+        permanent: true,
+      },
       { source: "/tax", destination: "/taxes", permanent: true },
       {
         source: "/tax/:slug*",
