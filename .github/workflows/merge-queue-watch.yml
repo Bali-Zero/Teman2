@@ -58,6 +58,20 @@
 name: merge-queue-watch
 
 on:
+  # MEASURED CADENCE, not the declared one (2026-07-28). GitHub treats a
+  # high-frequency `schedule` as best-effort and drops most firings on a busy
+  # public repo: over 6h11m this workflow was due 37 times and ran 4 — a real
+  # gap of 124 minutes on average, never once below 15. Size nothing against
+  # "*/10": the `watch` job's ejection condition looks back 15 minutes, so it
+  # sees ~12% of the timeline and misses most ejections by construction. That
+  # is exactly how the ejection of #3370 went unseen — it happened at 18:12,
+  # 15 minutes after the previous run, and the next run never came.
+  #
+  # The lesson is NOT "tighten the window" (a window sized against a cadence
+  # GitHub does not honour is a proxy that lies, superscar #9). It is that an
+  # EDGE condition cannot be watched by a sleeper. The `rearm` job below is
+  # level-triggered — it judges the world as it currently is — so a throttled
+  # schedule only makes recovery slower, never absent.
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
@@ -65,6 +79,11 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  # `queue_rearm.sh` reads merge_group run conclusions and failed-run logs to
+  # tell an infrastructural red from a code red. Read-only: the dry-run below
+  # never writes, and arming `--apply` later will need `pull-requests: write`
+  # added deliberately, as its own reviewed change.
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}
@@ -392,3 +411,69 @@ jobs:
             # (querying the queue) — the Actions tab must show that in red.
             exit 1
           fi
+
+  # ---------------------------------------------------------------------
+  # rearm — run the recovery tool that already existed and that NOTHING ran.
+  #
+  # WHY THIS JOB EXISTS (superscar #2, "esiste ≠ armato"): `queue_rearm.sh`
+  # and its pure classifier shipped in #3342, complete with a guilt+innocence
+  # corpus, and were then invoked by exactly zero workflows, zero crontabs and
+  # zero LaunchAgents — measured 2026-07-28, the day after a fully green PR
+  # (#3370, 54/54 checks) was ejected and sat disarmed until a session noticed
+  # by hand. A recovery tool nobody runs is not a recovery tool; it is a
+  # documented intention. Its own PENDING-ARMS entry says so in as many words.
+  #
+  # WHY IT IS A SEPARATE JOB, not a step of `watch`: the watcher must alert
+  # even when the re-armer is slow or broken, and vice versa. Sharing a job
+  # would let one failure hide the other — and `watch` runs on a 5-minute
+  # budget it must not spend downloading run logs.
+  #
+  # WHY DRY-RUN AND NOT --apply: the classifier has never yet been observed
+  # deciding on a REAL orphan under automation. Its ledger entry sets the gate
+  # explicitly — dry-run first, for a week of observed verdicts, THEN `--apply`
+  # as its own change (which also needs `pull-requests: write`). Arming the
+  # write path on day one would be the same haste this whole workflow exists to
+  # catch. What this job buys today is that the verdicts get PRODUCED and
+  # recorded at all, instead of only when a human happens to run the script.
+  rearm:
+    name: Re-arm queue drops whose red was infrastructural (DRY-RUN)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: queue_rearm.sh — dry-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # No `set -e`: the assignment below must survive a non-zero exit, or
+          # the verdict is decapitated before it is ever read (W101).
+          set -uo pipefail
+
+          out=$(bash scripts/ci/queue_rearm.sh 2>&1); rc=$?
+          printf '%s\n' "$out"
+
+          # Judge the tool by the contract it documents, not by "did it exit 0":
+          #   0 nothing to do / dry-run completed
+          #   2 at least one orphan carries a CODE red — a human fix, not a retry
+          #   3 a probe was blind and no verdict was reached (its own fail-closed)
+          case "$rc" in
+            0) echo "::notice::queue_rearm dry-run completed" ;;
+            2) echo "::warning::an orphaned pull request carries a CODE red — it needs fixing, not re-arming" ;;
+            3) echo "::error::queue_rearm reached NO verdict (a probe answered blind). Failing loudly: 'could not check' is never 'clean'."
+               exit 1 ;;
+            *) echo "::error::queue_rearm exited unexpectedly (rc=$rc)"
+               exit 1 ;;
+          esac
+
+          # PROOF-OF-ARMED, made executable. A scheduled job that runs and
+          # examines nothing proves the schedule fires, not that the recovery
+          # works — and an empty set impersonates both "all clean" and "never
+          # looked". The population line is the only thing that tells them
+          # apart, so its absence is a failure, not a quiet pass.
+          printf '%s\n' "$out" | grep -qE 'of [0-9]+ open pull request' || {
+            echo "::error::no population line in the output — this run proves the schedule fired, not that any pull request was examined"
+            exit 1
+          }
