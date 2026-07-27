@@ -27,7 +27,10 @@ async def test_spawn_returns_task_and_executes_coroutine():
 
     task = background.spawn(work())
     assert isinstance(task, asyncio.Task)
-    await asyncio.wait_for(executed.wait(), timeout=1.0)
+    # W58 (2026-07-27): work() is a trivial no-I/O coroutine — a real spawn()
+    # regression means the task never gets scheduled at all, not that it runs
+    # late, so a generous bound preserves full discriminating power.
+    await asyncio.wait_for(executed.wait(), timeout=5.0)
     await task  # ensure done
 
 

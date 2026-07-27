@@ -71,16 +71,42 @@ async def test_ollama_sensor_red_unreachable():
 
 # ── BackupSensor ──────────────────────────────────────────────────────────────
 
-def test_backup_sensor_green_fresh_file():
+def test_backup_sensor_green_needs_the_offsite_receipt_not_just_a_local_file():
+    """A fresh LOCAL dump is no longer green on its own (changed 2026-07-27).
+
+    This test used to assert that a fresh *.sql.gz meant green. That is exactly the
+    blindness that let 2026-07-15 pass unnoticed: neither nightly run put an object in
+    the bucket, yet the local dump was there and intact. The local file is written on the
+    way to Tigris and survives every failure after it, so green now requires the
+    `.offsite-verified.json` receipt that `fly-pg-backup.sh` writes only after listing the
+    object remotely. Full guilt/innocence matrix in test_backup_sensor_offsite.py.
+    """
+    from datetime import datetime, timezone
+
     from cell.sensors.backup_sensor import BackupSensor
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a fresh backup file (just now)
         backup_file = os.path.join(tmpdir, "nuzantara_2026-04-01.sql.gz")
         with open(backup_file, "w") as f:
             f.write("fake")
-        sensor = BackupSensor(backup_dir=tmpdir, green_hours=26.0)
-        reading = sensor.read()
+
+        # No receipt yet: bytes on disk, nothing proven off-site.
+        reading = BackupSensor(backup_dir=tmpdir, green_hours=26.0).read()
+        assert reading.status == "yellow"
+        assert reading.metadata["offsite"] == "unproven"
+
+        # With the receipt, the same fresh backup is green.
+        with open(os.path.join(tmpdir, ".offsite-verified.json"), "w") as f:
+            json.dump(
+                {
+                    "object": "nuzantara_2026-04-01.sql.gz",
+                    "verified_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+                    "bucket": "nuzantara-backups",
+                },
+                f,
+            )
+        reading = BackupSensor(backup_dir=tmpdir, green_hours=26.0).read()
     assert reading.status == "green"
+    assert reading.metadata["offsite"] == "proven"
     assert reading.last_backup_age_hours is not None
     assert reading.last_backup_age_hours < 1.0
 

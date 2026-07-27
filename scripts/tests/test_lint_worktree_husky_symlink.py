@@ -390,3 +390,90 @@ def test_default_repo_root_falls_back_to_file_path_on_git_failure(
     # the moment scan() calls git itself, so this fallback is a courtesy, not
     # a silent wrong-answer path.
     assert resolved == _MODULE_PATH.resolve().parent.parent
+
+
+# ---------------------------------------------------------------------------
+# ARMED-CHECK (added 2026-07-27). The detector above was complete, tested and
+# CI-verified from the day it merged -- and had never once run against a real
+# machine. Its only caller in the tree was immune-enforcement.yml, and what that
+# workflow runs is THIS FILE, not the detector: a GitHub runner cannot see a
+# worktree on M5. Measured by hand that day: 15 of 115 worktrees on M5 had no
+# `.husky/_` at all, so every push from them invoked no hook and exited 0 in
+# silence. Family #2 one level up -- not a missing detector, a detector nobody
+# asks. The cure is the proprioception registry entry these tests pin, because
+# that organ runs per-machine at SessionStart and its report is read.
+#
+# Pinned here rather than in a new file precisely because a new file under
+# scripts/ would itself need a workflow to name it -- which is the disease.
+# ---------------------------------------------------------------------------
+
+_PROPRIO_PATH = Path(__file__).resolve().parents[1] / "proprioception.py"
+
+
+def _proprioception_module():
+    spec = importlib.util.spec_from_file_location("proprioception", _PROPRIO_PATH)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _gate_entry():
+    entries = [e for e in _proprioception_module().DEFAULT_REGISTRY
+               if e.get("id") == "worktree_gate_shim"]
+    assert len(entries) == 1, (
+        "proprioception must carry exactly one worktree_gate_shim entry — without it "
+        "lint_worktree_husky_symlink.py runs on no machine and this whole file guards "
+        "a tool that is never invoked."
+    )
+    return entries[0]
+
+
+def test_proprioception_actually_invokes_this_detector() -> None:
+    """The entry must point at THIS script — the arming, not a re-implementation."""
+    entry = _gate_entry()
+    assert entry["type"] == "wrap", "must wrap the real tool, never re-implement it as a builtin twin"
+    target = entry["target"]
+    assert target[-1] == "--json", f"the parser needs JSON, got {target}"
+    assert target[-2].endswith("/scripts/lint_worktree_husky_symlink.py"), \
+        f"proprioception points at the wrong script: {target}"
+
+
+def test_the_registry_and_the_tool_agree_on_what_counts_as_a_finding() -> None:
+    """Two graders of one signal need one rule (else the organ and the tool disagree).
+
+    `ok_values` is proprioception's copy of the tool's FINDING_HEALTHS. Drift here
+    is silent in both directions: a health state added to the tool and not here
+    would be graded a finding by the organ and not by the tool, or vice versa.
+    """
+    ok = set(_gate_entry()["ok_values"])
+    all_healths = {lwhs.HEALTH_OK, lwhs.HEALTH_MISSING, lwhs.HEALTH_DANGLING, lwhs.HEALTH_GONE}
+    assert ok | set(lwhs.FINDING_HEALTHS) == all_healths, (
+        "every health state the tool can emit must be classified by the registry: "
+        f"ok={sorted(ok)} findings={sorted(lwhs.FINDING_HEALTHS)} all={sorted(all_healths)}"
+    )
+    assert not (ok & set(lwhs.FINDING_HEALTHS)), (
+        f"the registry calls {sorted(ok & set(lwhs.FINDING_HEALTHS))} acceptable while the tool "
+        "scores it a finding — the organ would report calm over a blind gate"
+    )
+    assert lwhs.HEALTH_GONE in ok, (
+        "GONE (the worktree directory itself is absent) is stale-registry hygiene for "
+        "`git worktree prune`, not a worktree pushing without a gate — deliberately not a finding"
+    )
+
+
+def test_the_parser_contract_matches_the_tools_json_shape() -> None:
+    """`unwrap_key`/`verdict_key` are strings resolved at runtime: a rename in the
+    tool's JSON would make run_wrap return UNPROBEABLE forever, which reads as
+    'not applicable here' rather than as a break. Pin them against real output."""
+    entry = _gate_entry()
+    payload = json.loads(json.dumps({  # shape mirrored from the tool's own emit path
+        "traversed": 1, "healthy": 1, "findings_count": 0, "gone_count": 0,
+        "origin_counts": {"main": 1},
+        "worktrees": [{"path": "/x", "origin": "main", "health": lwhs.HEALTH_OK,
+                       "is_symlink": False, "is_finding": False}],
+    }))
+    assert entry["unwrap_key"] in payload, f"unwrap_key {entry['unwrap_key']!r} absent from the tool's JSON"
+    assert entry["verdict_key"] in payload[entry["unwrap_key"]][0], \
+        f"verdict_key {entry['verdict_key']!r} absent from a worktree record"
