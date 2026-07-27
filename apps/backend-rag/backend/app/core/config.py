@@ -635,6 +635,19 @@ class Settings(BaseSettings):
     # of sending PII to the cloud. Set OCR_ALLOW_CLOUD_VISION=true ONLY for
     # non-PII document flows where cloud OCR is acceptable. Set via env var.
     ocr_allow_cloud_vision: bool = False  # Set via OCR_ALLOW_CLOUD_VISION env var
+    # GARUDA VOA public request funnel (BUILD-SPEC-SLICE-A-2026-07-27.md §3).
+    # Default True — this flag's default lives in git and ships by `git push`;
+    # `fly.toml` is an off-limits file and a `fly secrets set` override would
+    # be config drift invisible to the repo. The STOP-SALE guarantee for this
+    # slice comes from the *content* (no payment/document-upload/PII surface
+    # exists yet), not from this flag — it exists only as a kill-switch.
+    garuda_flow_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable the public GARUDA VOA request funnel (/api/visa/voa). "
+            "Default True; set via GARUDA_FLOW_ENABLED env var."
+        ),
+    )
 
     # ========================================
     # NOTIFICATION SERVICES

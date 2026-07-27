@@ -1,9 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { e2eEmail, e2ePin } from "./support/credentials";
 
 // Configuration for the mission
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com";
-const USER_EMAIL = "zero@balizero.com";
-const USER_PIN = "010719";
 
 test.describe("Nuzantara Mission Simulation", () => {
   // Use a dedicated browser context for the session
@@ -23,8 +22,8 @@ test.describe("Nuzantara Mission Simulation", () => {
     await page.waitForSelector('input[name="email"]');
 
     console.log("🔑 [Mission] Entering credentials...");
-    await page.fill('input[name="email"]', USER_EMAIL);
-    await page.fill('input[name="pin"]', USER_PIN);
+    await page.fill('input[name="email"]', e2eEmail());
+    await page.fill('input[name="pin"]', e2ePin());
 
     // Submit
     await page.click('button[type="submit"]');

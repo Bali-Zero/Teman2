@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
   workflow_dispatch:
   # Task #37 (2026-07-26). STRUCTURAL claim, not a snapshot of one night:
   # `cancel-in-progress: false` (below) protects a run that has already
@@ -67,9 +68,22 @@ on:
 # head". Do not "fix" this to match main's `false` — that was tried
 # nowhere, noted here only because the asymmetry looks like a bug at a
 # glance.
+#
+# merge_group readiness (2026-07-27): under merge_group, github.ref resolves
+# to the queue's own temporary ref (refs/heads/gh-readonly-queue/...), which
+# is != 'refs/heads/main' — so the expression above would evaluate to `true`
+# for a queue entry, cancelling an in-flight required-check run every time a
+# newer commit joined the queue (the exact starvation this block exists to
+# prevent for main, just relocated to the queue). This is a composed fix, not
+# the mechanical `cancel-in-progress: ${{ github.event_name != 'merge_group' }}`
+# used on the other 13 required-context workflows: that blanket replacement
+# would have discarded the schedule-vs-push asymmetry documented above. AND-ing
+# `github.event_name != 'merge_group'` onto the existing expression preserves
+# every other branch (push-to-main stays false, PR refs and schedule keep
+# cancelling) and forces false only for the new merge_group case.
 concurrency:
   group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'schedule' || github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   backend-tests:

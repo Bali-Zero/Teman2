@@ -600,38 +600,28 @@ async def test_claim_steal_expired_lease(pool, seed):
                             params={"claim_token": new_token})
 
 
+# OFFSETS, not absolute instants. A `datetime.now(...) + timedelta(minutes=5)`
+# written here is evaluated when pytest COLLECTS this module, not when the test
+# runs — so in the full backend suite (~55 min) the three "live lease" cases
+# reached the assertion long after their lease had expired, and the guard
+# correctly answered 409 (expired) instead of 403/400. Diagnosed 2026-07-27
+# after a pre-push failure whose three failing ids were exactly the three
+# `+5 minutes` cases; the same three pass in a fast isolated run, which is what
+# made it look like flake. Same family as W106: a measurement of the world
+# frozen into a constant, consumed much later as if it were still current.
+# The lease instant is now computed INSIDE the test — it cannot go stale.
 @pytest.mark.parametrize(
-    ("lease_expires_at", "lease_owner", "claim_token", "expected_status"),
+    ("lease_offset", "lease_owner", "claim_token", "expected_status"),
     [
         (None, TEAM_OWNER["email"], None, 409),
-        (
-            datetime.now(timezone.utc) - timedelta(minutes=1),
-            TEAM_OWNER["email"],
-            None,
-            409,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OTHER["email"],
-            None,
-            403,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            TEAM_OWNER["email"],
-            "not-a-uuid",
-            400,
-        ),
-        (
-            datetime.now(timezone.utc) + timedelta(minutes=5),
-            " ",
-            str(uuid.uuid4()),
-            403,
-        ),
+        (timedelta(minutes=-1), TEAM_OWNER["email"], None, 409),
+        (timedelta(minutes=5), TEAM_OTHER["email"], None, 403),
+        (timedelta(minutes=5), TEAM_OWNER["email"], "not-a-uuid", 400),
+        (timedelta(minutes=5), " ", str(uuid.uuid4()), 403),
     ],
 )
 async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
-    lease_expires_at,
+    lease_offset,
     lease_owner,
     claim_token,
     expected_status,
@@ -644,6 +634,10 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     token mismatches are exercised separately below and in the reject tests.
     """
     from backend.app.routers.intake_review import _require_active_claim
+
+    lease_expires_at = (
+        None if lease_offset is None else datetime.now(timezone.utc) + lease_offset
+    )
 
     active_token = uuid.uuid4()
     prop = {
@@ -665,6 +659,47 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
         )
 
     assert exc_info.value.status_code == expected_status
+
+
+def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
+    """Guard the fix above: a collection-time `datetime.now()` is a time bomb.
+
+    It judges by ENTITY (is this value an absolute instant?) rather than by
+    grepping the source for `datetime.now`, so it cannot be dodged by an alias
+    or an import rename, and it cannot over-match a comment. Verified 2026-07-27:
+    no parametrize in this module legitimately carries a datetime, so a hit here
+    is always the bug, never a false positive.
+    """
+    import datetime as _dt
+    import sys
+
+    module = sys.modules[__name__]
+    offenders = []
+    seen_parametrize = 0
+    for name in dir(module):
+        fn = getattr(module, name)
+        for mark in getattr(fn, "pytestmark", []) or []:
+            if mark.name != "parametrize":
+                continue
+            seen_parametrize += 1
+            for row in mark.args[1]:
+                cells = row if isinstance(row, (tuple, list)) else (row,)
+                for cell in cells:
+                    if isinstance(cell, (_dt.datetime, _dt.date)):
+                        offenders.append((name, cell))
+
+    # Blindness guard: if the scan sees no parametrize at all it went blind
+    # (decorator API changed / tests moved), which is not the same as clean.
+    assert seen_parametrize >= 1, (
+        "No parametrize marks found in this module — this guard went blind "
+        "rather than finding the module clean."
+    )
+    assert not offenders, (
+        f"Parametrize values frozen at collection time: {offenders}. "
+        "In the full backend suite this module is collected up to ~55 minutes "
+        "before these tests run, so any absolute instant is stale by then. "
+        "Pass a timedelta offset and compute the instant inside the test."
+    )
 
 
 async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):

@@ -17,6 +17,7 @@ name: Organ conformance (DNA genome — genes at birth)
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   push:
     branches: [main]
     paths:
@@ -32,7 +33,7 @@ on:
 
 concurrency:
   group: organ-conformance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
@@ -52,8 +53,23 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "push" ]; then
-            echo "hit=true" >> "$GITHUB_OUTPUT"; exit 0
+          # merge_group readiness (2026-07-27): the old guard only special-cased
+          # "push" — under merge_group, BASE/HEAD (pull_request.* fields) are
+          # empty, `git diff --name-only "" ""` failed, and a blind `|| true`
+          # swallowed that failure into hit=false, skipping every gate step
+          # while still reporting SUCCESS (silent-green, cicatrix family #2).
+          # Fix mirrors the proven fail-open sentinel (verify-the-verifiers.yml
+          # and siblings): ANY non-pull_request event runs the full gate, and a
+          # pull_request event with an unusable diff now fails CLOSED instead of
+          # pretending nothing changed.
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event ($EVENT_NAME) — running full organ-conformance gate"
+            exit 0
+          fi
+          if [[ -z "$BASE" || -z "$HEAD" ]]; then
+            echo "::error::pull_request event with empty BASE/HEAD sha — cannot compute diff, failing closed"
+            exit 1
           fi
           CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- \
             'infra/organ-conformance/' 'infra/home-fork/declared-pairs.json' \
@@ -62,7 +78,7 @@ jobs:
             'scripts/healer_receptor_registry.py' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
-            'infra/launchagents/' 'infra/healer/' || true)
+            'infra/launchagents/' 'infra/healer/')
           if [ -n "$CHANGED" ]; then
             echo "organ surfaces changed:"; echo "$CHANGED"
             echo "hit=true" >> "$GITHUB_OUTPUT"
