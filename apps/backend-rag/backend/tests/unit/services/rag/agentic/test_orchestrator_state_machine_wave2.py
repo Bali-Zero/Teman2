@@ -35,6 +35,7 @@ if str(backend_path) not in sys.path:
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.tools.definitions import AgentState, BaseTool
@@ -639,3 +640,111 @@ class TestTier1RegenExceptionContract:
 
         with pytest.raises(RuntimeError, match="ReAct loop failed"):
             await orch.process_query("visto KITAS?", "user@test.com")
+
+
+# =============================================================================
+# O24 — KG workflow prose must not ride along on a refusal (2026-07-27)
+# =============================================================================
+
+
+class TestWorkflowScaffoldNotAppendedToRefusal:
+    """Step 12 appends `_format_workflow_for_prompt` text to the answer.
+
+    That append used to be unconditional, so a reply that had just abstained
+    still carried a confident workflow underneath it. Measured live 2026-07-27
+    (E23 KITAS rejection question): abstain=true, "non ho trovato informazioni
+    rilevanti", immediately followed by "## SUGGESTED WORKFLOW … confidence:
+    78%" listing the normal APPLICATION steps to someone whose application had
+    been refused — and closing with "Always verify current requirements with
+    the user", a line addressed to the model, not the client.
+
+    The withholding is scoped to refusals ON PURPOSE. It would be wrong to
+    claim nothing is lost: the API does return a structured `workflow` field,
+    but the web chat and Prime adapters forward only `answer` and `sources`
+    and blog/Oracle drop it, so on those surfaces this prose IS the workflow.
+    On a refusal it contradicts the sentence above it, which is why only that
+    case is withheld.
+
+    The check reads `result.abstain` AFTER the E33 guard rather than
+    recomputing a refusal from `evidence_score`: the guard can still turn an
+    answer into an abstention, and a 0.0 score does not mean "refused" —
+    trusted-tool/pricing bypasses can authorise an answer without updating it.
+
+    NOTE these drive the real `process_query` path. The pre-existing
+    `test_workflow_appended_to_answer` in test_kg_langgraph_integration.py does
+    the concatenation by hand and asserts its own arithmetic, so it could never
+    have caught this.
+    """
+
+    _WORKFLOW = {
+        "id": "visa_processing:kitas",
+        "type": "visa_processing",
+        "name": "KITAS Visa Processing",
+        "source": "visa_subgraph",
+        "confidence": 0.78,
+        "steps": [{"step": 1, "action": "Apply for TKA allocation quota via SPKP"}],
+    }
+
+    @classmethod
+    def _arm_workflow(cls, orch):
+        """Make prepare_query_context yield a KG workflow, leaving the rest.
+
+        Also restores the REAL response builder. The shared fixture leaves
+        `core.response_builder` a MagicMock, which means `result.abstain` is
+        never computed and comes back False on every path — measured while
+        writing these tests, and the same reason `result.workflow` reads None
+        there. A test about behaviour on a refusal cannot run against a harness
+        that can never produce one.
+        """
+        orch.core.response_builder = OrchestratorResponseBuilder()
+        original = orch.core.prepare_query_context
+
+        async def _with_workflow(**kwargs):
+            user_ctx, history, entities, ctx, _ = await original(**kwargs)
+            return user_ctx, history, entities, ctx, dict(cls._WORKFLOW)
+
+        orch.core.prepare_query_context = _with_workflow
+
+    async def test_low_evidence_withholds_the_workflow_prose(
+        self,
+        orch,
+        _stub_final_state,
+    ):
+        """GUILT: below the abstain label gate the prose must be withheld —
+        while the STRUCTURED workflow field is still returned, so no consumer
+        loses data, only the contradictory prose."""
+        # A LOW SCORE IS NOT A REFUSAL. `trusted_tools_used` (the fixture's
+        # default) authorises the answer regardless of the score, and
+        # `result.abstain` then comes back False even at 0.05 — measured right
+        # here while building this test. That is exactly why the check reads the
+        # decision and not the score: an earlier draft gated on
+        # `label_abstains(evidence_score)` and would have stripped the workflow
+        # from answers the system had chosen to deliver.
+        _stub_final_state.evidence_score = 0.05
+        _stub_final_state.trusted_tools_used = False
+        self._arm_workflow(orch)
+
+        result = await orch.process_query("Cosa faccio adesso?", "user@test.com")
+
+        assert result.abstain is True
+        assert result.abstain_reason is not None
+        assert "SUGGESTED WORKFLOW" not in result.answer
+        assert "Always verify current requirements" not in result.answer
+        # the structured field is untouched by the withholding
+        assert result.workflow is None or isinstance(result.workflow, dict)
+
+    async def test_evidenced_answer_still_carries_the_workflow_prose(
+        self,
+        orch,
+        _stub_final_state,
+    ):
+        """INNOCENCE: with real evidence the append is unchanged — this fix
+        narrows the 2026-07-25 'may be legitimate for other consumers'
+        assumption only where it was provably wrong (a refusal)."""
+        _stub_final_state.evidence_score = 0.8
+        self._arm_workflow(orch)
+
+        result = await orch.process_query("Come funziona il KITAS?", "user@test.com")
+
+        assert result.abstain is False
+        assert "SUGGESTED WORKFLOW" in result.answer
