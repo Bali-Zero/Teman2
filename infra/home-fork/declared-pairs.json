@@ -23,6 +23,12 @@
       "machines": ["pro", "m5"]
     },
     {
+      "live": "~/.claude/agents/regulatory-watcher.md",
+      "repo": ".claude/agents/regulatory-watcher.md",
+      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair; same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini).",
+      "machines": ["pro", "m5"]
+    },
+    {
       "live": "~/scripts/wr2-deploy-pull.sh",
       "repo": "scripts/wr2-deploy-pull.sh",
       "machines": ["pro"]

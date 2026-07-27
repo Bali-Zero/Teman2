@@ -550,6 +550,11 @@ openclaw
 !.claude/agents/frontend-browser.md
 !.claude/agents/mcp-health.md
 !.claude/agents/spalla-review.md
+# Task #95 (2026-07-27): promoted from ~/.claude/agents/ (was HOME-only, never
+# repo-tracked) so the wrapper's Tier-1 spec has a source of truth to arm from —
+# declared home-fork pair in infra/home-fork/declared-pairs.json. No PII: this is
+# a workflow spec (source URLs, JSON schema), not a client-data agent.
+!.claude/agents/regulatory-watcher.md
 # 2026-07-17: slash commands hold PER-PERSON team corners (subhi/ari/... with
 # probation dates, RBAC perimeters) that live ONLY in ~/.claude/commands and must
 # NEVER reach this PUBLIC repo (UU PDP / SYMBIOSIS Law 2). !.claude/commands/ nudo
