@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.services.rag.agentic._reasoning_stubs import STUB_MESSAGES
 from backend.services.tools.definitions import AgentState, AgentStep, ToolCall
 
 # ---------------------------------------------------------------------------
@@ -98,29 +99,43 @@ class TestValidateContextQuality:
 
 
 class TestLocalizedStub:
+    """The accessor must return the shipped table entry, whatever it says.
+
+    These asserted fragments of the copy ("Mi dispiace", "I'm sorry", "Maaf",
+    "I can help you with"), which froze the wording of every client-facing
+    refusal behind a test in a file about coverage. The copy, its per-language
+    reach and its fallback contract are owned by
+    ``test_reasoning_stubs_language_coverage.py``; this class owns delegation.
+    """
+
     def test_italian_abstain(self, engine):
-        result = engine._get_localized_stub("abstain", "ITALIAN")
-        assert "Mi dispiace" in result
+        assert engine._get_localized_stub("abstain", "ITALIAN") == STUB_MESSAGES["abstain"][
+            "ITALIAN"
+        ]
 
     def test_english_abstain(self, engine):
-        result = engine._get_localized_stub("abstain", "ENGLISH")
-        assert "I'm sorry" in result
+        assert engine._get_localized_stub("abstain", "ENGLISH") == STUB_MESSAGES["abstain"][
+            "ENGLISH"
+        ]
 
     def test_indonesian_abstain(self, engine):
-        result = engine._get_localized_stub("abstain", "INDONESIAN")
-        assert "Maaf" in result
+        assert engine._get_localized_stub("abstain", "INDONESIAN") == STUB_MESSAGES["abstain"][
+            "INDONESIAN"
+        ]
 
     def test_unknown_language_falls_back_to_english(self, engine):
-        result = engine._get_localized_stub("abstain", "KLINGON")
-        assert "sorry" in result.lower()
+        assert engine._get_localized_stub("abstain", "KLINGON") == STUB_MESSAGES["abstain"][
+            "ENGLISH"
+        ]
 
     def test_unknown_key_falls_back(self, engine):
         result = engine._get_localized_stub("nonexistent_key", "ENGLISH")
-        assert "sorry" in result.lower()
+        assert isinstance(result, str) and result.strip()
 
     def test_abstain_detailed_english(self, engine):
-        result = engine._get_localized_stub("abstain_detailed", "ENGLISH")
-        assert "I can help you with" in result
+        assert engine._get_localized_stub("abstain_detailed", "ENGLISH") == STUB_MESSAGES[
+            "abstain_detailed"
+        ]["ENGLISH"]
 
     def test_error_stub(self, engine):
         result = engine._get_localized_stub("error", "ITALIAN")
@@ -316,11 +331,14 @@ class TestEvidenceScoring:
                 model_tier=1,
                 tool_execution_counter={"count": 0},
             )
-            # ABSTAIN should override the original answer
-            assert (
-                "I can help you with" in result_state.final_answer
-                or "informazioni verificate" in result_state.final_answer
+            # ABSTAIN should override the original answer. Assert it IS one of
+            # the shipped abstain stubs rather than matching a phrase inside
+            # them — the wording is product copy and changes; "the answer was
+            # replaced by an abstain" is the invariant.
+            abstain_texts = set(STUB_MESSAGES["abstain"].values()) | set(
+                STUB_MESSAGES["abstain_detailed"].values()
             )
+            assert result_state.final_answer in abstain_texts
 
     @pytest.mark.asyncio
     async def test_pricing_data_in_answer_trusts_output(self, engine):

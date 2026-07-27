@@ -87,24 +87,24 @@ class TestZantaraFluidity:
 
     @pytest.mark.asyncio
     async def test_proactive_abstain_message(self):
-        """Test that ABSTAIN message is proactive (suggests alternatives)"""
+        """The detailed ABSTAIN a client receives suggests alternatives.
 
-        # Check that ABSTAIN message includes suggestions
-        abstain_message = (
-            "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-            "Posso aiutarti con:\n"
-            "• Informazioni su visti e KITAS\n"
-            "• Setup aziendale (PT PMA)\n"
-            "• Questioni fiscali e legali\n"
-            "• Procedure e documentazione\n\n"
-            "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+        This test used to paste a COPY of the message into itself and assert
+        against that literal — so it passed no matter what production said,
+        and would have kept passing if the table were emptied. It now reads
+        the shipped table, in every protocol language.
+        """
+        from backend.services.rag.agentic._reasoning_stubs import (
+            PROTOCOL_LANGUAGES,
+            get_localized_stub,
         )
 
-        # Verify message is proactive (not just "altro?")
-        assert "Posso aiutarti con:" in abstain_message
-        assert "visti e KITAS" in abstain_message
-        assert "Setup aziendale" in abstain_message
-        assert "altro?" not in abstain_message.lower()
+        for language in PROTOCOL_LANGUAGES:
+            message = get_localized_stub("abstain_detailed", language)
+            # It names concrete domains rather than trailing off into "anything else?"
+            assert message.count("•") >= 3, f"{language}: fewer than 3 suggestions"
+            assert "KITAS" in message, f"{language}: does not name the core service line"
+            assert "PT PMA" in message, f"{language}: does not name company setup"
 
     @pytest.mark.asyncio
     async def test_evidence_score_allows_responses(self):
@@ -229,24 +229,25 @@ class TestZantaraIntegration:
 
     @pytest.mark.asyncio
     async def test_abstain_message_quality(self):
-        """Test that ABSTAIN messages are helpful and proactive"""
-        abstain_message = (
-            "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-            "Posso aiutarti con:\n"
-            "• Informazioni su visti e KITAS\n"
-            "• Setup aziendale (PT PMA)\n"
-            "• Questioni fiscali e legali\n"
-            "• Procedure e documentazione\n\n"
-            "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+        """Both ABSTAIN variants are substantial in every protocol language.
+
+        Same correction as ``test_proactive_abstain_message``: this asserted
+        against a literal it had written itself. It now reads production.
+        """
+        from backend.services.rag.agentic._reasoning_stubs import (
+            PROTOCOL_LANGUAGES,
+            get_localized_stub,
         )
 
-        # Quality checks
-        assert len(abstain_message) > 100, "Message should be substantial"
-        assert "•" in abstain_message or "-" in abstain_message, "Should have bullet points"
-        assert "Posso aiutarti" in abstain_message or "can help" in abstain_message.lower(), (
-            "Should be helpful, not dismissive"
-        )
-        assert "altro?" not in abstain_message.lower(), "Should not just ask 'altro?'"
+        for language in PROTOCOL_LANGUAGES:
+            detailed = get_localized_stub("abstain_detailed", language)
+            assert len(detailed) > 100, f"{language}: detailed abstain is not substantial"
+            assert "•" in detailed, f"{language}: detailed abstain lost its bullets"
+
+            # The short variant is what most refusals actually send. It must
+            # still be a sentence a client can act on, not a one-liner dead end.
+            short = get_localized_stub("abstain", language)
+            assert len(short) > 100, f"{language}: short abstain is a bare dead end"
 
 
 class TestZantaraPerformance:
