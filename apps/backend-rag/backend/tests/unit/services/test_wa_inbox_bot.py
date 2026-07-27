@@ -21,6 +21,7 @@ import asyncpg
 import pytest
 
 from backend.services.integrations import wa_inbox_bot
+from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 
 
 class _Conn:
@@ -105,7 +106,7 @@ _ROWS_NEWEST_FIRST = [
 async def test_flag_off_raises(monkeypatch):
     monkeypatch.delenv("WA_INBOX_BOT_AUTOREPLY", raising=False)
     pool = _Pool(_ROWS_NEWEST_FIRST)
-    with pytest.raises(RuntimeError, match="disabled"):
+    with pytest.raises(BotStandingCondition, match="disabled"):
         await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
 
@@ -113,7 +114,7 @@ async def test_flag_off_raises(monkeypatch):
 async def test_no_customer_message_raises(monkeypatch):
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool([{"direction": "outbound", "sender_role": "bot", "body": "hi"}])
-    with pytest.raises(RuntimeError, match="no customer message"):
+    with pytest.raises(BotStandingCondition, match="no customer message"):
         await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
 
