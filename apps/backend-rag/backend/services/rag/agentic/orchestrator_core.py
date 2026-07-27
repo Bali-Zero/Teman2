@@ -1502,14 +1502,6 @@ class OrchestratorCore:
             reasoning=langgraph_reasoning,
         )
 
-        # 12. Also append KG LangGraph workflow text to answer for visibility
-        if langgraph_workflow:
-            workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
-            result.answer = result.answer.rstrip() + "\n\n" + workflow_text
-            logger.info(
-                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
-            )
-
         # 12b. E33 Second Home claim guard: flags registry-forbidden E33
         # claims in the generated answer and appends a safe fallback note.
         # The note-append is unconditional and non-blocking — never rewrites
@@ -1517,6 +1509,56 @@ class OrchestratorCore:
         # abstain/HUMAN_REVIEW is gated by _E33_CLAIM_GUARD_ENFORCE (see
         # flag definition above for the full rationale).
         _apply_e33_claim_guard(result)
+
+        # 12c. KG LangGraph workflow prose — appended for visibility, but NEVER
+        # onto a refusal (2026-07-27).
+        #
+        # This append used to sit at step 12 and run unconditionally, so a reply
+        # that had just abstained still carried a confident workflow underneath
+        # it. Measured live, asking (in Italian) what to do after an E23 KITAS
+        # was REJECTED: abstain=true, abstain_reason="no_relevant_context",
+        # sources=[], the correct refusal — and then "## SUGGESTED WORKFLOW
+        # (from visa_subgraph, confidence: 78%)" listing the normal APPLICATION
+        # steps to someone whose application had been refused, closing with
+        # "Always verify current requirements with the user", a line addressed
+        # to the model rather than the client (the helper is, as its name says,
+        # `_format_workflow_for_prompt`).
+        #
+        # It lives HERE, after `_apply_e33_claim_guard`, and reads `result.abstain`
+        # — the decision itself — rather than recomputing a refusal from the
+        # evidence score. Two reasons, both from adversarial review:
+        #   * the E33 guard above can still turn an answer into an abstention,
+        #     so anything deciding earlier decides on stale state;
+        #   * `evidence_score == 0.0` does NOT mean "refused": trusted-tool and
+        #     pricing bypasses (and skip_rag) can authorise an answer without
+        #     ever updating the score, so gating on the score would strip the
+        #     workflow from replies the system chose to deliver.
+        #
+        # Deliberately NOT claimed: that nothing is lost. The structured
+        # `workflow` field is returned by the API, but the web chat and Prime
+        # adapters forward only `answer` and `sources`, and blog/Oracle drop it —
+        # so for those surfaces this prose IS the workflow. That is precisely why
+        # the withholding is scoped to refusals, where the prose contradicts the
+        # very sentence above it, and not widened to evidenced answers.
+        #
+        # Still open, deliberately out of scope here: the KG fast-path builds its
+        # answer FROM this prose (so it cannot simply be dropped there), the
+        # streaming path emits the workflow as metadata unconditionally and
+        # before reading any score, and `whatsapp_chat.py` sends `result.answer`
+        # without honouring `abstain` at all.
+        if langgraph_workflow and not result.abstain:
+            workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
+            result.answer = result.answer.rstrip() + "\n\n" + workflow_text
+            logger.info(
+                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
+            )
+        elif langgraph_workflow:
+            logger.info(
+                "🔗 [KG LangGraph] Workflow prose withheld — the answer is an "
+                "abstention (reason=%s); the structured `workflow` field is "
+                "still returned.",
+                result.abstain_reason,
+            )
 
         # 13. R5 Phase 6: NLM Enrichment merge removed — nlm_task/nlm_domain always None
         evidence_score = getattr(state, "evidence_score", None)
