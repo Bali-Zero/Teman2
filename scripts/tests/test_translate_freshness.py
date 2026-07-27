@@ -88,6 +88,32 @@ def test_unstamped_frontmatter_reads_as_none():
     assert ta.read_stamp(FM) is None
 
 
+def test_stamping_adds_a_line_and_changes_nothing_else():
+    """A metadata pass must be byte-additive.
+
+    FRONTMATTER_RE closes on ``---\\s*\\n`` and ``\\s`` eats newlines, so the
+    blank line before the body lands INSIDE the frontmatter block. The obvious
+    rstrip-then-rsplit insertion deletes it: stamping the real corpus that way
+    produced 1294 insertions AND 1009 deletions — a thousand article bodies
+    reflowed by a pass that was only supposed to add a line.
+    """
+    original = '---\ntitle: "T"\n---\n\n'  # note the blank line after ---
+    stamped = ta.stamp_frontmatter(original, "c" * 64)
+    assert stamped.endswith("---\n\n"), "the blank line before the body must survive"
+    assert stamped.replace(f'{ta.STAMP_FIELD}: "{"c" * 64}"\n', "") == original
+
+
+def test_adding_a_locale_also_leaves_the_body_separator_alone():
+    original = '---\ntitle: "T"\n---\n\n'
+    patched = ta.patch_frontmatter_locale(original, "it")
+    assert patched.endswith("---\n\n")
+    assert patched.replace('locale: "it"\n', "") == original
+
+
+def test_frontmatter_without_a_delimiter_is_returned_untouched():
+    assert ta.stamp_frontmatter("", "d" * 64) == ""
+
+
 def test_digest_covers_the_body_only():
     """Frontmatter drift must not read as a body change — that would pay for a
     re-translation to fix a copied title."""

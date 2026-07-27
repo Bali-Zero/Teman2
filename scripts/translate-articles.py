@@ -100,8 +100,13 @@ def patch_frontmatter_locale(fm_block: str, locale: str) -> str:
     """Set locale: in frontmatter. Add it if missing."""
     if re.search(r'^locale:\s', fm_block, re.MULTILINE):
         return re.sub(r'^locale:\s.*$', f'locale: "{locale}"', fm_block, flags=re.MULTILINE)
-    # Insert before closing ---
-    return fm_block.rstrip().rsplit("---", 1)[0] + f'locale: "{locale}"\n---\n'
+    # Insert before the closing delimiter, keeping the tail verbatim — the
+    # rstrip form used to swallow the blank line before the body (see
+    # stamp_frontmatter).
+    head, sep, tail = fm_block.rpartition("---")
+    if not sep:
+        return fm_block
+    return f'{head}locale: "{locale}"\n{sep}{tail}'
 
 
 # ── Freshness stamp (scar 2026-07-28) ──────────────────────────────────────
@@ -139,10 +144,22 @@ def read_stamp(fm_block: str) -> str | None:
 
 
 def stamp_frontmatter(fm_block: str, digest: str) -> str:
-    """Set source_sha256: in frontmatter. Add it if missing."""
+    """Set source_sha256: in frontmatter. Add it if missing.
+
+    Inserts before the closing delimiter with rpartition and re-appends the
+    tail VERBATIM. The obvious `fm_block.rstrip().rsplit("---", 1)[0] + ...`
+    is wrong here, and measurably so: FRONTMATTER_RE closes on ``---\\s*\\n``
+    and ``\\s`` eats newlines, so the blank line that separates frontmatter
+    from body is captured INSIDE fm_block — rstrip then deletes it. Stamping
+    the corpus that way produced `1294 insertions(+), 1009 deletions(-)`:
+    a metadata-only pass silently reflowing a thousand article bodies.
+    """
     if _STAMP_RE.search(fm_block):
         return _STAMP_RE.sub(f'{STAMP_FIELD}: "{digest}"', fm_block)
-    return fm_block.rstrip().rsplit("---", 1)[0] + f'{STAMP_FIELD}: "{digest}"\n---\n'
+    head, sep, tail = fm_block.rpartition("---")
+    if not sep:  # no delimiter at all — leave it alone rather than corrupt it
+        return fm_block
+    return f'{head}{STAMP_FIELD}: "{digest}"\n{sep}{tail}'
 
 
 def freshness_verdict(existing_fm: str | None, digest: str) -> str:
