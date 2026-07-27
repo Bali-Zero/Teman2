@@ -35,7 +35,11 @@ class CollaboratorProfile:
     religion: str | None = None
     traits: list[str] = field(default_factory=list)
     notes: str | None = None
-    pin: str | None = None
+    # NO `pin` field, deliberately. Until 2026-07-27 this profile carried the
+    # member's plaintext login PIN, straight out of the committed roster, and
+    # `to_dict()` serialized it — one wiring away from an HTTP response. The
+    # roster no longer holds PINs (they live outside the repository); nothing
+    # here should be able to hand one out again.
     location: str | None = None
     emotional_preferences: dict[str, str] = field(default_factory=dict)
     relationships: list[dict[str, str]] = field(default_factory=list)
@@ -56,7 +60,6 @@ class CollaboratorProfile:
             "religion": self.religion,
             "traits": self.traits,
             "notes": self.notes,
-            "pin": self.pin,
             "location": self.location,
             "emotional_preferences": self.emotional_preferences,
             "relationships": self.relationships,
@@ -107,7 +110,6 @@ class CollaboratorService:
                 religion=entry.get("religion"),
                 traits=entry.get("traits", []),
                 notes=entry.get("notes"),
-                pin=entry.get("pin"),
                 location=entry.get("location"),
                 emotional_preferences=entry.get("emotional_preferences", {}),
                 relationships=entry.get("relationships", []),

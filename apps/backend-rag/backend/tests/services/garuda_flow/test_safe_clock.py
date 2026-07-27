@@ -12,6 +12,7 @@ import pytest
 from backend.services.garuda_flow.safe_clock import (
     compute_stay,
     days_until_expiry,
+    filing_window_opens_for,
     is_overstay,
 )
 from backend.services.visa_check.catalogue import VisaType
@@ -76,6 +77,27 @@ class TestComputeStay:
         w = compute_stay(entry_date=date(2026, 7, 13))
         labels = {c.label for c in w.checkpoints}
         assert labels == {"D-14", "D-10", "D-7", "D-3", "D-1"}
+
+
+class TestFilingWindowOpensFor:
+    """D-14 as a standalone, client-facing accessor (defect-fix pin: the
+    frontend result page consumes this field directly and must never
+    recompute the 14-day offset itself)."""
+
+    def test_pins_the_14_day_offset(self) -> None:
+        assert filing_window_opens_for(date(2026, 8, 12)) == date(2026, 7, 29)
+
+    def test_matches_compute_stay_own_derivation(self) -> None:
+        # Single source of truth: the standalone accessor and compute_stay()'s
+        # internal StayWindow.extension_window_opens must never diverge.
+        w = compute_stay(entry_date=date(2026, 7, 13))
+        assert filing_window_opens_for(w.expiry_date) == w.extension_window_opens
+
+    def test_derives_from_printed_expiry_not_estimated_one(self) -> None:
+        printed = compute_stay(
+            entry_date=date(2026, 7, 13), printed_expiry=date(2026, 8, 11)
+        )
+        assert filing_window_opens_for(printed.expiry_date) == date(2026, 7, 28)
 
 
 class TestDaysUntilExpiry:
