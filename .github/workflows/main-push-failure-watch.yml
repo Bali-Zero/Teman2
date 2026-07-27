@@ -122,6 +122,10 @@ on:
       - Magazine auto-assets contract
       - Migration Lint (Squawk)
       - npm lock sync
+      # Registered with the workflow itself (2026-07-27). Inserted here rather
+      # than appended: PR #3295 is adding its own entry at the END of this list,
+      # and two PRs appending to the same line would conflict for no reason.
+      - prepush-guards
       - Nuz Status Control
       - Organ conformance (DNA genome — genes at birth)
       - P1 STRATO-2 incremental mutation gate
@@ -133,6 +137,7 @@ on:
       - Monthly PG Restore Drill
       - Root Guard
       - SBOM (Software Bill of Materials)
+      - scripts/tests/ sweep (report-only)
       - Security Scanning
       - SAST — Bandit + ESLint Security
       - SonarQube Analysis
@@ -146,6 +151,13 @@ on:
       - worker-plane review panel tests
       - WR2 master template guard
       - wr2-queue-tests
+      # Added with the workflow itself: scripts/check_watcher_coverage.py is
+      # the meta-guard that makes this list mandatory rather than aspirational,
+      # and it caught merge-queue-watch missing here on this very PR's first
+      # run ("1 violation(s)"). A watcher that is not itself watched is the
+      # exact shape of superscar #2 — the queue's own ejection detector going
+      # silently dead would be invisible.
+      - merge-queue-watch
     types: [completed]
   # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
   # exists — a reactive workflow_run watcher structurally cannot see the

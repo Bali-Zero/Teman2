@@ -393,7 +393,19 @@ if [[ "${WR2_DEPLOY_PULL_KICKSTART:-0}" == "1" ]]; then
   else
     log "WARN: kickstart html-apply failed (label not loaded?)"
   fi
-  for svc in com.balizero.wr2.supervisor com.balizero.wr2.supervisor-watchdog; do
+  # wr3.supervisor added 2026-07-27. It is the SAME shape as the two WR2
+  # daemons — a long-running Python process importing from the deploy tree —
+  # and it was simply never listed, so nothing ever restarted it: measured
+  # live on Pro, it had been running since 23 July on pre-pull code while the
+  # tree beneath it advanced every hour. The RUNTIME_STALE disease this block
+  # was written to cure, on a daemon the block did not cover.
+  #
+  # NOT added here (deliberate, see PENDING-ARMS): com.balizero.wa-meta-inbox,
+  # the fourth live process off this tree and equally stale. It holds a
+  # WhatsApp session, and W67 is a scar about exactly that family reconnect-
+  # storming. Restarting it on every advance needs its own reconnect-cost
+  # judgement, not an entry appended to a list.
+  for svc in com.balizero.wr2.supervisor com.balizero.wr2.supervisor-watchdog com.balizero.wr3.supervisor; do
     if launchctl kickstart -k "gui/${UID_N}/${svc}" >>"$LOG" 2>&1; then
       log "kickstart -k ${svc} OK (daemon restarted on new code)"
     else

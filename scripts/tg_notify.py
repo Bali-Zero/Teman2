@@ -63,6 +63,10 @@ def _env_num(name: str, default: float, cast=float):
 
 
 P0_BUDGET = _env_num("TG_P0_BUDGET", 12, int)
+# Reserve for `cron-fail:*` keys, drawn ONLY once the shared budget is gone.
+# Small on purpose: a flapping cron must not become the next source that eats
+# the channel. See the comment at the budget decision below for the measurement.
+CRON_FAIL_RESERVE = _env_num("TG_CRON_FAIL_RESERVE", 3, int)
 DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 DRY_RUN = os.environ.get("TG_DRY_RUN", "") == "1"
 RELAY_SSH = os.environ.get("TG_RELAY_SSH", "")  # e.g. "pro" on M5
@@ -215,6 +219,7 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
     }
 
     send_meta = False
+    drew_from_reserve = False
     today = time.strftime("%Y-%m-%d", time.localtime(now))
 
     with _spool_lock(spool):
@@ -245,15 +250,30 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
         budget = state.setdefault("p0_budget", {})
         if budget.get("date") != today:
             budget.clear()
-            budget.update({"date": today, "sent": 0, "overflow": 0})
+            budget.update({"date": today, "sent": 0, "overflow": 0, "cron_reserve": 0})
 
         if budget["sent"] >= P0_BUDGET:
-            budget["overflow"] += 1
-            record["p0_overflow"] = True
-            _append(spool, "pending.jsonl", record)
-            send_meta = budget["overflow"] == 1
-            _save_state(spool, state)
-            over = True
+            # A cron JOB FAILURE draws on its own small reserve once the shared
+            # budget is gone. Measured 2026-07-27 on Pro: the P0 budget is hit on
+            # 8 of 21 days and 68% of it (155 of 228 sent P0s) is one chatty
+            # source — so on a busy day a genuine existential alert loses its slot
+            # to conversation notices. That is not hypothetical: on 2026-07-26 at
+            # 03:21 "the Postgres backup failed" returned p0_overflow_spooled and
+            # went to the digest, and production then spent 27 hours with no
+            # backup at all.
+            if key.startswith("cron-fail:") and budget.get("cron_reserve", 0) < CRON_FAIL_RESERVE:
+                budget["cron_reserve"] = budget.get("cron_reserve", 0) + 1
+                drew_from_reserve = True
+                record["p0_cron_reserve"] = True
+                _save_state(spool, state)
+                over = False
+            else:
+                budget["overflow"] += 1
+                record["p0_overflow"] = True
+                _append(spool, "pending.jsonl", record)
+                send_meta = budget["overflow"] == 1
+                _save_state(spool, state)
+                over = True
         else:
             budget["sent"] += 1  # reserved; rolled back below if the send fails
             _save_state(spool, state)
@@ -291,8 +311,12 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
             _save_state(spool, state)
             return "sent"
         # Unsendable P0: roll back the reserved slot; fail-visible, never fail the caller.
-        if budget.get("date") == today and budget.get("sent", 0) > 0:
-            budget["sent"] -= 1
+        if budget.get("date") == today:
+            # Roll back the counter we actually drew from, not the shared one.
+            if drew_from_reserve and budget.get("cron_reserve", 0) > 0:
+                budget["cron_reserve"] -= 1
+            elif budget.get("sent", 0) > 0:
+                budget["sent"] -= 1
         record["p0_unsent"] = True
         _append(spool, "pending.jsonl", record)
         _save_state(spool, state)
@@ -332,6 +356,33 @@ def selftest() -> int:
         check("dry sends: 2 p0 + 1 budget meta", len(sent_dry) == 3)
         state = json.loads((spool / "state.json").read_text())
         check("dedup counted ×2", any(v.get("count") == 2 for v in state["dedup"].values()))
+
+        # ---- cron-fail reserve (2026-07-27) --------------------------------
+        # GUILT: with the shared budget spent, a cron JOB FAILURE must still get
+        # through — the measured hole was a real "no Postgres backup" alert
+        # demoted to digest because a chatty source had eaten the day's 12.
+        # INNOCENCE: the reserve is not a bypass — a NON-cron P0 still overflows
+        # with the budget spent, and the reserve itself runs out.
+        global CRON_FAIL_RESERVE
+        CRON_FAIL_RESERVE = 2
+        check(
+            "cron-fail passes on a spent budget",
+            notify("p0", "cron:x", "boom-1", "cron-fail:job-a") == "sent",
+        )
+        check(
+            "cron-fail passes again while the reserve holds",
+            notify("p0", "cron:x", "boom-2", "cron-fail:job-b") == "sent",
+        )
+        check(
+            "the reserve itself runs out",
+            notify("p0", "cron:x", "boom-3", "cron-fail:job-c") == "p0_overflow_spooled",
+        )
+        check(
+            "a non-cron P0 is NOT let through by the reserve",
+            notify("p0", "t", "fire-4", "other:thing") == "p0_overflow_spooled",
+        )
+        state = json.loads((spool / "state.json").read_text())
+        check("reserve counted exactly twice", state["p0_budget"].get("cron_reserve") == 2)
 
     print("SELFTEST", "PASS" if not failures else f"FAIL ({failures})")
     return 0 if not failures else 1

@@ -38,6 +38,20 @@ ADMIN = {"id": "1", "email": "zero@balizero.com", "role": "admin"}
 TEAM_OWNER = {"id": "2", "email": "owner@balizero.com", "role": "user"}
 TEAM_OTHER = {"id": "3", "email": "other@balizero.com", "role": "user"}
 
+# A syntactically valid but wrong claim token — good enough anywhere a
+# parametrize list needs "some token" or "a token guaranteed not to match a
+# real one" (its version nibble is 0, so no `uuid.uuid4()` call can ever
+# produce it). NOT `uuid.uuid4()`: a decorator argument is evaluated ONCE, at
+# collection, in whichever process pytest-xdist forked for that worker — a
+# fresh random value there mints a different value (and therefore a
+# different generated test ID) in every worker, and xdist refuses the whole
+# run with "Different tests were collected between gwN and gwM" before
+# running a single test. Twin of the `datetime.now()`-in-parametrize bug
+# fixed in this same file (see the comment above
+# test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims);
+# both are guarded by backend/tests/compliance/test_no_clock_in_parametrize.py.
+_FIXED_CLAIM_TOKEN = "00000000-0000-0000-0000-000000000000"
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -243,10 +257,10 @@ async def test_own_chat_guard_fails_closed_without_both_email_identities(
         ("GET", "/api/intake/review/42", None),
         ("GET", "/api/intake/review/42/blob", None),
         ("POST", "/api/intake/review/42/claim", None),
-        ("POST", f"/api/intake/review/42/release?claim_token={uuid.uuid4()}", None),
+        ("POST", f"/api/intake/review/42/release?claim_token={_FIXED_CLAIM_TOKEN}", None),
         ("POST", "/api/intake/review/42/recover", None),
-        ("POST", "/api/intake/review/42/approve", {"claim_token": str(uuid.uuid4())}),
-        ("POST", "/api/intake/review/42/reject", {"claim_token": str(uuid.uuid4())}),
+        ("POST", "/api/intake/review/42/approve", {"claim_token": _FIXED_CLAIM_TOKEN}),
+        ("POST", "/api/intake/review/42/reject", {"claim_token": _FIXED_CLAIM_TOKEN}),
     ],
 )
 async def test_review_endpoints_reject_non_admin_without_email_before_database_access(
@@ -617,7 +631,7 @@ async def test_claim_steal_expired_lease(pool, seed):
         (timedelta(minutes=-1), TEAM_OWNER["email"], None, 409),
         (timedelta(minutes=5), TEAM_OTHER["email"], None, 403),
         (timedelta(minutes=5), TEAM_OWNER["email"], "not-a-uuid", 400),
-        (timedelta(minutes=5), " ", str(uuid.uuid4()), 403),
+        (timedelta(minutes=5), " ", _FIXED_CLAIM_TOKEN, 403),
     ],
 )
 async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
@@ -661,23 +675,17 @@ async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_
     assert exc_info.value.status_code == expected_status
 
 
-def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
-    """Guard the fix above: a collection-time `datetime.now()` is a time bomb.
+def _frozen_instants(namespace):
+    """Absolute instants baked into the parametrize marks of `(name, obj)` pairs.
 
-    It judges by ENTITY (is this value an absolute instant?) rather than by
-    grepping the source for `datetime.now`, so it cannot be dodged by an alias
-    or an import rename, and it cannot over-match a comment. Verified 2026-07-27:
-    no parametrize in this module legitimately carries a datetime, so a hit here
-    is always the bug, never a false positive.
+    Returns `(offenders, seen_parametrize)` so callers can tell "found nothing"
+    from "looked at nothing".
     """
     import datetime as _dt
-    import sys
 
-    module = sys.modules[__name__]
     offenders = []
     seen_parametrize = 0
-    for name in dir(module):
-        fn = getattr(module, name)
+    for name, fn in namespace:
         for mark in getattr(fn, "pytestmark", []) or []:
             if mark.name != "parametrize":
                 continue
@@ -687,6 +695,28 @@ def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
                 for cell in cells:
                     if isinstance(cell, (_dt.datetime, _dt.date)):
                         offenders.append((name, cell))
+    return offenders, seen_parametrize
+
+
+def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
+    """Guard the fix above: a collection-time `datetime.now()` is a time bomb.
+
+    It judges by ENTITY (is this value an absolute instant?) rather than by
+    grepping the source for `datetime.now`, so it cannot be dodged by an alias
+    or an import rename, and it cannot over-match a comment. Verified 2026-07-27:
+    no parametrize in this module legitimately carries a datetime, so a hit here
+    is always the bug, never a false positive.
+
+    Asserted in all three directions: innocence (this module is clean), blindness
+    (a scan that looked at nothing is not a clean scan), and guilt (the detector
+    must actually see a frozen instant when one is there).
+    """
+    import sys
+
+    module = sys.modules[__name__]
+    offenders, seen_parametrize = _frozen_instants(
+        (name, getattr(module, name)) for name in dir(module)
+    )
 
     # Blindness guard: if the scan sees no parametrize at all it went blind
     # (decorator API changed / tests moved), which is not the same as clean.
@@ -700,6 +730,16 @@ def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
         "before these tests run, so any absolute instant is stale by then. "
         "Pass a timedelta offset and compute the instant inside the test."
     )
+
+    # Guilt: innocence plus a blindness guard still cannot distinguish a working
+    # detector from one whose isinstance() never matches anything.
+    class _Guilty:
+        pytestmark = [
+            pytest.mark.parametrize("lease", [(datetime.now(timezone.utc),)]).mark
+        ]
+
+    guilty, _ = _frozen_instants([("_Guilty", _Guilty)])
+    assert guilty, "the detector missed a datetime baked into a parametrize"
 
 
 async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):
@@ -727,7 +767,7 @@ async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, se
 
 @pytest.mark.parametrize(
     ("claim_token", "expected_status"),
-    [("not-a-uuid", 400), (str(uuid.uuid4()), 403)],
+    [("not-a-uuid", 400), (_FIXED_CLAIM_TOKEN, 403)],
 )
 async def test_approve_rejects_malformed_and_wrong_claim_tokens(
     pool,

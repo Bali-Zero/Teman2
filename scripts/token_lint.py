@@ -60,6 +60,26 @@ EXEMPTIONS (each one has a dedicated innocence test):
      NON-EMPTY reason (e.g. `// token-lint-ok: brand logo asset`). A bare
      `token-lint-ok` without colon+reason does NOT exempt — the reason is
      the audit trail, and requiring it is what keeps the marker honest.
+  4. Palette/swatch DATA records — a line carrying sibling `id:`/`label:`
+     string-literal object keys (task #12, 2026-07-26: PR #3165 flagged 2 of
+     6 identical `{ id: "cyan", label: "Cyan", color: "#22D3EE" }`-shaped
+     entries in an accent-colour PICKER array — the hex values ARE the
+     content, not styling; the other 4 sibling entries were already on main
+     and unflagged only because they hadn't landed in that diff, which is
+     the tell that the old gate judged the DIFF, not the construct). The
+     `id`+`label` pair is the swatch-record signature from the concrete
+     violating shape; a lone `color:`/hex is NOT enough on its own (`color:`
+     is also a legitimate style-object key) so this exemption never fires
+     without both siblings present. GUILT STILL WINS: if the same line also
+     carries a `style=`/`className=` JSX prop, it is judged as styling, not
+     data — protects against a (found-nowhere-in-this-repo, but possible)
+     line that overloads `id`/`label` HTML attrs onto a styled element.
+     Known limit, documented not fixed: this is still per-LINE (the module's
+     one-line-at-a-time contract, see CONTRACT below) — a record split
+     across multiple lines is judged by its own line's content only, so a
+     hex on a continuation line without id/label siblings on THAT line is
+     still flagged. All six `accentColors` entries in this repo are
+     single-line, so this does not bite the fixture it was built for.
 
 WHAT IS FLAGGED: `#` followed by 3, 4, 6, or 8 hex digits, word-boundary
 aware (longest-match first; `#d4845a00` matches once as 8 digits; `#fffff`
@@ -174,6 +194,16 @@ HEX_RE = re.compile(
 
 # Marker requires a colon AND a non-empty reason: `token-lint-ok: <reason>`.
 OK_MARKER_RE = re.compile(r"token-lint-ok\s*:\s*\S+")
+
+# Exemption 4 (task #12, 2026-07-26): palette/swatch data-record siblings.
+# `\b` keeps `id:`/`label:` from matching inside a longer identifier
+# (e.g. `validId: "..."`); the value must be quote-opened, so `id: someVar`
+# (a reference, not a literal) does not count as the record signature.
+_PALETTE_ID_KEY_RE = re.compile(r"\bid\s*:\s*[\"']")
+_PALETTE_LABEL_KEY_RE = re.compile(r"\blabel\s*:\s*[\"']")
+# Guilt wins over the data-record signature: a style/className JSX prop on
+# the SAME line means the line is judged as styling regardless of id/label.
+_JSX_STYLE_PROP_RE = re.compile(r"\b(?:style|className)\s*=")
 
 COMMENT_PREFIXES: tuple[str, ...] = ("//", "/*", "<!--", "{/*")
 
@@ -562,6 +592,23 @@ def has_ok_marker(content: str) -> bool:
     return OK_MARKER_RE.search(content) is not None
 
 
+def is_palette_record_line(content: str) -> bool:
+    """True iff the (effective) line looks like a palette/swatch DATA record
+    — an object literal carrying sibling `id:`/`label:` string keys, the
+    shape team-lead specified from the concrete PR #3165 finding (task #12,
+    2026-07-26) — rather than a style/className context. A hex on such a
+    line is the swatch's own value, not styling, and must not be flagged.
+
+    GUILT STILL WINS: a `style=`/`className=` JSX prop on the same line
+    means the line is judged as styling regardless of id/label — this is
+    what keeps a hex inside an actual style/class position from ever being
+    exempted by this rule (the guilt fixture in
+    scripts/tests/test_token_lint.py proves it)."""
+    if _JSX_STYLE_PROP_RE.search(content):
+        return False
+    return bool(_PALETTE_ID_KEY_RE.search(content) and _PALETTE_LABEL_KEY_RE.search(content))
+
+
 def find_hexes(content: str) -> list[str]:
     """All hex-color matches on the line, first-occurrence order, deduped
     (a repeated identical hex on one line is ONE reported violation)."""
@@ -627,6 +674,8 @@ def scan(
             continue
         if has_ok_marker(effective):
             continue
+        if is_palette_record_line(effective):
+            continue
         for hex_value in find_hexes(effective):
             violations.append(Violation(path, added.line, hex_value))
 
@@ -661,6 +710,8 @@ def scan(
             if is_comment_line(effective):
                 continue
             if has_ok_marker(effective):
+                continue
+            if is_palette_record_line(effective):
                 continue
             for hex_value in find_hexes(effective):
                 violations.append(

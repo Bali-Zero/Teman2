@@ -100,4 +100,35 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 [ -n "$ERR_TMP" ] && rm -f "$ERR_TMP"
 write_state "$JOB_KEY" "$STATUS" "$START_TS" "$END_TS" "$EXIT_CODE" "$COMMAND_TEXT"
+
+# ── Alert on failure (2026-07-27) ────────────────────────────────────────────
+# Until now this wrapper only wrote a receipt. A receipt is evidence, not a
+# voice: the 03:00 Postgres backup runs under cron-state.sh, so when it failed
+# on 2026-07-26 nothing said so — while the 03:20 run, which uses
+# cron-wrapper.sh, did alert. Measured the day this shipped: 4 cron-state jobs
+# sat in a failed receipt that nobody had seen (oldest 27h).
+#
+# Same gateway, tier and per-job dedup key as cron-wrapper.sh::send_telegram, so
+# a flapping job collapses to one alert per window and, with no credentials,
+# the alert lands in the digest spool instead of vanishing.
+#
+# Deliberately fail-open and LAST: the job's own exit code is the contract this
+# wrapper exists to preserve, and an alerting problem must never rewrite it.
+if [ "$EXIT_CODE" -ne 0 ]; then
+    _gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$_gateway" ] || _gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    if [ -f "$_gateway" ]; then
+        _tail="${CRON_STATE_LAST_ERROR:-}"
+        python3 "$_gateway" \
+            --tier p0 \
+            --source "cron:${JOB_NAME}" \
+            --dedup-key "cron-fail:${JOB_KEY}" \
+            -- "CRON FAIL $HOSTNAME_SHORT
+Job: $JOB_NAME
+Exit: $EXIT_CODE
+Duration: $((END_TS - START_TS))s
+$(printf '%s' "$_tail" | tail -c 600)" >/dev/null 2>&1 || true
+    fi
+fi
+
 exit "$EXIT_CODE"

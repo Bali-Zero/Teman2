@@ -152,6 +152,48 @@ _CURATED_QA_TOP_K = 2
 # threshold — safe only because injection is now domain-filtered (below).
 _CURATED_QA_SCORE_THRESHOLD = float(os.getenv("CURATED_QA_SCORE_THRESHOLD", "0.58"))
 
+# Phase-6 multi-agent coordination — DEFAULT OFF since 2026-07-27.
+#
+# The branch it guards (see `requires_multi_agent` below in process_query_core)
+# returns a CoreResult with a hardcoded `sources=[]`, and returns it BEFORE the
+# abstain gate and before the only `_log_query_analytics` call. So its answers
+# carry no citations, cannot abstain, and are invisible to `query_analytics` —
+# which holds 6771 rows and not one `multi-agent-coordinator` (that measures the
+# blindness, not the rarity: the row is never written).
+#
+# Measured live in prod on 2026-07-27, asking the cost AND timeline of an E23
+# KITAS — the exact shape `requires_multi_agent` is built to catch: the reply
+# came back `sources=[] context_length=0 evidence_score=0 abstain=false` and
+# asserted a government fee reaching "IDR 1.2 billion" beside the real
+# PricingTool figure, split the all-inclusive price against the 2026-07-17
+# ruling, and invented a 38-60 day phase breakdown matching TimelineAgent's
+# prompt template ("1. Document preparation: X days") line for line. With an
+# empty grounding block `_synthesize_outputs` degrades to "be specific" and
+# nothing on the path can answer "I don't know".
+#
+# REJECTED ALTERNATIVE (adversarial review, 2026-07-27): gating the branch on a
+# non-empty curated_qa hit instead of a flag. It reads as a safety gate but is
+# a silent deletion — `research/operations/2026-07-17-full-domain-cache-design.md`
+# makes price-adjacent questions ("how much does X cost") explicitly OUT of
+# scope for that corpus, so for this branch's own trigger population a curated
+# hit is structurally unlikely. Disabling a feature honestly beats disabling it
+# by side effect while claiming behaviour is preserved.
+#
+# Turning this back on is not a flag flip alone: the branch first needs to
+# carry a real evidence bundle (its own sources) and pass through the same
+# finalization as every other answer, so it can be scored, can abstain, and
+# gets logged. Until then the queries fall through to the ReAct loop, which
+# retrieves, abstains, and is measured. Set MULTI_AGENT_COORDINATOR_ENABLED=true
+# to restore the old behaviour verbatim.
+_MULTI_AGENT_COORDINATOR_ENABLED = os.getenv(
+    "MULTI_AGENT_COORDINATOR_ENABLED",
+    "false",
+).strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 class OrchestratorCore:
     """
@@ -1243,8 +1285,15 @@ class OrchestratorCore:
         if curated_qa_context:
             system_context_for_prompt += curated_qa_context
 
-        # 3b. Phase 6: Check if multi-agent coordination is needed
-        if self._multi_agent_coordinator and requires_multi_agent(query):
+        # 3b. Phase 6: Check if multi-agent coordination is needed.
+        # OFF by default — see _MULTI_AGENT_COORDINATOR_ENABLED for why (it
+        # answered with no sources, could not abstain, and fabricated a fee in
+        # prod). When enabled, everything below is unchanged.
+        if (
+            _MULTI_AGENT_COORDINATOR_ENABLED
+            and self._multi_agent_coordinator
+            and requires_multi_agent(query)
+        ):
             try:
                 logger.info("🔀 [Phase 6] Multi-agent query detected, delegating to coordinator")
                 ma_result = await self._multi_agent_coordinator.process(
@@ -1453,14 +1502,6 @@ class OrchestratorCore:
             reasoning=langgraph_reasoning,
         )
 
-        # 12. Also append KG LangGraph workflow text to answer for visibility
-        if langgraph_workflow:
-            workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
-            result.answer = result.answer.rstrip() + "\n\n" + workflow_text
-            logger.info(
-                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
-            )
-
         # 12b. E33 Second Home claim guard: flags registry-forbidden E33
         # claims in the generated answer and appends a safe fallback note.
         # The note-append is unconditional and non-blocking — never rewrites
@@ -1468,6 +1509,56 @@ class OrchestratorCore:
         # abstain/HUMAN_REVIEW is gated by _E33_CLAIM_GUARD_ENFORCE (see
         # flag definition above for the full rationale).
         _apply_e33_claim_guard(result)
+
+        # 12c. KG LangGraph workflow prose — appended for visibility, but NEVER
+        # onto a refusal (2026-07-27).
+        #
+        # This append used to sit at step 12 and run unconditionally, so a reply
+        # that had just abstained still carried a confident workflow underneath
+        # it. Measured live, asking (in Italian) what to do after an E23 KITAS
+        # was REJECTED: abstain=true, abstain_reason="no_relevant_context",
+        # sources=[], the correct refusal — and then "## SUGGESTED WORKFLOW
+        # (from visa_subgraph, confidence: 78%)" listing the normal APPLICATION
+        # steps to someone whose application had been refused, closing with
+        # "Always verify current requirements with the user", a line addressed
+        # to the model rather than the client (the helper is, as its name says,
+        # `_format_workflow_for_prompt`).
+        #
+        # It lives HERE, after `_apply_e33_claim_guard`, and reads `result.abstain`
+        # — the decision itself — rather than recomputing a refusal from the
+        # evidence score. Two reasons, both from adversarial review:
+        #   * the E33 guard above can still turn an answer into an abstention,
+        #     so anything deciding earlier decides on stale state;
+        #   * `evidence_score == 0.0` does NOT mean "refused": trusted-tool and
+        #     pricing bypasses (and skip_rag) can authorise an answer without
+        #     ever updating the score, so gating on the score would strip the
+        #     workflow from replies the system chose to deliver.
+        #
+        # Deliberately NOT claimed: that nothing is lost. The structured
+        # `workflow` field is returned by the API, but the web chat and Prime
+        # adapters forward only `answer` and `sources`, and blog/Oracle drop it —
+        # so for those surfaces this prose IS the workflow. That is precisely why
+        # the withholding is scoped to refusals, where the prose contradicts the
+        # very sentence above it, and not widened to evidenced answers.
+        #
+        # Still open, deliberately out of scope here: the KG fast-path builds its
+        # answer FROM this prose (so it cannot simply be dropped there), the
+        # streaming path emits the workflow as metadata unconditionally and
+        # before reading any score, and `whatsapp_chat.py` sends `result.answer`
+        # without honouring `abstain` at all.
+        if langgraph_workflow and not result.abstain:
+            workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
+            result.answer = result.answer.rstrip() + "\n\n" + workflow_text
+            logger.info(
+                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
+            )
+        elif langgraph_workflow:
+            logger.info(
+                "🔗 [KG LangGraph] Workflow prose withheld — the answer is an "
+                "abstention (reason=%s); the structured `workflow` field is "
+                "still returned.",
+                result.abstain_reason,
+            )
 
         # 13. R5 Phase 6: NLM Enrichment merge removed — nlm_task/nlm_domain always None
         evidence_score = getattr(state, "evidence_score", None)

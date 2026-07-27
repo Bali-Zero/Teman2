@@ -101,6 +101,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+
 logger = logging.getLogger(__name__)
 
 # Verified ground truth: the Meta WhatsApp Business number this inbox manages.
@@ -768,6 +770,21 @@ async def _process_claimed_row(
                 await heartbeat_task
 
         if gen_exc is not None:
+            # A STANDING condition — auto-reply switched off, or no customer
+            # message in the loaded window — is a statement about system state,
+            # not about this attempt. The retry ladder is DELIBERATELY UNCHANGED
+            # for it: `WA_INBOX_BOT_AUTOREPLY` is read from the environment on
+            # every call, so a rollout that flips it ON mid-backoff still
+            # rescues the row, and ~7 minutes is well inside a reasonable
+            # WhatsApp reply window. Only the LEDGER TEXT differs.
+            #
+            # Measured 2026-07-27: of 52 give-ups ever recorded, 44 were the
+            # flag being off for two weeks in June and 5 were "no customer
+            # message" — all filed under the same sentinel as a genuine crash,
+            # which is what made the ledger unreadable. This is a diagnostic
+            # fix, not a cost one: the flag check is the first statement of
+            # generate_bot_reply, so those retries burned zero generations.
+            standing = isinstance(gen_exc, BotStandingCondition)
             attempts += 1
             if attempts >= MAX_ATTEMPTS:
                 fenced = await conn.fetchrow(
@@ -793,17 +810,40 @@ async def _process_claimed_row(
                     WHERE id = $1
                     """,
                     message_id,
-                    f"bot_generate_failed_after_{attempts}_attempts: {gen_exc}",
+                    (
+                        f"bot_standing_condition_after_{attempts}_attempts: {gen_exc}"
+                        if standing
+                        else f"bot_generate_failed_after_{attempts}_attempts: {gen_exc}"
+                    ),
                 )
-                logger.error(
-                    "wa_outbox: bot generation failed permanently "
-                    "(outbox=%s thread=%s): %s",
-                    outbox_id,
-                    thread_id,
-                    gen_exc,
-                )
+                if standing:
+                    # INFO, not ERROR: "the bot is switched off" is a
+                    # configuration state, and paging on it is what trained
+                    # everyone to ignore this log line during the June window.
+                    logger.info(
+                        "wa_outbox: bot generation gave up on a standing "
+                        "condition (outbox=%s thread=%s): %s",
+                        outbox_id,
+                        thread_id,
+                        gen_exc,
+                    )
+                else:
+                    logger.error(
+                        "wa_outbox: bot generation failed permanently "
+                        "(outbox=%s thread=%s): %s",
+                        outbox_id,
+                        thread_id,
+                        gen_exc,
+                    )
                 # Apology (C4) — best-effort, never masks the failure above
-                # (already recorded on both ledgers by this point).
+                # (already recorded on both ledgers by this point). Fires for a
+                # STANDING condition too, deliberately: `_maybe_send_ack` above
+                # does NOT consult WA_INBOX_BOT_AUTOREPLY, so with manners armed
+                # a client can already have received "checking on this…" before
+                # the generator ever declined. Suppressing the apology there
+                # would leave that promise hanging in permanent silence — an
+                # adversarial review caught exactly that path in the first draft
+                # of this change.
                 await _maybe_send_apology(conn, outbox_id, thread, whatsapp_service)
                 return "failed"
 

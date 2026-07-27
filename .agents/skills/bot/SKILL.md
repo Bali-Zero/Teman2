@@ -22,6 +22,188 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
+- **🔴 THREE FAST-PATHS RETURN BEFORE THE ABSTAIN GATE — AND BEFORE ANALYTICS (2026-07-27).**
+  In `orchestrator_core.py::process_query_core`, three branches `return CoreResult(...)`
+  early: Phase-6 multi-agent (`:1237`), SpecializedServiceRouter (`:1260`), KG fast-path
+  (`:1283`). The single `_log_query_analytics` call is at `:1416` and the abstain gate is
+  further down still, so **all three skip both**. Two of the three hardcode `sources=[]`
+  (multi-agent, specialized router); the KG fast-path does attach real `neo4j_kg_entity`
+  sources. Consequence for anyone reading dashboards: `query_analytics` holds 6771 rows and
+  **zero** are `multi-agent-coordinator` — that measures the blindness, not the rarity. Never
+  cite that table as evidence a fast-path is unused.
+  - **PROVEN CLIENT HARM (live probe, 2026-07-27, `ask_legal` E23 cost+timeline)**: returned
+    `sources: []`, `context_length: 0`, `evidence_score: 0`, `abstain: false`,
+    `abstain_reason: null` — with an **invented government fee "up to IDR 1.2 billion"**
+    printed beside the real PricingTool figure, a **split price** (service fee + government +
+    notary, against the 2026-07-17 single-all-inclusive ruling), and a fabricated **38-60 day**
+    phase breakdown matching `TimelineAgent`'s prompt template line for line.
+  - **Why it fabricates**: `TimelineAgent`'s prompt literally asks the model to fill in
+    "1. Document preparation: X days / 2. Submission: Y days …"; with an empty grounding block
+    `_synthesize_outputs` degrades to "be specific". Nothing on the path can say "I don't
+    know". The 2026-07-18 grounding work is intact and deliberate — it left TimelineAgent to
+    inherit facts _transitively via legal_analysis_ — but that inheritance conveys nothing
+    when there is no evidence to inherit. **The gap is the zero-evidence case, not the
+    grounding design: do not "fix" TimelineAgent by feeding it grounding directly.**
+  - **`requires_multi_agent()` fires on cost+timeline keywords** (EN/ID/IT
+    substrings) — the "how much and how long" shape. Do NOT claim it is the most
+    common client question: measured on the real inbound corpus it is 2 of 59
+    WhatsApp inbound messages with text (3.4%), and the full-domain-cache design
+    itself notes ~72 inbound is too small a sample to rank query frequency. The
+    severity here comes from WHAT it answers (prices, legal deadlines) with zero
+    evidence, not from how often.
+  - **Fix in flight**: evidence precondition on the Phase-6 branch (run it only when
+    `curated_qa_context` is non-empty; otherwise fall through to the ReAct loop, which
+    retrieves and can abstain). Guilt+innocence in
+    `test_curated_qa_grounding_injection.py`; O9/O10 in `test_orchestrator_state_machine_wave2.py`
+    updated to satisfy the precondition (what they assert is unchanged).
+  - **STILL OPEN**: (a) the SpecializedServiceRouter branch has the same source-free shape and
+    is NOT covered by that fix; (b) none of the three early returns writes analytics.
+
+- **🚫 DO NOT RE-OPEN: coalescing of a RETRYING outbox row is sound (REFUTED 2026-07-27).**
+  The suspicion was that `_coalesce_thread_bursts` kills a customer question that is only
+  waiting for its retry — its predicate filters `status='pending'` but not `attempts` or
+  `next_retry_at`. Measured instead of argued: **9 rows** ever carried
+  `error='superseded_by_coalescing'`; **7** had `attempts=0` (the intended burst case) and only
+  **2** were killed mid-backoff (outbox 161 on 07-19, 182 on 07-25). Both threads were answered
+  right after — 161→row 162 `done` at +49s, 182→183/184 `done` at +83s/+126s — and
+  `wa_inbox_bot._load_thread_context` keeps the superseded question in the model's context: it
+  loads `_HISTORY_TURNS + 1 = 13` messages and demotes the question from "the query" to a `user`
+  turn. Coalescing also RESETS the attempt budget (the successor starts at `attempts=0`), which
+  is better for the client than draining the victim's remaining attempts.
+  **Probe gotcha that cost an hour**: an earlier pass concluded "0 successful sends afterwards"
+  by counting `status='sent'`. This table only ever writes **`failed`** and **`done`** (verified
+  by `GROUP BY` over all 184 rows) — the zero was the wrong question, not an absence.
+  Residual, logged not fixed: the superseded question is answered as context rather than as the
+  question, so a reply may address a nudge ("ci sei?") instead of the substantive ask. Bounded by
+  the 12-turn window, unobserved in prod.
+
+- **🗣️ IN FLIGHT — PR #3260 (abstain voice + per-sender WA memory).** Two client-facing gaps:
+  (a) the refusal copy now names the stake, says a Bali Zero colleague must look at it, and asks
+  for a document or a reference date — and it deliberately does NOT promise "a colleague will
+  reply here", because nothing notifies a human today (`wa_outbox.apology_sent_at` /
+  `ack_sent_at` are **0-for-184 rows** since 2026-06-02); RUSSIAN + UKRAINIAN added to all four
+  stub keys, because `detect_query_language` emits ten values, the table carried three, and
+  `get_localized_stub` degrades to ENGLISH _silently_. (b) W-1 follow-up to P0-MEM #3036:
+  `derive_wa_memory_subject` keys long-term memory per sender as `wa:<32 hex>` — **HMAC**, not a
+  bare hash (a phone number has almost no entropy), trust taken from the dedicated
+  `X-WA-Bot-Profile-Key` and never from a body field, its OWN salt (rotating it is a memory
+  WIPE), fail-closed to today's containment when unset. Near-miss caught while wiring: gating the
+  read on the new subject alone would have handed every WA client the shared bucket's PROFILE and
+  HISTORY — FACTS and PROFILE/HISTORY now gate independently.
+
+- **🔇 THE WHATSAPP PATH THROWS THE REFUSAL AWAY — this is why "oggi tace" (2026-07-27).** The
+  copy in #3260 improves every channel that renders the RAG answer, and reaches the bot on NONE
+  of them, because `wa_inbox_bot.py` (~line 346) does `if data.get("abstain"): raise
+RuntimeError(...)` before a message is ever composed. Its docstring states it as a contract:
+  "On ABSTAIN or any RAG error → raise … the operator can take over the thread." Measured: that
+  operator does not come. Over the whole history of `meta_inbox_threads` — **28 threads, 26 with
+  at least one `failed` outbox row, and exactly 4 EVER touched by a human**
+  (`handling_version > 0`, max 1). ~22 threads hit a failure and nobody arrived.
+
+  **CORRECTION (same day, before this entry ever landed) — those failures were NOT abstains.**
+  An earlier draft of this bullet let the 26-of-28 number imply that clients had been silenced by
+  discarded refusals. They had not. `meta_inbox_messages.error` records the last exception after
+  the sentinel `bot_generate_failed_after_5_attempts:`, and classifying all 52 give-ups gives:
+  **44 = `wa-inbox bot auto-reply not enabled in v1`** (2-18 June — the bot was simply switched
+  off), 5 = `no customer message in thread <n>`, 2 = RAG `500` (12 July), 1 = `401 Unauthorized`.
+  **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
+  in production. Current state is healthy — week of 19 July: **0 generation failures on 13
+  inbound** (small sample, stated as such).
+  _Method note: the first classifying query returned "0 abstains" AND a second returned "0
+  failures per week", which contradicted a count of 52. The bug was mine — `split_part(error,':')`
+  meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own
+  probes disagreeing is what surfaced it; a single probe would have shipped the wrong number._
+
+  **The evidenced sibling defect, found by the same classification: the ledger is unreadable.**
+  All 52 give-ups are filed under one sentinel, `bot_generate_failed_after_5_attempts`, so two
+  weeks of the bot being deliberately off is spelled exactly like a production RAG outage.
+
+  _Two claims in an earlier draft of this bullet were WRONG and are corrected here, because an
+  adversarial seat (Codex gpt-5.6-sol, xhigh, briefed to refute) returned DO-NOT-SHIP on the
+  first cure built from them:_
+  - _"each burned 5 generation attempts" — **false**. `is_bot_autoreply_enabled()` is the FIRST
+    statement of `generate_bot_reply`, before `_load_thread_context` and before any RAG call, so
+    those 44 rows cost five cheap no-ops, not five LLM round-trips. There was no saving to buy._
+  - _"permanent conditions" — **overstated**. The flag is read from the environment on every
+    call, so a rollout flipping it ON mid-backoff still rescues the row; and "no customer
+    message" means "none in the last 13 records" (`_HISTORY_TURNS + 1`), a window artifact._
+
+  The shipped cure is therefore diagnostic ONLY: `BotStandingCondition` (a `RuntimeError`
+  subclass) makes the worker write a distinct ledger line at INFO. Retry/backoff, `attempts`,
+  fencing and the C4 apology are UNCHANGED. **Do not re-propose skipping the retry ladder or
+  suppressing the apology** — the apology matters precisely because `_maybe_send_ack` runs BEFORE
+  generation and does NOT consult `WA_INBOX_BOT_AUTOREPLY`, so a client can already have been
+  told "checking on this…"; dropping it leaves that promise in permanent silence.
+
+  **#31's remaining half is NOT an engineering blocker — it is a Legge-5 call for Zero.** An
+  earlier version of this bullet claimed the WhatsApp path could not send on abstain because
+  `abstain=True` might carry a full un-vetted answer. **That was wrong, and the repo says so in
+  plain text.** `test_abstain_threshold_convergence.py` documents the exact case above its own
+  fixture: _"KBLI query, score in (flat 0.15, kbli 0.20): generation gate PASSES, label gate
+  ABSTAINS. **Generated answer carrying an abstain=True flag.**"_ It is the CONTRACT, not a
+  divergence to repair: GENERATION decides whether to PRODUCE advice, LABEL only MARKS
+  confidence, and reasoning.py treats 0.15-0.50 as moderate evidence and deliberately writes a
+  cautious answer with a warning note. A fix built on the wrong premise was written, tested green
+  and DISCARDED after an adversarial seat returned DO-NOT-SHIP 7/7 (it would have turned the
+  label gate into a second generation gate on the sync path only, and — because the language
+  detector covers 8+ languages while the stub covers 3 — would have answered a Spanish question
+  with an English refusal).
+
+  So on abstain the bot is discarding content that is legitimate either way (a localized stub
+  below 0.15, a cautious answer above it). The open question is a product one:
+  **should the bot send a LOW-CONFIDENCE answer with a caution note on immigration/tax/company
+  questions, or keep today's silence?** Today's silence is not a decision — it is the `raise`,
+  written when abstain was assumed to mean "no content". Measurement that sizes the stakes:
+  abstain has fired ZERO times on WhatsApp in the entire recorded history.
+
+  **Do not "fix" the gates to make this easier.** §Established truth #4 already says the abstain
+  gates are the product; the divergence is panel-ruled (CLAUDE.md §9) and tidying it via the
+  answer TEXT is the same violation as tidying it via the numbers.
+  There is also NO
+  human-notification path anywhere (grepped worker + generator for telegram/alert/notify/
+  escalate/CRM-assign), and the `apology_sent_at`/`ack_sent_at` code from migration 260 is armed
+  by `WA_OUTBOX_MANNERS_ENABLED`, default OFF, docstring "Ships dark: unset in prod today" — which
+  is why those columns are 0-for-184 and, even armed, would write to the CLIENT, not a colleague.
+  Fix specified in task #31: split ABSTAIN (a truthful, sendable result) from ERROR (retry/park).
+
+  **The replacement-signal question is DECIDED (it was a schema choice, not a business one).**
+  `wa_outbox` has no jsonb/metadata column, but it already carries the exact precedent: `ack_sent_at`
+  and `apology_sent_at`, nullable timestamps that record _what kind of thing_ was sent. So: add
+  `abstained_at timestamptz NULL` and leave `status='done'`, because the row WAS sent. Additive,
+  nullable, no backfill, no reader touched — the safest migration class. Rejected alternative: a new
+  terminal `status='abstained'`. `wa_outbox.status` is read only inside `wa_outbox_worker.py`
+  (`whatsapp_chat.py:916` reads a DIFFERENT table via `_META_STATUS_RANK`), so it would be
+  containable — but it is still a shared format changed from one side (superscar #9), for no gain
+  over a nullable column. Still NOT decided, and still deliberately so: auto-setting `human_handling`
+  would mark a thread as owned by someone who does not know they own it. And do NOT overload
+  `meta_inbox_messages.error` — it means "gave up" today, and a successful abstain written there
+  breaks every query that reads it.
+
+  **Contract note for whoever implements it:** `generate_bot_reply` returns a plain `str` and the
+  worker treats it as opaque. Return a small result object (`text` + `abstained` + `reason`), do NOT
+  signal the refusal by raising a custom exception: an abstain is a SUCCESSFUL send, and putting it
+  on the exception path invites any intervening `except Exception` to swallow it straight back into
+  a park — re-creating this exact bug one refactor later. The refusal copy must be IMPORTED from the
+  shared constant #3260 introduces, never re-typed here (two copies drift — superscars #1/#9).
+
+- **⚙️ MERGED + LIVE — PR #3261**: `security.yml` cancels superseded PR runs, never on main (it
+  owns 4 of the 25 required checks). Content-verified on main: line 28 is
+  `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`. Two honest limits recorded on the
+  PR: `cancel-in-progress: false` protects only a run that has already STARTED (a QUEUED run is
+  superseded regardless), and the PR's claim to be copying `tests.yml`'s current form was WRONG —
+  `tests.yml` had already moved to `${{ github.event_name == 'schedule' || ... }}` plus a separate
+  group for the scheduled run (#3206). Alignment tracked as task #30.
+
+- **⚠️ COORDINATION: check main by CONTENT before building a bot-adjacent fix.** On 2026-07-27
+  three separate lanes independently built the same `<Money>` mock fix, main ended up with TWO
+  separate guards for one `chdir` bug (#3265 and #3270), and one branch was one push away from
+  DELETING a sibling's already-merged guard. Root cause measured: the pre-push allowlist sends
+  frontend-only diffs through the full backend suite, so the machine ran 6 concurrent pushes at
+  load 33, peaking at **59** an hour later — see memory
+  `discovery_the_prepush_allowlist_is_how_the_fleet_saturates_itself_2026_07_27`. Read files that
+  carry a decision with `git show origin/main:<path>`, never from the M5 checkout, which is kept
+  behind on purpose.
+
 - **🗣️ CLIENT VOICE: persona + greeting SHIPPED & PROVEN LIVE; deny narration NOT YET (2026-07-26).**
   Three things landed and were verified INSIDE the running container (`flyctl ssh` pinned to
   `--machine 1781e5eda03438`; the machine is picked at RANDOM without it), never from a merge status.
@@ -433,6 +615,31 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   zantara_core.py v1 trigger fix (#2736, operator two-key window) — bare visa codes are NOT
   pricing triggers, visa-TYPE questions ground on current codes names-only + one-line cost offer.
 - **Full-domain cache lane OPEN** (design pending). Tracked in the main session's task list.
+
+- **🔴 PROBED LIVE 2026-07-27 (3 calls on the prod `ask_legal` surface) — two client-facing
+  defects, one of them fabricating a legal deadline.**
+
+  | probe                                 | `model`                   | `tools_called` | `abstain` | outcome                                                                          |
+  | ------------------------------------- | ------------------------- | -------------- | --------- | -------------------------------------------------------------------------------- |
+  | "KITAS respinto, posso fare ricorso?" | `multi-agent-coordinator` | 3              | **false** | confident answer inventing **"30 giorni per il ricorso"** + a 51-96 day timeline |
+  | E33G requirements                     | `unknown`                 | 0              | true      | correct stub                                                                     |
+  | same rejection question, rephrased    | `unknown`                 | 0              | true      | correct stub                                                                     |
+
+  **All three returned `sources: []`, `context_length: 0`, `evidence_score: 0`.** So the gate is
+  not broken — it is UNREACHABLE on one route: the `multi-agent-coordinator` path ran 3 tools,
+  produced an answer, and reported `abstain: false` at evidence 0. Rephrasing the SAME question
+  took the other route and abstained honestly. This is the nondeterminism §1 already records
+  ("same code, different luck in the ReAct loop") — but now with the consequence measured: on
+  the unlucky route a client is told a **specific appeal deadline that no source supports**, and
+  a missed immigration deadline is not recoverable. Tracked in tasks #20/#23.
+
+  **Second defect, 3/3 — the KG workflow scaffold reaches the client on this surface.** Every
+  answer carried `## SUGGESTED WORKFLOW (from visa_subgraph, confidence: NN%)` plus the internal
+  trailer. Twice it directly CONTRADICTED the refusal printed immediately above it: an
+  "I couldn't find relevant information" was followed by an IMTA/TKA work-permit workflow for a
+  question about remote work, and by a one-step "VITAS Processing" for a question about appeals.
+  `wa_inbox_bot._strip_kg_workflow_scaffold` cures exactly this — but only on the WhatsApp path,
+  which is the 1-of-N consumer problem in task #25, now confirmed live rather than inferred.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 

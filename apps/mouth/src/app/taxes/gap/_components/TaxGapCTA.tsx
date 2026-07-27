@@ -7,7 +7,7 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 
 const WA_CONTEXT: { label: string; value: string }[] = [
   { label: "Layanan", value: "Tax Gap Analysis" },
-  { label: "Halaman", value: "/tax/gap" },
+  { label: "Halaman", value: "/taxes/gap" },
 ];
 
 const PAIN_POINTS: string[] = [

@@ -262,6 +262,24 @@ fi
 # in sh/bash.
 if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
 echo "🐍 Running Python tests..."
+# Honest-verdict bookkeeping (2026-07-27, measured live on Mini). Everything
+# below can decide "FULL suite required" and then not run a single test: four
+# environment gates skip it (no PG, unprovisioned DB, no venv, clone failed)
+# and all four used to fall straight through to the final
+# "✅ All pre-push checks passed!" line. Mini's log, verbatim:
+#     🧭 6/6 changed file(s) are NOT on the innocent allowlist — running FULL suite
+#     🐍 Running Python tests...
+#     ⏭️  SKIP Python tests — local PG up but 'nuzantara_test' not provisioned
+#     ✅ All pre-push checks passed!
+# Its local PG had no `test` role at all, so EVERY push ever made from that
+# machine passed a gate that had run zero tests and said so nowhere. This is
+# cicatrix-superscar.md family #2 (esiste ≠ armato) on the most-cited gate in
+# the fleet: the verdict line is the defect, not the skip. The skips stay
+# permissive on purpose — a machine without a test DB must still be able to
+# push, and the merge queue re-tests every entry against main — but they may
+# no longer be REPORTED as a pass.
+BACKEND_SUITE_RAN=0
+BACKEND_SUITE_SKIP_REASON=""
 PG_BIN="/opt/homebrew/opt/postgresql@17/bin"
 PG_ISREADY="$(command -v pg_isready || echo "$PG_BIN/pg_isready")"
 PSQL="$(command -v psql || echo "$PG_BIN/psql")"
@@ -287,6 +305,7 @@ PREPUSH_SUITE_LOCKFILE="/tmp/nuzantara-prepush-backend-suite.lock"
 if ! "$PG_ISREADY" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
     echo "⏭️  SKIP Python tests — no local PostgreSQL on 127.0.0.1:5432."
     echo "   Install per research/operations/specs/2026-06-12-M5-postgres-local-spec.md to enable the gate."
+    BACKEND_SUITE_SKIP_REASON="no local PostgreSQL on 127.0.0.1:5432"
 elif [ "$("$PSQL" -h 127.0.0.1 -p 5432 -d "$PRE_PUSH_DB" -tAc "SELECT to_regclass('public.clients') IS NOT NULL;" 2>/dev/null)" != "t" ]; then
     echo "⏭️  SKIP Python tests — local PG up but '$PRE_PUSH_DB' not provisioned (no migrated schema)."
     echo "   One-time bootstrap: cd apps/backend-rag && source .venv/bin/activate && \\"
@@ -294,10 +313,12 @@ elif [ "$("$PSQL" -h 127.0.0.1 -p 5432 -d "$PRE_PUSH_DB" -tAc "SELECT to_regclas
     echo "     PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py && \\"
     echo "     PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all"
     echo "   (see research/operations/specs/2026-06-12-M5-postgres-local-spec.md §AC2)"
+    BACKEND_SUITE_SKIP_REASON="'$PRE_PUSH_DB' not provisioned on the local PG"
 elif [ ! -f apps/backend-rag/.venv/bin/activate ]; then
     echo "⏭️  SKIP Python tests — worktree has no apps/backend-rag/.venv (bare 'git worktree add' doesn't create it)."
     echo "   Fix: symlink it from the main checkout, or create the worktree via scripts/agent_start.py."
     echo "   CI remains the real gate for this push."
+    BACKEND_SUITE_SKIP_REASON="worktree has no apps/backend-rag/.venv"
 else
     # Isolated DB clone per push (2026-07-16). Under ~10 concurrent agent pushes,
     # the suite used to run straight against the shared "$PRE_PUSH_DB" — every
@@ -309,15 +330,30 @@ else
     # suite + CI-parity env stay exactly as strict as before — only the
     # contention is gone.
     #
-    # CLONE_DB is unique per push (shell PID, $$), so concurrent pushes never
-    # collide. `CREATE DATABASE ... TEMPLATE x` fails if any session is
-    # CONNECTED to x — the suite only ever talks to CLONE_DB, never
-    # "$PRE_PUSH_DB", so the template stays connection-free during normal
-    # operation; the bounded retry below only guards a transient connection
-    # (e.g. someone mid-bootstrap on the base db). Concurrent CREATE...TEMPLATE
-    # off the SAME un-connected template is fine — Postgres allows N
-    # simultaneous clones, that's the whole point.
-    CLONE_DB="nuzantara_test_run_$$"
+    # CLONE_DB is unique per push (shell PID, $$, PLUS a random suffix — see
+    # #60 below), so concurrent pushes never collide. `CREATE DATABASE ...
+    # TEMPLATE x` fails if any session is CONNECTED to x — the suite only
+    # ever talks to CLONE_DB, never "$PRE_PUSH_DB", so the template stays
+    # connection-free during normal operation; the bounded retry below only
+    # guards a transient connection (e.g. someone mid-bootstrap on the base
+    # db). Concurrent CREATE...TEMPLATE off the SAME un-connected template is
+    # fine — Postgres allows N simultaneous clones, that's the whole point.
+    #
+    # #60 (2026-07-27): PID alone is NOT unique across a machine's uptime —
+    # PIDs recycle. Measured live: 15 stranded nuzantara_test_run_<PID>
+    # databases on disk (561 MB), left behind by crashed/killed pushes whose
+    # EXIT trap never fired (SIGKILL is untrappable) or whose cleanup itself
+    # hung (a plain DROP DATABASE against a saturated Postgres can stall
+    # minutes on this box — see the sibling finding on synchronous waits
+    # under load). When a NEW push's $$ happens to recycle onto a STRANDED
+    # clone's old PID, the CREATE loop below fails 3/3 (the name already
+    # exists) with NO exit 1 — the entire backend suite silently never runs,
+    # and the push succeeds anyway. Same cluster-scope-collision shape as
+    # apps/backend-rag/backend/tests/services/visa_engine/test_activation_writer.py's
+    # ROLE fix (`uuid.uuid4().hex[:10]`, whose own comment names this exact
+    # database case as still being on $$) — cured here the same way, PID
+    # kept for human-readable debugging, random suffix for actual uniqueness.
+    CLONE_DB="nuzantara_test_run_${$}_${RANDOM}"
     CLONE_CREATED=0
     cleanup_clone() {
         if [ "$CLONE_CREATED" = "1" ]; then
@@ -360,6 +396,12 @@ else
         # behaviour (clone owned by the cloner) rather than refusing to clone.
         OWNER_CLAUSE=""
     fi
+    # #60 (2026-07-27): defensive pre-drop, belt-and-braces alongside the
+    # random suffix above. Even with a random name this makes the CREATE
+    # loop's failure mean what its message says ("template busy") rather
+    # than silently meaning "a stranded clone already had this exact name" —
+    # IF EXISTS makes this a no-op on the (now near-impossible) common case.
+    "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$CLONE_DB\" WITH (FORCE);" >/dev/null 2>&1
     CREATE_OK=0
     ATTEMPT=1
     while [ "$ATTEMPT" -le 3 ]; do
@@ -372,7 +414,18 @@ else
         sleep 2
     done
     if [ "$CREATE_OK" != "1" ]; then
-        echo "⏭️  SKIP Python tests — could not clone '$PRE_PUSH_DB' into '$CLONE_DB' after 3 attempts (template busy?)."
+        # #60: this message used to say "(template busy?)" whether the cause
+        # was a transient connection OR a stranded clone silently blocking
+        # every future push under that name — a genuinely different failure
+        # needed a genuinely different sentence to be diagnosable. With the
+        # random suffix + defensive drop above, a name COLLISION is now
+        # (near-)impossible, so a failure here is more likely to be the
+        # template genuinely busy, a permissions issue, or Postgres itself
+        # under memory/IO pressure. Still a SKIP, never a block (dev machines
+        # without a healthy local PG must keep degrading gracefully) — but
+        # the message now says so, instead of pointing at the wrong cause.
+        echo "⏭️  SKIP Python tests — could not create clone '$CLONE_DB' from template '$PRE_PUSH_DB' after 3 attempts + defensive drop (template busy, permissions, or PG under load — not a stranded-name collision, that class is now handled above)."
+        BACKEND_SUITE_SKIP_REASON="could not clone '$PRE_PUSH_DB' into a throwaway test DB"
     else
         # #45 (2026-07-26): the OLD form here was `elif ! ( subshell ); then FAILED; fi`
         # — a bare boolean negation that collapses EVERY non-zero exit into one
@@ -408,12 +461,42 @@ else
         # FAILED" (round 1, the 3-way classification below), (2) that
         # classification being unreachable under `sh -e` (round 2, this
         # `|| TEST_RC=$?` guard). Reference: scripts/tests/test_prepush_failclosed.sh.
+        #
+        # INTAKE_TEST_DSN (added 2026-07-27) — the third env var below. CI has
+        # exported it since it was introduced (.github/workflows/tests.yml, whose
+        # comment says pointing it at the disposable CI database "instead of their
+        # local-dev fallback (nuzantara_dev)" un-skipped 50 tests); this hook never
+        # did. backend/tests/services/intake/test_intake_writer.py:34 reads
+        # `os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")`
+        # — a default that fails OPEN onto the machine's SHARED dev database rather
+        # than skipping. Measured on Pro (2026-07-27): 12,408 client rows there, 9 of
+        # them created in 6 hours by these tests' real-commit cases, and the file's own
+        # `assert after == before, "CRM mutated!"` guard seeing writes it did not cause
+        # — it rejected a push whose diff touched only this hook, a requirements file
+        # and two files under scripts/tests/. Exporting the per-push clone here makes
+        # the local gate match CI exactly, and the shared dev DB stops being test
+        # scratch space.
+        #
+        # NOT "nothing skipped" — an earlier draft of this comment said that and it
+        # was false. `test_drive_autocreate_apply.py` carries an attestation guard
+        # (its lines 62-89): 7 of its cases refuse any database that is not the
+        # "approved local book" nuzantara_dev, so pointing this variable at the clone
+        # makes them SKIP. That is deliberate on the test's side and it is what CI
+        # has always done — those 7 skip there too, since tests.yml points the same
+        # variable at nuzantara_test. So this change does not lose coverage relative
+        # to the gate that decides the merge; it makes the local gate stop being a
+        # third, more permissive one. The real gap it exposes — 7 attested-entrypoint
+        # cases that now run on NO gate anywhere, whose only previous home was
+        # Pro/M5 against real client rows — pre-dates this change and is filed
+        # separately. Fixing it means giving the attestation an approved DISPOSABLE
+        # book, never pointing these tests back at production data.
         TEST_RC=0
         ( cd apps/backend-rag \
             && rm -rf .pytest_cache backend/.pytest_cache \
             && source .venv/bin/activate 2>/dev/null \
             && DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
                TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
+               INTAKE_TEST_DSN="postgresql://test:test@localhost:5432/$CLONE_DB" \
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
                OLLAMA_URL="http://127.0.0.1:9" \
@@ -421,7 +504,9 @@ else
                "$PREPUSH_SUITE_LOCK_SCRIPT" "$PREPUSH_SUITE_LOCKFILE" \
                python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
         if [ "$TEST_RC" -eq 0 ]; then
-            : # pass — fall through silently, same as the old happy path
+            # The ONLY place the suite genuinely ran to a pass. Every other
+            # path out of this block either exits 1 or leaves a skip reason.
+            BACKEND_SUITE_RAN=1
         elif [ "$TEST_RC" -ge 128 ]; then
             TEST_SIGNAL=$((TEST_RC - 128))
             echo "⚠️  Python test run TERMINATED by signal $TEST_SIGNAL — NO VERDICT, push blocked pending re-run."
@@ -435,6 +520,18 @@ else
             echo "     cd apps/backend-rag && source .venv/bin/activate && \\"
             echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
             echo "     TEST_DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
+            # INTAKE_TEST_DSN belongs in the printed command for the same reason it
+            # belongs in the run above, and leaving it out is worse here than
+            # anywhere: these three env vars are COMMAND-SCOPED, so nothing survives
+            # into the shell of whoever copies this line. Without it,
+            # test_intake_review.py / test_intake_writer.py /
+            # test_drive_autocreate_apply.py fall back to their default
+            # `postgresql://localhost:5432/nuzantara_dev` — the machine's SHARED dev
+            # database, 12,408 client rows on Pro — and the reproduce step then
+            # WRITES there while hunting a failure. Printing the isolated DSN in the
+            # run and omitting it from the reproduction would have reintroduced the
+            # exact defect this diff exists to close, in the help text.
+            echo "     INTAKE_TEST_DSN=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
             echo "     OLLAMA_URL=http://127.0.0.1:9 \\"
             echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/ --ignore=backend/tests/e2e"
             exit 1
@@ -460,4 +557,21 @@ if git diff --no-ext-diff --unified=0 origin/HEAD...HEAD 2>/dev/null \
     echo "   Use issue links for intentionally retained markers."
 fi
 
-echo "✅ All pre-push checks passed!"
+# The verdict must describe what actually ran. If the path-aware gate decided
+# the backend suite was REQUIRED for this diff and no suite ever executed, this
+# push is UNVERIFIED — not passing. Deliberately not fail-closed: blocking here
+# would wall off every machine whose local PG isn't provisioned (Mini today),
+# and the merge queue re-tests every entry against main anyway. What changes is
+# only the claim, which is the part that was false.
+# Defaults on both vars: the path-aware SKIP branch never enters the block that
+# initialises them, and this hook runs under `sh -e`.
+if [ "$PREPUSH_RUN_BACKEND" = "1" ] && [ "${BACKEND_SUITE_RAN:-0}" != "1" ]; then
+    echo "⚠️  PUSH NOT VERIFIED LOCALLY — the backend suite was REQUIRED for this diff but never ran"
+    echo "    (${BACKEND_SUITE_SKIP_REASON:-reason not recorded})."
+    echo "    This is NOT a passing verdict: no test judged this diff on this machine."
+    echo "    Nothing has judged it yet: CI on the PR, and then the merge queue re-testing"
+    echo "    the entry against main, are the gates that still have to. Do not read this as green."
+    echo "    To make this machine's gate real, fix the cause above."
+else
+    echo "✅ All pre-push checks passed!"
+fi

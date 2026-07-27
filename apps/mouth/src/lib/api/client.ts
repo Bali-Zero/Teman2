@@ -290,6 +290,11 @@ export class ApiClientBase implements IApiClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
+        // React Query owns API response caching. Browser HTTP caching can replay
+        // stale rows immediately after a successful CRM mutation.
+        ...(method === "GET" && options.cache === undefined
+          ? { cache: "no-store" }
+          : {}),
         headers,
         credentials: "include", // CRITICAL: Send httpOnly cookies
         signal: controller.signal,

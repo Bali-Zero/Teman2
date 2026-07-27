@@ -25,6 +25,7 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+from backend.services.kbli_requires_kind import classify_requires_target
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,11 @@ class KBLIDetail(BaseModel):
     sector: str
     risk_profile: str
     licenses: list[KBLILicense]
+    # REQUIRES-edge targets that are NOT permits, bucketed by what they are
+    # (costs / durations / obligations / regulations / documents / entity_forms
+    # / immigration / systems / other). Additive and defaulted, so a cached
+    # payload written before this field existed still validates on read.
+    related_requirements: dict[str, list[str]] = {}
     related_codes: list[str] = []
     expert_legal: dict | None = None
 
@@ -387,9 +393,17 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 else node["properties"]
             )
 
-            # 3. Fetch Related Licenses (REQUIRES edges)
+            # 3. Fetch REQUIRES-edge targets.
+            #
+            # These are NOT all licences. The graph hangs costs, durations,
+            # obligations, regulations, company forms and the OSS system itself
+            # off the same relationship — 35 distinct target entity types were
+            # measured on prod. Rendering every one of them as a licence told a
+            # restaurant client that "10 Billion IDR" and "PT PMA" were permits
+            # to obtain. `entity_type` is now selected and classified; see
+            # `backend/services/kbli_requires_kind.py` for the reasoning.
             license_query = """
-                SELECT n.*, e.properties as edge_props
+                SELECT n.*, n.entity_type AS target_entity_type, e.properties as edge_props
                 FROM kg_nodes n
                 JOIN kg_edges e ON n.entity_id = e.target_entity_id
                 WHERE e.source_entity_id = $1 AND e.relationship_type = 'REQUIRES'
@@ -397,12 +411,24 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             licenses_raw = await conn.fetch(license_query, f"kbli:{code}")
 
             licenses = []
+            related_requirements: dict[str, list[str]] = {}
             for lic in licenses_raw:
                 lic_props = (
                     json.loads(lic["properties"])
                     if isinstance(lic["properties"], str)
                     else lic["properties"]
                 )
+                # A node whose `properties` is a scalar (67 such rows exist for
+                # entity_type='kbli' alone) must not crash the lookup.
+                if not isinstance(lic_props, dict):
+                    lic_props = {}
+
+                kind = classify_requires_target(lic["target_entity_type"])
+                if kind != "license":
+                    # Kept, never silently dropped — bucketed so a reader can
+                    # still see what the graph attached to this code.
+                    related_requirements.setdefault(kind, []).append(lic["name"])
+                    continue
 
                 licenses.append(
                     KBLILicense(
@@ -413,6 +439,12 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                         requirements=lic_props.get("kewajiban", []),
                     ),
                 )
+
+            # Stable order per bucket: the endpoint is cached, and a set-like
+            # jitter between calls would look like data churn to a consumer.
+            related_requirements = {
+                bucket: sorted(set(names)) for bucket, names in sorted(related_requirements.items())
+            }
 
             # 4. Fetch Related KBLI
             sector_query = """
@@ -475,6 +507,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 sector=sector_id.replace("sektor:", "") if sector_id else "N/A",
                 risk_profile=risk_profile,
                 licenses=licenses,
+                related_requirements=related_requirements,
                 related_codes=related_codes,
                 expert_legal=props.get("expert_legal"),
             )
