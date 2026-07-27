@@ -211,7 +211,13 @@ VERDICT_SKIP = "skip-backend"
 # scripts/tests (.py) — two path classes measured (not assumed) to be
 # structurally incapable of affecting `pytest backend/tests/` — see the
 # module-docstring "v3 EXTENSION" section above for the verification.
-ALLOWLIST_VERSION = 3
+# v4 (2026-07-27): added apps/mouth/src (.ts/.tsx/.css) — the last
+# high-traffic tree with no entry, so every frontend-only PR was paying the
+# full ~43min backend suite and, on 2026-07-27, losing four consecutive
+# pushes to it. Innocence measured on disk (no backend test opens a file
+# under apps/mouth); .mdx deliberately excluded because a real reader
+# exists. See the allowlist table's `apps/mouth/src/**` entry.
+ALLOWLIST_VERSION = 4
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -314,6 +320,40 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         (test_prepush_failclosed.sh) is correctly
 #                         EXCLUDED by suffix scoping — falls to
 #                         "unknown -> full" like any other .sh change would.
+#   apps/mouth/src/**     v4 (2026-07-27): scoped to `.ts`/`.tsx`/`.css`
+#                         ONLY. The frontend was the last high-traffic tree
+#                         with no entry, so every frontend-only PR paid the
+#                         full backend suite: measured ~43min at quiet load,
+#                         and on 2026-07-27 it killed FOUR consecutive
+#                         pushes of one frontend-only branch (the suite
+#                         outlives the background task's budget). The hook
+#                         does not even run the vitest suite that actually
+#                         covers such a diff (.husky/pre-push: "Run
+#                         manually: npm run test:ci").
+#                         INNOCENCE MEASURED, not assumed (2026-07-27):
+#                         10 backend test files mention `apps/mouth`, ALL as
+#                         string literals fed to a path->command mapper
+#                         (`verification_commands_for_paths` ->
+#                         "cd apps/mouth && npm run lint"); the only
+#                         `read_text` among them reads the test's OWN source
+#                         (test_async_review_supervisor.py:122), and
+#                         test_email_branding.py names
+#                         `apps/mouth/src/data/team-roster.ts` in its
+#                         DOCSTRING with zero IO calls in the file. No
+#                         backend test opens a file under apps/mouth.
+#                         `.mdx` is DELIBERATELY EXCLUDED and the exclusion
+#                         is load-bearing, not conservatism: 3360 of the
+#                         3835 tracked files under src/ are .mdx, and
+#                         backend/scripts/index_mdx_to_balizero_news.py
+#                         really does `ARTICLES_DIR.rglob("*.mdx")` and
+#                         `read_text()` them — a real reader, verified on
+#                         disk. `.json`/`.png`/`.yaml`/`.md`/`.example`
+#                         under src/ are excluded by the same suffix
+#                         scoping and fall to "unknown -> full".
+#                         Scoped to `src/` specifically, NOT `apps/mouth`
+#                         wholesale: `apps/mouth/data/**` holds the KBLI
+#                         dataset copies (37MB canonical + gold), which are
+#                         data-plane artifacts and must keep forcing full.
 #
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
@@ -339,6 +379,7 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("infra/launchagents", (".plist", ".sh")),
     (".github/workflows", (".yml",)),
     ("scripts/tests", (".py",)),
+    ("apps/mouth/src", (".ts", ".tsx", ".css")),
 )
 
 

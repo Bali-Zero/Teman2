@@ -214,11 +214,12 @@ def test_carousel_without_slides_is_skipped(pub, carousel) -> None:
 
 
 def test_missing_claim_ids_still_emits_with_empty_list(pub, carousel) -> None:
-    """0 of 23 WR2 briefs carry claim ids today.
+    """22 of 23 WR2 briefs yield no verified claim today.
 
-    Empty is a real degradation (WR3 falls back to story_15s) but it is not a
-    reason to withhold the event — the emitter logs it and passes an explicit
-    empty list rather than omitting the key.
+    Empty is a real degradation — the companion is skipped and nothing is
+    rendered — but it is not a reason to withhold the event: the emitter logs
+    the count AND the rejection reasons, and passes an explicit empty list
+    rather than omitting the key.
     """
     payload = pub._build_wr3_handoff_payload(carousel)
     assert payload is not None
@@ -226,6 +227,44 @@ def test_missing_claim_ids_still_emits_with_empty_list(pub, carousel) -> None:
 
 
 def test_claim_ids_are_inherited_when_wr2_finally_emits_them(pub, carousel) -> None:
+    """The ids ride on the records that back them, never on their own.
+
+    Tightened 2026-07-26: this test used to declare `primary_claim_ids` with
+    nothing behind it. WR3 inherits these ids WITHOUT re-verifying (Law 2), so
+    a bare declaration would put an unchecked sentence in a published video and
+    spend Veo credits doing it — see `scripts/wr2_claims.py`.
+    """
+    root = Path(pub._carousel_root())
+    (root / carousel / "brief.json").write_text(
+        json.dumps({
+            "domain": "company",
+            "audience_segment": "founder",
+            "key_facts": [
+                {
+                    "id": "bkpm-5-2025-paid-up",
+                    "fact": "BKPM 5/2025 sets PMA paid-up capital at IDR 2.5 bn.",
+                    "source": "BKPM Regulation 5/2025, Art. 6",
+                    "source_status": "nb_verified",
+                },
+            ],
+            "key_numbers": [
+                {
+                    "id": "kbli-46100-pma",
+                    "number": "KBLI 46100 — open to PMA",
+                    "source": "OSS positive-investment list",
+                    "source_status": "verified_web",
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    payload = pub._build_wr3_handoff_payload(carousel)
+    assert payload is not None
+    assert payload["primary_claim_ids"] == ["bkpm-5-2025-paid-up", "kbli-46100-pma"]
+
+
+def test_a_bare_declaration_with_nothing_behind_it_is_refused(pub, carousel) -> None:
+    """The shape the previous test used to assert. It must NOT pass now."""
     root = Path(pub._carousel_root())
     (root / carousel / "brief.json").write_text(
         json.dumps({
@@ -237,7 +276,7 @@ def test_claim_ids_are_inherited_when_wr2_finally_emits_them(pub, carousel) -> N
     )
     payload = pub._build_wr3_handoff_payload(carousel)
     assert payload is not None
-    assert payload["primary_claim_ids"] == ["bkpm-5-2025-paid-up", "kbli-46100-pma"]
+    assert payload["primary_claim_ids"] == []
 
 
 def test_database_failure_never_fails_the_publish(

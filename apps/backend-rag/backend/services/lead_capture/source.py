@@ -12,6 +12,7 @@ from enum import Enum
 class LeadSource(str, Enum):
     VISA_CLOCK = "visa_clock"
     VISA_MATCH = "visa_match"
+    GARUDA_VOA = "garuda_voa"
     KBLI_DECODER = "kbli_decoder"
     KBLI_BUILDER = "kbli_builder"
     TAX_GAP = "tax_gap"
@@ -41,6 +42,7 @@ class LeadSource(str, Enum):
         return {
             LeadSource.VISA_CLOCK: "Visa Clock",
             LeadSource.VISA_MATCH: "Visa Match",
+            LeadSource.GARUDA_VOA: "the VOA request check",
             LeadSource.KBLI_DECODER: "KBLI Decoder",
             LeadSource.KBLI_BUILDER: "KBLI Builder",
             LeadSource.TAX_GAP: "Tax Gap",
@@ -59,6 +61,7 @@ class LeadSource(str, Enum):
         return {
             LeadSource.VISA_CLOCK: "/visa/clock",
             LeadSource.VISA_MATCH: "/visa/match",
+            LeadSource.GARUDA_VOA: "/visa/voa",
             LeadSource.KBLI_DECODER: "/kbli/decoder",
             LeadSource.KBLI_BUILDER: "/kbli/builder",
             LeadSource.TAX_GAP: "/tax/gap",

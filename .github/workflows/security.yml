@@ -5,13 +5,28 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
   schedule:
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
 
 concurrency:
   group: security-${{ github.ref }}
-  cancel-in-progress: false
+  # Cancel superseded runs on PR branches; NEVER on main.
+  #
+  # This was a flat `false` since #770 (the bulk "add concurrency groups to 21
+  # workflows" pass), which gave main the protection it needs and gave PR
+  # branches nothing. This workflow owns 4 of the 25 required status checks —
+  # CodeQL x2, Detect Secrets, Bandit, ~20 billed minutes measured — so every
+  # re-push to a PR left a full previous round running to completion while the
+  # new one queued behind it. On a repo merging ~50 PRs/day that is the single
+  # largest source of self-inflicted queue latency.
+  #
+  # Same expression `tests.yml` has used all along (its `github.ref !=
+  # 'refs/heads/main'` form), deliberately copied rather than reinvented: on
+  # main every security scan still runs to completion, because a cancelled
+  # scan on a commit that LANDS would leave a gap in the security record.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   snyk-python:
