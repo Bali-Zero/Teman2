@@ -461,9 +461,9 @@ export class CrmApi {
       quoted_price: number;
       actual_price: number;
       payment_status: string;
-      assigned_to: string;
+      assigned_to: string | null;
       notes: string;
-      start_date: string;
+      start_date: string | null;
     }>,
   ): Promise<Practice> {
     // Note: trailing slash required to avoid 307 redirect which converts PATCH to GET
@@ -911,12 +911,7 @@ export class CrmApi {
   async createInteraction(data: {
     client_id: number;
     interaction_type:
-      | "note"
-      | "chat"
-      | "email"
-      | "whatsapp"
-      | "call"
-      | "meeting";
+      "note" | "chat" | "email" | "whatsapp" | "call" | "meeting";
     summary: string;
     subject?: string;
     team_member: string;

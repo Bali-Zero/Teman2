@@ -22,6 +22,7 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
+import { resolvePmaCap } from "./kbli-pma-cap";
 import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
@@ -400,7 +401,7 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
 
   const pma = {
     status: mapPmaStatus(raw.pma_status),
-    maxForeign: raw.pma_max_asing,
+    maxForeign: resolvePmaCap(raw),
     condition: raw.pma_kondisi,
     isPriority: raw.pma_prioritas,
     note: raw.pma_nota,
