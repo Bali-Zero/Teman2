@@ -531,7 +531,7 @@
         "PRIOR_ISSUE": "Your case needs a closer look from our team — our ordinary channel handles cases like this on a short timeline.",
         "FASTLANE_REQUEST": "Airport fast-lane requests go through our ordinary channel, which handles them on a short timeline.",
         "EXPIRY_UNKNOWN": "We need your exact expiry date to confirm this — our ordinary channel can take it from here on a short timeline.",
-        "EXPIRES_TOO_SOON": "Your timeline is tight for this quick check — our ordinary channel handles cases like yours on a short timeline.",
+        "EXPIRES_TOO_SOON": "The published filing deadline for this extension has already passed, so our online check can't take it — our ordinary channel will still go through your options with you.",
         "EXTENSION_ALREADY_USED": "This VOA has already been extended once — our ordinary channel handles further extensions on a short timeline.",
         "ARRIVAL_TOO_SOON": "Your arrival date is past our online submit-by window — our ordinary channel handles cases like yours on a short timeline.",
         "ARRIVAL_DATE_UNCONFIRMED": "We can't yet compute a submit-by date this far ahead — our team will confirm it with you directly.",

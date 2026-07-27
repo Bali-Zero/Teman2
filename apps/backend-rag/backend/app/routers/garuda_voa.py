@@ -47,8 +47,10 @@ hours, so an issuance request is accepted up to the day BEFORE arrival —
 Bali Zero's systems being closed weekends and Indonesian national
 holidays/cuti bersama. This SUPERSEDES the charter's blanket "urgent case"
 exclusion FOR ISSUANCE ONLY; extensions are untouched (in-person
-photo/interview since 29 May 2025, own D-10 runway gate, own D-7 published
-deadline). Two neutral, routing-worded decline codes
+photo/interview since 29 May 2025, own runway gate — now identical to the
+published D-7 filing deadline itself, owner ruling 2026-07-27, see
+`services.garuda_flow.eligibility.screen`). Two neutral, routing-worded
+decline codes
 (`DeclineCode.ARRIVAL_TOO_SOON` / `DeclineCode.ARRIVAL_DATE_UNCONFIRMED`)
 join the wire-safe set above. `VoaResponse.submit_by_date` carries the one
 date this gate can ever show a visitor — Bali Zero's OWN operational
