@@ -12,6 +12,7 @@ const {
   mockGetFamilyMembers,
   mockGetClientPractices,
   mockCreatePractice,
+  mockRefetchClientProfile,
   stableSearchParams,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -20,6 +21,7 @@ const {
   mockGetFamilyMembers: vi.fn(),
   mockGetClientPractices: vi.fn(),
   mockCreatePractice: vi.fn(),
+  mockRefetchClientProfile: vi.fn(),
   stableSearchParams: {
     get: vi.fn((key: string) => (key === "client_id" ? "7" : null)),
   },
@@ -123,14 +125,22 @@ describe("NewPracticePage", () => {
     mockGetFamilyMembers.mockResolvedValue([]);
     mockGetClientPractices.mockResolvedValue([]);
     mockCreatePractice.mockResolvedValue({ id: 71 });
+    mockRefetchClientProfile.mockResolvedValue({
+      client: { id: 7 },
+      practices: [{ id: 71 }],
+      stats: { practices_count: 1 },
+    });
   });
 
-  it("invalidates the selected client before returning to its process tab", async () => {
+  it("refetches the selected client before returning to its process tab", async () => {
     const user = userEvent.setup();
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
     const queryKey = clientDetailQueryKey(7);
+    queryClient.setQueryDefaults(queryKey, {
+      queryFn: mockRefetchClientProfile,
+    });
     queryClient.setQueryData(queryKey, { client: { id: 7 } });
 
     const { default: NewPracticePage } = await import("./page");
@@ -151,6 +161,13 @@ describe("NewPracticePage", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/clients/7?tab=process");
     });
-    expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+    expect(mockRefetchClientProfile).toHaveBeenCalledTimes(1);
+    expect(mockRefetchClientProfile.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPush.mock.invocationCallOrder[0],
+    );
+    expect(queryClient.getQueryData(queryKey)).toMatchObject({
+      practices: [{ id: 71 }],
+      stats: { practices_count: 1 },
+    });
   });
 });
