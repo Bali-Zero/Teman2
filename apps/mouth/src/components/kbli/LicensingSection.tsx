@@ -11,6 +11,11 @@ import type {
 } from "@/lib/kbli-types";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  baliBlockClause,
+  shouldShowReason,
+  narratesUnverifiedRoute,
+} from "@/lib/kbli-bali-block";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -703,7 +708,12 @@ function rewritePmaLineForBali(line: string, baliBlocked: boolean): string {
   if (!baliBlocked) return line;
   if (!/\*\*PMA:\*\*/i.test(line) && !/^PMA:/i.test(line)) return line;
   if (!/fully open|100%|foreign ownership/i.test(line)) return line;
-  return "**PMA:** 100% open nationally — but BLOCKED for a PT PMA in Bali (reserved UMKM / moratorium). See Bali status above.";
+  // The parenthetical used to read "(reserved UMKM / moratorium)" — two causes
+  // named at once, of which at most one can be this code's, and neither is for
+  // the 68 TERTUTUP / 2 sector-regulator / 2 Bali-sectoral codes. This helper
+  // only receives `baliBlocked`, not the status, so it states NO cause: the
+  // frame directly above derives the real one from `l4_bali.status`.
+  return "**PMA:** 100% open nationally — but not open to a PT PMA in Bali. See the Bali status above.";
 }
 
 function StepList({
@@ -931,16 +941,17 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             The licensing path below is the <strong>national</strong> procedure,
             valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
             <strong>Bali</strong>, this activity is currently{" "}
-            {kbli.baliL4?.status === "CHIUSO_PMA_NO_BESAR"
-              ? "reserved for micro/small/medium enterprises and closed to a PT PMA"
-              : "blocked for a PT PMA under the 13 May 2026 moratorium"}
+            {baliBlockClause(kbli.baliL4?.status)}
             {/* The reason is spliced mid-sentence, so its own terminal period
                 would collide with the one below ("…(GARUDA-FILIERA).. See the").
                 Un-disclosed reasons end without a period and were fine; every
                 disclosed one ends with a full stop, and there are now 152 of
-                them. */}
-            {kbli.baliL4?.reason
-              ? ` — ${kbli.baliL4.reason.replace(/\.\s*$/, "")}`
+                them. It is also SUPPRESSED when it answers the moratorium-test
+                question on a code the moratorium did not block — see
+                `shouldShowReason`; that pairing is what put a cause and its
+                denial in the same sentence on 58 pages. */}
+            {shouldShowReason(kbli.baliL4?.status, kbli.baliL4?.reason)
+              ? ` — ${(kbli.baliL4?.reason ?? "").replace(/\.\s*$/, "")}`
               : ""}
             . See the Bali status badge above before planning a Bali setup.
           </p>
@@ -1086,6 +1097,42 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
       {/* ── EDITORIAL CONTENT SECTIONS ── */}
       {parsed && parsed.sections.length > 0 && (
         <div className="space-y-6">
+          {/* The walkthrough predates the cure that detached this code's rows,
+              so it can still name a tier, an issuing authority and a timeline
+              that KeyFacts above has already declared unsupported. Frame it —
+              the steps stay (they are the editorial record) but nobody reads
+              them as a route they can follow today. */}
+          {narratesUnverifiedRoute(
+            kbli.licensing.length,
+            gold?.whatYouNeed,
+          ) && (
+            <div
+              className="rounded-xl border px-5 py-4"
+              style={{
+                background: "rgba(232, 168, 73, 0.06)",
+                borderColor: "rgba(232, 168, 73, 0.25)",
+              }}
+            >
+              <div className="mb-1.5 flex items-center gap-2">
+                <span aria-hidden="true">⚠️</span>
+                <span
+                  className="text-xs font-bold uppercase tracking-[0.12em]"
+                  style={{ color: "var(--kbli-pma-restricted)" }}
+                >
+                  Steps below predate this code&rsquo;s licensing review
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                The walkthrough that follows was written against licensing rows
+                we have since been unable to verify for this activity — which is
+                why no risk tier or licensing route is shown above. Treat any
+                risk level, issuing authority or processing time in these steps
+                as <strong>provisional</strong>, and confirm the current
+                requirements at oss.go.id or with the Bali Zero team before
+                acting on them.
+              </p>
+            </div>
+          )}
           {parsed.sections.map((sec, i) => (
             <ContentSection
               key={i}

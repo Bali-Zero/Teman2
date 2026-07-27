@@ -18,6 +18,7 @@ name: Guard conformance (superscar #3 enforcement)
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   push:
     branches: [main]
     paths:
@@ -37,7 +38,7 @@ on:
 
 concurrency:
   group: guard-conformance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
