@@ -375,3 +375,144 @@ sessione veniva presa per la conferma di un umano. Entrambe sostituiscono la cos
 le assomiglia — e in un report il cui esito è "l'umano deve meno di quanto dice il registro",
 quella sostituzione va nella direzione che conviene a chi scrive. È esattamente il punto del
 finding 8, e per questo il ritiro è più importante del conteggio che corregge.
+
+---
+
+# Second pass, 2026-07-27 — the reader was the blind organ
+
+The first pass covered 6 of 65 rows and said so. This pass went back for more of the
+backlog and got about forty rows in before discovering that the *list* was wrong.
+
+## What happened
+
+I ran `pending_arms_report.py` in the main checkout, got ~68 open operator-gated rows,
+and started content-checking them. Two rows in, a row I was about to "discover" was
+already closed — twice, on 2026-07-20 and again 2026-07-26. So was the next one.
+
+The main checkout was behind `origin/main`. Its ledger was 492 lines; main's was 532.
+The reporter had parsed exactly what it was given and reported it faithfully. It has no
+notion of git, so it could not know, and it printed nothing that would let a reader know
+either. **The report was internally correct and externally false.**
+
+This is the third time in two days the same shape has bitten, in three different
+disguises:
+
+| disguise | the tool answered about |
+|---|---|
+| a seat probe launched without the wrapper's env | a process, not the seat |
+| a GO criterion naming `mcp__google-search-console__*` | a fleet that has no such seat |
+| this reporter in a stale checkout | a ledger that no longer exists |
+
+Each time the instrument replied confidently. None of them lied about what they measured;
+all three were measuring the wrong world. The common cure is not "be careful" — it is
+**make the instrument state which world it measured**, so that silence stops being
+indistinguishable from currency.
+
+## The cure (shipped in this PR, not proposed)
+
+`_ledger_freshness()` in `scripts/pending_arms_report.py` asks one question — *how many
+commits to this file does `origin/main` have that this checkout lacks* — and prints the
+answer on every run: `current`, `STALE`, or `UNKNOWN`. Three design points earned by
+scars already in the file:
+
+1. **This is not a W88 content check and must not be mistaken for one.** "Has this
+   content already landed on main" demands blob-per-file comparison; SHA reachability
+   lies about it, and three-dot lies about it worse. But "does my checkout contain main's
+   commits to this file" *is* reachability — it is the exact semantics of that question,
+   not a proxy for it. Two questions that look alike with opposite correct methods.
+2. **Direction matters, or the banner cries wolf.** Every ledger PR differs from
+   `origin/main` on purpose. Only a checkout *missing* main's commits is stale; a branch
+   ahead reports `current`. Without that asymmetry the warning fires on every ledger PR
+   and is trained into invisibility — an over-match that manufactures its own blindness.
+3. **UNKNOWN is not `current`.** A shallow CI clone has no `origin/main`; a tarball is not
+   a repo. Those say UNKNOWN and say why. A scan that could not look is not a clean scan.
+
+`--strict` (the "I am about to rely on this verdict" mode) now fails on STALE.
+`--strict-phantom` (the CI gate) deliberately does not: CI checks out a shallow merge ref,
+every innocent PR would report UNKNOWN, and a gate that reddens on "could not check"
+teaches everyone to ignore it.
+
+Proven on the exact checkout that caused this: `⚠️ ledger-freshness: **STALE** — origin/main
+has 18 commit(s) to this ledger that this checkout lacks`, `--strict` exits 1, same binary
+on a fresh worktree reads `current`. Guilt + innocence + unknown corpus in
+`test_pending_arms_report.py`; non-vacuity verified by neutralising the count in place
+(2 red), then restoring (59/59).
+
+## Two rows closed: a retirement that never swept its own ledger
+
+`arsenal_probe.py:84` — `ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "ollama",
+"nlm"]`. No deepseek. Line 82 says why: *retired 2026-07-19, owner order, pre-auth revoked,
+never top up*. The only other mention, line 742, is a classifier test fixture pinning
+`HTTP 402 Insufficient Balance` → `BALANCE_DEAD`.
+
+Yet two rows sat open asking `operator[secret]` to top up the DeepSeek account, with the
+proof criterion *"1-token probe HTTP 200"* — a proof obtainable **only by doing the thing
+the owner forbade**. One had been open 19 days; the other was opened *the same day as the
+retirement*. Both closed here as SUPERSEDED, not done, and proven by the retirement being
+live in code and canon rather than by a probe, because probing would itself have been the
+forbidden act.
+
+The generalisable bit: **a retirement decision has to sweep the ledger rows whose subject
+it retired.** Otherwise they keep billing the operator's attention forever, and — worse —
+they inflate the "waiting on the human" backlog with work nobody should ever do. Two of
+the 67 operator-gated rows were of this kind. It is worth asking how many more are.
+
+## The row that was closed correctly, and the sweep that was not
+
+The Mini `e2c3951c5` orphan commit was already closed. I content-checked it anyway, and
+the check said something the closure did not: dropping that commit was not merely
+*consistent with* the evidence, it was **necessary**.
+
+Of the files the commit touched since its merge-base, **100 are byte-identical on
+`origin/main` and 9 differ** — and all 9 differ in one direction, with main carrying a
+later regulatory correction:
+
+| Mini side (2026-07-18) | main side | main's cure |
+|---|---|---|
+| `Second Home Visa (E33A)` ×2 | `(E33)` | `9865bcd61b` 2026-07-24 |
+| `Second Home (E28)` ×2 | `(E33)` | same |
+| `Second Home Visa (C9A)` ×2 | `(E33)` | same |
+| `E33G`/`E33` swapped ×2 | corrected | `7ff604736a` 2026-07-24 |
+| PT PMA `10 mld minimum paid-up (~$620k)` | `BKPM 5/2025: 2,5 mld paid-up + >10 mld plan per KBLI (~$160k)` | `23fa765e61` 2026-07-24 |
+
+**Then the check turned around and bit the cure.** Those 2026-07-24 commits were correct
+but incomplete. Measured this turn, direct apposition only: **22 live claims across 14
+files still call the Second Home visa `E33G`** — 21 English, 1 Indonesian
+(`Rumah Kedua (E33G)`). The correct form appears 30 times, so the sweep reached 30 and
+missed 22, and the published corpus now contradicts itself. What settles it is not my
+reading of the regulation but the app's own structured data:
+`apps/mouth/src/data/services_data.ts:353,364` names E33G *"Digital Nomad KITAS
+(Offshore/Onshore)"*.
+
+A broader probe — any wrong index within 120 characters of a Second Home mention, six
+languages — returns 102 hits across 49 files. That is reported as an **outer bound and
+deliberately not as the finding**: a co-mention is not a false claim, and the two numbers
+differ because the probes have different vocabularies, not because the world changed.
+
+Not fixed here, on purpose. The mandate was the ledger; 22 client-facing regulatory
+strings deserve their own diff with domain grounding, and this repo's standing rule
+against blind sweeps on a regulatory index is exactly about corrections that look
+mechanical. Ledger line opened.
+
+## Adversarial review — second pass (Codex GPT-5.6 `sol`, xhigh, read-only)
+
+Dispatched with file paths and an explicit instruction to refute, before any of the above
+was written up. It refuted a lot of it, and the corrections are folded in above rather
+than footnoted:
+
+| # | finding | esito |
+|---|---|---|
+| 1 | my file counts were wrong: **100 identical / 9 different / 0 absent**, not 98/107 | **corrected** — I had miscounted the merge-base file set |
+| 2 | my opened-date for the Mini row was wrong: the ledger says **2026-07-18**, not 07-13 | **corrected** |
+| 3 | "push/rebase would regress" is too categorical: a plain push is rejected non-fast-forward and a rebase stops on 9 add/add conflicts — regression needs a human to pick the Mini side | **accepted**, wording narrowed to "dropping was necessary", which is what the evidence supports |
+| 4 | the row never ordered preservation — its own text said *"or drops it if superseded"* | **accepted**; I had misread the row as inviting the harmful action |
+| 5 | "zero content loss" is false under a strict test: the 9 removed lines appear nowhere on main (0 exact hits) | **accepted** — zero loss of *desirable* content, not zero loss of bytes |
+| 6 | classifying a git reset on Mini as `operator[…]` is wrong — it is a session action under this repo's model | **accepted** |
+| 7 | the 2026-07-24 cure was **not a complete sweep** — wrong-index claims survive in `apps/mouth` | **CONFIRMED and re-derived independently**; became the main open finding above |
+| 8 | main's PT PMA sentence is materially right but should say "per KBLI five-digit **per project location**" | noted — content lane, not this PR |
+| 9 | one of the 9 deltas is a bare blank line, so not every byte-delta is regulatory | noted, table above counts facts not hunks |
+
+Seven corrections on my own second pass, one of which — #7 — is worth more than everything
+I brought to the review. Finding #4 is the sharpest: I had built a case that a ledger row
+*invited* a dangerous action, and the row's own text said the opposite. The report was
+about proxies lying, and I had read a proxy of the row instead of the row.
