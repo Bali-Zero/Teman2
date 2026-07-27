@@ -167,8 +167,8 @@ export function PracticeBaton({
           onClick={onAction}
           className="group inline-flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors"
           style={{
-            background: "var(--bz-accent)",
-            color: "#fff",
+            background: "var(--accent)",
+            color: "var(--accent-foreground)",
           }}
         >
           <span>{nextActionLabel}</span>
