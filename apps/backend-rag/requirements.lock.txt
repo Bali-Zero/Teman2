@@ -932,9 +932,9 @@ cymem==2.0.13 \
     #   preshed
     #   spacy
     #   thinc
-datasets==4.8.5 \
-    --hash=sha256:0f0c1c3d56ffff2c93b2f4c63c95bac94f3d7e8621aea2a2a576275233bba772 \
-    --hash=sha256:5079900781719c0e063a8efdd2cd95a31ad0c63209178669cd23cf1b926149ff
+datasets==5.0.0 \
+    --hash=sha256:7dd34927a0fd7046e98aad5cb9430e699c373238a15befa7b9bf22b991a7fee6 \
+    --hash=sha256:83dbbbdb07a33b82192b8c419deb18739b138ee2ce1a322d55ce6b100954ec1a
     # via -r requirements.txt
 deprecated==1.3.1 \
     --hash=sha256:597bfef186b6f60181535a29fbe44865ce137a5079f295b479886c82729d5f3f \
