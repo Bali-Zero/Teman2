@@ -3,18 +3,30 @@
 A faithful, auditable encoding of SOP-v0-GARUDA-B1 §1 segmentation:
 
     ACCEPT only if ALL true: eligible nationality/entry · simple tourism ·
-    1 adult traveler · clean ordinary passport (>=6 months validity) · at
-    least D-10 of runway (extension case) · self-pay · willing to give
-    anonymous feedback.
+    1 adult traveler · clean ordinary passport (>=6 months validity) ·
+    still filable under the published Ngurah Rai filing deadline
+    (extension case) · self-pay · willing to give anonymous feedback.
 
     EXCLUDE (decline politely, log reason): urgent · families/groups ·
     special passports · work/business purpose · prior overstay/refusal/
-    blacklist · airport fast-lane requests · extension below D-10.
+    blacklist · airport fast-lane requests · extension past the published
+    filing deadline.
 
 The screen collects EVERY failing reason (never short-circuits) so the case
 sheet can log a complete "why declined" — SOP §1 "decline politely, log reason".
-The D-10 gate is the enforceable version of the Gate-1 SIM-2 criterion that was
-"not testable" on 2026-07-20 because the threshold did not yet exist.
+
+Owner ruling (2026-07-27): the extension runway gate accepts a case
+whenever it can still be filed under the PUBLISHED Ngurah Rai deadline —
+``PUBLISHED_FILING_DEADLINE_DAYS`` (constants.py), "paling lambat 7 hari
+sebelum masa izin tinggal berakhir". This retires the earlier D-10
+pilot-conservatism gate (``PILOT_INTAKE_THRESHOLD_DAYS``), which was
+declining cases (e.g. 8 days of runway) that are still legally filable —
+our threshold and the office's published deadline are now the SAME line,
+with no added margin. ``PILOT_INTAKE_THRESHOLD_DAYS`` survives ONLY as the
+SOP §6 internal staff-escalation checkpoint inside
+``safe_clock.compute_stay`` — it is no longer an ACCEPT/DECLINE gate
+anywhere in this module, and this module never hardcodes the day-count
+literal: it is always read from ``PUBLISHED_FILING_DEADLINE_DAYS``.
 """
 
 from __future__ import annotations
@@ -22,7 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from backend.services.garuda_flow.constants import PILOT_INTAKE_THRESHOLD_DAYS
+from backend.services.garuda_flow.constants import PUBLISHED_FILING_DEADLINE_DAYS
 
 
 class Decision(str, Enum):
@@ -78,9 +90,10 @@ class DeclineCode(str, Enum):
 class EligibilityInput:
     """Structured intake for the pilot eligibility screen.
 
-    ``is_extension`` distinguishes a fresh VOA issuance (the D-10 runway gate
-    does not apply) from an extension case (it does). ``days_until_expiry`` is
-    required for an extension case and ignored otherwise.
+    ``is_extension`` distinguishes a fresh VOA issuance (the runway gate
+    does not apply) from an extension case (it does — see ``screen()`` for
+    the published-deadline boundary). ``days_until_expiry`` is required for
+    an extension case and ignored otherwise.
     """
 
     # ── Must ALL be true to ACCEPT (SOP §1 positive criteria) ──
@@ -169,17 +182,22 @@ def screen(inp: EligibilityInput) -> EligibilityResult:
     if inp.wants_airport_fastlane:
         _decline(DeclineCode.FASTLANE_REQUEST, "airport fast-lane request (excluded from pilot)")
 
-    # ── D-10 runway gate (extension cases only) ──
+    # ── Runway gate (extension cases only) — owner ruling 2026-07-27: the
+    # ONLY source of truth for "too late" is the published filing deadline
+    # (``PUBLISHED_FILING_DEADLINE_DAYS``). A case with EXACTLY that many
+    # days of runway left is still ACCEPTED (the deadline day itself is
+    # filable — "paling lambat N hari sebelum ... berakhir" reads as "at
+    # the latest"); one day tighter DECLINES. Never a hardcoded literal.
     if inp.is_extension:
         if inp.days_until_expiry is None:
             _decline(
                 DeclineCode.EXPIRY_UNKNOWN,
-                "extension case missing days-until-expiry (cannot verify D-10 runway)",
+                "extension case missing days-until-expiry (cannot verify filing-deadline runway)",
             )
-        elif inp.days_until_expiry < PILOT_INTAKE_THRESHOLD_DAYS:
+        elif inp.days_until_expiry < PUBLISHED_FILING_DEADLINE_DAYS:
             _decline(
                 DeclineCode.EXPIRES_TOO_SOON,
-                f"below D-{PILOT_INTAKE_THRESHOLD_DAYS} pilot threshold "
+                f"past the published D-{PUBLISHED_FILING_DEADLINE_DAYS} filing deadline "
                 f"({inp.days_until_expiry} days to expiry) — hand off to the ordinary channel",
             )
 

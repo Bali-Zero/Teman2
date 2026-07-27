@@ -1085,6 +1085,7 @@ class OrchestratorCore:
         profile: dict[str, Any] | None = None,
         max_steps: int | None = None,
         agent_role: Any | None = None,
+        memory_subject: str | None = None,
     ) -> CoreResult:
         """
         Core query processing logic coordinando tutti i moduli.
@@ -1119,6 +1120,14 @@ class OrchestratorCore:
                 except an authenticated/trusted principal) is a complete
                 no-op — the authorizer's own backward-compat passthrough
                 fires exactly as before this parameter existed.
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Server-
+                derived per-sender pseudonymous subject for the trusted
+                WhatsApp bot (`_memory_identity.derive_wa_memory_subject`).
+                Forwarded to `prepare_query_context` for the FACTS read, and
+                further down to the memory SAVE at the end of this method —
+                one value, two chokepoints, never re-derived. None (every
+                caller except the trusted WA bot with the salt provisioned)
+                is a complete no-op.
 
         Returns:
             CoreResult completo
@@ -1139,6 +1148,7 @@ class OrchestratorCore:
             user_id=user_id,
             conversation_history=conversation_history,
             session_id=session_id,
+            memory_subject=memory_subject,
         )
 
         # 1a2. WA team-assistant V1: merge a caller-supplied profile override
@@ -1746,10 +1756,17 @@ class OrchestratorCore:
         user_id: str | None,
         conversation_history: list[dict] | None,
         session_id: str | None = None,
+        memory_subject: str | None = None,
     ) -> tuple[dict[str, Any], list[dict], dict[str, Any], str, dict | None]:
         """
         Common context preparation for both streaming and non-streaming.
         Executes Context Loading and Entity/KG Extraction in PARALLEL.
+
+        Args:
+            memory_subject: W-1 follow-up to P0-MEM (2026-07-27). Forwarded to
+                ``context_manager.get_full_context`` for the FACTS read. See
+                ``context_manager.get_user_context`` docstring for the full
+                rationale. ``None`` is a complete no-op.
 
         Returns:
             Tuple of (user_context, optimized_history, extracted_entities, kg_context_str, workflow)
@@ -1762,6 +1779,7 @@ class OrchestratorCore:
                 query=query,
                 conversation_history=conversation_history,
                 session_id=session_id,
+                memory_subject=memory_subject,
             )
 
         # First load context to get user_context for LangGraph

@@ -45,6 +45,9 @@ async def test_process_query_delegates_to_core_and_dispatches_memory_save() -> N
         answer="Processed answer",
         session_id="session-1",
         metrics_collector=pytest.importorskip("backend.app.metrics").metrics_collector,
+        # W-1 (P0-MEM follow-up): forwarded verbatim. None is the innocence
+        # case — a non-WhatsApp caller keeps keying memory on `user_id`.
+        memory_subject=None,
     )
 
 

@@ -9,6 +9,21 @@ Fixed by moving decline reasons onto stable machine codes
 (`VoaResponse.reason_codes`); the raw prose stays server-side only
 (`VoaVerdict.decline_reasons` / `garuda_voa_checks.decline_reasons`, audit).
 
+Follow-up ruling, SAME DAY (2026-07-27): the runway gate this leak was
+originally about (`eligibility.screen()`'s extension boundary) no longer
+uses `PILOT_INTAKE_THRESHOLD_DAYS`/D-10 at all — it now derives from the
+published `PUBLISHED_FILING_DEADLINE_DAYS`/D-7 deadline (see
+`eligibility.py`, `constants.py`). `PILOT_INTAKE_THRESHOLD_DAYS` survives
+ONLY as the SOP §6 internal staff-escalation checkpoint inside
+`safe_clock.compute_stay` — so `D-10` can no longer appear in a decline
+reason's raw prose at all, and the "not vacuous" proof below had to move
+off the (now-impossible) D-10-boundary scenario onto a still-live one (a
+generic "excluded from pilot" branch, e.g. `urgent_case=True`) that still
+carries the forbidden word "pilot". The forbidden-token LIST itself is
+untouched — `D-{PILOT_INTAKE_THRESHOLD_DAYS}` stays on it defensively
+(the SOP §6 checkpoint is still an internal-only marker), it just no
+longer has a decline-reason producer to catch mid-leak.
+
 This test is deliberately NOT a literal grep for "D-10" — that string never
 existed literally in the codebase; it was composed at runtime from
 `PILOT_INTAKE_THRESHOLD_DAYS`, and a literal grep is exactly the check that
@@ -20,10 +35,10 @@ missed the original leak. Instead it:
      `D-{EXTENSION_WINDOW_OPENS_DAYS}`), plus the words "pilot" and
      "threshold".
   2. Constructs a real DECLINE `VoaResponse` for every decline branch the
-     engine can produce (every `EligibilityInput` boolean flip, both D-10
-     sub-branches, the extension-already-used rule, and a multi-reason
-     decline), and serializes it to JSON exactly as FastAPI would put it on
-     the wire.
+     engine can produce (every `EligibilityInput` boolean flip, both
+     runway-gate sub-branches, the extension-already-used rule, and a
+     multi-reason decline), and serializes it to JSON exactly as FastAPI
+     would put it on the wire.
   3. Asserts none of the forbidden tokens appear anywhere in that payload.
 
 Both halves, so the guard cannot be vacuous: `TestGuardIsNotVacuous` proves
@@ -45,6 +60,7 @@ from backend.services.garuda_flow.constants import (
     FINAL_CHECK_DAYS,
     INTERNAL_ESCALATION_DAYS,
     PILOT_INTAKE_THRESHOLD_DAYS,
+    PUBLISHED_FILING_DEADLINE_DAYS,
 )
 from backend.services.garuda_flow.eligibility import EligibilityInput, screen
 from backend.services.garuda_flow.intake import (
@@ -115,32 +131,42 @@ def _decline_response(codes: list[str], *, submit_by_date: date | None = None) -
 
 
 class TestGuardIsNotVacuous:
-    """Proves this guard would actually have caught the original leak — the
-    pre-fix RAW engine prose for the exact leaking case (D-10 boundary,
-    9 days remaining) must itself contain a forbidden token. If this class
-    failed, the `IsCleanOnTheWire` passes below would be meaningless."""
+    """Proves this guard would actually have caught the original leak.
 
-    def test_raw_prose_for_the_d10_boundary_contains_a_forbidden_token(self) -> None:
-        result = screen(_clean_extension(days_until_expiry=9))
-        assert result.decline_reasons, "expected a decline reason for the D-10 boundary case"
+    Follow-up ruling (2026-07-27, same day): the runway gate no longer
+    uses `PILOT_INTAKE_THRESHOLD_DAYS`/D-10 at all (see module docstring),
+    so `D-10` can no longer appear in ANY decline reason's raw prose —
+    the original D-10-boundary scenario this proof used is gone. The
+    not-vacuous demonstration moves to a still-live branch that reliably
+    emits the forbidden word "pilot" (every SOP §1 exclusion signal is
+    worded "excluded from pilot"). If this class failed, the
+    `IsCleanOnTheWire` passes below would be meaningless."""
+
+    def test_raw_prose_for_an_excluded_case_contains_a_forbidden_token(self) -> None:
+        result = screen(_clean_extension(urgent_case=True))
+        assert result.decline_reasons, "expected a decline reason for the excluded case"
         raw = json.dumps(result.decline_reasons).lower()
         assert any(tok.lower() in raw for tok in _FORBIDDEN_TOKENS), (
             "guard is vacuous: the RAW engine prose contains none of the forbidden "
             "tokens — this test would pass even without the fix"
         )
 
-    def test_raw_prose_names_pilot_and_threshold_verbatim(self) -> None:
-        result = screen(_clean_extension(days_until_expiry=9))
+    def test_raw_prose_names_pilot_verbatim(self) -> None:
+        result = screen(_clean_extension(urgent_case=True))
         raw = " ".join(result.decline_reasons).lower()
         assert "pilot" in raw
-        assert "threshold" in raw
+        # "threshold" is NOT asserted here anymore: post-2026-07-27 no
+        # decline reason ever uses that word (the runway gate's message
+        # talks about the published filing deadline, not a "threshold").
+        # It stays on `_FORBIDDEN_TOKENS` defensively in case that wording
+        # is ever reintroduced — this test just can't prove it live today.
 
 
 class TestEveryEligibilityBranchDeclineIsCleanOnTheWire:
     """One parametrized case per `eligibility.screen()` decline branch —
-    every boolean flip (and both D-10 sub-branches) that can produce a
-    decline reason. Each is serialized through the real `VoaResponse` and
-    checked against the forbidden-token list."""
+    every boolean flip (and both runway-gate sub-branches) that can
+    produce a decline reason. Each is serialized through the real
+    `VoaResponse` and checked against the forbidden-token list."""
 
     @pytest.mark.parametrize(
         "overrides",
@@ -159,7 +185,9 @@ class TestEveryEligibilityBranchDeclineIsCleanOnTheWire:
             {"prior_overstay_refusal_blacklist": True},
             {"wants_airport_fastlane": True},
             {"days_until_expiry": None},
-            {"days_until_expiry": 9},  # the exact case that leaked
+            # One day past the published deadline (owner ruling
+            # 2026-07-27) — the current runway-gate boundary decline.
+            {"days_until_expiry": PUBLISHED_FILING_DEADLINE_DAYS - 1},
             {"days_until_expiry": -2},
         ],
         ids=lambda o: ",".join(f"{k}={v}" for k, v in o.items()),
@@ -247,15 +275,15 @@ class TestIssuanceSubmissionGateDeclineIsCleanOnTheWire:
 
 class TestMultiReasonDeclineIsCleanOnTheWire:
     """SOP §1 'log reason' — the screen collects every failing reason, never
-    short-circuiting. Several reasons plus the D-10 boundary reason on one
-    response is the exact shape the original leak shipped in."""
+    short-circuiting. Several reasons plus the runway-boundary reason on
+    one response is the exact shape the original leak shipped in."""
 
-    def test_multiple_reasons_including_d10_boundary_all_clean(self) -> None:
+    def test_multiple_reasons_including_runway_boundary_all_clean(self) -> None:
         result = screen(
             _clean_extension(
                 self_pay=False,
                 work_or_business_purpose=True,
-                days_until_expiry=9,
+                days_until_expiry=PUBLISHED_FILING_DEADLINE_DAYS - 1,
             )
         )
         assert result.decision.value == "DECLINE"
