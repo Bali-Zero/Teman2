@@ -34,6 +34,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic import orchestrator_core as orchestrator_core_module
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
 from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.schema import CoreResult
@@ -336,17 +337,59 @@ class TestMultiAgent:
         )
         orch.core._multi_agent_coordinator = mock_coord
 
+        # The branch is OFF by default since 2026-07-27 (it answered with no
+        # sources and could not abstain — see _MULTI_AGENT_COORDINATOR_ENABLED).
+        # O9 is about what the branch DOES once entered, so the feature is
+        # enabled explicitly here. The entry predicate itself is still the real
+        # `requires_multi_agent` against a real cost+timeline query string, and
+        # the default-off behaviour has its own test below.
         # "cost and timeline" query triggers requires_multi_agent
-        result = await orch.process_query(
-            "How much does a KITAS cost and how long does it take?",
-            "user@test.com",
-        )
+        with patch.object(
+            orchestrator_core_module,
+            "_MULTI_AGENT_COORDINATOR_ENABLED",
+            True,
+        ):
+            result = await orch.process_query(
+                "How much does a KITAS cost and how long does it take?",
+                "user@test.com",
+            )
 
         assert result.model_used == "multi-agent-coordinator"
         assert "Rp 15M" in result.answer
         mock_coord.process.assert_called_once()
         # ReAct loop MUST NOT have been invoked
         orch.reasoning_engine.execute_react_loop.assert_not_called()
+
+    async def test_multi_agent_is_off_by_default_and_falls_through_to_react(self, orch):
+        """DEFAULT-OFF (2026-07-27): the same cost+timeline query that O9 routes
+        into the branch must, with no flag set, never reach the coordinator and
+        must be answered by the ReAct loop instead.
+
+        Why the branch is off rather than gated on evidence: it returns
+        `sources=[]` before the abstain gate and before the analytics write, so
+        its answers cannot be cited, cannot abstain, and cannot be measured. In
+        prod on 2026-07-27 that produced an invented government fee of "up to
+        IDR 1.2 billion" on an E23 cost+timeline question. Falling through means
+        the query is served by the path that retrieves, abstains and is logged.
+
+        This test would FAIL before the change: the old code called the
+        coordinator whenever `requires_multi_agent` matched.
+        """
+        mock_coord = MagicMock()
+        mock_coord.process = AsyncMock(
+            return_value={"final_answer": "ungrounded multi-agent answer"},
+        )
+        orch.core._multi_agent_coordinator = mock_coord
+
+        result = await orch.process_query(
+            "How much does a KITAS cost and how long does it take?",
+            "user@test.com",
+        )
+
+        mock_coord.process.assert_not_awaited()
+        assert result.model_used != "multi-agent-coordinator"
+        assert "ungrounded multi-agent answer" not in result.answer
+        orch.reasoning_engine.execute_react_loop.assert_called_once()
 
     async def test_multi_agent_exception_falls_back_to_react(self, orch):
         """O10: coordinator.process raises → logged warning + ReAct fallback.
@@ -356,10 +399,17 @@ class TestMultiAgent:
         mock_coord.process = AsyncMock(side_effect=RuntimeError("agent graph error"))
         orch.core._multi_agent_coordinator = mock_coord
 
-        result = await orch.process_query(
-            "How much does a KITAS cost and how long does it take?",
-            "user@test.com",
-        )
+        # Same explicit enablement as O9 — this test is about the exception
+        # fallback, so the branch must be allowed to run in order to raise.
+        with patch.object(
+            orchestrator_core_module,
+            "_MULTI_AGENT_COORDINATOR_ENABLED",
+            True,
+        ):
+            result = await orch.process_query(
+                "How much does a KITAS cost and how long does it take?",
+                "user@test.com",
+            )
 
         # Coordinator tried, exception captured
         mock_coord.process.assert_called_once()
