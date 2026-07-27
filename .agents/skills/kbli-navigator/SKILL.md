@@ -28,6 +28,91 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
+**🔴 L2.12 — PROD IS FROZEN: VERCEL HAS NOT DEPLOYED SINCE 2026-07-26T19:57Z (`operator[gui]`).**
+Nothing merged after that time is live, including the L2.10 cures. Measured, not inferred:
+the last **Production** deployment is `13265a2406` at 19:57:32Z and the last deployment of
+**any** environment is 20:07:27Z — while **four** `apps/mouth`-touching commits landed on main
+afterwards (`0b1fbe6656` 22:15Z, **`45444d21e9` 23:05Z = the L2.10 block-cause cure**,
+`4fa139ac8f` 23:09Z, `708fc65833` 23:35Z). So it is **not** the monorepo skip (the project WAS
+touched), **not** a failed build (no deployment record exists at all — the last one succeeded),
+and **not** an in-repo config change (`vercel.json` has not been touched in months). The
+Vercel↔GitHub integration is simply silent. Corroborated independently of the API: prod serves
+the pre-cure copy (`x-vercel-cache: HIT`, rendered 23:42Z, still carrying the old strings), and
+a query-param cache-buster does NOT bypass it (Next static: the query is not in the cache key).
+Deployment volume rules out a 100/day cap — 147 on 26 Jul, 160 on 25 Jul, both above it.
+**Why this is operator-gated and not a phantom lane:** `~/.vercel` is absent on **all three**
+machines (M5, Pro, Mini), there is no `VERCEL_*` GitHub secret, and the only two workflows
+naming vercel are a build-guard and a lock-sync — neither deploys. The `vercel` CLI is on disk
+but unauthenticated. A dashboard login is an external-UI action.
+**Consequence for every session: `prove-live` on `balizero.com` is MEANINGLESS until this
+clears.** A red probe right now measures the deploy stall, not your diff. Verify against
+`origin/main` by content instead, and re-run the probe after the first Production deployment
+newer than 19:57:32Z.
+
+**L2.11 — THE PMA CAP WAS A BINARY DERIVED FROM A TERNARY, ON BOTH PLANES (2026-07-27).**
+`pma_status` has three values and the code treated it as two, so the foreign-ownership figure
+was invented rather than read — even though the dataset already carries the adjudicated one
+(`pma_max_asing` + `pma_official_basis` citing the Perpres 10/2021 lampiran + `pma_cap_verified`).
+
+- **Backend** (`services/kbli_eye.py`): `max_foreign_ownership = 100 if TERBUKA else 0` served
+  a figure the dataset contradicts on **9 of the 10 TERBATAS codes**, 8 of them in the direction
+  that DENIES a lawful stake (the seven sea-cabotage codes `50111/50112/50113/50121/50122/50123/50126`
+  allow **49%**; `79110` allows **100%**; `47221` is a non-percentage "special" regime). The
+  decision matrix shared the defect: `not TERBUKA -> REJECTED` refused an activity where a PMA
+  may lawfully hold 49%. Now keyed on the CAP: 0% stays REJECTED (62 codes), limited-but-open
+  becomes WARNING/`PERPRES_10_2021_FOREIGN_CAP`. Exactly **9 codes leave** the REJECTED bucket,
+  none enters. `is_umkm_reserved` was `not is_open_pma` — "reserved for micro/small enterprise"
+  asserted on all 71 non-TERBUKA codes while the data names it on **2** (`47111`, `47222`, both
+  via the lampiran's `DIALOKASIKAN` column); it is now tri-state, `None` = undetermined.
+  Note `Kemitraan dengan UMKM/Koperasi` is a PARTNERSHIP duty, **not** a reservation — a bare
+  substring match on "UMKM" over-matches it (family #3).
+- **Frontend**: the cap was read in two places with different defaults —
+  `kbli-data.server.ts` used `raw.pma_max_asing || 0` (the 1,559 static pages + gold API +
+  sitemap) while `kbli-data.ts` used it bare (index, sectors, OG). On `01122` (the single
+  record with no cap field, TERBUKA) the coercion rendered **"0% Open"**. One resolver now:
+  `apps/mouth/src/lib/kbli-pma-cap.ts`, pinned by an INTERACTION test (neither layer may
+  re-derive it), with the same narrow status fallback the backend uses.
+- **The service had ZERO direct tests** (only downstream mocks) — that is why both survived.
+  20 added: guilt on every wrong verdict, innocence on every verdict that must not move, and
+  population pins over all 1,559 codes.
+
+**🔴 L2.11b — `KBLIEye` IS DEAD IN PRODUCTION, AND WAS DYING MUTE (`operator[business]` to revive).**
+Proven live on `nuzantara-rag` (machine `1781e5eda03438`): `/app/source_documents` **does not
+exist** and `python -m backend.services.kbli_eye` returns `{"state": "ERROR", "reason_code":
+"DATABASE_NOT_LOADED"}`. The KBLI dataset never enters the image — the Dockerfile's final stage
+copies `backend`/`scripts`/`training-data`/`*.py`, never `data/` (repo-root `source_documents`
+is a symlink into `data/`, which is not in the build context). So **both** consuming endpoints —
+`POST /api/dashboard/map/analyze-investment` and `POST /api/prime/v2/analyze` (called by
+`apps/mouth` via `/api/property/analyze`) — have been degrading their whole KBLI block to
+`state: "ERROR"` for an unknown period, and `_load_database()` announced it with a **bare
+`return`**. The refusal is now logged (family #2: a silent failure is not a failure seen).
+**Deliberately NOT revived here** — shipping the 35.3 MB dataset would resurrect a SECOND source
+of truth that contradicts the cured one: this service carries its own hardcoded Bali rules
+(9 gov-letter codes + 4 moratorium codes) against the navigator's 518-code overlay. The real
+choice is (a) ship the dataset and align its Bali rules to the overlay, (b) re-point it at the
+Postgres `kbli_documents` store that already exists in prod, or (c) retire it with its two
+endpoints. **Nothing renders its payload today** — censused: no frontend reads
+`max_foreign_ownership` or `kbli.state`; `DealFlowWizard` renders only `analysis.kbli?.code`,
+which survives the ERROR shape via the caller's fallback. So this is latent, not visible harm.
+
+**🟡 L2.11c — THE "UNVERIFIED CAP" QUALIFIER CANNOT RENDER ON ANY OF THE 1,559 PAGES — AWAITS ZERO.**
+`page.tsx` has an honest branch — `≈N% (unverified)` — nested inside `status === "restricted"`,
+so it needs a TERBATAS code with `capVerified === false`. All **10** TERBATAS codes carry
+`pma_cap_verified: True`; the only **2** records with an explicit `False` (`02101`, `03120`) are
+TERBUKA and render `"100% Open"`. Net: the qualifier renders on **0 of 1,559 pages** — a
+fallback that never fires, which is this project's own signature for "nobody looked at the data".
+Meanwhile `pma_cap_verified` is **ABSENT on 1,543 records** and the readers default
+`raw.pma_cap_verified !== false` → treated as verified. Note precisely what this does and does
+not mean **at the render level**: for `open` codes the page never prints the word "verified" (it
+prints `"N% Open"`), so the claim is not "1,543 pages assert a verified cap" — it is that the
+catalogue has **no way to say "we have not verified this"**, on a layer the corner itself flags
+as vintage-2020 and per-code-unadjudicated (FATAL-2). Making the qualifier reachable = re-labelling
+1,543 client-facing pages, which is the FATAL-2 re-label already reserved to Zero (Legge 5).
+**Options, none taken:** (a) flip the default so absent = not verified and let the qualifier
+speak on 1,543 pages; (b) keep the default and add a distinct third state ("source: blanket
+Perpres attribution") so "adjudicated" and "assumed" stop looking identical; (c) leave as-is and
+adjudicate the 1,543 first, per-code, so the qualifier becomes true rather than loud.
+
 **L2.10 — THE BLOCK-CAUSE WAS A CONSTANT ON SIX RENDER SITES (2026-07-27; four cured by
 #3262, the last two by #3275 — the "FOUR" this section first claimed was itself the defect,
 see the METHOD NOTE).** Every Bali-blocked page names WHY it is blocked.
