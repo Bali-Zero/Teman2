@@ -8,8 +8,8 @@ import type { MetadataRoute } from "next";
  * client portal (my.balizero.com) installable to a phone home screen and gives
  * it a standalone, app-like shell on launch.
  *
- * The service worker (public/sw.js, registered in layout.tsx) handles offline
- * API caching; this manifest is the install/appearance half of the PWA contract.
+ * The service worker (public/sw.js, registered in layout.tsx) keeps the portal
+ * installable without caching authenticated API responses.
  *
  * `start_url` points at the portal: an installed icon should land the client in
  * their self-service area, not the public marketing site. Colours match the
