@@ -8,8 +8,10 @@
 # The repo moved to org `Bali-Zero` on 2026-07-27 (verified live:
 # `gh api repos/{owner}/{repo} --jq .owner.type` → `Organization`), which
 # unlocks Rulesets. The `merge-queue-main` ruleset this script manages already
-# exists (id 19779175, created 2026-07-27 via API, `enforcement: disabled`) —
-# this script is the reconciler/toggle for it going forward, not a first-apply.
+# exists (id 19779175, created 2026-07-27 via API) and enforcement was flipped
+# to `active` the same day (~01:00Z; proof: first queue-merged SHA 7aab65b1ee,
+# 25/25 required contexts SUCCESS) — this script is the reconciler/toggle for
+# it going forward, not a first-apply.
 #
 # WHY WHOLE-OBJECT PUT: GitHub's ruleset PUT endpoint replaces the entire
 # ruleset body — there is no per-field PATCH. `--enable`/`--disable` therefore

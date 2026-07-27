@@ -30,15 +30,17 @@ nameWithOwner`), as `scripts/ci/setup_merge_queue_ruleset.sh` does.
 | Fact                                                         | Value                                                                                                                                                                                                                                                                                                   |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Ruleset                                                      | id `19779175`, name `merge-queue-main`, created 2026-07-27                                                                                                                                                                                                                                              |
-| Enforcement                                                  | `disabled` (queue is configured, not yet gating merges)                                                                                                                                                                                                                                                 |
+| Enforcement                                                  | `active` (flipped 2026-07-27 ~01:00Z; proof: first queue-merged SHA `7aab65b1ee`, 25/25 required contexts SUCCESS, 0 cancelled)                                                                                                                                                                         |
 | Rule                                                         | single `merge_queue` rule — see canonical body in `scripts/ci/setup_merge_queue_ruleset.sh`                                                                                                                                                                                                             |
 | Required status checks on `main` (classic branch protection) | **25** contexts, `strict: false`                                                                                                                                                                                                                                                                        |
 | IaC                                                          | `scripts/ci/setup_merge_queue_ruleset.sh --status\|--enable\|--disable\|--apply`                                                                                                                                                                                                                        |
 | Watcher                                                      | `.github/workflows/merge-queue-watch.yml` — polls every 10 min for ejections + armed-but-stuck PRs (GraphQL; `merge_group`'s Actions trigger does not deliver the `destroyed` action, so event-based ejection detection does not exist — verified against GitHub's own Actions-trigger docs 2026-07-27) |
 
-The ruleset existing with `enforcement: disabled` is intentional, not an oversight: the rule content
-is live and reviewable _before_ it starts gating anything. Flipping it on is the **Activation**
-section below — a deliberate, sequenced act, never a side effect of running `--apply`.
+**Enforcement is ACTIVE as of 2026-07-27 (~01:00Z).** The ruleset previously existed with
+`enforcement: disabled` so the rule content could be live and reviewable _before_ it started gating
+anything — that review-then-flip sequence is documented in the **Activation** section below, which
+now doubles as the record of what was followed and the re-enable procedure after a rollback (§7). The
+flip itself was a deliberate, sequenced act, never a side effect of running `--apply`.
 
 ---
 
@@ -71,7 +73,7 @@ Live count, re-measurable any time via `gh api repos/Bali-Zero/Teman2/branches/m
 which prints the _effective_ rules including any ruleset-level required checks once the queue rule
 type expands beyond `merge_queue`): **25 contexts**, `strict: false` (merge is allowed once checks
 pass on the PR's own base, not necessarily on the very latest `main` — this is exactly the race the
-merge queue exists to close once enforcement flips to `active`).
+merge queue now closes, enforcement having flipped to `active` on 2026-07-27).
 
 This list is long and changes as CI grows; do not hand-copy it into this doc — it goes stale
 immediately and the live query above is the source of truth. The 2026-07-26 PR-latency report's
