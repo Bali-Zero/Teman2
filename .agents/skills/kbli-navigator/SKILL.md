@@ -28,19 +28,114 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
-**🔴 L2.12 — THE GITHUB `deployments` API MEASURES VERCEL'S _REPORTING_, NOT ITS _DEPLOYING_.**
-Never conclude "the frontend is / is not live" from `gh api .../deployments`. **Prod is NOT
-frozen** — an earlier draft of this entry said it was, and that was wrong; the retraction is
-kept here because the probe that produced it is the one every session reaches for first.
+**🟢 L2.13 — A CAPITAL THRESHOLD IS NOT A PERMIT: `inspect_kbli` CALLED 35 ENTITY TYPES
+"LICENSES" (#3323, SHIPPED + PROVEN-LIVE 2026-07-27, squash `ff2371156a`).**
+The KG route that answers WhatsApp/webchat walked **every** outgoing `REQUIRES` edge from a
+KBLI node and appended the target's **name** to `licenses[]`, with no notion of what the target
+was. Measured on prod: **35 distinct target entity types** reach that list, and **8,026 of
+15,055 edges are not permits**. On `56101` (restaurant — among the highest-traffic questions
+this product receives) a client was shown **23 "licences"**, 8 of them false: seven renderings
+of the same two _capital thresholds_ (`10 Billion IDR`, `2.5 Billion IDR`, `Rp 2.5 miliar`,
+`IDR 10 billion`, `IDR 10 miliar`, `Rp10.000.000.000,00`, `Modal Disetor`) plus `PT PMA`, the
+company form. Presenting a capital threshold as a permit to obtain is exactly the
+plausible-but-wrong assertion this navigator exists to eliminate.
+
+Cure: `backend/services/kbli_requires_kind.py` classifies by **entity type**, never by
+substring in the name — the names are precisely where the noise lives (`"NIB dan Izin (…)"`
+vs `"Biaya izin …"`, both containing "izin"). Two rules: **nothing is dropped** (non-permits
+move to the additive `related_requirements` field —
+costs/durations/obligations/regulations/documents/entity_forms/immigration/systems/other;
+deleting 7,369 `dokumen` edges would have been a second defect wearing the shape of a fix), and
+**an unknown type is never promoted** (falls to `other` — the failure mode is a missing badge,
+never an invented licence). 24 tests pin guilt AND innocence.
+
+**PROVEN-LIVE on `56101` after the Fly deploy + cache eviction**, with conservation checked
+rather than assumed: `licenses[]` **23 → 9**, and the 23 originals all reappear — 9 licences
+
+- 7 `costs` + 5 `documents` + 1 `entity_forms` + 1 `immigration` = 23. The four
+  `NIB dan Sertifikat Standar` rows are NOT deduplicated: they are per-scale
+  (Mikro / Kecil-Menengah-Besar / Menengah / Mikro-Kecil), legitimately distinct.
+
+**CACHE STEP — do not skip it, and do not sweep it.** `inspect_kbli` caches the assembled
+`KBLIDetail` under `kbli_inspect_v2_{code}` with a TTL of up to **30 days**, so a deploy alone
+changes nothing on the consuming surface. Every previous cure knew which N codes it touched;
+this one changed the response shape for _every_ code with non-permit edges, which is exactly
+the case `kbli_inspect_cache_bust.py` refuses to serve (`--only` mandatory, no sweep — by
+design). Resolution: **enumerate and measure instead of sweeping** — dry-run all 1,559 codes in
+7 chunks (`fly ssh -C` cannot carry a 9,353-char argument), which found **74 codes with a live
+entry** (checksum 250×6 + 59 = 1,559), then `--apply` to exactly those 74 → **74/74 evicted, 0
+survived**. Declaring `N of M` is the point; a silent sweep reads as "covered everything".
+Two traps paid for in this run: `ssh` inside a `while read` loop **eats the loop's stdin**, so
+only the first chunk ran and the total would have read "3 of 1,559" as if complete (use
+`ssh -n`); and any diagnostic call made BEFORE the deploy writes a 30-day entry holding the
+defective payload — `56101` became one of the 74 that way.
+
+**STILL OPEN, and not to be mistaken for cured:** the same answer carries obligations about
+_"cara budi daya tanaman pangan yang baik"_ with reporting to the **Minister of Agriculture**,
+on a restaurant. That is not a mistyped edge — it lives inside the `kewajiban` property of a
+**legitimate** `perizinan` node ("NIB dan Sertifikat Standar", Menengah), which the classifier
+correctly keeps. Contamination _inside_ a permit node: different axis, open defect.
+
+**🔴 L2.12 — THE GITHUB `deployments` API MEASURES VERCEL'S _REPORTING_, NOT ITS _DEPLOYING_
+— AND THE FRONTEND PIPELINE IS IN FACT DEAD (corrected 2026-07-27, second pass).**
+Never conclude "the frontend is / is not live" from `gh api .../deployments`. **That part
+stands.** But the reassuring half of this entry — _"nothing is blocked and no operator action
+is required"_ — was **WRONG**, and is corrected below. The original retraction is kept because
+the probe that produced it is the one every session reaches for first.
 
 Measured: the newest **Production** deployment record is still `13265a2406` at
 **2026-07-26T19:57:32Z**, and no record has been created since. Yet the cured string
 `13 May 2026 moratorium` — introduced by `45444d21e9` (**23:05:17Z**, the L2.10 block-cause
 cure) and `07ab9d6d37` (**23:44:13Z**, #3275) — **is served by prod**, on a freshly rendered
-page. So Vercel deployed at least twice after the last record. What broke is the
+page. So Vercel deployed at least twice after the last record. ~~What broke is the
 Vercel↔GitHub reporting integration, not the pipeline; nothing is blocked and no operator
-action is required for the product. (If the reporting gap is ever worth chasing, _that_ is a
-dashboard matter, `operator[gui]`.)
+action is required for the product.~~ **← this conclusion was wrong.** Deploys had still
+been happening at that hour, but for a reason that guaranteed they would stop: they were
+being created **by hand**, by a sibling lane. Nothing automatic was left.
+
+**What is actually true (measured 2026-07-27 10:15-10:40Z).** The **Vercel GitHub App is no
+longer installed on the repo** — `GET /v9/projects/mouth` returns **`"link": null`** — so a
+push to `main` creates no build at all. Consequence, measured rather than inferred:
+`balizero.com/api/health` reported commit `76615aa741` (**05:19Z**) while `origin/main` was
+**19 commits ahead**, **5 of them under `apps/mouth/`** — not only #3317 but **#3320**, which
+aligns every E33G duration and income claim with the visa rulepack. Since balizero.com and
+every subdomain share the single Vercel project `mouth`, the whole public surface was stale.
+
+**The probe that settles it** — three properties, all required:
+
+1. an **origin-computed** route, forced with `?cb=<epoch>` until the headers read
+   `x-vercel-cache: MISS` + `age: 0`. A `HIT` says nothing about the running build;
+2. a value the fix changes **arithmetically**, not a prose string: `/api/kbli/gold/01122` →
+   `pma.maxForeign`, **0** pre-fix (`raw.pma_max_asing || 0`) vs **100** post-fix
+   (`resolvePmaCap`, TERBUKA with no cap on the record);
+3. **the confound closed first**: `0` would ALSO be the correct post-fix output if the dataset
+   carried `pma_max_asing: 0`. Verified across the last 6 dataset revisions — `01122` has
+   never had that key (the only one of 1,559 lacking it; the 62 records at `0` are TERTUTUP).
+   Only then is `0` diagnostic.
+
+**The valve, and who turns it.** Until the App is reinstalled, frontend deploys are manual —
+`POST /v13/deployments` with `gitSource` **then** `POST /v10/projects/<id>/promote/<dpl>`. The
+promote is **not optional**: an API-created deployment reports `target: production` and `READY`
+while the custom domains still serve the previous build. **The session runs this**, not the
+codeowner (SHIP-LIFECYCLE). Executed 2026-07-27: deployment from `d848de6ac5` → READY in 7 min
+→ promote HTTP 201 → prove-live `maxForeign` 0→100, `undefined% Open` gone from `/kbli/01122`,
+and TERTUTUP codes (`47222`, `11010`) still reading `0` as the innocence control.
+GOTCHA: on M5 **both** fly credentials are dead and the `fly`/`flyctl` names are shell
+functions with a dead cwd — probe with `scripts/lib/fly_credential.sh`, and run Fly commands
+from Pro. Vercel's own token is at
+`~/Library/Application Support/com.vercel.cli/auth.json` on macOS, **not** `~/.vercel/`.
+
+**`operator[gui]` — the only irreducible step:** install/authorise the Vercel GitHub App on
+`github.com/apps/vercel` → Configure → grant repo access. GitHub does not expose App
+installation to a PAT. Tracked in `.claude/skills/modus/PENDING-ARMS.md` (opened 2026-07-27).
+
+**The organism was not silent — it was misrouted.** `Frontend Live Sentinel` (PR #3291)
+detected this behaviourally, printed a diagnosis naming the exact valve above, and delivered a
+Telegram alert (`Telegram alert delivered`, 08:50:27Z) — **six times** today. It is armed and
+correct. But its only recipient is Zero's Telegram, i.e. precisely the party who by contract
+does not deploy. An alarm delivered only to the one party barred from acting is delivered to
+nobody. When arming an alarm, the question is not "does it fire?" but **"does it reach someone
+who can and must act?"**.
 
 **Two traps that made the wrong reading feel solid — both cost-free to avoid:**
 
