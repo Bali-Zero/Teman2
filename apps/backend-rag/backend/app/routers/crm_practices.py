@@ -53,6 +53,22 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
 MAX_LIMIT = 200
+PRACTICE_CLIENT_CONTACT_FIELDS = (
+    "client_name",
+    "client_email",
+    "client_phone",
+    "client_lead",
+)
+PRACTICE_CLEARABLE_FIELDS = {
+    "assigned_to",
+    "start_date",
+    "completion_date",
+    "expiry_date",
+    "notes",
+    "internal_notes",
+    "client_summary",
+}
+REVENUE_GROWTH_CACHE_NAMESPACE = "crm_practices_revenue_growth"
 
 
 async def _create_hr_bonus_on_completed(
@@ -1032,7 +1048,15 @@ async def get_practice(
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
 
-            return dict(row)
+            practice = dict(row)
+            if practices_filter:
+                user_email = str(current_user.get("email") or "").lower()
+                created_by_match = str(practice.get("created_by") or "").lower() == user_email
+                client_lead_match = str(practice.get("client_lead") or "").lower() == user_email
+                if not (created_by_match or client_lead_match):
+                    for field in PRACTICE_CLIENT_CONTACT_FIELDS:
+                        practice.pop(field, None)
+            return practice
 
     except HTTPException:
         raise
@@ -1199,25 +1223,11 @@ async def update_practice(
             }
 
             update_set = updates.dict(exclude_unset=True)
-            clearable_fields = {
-                "quoted_price",
-                "discount_amount",
-                "discount_reason",
-                "actual_price",
-                "paid_amount",
-                "assigned_to",
-                "start_date",
-                "completion_date",
-                "expiry_date",
-                "notes",
-                "internal_notes",
-                "client_summary",
-            }
             for field, value in update_set.items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
-                if value is None and field not in clearable_fields:
+                if value is None and field not in PRACTICE_CLEARABLE_FIELDS:
                     raise HTTPException(
                         status_code=400,
                         detail=f"{field} cannot be null",
@@ -1315,7 +1325,7 @@ async def update_practice(
             response_practice = dict(updated_practice)
             can_view_client_details = user_is_admin or created_by_match or client_lead_match
             if not can_view_client_details:
-                for field in ("client_name", "client_email", "client_phone", "client_lead"):
+                for field in PRACTICE_CLIENT_CONTACT_FIELDS:
                     response_practice.pop(field, None)
 
             # Discount audit log (owner decision Q3=c, 2026-05-06): append an
@@ -1554,7 +1564,7 @@ async def update_practice(
                 updated_by=user_email,
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
-            await invalidate_cache("zantara:crm_practices_revenue_growth:*")
+            await invalidate_cache(f"zantara:{REVENUE_GROWTH_CACHE_NAMESPACE}:*")
             await invalidate_cache("zantara:crm_clients_stats:*")
             return response_practice
 
@@ -1830,7 +1840,7 @@ async def get_practices_stats(
 
 
 @router.get("/stats/revenue-growth")
-@cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_practices_revenue_growth")
+@cached(ttl=CACHE_TTL_STATS_SECONDS, prefix=REVENUE_GROWTH_CACHE_NAMESPACE)
 async def get_practices_revenue_growth(
     request: Any = None,
     db_pool: asyncpg.Pool = Depends(get_database_pool),

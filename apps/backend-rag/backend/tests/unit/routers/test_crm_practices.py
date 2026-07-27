@@ -706,6 +706,44 @@ class TestGetPractice:
                     current_user=team_user,
                 )
             assert exc_info.value.status_code == 404
+        query = mock_db_conn.fetchrow.await_args.args[0]
+        assert "c.assigned_to = $2 OR p.created_by = $2" in query
+        assert "p.assigned_to = $2" not in query
+
+    @pytest.mark.asyncio
+    async def test_get_practice_strips_client_contact_fields_defensively(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import get_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "created_by": "other@balizero.com",
+                "assigned_to": "team@balizero.com",
+                "client_lead": "lead@balizero.com",
+                "client_name": "Synthetic Client",
+                "client_email": "synthetic@example.com",
+                "client_phone": "+620000000",
+            }
+        )
+
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter",
+            return_value="team@balizero.com",
+        ):
+            result = await get_practice(
+                request=MagicMock(),
+                practice_id=1,
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+
+        assert result["id"] == 1
+        assert "client_name" not in result
+        assert "client_email" not in result
+        assert "client_phone" not in result
+        assert "client_lead" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -995,7 +1033,22 @@ class TestUpdatePractice:
         assert result["expiry_date"] is None
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("field", ["status", "client_visible", "documents"])
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "status",
+            "priority",
+            "quoted_price",
+            "discount_amount",
+            "discount_reason",
+            "actual_price",
+            "payment_status",
+            "paid_amount",
+            "client_visible",
+            "documents",
+            "missing_documents",
+        ],
+    )
     async def test_update_rejects_null_for_non_clearable_fields(
         self,
         mock_db_pool: MagicMock,

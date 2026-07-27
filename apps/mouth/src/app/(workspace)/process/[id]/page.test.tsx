@@ -561,6 +561,7 @@ describe("CaseDetailPage", () => {
       });
     });
     expect(screen.getByText("Completion Date")).toBeInTheDocument();
+    expect(screen.getByText("July 27, 2026")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
     ).toBeInTheDocument();
