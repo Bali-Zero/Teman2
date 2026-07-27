@@ -70,7 +70,7 @@ def test_load_declared_fork_pairs_malformed_json_degrades_empty(tmp_path: Path) 
 # ---------------------------------------------------------------- probe_home_fork_scripts
 
 
-def test_probe_picks_up_declared_only_pair_previously_invisible(tmp_path: Path) -> None:
+def test_probe_picks_up_declared_only_pair_previously_invisible(tmp_path: Path, monkeypatch) -> None:
     """The bug this fixes: a pair that exists ONLY in declared-pairs.json (not in
     the probe's embedded args) must now be probed, not silently skipped."""
     repo = make_repo(tmp_path)
@@ -81,12 +81,16 @@ def test_probe_picks_up_declared_only_pair_previously_invisible(tmp_path: Path) 
     (repo / "scripts" / "mini-only.sh").write_text("same content\n", encoding="utf-8")
     write_declared_pairs(repo, [{"live": str(live), "repo": "scripts/mini-only.sh", "machines": ["mini"]}])
 
+    # Inject the label: reading the REAL machine_label() made this test green
+    # only on Mini and red on M5/Pro for a reason unrelated to the code under
+    # test — a permanently-red line trains you to ignore the file (superscar #2).
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
     status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
     assert status == prop.RECONCILED
     assert findings == 0
 
 
-def test_probe_catches_divergence_in_declared_only_pair(tmp_path: Path) -> None:
+def test_probe_catches_divergence_in_declared_only_pair(tmp_path: Path, monkeypatch) -> None:
     repo = make_repo(tmp_path)
     home = tmp_path / "home"
     home.mkdir()
@@ -95,6 +99,7 @@ def test_probe_catches_divergence_in_declared_only_pair(tmp_path: Path) -> None:
     (repo / "scripts" / "mini-only.sh").write_text("repo version\n", encoding="utf-8")
     write_declared_pairs(repo, [{"live": str(live), "repo": "scripts/mini-only.sh", "machines": ["mini"]}])
 
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
     status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
     assert status == prop.DIVERGED
     assert findings == 1
