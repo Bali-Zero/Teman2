@@ -1087,6 +1087,188 @@ def test_allowlist_version_bumped_to_5_for_the_v5_entries() -> None:
     assert ("scripts/ci", (".sh",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
 
 
+# ===========================================================================
+# v6 — the root `.gitignore` (exact) and infra/home-fork (.json)
+#
+# Found by REPLAY rather than by being bitten: all 3458 non-merge commits of
+# the last 90 days had their file lists classified twice, once against v5 and
+# once against v5+these two entries, counting only verdict FLIPS full->skip.
+# 813 already skipped, 2465 correctly stay full, exactly 24 flip — 15 of them
+# on `.gitignore`, 10 on infra/home-fork, one commit (2b5d2b915e) on both.
+#
+# The lists asserted below are the REAL file lists of flipped commits, not
+# hand-authored plausible ones. `f1254477cb` is the extreme case: 19 files of
+# pure launchd config plus one JSON declaration, paying a full ~17k-test
+# backend suite.
+#
+# The `.gitignore` entry is deliberately root-EXACT, never by basename: 22
+# `.gitignore` files are tracked repo-wide and one of them lives at
+# `apps/backend-rag/backend/data/.gitignore`, INSIDE the tree whose tests the
+# skip would spare. Guilt+innocence for exactly that distinction below —
+# without the guilt half, a "tidying" edit to a basename rule would look
+# green.
+# ===========================================================================
+
+
+def test_innocence_root_gitignore_skips() -> None:
+    """10 of the 24 replayed flips are literally this one-file diff."""
+    verdict, unknown = pc.classify([".gitignore"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_home_fork_declared_pairs_skips() -> None:
+    """The HOME-fork guard's pair registry (superscar #1) — the only tracked
+    file under infra/home-fork/ today, 31 commits in its lifetime."""
+    verdict, unknown = pc.classify(["infra/home-fork/declared-pairs.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_real_v6_replay_flips_skip() -> None:
+    """Four REAL flipped commits from the 90-day replay, verbatim file lists.
+
+    Each of these paid a full backend suite for a diff containing zero
+    Python and zero backend files.
+    """
+    real_flips = {
+        # f1254477cb — 19 files: launchd canon reconcile.
+        "f1254477cb": [
+            "infra/home-fork/declared-pairs.json",
+            "infra/launchagents/com.balizero.codex-spalla-calibrate.plist",
+            "infra/launchagents/com.nuzantara.merge-train.plist",
+            "infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh",
+            "infra/launchagents/wrappers/wa-media-pull-run.sh",
+        ],
+        # 17eed8ebbd — .gitignore riding along with a research capture.
+        "17eed8ebbd": [
+            ".gitignore",
+            "research/visa/2026-06-01-c5a-local-ban-sources.md",
+        ],
+        # b2f7264824 — .gitignore plus one LaunchAgent plist.
+        "b2f7264824": [
+            ".gitignore",
+            "infra/launchagents/com.balizero.wr2.html-apply.plist",
+        ],
+        # 70db573245 — the ledger plus the pair declaration.
+        "70db573245": [
+            ".claude/skills/modus/PENDING-ARMS.md",
+            "infra/home-fork/declared-pairs.json",
+        ],
+    }
+    for sha, files in real_flips.items():
+        verdict, unknown = pc.classify(files)
+        assert verdict == pc.VERDICT_SKIP, f"{sha} should skip, got {verdict} ({unknown})"
+        assert unknown == []
+
+
+def test_guilt_nested_gitignore_under_backend_forces_full() -> None:
+    """THE load-bearing guilt test for v6.
+
+    `apps/backend-rag/backend/data/.gitignore` is a real tracked file
+    (verified on disk). A basename-shaped rule would have admitted it — i.e.
+    a file inside the backend tree would have authorised skipping the backend
+    tests. The root-exact entry must not.
+    """
+    path = "apps/backend-rag/backend/data/.gitignore"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL, "a .gitignore INSIDE the backend tree must force full"
+    assert unknown == [path]
+
+
+def test_guilt_non_root_gitignore_anywhere_forces_full() -> None:
+    """The same rule outside the backend tree: nested `.gitignore` files are
+    not admitted either. 22 are tracked; only the root one is allowlisted, so
+    this is the general case and the test above is its worst instance."""
+    for path in (
+        "apps/mouth/.gitignore",
+        "apps/backend-rag/.gitignore",
+        "packages/core/.gitignore",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_gitignore_lookalike_names_force_full() -> None:
+    """The `(".gitignore", (".gitignore",))` shape must match the FILE, not
+    names that merely start with it — the prefix test admits only equality or
+    a `.gitignore/` DIRECTORY, and the suffix test only the exact name."""
+    for path in (
+        ".gitignore.bak",
+        ".gitignore-old",
+        ".gitignoreignore",
+        ".gitignore.save/.gitignore",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_home_fork_non_json_forces_full() -> None:
+    """Suffix scoping is the mechanism: a future .py helper or .md note in
+    infra/home-fork/ must not inherit a blessing measured on a JSON data
+    file."""
+    for path in (
+        "infra/home-fork/sync.py",
+        "infra/home-fork/README.md",
+        "infra/home-fork/realign.sh",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_home_fork_lookalike_prefix_forces_full() -> None:
+    """Directory-boundary anchoring: `infra/home-fork-legacy/x.json` starts
+    with the prefix as a STRING but is a different directory."""
+    for path in (
+        "infra/home-fork-legacy/old.json",
+        "infra/home-forked/pairs.json",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_v6_entries_mixed_with_backend_force_full() -> None:
+    """Unanimity is unchanged: one backend file in the diff still forces the
+    full suite, alongside either new entry."""
+    backend = "apps/backend-rag/backend/services/rag/reasoning.py"
+    for extra in (".gitignore", "infra/home-fork/declared-pairs.json"):
+        verdict, unknown = pc.classify([extra, backend])
+        assert verdict == pc.VERDICT_FULL
+        assert unknown == [backend]
+
+
+def test_allowlist_version_bumped_to_6_for_the_v6_entries() -> None:
+    """The skip-banner logs the version that approved a skip; a rules change
+    without a bump makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 6
+    assert (".gitignore", (".gitignore",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("infra/home-fork", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+def test_edge_v6_added_no_second_allowlist_mechanism() -> None:
+    """ANTI-DRIFT. The odd-looking `(".gitignore", (".gitignore",))` shape is
+    the price of keeping ONE uniform mechanism. The tempting "tidy" is a
+    second exact-match allowlist container — which is exactly what the v2
+    MUST-FIX removed (`ALLOWLIST_INNOCENT_PREFIXES`). Same self-check as
+    test_edge_allowlist_prefixes_have_no_trailing_slash, one generation on.
+    """
+    for forbidden in (
+        "ALLOWLIST_INNOCENT_PREFIXES",
+        "ALLOWLIST_EXACT_PATHS",
+        "ALLOWLIST_INNOCENT_EXACT_PATHS",
+        "ROOT_LEVEL_INNOCENT_EXACT",
+    ):
+        assert not hasattr(pc, forbidden), (
+            f"{forbidden} exists — a second allowlist mechanism reintroduces the "
+            "class of bug v2 removed; express exact matches through "
+            "ALLOWLIST_PREFIX_SUFFIX_PAIRS instead"
+        )
+
+
 # ---------------------------------------------------------------------------
 # The gate's INPUT, not its rules: `.husky/pre-push` must enumerate changed
 # files against the MERGE-BASE with origin/main, never against $remote_sha.
