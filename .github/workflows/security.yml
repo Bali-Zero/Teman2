@@ -26,7 +26,19 @@ concurrency:
   # 'refs/heads/main'` form), deliberately copied rather than reinvented: on
   # main every security scan still runs to completion, because a cancelled
   # scan on a commit that LANDS would leave a gap in the security record.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  #
+  # merge_group readiness (2026-07-27): under merge_group, github.ref resolves
+  # to the queue's own temporary ref (refs/heads/gh-readonly-queue/...), which
+  # is != 'refs/heads/main' — so the expression above would evaluate `true`
+  # for a queue entry, cancelling an in-flight required-check run every time a
+  # newer commit joined the queue behind it (this workflow owns 4 of the 25
+  # required contexts — exactly the starvation the concurrency block above
+  # fixed for PR branches, just relocated to the queue). Composed fix, same
+  # pattern as tests.yml: AND `github.event_name != 'merge_group'` onto the
+  # existing expression rather than replacing it, so the PR-vs-main asymmetry
+  # above is preserved byte-for-byte; only the new merge_group case is forced
+  # to false.
+  cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   snyk-python:
