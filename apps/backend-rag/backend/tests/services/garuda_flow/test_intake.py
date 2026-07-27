@@ -12,7 +12,10 @@ from datetime import date, timedelta
 
 import pytest
 
-from backend.services.garuda_flow.constants import MIN_PASSPORT_VALIDITY_DAYS
+from backend.services.garuda_flow.constants import (
+    MIN_PASSPORT_VALIDITY_DAYS,
+    PUBLISHED_FILING_DEADLINE_DAYS,
+)
 from backend.services.garuda_flow.eligibility import Decision
 from backend.services.garuda_flow.intake import (
     CaseType,
@@ -40,7 +43,7 @@ def _issuance(**overrides: object) -> VoaIntakeRequest:
 
 
 def _extension(**overrides: object) -> VoaIntakeRequest:
-    """A fully-eligible extension request well within the D-10 runway."""
+    """A fully-eligible extension request well within the runway gate."""
     today = date(2026, 7, 27)
     base: dict[str, object] = {
         "case_type": CaseType.EXTENSION,
@@ -89,29 +92,52 @@ class TestPassportValidityDerivation:
 
 
 class TestExtensionDaysUntilExpiryDerivation:
-    def test_extension_well_within_d10_accepts(self) -> None:
+    def test_extension_well_within_the_runway_accepts(self) -> None:
         verdict = build_verdict(_extension(), today=_TODAY)
         assert verdict.accepted is True
 
-    def test_extension_exactly_d10_accepts(self) -> None:
-        req = _extension(voa_expiry_date=_TODAY + timedelta(days=10))
+    def test_extension_exactly_at_published_deadline_accepts(self) -> None:
+        # Owner ruling 2026-07-27: the deadline day itself is still filable.
+        req = _extension(
+            voa_expiry_date=_TODAY + timedelta(days=PUBLISHED_FILING_DEADLINE_DAYS)
+        )
         verdict = build_verdict(req, today=_TODAY)
         assert verdict.accepted is True
 
-    def test_extension_below_d10_declines_with_handoff_reason(self) -> None:
-        req = _extension(voa_expiry_date=_TODAY + timedelta(days=9))
+    def test_extension_one_day_past_published_deadline_declines_with_handoff_reason(
+        self,
+    ) -> None:
+        req = _extension(
+            voa_expiry_date=_TODAY + timedelta(days=PUBLISHED_FILING_DEADLINE_DAYS - 1)
+        )
         verdict = build_verdict(req, today=_TODAY)
         assert verdict.decision is Decision.DECLINE
-        assert any("below D-10" in r and "ordinary channel" in r for r in verdict.decline_reasons)
+        assert any(
+            "published" in r and "filing deadline" in r and "ordinary channel" in r
+            for r in verdict.decline_reasons
+        )
+
+    def test_owner_example_8_days_out_on_a_30_day_case_now_accepts(self) -> None:
+        # Owner ruling 2026-07-27's actual example: a 30-day VOA, entry 22
+        # days ago, so the original expiry falls exactly 8 days from today.
+        # 8 days of runway is still legally filable under the published D-7
+        # deadline — the retired D-10 pilot-conservatism gate used to
+        # decline this case; it must not anymore.
+        entry = _TODAY - timedelta(days=22)
+        req = _extension(entry_date=entry, voa_expiry_date=_TODAY + timedelta(days=8))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.accepted is True
 
     def test_extension_already_overstaying_declines(self) -> None:
+        # The published deadline is already in the past.
         req = _extension(voa_expiry_date=_TODAY - timedelta(days=2))
         verdict = build_verdict(req, today=_TODAY)
         assert verdict.decision is Decision.DECLINE
 
     def test_issuance_ignores_extension_only_fields(self) -> None:
-        # A fresh issuance has no expiry pressure — the D-10 gate must not
-        # apply even if voa_expiry_date/extension_already_used are populated.
+        # A fresh issuance has no expiry pressure — the runway gate must
+        # not apply even if voa_expiry_date/extension_already_used are
+        # populated.
         req = _issuance()
         assert req.voa_expiry_date is None
         verdict = build_verdict(req, today=_TODAY)
@@ -148,8 +174,8 @@ class TestIssuanceSubmissionWindowGate:
     online funnel accepts an issuance request up to the day BEFORE arrival
     — counting Bali Zero's systems closed on Saturday, Sunday, and any
     Indonesian national holiday/cuti bersama (`operating_calendar.py`).
-    Issuance-only; the extension path (its own D-10 test class below) must
-    be completely unaffected.
+    Issuance-only; the extension path (its own runway-gate test class
+    above) must be completely unaffected.
 
     Two of these are the exact pinned dates verified by hand this session:
     departure Tue 18 Aug 2026 (cutoff Fri 14 Aug, Independence Day Monday in
@@ -234,10 +260,10 @@ class TestIssuanceSubmissionWindowGate:
         # An extension's entry_date is the ORIGINAL entry (always in the
         # past) -- if this issuance-only gate ever ran for extensions it
         # would decline every one of them. It must never run: the decision
-        # here is governed purely by the (untouched) D-10 runway gate, and
+        # here is governed purely by the (untouched) runway gate, and
         # submit_by_date must stay None.
         today = date(2026, 7, 27)
-        req = _extension()  # entry_date = today - 20 days, well within D-10
+        req = _extension()  # entry_date = today - 20 days, well within the runway
         verdict = build_verdict(req, today=today)
         assert verdict.accepted is True
         assert verdict.submit_by_date is None
