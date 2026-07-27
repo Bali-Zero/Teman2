@@ -38,6 +38,20 @@ ADMIN = {"id": "1", "email": "zero@balizero.com", "role": "admin"}
 TEAM_OWNER = {"id": "2", "email": "owner@balizero.com", "role": "user"}
 TEAM_OTHER = {"id": "3", "email": "other@balizero.com", "role": "user"}
 
+# A syntactically valid but wrong claim token — good enough anywhere a
+# parametrize list needs "some token" or "a token guaranteed not to match a
+# real one" (its version nibble is 0, so no `uuid.uuid4()` call can ever
+# produce it). NOT `uuid.uuid4()`: a decorator argument is evaluated ONCE, at
+# collection, in whichever process pytest-xdist forked for that worker — a
+# fresh random value there mints a different value (and therefore a
+# different generated test ID) in every worker, and xdist refuses the whole
+# run with "Different tests were collected between gwN and gwM" before
+# running a single test. Twin of the `datetime.now()`-in-parametrize bug
+# fixed in this same file (see the comment above
+# test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims);
+# both are guarded by backend/tests/compliance/test_no_clock_in_parametrize.py.
+_FIXED_CLAIM_TOKEN = "00000000-0000-0000-0000-000000000000"
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -243,10 +257,10 @@ async def test_own_chat_guard_fails_closed_without_both_email_identities(
         ("GET", "/api/intake/review/42", None),
         ("GET", "/api/intake/review/42/blob", None),
         ("POST", "/api/intake/review/42/claim", None),
-        ("POST", f"/api/intake/review/42/release?claim_token={uuid.uuid4()}", None),
+        ("POST", f"/api/intake/review/42/release?claim_token={_FIXED_CLAIM_TOKEN}", None),
         ("POST", "/api/intake/review/42/recover", None),
-        ("POST", "/api/intake/review/42/approve", {"claim_token": str(uuid.uuid4())}),
-        ("POST", "/api/intake/review/42/reject", {"claim_token": str(uuid.uuid4())}),
+        ("POST", "/api/intake/review/42/approve", {"claim_token": _FIXED_CLAIM_TOKEN}),
+        ("POST", "/api/intake/review/42/reject", {"claim_token": _FIXED_CLAIM_TOKEN}),
     ],
 )
 async def test_review_endpoints_reject_non_admin_without_email_before_database_access(
@@ -617,7 +631,7 @@ async def test_claim_steal_expired_lease(pool, seed):
         (timedelta(minutes=-1), TEAM_OWNER["email"], None, 409),
         (timedelta(minutes=5), TEAM_OTHER["email"], None, 403),
         (timedelta(minutes=5), TEAM_OWNER["email"], "not-a-uuid", 400),
-        (timedelta(minutes=5), " ", str(uuid.uuid4()), 403),
+        (timedelta(minutes=5), " ", _FIXED_CLAIM_TOKEN, 403),
     ],
 )
 async def test_active_claim_guard_rejects_missing_expired_foreign_and_malformed_claims(
@@ -753,7 +767,7 @@ async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, se
 
 @pytest.mark.parametrize(
     ("claim_token", "expected_status"),
-    [("not-a-uuid", 400), (str(uuid.uuid4()), 403)],
+    [("not-a-uuid", 400), (_FIXED_CLAIM_TOKEN, 403)],
 )
 async def test_approve_rejects_malformed_and_wrong_claim_tokens(
     pool,
