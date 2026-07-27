@@ -67,6 +67,27 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
 WORKDIR /app
 
 # ========================================
+# Stage 1b: Node 22 donor
+# ========================================
+# `@anthropic-ai/claude-code` declares `engines: { node: ">=22.0.0" }`. Debian
+# trixie's own `nodejs` package is 20.19.2, so installing it from apt produced
+# `npm WARN EBADENGINE ... required: >=22.0.0, current: v20.19.2` — the CLI ran
+# well enough to print its version and was, by its own declaration, unsupported.
+# That is not a cosmetic warning: backend/llm/claude_oauth_client.py shells out to
+# this CLI for Max-plan OAuth, the Anthropic paid API is banned by project policy,
+# and so there is no fallback transport behind it.
+#
+# `-trixie-slim` is chosen, not `-slim`: it is the SAME Debian release as this
+# image's base (confirmed by the `deb13uN` package suffixes in the build log), so
+# the copied binary meets the glibc it was built against by construction rather
+# than by luck. It is also a first-party Docker Hub official image, from the same
+# registry and trust domain as `python:3.11-slim` above — deliberately NOT a
+# third-party APT repository, which is exactly what 403'd on 2026-07-27 and broke
+# this build. Debian `trixie-backports` was checked first and does not exist (404),
+# so this is the only route that avoids a third-party host.
+FROM node:22-trixie-slim AS node22
+
+# ========================================
 # Stage 2: Runtime Stage
 # ========================================
 FROM python:3.11-slim
@@ -81,34 +102,62 @@ FROM python:3.11-slim
 # memory/feedback_claude_oauth_only.md) — Max plan OAuth via `claude -p`
 # subprocess is the only approved Claude transport.
 #
-# NODE COMES FROM DEBIAN, NOT NODESOURCE (changed 2026-07-28). The third-party
-# NodeSource APT repo started answering 403 that evening and broke this build —
-# and therefore every production deploy, since `fly deploy` builds this exact
-# Dockerfile. Measured rather than inferred: `Snyk Docker Security` succeeded 7
-# times through 19:39 and failed from 19:58 on, always at the same line, with
-# `curl: (22) The requested URL returned error: 403` immediately after curl was
-# installed. Probed from outside CI, so it is not a runner artifact:
+# NODE DOES NOT COME FROM NODESOURCE (changed 2026-07-28). The third-party
+# NodeSource APT repo began answering 403 that evening and broke this build
+# INTERMITTENTLY — `Snyk Docker Security` failed at 19:57, 19:58, 20:06, 20:20 and
+# 20:24, and was building again by 20:42 on main with this file unchanged.
+#
+# That correction matters, because an earlier revision of this comment said the
+# image "stopped building", which overstated it: what was actually measured was a
+# window of failures ("7 successes through 19:39, failures from 19:58"), read as a
+# steady state without checking for recovery. An intermittent third-party
+# dependency inside a production image build is a *better* reason to delete it than
+# a permanent one — a break that comes and goes leaves no lasting red for anyone to
+# notice, which is precisely how this went unseen (see the alarm added to
+# security.yml's snyk-docker job).
+#
+# Probed from outside CI, so it was not a runner artifact:
 #
 #   403  https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
 #   403  https://deb.nodesource.com/node_20.x/dists/nodistro/Release
 #   200  https://deb.nodesource.com/            <- the site itself is up
 #   200  https://deb.nodesource.com/setup_20.x
 #
-# Note what that scope rules out: vendoring the GPG key would NOT have fixed it,
-# because the repository path is 403 too. The dependency itself is the defect.
+# Note what that scope ruled out: vendoring the GPG key would NOT have fixed it,
+# because the repository path was 403 too. The dependency itself is the defect.
 #
-# Debian trixie (this image's base — confirmed by the `deb13uN` package suffixes
-# in the build log, not assumed) ships nodejs 20.19.2, exactly the 20.x this CLI
-# needs, so the whole keyring dance is unnecessary. `npm` is a SEPARATE package
-# in Debian and must be named explicitly. Side benefit worth keeping: one fewer
-# third-party APT source in a production image is a smaller supply-chain
-# surface, not just a shorter build.
+# Node now comes from the `node22` stage above, NOT from apt. An earlier revision of
+# this comment claimed Debian trixie "ships nodejs 20.19.2, exactly the 20.x this
+# CLI needs" — that was simply wrong: the CLI declares `node >=22.0.0`, and apt's
+# 20.19.2 made every build warn `EBADENGINE` while still succeeding. Only `curl` and
+# `ca-certificates` (for HEALTHCHECK) still come from apt.
+#
+# Copying `bin/node` + `lib/node_modules` is what a working node+npm needs; the npm
+# symlink is what the official image itself creates. `npm install -g` then resolves
+# to the same /usr/local prefix as before, so `claude` still lands on
+# /usr/local/bin/claude and nothing downstream moves.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates nodejs npm \
+        curl ca-certificates \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=node22 /usr/local/bin/node /usr/local/bin/node
+COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+# The major-version check is a GATE, not decoration: if this image ever silently
+# regresses to a node < 22, the build must fail HERE rather than ship a CLI running
+# on an engine it declares unsupported. `npm install -g` is deliberately AFTER it.
+#
+# Compared NUMERICALLY on the major, not matched against a version-shaped regex. The
+# first draft used `grep -Eq '^v(2[2-9]|[3-9][0-9])\.'`, which reads correctly and
+# would have rejected node v100 — a range written as a pattern is a form standing in
+# for a quantity, and it goes wrong at exactly the boundary nobody tests.
+RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && node --version && npm --version \
+    && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] \
     && npm install -g @anthropic-ai/claude-code \
     && npm cache clean --force \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /root/.npm \
+    && rm -rf /root/.npm \
     && node --version && which claude && claude --version
 
 # Create non-root user for security
