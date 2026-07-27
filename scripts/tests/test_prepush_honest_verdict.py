@@ -31,10 +31,12 @@ Wired into CI by .github/workflows/prepush-guards.yml.
 """
 from __future__ import annotations
 
+import os
 import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOOK_FILE = REPO_ROOT / ".husky" / "pre-push"
@@ -154,14 +156,151 @@ def test_path_aware_skip_says_pass() -> None:
 
 
 # --------------------------------------------------------------------------
-# STRUCTURE: written to survive legitimate refactors, and to check POSITION
-# rather than mere count.
+# BEHAVIOURAL: run the hook's real backend-suite region and READ WHAT IT PRINTS.
+#
+# WHY THIS SECTION EXISTS AND WHY IT COMES FIRST IN IMPORTANCE (round 2 of the
+# adversarial review, 2026-07-27 — BLOCK, reproduced by hand before acting on
+# it). Everything above and below judges the hook's SOURCE TEXT. Two one-line
+# mutations reintroduce the original bug and keep all of it green:
+#
+#   1. append after the final `fi`:
+#          echo "✅ All pre-push checks" "passed!"
+#      Two arguments; `echo` joins them with a space and prints the identical
+#      sentence. No contiguous literal exists in the source, so a substring
+#      search finds nothing. 11/11 green, bug back.
+#
+#   2. inside the "no local PostgreSQL" skip branch:
+#          export BACKEND_SUITE_RAN=1
+#      The suite never runs; the verdict reads 1 and prints the pass. The
+#      position/count regex below only recognised a BARE assignment, so
+#      `export` (or `readonly`, or `eval`) slips past. 11/11 green, bug back.
+#
+# The defect is one defect, and it is the one this whole PR is about, turned on
+# its author: a guard that matches the FORM instead of the ENTITY
+# (cicatrix-superscar.md #3). The entity here is "what does a user SEE when the
+# suite did not run", and the only way to assert on that is to run the thing.
+#
+# So: extract the hook's backend-suite region — from `if [ "$PREPUSH_RUN_BACKEND"
+# = "1" ]; then` to end of file, which is self-contained (it defines its own
+# PG_BIN/PG_ISREADY/PRE_PUSH_DB and reads only PREPUSH_RUN_BACKEND from above) —
+# and execute it under a real `sh -e`, the same shell husky uses, with
+# `pg_isready` stubbed to fail so the no-PG skip fires deterministically on any
+# machine, CI included. Then assert on STDOUT.
+#
+# Both mutations die against this: (1) lands inside the extracted region and its
+# rendered output contains the pass sentence; (2) is executed, so the verdict
+# actually prints the pass. Neither can hide in a string literal.
+# --------------------------------------------------------------------------
+
+_REGION_ANCHOR = 'if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then'
+
+
+def _backend_region() -> str:
+    """The hook from the backend-suite gate to EOF, verbatim."""
+    text = _hook_text()
+    hits = [i for i in range(len(text)) if text.startswith(_REGION_ANCHOR, i)]
+    assert len(hits) == 1, (
+        f"expected exactly one {_REGION_ANCHOR!r} in the hook, found {len(hits)} — "
+        "re-anchor this harness rather than letting it execute the wrong region."
+    )
+    return text[hits[0]:]
+
+
+def _run_region(run_backend: str, pg_ready: bool = False) -> str:
+    """Execute the real region under `sh -e` and return everything it printed.
+
+    `pg_ready=False` stubs pg_isready to exit 1, which is the "no local
+    PostgreSQL" gate — the cheapest skip branch to reach, and the one that
+    touches no database at all. Nothing below it runs, so this never creates,
+    clones or drops anything.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        stub_dir = pathlib.Path(td) / "bin"
+        stub_dir.mkdir()
+        for name in ("pg_isready", "psql"):
+            stub = stub_dir / name
+            stub.write_text("#!/bin/sh\nexit %d\n" % (0 if pg_ready else 1))
+            stub.chmod(0o755)
+        script = f'PREPUSH_RUN_BACKEND="{run_backend}"\n' + _backend_region()
+        env = dict(os.environ, PATH=f"{stub_dir}:{os.environ.get('PATH', '')}")
+        proc = subprocess.run(
+            ["sh", "-e", "-c", script],
+            capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=120,
+        )
+        return proc.stdout + proc.stderr
+
+
+def test_behaviour_required_but_skipped_never_prints_a_pass() -> None:
+    """THE test. The hook decided the suite was required, the environment
+    skipped it, and what the user sees must not be a pass."""
+    out = _run_region("1")
+    assert UNVERIFIED_MARKER in out, (
+        f"the hook did not warn that nothing was verified. It printed:\n{out}"
+    )
+    assert PASS_MARKER not in out, (
+        "the hook printed a PASS while the backend suite never ran — this is the "
+        f"original bug. Output:\n{out}"
+    )
+
+
+def test_behaviour_the_skip_reason_reaches_the_user() -> None:
+    """A warning that cannot say why is a warning people learn to ignore."""
+    out = _run_region("1")
+    assert "reason not recorded" not in out, f"skip reason was lost:\n{out}"
+    assert "no local PostgreSQL" in out, (
+        f"the specific cause did not reach the verdict. Output:\n{out}"
+    )
+
+
+def test_behaviour_path_aware_skip_still_prints_a_pass() -> None:
+    """INNOCENCE, behavioural: a diff that needed no backend suite is green, and
+    stays green. Crying wolf on every docs push trains people past the warning."""
+    out = _run_region("0")
+    assert PASS_MARKER in out, f"a legitimate green stopped being green:\n{out}"
+    assert UNVERIFIED_MARKER not in out, f"false alarm on a docs-only push:\n{out}"
+
+
+def test_behaviour_survives_a_split_string_echo() -> None:
+    """Pin the exact bypass that motivated this section, so nobody re-derives a
+    source-grep as 'equivalent'. The mutation is applied to a COPY: this proves
+    the harness reads rendered output, not source characters."""
+    injected = '\necho "✅ All pre-push checks" "passed!"\n'
+    # The point of the mutation: the SENTENCE it prints exists nowhere in the
+    # characters that produce it. (The region legitimately contains the marker in
+    # its own else branch, so the claim is about the injected fragment alone.)
+    assert PASS_MARKER not in injected, "mutation must be invisible to a substring search"
+    mutated = _backend_region() + injected
+    with tempfile.TemporaryDirectory() as td:
+        stub_dir = pathlib.Path(td) / "bin"
+        stub_dir.mkdir()
+        for name in ("pg_isready", "psql"):
+            (stub_dir / name).write_text("#!/bin/sh\nexit 1\n")
+            (stub_dir / name).chmod(0o755)
+        env = dict(os.environ, PATH=f"{stub_dir}:{os.environ.get('PATH', '')}")
+        proc = subprocess.run(
+            ["sh", "-e", "-c", 'PREPUSH_RUN_BACKEND="1"\n' + mutated],
+            capture_output=True, text=True, env=env, cwd=str(REPO_ROOT), timeout=120,
+        )
+    assert PASS_MARKER in proc.stdout + proc.stderr, (
+        "the harness failed to SEE a split-string pass — it is reading source, not "
+        "output, and the bypass this section exists to kill is back."
+    )
+
+
+# --------------------------------------------------------------------------
+# STRUCTURE: kept as a second line of defence. These are now redundant with the
+# behavioural tests for the two known bypasses, and deliberately so — they fail
+# FASTER and name the offending line, which the output-based tests cannot.
 # --------------------------------------------------------------------------
 
 
 def test_no_unconditional_pass_after_the_verdict() -> None:
     """An `echo 'All pre-push checks passed'` added AFTER the block would make
-    every unverified push look green again — the original bug, restored."""
+    every unverified push look green again — the original bug, restored.
+
+    Source-level only: a split-string echo defeats this, which is exactly why
+    test_behaviour_required_but_skipped_never_prints_a_pass exists above.
+    """
     text = _hook_text()
     _, _, else_body = _verdict_block()
     tail = text[text.rindex(else_body) + len(else_body):]
@@ -180,6 +319,12 @@ def test_suite_ran_is_set_only_where_pytest_succeeded() -> None:
     """POSITION, not count. Counting one assignment does not prove it sits in
     the success branch — it could be moved into a skip path and still count 1.
 
+    The pattern deliberately accepts every way shell can bind that name —
+    bare, `export`, `readonly`, `declare`, `local`, `eval` — because the round-2
+    bypass was `export BACKEND_SUITE_RAN=1` in a skip branch, invisible to a
+    pattern that only knew the bare form. Matching the ENTITY (this variable
+    acquires a truthy value here) rather than the FORM (this exact syntax).
+
     Note on the name: BACKEND_SUITE_RAN means "the suite completed and passed",
     not "execution began" — a suite that starts and fails exits 1 before the
     verdict, so the distinction never reaches a message today.
@@ -191,14 +336,48 @@ def test_suite_ran_is_set_only_where_pytest_succeeded() -> None:
         re.DOTALL,
     )
     assert m, "pytest-success branch not found — re-anchor this test"
-    assign = re.compile(r'^\s*BACKEND_SUITE_RAN=(?:1|"1"|\'1\')\s*$', re.MULTILINE)
+    assign = re.compile(
+        r'^\s*(?:export\s+|readonly\s+|declare\s+(?:-\w+\s+)*|local\s+|eval\s+)*'
+        r'BACKEND_SUITE_RAN=(?:1|"1"|\'1\')\s*$',
+        re.MULTILINE,
+    )
     assert assign.search(m.group("body")), (
         "BACKEND_SUITE_RAN is not set inside the `TEST_RC -eq 0` branch — the "
         "only place that earned a pass."
     )
-    assert len(assign.findall(text)) == 1, (
-        "BACKEND_SUITE_RAN=1 must appear exactly once; a second assignment is a "
-        "way for a push to claim a verdict it did not earn."
+    found = assign.findall(text)
+    assert len(found) == 1, (
+        f"BACKEND_SUITE_RAN is bound to 1 in {len(found)} places; exactly one is "
+        "allowed. A second binding — in any form, including `export` — is a way "
+        "for a push to claim a verdict it did not earn."
+    )
+
+
+def test_the_failure_hint_does_not_send_anyone_at_the_shared_dev_db() -> None:
+    """SCAR PIN, round 2. The hook exports three env vars at the isolated clone,
+    but the reproduce command it PRINTS on failure omitted INTAKE_TEST_DSN. Those
+    vars are command-scoped — nothing survives into the copier's shell — so the
+    printed line sent whoever followed it straight onto the
+    `postgresql://localhost:5432/nuzantara_dev` default, writing to the shared
+    dev DB while debugging. The defect this diff cures, reintroduced in its own
+    help text."""
+    text = _hook_text()
+    m = re.search(r'Reproduce \(against the persistent base db.*?pytest backend/tests/',
+                  text, re.DOTALL)
+    assert m, "reproduce hint not found — re-anchor this test"
+    # Comment lines are stripped before judging: the block's own explanation
+    # NAMES nuzantara_dev while saying never to send anyone there, and asserting
+    # over raw text would fail on the warning instead of on the defect. Judging
+    # the executable lines is the same correction this file already applies in
+    # _hook_code() — and I made the mistake again here, in the very test written
+    # to pin a round-2 finding.
+    hint = "\n".join(l for l in m.group(0).splitlines() if not l.lstrip().startswith("#"))
+    assert "INTAKE_TEST_DSN=" in hint, (
+        "the printed reproduce command omits INTAKE_TEST_DSN, so copying it runs "
+        f"the intake tests against the shared dev DB. Hint:\n{hint}"
+    )
+    assert "nuzantara_dev" not in hint, (
+        f"the reproduce command names the shared dev database:\n{hint}"
     )
 
 

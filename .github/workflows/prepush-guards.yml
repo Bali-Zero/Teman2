@@ -68,3 +68,13 @@ jobs:
 
       - name: Guard — backend test deps declared, not just inline-installed
         run: python3 scripts/tests/test_test_deps_declared.py
+
+      # The only suite that exercises the hook under a REAL `sh -e` with a REAL
+      # `kill -TERM` on a real child — the mechanism behind W101 and #45, which
+      # a synthetic exit code cannot reproduce. It existed and no workflow ran
+      # it (round-2 review finding), so its guilt cases were proving nothing
+      # about CI. Cases needing local PostgreSQL skip themselves cleanly here,
+      # the same graceful posture the hook itself takes on a machine without
+      # one; the sh -e / signal cases do not need a database and run everywhere.
+      - name: Guard — the fail-closed paths survive sh -e and real signals
+        run: sh scripts/tests/test_prepush_failclosed.sh

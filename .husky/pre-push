@@ -443,8 +443,22 @@ else
         # `assert after == before, "CRM mutated!"` guard seeing writes it did not cause
         # — it rejected a push whose diff touched only this hook, a requirements file
         # and two files under scripts/tests/. Exporting the per-push clone here makes
-        # the local gate match CI exactly: same isolation, nothing skipped, and the
-        # shared dev DB stops being test scratch space.
+        # the local gate match CI exactly, and the shared dev DB stops being test
+        # scratch space.
+        #
+        # NOT "nothing skipped" — an earlier draft of this comment said that and it
+        # was false. `test_drive_autocreate_apply.py` carries an attestation guard
+        # (its lines 62-89): 7 of its cases refuse any database that is not the
+        # "approved local book" nuzantara_dev, so pointing this variable at the clone
+        # makes them SKIP. That is deliberate on the test's side and it is what CI
+        # has always done — those 7 skip there too, since tests.yml points the same
+        # variable at nuzantara_test. So this change does not lose coverage relative
+        # to the gate that decides the merge; it makes the local gate stop being a
+        # third, more permissive one. The real gap it exposes — 7 attested-entrypoint
+        # cases that now run on NO gate anywhere, whose only previous home was
+        # Pro/M5 against real client rows — pre-dates this change and is filed
+        # separately. Fixing it means giving the attestation an approved DISPOSABLE
+        # book, never pointing these tests back at production data.
         TEST_RC=0
         ( cd apps/backend-rag \
             && rm -rf .pytest_cache backend/.pytest_cache \
@@ -475,6 +489,18 @@ else
             echo "     cd apps/backend-rag && source .venv/bin/activate && \\"
             echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
             echo "     TEST_DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
+            # INTAKE_TEST_DSN belongs in the printed command for the same reason it
+            # belongs in the run above, and leaving it out is worse here than
+            # anywhere: these three env vars are COMMAND-SCOPED, so nothing survives
+            # into the shell of whoever copies this line. Without it,
+            # test_intake_review.py / test_intake_writer.py /
+            # test_drive_autocreate_apply.py fall back to their default
+            # `postgresql://localhost:5432/nuzantara_dev` — the machine's SHARED dev
+            # database, 12,408 client rows on Pro — and the reproduce step then
+            # WRITES there while hunting a failure. Printing the isolated DSN in the
+            # run and omitting it from the reproduction would have reintroduced the
+            # exact defect this diff exists to close, in the help text.
+            echo "     INTAKE_TEST_DSN=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
             echo "     OLLAMA_URL=http://127.0.0.1:9 \\"
             echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/ --ignore=backend/tests/e2e"
             exit 1
