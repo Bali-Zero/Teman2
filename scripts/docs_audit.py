@@ -853,7 +853,17 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
     broken_n = sum(1 for r in rows if r.broken > 0)
     orphan_n = sum(1 for r in rows if r.action.startswith("archive: orphan"))
 
-    ts = time.strftime("%Y-%m-%d %H:%M %Z")
+    # UTC date only — no clock time, no local %Z. The prior "%Y-%m-%d %H:%M %Z"
+    # embedded the RUNNING MACHINE's timezone (fleet writes WITA, GitHub
+    # runners write UTC) AND changed on every regen regardless of machine, so
+    # any two branches that regenerated this generated-but-tracked file
+    # collided on this line — a recurring conflict-treadmill (one whole PR,
+    # #3334, was nothing but this line flipping WITA<->UTC). A same-day UTC
+    # date makes two regenerations on the same day, on any machine, produce a
+    # byte-identical file. `--check`'s strip_volatile() below already drops
+    # the entire "Last run:" line unconditionally, so this format change is
+    # invisible to the drift comparison.
+    ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
 
     out: List[str] = []
     out.append("# Documentation Inventory")
