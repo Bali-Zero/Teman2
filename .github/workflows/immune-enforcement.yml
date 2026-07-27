@@ -48,6 +48,13 @@ jobs:
           MB=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
           CHANGED=$(git diff --name-only "$MB" "$HEAD_SHA")
           RELEVANT=false
+          # NOTE on the `.github/workflows/*` entries at the end of this list:
+          # test_ci_service_images_use_mirror.py scans EVERY workflow file, so its
+          # SUBJECTS have to trigger this job too. Listing only immune-enforcement.yml
+          # left that guard armed against the one file nobody would ever un-mirror —
+          # a test in the run-loop whose subject never wakes the job is armed to
+          # nothing. The glob supersedes the old literal entry, which shellcheck
+          # correctly flagged as dead (SC2222); it was removed, not kept as decor.
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
@@ -114,8 +121,10 @@ jobs:
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
               scripts/tests/test_immune_enforcement_trigger_symmetry.py|\
+              scripts/tests/test_ci_service_images_use_mirror.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
-              .github/workflows/immune-enforcement.yml)
+              .github/workflows/*.yml|\
+              .github/workflows/*.yaml)
                 RELEVANT=true
                 break
                 ;;
@@ -158,6 +167,7 @@ jobs:
             scripts/tests/test_docs_inventory_regen.py \
             scripts/tests/test_fly_backup_timeouts.py \
             scripts/tests/test_no_import_time_chdir_in_tests.py \
+            scripts/tests/test_ci_service_images_use_mirror.py \
             scripts/tests/test_husky_prepush_venv_guard.py \
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/test_lint_test_reward_hacking.py ; do
