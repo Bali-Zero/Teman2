@@ -72,31 +72,44 @@ WORKDIR /app
 FROM python:3.11-slim
 
 # Install runtime dependencies:
-# - curl + ca-certificates: healthcheck + HTTPS to Node repo
-# - gnupg (build-only, removed after): Node.js repo GPG verification
-# - nodejs 20.x: required by the `claude` CLI (Claude Code),
-#   used by backend/llm/claude_oauth_client.py for Max OAuth calls.
+# - curl + ca-certificates: healthcheck
+# - nodejs + npm: required by the `claude` CLI (Claude Code), used by
+#   backend/llm/claude_oauth_client.py for Max OAuth calls.
 # - @anthropic-ai/claude-code: Claude CLI installed globally.
 #
 # Project policy forbids ANTHROPIC_API_KEY (see
 # memory/feedback_claude_oauth_only.md) — Max plan OAuth via `claude -p`
 # subprocess is the only approved Claude transport.
-# Image-size impact: Node.js ~90MB + CLI ~40MB ≈ +130MB on ~2GB base.
+#
+# NODE COMES FROM DEBIAN, NOT NODESOURCE (changed 2026-07-28). The third-party
+# NodeSource APT repo started answering 403 that evening and broke this build —
+# and therefore every production deploy, since `fly deploy` builds this exact
+# Dockerfile. Measured rather than inferred: `Snyk Docker Security` succeeded 7
+# times through 19:39 and failed from 19:58 on, always at the same line, with
+# `curl: (22) The requested URL returned error: 403` immediately after curl was
+# installed. Probed from outside CI, so it is not a runner artifact:
+#
+#   403  https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+#   403  https://deb.nodesource.com/node_20.x/dists/nodistro/Release
+#   200  https://deb.nodesource.com/            <- the site itself is up
+#   200  https://deb.nodesource.com/setup_20.x
+#
+# Note what that scope rules out: vendoring the GPG key would NOT have fixed it,
+# because the repository path is 403 too. The dependency itself is the defect.
+#
+# Debian trixie (this image's base — confirmed by the `deb13uN` package suffixes
+# in the build log, not assumed) ships nodejs 20.19.2, exactly the 20.x this CLI
+# needs, so the whole keyring dance is unnecessary. `npm` is a SEPARATE package
+# in Debian and must be named explicitly. Side benefit worth keeping: one fewer
+# third-party APT source in a production image is a smaller supply-chain
+# surface, not just a shorter build.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
+        curl ca-certificates nodejs npm \
     && npm install -g @anthropic-ai/claude-code \
     && npm cache clean --force \
-    && apt-get remove -y gnupg \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /root/.npm \
-    && which claude && claude --version
+    && node --version && which claude && claude --version
 
 # Create non-root user for security
 RUN useradd -m -u 1000 nuzantara && \
