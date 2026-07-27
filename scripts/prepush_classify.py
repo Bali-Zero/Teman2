@@ -222,7 +222,13 @@ VERDICT_SKIP = "skip-backend"
 # assumed) innocent w.r.t. `pytest backend/tests/`. See the allowlist
 # table's v5 section below for the 9-concurrent-suite / 7-of-9-zero-backend
 # measurement and the innocence method for both entries.
-ALLOWLIST_VERSION = 5
+# v6 (2026-07-27): added the root `.gitignore` (exact) and infra/home-fork
+# (.json) — the two classes a 3458-commit replay measured as still paying
+# the full backend suite for a diff `pytest backend/tests/` cannot see. See
+# the allowlist table's v6 section for the replay method, the per-entry
+# innocence measurement, and why the `.gitignore` entry is deliberately
+# root-EXACT rather than by basename.
+ALLOWLIST_VERSION = 6
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -425,6 +431,81 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                       test subprocess-invokes one without the directory
 #                       prefix).
 #
+#   v6 (2026-07-27) — found by REPLAY, not by getting bitten: every
+#   non-merge commit of the last 90 days (3458 of them) had its file list
+#   classified twice, once against the live v5 table and once against
+#   v5+candidates, counting only the commits whose verdict FLIPS full ->
+#   skip. Result: 813 already skipped under v5, 2465 stay full under v6
+#   (correctly — they carry backend/Python/data), and exactly **24 flip**.
+#   That is the honest size of this change: ~3% more diffs skipping, not a
+#   revolution — but the 24 are concentrated in two shapes this fleet
+#   produces constantly, and one of them (f1254477cb) paid a full backend
+#   suite for 19 files of pure launchd config. The replay is reproducible;
+#   it is a per-COMMIT measurement, which is a proxy for per-push (a push
+#   bundling one such commit with a backend file still, correctly, goes
+#   full).
+#
+#   .gitignore          Root file ONLY, matched EXACTLY. 15 of the 24 flips
+#                       are this entry: 10 commits changed the root
+#                       `.gitignore` and NOTHING else, and 5 more paired it
+#                       only with classes already allowlisted (research/**
+#                       .md, docs/** .md, infra/launchagents/** .plist,
+#                       .claude/skills+commands/** .md, root *.md). All 15
+#                       ran ~17k backend tests for a file git reads and
+#                       pytest does not.
+#                       WHY EXACT, NOT BY BASENAME — this distinction is
+#                       load-bearing, not caution theatre: 22 `.gitignore`
+#                       files are tracked repo-wide, and one of them is
+#                       `apps/backend-rag/backend/data/.gitignore`, i.e.
+#                       INSIDE the tree whose tests we would be skipping. A
+#                       basename rule would have admitted it. This entry
+#                       cannot: the prefix test is satisfied only by
+#                       `path == ".gitignore"` (or a path under a
+#                       `.gitignore/` DIRECTORY, which does not and cannot
+#                       exist here), so every nested `.gitignore` still
+#                       falls to "unknown -> full".
+#                       ON THE SHAPE `(".gitignore", (".gitignore",))` —
+#                       prefix = the file, suffix = its own name. It looks
+#                       odd on purpose: it is how the ONE uniform mechanism
+#                       expresses an exact root-level match, and using it
+#                       means v6 adds ZERO new code paths to
+#                       `_innocent_reason`. Do not "tidy" it into a second
+#                       exact-match allowlist set — a second mechanism is
+#                       precisely what the v2 MUST-FIX removed. Pinned by
+#                       test_innocence_root_gitignore_skips (innocence) +
+#                       test_guilt_nested_gitignore_under_backend_forces_full
+#                       (guilt).
+#                       Innocence MEASURED with the v5 anchored method: 3
+#                       files under `apps/backend-rag/backend/` contain the
+#                       string "gitignore" at all — two are PROSE in a
+#                       docstring/comment ("ops-populated and gitignored
+#                       per…", "The gitignored…") with zero IO, and the
+#                       third IS the nested `.gitignore` above, which this
+#                       entry does not admit. No backend test opens the
+#                       root `.gitignore`.
+#   infra/home-fork/**  Scoped to `.json` ONLY. 10 of the 24 flips are this
+#                       entry. Exactly 1 tracked file today,
+#                       `declared-pairs.json` — the HOME-fork guard's
+#                       registry of live-copy↔repo pairs (superscar #1),
+#                       31 commits in its lifetime and still growing
+#                       (latest 2026-07-25, #3115). It travels WITH plists
+#                       and wrappers, which are already innocent, so those
+#                       diffs were failing the unanimity test on a single
+#                       JSON declaration. Its only readers are
+#                       `scripts/lint_home_fork.py` and
+#                       `scripts/proprioception.py`, neither reachable from
+#                       `pytest backend/tests/`. Innocence MEASURED with
+#                       the v5 anchored method: zero hits for the
+#                       directory-anchored `infra/home-fork/` anywhere under
+#                       `apps/backend-rag/backend/`, and — checked
+#                       separately, because an anchored grep can hide a
+#                       basename reference — zero hits for bare `home-fork`
+#                       and zero for `declared-pairs` there too. Scoped to
+#                       `.json` so a future `.py` helper or `.md` note
+#                       dropped in this directory falls to
+#                       "unknown -> full" rather than inheriting a blessing
+#                       measured on a JSON data file.
+#
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
 # `.claude/settings.json` + `.claude/settings.local.json` (+ .bak-*
@@ -452,6 +533,11 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("apps/mouth/src", (".ts", ".tsx", ".css")),
     (".agents/skills", (".md",)),
     ("scripts/ci", (".sh",)),
+    # v6 — root .gitignore, matched EXACTLY (prefix == the file, suffix ==
+    # its own name). Deliberately not a basename rule: 22 .gitignore files
+    # are tracked, one of them inside apps/backend-rag/backend/data/.
+    (".gitignore", (".gitignore",)),
+    ("infra/home-fork", (".json",)),
 )
 
 
@@ -523,6 +609,22 @@ def _innocent_reason(path: str) -> str | None:
         return "root-level *.md"
     for prefix, suffixes in ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         if (path == prefix or path.startswith(prefix + "/")) and path.endswith(suffixes):
+            # The MATCH condition above is one uniform mechanism (v6 kept it
+            # deliberately so — see the table's v6 section). Only the human-facing
+            # LABEL branches, because the two arms of that `or` describe different
+            # rules and one string cannot honestly name both:
+            #   - `path == prefix` is an EXACT file rule. Rendering it as
+            #     `<prefix>/**` invents a DIRECTORY that does not exist — the v6
+            #     `.gitignore` entry printed `.gitignore/** (.gitignore)`, which
+            #     reads as "any .gitignore under a .gitignore/ directory" and
+            #     actively misleads anyone asking whether a NESTED .gitignore
+            #     skips (it does not — that is the whole point of root-exact).
+            #   - `path.startswith(prefix + "/")` really is a directory rule.
+            # Same defect class as W106's anchored diagnosis: the verdict was
+            # right, the explanation named the wrong thing, and the explanation
+            # is what the next reader acts on.
+            if path == prefix:
+                return f"{prefix} (exact match)"
             return f"{prefix}/** ({'/'.join(suffixes)})"
     return None
 

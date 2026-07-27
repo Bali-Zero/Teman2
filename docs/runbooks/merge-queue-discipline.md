@@ -187,6 +187,14 @@ changes at the Activation flip: today it merges directly once checks are green; 
 extra safe stop (the synthetic re-check against current `main`) in between. This is a strictly safer
 default, not a new manual step — nothing about the ship-lifecycle-ownership rule changes.
 
+**Post-Activation correction (measured live, 2026-07-27, PR #3347):** once the queue governs `main`,
+`gh pr merge --auto --squash` errors — `! The merge strategy for main is set by the merge queue` — and
+arms nothing (`autoMergeRequest` stays unset). The `--squash` flag now conflicts with the ruleset's own
+merge method (`MERGE`, not squash) instead of being redundant with it. The standing command is the bare
+**`gh pr merge --auto`** (no `--squash`); the queue's own configured strategy decides how the commit
+lands. Anyone still typing `--squash` from muscle memory gets a silent no-op, not an error worth missing
+— always confirm with `gh pr view <N> --json autoMergeRequest,mergeStateStatus` after arming.
+
 **Fork-PR exception — read before arming automerge on anything not from this repo's own branches.**
 This is a **public** repository, and `merge_group` (like `pull_request_target`, unlike plain
 `pull_request`) runs with repository secrets available to the check run. A fork PR that has not been
@@ -241,11 +249,58 @@ If the rollup shows **fewer contexts than the 25 required** (§2) and none of th
 red — they are simply absent — this is the "required check never reported" class, not a red check to
 chase. `merge-queue-watch.yml` distinguishes this case explicitly in its alert text.
 
-### Step 2 — Re-run vs investigate
+### Step 2 — Classify the red BEFORE touching it: INFRA or CODE
 
-- **Flaky test** (e.g., Playwright timeout): `gh run rerun <run_id> --failed`
-- **Real regression**: rebase against latest `main`, push fix
-- **CI infrastructure** (runner outage): wait or trigger admin merge per §5
+This is the step that decides everything after it, and getting it wrong in the cheap direction —
+re-running until it passes — turns the queue into a machine that retries until green, i.e. a
+disarmed gate that still looks armed (cicatrix superscar #2). **A code red gets fixed, never
+retried.**
+
+- **INFRA red** — the diff is not at fault. Retry is legitimate. Signature, measured live
+  2026-07-27: `Tests & Coverage` failed inside `E2E Tests (Playwright)` during _Initialize
+  containers_, before any step ran —
+  `Get "https://registry-1.docker.io/v2/": context deadline exceeded`, three back-offs, all timing
+  out. Every sibling job green. Grep the failing run's log for
+  `registry-1.docker.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal`.
+  Frequency measured over 100 `merge_group` runs: **1**. Live fragility, not an epidemic.
+- **CODE red** — anything else. Rebase on `main`, fix, push. Do not `gh run rerun`.
+- **CANCELLED** — terminal and easy to misread as "still running"; treat as a legitimate retry.
+
+`gh run rerun <run_id> --failed` is the right gesture ONLY in the INFRA case, and note the trap
+before using it: **`rerun` replays the OLD merge commit**, so on a branch that has since fallen
+behind it re-tests a stale base — `gh pr update-branch` first
+(`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_07_27`).
+
+**Do not classify by job name, and do not classify from a snapshot.** An empty `conclusion` is
+_"not yet known"_, never _"no failure"_ — #3326 was read while `in_progress`/`conclusion=∅` and
+filed as "ejected with ZERO failures"; at terminal state it was `failure`. Read the terminal state,
+and if it is not terminal yet, come back.
+
+Tooling, so the classification is not re-derived by hand each time:
+
+```bash
+scripts/ci/queue_rearm.sh              # dry-run: who is orphaned, and of which class
+scripts/ci/queue_rearm.sh --apply      # re-arm ONLY the INFRA/CANCELLED class
+```
+
+The verdict logic is a separate pure function (`scripts/ci/queue_rearm_classify.sh`) with a
+mutation-tested guilt+innocence corpus: unanimity (one non-infra failure forbids the retry even
+among nine infra ones), no concluding from an unfinished run, and an empty probe result fails
+closed rather than reading as clean.
+
+### Step 2b — After an ejection, the auto-merge request is GONE
+
+When a required check goes red the queue removes **that** pull request and recreates the temporary
+branches for the remaining entries without it (GitHub's documented behaviour — groupmates are
+_rebuilt_, not evicted; the collateral is wasted CI time). The ejected PR is left `OPEN` +
+`MERGEABLE` + `CLEAN` with `autoMergeRequest: null`, and **nothing puts it back**. Re-arm it.
+
+> **`autoMergeRequest: null` does not mean "not armed".** The queue _consumes_ the request when it
+> accepts the PR, so a healthy queued PR reads `null` too. The probe is the COMMAND, not the field:
+> `gh pr merge <N> --auto --squash` answering `already queued` means armed
+> (`lesson_automergerequest_goes_null_when_the_queue_accepts_the_pr_2026_07_27`). Reading the field
+> alone will have you "re-arming" PRs that are already in the queue, and calling the arm command as
+> a _measurement_ enqueues them — the probe changes the world.
 
 ### Step 3 — Remove from queue if blocking other PRs
 
@@ -253,6 +308,44 @@ chase. `merge-queue-watch.yml` distinguishes this case explicitly in its alert t
 gh pr ready <N> --undo            # convert to draft → removed from queue
 # fix → push → gh pr ready <N>    # re-queue when green
 ```
+
+---
+
+## 6bis. Queue parameters, and the one knob NOT to turn
+
+Live values on ruleset `19779175`, read 2026-07-27 (re-read them, do not trust this list — the point
+of writing them down is to have something to diff against):
+
+| parameter                           | value      |
+| ----------------------------------- | ---------- |
+| `grouping_strategy`                 | `ALLGREEN` |
+| `max_entries_to_build`              | 5          |
+| `max_entries_to_merge`              | 4          |
+| `min_entries_to_merge`              | 1          |
+| `min_entries_to_merge_wait_minutes` | 2          |
+| `check_response_timeout_minutes`    | 90         |
+| `merge_method`                      | `SQUASH`   |
+
+```bash
+gh api /repos/Bali-Zero/Teman2/rulesets/19779175 \
+  --jq '.rules[]|select(.type=="merge_queue")|.parameters'
+```
+
+### DO NOT flip `ALLGREEN` → `HEADGREEN`
+
+It reads like a throughput knob and it is not. In GitHub's own words, `HEADGREEN` is the
+**"Only merge non-failing pull requests" setting DISABLED**: _"pull requests that have failed
+required checks can be added to a group as long as the last pull request in the group has passed
+required checks."_ That does not reduce collateral — **it lets a pull request whose required checks
+are RED into `main`.** `ALLGREEN` means _"all pull requests must satisfy required checks to be
+merged"_, which is the whole reason the queue was worth enabling.
+
+This was considered as a cure for the INFRA-ejection class above and **rejected on 2026-07-27** after
+reading the documentation rather than reasoning from the API enum name. Recorded here because the
+wrong inference is the natural one: a session that reasons "HEADGREEN sounds like a laxer _grouping_
+rule, so it should reduce blast radius" arrives at weakening the merge gate. The real cure for that
+class is upstream — make the E2E container pull robust, or stop letting a page-load smoke block
+merges — plus the re-arm tool in §6 Step 2.
 
 ---
 
