@@ -473,16 +473,38 @@ MIN_RELEVANCE_SCORE = 0.18
 # Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
 # NOTE: 56101 and 56210 removed — now present in Qdrant with correct BPS data (TERBUKA)
 KNOWN_KBLI_CODES: dict[str, dict] = {
-    "47911": {
-        "title": "PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG",
-        "description": "Retail trade of various consumer goods via internet or other digital media platforms (e-commerce, online shop). Includes online marketplaces and direct-to-consumer digital retail.",
-        "pma_status": "TERBATAS",
+    # Was "47911" with pma_status TERBATAS — a KBLI **2020** code, retired in
+    # 2025 and absent from the catalogue, so both PostgreSQL and Qdrant miss it
+    # by construction and this dict was its ONLY possible answer. It is reached
+    # by the e-commerce keyword row below ("online shop", "toko online",
+    # "jual online", ...), i.e. one of the most common questions there is — and
+    # "TERBATAS" was invented: the 2025 activity is OPEN. Repointed to the real
+    # successor, whose values come from the catalogue, not from this file.
+    "47901": {
+        "title": "PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN",
+        "description": (
+            "Digital intermediation platform for retail trade: online marketplaces "
+            "that intermediate OTHER sellers' transactions. KBLI 2025 split the 2020 "
+            "code 47911 (PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM "
+            "BARANG), which no longer exists, into two different things, and which "
+            "one applies depends on the business: (a) you OPERATE the marketplace "
+            "and intermediate other sellers -> 47901, TERBUKA, 100% foreign "
+            "ownership; (b) you SELL YOUR OWN goods online -> the code is the "
+            "PRODUCT CATEGORY you sell, not the online channel, and it carries that "
+            "category's own restrictions — e.g. alcoholic beverages 47221 is "
+            "TERBATAS and 47222 is TERTUTUP, while most categories are TERBUKA. Ask "
+            "which of the two the client is doing before naming a single code."
+        ),
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "56290": {
-        "title": "AKTIVITAS JASA BOGA LAINNYA",
+        "title": "AKTIVITAS PENYEDIAAN JASA BOGA LAINNYA",
+        # Was "TERBATAS" — the catalogue says TERBUKA, max foreign 100%. A
+        # restriction asserted where none exists refuses a lawful investment,
+        # which is the costlier direction to be wrong in.
         "description": "Other food service and catering activities not elsewhere classified. Includes canteen management, institutional catering, and similar food services.",
-        "pma_status": "TERBATAS",
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "56301": {
@@ -819,7 +841,13 @@ async def chat_kbli(
 
         # P2 FIX: Keyword-to-code injection for activities not in Qdrant
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
-        # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
+        # CORRECTED 2026-07-27: this comment used to read "prevents wrong codes
+        # (e.g. 47901 for online retail instead of 47911)" — exactly backwards, and
+        # that belief is what put a retired 2020 code on the channel. 47911 does not
+        # exist in the KBLI 2025 catalogue; 47901 does, and it is the code that cites
+        # 47911 in its pp28_sources. Verify a target against the catalogue before
+        # adding a row here: a code this map names but the stores do not have will be
+        # answered by the hardcoded dict alone, with no retrieval to correct it.
         _activity_keyword_map: list[tuple[list[str], str]] = [
             # Online retail / e-commerce (handle spaced variants like "e comerce", "e commerce")
             (
@@ -837,7 +865,7 @@ async def chat_kbli(
                     "jual online",
                     "perdagangan online",
                 ],
-                "47911",
+                "47901",
             ),
             # Event catering / catering
             (
