@@ -152,6 +152,48 @@ _CURATED_QA_TOP_K = 2
 # threshold — safe only because injection is now domain-filtered (below).
 _CURATED_QA_SCORE_THRESHOLD = float(os.getenv("CURATED_QA_SCORE_THRESHOLD", "0.58"))
 
+# Phase-6 multi-agent coordination — DEFAULT OFF since 2026-07-27.
+#
+# The branch it guards (see `requires_multi_agent` below in process_query_core)
+# returns a CoreResult with a hardcoded `sources=[]`, and returns it BEFORE the
+# abstain gate and before the only `_log_query_analytics` call. So its answers
+# carry no citations, cannot abstain, and are invisible to `query_analytics` —
+# which holds 6771 rows and not one `multi-agent-coordinator` (that measures the
+# blindness, not the rarity: the row is never written).
+#
+# Measured live in prod on 2026-07-27, asking the cost AND timeline of an E23
+# KITAS — the exact shape `requires_multi_agent` is built to catch: the reply
+# came back `sources=[] context_length=0 evidence_score=0 abstain=false` and
+# asserted a government fee reaching "IDR 1.2 billion" beside the real
+# PricingTool figure, split the all-inclusive price against the 2026-07-17
+# ruling, and invented a 38-60 day phase breakdown matching TimelineAgent's
+# prompt template ("1. Document preparation: X days") line for line. With an
+# empty grounding block `_synthesize_outputs` degrades to "be specific" and
+# nothing on the path can answer "I don't know".
+#
+# REJECTED ALTERNATIVE (adversarial review, 2026-07-27): gating the branch on a
+# non-empty curated_qa hit instead of a flag. It reads as a safety gate but is
+# a silent deletion — `research/operations/2026-07-17-full-domain-cache-design.md`
+# makes price-adjacent questions ("how much does X cost") explicitly OUT of
+# scope for that corpus, so for this branch's own trigger population a curated
+# hit is structurally unlikely. Disabling a feature honestly beats disabling it
+# by side effect while claiming behaviour is preserved.
+#
+# Turning this back on is not a flag flip alone: the branch first needs to
+# carry a real evidence bundle (its own sources) and pass through the same
+# finalization as every other answer, so it can be scored, can abstain, and
+# gets logged. Until then the queries fall through to the ReAct loop, which
+# retrieves, abstains, and is measured. Set MULTI_AGENT_COORDINATOR_ENABLED=true
+# to restore the old behaviour verbatim.
+_MULTI_AGENT_COORDINATOR_ENABLED = os.getenv(
+    "MULTI_AGENT_COORDINATOR_ENABLED",
+    "false",
+).strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 class OrchestratorCore:
     """
@@ -1243,8 +1285,15 @@ class OrchestratorCore:
         if curated_qa_context:
             system_context_for_prompt += curated_qa_context
 
-        # 3b. Phase 6: Check if multi-agent coordination is needed
-        if self._multi_agent_coordinator and requires_multi_agent(query):
+        # 3b. Phase 6: Check if multi-agent coordination is needed.
+        # OFF by default — see _MULTI_AGENT_COORDINATOR_ENABLED for why (it
+        # answered with no sources, could not abstain, and fabricated a fee in
+        # prod). When enabled, everything below is unchanged.
+        if (
+            _MULTI_AGENT_COORDINATOR_ENABLED
+            and self._multi_agent_coordinator
+            and requires_multi_agent(query)
+        ):
             try:
                 logger.info("🔀 [Phase 6] Multi-agent query detected, delegating to coordinator")
                 ma_result = await self._multi_agent_coordinator.process(
