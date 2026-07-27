@@ -1,8 +1,11 @@
 """Tests for brute force detection — S03 Sprint 3."""
 
+import logging
 from unittest.mock import AsyncMock
 
 import pytest
+
+BF_LOGGER = "backend.services.security.brute_force"
 
 
 class TestBruteForceDetection:
@@ -63,3 +66,81 @@ class TestBruteForceDetection:
         detector = BruteForceDetector(redis_client=mock_redis)
         await detector.clear_on_success("1.2.3.4", "u@t.com")
         mock_redis.delete.assert_called()
+
+
+class TestArmedStateIsAudible:
+    """The login rate limiter may fail open, but it may not fail SILENT.
+
+    `test_graceful_redis_unavailable` above pins the silence as correct
+    behaviour for the detector itself — and it is: fail-open is deliberate.
+    What was missing is anyone SAYING so. These are the guilt/innocence pair
+    for that announcement.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _reset_transition_memory(self):
+        from backend.services.security.brute_force import _reset_armed_state_for_tests
+
+        _reset_armed_state_for_tests()
+        yield
+        _reset_armed_state_for_tests()
+
+    @staticmethod
+    def _errors(caplog):
+        return [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+    def test_guilt_disarmed_is_reported_at_error(self, caplog):
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(False, reason="no usable Redis client")
+
+        errors = self._errors(caplog)
+        assert len(errors) == 1, "a disarmed rate limiter must produce exactly one ERROR"
+        assert "NOT ARMED" in errors[0].getMessage()
+
+    def test_innocence_armed_never_logs_an_error(self, caplog):
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(True)
+
+        assert self._errors(caplog) == [], "a healthy limiter must not cry wolf"
+
+    def test_a_flood_of_logins_cannot_flood_the_log(self, caplog):
+        """An unauthenticated endpoint is exactly the one an attacker can drive
+        at volume — reporting per request would turn the alarm into the DoS."""
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            for _ in range(50):
+                report_armed_state(False)
+
+        assert len(self._errors(caplog)) == 1
+
+    def test_recovery_is_announced_too(self, caplog):
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(False)
+            report_armed_state(True)
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("NOT ARMED" in m for m in messages)
+        assert any("ARMED (Redis reachable again)" in m for m in messages), (
+            "an outage that ends without a line looks identical to one that never ended"
+        )
+
+    def test_a_none_client_is_the_disarmed_case(self, caplog):
+        """The realistic failure: get_async_client() RETURNS None, never raises."""
+        from backend.services.security.brute_force import (
+            BruteForceDetector,
+            report_armed_state,
+        )
+
+        redis_client = None  # what RedisManager hands back when Redis is down
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(redis_client is not None)
+            BruteForceDetector(redis_client=redis_client)
+
+        assert len(self._errors(caplog)) == 1

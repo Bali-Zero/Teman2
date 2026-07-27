@@ -793,6 +793,38 @@ jobs:
           npm_config_fetch_retry_mintimeout: 20000
           npm_config_fetch_retries: 3
 
+      - name: E2E specs must collect with no credentials present
+        # Playwright IMPORTS every spec file to build its test list — including the
+        # ones the --grep below excludes from running. Until 2026-07-27 seven specs
+        # read the E2E credential at module scope (`const CONFIG = { email:
+        # e2eEmail() }`), so collection threw wherever the secrets are absent, and
+        # the whole job died with "0 tests in 0 files". Absent is not hypothetical:
+        # GitHub withholds repository secrets from Dependabot, so this required
+        # check was permanently unpassable for every dependency update — which is
+        # exactly how a poisoned pin reaches prod behind green checks (W98).
+        # The credentials are emptied ON PURPOSE even when they exist: a guard that
+        # only runs where the thing it guards against cannot happen is decorative.
+        env:
+          E2E_TEST_EMAIL: ""
+          E2E_TEST_PIN: ""
+        run: |
+          cd apps/mouth
+          # Errexit-immune capture (W101): a bare assignment aborts before the check.
+          out=$(npx playwright test --config=playwright.config.ts --list 2>&1) || {
+            echo "❌ E2E collection failed with the credentials absent."
+            echo "   A spec is reading E2E_TEST_EMAIL/PIN at module scope; make it lazy"
+            echo "   (a getter, or move the read inside the test) — see e2e/support/credentials.ts."
+            echo "$out"
+            exit 1
+          }
+          echo "$out" | tail -1
+          # Non-vacuity: "collected nothing" and "collected everything cleanly" both exit 0.
+          echo "$out" | grep -qE "Total: [1-9][0-9]* tests" || {
+            echo "❌ collection reported no tests — a green here would be vacuous"
+            echo "$out" | tail -20
+            exit 1
+          }
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -808,7 +840,10 @@ jobs:
         run: |
           cd apps/mouth
           # smoke/smoke.spec.ts hardcodes kita.balizero.com/fly.dev (production smoke),
-          # excluded here via grep-invert on the describe block name.
+          # so --grep keeps its tests out of this run. "Excluded" means excluded from
+          # RUNNING, never from being IMPORTED — Playwright loads every spec to build
+          # the list. That distinction is why the step above exists: a file --grep
+          # skips can still fail the job at module scope.
           # zantara/ and mission_simulation use process.env.PLAYWRIGHT_BASE_URL so
           # they pick up localhost:3000 correctly.
           # Run deterministic page-load smoke tests plus the explicitly mocked
