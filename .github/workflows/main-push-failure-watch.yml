@@ -103,6 +103,7 @@ on:
       - manual - fly api diagnostics
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
+      - Frontend Live Sentinel
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement
@@ -140,7 +141,6 @@ on:
       - Tests & Coverage
       - tg-gateway
       - token-lint
-      - Vercel Build Guard
       - Verify the Verifiers (meta-gate)
       - Watcher coverage (main-push-failure-watch self-conformance)
       - worker-plane review panel tests
