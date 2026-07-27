@@ -1018,7 +1018,7 @@ async def get_required_documents(
                 FROM practice_required_documents prd
                 JOIN practices p ON prd.practice_id = p.id
                 LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE p.client_id = $1 AND p.status NOT IN ('completed', 'cancelled')
+                WHERE p.client_id = $1 AND p.status != 'cancelled'
                 ORDER BY prd.is_required DESC, prd.created_at DESC
                 """,
                 client_id,

@@ -157,6 +157,41 @@ def commits_behind_origin(repo_root: Path) -> Optional[int]:
         return None
 
 
+def fetch_origin_main(repo_root: Path, timeout: int = 25) -> tuple[bool, str]:
+    """Refresh the `origin/main` ref this check arbitrates with. (ok, detail).
+
+    DECLARED EXCEPTION to "a lint never mutates": this writes refs only — never
+    the working tree, never a checked-out branch — so it is safe from any
+    worktree sharing the object store. The twin guard
+    (`proprioception.probe_home_fork_scripts`) already carries the identical
+    exception with the identical wording; this is the missing half of that cure,
+    not a new policy.
+
+    Why it has to exist here too: everything above resolves origin/main out of
+    the LOCAL object store, so the "fleet's copy" it attributes blame with can
+    be exactly as stale as the checkout it was brought in to arbitrate. That is
+    not a weaker verdict, it is a differently-wrong one — with a stale ref the
+    direction test can name the CURRENT side as the stale one and prescribe
+    overwriting it, which is the whole W106b trauma one layer down.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), "fetch", "--quiet", "origin", "main"],
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"timed out after {timeout}s"
+    except OSError as exc:
+        return False, f"{type(exc).__name__}"
+    if proc.returncode == 0:
+        return True, "ok"
+    err = proc.stderr
+    if isinstance(err, bytes):
+        err = err.decode("utf-8", "replace")
+    return False, (err or "").strip()[:120] or f"rc={proc.returncode}"
+
+
 # ---------------------------------------------------------------- pairs
 
 
@@ -483,6 +518,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="treat a stale local checkout as a failure too (default: reported, exit 0 — "
         "on M5 that checkout is deliberately left behind, see AGENT worktree rule)",
     )
+    parser.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="skip the refs-only `git fetch origin main` and arbitrate with the "
+        "cached origin/main ref (offline runs; same escape hatch the "
+        "proprioception twin exposes)",
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument(
         "--system", action="store_true",
@@ -507,6 +549,24 @@ def main(argv: Optional[list[str]] = None) -> int:
     stale_checkout: list[str] = []
 
     if run_check:
+        # Refresh the reference BEFORE anyone is blamed against it. A failure
+        # here lands in `errors` (exit bit 4 = CANNOT-VERIFY), never in
+        # `breaches` (bit 1 = drift): offline is a natural state, not a fault
+        # (Law 6), and a healer that reads "there is a fork" when the truth is
+        # "could not check this tick" spends an LLM session on a false premise.
+        # Bit 4 is also what `origin_main_sha`'s own docstring demands —
+        # "could not attribute" is never "clean" (W84) — so the honest signal
+        # is a visible scan error, not a silent fallback to the cached ref.
+        if not args.no_fetch:
+            fetched, detail = fetch_origin_main(args.repo_root)
+            if not fetched:
+                errors.append(
+                    f"CANNOT-VERIFY: `git fetch origin main` failed in "
+                    f"{args.repo_root} ({detail}) — every direction verdict "
+                    f"below was computed against a possibly-stale cached "
+                    f"origin/main ref, so 'realign live from repo' must not be "
+                    f"acted on from this run"
+                )
         breaches = check_pairs(
             pairs, args.repo_root, args.home, label, notices=stale_checkout
         )

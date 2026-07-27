@@ -37,6 +37,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.integrations import wa_outbox_worker
+from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 from backend.services.integrations.wa_outbox_worker import process_outbox_once
 
 
@@ -349,6 +350,114 @@ async def test_bot_generate_failure_terminal_after_max_attempts() -> None:
     svc.send_message.assert_not_awaited()
     assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed', attempts")
     assert any("bot_generate_failed_after_" in str(a) for _, a in conn.executed)
+
+
+@pytest.mark.asyncio
+async def test_standing_condition_gets_its_own_ledger_text() -> None:
+    """GUILT. "The bot was switched off" must not be spelled exactly like
+    "the RAG crashed".
+
+    Measured 2026-07-27: of 52 give-ups ever recorded, 44 were the auto-reply
+    flag being off for two weeks in June and 5 were "no customer message" — all
+    filed under `bot_generate_failed_after_5_attempts`, indistinguishable from a
+    genuine outage when reading the ledger.
+    """
+    candidate = _candidate(
+        8, thread_id=7, message_id=800, needs_generation=True,
+        attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 8},  # generating-transition fenced RETURNING
+            {"id": 8},  # terminal-failure fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_standing(_thread: Any) -> str:
+        raise BotStandingCondition(
+            "wa-inbox bot auto-reply disabled (WA_INBOX_BOT_AUTOREPLY off)"
+        )
+
+    result = await process_outbox_once(pool, svc, _bot_standing)
+
+    assert result == "failed"
+    svc.send_message.assert_not_awaited()
+    errors = [str(a) for _, a in conn.executed]
+    assert any("bot_standing_condition_after_" in e for e in errors)
+    assert not any("bot_generate_failed_after_" in e for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_standing_condition_still_uses_the_retry_ladder() -> None:
+    """INNOCENCE #1 — the retry ladder must NOT be skipped.
+
+    An adversarial review killed the first draft of this change, which parked a
+    standing condition immediately. `WA_INBOX_BOT_AUTOREPLY` is read from the
+    environment on EVERY call, so a rollout that flips it ON during the backoff
+    window can still rescue the row. Parking at once would delete that recovery
+    path for no gain — the flag check is the first statement of
+    generate_bot_reply, so retrying it costs no generation at all.
+    """
+    candidate = _candidate(9, thread_id=7, message_id=900, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 9},  # generating-transition fenced RETURNING
+            {"id": 9},  # retry-requeue fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_standing(_thread: Any) -> str:
+        raise BotStandingCondition("wa-inbox bot auto-reply disabled")
+
+    result = await process_outbox_once(pool, svc, _bot_standing)
+
+    assert result == "retry", "a standing condition must still retry — the flag is mutable"
+    retry_updates = conn.sql_with_args("SET status = 'pending'")
+    assert retry_updates, "the row must be re-queued, never parked on the first call"
+    assert any(1 in a for _, a in retry_updates), "attempts must still increment"
+
+
+@pytest.mark.asyncio
+async def test_bare_runtime_error_keeps_the_generic_ledger_text() -> None:
+    """INNOCENCE #2. BotStandingCondition subclasses RuntimeError, so an
+    `isinstance(gen_exc, RuntimeError)` slip would relabel EVERY transient RAG
+    failure as a standing condition and hide real outages behind a benign name.
+    """
+    candidate = _candidate(
+        10, thread_id=7, message_id=1000, needs_generation=True,
+        attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),
+            {"id": 10},
+            {"id": 10},
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_transient(_thread: Any) -> str:
+        raise RuntimeError("RAG unreachable")
+
+    result = await process_outbox_once(pool, svc, _bot_transient)
+
+    assert result == "failed"
+    errors = [str(a) for _, a in conn.executed]
+    assert any("bot_generate_failed_after_" in e for e in errors)
+    assert not any("bot_standing_condition" in e for e in errors)
 
 
 @pytest.mark.asyncio

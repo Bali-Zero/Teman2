@@ -330,15 +330,30 @@ else
     # suite + CI-parity env stay exactly as strict as before — only the
     # contention is gone.
     #
-    # CLONE_DB is unique per push (shell PID, $$), so concurrent pushes never
-    # collide. `CREATE DATABASE ... TEMPLATE x` fails if any session is
-    # CONNECTED to x — the suite only ever talks to CLONE_DB, never
-    # "$PRE_PUSH_DB", so the template stays connection-free during normal
-    # operation; the bounded retry below only guards a transient connection
-    # (e.g. someone mid-bootstrap on the base db). Concurrent CREATE...TEMPLATE
-    # off the SAME un-connected template is fine — Postgres allows N
-    # simultaneous clones, that's the whole point.
-    CLONE_DB="nuzantara_test_run_$$"
+    # CLONE_DB is unique per push (shell PID, $$, PLUS a random suffix — see
+    # #60 below), so concurrent pushes never collide. `CREATE DATABASE ...
+    # TEMPLATE x` fails if any session is CONNECTED to x — the suite only
+    # ever talks to CLONE_DB, never "$PRE_PUSH_DB", so the template stays
+    # connection-free during normal operation; the bounded retry below only
+    # guards a transient connection (e.g. someone mid-bootstrap on the base
+    # db). Concurrent CREATE...TEMPLATE off the SAME un-connected template is
+    # fine — Postgres allows N simultaneous clones, that's the whole point.
+    #
+    # #60 (2026-07-27): PID alone is NOT unique across a machine's uptime —
+    # PIDs recycle. Measured live: 15 stranded nuzantara_test_run_<PID>
+    # databases on disk (561 MB), left behind by crashed/killed pushes whose
+    # EXIT trap never fired (SIGKILL is untrappable) or whose cleanup itself
+    # hung (a plain DROP DATABASE against a saturated Postgres can stall
+    # minutes on this box — see the sibling finding on synchronous waits
+    # under load). When a NEW push's $$ happens to recycle onto a STRANDED
+    # clone's old PID, the CREATE loop below fails 3/3 (the name already
+    # exists) with NO exit 1 — the entire backend suite silently never runs,
+    # and the push succeeds anyway. Same cluster-scope-collision shape as
+    # apps/backend-rag/backend/tests/services/visa_engine/test_activation_writer.py's
+    # ROLE fix (`uuid.uuid4().hex[:10]`, whose own comment names this exact
+    # database case as still being on $$) — cured here the same way, PID
+    # kept for human-readable debugging, random suffix for actual uniqueness.
+    CLONE_DB="nuzantara_test_run_${$}_${RANDOM}"
     CLONE_CREATED=0
     cleanup_clone() {
         if [ "$CLONE_CREATED" = "1" ]; then
@@ -381,6 +396,12 @@ else
         # behaviour (clone owned by the cloner) rather than refusing to clone.
         OWNER_CLAUSE=""
     fi
+    # #60 (2026-07-27): defensive pre-drop, belt-and-braces alongside the
+    # random suffix above. Even with a random name this makes the CREATE
+    # loop's failure mean what its message says ("template busy") rather
+    # than silently meaning "a stranded clone already had this exact name" —
+    # IF EXISTS makes this a no-op on the (now near-impossible) common case.
+    "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$CLONE_DB\" WITH (FORCE);" >/dev/null 2>&1
     CREATE_OK=0
     ATTEMPT=1
     while [ "$ATTEMPT" -le 3 ]; do
@@ -393,7 +414,17 @@ else
         sleep 2
     done
     if [ "$CREATE_OK" != "1" ]; then
-        echo "⏭️  SKIP Python tests — could not clone '$PRE_PUSH_DB' into '$CLONE_DB' after 3 attempts (template busy?)."
+        # #60: this message used to say "(template busy?)" whether the cause
+        # was a transient connection OR a stranded clone silently blocking
+        # every future push under that name — a genuinely different failure
+        # needed a genuinely different sentence to be diagnosable. With the
+        # random suffix + defensive drop above, a name COLLISION is now
+        # (near-)impossible, so a failure here is more likely to be the
+        # template genuinely busy, a permissions issue, or Postgres itself
+        # under memory/IO pressure. Still a SKIP, never a block (dev machines
+        # without a healthy local PG must keep degrading gracefully) — but
+        # the message now says so, instead of pointing at the wrong cause.
+        echo "⏭️  SKIP Python tests — could not create clone '$CLONE_DB' from template '$PRE_PUSH_DB' after 3 attempts + defensive drop (template busy, permissions, or PG under load — not a stranded-name collision, that class is now handled above)."
         BACKEND_SUITE_SKIP_REASON="could not clone '$PRE_PUSH_DB' into a throwaway test DB"
     else
         # #45 (2026-07-26): the OLD form here was `elif ! ( subshell ); then FAILED; fi`

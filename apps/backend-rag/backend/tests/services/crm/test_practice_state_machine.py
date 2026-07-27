@@ -115,7 +115,16 @@ class TestInvalidTransitions:
 class TestSameStateNoop:
     """Same state transitions should always pass (no-op)."""
 
-    @pytest.mark.parametrize("state", list(ALL_STATES))
+    # sorted(), not list(): ALL_STATES is a frozenset, and frozenset iteration
+    # order depends on PYTHONHASHSEED — a decorator argument is evaluated ONCE,
+    # at collection, in whichever process pytest-xdist forked for that worker.
+    # Measured live: PYTHONHASHSEED=1 vs 999 on this file alone produced 11
+    # diff lines (same 44 tests, different generated test IDs) — the exact
+    # shape that makes pytest-xdist refuse a run with "Different tests were
+    # collected between gwN and gwM". Production's ALL_STATES stays a
+    # frozenset (backend/services/crm/practice_state_machine.py) — only the
+    # test-collection order needs to be fixed.
+    @pytest.mark.parametrize("state", sorted(ALL_STATES))
     def test_same_state_is_noop(self, state: str) -> None:
         assert validate_transition(state, state) is True
 
