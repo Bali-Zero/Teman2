@@ -1394,3 +1394,97 @@ def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
     assert "mains_file.txt" in changed(remote_sha)
     # INNOCENCE: the merge-base anchor sees only what the branch contributes.
     assert changed(merge_base) == {"branch_file.txt"}
+
+
+# ---------------------------------------------------------------------------
+# The REASON LABEL (added 2026-07-27, after proving v6 live on main).
+#
+# The matching condition `(path == prefix or path.startswith(prefix + "/"))`
+# is ONE mechanism covering two different rule shapes. It classifies both
+# correctly, but the reason string rendered `<prefix>/**` for BOTH — so the
+# v6 root-exact entry printed `.gitignore/** (.gitignore)`, naming a
+# `.gitignore/` DIRECTORY that does not exist and cannot exist as a rule
+# here. Discovered by reading the shipped tool's real output during
+# PROVE-LIVE, not from the diff.
+#
+# Why this is worth pinning rather than shrugging at: the message is the
+# only thing a human reads when asking "why was my suite skipped / why was
+# it NOT skipped?". A reader who takes `.gitignore/**` at face value
+# concludes the rule is directory-shaped and reasons wrongly about whether
+# `apps/backend-rag/backend/data/.gitignore` skips (it must NOT — that
+# guilt case is what makes root-exact the safe shape). Same defect class as
+# W106: the verdict was right and the DIAGNOSIS was anchored to the wrong
+# thing, and the diagnosis is what the next reader acts on.
+#
+# These tests are about the LABEL only. The verdict tests above are the
+# regression guard that this cosmetic change moved no classification.
+# ---------------------------------------------------------------------------
+
+
+def test_label_exact_match_entry_does_not_invent_a_directory() -> None:
+    """GUILT on the old label: the root `.gitignore` entry must NOT render as
+    `.gitignore/**`, which describes a directory rule this table has never
+    had."""
+    reason = pc._innocent_reason(".gitignore")
+    assert reason is not None, "root .gitignore must still be innocent"
+    assert "/**" not in reason, (
+        f"exact-match entry rendered a directory glob: {reason!r} — this is the "
+        "misleading form the label fix exists to remove"
+    )
+    assert reason == ".gitignore (exact match)"
+
+
+def test_label_directory_entry_still_renders_the_glob() -> None:
+    """INNOCENCE: the fix must not swing the other way and strip `/**` from
+    entries that genuinely ARE directory-scoped."""
+    reason = pc._innocent_reason("infra/home-fork/declared-pairs.json")
+    assert reason is not None
+    assert reason == "infra/home-fork/** (.json)"
+
+
+def test_label_change_moved_no_verdict_for_either_v6_class() -> None:
+    """The label branch must be provably cosmetic: both v6 classes still SKIP,
+    alone and together, and the load-bearing nested-.gitignore guilt case
+    still forces FULL. If a label edit ever changes one of these, the edit
+    was not cosmetic."""
+    for files in (
+        [".gitignore"],
+        ["infra/home-fork/declared-pairs.json"],
+        [".gitignore", "infra/home-fork/declared-pairs.json"],
+    ):
+        verdict, unknown = pc.classify(files)
+        assert verdict == pc.VERDICT_SKIP, f"{files} should skip, got {verdict}"
+        assert unknown == []
+
+    for files in (
+        ["apps/backend-rag/backend/data/.gitignore"],
+        ["apps/mouth/.gitignore"],
+        ["x.gitignore"],
+        ["infra/home-fork/README.md"],
+        ["infra/home-fork-extra/declared-pairs.json"],
+    ):
+        verdict, _ = pc.classify(files)
+        assert verdict == pc.VERDICT_FULL, f"{files} should force full, got {verdict}"
+
+
+def test_label_every_allowlist_entry_gets_a_reason_naming_its_own_prefix() -> None:
+    """Sweep the WHOLE table rather than only the entry that bit us (the
+    SYMMETRY clause from the fly-backup scar: a fix that covers only the case
+    that bit you is half a fix). For each entry, a representative matching
+    path must produce a reason that names that entry's prefix and does not
+    invent a directory for exact-match entries."""
+    for prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
+        suffix = suffixes[0]
+        exact_shaped = prefix.endswith(suffix)
+        sample = prefix if exact_shaped else f"{prefix}/probe{suffix}"
+        reason = pc._innocent_reason(sample)
+        if reason is None:
+            # A NEVER_INNOCENT_* net legitimately outranks the table for some
+            # samples; that is a different rule, not a label defect.
+            continue
+        assert prefix in reason, f"reason {reason!r} does not name its prefix {prefix!r}"
+        if sample == prefix:
+            assert "/**" not in reason, (
+                f"entry {prefix!r} matched EXACTLY but was labelled with a "
+                f"directory glob: {reason!r}"
+            )
