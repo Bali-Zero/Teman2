@@ -77,14 +77,29 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own
   probes disagreeing is what surfaced it; a single probe would have shipped the wrong number._
 
-  **The better-evidenced sibling defect, found by the same classification:** the worker retries
-  **permanent** conditions five times. "auto-reply not enabled" and "no customer message in
-  thread" are not transient — they cannot become true on attempt 5 — yet each burned 5 generation
-  attempts and wrote a phantom "failure" into the ledger. That is the same disease as the abstain
-  case (a non-retryable outcome sent down the retry channel) and it is the one with evidence
-  behind it. #31 is therefore scoped as: `bot_generate_fn` has ONE exit for THREE outcomes —
-  sendable refusal, permanent non-condition, transient error — and the worker treats all three
-  alike. There is also NO
+  **The evidenced sibling defect, found by the same classification: the ledger is unreadable.**
+  All 52 give-ups are filed under one sentinel, `bot_generate_failed_after_5_attempts`, so two
+  weeks of the bot being deliberately off is spelled exactly like a production RAG outage.
+
+  _Two claims in an earlier draft of this bullet were WRONG and are corrected here, because an
+  adversarial seat (Codex gpt-5.6-sol, xhigh, briefed to refute) returned DO-NOT-SHIP on the
+  first cure built from them:_
+  - _"each burned 5 generation attempts" — **false**. `is_bot_autoreply_enabled()` is the FIRST
+    statement of `generate_bot_reply`, before `_load_thread_context` and before any RAG call, so
+    those 44 rows cost five cheap no-ops, not five LLM round-trips. There was no saving to buy._
+  - _"permanent conditions" — **overstated**. The flag is read from the environment on every
+    call, so a rollout flipping it ON mid-backoff still rescues the row; and "no customer
+    message" means "none in the last 13 records" (`_HISTORY_TURNS + 1`), a window artifact._
+
+  The shipped cure is therefore diagnostic ONLY: `BotStandingCondition` (a `RuntimeError`
+  subclass) makes the worker write a distinct ledger line at INFO. Retry/backoff, `attempts`,
+  fencing and the C4 apology are UNCHANGED. **Do not re-propose skipping the retry ladder or
+  suppressing the apology** — the apology matters precisely because `_maybe_send_ack` runs BEFORE
+  generation and does NOT consult `WA_INBOX_BOT_AUTOREPLY`, so a client can already have been
+  told "checking on this…"; dropping it leaves that promise in permanent silence.
+
+  #31's remaining half is the sendable refusal, blocked on the abstain flag/text divergence.
+  There is also NO
   human-notification path anywhere (grepped worker + generator for telegram/alert/notify/
   escalate/CRM-assign), and the `apology_sent_at`/`ack_sent_at` code from migration 260 is armed
   by `WA_OUTBOX_MANNERS_ENABLED`, default OFF, docstring "Ships dark: unset in prod today" — which
