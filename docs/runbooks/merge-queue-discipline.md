@@ -1,17 +1,44 @@
 # Merge Queue Discipline — Bali Zero / Nuzantara
 
 > Owner: @Balizero1987 · Shipped: feat/merge-queue-rulesets-2026-05-24 · SOTA L3 wave.
+> Reactivated: pipeline-v2 mandate, 2026-07-27 (org unlock — see status banner below).
 >
-> Sister doc: [`research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`](../../research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md)
+> Sister docs: [`research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`](../../research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md) ·
+> [`research/operations/2026-07-26-ci-pr-latency-the-excursus-is-cheap-the-slots-are-not.md`](../../research/operations/2026-07-26-ci-pr-latency-the-excursus-is-cheap-the-slots-are-not.md)
+> (that report explicitly recommended AGAINST a merge queue on 2026-07-26 — correctly, for the repo
+> that existed at that moment. Its own reasoning was the ownership fact below, which changed the
+> next day. Read it for the PR-latency argument, not for the merge-queue verdict.)
 > Closes pattern: 17% PR rebase-manual (wave 2026-05-24 ex: #823, #815, #835-cherry, #805-cherry).
 
-> **RETIRED 2026-07-17**: `scripts/setup_merge_queue_rulesets.sh` has been deleted — dead automation
-> (0 GitHub Rulesets live on this repo, 0 consumers; GitHub Rulesets are not available on user-owned
-> repos, so `--apply` could never durably succeed here). This runbook is kept for historical/conceptual
-> reference (§1 rationale, the required-checks table, and the generic `gh pr` procedures still apply);
-> every instruction below that names the script is dead — do not attempt to run it. The separate
-> `scripts/merge_train.py` coordinator (polls classic branch protection every 180s) is UNRELATED and
-> remains live — it was never gated by Rulesets and is untouched by this retirement.
+---
+
+## STATUS: ACTIVE (org unlock 2026-07-27)
+
+**What changed and why the old verdict flipped.** GitHub Rulesets — the mechanism a merge queue is
+built on — are unavailable on repositories owned by a personal **User** account; they require an
+**Organization**-owned repository. This repo was `Balizero1987/Teman2` (`owner.type: User`) from
+creation through 2026-07-26, which is why the original `setup_merge_queue_rulesets.sh` was deleted
+2026-07-17 as unrunnable dead automation, and why the 2026-07-26 PR-latency report listed a merge
+queue under "explicitly not recommended." **On 2026-07-27 the repo moved to org `Bali-Zero`**
+(verified live: `gh api repos/Bali-Zero/Teman2 --jq '{owner:.owner.login,type:.owner.type}'` →
+`{"owner":"Bali-Zero","type":"Organization"}`). `Balizero1987/Teman2` now resolves only via GitHub's
+own redirect — never hardcode it in new code; resolve the slug live (`gh repo view --json
+nameWithOwner`), as `scripts/ci/setup_merge_queue_ruleset.sh` does.
+
+**Live state, verified at time of writing:**
+
+| Fact                                                         | Value                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ruleset                                                      | id `19779175`, name `merge-queue-main`, created 2026-07-27                                                                                                                                                                                                                                              |
+| Enforcement                                                  | `disabled` (queue is configured, not yet gating merges)                                                                                                                                                                                                                                                 |
+| Rule                                                         | single `merge_queue` rule — see canonical body in `scripts/ci/setup_merge_queue_ruleset.sh`                                                                                                                                                                                                             |
+| Required status checks on `main` (classic branch protection) | **25** contexts, `strict: false`                                                                                                                                                                                                                                                                        |
+| IaC                                                          | `scripts/ci/setup_merge_queue_ruleset.sh --status\|--enable\|--disable\|--apply`                                                                                                                                                                                                                        |
+| Watcher                                                      | `.github/workflows/merge-queue-watch.yml` — polls every 10 min for ejections + armed-but-stuck PRs (GraphQL; `merge_group`'s Actions trigger does not deliver the `destroyed` action, so event-based ejection detection does not exist — verified against GitHub's own Actions-trigger docs 2026-07-27) |
+
+The ruleset existing with `enforcement: disabled` is intentional, not an oversight: the rule content
+is live and reviewable _before_ it starts gating anything. Flipping it on is the **Activation**
+section below — a deliberate, sequenced act, never a side effect of running `--apply`.
 
 ---
 
@@ -33,25 +60,26 @@ GitHub merge queue solves both:
    to `/.github/workflows/`, `/fly.toml`, migrations, auth, billing, or pricing
    without explicit @Balizero1987 review.
 
+This is unchanged from the original rationale — only the _availability_ fact changed.
+
 ---
 
-## 2. Required status checks (enforced today)
+## 2. Required status checks (enforced today via classic branch protection)
 
-Empirical snapshot of `GET /repos/Balizero1987/Teman2/branches/main/protection`
-captured 2026-05-24 by `setup_merge_queue_rulesets.sh --dry-run`:
+Live count, re-measurable any time via `gh api repos/Bali-Zero/Teman2/branches/main/protection --jq
+'.required_status_checks.checks[].context'` (or `scripts/ci/setup_merge_queue_ruleset.sh --status`,
+which prints the _effective_ rules including any ruleset-level required checks once the queue rule
+type expands beyond `merge_queue`): **25 contexts**, `strict: false` (merge is allowed once checks
+pass on the PR's own base, not necessarily on the very latest `main` — this is exactly the race the
+merge queue exists to close once enforcement flips to `active`).
 
-| Check name                         | Workflow file                    | Notes                        |
-| ---------------------------------- | -------------------------------- | ---------------------------- |
-| `E2E Tests (Playwright)`           | `.github/workflows/tests.yml`    | mouth Playwright suite       |
-| `MCP Server Tests`                 | `.github/workflows/tests.yml`    | nuzantara-mcp + advanced     |
-| `Frontend Tests (Next.js) (mouth)` | `.github/workflows/tests.yml`    | vitest + Lighthouse          |
-| `Detect Secrets`                   | `.github/workflows/security.yml` | detect-secrets baseline diff |
+This list is long and changes as CI grows; do not hand-copy it into this doc — it goes stale
+immediately and the live query above is the source of truth. The 2026-07-26 PR-latency report's
+measured "25 required status contexts on main" corroborates the count as of this writing.
 
-All four MUST be green before merge queue accepts a PR.
-
-`strict=false` today (allows merge if checks pass on the PR base, not on latest main).
-**RETIRED**: the `--apply` script that would have flipped this to `strict=true` once merge queue
-was enabled (closing the stale-base race documented above) has been removed — see banner at top.
+`strict=false` today means a PR can merge against a base that is no longer `main`'s tip. **This is
+the specific race the queue closes** — not a separate future improvement, the headline reason for
+§STATUS above.
 
 ---
 
@@ -73,14 +101,18 @@ If any check fails, the workflow exits silently; Antonello reviews manually.
 **Anti-pattern guard**: the workflow itself is owned by @Balizero1987 in CODEOWNERS,
 so a malicious PR cannot modify the whitelist to widen its scope.
 
+This mechanism is orthogonal to queue activation: whether an armed PR merges directly (today) or
+joins the queue first (post-flip), the whitelist still decides _who gets automerge armed at all_.
+
 ---
 
-## 4. Path-restriction rulesets
+## 4. Path-restriction rulesets (CODEOWNERS — separate mechanism from the merge-queue ruleset)
 
-Enforced via CODEOWNERS + branch protection `require_code_owner_reviews: true`
-(previously intended to be set by the now-**RETIRED** `--apply` script — see banner at top;
-verify current live config directly via `gh api repos/Balizero1987/Teman2/branches/main/protection`
-if this needs reconfirming). Critical paths:
+Enforced via CODEOWNERS + branch protection `require_code_owner_reviews: true`. This is a
+**different** GitHub mechanism from the `merge-queue-main` Ruleset in the status banner above — this
+section is about _who must review a path_, not about _serializing merges_. Verify current live
+config directly via `gh api repos/Bali-Zero/Teman2/branches/main/protection` if this needs
+reconfirming. Critical paths:
 
 | Path                                                                    | Owner                      | Why locked                            |
 | ----------------------------------------------------------------------- | -------------------------- | ------------------------------------- |
@@ -94,6 +126,73 @@ if this needs reconfirming). Critical paths:
 | Subhi lane `/apps/mouth/src/app/(blog\|marketing\|tax-calendar)/`, etc. | @SubBZ2026 + @Balizero1987 | co-review                             |
 
 Full list: see `.github/CODEOWNERS`.
+
+---
+
+## Activation sequence (the order this must happen in — do not skip or reorder)
+
+1. **Drain.** Confirm no PR is actively mid-merge-race against `main` (`gh pr list --search
+"is:open"` review; the point is to flip enforcement at a quiet moment, not to reach literal zero
+   open PRs — open PRs are fine, they will simply start entering the queue once armed).
+2. **PR-B merged.** The sibling PR that makes all 25 required-check workflows `merge_group`-ready
+   (they must fire correctly on the synthetic queue-branch event, not only on `pull_request`) must
+   be on `main` _before_ enforcement flips. Flipping first would mean the queue immediately blocks
+   on required checks that never report against a `merge_group` event — the exact "required check
+   produces ZERO jobs blocks the PR forever" trap (cicatrix scar
+   `discovery_required_check_zero_jobs_blocks_pr_forever_2026_07_25`), now at the whole-queue scale
+   instead of one PR.
+3. **Flip.** `scripts/ci/setup_merge_queue_ruleset.sh --enable`, at a quiet moment (per step 1) —
+   this is a single whole-object PUT that sets `enforcement: active` and prints the effective rules
+   before and after, so the flip is visible and auditable in the run's own output, not just trusted.
+4. **Canary — three shapes, in order, on the live queue:**
+   - **C1 — innocuous solo.** One trivial, low-risk PR (e.g. a docs-only change) armed with
+     `gh pr merge --auto --squash`. Confirm it enters the queue, the synthetic check run fires and
+     reports, and it merges. This is the "does the mechanism work at all" gate.
+   - **C2 — injected failure.** A PR deliberately carrying a failing check (or a required check
+     forced red) enters the queue. Confirm it gets **ejected**, `merge-queue-watch.yml`'s next poll
+     (≤10 min) reports it as an EJECTED finding if it's still open, and no other queued PR is
+     corrupted by the ejection. This is the "does the safety mechanism the queue exists for actually
+     fire" gate — the entire point of §1's rationale, unverified until this step runs for real.
+   - **C3 — two simultaneous entries.** Two independent PRs armed close together. Confirm both are
+     correctly serialized (positions 1 and 2, or grouped per `grouping_strategy: ALLGREEN` /
+     `max_entries_to_build: 1` from the canonical body), and that the second one's required checks
+     run against the _first one's_ result, not against stale `main` — this is the specific race from
+     §1 made concrete and observed, not just argued.
+5. **Gradual re-open.** Widen from canary-only PRs to the general `gh pr merge --auto --squash`
+   population per the whitelist (§3) and manual arms alike. Watch `merge-queue-watch.yml` and
+   `Main-push Failure Watch` (see below) closely through this window — they are the two automated
+   eyes on a mechanism that has never run in this repo in anger before.
+
+If any canary shape fails: **do not proceed to the next shape.** Roll back (see Rollback below),
+diagnose with the failed run's own output plus `--status`, fix forward, and restart the canary
+sequence from C1 — a partially-validated queue is not a validated queue.
+
+---
+
+## Session discipline
+
+**`gh pr merge --auto --squash` remains THE standing gesture** for every eligible PR (per
+`feedback_arm_automerge_default_not_leave_to_operator` — arm at PR-open, always). What it _means_
+changes at the Activation flip: today it merges directly once checks are green; post-flip it means
+**"add to the queue when green"** — the PR still merges automatically and unattended, just with one
+extra safe stop (the synthetic re-check against current `main`) in between. This is a strictly safer
+default, not a new manual step — nothing about the ship-lifecycle-ownership rule changes.
+
+**Fork-PR exception — read before arming automerge on anything not from this repo's own branches.**
+This is a **public** repository, and `merge_group` (like `pull_request_target`, unlike plain
+`pull_request`) runs with repository secrets available to the check run. A fork PR that has not been
+independently reviewed could carry a workflow-level exploit that only manifests once it's running
+with secrets in hand. **Never arm `--auto` on a fork-originated PR without an independent review
+first** — this is a documented threat boundary, not a hypothetical; treat it the same way
+`ai-pr-review.yml` + CODEOWNERS already treat `.github/workflows/` changes, because the mechanism
+that makes it dangerous is the same one (agentic/hostile CI tampering, arXiv 2605.07135, §1 above).
+
+**Post-arm commits remain orphaned — unchanged lesson.** Per
+`lesson_any_commit_after_arming_automerge_is_orphaned_2026_07_25`: once `--auto` is armed, a
+subsequent push to the same branch does not get folded into the queued/merging attempt — everything
+must be committed _before_ arming. The queue does not change this; if anything it raises the stakes,
+since a PR can now sit queued (not just "green and about to merge") for longer before the orphan
+becomes visible.
 
 ---
 
@@ -113,19 +212,25 @@ gh pr merge <N> --admin --squash --delete-branch
 should be followed up with a fix to the broken check (open issue / PR).
 
 Audit trail: every admin merge generates a `Merged via admin override` event in
-the PR timeline, queryable via `gh api repos/.../events`.
+the PR timeline, queryable via `gh api repos/Bali-Zero/Teman2/events`.
 
 ---
 
 ## 6. Procedure: PR stuck in merge queue
 
-Symptom: PR shows "Queued for merge" but never advances after >15min.
+Symptom: PR shows "Queued for merge" but never advances after >15min — or, since 2026-07-27,
+`merge-queue-watch.yml` pages an ARMED-STUCK or EJECTED finding directly (check that first; it polls
+every 10 minutes and has already been proven against live data to catch exactly this class).
 
 ### Step 1 — Identify the failing check
 
 ```bash
 gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.conclusion != "SUCCESS")'
 ```
+
+If the rollup shows **fewer contexts than the 25 required** (§2) and none of the missing ones are
+red — they are simply absent — this is the "required check never reported" class, not a red check to
+chase. `merge-queue-watch.yml` distinguishes this case explicitly in its alert text.
 
 ### Step 2 — Re-run vs investigate
 
@@ -142,62 +247,52 @@ gh pr ready <N> --undo            # convert to draft → removed from queue
 
 ---
 
-## 7. Rollback (disable merge queue)
-
-If merge queue causes more friction than it removes:
+## 7. Rollback (disable the merge queue)
 
 ```bash
-# Disable merge queue, keep CODEOWNERS + path-restriction in place.
-gh api -X PATCH repos/Balizero1987/Teman2/branches/main/protection \
-  --field 'required_status_checks[strict]=false' \
-  ...  # RETIRED: setup_merge_queue_rulesets.sh --rollback no longer exists (script deleted);
-       # construct the PUT payload manually per the branch-protection API docs if ever needed.
+scripts/ci/setup_merge_queue_ruleset.sh --disable
 ```
 
-CODEOWNERS file remains active even with merge queue disabled (it's a separate
-mechanism).
+One PUT, same canonical rule body, `enforcement: disabled`. Prints the effective rules before and
+after so the rollback is verifiable from the command's own output.
+
+**Honest consequence, state it to whoever asks "is it safe":** disabling re-opens today's pre-queue
+window — the stale-base race from §1 is back until the queue is re-enabled. This is a deliberate
+trade, not a free action: **use it only on a genuine queue malfunction** (the canary sequence catching
+a real problem, or a live incident), then fix forward and re-run the Activation sequence from C1, not
+from wherever it broke — a queue that failed a canary needs the _whole_ canary re-validated, not just
+the shape that failed.
+
+CODEOWNERS + branch-protection required-checks (§2, §4) remain active even with the queue disabled —
+those are separate mechanisms, this rollback does not touch them.
 
 ---
 
-## 8. Smoke plan after `--apply` (RETIRED — script removed)
+## Main-push Failure Watch — keep it running through the trust-building window
 
-> The `--apply` script this section assumed is gone (see banner at top); 0 GitHub Rulesets are
-> live on this repo today. Kept below for historical/conceptual reference only.
+`.github/workflows/main-push-failure-watch.yml` ("Main-push Failure Watch") already exists in this
+repo as the generic watcher for any push-triggered or schedule-triggered workflow run on `main`
+(task #23, superscar #2 "Esiste ≠ Armato"). It is not new, and this runbook does not modify it — it
+is called out here because **it is the second half of the queue's proof of correctness**: the queue
+re-validates a PR on a synthetic branch before merge, but the actual push to `main` that follows is a
+_separate_ run, and only Main-push Failure Watch is watching that one.
 
-After enabling merge queue, the next 3 routine PRs become the smoke test:
-
-1. **Docs-only PR** (cron `docs/auto-sync-*`): should auto-merge via whitelist
-   workflow within 5min of all checks green.
-2. **Dependabot patch PR**: same — should land via auto-merge.
-3. **Manual feature PR touching `apps/backend-rag/backend/services/`** (non-billing):
-   should require manual approval but merge once approved.
-
-Failure mode to watch for: if **any** PR sits >30min "Queued for merge" with all
-checks green, suspect a strict-mode race — check `gh pr checks <N>` for stale checks
-against an older base SHA.
+**Keep both watchers — `merge-queue-watch.yml` and Main-push Failure Watch — running with no change
+in posture for at least 30 days after the Activation flip.** Retire the elevated attention (not the
+workflow itself, which stays permanently per its own charter) only after confirming **zero
+divergence** between what the queue approved and what actually ran on `main` afterward — i.e., no
+queue-approved SHA ever produced a Main-push Failure Watch alert in that window. A single divergence
+resets the 30-day clock: it means the synthetic queue-branch check and the real `main` push are
+observably not equivalent, which is precisely the trust question this window exists to answer.
 
 ---
 
-## 9. Owner sign-off checklist (RETIRED — script removed)
+## Known residual (documented, not solved here)
 
-> `scripts/setup_merge_queue_rulesets.sh` has been deleted (see banner at top). This checklist is
-> kept for historical/conceptual reference only — do not attempt the steps below.
-
-Before running `bash scripts/setup_merge_queue_rulesets.sh --apply`:
-
-- [ ] PR with CODEOWNERS + runbook + script + auto-merge workflow has been **reviewed** by Antonello.
-- [ ] `gh api repos/Balizero1987/Teman2/branches/main/protection` snapshot saved
-      to `research/operations/audits/2026-05-24-pre-merge-queue-protection.json` (for rollback).
-- [ ] Next 24h is **not** a feature-freeze period (deploy window OK).
-- [ ] Antonello is available for the 30min after `--apply` to handle any blocked PR.
-
-After `--apply`:
-
-- [ ] First docs-sync PR auto-merges (smoke 8.1).
-- [ ] First dependabot PR auto-merges (smoke 8.2).
-- [ ] Manual PR requires owner approval (smoke 8.3).
-- [ ] No PR blocked >30min on "Queued" without ongoing investigation.
-
-If any smoke fails: the rollback used to be `bash scripts/setup_merge_queue_rulesets.sh --rollback`
-— **RETIRED**, script removed. Diagnose offline and roll back branch protection manually via the
-`gh api -X PATCH .../protection` call in §7.
+`merge-queue-watch.yml` polls every 10 minutes; it cannot alert on its own death (a dead `schedule`
+trigger produces silence, not a failure signal — cf. cicatrix superscar #2, "esiste ≠ armato").
+Liveness of the watcher itself is checked opportunistically: GitHub's own workflow-failure emails
+(if the run itself throws before reaching Step 4), and a manual `--status` probe
+(`scripts/ci/setup_merge_queue_ruleset.sh --status`, or `gh run list --workflow=merge-queue-watch.yml
+--limit 5` to confirm recent runs exist at all). Building a watcher-for-the-watcher is out of scope
+here — noted as a real gap, not quietly assumed away.
