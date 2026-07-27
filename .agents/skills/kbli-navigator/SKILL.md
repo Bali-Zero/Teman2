@@ -122,6 +122,80 @@ speak on 1,543 pages; (b) keep the default and add a distinct third state ("sour
 Perpres attribution") so "adjudicated" and "assumed" stop looking identical; (c) leave as-is and
 adjudicate the 1,543 first, per-code, so the qualifier becomes true rather than loud.
 
+**🔴 L2.11d — THE CHANNELS ANSWERED E-COMMERCE WITH A RETIRED 2020 CODE (2026-07-27, cured).**
+`kbli_notebook_chat.KNOWN_KBLI_CODES` is a hand-written dict consulted when a code misses BOTH
+PostgreSQL and Qdrant, and it is also injected by an activity-keyword map — so whatever it says
+lands directly in the LLM context answering on WhatsApp and web chat. **Proven live on prod before
+the fix**, `chat_kbli("I want to open an online shop in Bali as a foreigner…")` returned
+**`KBLI 47911`** with `sources: [{"title": "PP 28/2025"}]` and `pma_status: TERBATAS`.
+
+`47911` is a KBLI **2020** code, retired in 2025 and **absent from the catalogue** (re-verified).
+Being absent, it misses both stores _by construction_ — which made this dict its ONLY possible
+answer, with no retrieval able to correct it. Same structural blind spot as the phantom-code class
+(every cure tool keys off "a canonical record exists"), on a **fifth** surface the phantom census
+never covered: a hardcoded dict inside a router. It invented a restriction out of nothing AND
+fabricated provenance — a 2025 regulation cited for a code that 2025 deleted.
+
+Cure: repointed to **`47901`** (Platform Digital Intermediasi Perdagangan Eceran, TERBUKA — the
+successor citing 47911 in its `pp28_sources`), with the description carrying the **fork** rather
+than a replacement certainty: 47901 is the marketplace OPERATOR; a business selling its own goods
+online takes the PRODUCT-CATEGORY code and that category's restrictions (`47221` TERBATAS,
+`47222` TERTUTUP, most others TERBUKA — all re-verified against canonical). Also `56290`:
+hardcoded TERBATAS, catalogue says TERBUKA. The map's own comment asserted the inverse of the
+truth — _"prevents wrong codes (e.g. 47901 for online retail instead of 47911)"_ — and that belief
+is what put a dead code on the channel. **Structural guard added**
+(`test_kbli_hardcoded_fallback_matches_catalogue.py`): any entry naming a code the catalogue lacks,
+any PMA status the catalogue contradicts, or any keyword row aiming at an unknown code now fails
+CI. Verified to bite — replayed against the old values it flags both.
+
+**🔴 L2.11e — `kbli_documents` CALLS 17 CLOSED CODES OPEN, AND IT IS THE STORE FEEDING THE
+CHANNELS.** Censused read-only across the three stores carrying a PMA verdict:
+
+| store                                | TERBUKA | TERTUTUP | TERBATAS | "Verify at OSS" |
+| ------------------------------------ | ------- | -------- | -------- | --------------- |
+| canonical dataset (1,559)            | 1,488   | **61**   | 10       | —               |
+| `kg_nodes` (1,558 carry a PMA layer) | 1,484   | **61**   | 9        | 4               |
+| `kbli_documents` (1,563)             | 1,502   | **44**   | 13       | 4               |
+
+_(`kg_nodes` holds **13,491** rows with `entity_type='kbli'` — the known dedup disease; exactly
+1,558 of them carry a `pma_status`. Cite that number, not "1,558 nodes".)_
+
+**Canonical and the KG agree on all 61 — verified by MEMBERSHIP, not by count**: the two 61-code
+sets are identical, `A − B` and `B − A` both empty. Two same-size sets are not the same set, and
+this is the fact the whole "direction is decidable" argument rests on, so it is proven, not
+counted. **`kbli_documents` disagrees on 17** — and it is the store
+`chat_kbli` injects verbatim into the LLM context. Not an editorial fork: two independent sources
+concur and the odd one out is the client-facing one. The 17: `47222` (store says TERBATAS) plus 16
+reading TERBUKA — `59111`, `59121`, `85101`, `85201`, `85311`, `85315`, `85550`, `85560`, `86101`,
+`86104`, `87201`, `87301`, `91111`, `91121`, `91211`, `91221`. **All 16 are government activities
+by canonical title (16/16 carry `Pemerintah`)**: government hospitals and clinics, state
+kindergartens, primary and secondary schools, job-training centres, libraries, archives, museums
+and heritage sites — presented as 100% open to foreign ownership. Direction is unambiguous, so the
+fix is a data-plane sync of `kbli_documents` from canonical, **not** a Legge-5 judgment. Supersedes
+the narrower "4 codes claiming openness while `pma_status=TERTUTUP` — AWAITS ZERO": the population
+is **17** and the direction is decidable.
+
+**The divergence is not random — it tracks rows that were never re-seeded, and that names the
+cure.** Of those same 61 canonical-TERTUTUP codes, **6** are stored in Title Case with the full
+canonical title (`01287`, `59131`, `60311`, `85321`, `85401`, `85403`) — re-seeded rows — and
+**every one of them carries the correct TERTUTUP**. The other 55 are the original UPPERCASE seed,
+and **all 17 divergences live there**, zero in the re-seeded set. So a re-seed from canonical is
+already demonstrated to fix both fields, on 6 rows, in production. Corroborating the same story:
+**20 of the 61** store titles are strict truncations of the canonical title (word-boundary cut
+around ~55 chars), and on 5 of the 16 government codes the cut lands exactly past the word
+`Pemerintah` — e.g. `59111` "…DAN PROGRAM TELEVISI **OLEH**", `91221` "…MONUMEN YANG **DIKELOLA**".
+The truncation removes the one word that identifies the activity as governmental, so even the title
+in the client-facing store has stopped saying what the record means. _(Scope declared, not implied:
+truncation was measured exactly on these 61; the rate across all 1,563 rows is UNMEASURED — the
+length histogram peaks at 47-52 chars with a max of 104, so a fixed character cap is ruled out.)_
+
+**Coverage gap found in the same census (separate, honest-degrading):** 5 canonical codes have no
+PMA layer in the KG at all — `01122`, `47721`, `56101` (restaurant in a fixed building), `70201`
+(tourism management consulting), `79110` (travel agency). High-traffic Bali activities. The channel
+degrades correctly for them (`pma_status` defaults to `"Verify at OSS"`, an honest gap, never a
+guess), so this is missing coverage rather than a lie — but a client asking about a restaurant or a
+travel agency currently gets no PMA verdict from the KG.
+
 **L2.10 — THE BLOCK-CAUSE WAS A CONSTANT ON SIX RENDER SITES (2026-07-27; four cured by
 #3262, the last two by #3275 — the "FOUR" this section first claimed was itself the defect,
 see the METHOD NOTE).** Every Bali-blocked page names WHY it is blocked.
