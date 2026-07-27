@@ -72,6 +72,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "defined<->live",           # e.g. Qdrant collections — NO PROBE in v1 (A6)
     "process<->process",        # e.g. /health/detailed provenance — NO PROBE in v1 (A2)
     "seat<->armed",             # AI-seat credential/quota vs live probe (arsenal, #2)
+    "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -413,6 +414,36 @@ DEFAULT_REGISTRY: list[dict] = [
             {"glob": "~/.organism/arsenal/last.json", "max_age_h": 26, "label": "arsenal seats probe (healer-armed)", "machines": ["mini", "pro"]},
         ]},
         "fix_hint": "a stale guardian: run it by hand, read ITS log, then fix its scheduler",
+    },
+    {
+        # The detector was written, tested and CI-verified — and then run by nobody.
+        # `lint_worktree_husky_symlink.py` has exactly one caller in the tree
+        # (immune-enforcement.yml), and what that workflow runs is its unit TEST.
+        # A GitHub runner cannot see a worktree on M5, so the tool had never once
+        # answered the question it was built for. Measured by hand on M5 2026-07-27:
+        # 15 of 115 worktrees had no `.husky/_` at all — every push from them ran NO
+        # hook and exited 0 silently. That is family #2 one level up: not a missing
+        # detector, a detector that is never asked. This entry is the asking, and it
+        # reuses the real tool rather than growing a twin probe next to it (the twin
+        # was written first and deleted on discovering this file — anti-twin: grep for
+        # the existing tool BEFORE building the cure).
+        #
+        # ok_values keeps GONE deliberately: a GONE record is a stale worktree-registry
+        # entry (the directory is gone), which is `git worktree prune` territory and the
+        # gc cron's job — not a worktree pushing without a gate. The tool itself scores
+        # it the same way (FINDING_HEALTHS = MISSING | DANGLING); if the two ever
+        # disagree, this list is the side that is wrong.
+        "id": "worktree_gate_shim", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/lint_worktree_husky_symlink.py", "--json"],
+        "class": "worktree<->gate",
+        "boundary": "worktree <-> the pre-push hook git actually invokes there",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 60,
+        "severity": "P1",
+        "parse": "findings_list", "unwrap_key": "worktrees",
+        "verdict_key": "health", "ok_values": ["OK", "GONE"],
+        "fix_hint": "recreate via `python scripts/agent_start.py` (it symlinks .husky/_), or "
+                    "`ln -sfn <main-checkout>/.husky/_ <worktree>/.husky/_` — a worktree born from a "
+                    "bare `git worktree add` pushes with NO gate and reports a clean push",
     },
     {
         "id": "launchd_liveness", "type": "wrap",

@@ -266,6 +266,24 @@ PG_BIN="/opt/homebrew/opt/postgresql@17/bin"
 PG_ISREADY="$(command -v pg_isready || echo "$PG_BIN/pg_isready")"
 PSQL="$(command -v psql || echo "$PG_BIN/psql")"
 PRE_PUSH_DB="${PRE_PUSH_TEST_DB:-nuzantara_test}"
+
+# Machine-wide backend-suite lock (2026-07-27, measured: 12 concurrent
+# 17k-test suites on M5, load 68, pushes SIGTERM-killed mid-suite — see
+# scripts/prepush_suite_lock.sh's own header for the full measurement and
+# the primitive-choice rationale). Wraps ONLY the `python -m pytest` call
+# below — not the DB clone (already isolated per-push via CLONE_DB=$$, and
+# concurrent CREATE DATABASE...TEMPLATE off an unconnected template is fine
+# per the comment above it), not the venv/PG gates above, not anything about
+# WHICH tests run. At most one backend suite runs per machine at a time;
+# everyone else waits with a visible heartbeat, bounded, fail-closed.
+# Absolute path: this variable is read INSIDE a `cd apps/backend-rag`
+# subshell below, so a relative path here would resolve against the wrong
+# directory by the time it's used.
+#
+# Kill switch: NUZ_PREPUSH_SUITE_LOCK=0 disables the lock entirely (straight
+# to unserialized behavior, i.e. today's).
+PREPUSH_SUITE_LOCK_SCRIPT="$(pwd)/scripts/prepush_suite_lock.sh"
+PREPUSH_SUITE_LOCKFILE="/tmp/nuzantara-prepush-backend-suite.lock"
 if ! "$PG_ISREADY" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
     echo "⏭️  SKIP Python tests — no local PostgreSQL on 127.0.0.1:5432."
     echo "   Install per research/operations/specs/2026-06-12-M5-postgres-local-spec.md to enable the gate."
@@ -399,7 +417,9 @@ else
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
                OLLAMA_URL="http://127.0.0.1:9" \
-               PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
+               PYTHONPATH=.:../crm-cell \
+               "$PREPUSH_SUITE_LOCK_SCRIPT" "$PREPUSH_SUITE_LOCKFILE" \
+               python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
         if [ "$TEST_RC" -eq 0 ]; then
             : # pass — fall through silently, same as the old happy path
         elif [ "$TEST_RC" -ge 128 ]; then

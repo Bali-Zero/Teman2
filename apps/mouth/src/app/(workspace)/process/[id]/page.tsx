@@ -1169,11 +1169,13 @@ export default function CaseDetailPage() {
                         userEmail.current || undefined,
                       )
                     }
-                    className="transition-colors flex items-center gap-2"
+                    className="min-w-0 transition-colors flex items-start gap-2"
                     style={{ color: "var(--bz-text-1)" }}
                   >
-                    <Mail className="w-4 h-4" />
-                    {practice.client_email}
+                    <Mail className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="min-w-0 break-all">
+                      {practice.client_email}
+                    </span>
                   </a>
                 </div>
               )}
