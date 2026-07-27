@@ -28,26 +28,35 @@ zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that get
 
 ## 1. LIVE STATE (last update 2026-07-27 — keep current)
 
-**🔴 L2.12 — PROD IS FROZEN: VERCEL HAS NOT DEPLOYED SINCE 2026-07-26T19:57Z (`operator[gui]`).**
-Nothing merged after that time is live, including the L2.10 cures. Measured, not inferred:
-the last **Production** deployment is `13265a2406` at 19:57:32Z and the last deployment of
-**any** environment is 20:07:27Z — while **four** `apps/mouth`-touching commits landed on main
-afterwards (`0b1fbe6656` 22:15Z, **`45444d21e9` 23:05Z = the L2.10 block-cause cure**,
-`4fa139ac8f` 23:09Z, `708fc65833` 23:35Z). So it is **not** the monorepo skip (the project WAS
-touched), **not** a failed build (no deployment record exists at all — the last one succeeded),
-and **not** an in-repo config change (`vercel.json` has not been touched in months). The
-Vercel↔GitHub integration is simply silent. Corroborated independently of the API: prod serves
-the pre-cure copy (`x-vercel-cache: HIT`, rendered 23:42Z, still carrying the old strings), and
-a query-param cache-buster does NOT bypass it (Next static: the query is not in the cache key).
-Deployment volume rules out a 100/day cap — 147 on 26 Jul, 160 on 25 Jul, both above it.
-**Why this is operator-gated and not a phantom lane:** `~/.vercel` is absent on **all three**
-machines (M5, Pro, Mini), there is no `VERCEL_*` GitHub secret, and the only two workflows
-naming vercel are a build-guard and a lock-sync — neither deploys. The `vercel` CLI is on disk
-but unauthenticated. A dashboard login is an external-UI action.
-**Consequence for every session: `prove-live` on `balizero.com` is MEANINGLESS until this
-clears.** A red probe right now measures the deploy stall, not your diff. Verify against
-`origin/main` by content instead, and re-run the probe after the first Production deployment
-newer than 19:57:32Z.
+**🔴 L2.12 — THE GITHUB `deployments` API MEASURES VERCEL'S _REPORTING_, NOT ITS _DEPLOYING_.**
+Never conclude "the frontend is / is not live" from `gh api .../deployments`. **Prod is NOT
+frozen** — an earlier draft of this entry said it was, and that was wrong; the retraction is
+kept here because the probe that produced it is the one every session reaches for first.
+
+Measured: the newest **Production** deployment record is still `13265a2406` at
+**2026-07-26T19:57:32Z**, and no record has been created since. Yet the cured string
+`13 May 2026 moratorium` — introduced by `45444d21e9` (**23:05:17Z**, the L2.10 block-cause
+cure) and `07ab9d6d37` (**23:44:13Z**, #3275) — **is served by prod**, on a freshly rendered
+page. So Vercel deployed at least twice after the last record. What broke is the
+Vercel↔GitHub reporting integration, not the pipeline; nothing is blocked and no operator
+action is required for the product. (If the reporting gap is ever worth chasing, _that_ is a
+dashboard matter, `operator[gui]`.)
+
+**Two traps that made the wrong reading feel solid — both cost-free to avoid:**
+
+1. **`date + age` is not "now".** On HTTP response headers `date` **is** the moment of the
+   response; `age` is how long the cached copy has been held. Summing them moves your own
+   probe forward in time — here by ~1.5 h, which turned "I sampled 37 min after the merge and
+   got a cached pre-merge copy" (normal propagation) into "the render post-dates the merge and
+   is still stale" (a stall that never existed).
+2. **Two corroborations that sample the same instant are one corroboration.** "API frozen" and
+   "page stale" agreed only because both were read off the same wrong moment — they could not
+   have contradicted each other. Before trusting agreement, ask whether the second check could
+   have failed for a _different_ reason than the first.
+
+**The probe that actually settles it:** `curl` the page and grep for a string your own commit
+introduced (`git log -S "<string>" origin/main` gives you the commit and its merge time). Prod
+against prod — the same rule already paid for on the Fly side.
 
 **L2.11 — THE PMA CAP WAS A BINARY DERIVED FROM A TERNARY, ON BOTH PLANES (2026-07-27).**
 `pma_status` has three values and the code treated it as two, so the foreign-ownership figure
