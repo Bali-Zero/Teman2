@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, BarChart2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export default function DashboardAnalyticsError({
   error,
@@ -13,7 +13,7 @@ export default function DashboardAnalyticsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Dashboard Analytics Error', {}, error);
+    logger.error("Dashboard Analytics Error", {}, error);
   }, [error]);
 
   return (
@@ -23,10 +23,12 @@ export default function DashboardAnalyticsError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Couldn&apos;t Load Dashboard Analytics</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Couldn&apos;t Load Dashboard Analytics
+        </h2>
         <p className="text-muted-foreground">
-          There was an error loading this page. Please try again or contact support if the
-          problem persists.
+          There was an error loading this page. Please try again or contact
+          support if the problem persists.
         </p>
       </div>
 

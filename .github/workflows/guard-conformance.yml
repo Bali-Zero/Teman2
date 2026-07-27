@@ -18,6 +18,7 @@ name: Guard conformance (superscar #3 enforcement)
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   push:
     branches: [main]
     paths:
@@ -37,7 +38,7 @@ on:
 
 concurrency:
   group: guard-conformance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
@@ -126,6 +127,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/claude-hooks/test_segment_scoped_dispatch.py
+
+      # W105 (2026-07-26): the removal-target resolver truncated to the FIRST
+      # segment under .worktrees/, so removing `.worktrees/<outer>/.worktrees/
+      # <inner>` was refused in the DIRTY OUTER's name. Its twin is covered in
+      # the same suite: `.worktrees/` is gitignored, so an outer worktree's own
+      # `git status` is blind to a nested one — removing a CLEAN outer that holds
+      # a DIRTY nested worktree must block, or the fix opens the under-match.
+      - name: W105 nested-worktree removal (over-match + composition twin)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_w105_nested_worktree_removal.py
 
       # Property/fuzz corpus (445 generated command shapes across both
       # decision channels of worktree_isolation.py) — the reusable harness

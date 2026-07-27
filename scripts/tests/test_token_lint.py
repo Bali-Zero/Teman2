@@ -571,12 +571,20 @@ def test_git_diff_invocation_uses_text_flag(monkeypatch: pytest.MonkeyPatch) -> 
     calls: list[list[str]] = []
 
     class _Proc:
+        # BYTES, not str: _git_diff deliberately drops text=True so a real
+        # binary blob (which `--text` forces into the patch) cannot kill the
+        # utf-8 decode. A str-returning mock would be testing a subprocess
+        # contract the module no longer asks for.
         returncode = 0
-        stdout = ""
-        stderr = ""
+        stdout = b""
+        stderr = b""
 
     def fake_run(args: list[str], **kwargs: object) -> _Proc:
         calls.append(list(args))
+        assert kwargs.get("text") is not True, (
+            "_git_diff must not ask for text=True — strict utf-8 decoding of a "
+            "--text diff is exactly what the binary blob crashed"
+        )
         return _Proc()
 
     monkeypatch.setattr(tl.subprocess, "run", fake_run)
@@ -905,3 +913,55 @@ def test_e2e_base_mode_real_git_repo(
     git("commit", "-am", "benign follow-up")
     assert tl.main(["--base", "master~1"]) == 0
     assert "clean" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
+def test_e2e_binary_blob_neither_crashes_nor_blinds_the_scanner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A real, undecodable binary blob in the diff — the case `--text` creates.
+
+    `--text` suppresses the `Binary files ... differ` MARKER, so git emits the
+    blob's RAW BYTES into the patch. Before the defensive decode in _git_diff,
+    that killed the scanner with UnicodeDecodeError -> exit 2 (measured live:
+    the first PR to add images, 13 JPEGs, 2026-07-26).
+
+    Two properties, asserted in ONE diff so they cannot pass for the wrong
+    reason:
+      INNOCENCE — a binary file at an UNSCOPED path is not a violation.
+      GUILT     — a scoped hex added in the SAME commit is still reported, at
+                  the right file and line. A scanner that survived the bytes by
+                  going blind would miss this.
+    """
+
+    def git(*args: str) -> None:
+        proc = subprocess.run(
+            ["git", *args], cwd=tmp_path, capture_output=True, text=True, check=False
+        )
+        assert proc.returncode == 0, f"git {' '.join(args)}: {proc.stderr}"
+
+    git("init", "-b", "master")
+    git("config", "user.email", "token-lint-bin@test.invalid")
+    git("config", "user.name", "token-lint bin")
+    page = tmp_path / "apps" / "mouth" / "src" / "app" / "(workspace)" / "x" / "page.tsx"
+    page.parent.mkdir(parents=True)
+    page.write_text("export const ok = 1;\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "clean scoped file")
+    monkeypatch.setattr(tl, "_repo_root", lambda: tmp_path)
+
+    # A JPEG-shaped blob: SOI + APP0 + bytes that are invalid UTF-8 by
+    # construction (0x80-0xFF continuation bytes with no lead byte).
+    blob = tmp_path / "apps" / "mouth" / "public" / "static" / "insights" / "c.jpg"
+    blob.parent.mkdir(parents=True)
+    blob.write_bytes(b"\xff\xd8\xff\xe0" + bytes(range(0x80, 0x100)) * 8 + b"\xff\xd9")
+    page.write_text(
+        'export const ok = 1;\nconst BRAND = "#d4845a";\n', encoding="utf-8"
+    )
+    git("add", ".")
+    git("commit", "-m", "add cover image and a hardcoded brand hex")
+
+    assert tl.main(["--base", "master~1"]) == 1  # not 2 — no scanner crash
+    out = capsys.readouterr().out
+    assert "apps/mouth/src/app/(workspace)/x/page.tsx:2: #d4845a" in out
+    assert "c.jpg" not in out, "an unscoped binary must not be reported"

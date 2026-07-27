@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Key,
   Copy,
@@ -11,10 +11,10 @@ import {
   ArrowLeft,
   AlertTriangle,
   CheckCircle2,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface ApiKey {
   id: string;
@@ -28,26 +28,26 @@ interface ApiKey {
 export default function ApiKeysSettingsPage() {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyName, setNewKeyName] = useState("");
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
     {
-      id: '1',
-      name: 'Production API Key',
-      key: 'zk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      createdAt: '2024-01-15',
-      lastUsed: '2024-12-28',
-      permissions: ['read', 'write'],
+      id: "1",
+      name: "Production API Key",
+      key: "zk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      createdAt: "2024-01-15",
+      lastUsed: "2024-12-28",
+      permissions: ["read", "write"],
     },
     {
-      id: '2',
-      name: 'Development Key',
-      key: 'zk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      createdAt: '2024-03-20',
+      id: "2",
+      name: "Development Key",
+      key: "zk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      createdAt: "2024-03-20",
       lastUsed: null,
-      permissions: ['read'],
+      permissions: ["read"],
     },
   ]);
 
@@ -68,12 +68,12 @@ export default function ApiKeysSettingsPage() {
   };
 
   const deleteKey = (id: string) => {
-    toast('Delete this API key? This action cannot be undone.', {
+    toast("Delete this API key? This action cannot be undone.", {
       action: {
-        label: 'Delete',
+        label: "Delete",
         onClick: () => setApiKeys(apiKeys.filter((k) => k.id !== id)),
       },
-      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
+      cancel: { label: "Cancel", onClick: () => toast.dismiss() },
     });
   };
 
@@ -84,28 +84,30 @@ export default function ApiKeysSettingsPage() {
       id: Date.now().toString(),
       name: newKeyName,
       key: `zk_live_${Math.random().toString(36).substring(2, 35)}`,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString().split("T")[0],
       lastUsed: null,
-      permissions: ['read', 'write'],
+      permissions: ["read", "write"],
     };
 
     setApiKeys([...apiKeys, newKey]);
-    setNewKeyName('');
+    setNewKeyName("");
     setShowCreateModal(false);
-    toast.success('API key created', { description: `"${newKey.name}" is ready to use.` });
+    toast.success("API key created", {
+      description: `"${newKey.name}" is ready to use.`,
+    });
   };
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowCreateModal(false);
+      if (e.key === "Escape") setShowCreateModal(false);
     };
-    if (showCreateModal) document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    if (showCreateModal) document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [showCreateModal]);
 
   const maskKey = (key: string) => {
     const prefix = key.substring(0, 8);
-    return `${prefix}${'•'.repeat(24)}`;
+    return `${prefix}${"•".repeat(24)}`;
   };
 
   return (
@@ -113,12 +115,16 @@ export default function ApiKeysSettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/settings")}
+          >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-              <Key className="w-6 h-6 text-amber-400" />
+              <Key className="w-6 h-6 text-[var(--bz-accent)]" />
               API Keys
             </h1>
             <p className="text-sm text-[var(--foreground-muted)]">
@@ -133,14 +139,16 @@ export default function ApiKeysSettingsPage() {
       </div>
 
       {/* Warning */}
-      <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+      <div className="rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 p-4">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-[var(--state-warning)] mt-0.5" />
           <div>
-            <h3 className="font-medium text-yellow-500">Keep your API keys secure</h3>
-            <p className="text-sm text-yellow-500/80">
-              Never share your API keys or commit them to version control. Treat them like
-              passwords.
+            <h3 className="font-medium text-[var(--state-warning)]">
+              Keep your API keys secure
+            </h3>
+            <p className="text-sm text-[var(--state-warning)]/80">
+              Never share your API keys or commit them to version control. Treat
+              them like passwords.
             </p>
           </div>
         </div>
@@ -152,16 +160,21 @@ export default function ApiKeysSettingsPage() {
           {apiKeys.length === 0 ? (
             <div className="p-8 text-center">
               <Key className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-              <p className="text-sm text-[var(--foreground-muted)]">No API keys created yet</p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                No API keys created yet
+              </p>
             </div>
           ) : (
             apiKeys.map((apiKey) => (
               <div key={apiKey.id} className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-medium text-[var(--foreground)]">{apiKey.name}</h3>
+                    <h3 className="font-medium text-[var(--foreground)]">
+                      {apiKey.name}
+                    </h3>
                     <p className="text-xs text-[var(--foreground-muted)]">
-                      Created: {apiKey.createdAt} • Last used: {apiKey.lastUsed || 'Never'}
+                      Created: {apiKey.createdAt} • Last used:{" "}
+                      {apiKey.lastUsed || "Never"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -169,9 +182,9 @@ export default function ApiKeysSettingsPage() {
                       <span
                         key={perm}
                         className={`text-xs px-2 py-0.5 rounded-full ${
-                          perm === 'write'
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-blue-500/20 text-blue-400'
+                          perm === "write"
+                            ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
+                            : "bg-[var(--state-info)]/15 text-[var(--state-info)]"
                         }`}
                       >
                         {perm}
@@ -182,13 +195,19 @@ export default function ApiKeysSettingsPage() {
 
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-[var(--background)] font-mono text-sm">
                   <span className="flex-1 text-[var(--foreground-muted)]">
-                    {visibleKeys.has(apiKey.id) ? apiKey.key : maskKey(apiKey.key)}
+                    {visibleKeys.has(apiKey.id)
+                      ? apiKey.key
+                      : maskKey(apiKey.key)}
                   </span>
                   <button
                     onClick={() => toggleKeyVisibility(apiKey.id)}
                     className="p-1.5 rounded hover:bg-[var(--background-secondary)] text-[var(--foreground-muted)]"
-                    title={visibleKeys.has(apiKey.id) ? 'Hide' : 'Show'}
-                    aria-label={visibleKeys.has(apiKey.id) ? 'Hide API key' : 'Show API key'}
+                    title={visibleKeys.has(apiKey.id) ? "Hide" : "Show"}
+                    aria-label={
+                      visibleKeys.has(apiKey.id)
+                        ? "Hide API key"
+                        : "Show API key"
+                    }
                   >
                     {visibleKeys.has(apiKey.id) ? (
                       <EyeOff className="w-4 h-4" />
@@ -203,14 +222,14 @@ export default function ApiKeysSettingsPage() {
                     aria-label="Copy API key"
                   >
                     {copiedKey === apiKey.id ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--state-success)]" />
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
                   </button>
                   <button
                     onClick={() => deleteKey(apiKey.id)}
-                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
+                    className="p-1.5 rounded hover:bg-[var(--state-danger)]/15 text-[var(--state-danger)]"
                     title="Delete"
                     aria-label="Delete API key"
                   >
@@ -232,7 +251,12 @@ export default function ApiKeysSettingsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => toast.info('Coming soon', { description: 'API documentation will be available in a future update.' })}
+          onClick={() =>
+            toast.info("Coming soon", {
+              description:
+                "API documentation will be available in a future update.",
+            })
+          }
         >
           View API Documentation
         </Button>
@@ -240,7 +264,7 @@ export default function ApiKeysSettingsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--surface-overlay)]">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
               Create New API Key
@@ -259,7 +283,10 @@ export default function ApiKeysSettingsPage() {
                 />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="ghost" onClick={() => setShowCreateModal(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCreateModal(false)}
+                >
                   Cancel
                 </Button>
                 <Button onClick={createNewKey}>Create Key</Button>

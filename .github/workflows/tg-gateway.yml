@@ -4,6 +4,32 @@ name: tg-gateway
 # - the three gateway selftests (hermetic, no network)
 # - the direct-sender lint: a NEW file calling api.telegram.org outside
 #   infra/tg-gateway/grandfathered.json fails the PR (family can only shrink)
+#
+# Task #35 fix (2026-07-26): the anti-regrowth lint above and a separate
+# pytest suite ("Guard pins") used to live in ONE job (`gateway`). That
+# meant the job's single conclusion could not distinguish "someone regrew a
+# direct Telegram sender" from "an unrelated import in the pytest suite is
+# broken" — measured 2026-07-26 03:30Z: `gateway` red on 5 of 10 open PRs
+# (#3181 #3180 #3178 #3176 #3146) purely from a missing `asyncpg` install
+# (already fixed on main by #3175, landed 03:03:42Z — those 5 PRs' `gateway`
+# checks are stale runs cached from BEFORE the fix landed, not a live
+# recurrence: verified locally in a clean venv against current main, 17/17
+# pass with the exact CI install+pytest command). The STRUCTURAL problem
+# survives the dependency fix on its own: nothing stopped the NEXT unrelated
+# pytest breakage from making `gateway`'s verdict unreadable again the same
+# way. `gateway` is not a required context today, so this went unnoticed —
+# nothing blocked, nobody looked (superscar #2, exists ≠ armed, crossed with
+# alert-fatigue: an always-red gate is not a gate).
+#
+# Fix: split into two independent jobs. `gateway` now carries ONLY the
+# anti-regrowth lint + its own hermetic selftests — a regrowth violation is
+# the only thing that can turn it red. `guard-pins-pytest` carries the
+# broader pytest suite (which imports agent_job.py's full dependency tree —
+# httpx/structlog/asyncpg — and can break for reasons that have nothing to
+# do with direct Telegram senders) as its own job with its own conclusion.
+# Neither job is a required context (unchanged by this fix, per instruction
+# — a required check that is permanently red blocks the entire merge queue,
+# which is a worse failure mode than an unread one).
 
 on:
   pull_request:
@@ -23,6 +49,7 @@ on:
 
 jobs:
   gateway:
+    name: gateway (anti-regrowth lint)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -40,7 +67,29 @@ jobs:
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py
 
+  guard-pins-pytest:
+    name: guard-pins-pytest (gateway integration tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
       - name: Guard pins (pytest)
         run: |
-          python3 -m pip -q install pytest
-          python3 -m pytest scripts/tests/test_tg_gateway.py -q
+          # httpx/structlog: agent_job.py imports both at module level, and
+          # test_agent_job_telegram_gateway.py imports agent_job.py — without
+          # them the file below would ImportError, not merely "not run" (a
+          # loud CI failure, not a silent one, but still worth being explicit
+          # about why a Telegram-gateway CI job installs two extra packages).
+          # asyncpg: same reason, one module further out. #3147 added
+          # test_curiosity_batch_send_telegram_batch_reaches_dry_run_delivery,
+          # which imports curiosity_batch.py, which imports asyncpg at module
+          # level. #3175 closed that specific gap (2026-07-26). When a NEW
+          # test is added here, its import chain has to be added here too —
+          # that is now this job's problem alone: a future dependency gap here
+          # can no longer mask a regrown direct Telegram sender in `gateway`
+          # above, and a `gateway` violation can no longer hide behind this
+          # job's own unrelated breakage. Task #35 split this out of `gateway`
+          # for exactly that reason (2026-07-26).
+          python3 -m pip -q install pytest httpx structlog asyncpg
+          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py -q

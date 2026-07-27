@@ -75,6 +75,13 @@ def _is_autonomous_lab_enabled() -> bool:
     return settings.autonomous_lab_enabled
 
 
+def _is_garuda_flow_enabled() -> bool:
+    """Condition for the public GARUDA VOA request funnel."""
+    from backend.app.core.config import settings
+
+    return settings.garuda_flow_enabled
+
+
 def _get_api_v1_prefix() -> str:
     from backend.app.core.config import settings
 
@@ -180,7 +187,14 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Dream ──
     RouterEntry(name="dream", process_groups=_RAG, tags=("module",)),
     # ── Dynamic Pricing ──
-    RouterEntry(name="dynamic_pricing", process_groups=_RAG, tags=("pricing",)),
+    # _BOTH since 2026-07-25: the public website renders prices from PricingTool
+    # (Golden Rule #11) and reaches the backend through the light _API process.
+    # While this router was _RAG-only there was NO pricing route on the public
+    # surface at all, so every client-facing price was necessarily a hardcoded
+    # literal. Only GET /api/pricing/service is auth-exempt (see
+    # backend/app/auth/public_endpoints.py); /all, /search and /scenario keep
+    # requiring auth on both processes.
+    RouterEntry(name="dynamic_pricing", process_groups=_BOTH, tags=("pricing",)),
     # ── EventBus ──
     RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
     # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──
@@ -195,6 +209,13 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
+    # ── GARUDA VOA (public request funnel, Slice A) ──
+    RouterEntry(
+        name="garuda_voa",
+        process_groups=_API,
+        condition=_is_garuda_flow_enabled,
+        tags=("visa", "funnel", "garuda"),
+    ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
     # ── Guardian ──

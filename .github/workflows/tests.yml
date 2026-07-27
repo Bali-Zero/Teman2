@@ -5,21 +5,92 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
   workflow_dispatch:
+  # Task #37 (2026-07-26). STRUCTURAL claim, not a snapshot of one night:
+  # `cancel-in-progress: false` (below) protects a run that has already
+  # STARTED — a run still QUEUED for a runner slot is superseded
+  # unconditionally by the next push to the same concurrency group,
+  # regardless of that setting. Under any sufficiently busy stretch, main
+  # can go a long stretch with no completed test verdict even though every
+  # push technically "ran" a workflow. (One specific night's measurement —
+  # 28/38 recent attempts cancelled, main's last verdict over an hour
+  # stale — motivated building this, but that number is a snapshot of one
+  # convoy, not the justification; it had already resolved by the time
+  # this shipped. Do not re-derive urgency from it later. A cure pinned to
+  # tonight's world is tomorrow's bug.)
+  #
+  # This scheduled run is independent proof-of-health, decoupled from push
+  # cadence — it runs the exact same job graph as a push/PR run (no
+  # duplicated logic to drift), against whatever is on main when it fires,
+  # and it gets its own concurrency group below so it never queues behind
+  # — or evicts — a push-triggered run.
+  #
+  # Cadence: every 2h, not hourly. A full run of this job graph measured
+  # ~43 minutes wall-clock on a loaded night — hourly would be a ~72% duty
+  # cycle on the runners this workflow already competes for, and slots are
+  # the binding constraint main's own velocity runs into (task #37's own
+  # finding). Task #41's separate verdict-liveness check (see
+  # main-push-failure-watch.yml) is the FAST heartbeat now — it's a cheap
+  # API-only poll every 15 min, no runner-heavy job — so this run's job
+  # is no longer to detect an outage quickly, only to periodically produce
+  # a real full-suite verdict against main's current head (catching
+  # interaction bugs invisible to per-PR testing) at a sustainable cost.
+  # :17 offset dodges the top-of-hour stampede (same convention as
+  # docs-inventory-refresh-liveness.yml).
+  schedule:
+    - cron: "17 */2 * * *"
 
 # Merge-train spec §10.2 (2026-06-12): cancel-in-progress must NOT apply to
 # main — back-to-back merges were cancelling the in-flight main run, so
 # commits landed on main UNTESTED and a future auto-revert guardian could
 # not attribute a green→red window to a single commit. PR refs keep
 # cancelling (newest push wins); every main push now runs to completion.
+#
+# Task #37 addendum: a schedule-triggered run must NOT share a group with
+# push-triggered main runs. `github.ref` is `refs/heads/main` for BOTH a
+# push-to-main and a schedule run (schedule always fires against the
+# default branch) — grouping on `github.ref` alone would put the scheduled
+# run back in direct contention with push-triggered runs for the same
+# runner slot, reproducing the exact starvation this run exists to work
+# around. Scheduled runs get a dedicated, ref-independent group instead.
+#
+# cancel-in-progress is the OPPOSITE value for the scheduled group,
+# deliberately: `false` is what protects a push-triggered main run (a
+# started verdict should always get to report, and cancelling it on the
+# next push is what silently starved main in the first place). `true` is
+# correct for the scheduled group for the mirror-image reason — if a new
+# scheduled run starts while the previous is still going (job overrunning
+# the 2h cadence under load), the older run is testing a `main` that no
+# longer exists, so the freshest run should win, not the oldest. Same
+# flag, opposite correct value, because the underlying question differs:
+# "protect a verdict in flight" vs "don't waste a slot re-testing a stale
+# head". Do not "fix" this to match main's `false` — that was tried
+# nowhere, noted here only because the asymmetry looks like a bug at a
+# glance.
+#
+# merge_group readiness (2026-07-27): under merge_group, github.ref resolves
+# to the queue's own temporary ref (refs/heads/gh-readonly-queue/...), which
+# is != 'refs/heads/main' — so the expression above would evaluate to `true`
+# for a queue entry, cancelling an in-flight required-check run every time a
+# newer commit joined the queue (the exact starvation this block exists to
+# prevent for main, just relocated to the queue). This is a composed fix, not
+# the mechanical `cancel-in-progress: ${{ github.event_name != 'merge_group' }}`
+# used on the other 13 required-context workflows: that blanket replacement
+# would have discarded the schedule-vs-push asymmetry documented above. AND-ing
+# `github.event_name != 'merge_group'` onto the existing expression preserves
+# every other branch (push-to-main stays false, PR refs and schedule keep
+# cancelling) and forces false only for the new merge_group case.
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
+  cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   backend-tests:
     name: Backend Tests (Python)
     runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     timeout-minutes: 30
 
     services:
@@ -203,6 +274,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
           JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
           API_KEYS: test_api_key_1,test_api_key_2
@@ -217,13 +289,22 @@ jobs:
           # local-dev fallback; in CI they should hit the same Postgres
           # service container the rest of the suite uses.
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          # Intake router/writer integration tests intentionally use a dedicated
+          # opt-in DSN. Point it at the same disposable CI database instead of
+          # their local-dev fallback (`nuzantara_dev`), which skipped 50 tests.
+          INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/ \
+          PYTHONPATH=.:../crm-cell pytest \
+            backend/tests/ \
+            tests/test_sentry_lazy_import.py \
+            tests/test_sentry_pii_redaction.py \
+            tests/kb/test_politics_hierarchical.py \
             -q -ra --no-header --durations=10 \
             --ignore=backend/tests/e2e \
             --cov=backend \
+            --cov-branch \
             --cov-report=xml:coverage.xml \
             --junit-xml=test-results-unit.xml \
             --tb=short -x
@@ -234,8 +315,12 @@ jobs:
           PYTHONPATH=.:../crm-cell coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          token: ${{ env.CODECOV_TOKEN }}
           files: apps/backend-rag/coverage.xml
           flags: backend
           name: backend-coverage
@@ -252,6 +337,8 @@ jobs:
   mcp-tests:
     name: MCP Server Tests
     runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     timeout-minutes: 10
 
     steps:
@@ -279,21 +366,88 @@ jobs:
           fi
           pip install fastmcp httpx pytest pytest-asyncio pytest-mock
 
-      - name: Run MCP tests
+      - name: Run MCP tests with branch coverage
         run: |
           cd apps/nuzantara-mcp
-          python -m pytest tests/ -q -ra --no-header --tb=short --durations=10 --junit-xml=test-results-mcp.xml
+          CI=true ./scripts/test-coverage.sh
+
+      - name: Upload MCP coverage to Codecov
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/nuzantara-mcp/coverage.xml
+          flags: mcp
+          name: mcp-coverage
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mcp-test-results
-          path: apps/nuzantara-mcp/test-results-mcp.xml
+          path: |
+            apps/nuzantara-mcp/test-results-mcp.xml
+            apps/nuzantara-mcp/coverage.xml
+
+  evaluator-critical-tests:
+    name: Evaluator Critical Tests
+    runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov httpx
+
+      - name: Run evaluator critical tests with branch coverage
+        run: |
+          PYTHONPATH=. python -m pytest \
+            apps/evaluator/cep/test_run_cep.py \
+            apps/evaluator/nlm_deep_research/tests/test_circuit_breaker.py \
+            -q \
+            --cov=apps.evaluator.cep.run_cep \
+            --cov=apps.evaluator.nlm_deep_research.circuit_breaker \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:apps/evaluator/coverage.xml \
+            --cov-fail-under=85 \
+            --junit-xml=apps/evaluator/test-results-evaluator.xml
+
+      - name: Upload evaluator coverage to Codecov
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/evaluator/coverage.xml
+          flags: evaluator-critical
+          name: evaluator-critical-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evaluator-critical-test-results
+          path: |
+            apps/evaluator/test-results-evaluator.xml
+            apps/evaluator/coverage.xml
 
   frontend-tests:
     name: Frontend Tests (Next.js)
     runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     timeout-minutes: 10
 
     strategy:
@@ -391,13 +545,140 @@ jobs:
           cd apps/${{ matrix.app }}
           npm run test:coverage:check
 
+      # WS4 governance: `packages/core` is the shared design-system (tokens,
+      # ThemeProvider, SystemPulse, ComplianceRadar, FactBadge, …) that every
+      # workspace/portal page renders through. It shipped 33 test files / 123
+      # tests that NO workflow ever executed: apps/mouth's vitest config scopes
+      # `include` to `src/**`, and packages/core/vitest.config.ts had no caller.
+      # Built, never armed (cicatrix-superscar #2) — a green CI was asserting
+      # nothing about the components WS2/WS3 landed.
+      #
+      # Deliberately a STEP of the already-required `Frontend Tests (Next.js)
+      # (mouth, true)` leg, NOT a new job or matrix entry: branch protection
+      # pins required contexts by NAME, so a new name would be born unrequired
+      # and would need a settings change nobody would make (W69 — required
+      # checks disarmed). Attaching here means it gates from the merge onward.
+      #
+      # `cd packages/core` resolves vitest/jsdom/@vitejs/plugin-react upward
+      # from the ROOT node_modules (verified: nothing is nested under
+      # apps/mouth, and packages/core/node_modules holds no packages), so the
+      # existing root `npm install` above is all the setup it needs. No
+      # coverage gate: packages/core has no established coverage target yet —
+      # same posture as the admin-dashboard leg.
+      - name: Run packages/core tests (shared design-system suite)
+        if: matrix.app == 'mouth'
+        run: |
+          cd packages/core
+          npx vitest --run
+
       - name: Upload coverage
-        if: matrix.coverage
+        if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          token: ${{ env.CODECOV_TOKEN }}
           files: apps/${{ matrix.app }}/coverage/lcov.info
           flags: ${{ matrix.app }}
           name: ${{ matrix.app }}-coverage
+
+      - name: Upload frontend coverage artifact
+        if: ${{ always() && matrix.coverage }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-${{ matrix.app }}-coverage
+          path: apps/${{ matrix.app }}/coverage/
+
+  wa-dashboard-tests:
+    name: WA Dashboard Tests
+    runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/wa-dashboard/package.json
+
+      - name: Install WA Dashboard dependencies
+        run: |
+          cd apps/wa-dashboard
+          npm install --no-fund
+
+      - name: Type-check WA Dashboard
+        run: |
+          cd apps/wa-dashboard
+          npm run typecheck
+
+      - name: Run WA Dashboard coverage gate
+        run: |
+          cd apps/wa-dashboard
+          npm run test:coverage
+
+      - name: Upload WA Dashboard coverage to Codecov
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/wa-dashboard/coverage/lcov.info
+          flags: wa-dashboard
+          name: wa-dashboard-coverage
+
+      - name: Upload WA Dashboard coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wa-dashboard-coverage
+          path: apps/wa-dashboard/coverage/
+
+  packages-core-tests:
+    name: Shared Core Package Tests
+    runs-on: ubuntu-latest
+    env:
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install lock-pinned workspace dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run shared core coverage gate
+        run: npm run test:coverage -w packages/core
+
+      - name: Upload shared core coverage to Codecov
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: packages/core/coverage/lcov.info
+          flags: packages-core
+          name: packages-core-coverage
+
+      - name: Upload shared core coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-core-coverage
+          path: packages/core/coverage/
 
   e2e-tests:
     name: E2E Tests (Playwright)
@@ -483,8 +764,13 @@ jobs:
             --host 0.0.0.0 --port 8000 \
             --log-level warning &
           # Wait for backend to be ready
+          backend_ready=false
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/health && echo "✅ Backend ready" && break
+            if curl -sf http://localhost:8000/health; then
+              echo "✅ Backend ready"
+              backend_ready=true
+              break
+            fi
             echo "Waiting for backend... ($i/30)"
             sleep 2
           done
@@ -492,8 +778,14 @@ jobs:
           # up silently after 30 tries (60s) and falls through with exit 0 either
           # way, letting E2E run against a dead backend and fail with confusing
           # connection-refused errors instead of a clear "backend never came up".
-          # Final hard gate: not-ready = red, loudly.
-          curl -sf http://localhost:8000/health || { echo "❌ Backend did not become healthy after 30 attempts (60s) — failing loudly instead of running E2E against a dead backend"; exit 1; }
+          # Final hard gate: not-ready = red, loudly. Gated on the flag the
+          # loop above already computed rather than a 31st probe — re-probing
+          # would leave `backend_ready` set and never read (SC2034), and a
+          # variable nothing reads is how a check quietly stops being one.
+          if [ "$backend_ready" != "true" ]; then
+            echo "❌ Backend did not become healthy after 30 attempts (60s) — failing loudly instead of running E2E against a dead backend"
+            exit 1
+          fi
 
       - name: Install Node dependencies
         run: npm install --no-fund
@@ -519,14 +811,15 @@ jobs:
           # excluded here via grep-invert on the describe block name.
           # zantara/ and mission_simulation use process.env.PLAYWRIGHT_BASE_URL so
           # they pick up localhost:3000 correctly.
-          # Only run page-load tests in CI — chat/auth/websocket tests
-          # require a live LLM backend with Qdrant data, not available here.
+          # Run deterministic page-load smoke tests plus the explicitly mocked
+          # @offline journeys. Live chat/websocket tests still require Qdrant
+          # and an LLM backend, so they remain outside this PR gate.
           npx playwright test \
             --config=playwright.config.ts \
             --project=chromium \
             --ignore-snapshots \
             --reporter=list \
-            --grep "page Page"
+            --grep "page Page|@offline"
 
       - name: Check Playwright report
         id: playwright-report
@@ -548,20 +841,33 @@ jobs:
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [backend-tests, mcp-tests, frontend-tests, e2e-tests]
+    needs:
+      - backend-tests
+      - mcp-tests
+      - evaluator-critical-tests
+      - frontend-tests
+      - wa-dashboard-tests
+      - packages-core-tests
+      - e2e-tests
     if: always()
     timeout-minutes: 10
 
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-
       - name: Create test summary
         uses: actions/github-script@v9
         env:
+          # One entry per job in `needs:` — the two lists are load-bearing
+          # together. A job present in `needs:` but absent here reaches the
+          # script as `undefined`: it renders ❌ while `anyFailed` (which tests
+          # for "failure"/"cancelled") ignores it, so the summary would show a
+          # red row and still pass. That is the same class of lying gate the
+          # comment below describes, arriving through the back door.
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
           MCP_RESULT: ${{ needs.mcp-tests.result }}
+          EVALUATOR_RESULT: ${{ needs.evaluator-critical-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+          WA_DASHBOARD_RESULT: ${{ needs.wa-dashboard-tests.result }}
+          PACKAGES_CORE_RESULT: ${{ needs.packages-core-tests.result }}
           E2E_RESULT: ${{ needs.e2e-tests.result }}
         with:
           # FAIL-OPEN FIXED (Day-1 CI honesty, 2026-07-20): this job used to
@@ -577,10 +883,13 @@ jobs:
           # fail loudly (core.setFailed) if anything needed did not succeed.
           script: |
             const results = {
-              "Backend Tests (Python)": process.env.BACKEND_RESULT,
-              "MCP Server Tests": process.env.MCP_RESULT,
-              "Frontend Tests (Next.js)": process.env.FRONTEND_RESULT,
-              "E2E Tests (Playwright)": process.env.E2E_RESULT,
+              "Backend (Python)": process.env.BACKEND_RESULT,
+              "MCP server": process.env.MCP_RESULT,
+              "Evaluator critical": process.env.EVALUATOR_RESULT,
+              "Frontend matrix": process.env.FRONTEND_RESULT,
+              "WA Dashboard": process.env.WA_DASHBOARD_RESULT,
+              "Shared core package": process.env.PACKAGES_CORE_RESULT,
+              "E2E page-load smoke": process.env.E2E_RESULT,
             };
 
             const icon = (r) => {

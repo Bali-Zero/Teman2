@@ -12,6 +12,7 @@ name: P9 Cost Breaker (GOVERN)
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group:
   push:
     branches:
       - main
@@ -24,7 +25,7 @@ on:
 
 concurrency:
   group: p9-cost-breaker-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   cost-breaker-tests:

@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProcessLoading() {
   return (
@@ -22,7 +22,10 @@ export default function ProcessLoading() {
       {/* Process Cards */}
       <div className="space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-lg border p-4 flex items-center gap-4">
+          <div
+            key={i}
+            className="rounded-lg border p-4 flex items-center gap-4"
+          >
             <Skeleton variant="circular" width={40} height={40} />
             <div className="flex-1 space-y-2">
               <Skeleton variant="text" width={200} />

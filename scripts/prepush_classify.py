@@ -81,6 +81,56 @@ inputs, CONVERGED findings):
   `.claude/skills/modus/PENDING-ARMS.md`, owner = orchestrator session,
   non-blocking.
 
+v3 EXTENSION (2026-07-26, task #43): MEASURED, not hypothetical — a fleet
+night where nearly every diff touched CI/guards/scripts (task #16's
+scripts/tests/ sweep, #39's .husky/pre-push fix, #43 itself) drove up to
+13 concurrent `pytest backend/tests/` suites on a 10-core M5 laptop, one
+convoy 54min in and still climbing (~98min projected). Root cause: the
+allowlist did not yet recognize two path classes that are provably
+INNOCENT with respect to `pytest backend/tests/` specifically — the exact
+gate this module exists to skip:
+
+  - `.github/workflows/*.yml` — a workflow file is never imported by, or
+    collected into, a `pytest backend/tests/` run; it has its own gates
+    (`actionlint`, hot-zone enforcement) for its own correctness. The
+    PRE-EXISTING `.github/workflows/tests.yml` entry in
+    NEVER_INNOCENT_EXACT_PATHS is checked FIRST and is untouched by this
+    broader rule — editing the workflow that DEFINES the required test
+    run still forces full, unconditionally (proof:
+    test_edge_never_innocent_exact_paths_are_not_on_the_allowlist, which
+    iterates the exact-path set generically and would fail if this
+    ordering ever broke).
+  - `scripts/tests/*.py` — the 235-file suite audited in task #16, tests
+    OF the ops/immune-system scripts under the repo-root `scripts/`
+    directory. VERIFIED (not assumed) structurally incapable of affecting
+    `pytest backend/tests/`'s outcome: (a) `.husky/pre-push` invokes it as
+    `( cd apps/backend-rag && ... pytest backend/tests/ ... )` — the
+    collection root is `apps/backend-rag/backend/tests/`, a different
+    filesystem branch entirely from repo-root `scripts/tests/`; (b) a
+    repo-wide grep for any import of the repo-root `scripts.tests`
+    package from anywhere under `apps/backend-rag/` returns zero real
+    hits (the only matches are prose in comments/docstrings naming the
+    file, and unrelated code in the OTHER, differently-nested
+    `apps/backend-rag/backend/tests/scripts/` directory, which resolves
+    `from scripts.X import Y` against `apps/backend-rag/scripts/` per its
+    own conftest.py — a same-named but structurally unrelated tree, not
+    to be confused with the one this rule allowlists).
+    `scripts/tests/conftest.py` stays forced-full regardless (the
+    directory-independent NEVER_INNOCENT_BASENAMES net, checked before
+    any allowlist rule); `scripts/tests/__init__.py` is verified empty
+    and additionally unreachable by the same import-chain argument;
+    `scripts/tests/fixtures/` is verified to contain only `.md` fixture
+    data, no `.py`, so the `.py`-suffix scoping does not admit anything
+    there either; the one `.sh` file in the directory
+    (`test_prepush_failclosed.sh`) is out of scope for this suffix rule
+    and correctly stays unknown -> full, conservative by construction.
+
+  Verified by piping real path lists through the CLI end-to-end, not by
+  reading the code and reasoning about it (mandate, task #43) — see the
+  new guilt+innocence pairs in scripts/tests/test_prepush_classify.py and
+  the direct `echo ... | python3 scripts/prepush_classify.py` runs logged
+  in the task #43 PR body.
+
 CONTRACT
 --------
 Input:  a list of repo-relative file paths, one per line, via:
@@ -157,7 +207,22 @@ VERDICT_SKIP = "skip-backend"
 # old bare-prefix ALLOWLIST_INNOCENT_PREFIXES into the suffix-scoped
 # ALLOWLIST_PREFIX_SUFFIX_PAIRS mechanism (MUST-FIX: extension-blindness),
 # added `..`-traversal + embedded-newline rejection (HARDENING-2).
-ALLOWLIST_VERSION = 2
+# v3 (2026-07-26, task #43): added .github/workflows (.yml) and
+# scripts/tests (.py) — two path classes measured (not assumed) to be
+# structurally incapable of affecting `pytest backend/tests/` — see the
+# module-docstring "v3 EXTENSION" section above for the verification.
+# v4 (2026-07-27): added apps/mouth/src (.ts/.tsx/.css) — the last
+# high-traffic tree with no entry, so every frontend-only PR was paying the
+# full ~43min backend suite and, on 2026-07-27, losing four consecutive
+# pushes to it. Innocence measured on disk (no backend test opens a file
+# under apps/mouth); .mdx deliberately excluded because a real reader
+# exists. See the allowlist table's `apps/mouth/src/**` entry.
+# v5 (2026-07-27, measured load-41 fleet night): added .agents/skills
+# (.md) and scripts/ci (.sh) — two more path classes measured (not
+# assumed) innocent w.r.t. `pytest backend/tests/`. See the allowlist
+# table's v5 section below for the 9-concurrent-suite / 7-of-9-zero-backend
+# measurement and the innocence method for both entries.
+ALLOWLIST_VERSION = 5
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -227,6 +292,138 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         EXCLUDED by this suffix scoping — they are not on
 #                         the allowed-suffix list, so they fall to
 #                         "unknown -> full" like any other .py change would.
+#   .github/workflows/**   v3 (task #43): scoped to `.yml` ONLY. A workflow
+#                         file is never imported by or collected into a
+#                         `pytest backend/tests/` run — see the module
+#                         docstring's "v3 EXTENSION" for the full argument.
+#                         `.github/workflows/tests.yml` itself is exempted
+#                         from this rule via NEVER_INNOCENT_EXACT_PATHS
+#                         (checked BEFORE this loop, so it still forces
+#                         full). The 1 real .txt file verified living in
+#                         this SAME directory
+#                         (catE-paid-anthropic-baseline.txt) is correctly
+#                         EXCLUDED by suffix scoping. Nothing outside
+#                         .github/workflows/ (e.g. .github/CODEOWNERS,
+#                         .github/actions/**) is admitted by this rule —
+#                         the prefix is workflows/ specifically, not .github
+#                         wholesale.
+#   scripts/tests/**       v3 (task #43): scoped to `.py` ONLY. The 235-file
+#                         suite audited in task #16 — tests OF the repo's
+#                         ops/immune-system scripts, verified structurally
+#                         unreachable from `pytest backend/tests/` (module
+#                         docstring, "v3 EXTENSION"). `conftest.py` under
+#                         this directory still forces full regardless (the
+#                         directory-independent NEVER_INNOCENT_BASENAMES
+#                         net, checked before this loop).
+#                         `scripts/tests/__init__.py` is verified empty and
+#                         admitted by this suffix rule like any other .py
+#                         file here — deliberate, not an oversight.
+#                         `scripts/tests/fixtures/` is verified to contain
+#                         only .md fixture data (no .py), so this scoping
+#                         does not admit anything from it. The 1 real .sh
+#                         file verified living in this SAME directory
+#                         (test_prepush_failclosed.sh) is correctly
+#                         EXCLUDED by suffix scoping — falls to
+#                         "unknown -> full" like any other .sh change would.
+#   apps/mouth/src/**     v4 (2026-07-27): scoped to `.ts`/`.tsx`/`.css`
+#                         ONLY. The frontend was the last high-traffic tree
+#                         with no entry, so every frontend-only PR paid the
+#                         full backend suite: measured ~43min at quiet load,
+#                         and on 2026-07-27 it killed FOUR consecutive
+#                         pushes of one frontend-only branch (the suite
+#                         outlives the background task's budget). The hook
+#                         does not even run the vitest suite that actually
+#                         covers such a diff (.husky/pre-push: "Run
+#                         manually: npm run test:ci").
+#                         INNOCENCE MEASURED, not assumed (2026-07-27):
+#                         10 backend test files mention `apps/mouth`, ALL as
+#                         string literals fed to a path->command mapper
+#                         (`verification_commands_for_paths` ->
+#                         "cd apps/mouth && npm run lint"); the only
+#                         `read_text` among them reads the test's OWN source
+#                         (test_async_review_supervisor.py:122), and
+#                         test_email_branding.py names
+#                         `apps/mouth/src/data/team-roster.ts` in its
+#                         DOCSTRING with zero IO calls in the file. No
+#                         backend test opens a file under apps/mouth.
+#                         `.mdx` is DELIBERATELY EXCLUDED and the exclusion
+#                         is load-bearing, not conservatism: 3360 of the
+#                         3835 tracked files under src/ are .mdx, and
+#                         backend/scripts/index_mdx_to_balizero_news.py
+#                         really does `ARTICLES_DIR.rglob("*.mdx")` and
+#                         `read_text()` them — a real reader, verified on
+#                         disk. `.json`/`.png`/`.yaml`/`.md`/`.example`
+#                         under src/ are excluded by the same suffix
+#                         scoping and fall to "unknown -> full".
+#                         Scoped to `src/` specifically, NOT `apps/mouth`
+#                         wholesale: `apps/mouth/data/**` holds the KBLI
+#                         dataset copies (37MB canonical + gold), which are
+#                         data-plane artifacts and must keep forcing full.
+#
+#   v5 (2026-07-27) — MEASURED, not hypothetical: load average 41 on M5,
+#   9 concurrent full `pytest backend/tests/` suites (~17k tests, 40-60min
+#   each under this contention; one had been running 1h21m). Tracing each
+#   running suite to its worktree and merge-base diff found 7 of the 9
+#   guarded diffs contained ZERO backend files. Two were pure markdown-only
+#   diffs whose ONLY changed file sits under `.agents/skills/` — a prefix
+#   the allowlist did not yet recognize; a third was blocked solely by
+#   `scripts/ci/setup_merge_queue_ruleset.sh`. Both added below, same
+#   innocence method as v3/v4: grep `apps/backend-rag/backend/`
+#   (tests + modules) for the DIRECTORY-BOUNDARY-ANCHORED path string
+#   (`.agents/` / `scripts/ci/`, trailing slash) — a bare substring grep
+#   without the anchor false-positives on Python dotted-module paths
+#   (`backend.app.agents.graph`) and unrelated files
+#   (`apps/backend-rag/scripts/ci_bootstrap_schema.py`), which is exactly
+#   the guard-over-match failure mode cicatrix-superscar.md #3 warns
+#   against for a *test* of innocence, not just the guard itself.
+#
+#   .agents/skills/**   Scoped to `.md` ONLY. `.agents/skills/README.md`
+#                       (verified on disk) states this tree is the
+#                       CANONICAL cross-agent skill store, established
+#                       2026-07-23 (skill-unification lane) — NOT a
+#                       duplicate of `.claude/skills/`. Proof: 4 of the 8
+#                       `.claude/skills/<name>` entries
+#                       (bot/kbli-navigator/visaoracle/wr2, verified via
+#                       `git ls-tree` mode 120000) are literal symlinks to
+#                       `../../.agents/skills/<name>`, so editing their
+#                       content through either path produces a `git diff`
+#                       on the REAL blob at `.agents/skills/<name>/…` — the
+#                       pre-v5 `.claude/skills` (.md) rule never covered
+#                       that path, which is why the two live worktrees in
+#                       the v5 measurement each paid a full suite for a
+#                       single SKILL.md edit. 15 tracked files total under
+#                       `.agents/`, all under `.agents/skills/`: 14 `.md` +
+#                       1 `.json` (`wr2/_research/…replay-metrics.json`,
+#                       correctly excluded by suffix scoping, falls to
+#                       "unknown -> full"). No `.agents/rules`,
+#                       `.agents/commands`, or `.agents/agents` tree exists
+#                       on disk today, so none of those prefixes are added
+#                       — an entry for a directory that does not exist is a
+#                       phantom, worse than a missing one. Innocence
+#                       MEASURED: zero matches for the anchored path string
+#                       `.agents/` anywhere under `apps/backend-rag/backend/`
+#                       (tests or modules); the only nearby hits are the
+#                       backend's OWN unrelated "skill" domain
+#                       (`skill_coach`, `catalog_initial_skills.py`, the
+#                       `skill` router — a DB-backed learner-skill entity,
+#                       not a filesystem SKILL.md corner), none of which
+#                       reference `.agents/` at all.
+#   scripts/ci/**       Scoped to `.sh` ONLY. Mirrors the DECLARED-choice
+#                       precedent of `infra/launchagents` (.sh is an
+#                       accepted innocent class there already). 5 tracked
+#                       files today: 3 `.sh` (`hotzone_changed_files.sh`,
+#                       `l5_2_phase2b_trigger_wrapper.sh`,
+#                       `test_hotzone_changed_files.sh`) + 2 `.py`
+#                       (`l5_2_phase2b_auto_analyzer.py`,
+#                       `redis_lease_check.py`) — the `.py` pair stays OUT
+#                       by suffix scoping, falls to "unknown -> full" like
+#                       any other `.py` change here would. Innocence
+#                       MEASURED: zero matches for the anchored path string
+#                       `scripts/ci/` under `apps/backend-rag/backend/`
+#                       (tests or modules), and zero basename-only hits for
+#                       any of the 3 `.sh` files individually (in case a
+#                       test subprocess-invokes one without the directory
+#                       prefix).
 #
 # Deliberately NOT `.claude/**` wholesale: `.claude/hooks/` (control-plane —
 # contains codex-spalla-trigger.sh, verified on disk), `.claude/scripts/`,
@@ -250,6 +447,11 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (".claude/commands", (".md",)),
     (".claude/agents", (".md",)),
     ("infra/launchagents", (".plist", ".sh")),
+    (".github/workflows", (".yml",)),
+    ("scripts/tests", (".py",)),
+    ("apps/mouth/src", (".ts", ".tsx", ".css")),
+    (".agents/skills", (".md",)),
+    ("scripts/ci", (".sh",)),
 )
 
 

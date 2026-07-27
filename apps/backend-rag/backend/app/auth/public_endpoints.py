@@ -289,6 +289,19 @@ _CLIENT_PORTAL = (
 
 _PUBLIC_KNOWLEDGE = (
     PublicEndpoint(
+        "/api/pricing/service",
+        Category.PUBLIC_KNOWLEDGE,
+        "Single-service price lookup by exact catalogue key. The public website "
+        "must render prices from PricingTool rather than hardcoded literals "
+        "(Golden Rule #11), and its visitors are anonymous — without this entry "
+        "every client-facing price stays a hand-maintained copy that drifts from "
+        "the SSOT. EXACT match on purpose: /api/pricing/all, /search and "
+        "/scenario stay authenticated. The response carries catalogue rows only "
+        "(key, name, price, category, validity, notes) — the same figures already "
+        "published on balizero.com, no client or CRM data.",
+        match="exact",
+    ),
+    PublicEndpoint(
         "/api/knowledge/visa",
         Category.PUBLIC_KNOWLEDGE,
         "Public visa types knowledge base — informational content for website visitors",
@@ -525,6 +538,27 @@ _VISA_ORACLE = (
         "/api/visa/match/{hash}",
         Category.VISA_ORACLE,
         "Visa Check Match result page — shareable URL, the hash is the access token",
+        match="template",
+    ),
+    # GARUDA VOA public request funnel (routers/garuda_voa.py, Slice A,
+    # BUILD-SPEC-SLICE-A-2026-07-27.md). Anonymous, no PII — the intake is
+    # enum/date/bool/ISO-code only (case_type/nationality/entry_date/
+    # passport_expiry_date/voa_expiry_date/extension_already_used/purpose/
+    # travellers/self_pay); see the "no PII column" comment on migration
+    # 261_garuda_voa_checks.sql. Rate-limited per-IP by RateLimitMiddleware
+    # via the generic "/api/" bucket, same class as Visa Check v1. Exact/
+    # template matches only — no blanket "/api/visa/" prefix.
+    PublicEndpoint(
+        "/api/visa/voa",
+        Category.VISA_ORACLE,
+        "GARUDA VOA request funnel submission — anonymous eligibility + Safe "
+        "Clock verdict, no PII",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/{hash}",
+        Category.VISA_ORACLE,
+        "GARUDA VOA result page — shareable URL, the hash is the access token",
         match="template",
     ),
 )

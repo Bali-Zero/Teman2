@@ -440,3 +440,89 @@ def test_create_team_crm_tools_returns_four_tools():
     names = {t.name for t in tools}
     assert names == tcm.TEAM_CRM_TOOL_NAMES
     assert len(tools) == 4
+
+
+# ---------------------------------------------------------------------------
+# filter_gemini_tools_for_caller — T-VIS (W0 safety pre-arm, 2026-07-25).
+#
+# The moment WA_TEAM_CRM_TOOLS_ENABLED is armed, create_agentic_rag()
+# appends these 4 tools' Gemini function declarations to the ORCHESTRATOR-
+# WIDE tools list — every caller, including anonymous WhatsApp clients,
+# would otherwise see the team-tool *schemas* even though execute() already
+# denies them at call time. This function strips those declarations from
+# the per-request payload sent to Gemini for any non-team/creator caller,
+# using the SAME trusted profile dict execute()'s _scope_from_kwargs reads.
+# Matches by exact tool name membership in TEAM_CRM_TOOL_NAMES — never a
+# substring — so no unrelated tool can accidentally be dropped.
+# ---------------------------------------------------------------------------
+
+_FULL_GEMINI_TOOLS = [
+    {"name": "vector_search", "description": "d"},
+    {"name": "crm_query", "description": "d"},
+    {"name": "get_pricing", "description": "d"},
+    {"name": "team_my_clients", "description": "d"},
+    {"name": "team_my_practices", "description": "d"},
+    {"name": "team_my_deadlines", "description": "d"},
+    {"name": "team_practice_detail", "description": "d"},
+]
+
+
+class TestFilterGeminiToolsForCaller:
+    # --- GUILT: team-tool declarations must be stripped for non-team callers ---
+
+    def test_guilt_client_profile_strips_all_team_tool_names(self):
+        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, CLIENT_PROFILE)
+        names = {t["name"] for t in filtered}
+        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
+
+    def test_guilt_none_profile_strips_all_team_tool_names(self):
+        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, UNKNOWN_PROFILE)
+        names = {t["name"] for t in filtered}
+        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
+
+    def test_guilt_unknown_role_strips_all_team_tool_names(self):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS, {"role": "unknown"}
+        )
+        names = {t["name"] for t in filtered}
+        assert names.isdisjoint(tcm.TEAM_CRM_TOOL_NAMES)
+
+    # --- INNOCENCE: team/creator callers keep the full list unchanged ---
+
+    def test_innocence_creator_profile_keeps_every_tool(self):
+        filtered = tcm.filter_gemini_tools_for_caller(
+            _FULL_GEMINI_TOOLS, ADMIN_PROFILE_CREATOR
+        )
+        assert filtered == _FULL_GEMINI_TOOLS
+
+    def test_innocence_team_profile_keeps_every_tool(self):
+        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, TEAM_PROFILE_A)
+        assert filtered == _FULL_GEMINI_TOOLS
+
+    # --- INNOCENCE: non-team tools are never collateral-dropped ---
+
+    def test_innocence_non_team_tools_survive_client_filter(self):
+        filtered = tcm.filter_gemini_tools_for_caller(_FULL_GEMINI_TOOLS, CLIENT_PROFILE)
+        names = {t["name"] for t in filtered}
+        assert names == {"vector_search", "crm_query", "get_pricing"}
+
+    # --- Edge cases ---
+
+    def test_empty_gemini_tools_list_returns_empty(self):
+        assert tcm.filter_gemini_tools_for_caller([], CLIENT_PROFILE) == []
+
+    def test_none_gemini_tools_returns_empty_list_not_none(self):
+        """The flag-off case: create_agentic_rag() never appends the team
+        tools, so `llm_gateway.gemini_tools` may legitimately be `[]`/None
+        for every caller — the filter must return a list either way, never
+        raise on None input."""
+        assert tcm.filter_gemini_tools_for_caller(None, CLIENT_PROFILE) == []
+
+    def test_flag_off_scenario_is_a_no_op_for_any_profile(self):
+        """When the flag is off, the tools list passed in never contains
+        team names in the first place (create_agentic_rag never appended
+        them) — filtering must be a pure no-op, not accidentally strip
+        something else."""
+        no_team_tools = [t for t in _FULL_GEMINI_TOOLS if t["name"] not in tcm.TEAM_CRM_TOOL_NAMES]
+        filtered = tcm.filter_gemini_tools_for_caller(no_team_tools, CLIENT_PROFILE)
+        assert filtered == no_team_tools

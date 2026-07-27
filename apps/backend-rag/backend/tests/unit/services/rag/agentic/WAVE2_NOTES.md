@@ -8,21 +8,21 @@
 
 ## Outcome summary
 
-| Area | Status | Tests added | Source LOC changed |
-|------|--------|-------------|--------------------|
-| O2 QueryPlanner active | ✅ | 1 | 0 (no code change) |
-| O9 MultiAgent fast-path | ✅ | 1 | 0 |
-| O10 MultiAgent exception fallback | ✅ | 1 | 0 |
-| O11 SpecializedServiceRouter (3 branches) | ✅ | 3 | 0 |
-| O13-partial NLM task creation / skip | ✅ | 2 | 0 |
-| O16-sync ReAct raise propagation | ✅ | 2 | 0 |
-| O20 Cautious NLM await + merge | ✅ | 1 | 0 |
-| O21 Non-cautious NLM cancel (I-O4) | ✅ | 1 | 0 |
-| O24 KG Auto-Expansion gate | ✅ | 2 (pos + neg) | 0 |
-| **U1** Tier1 narrow exception | ✅ Docstring + 2 tripwire | 2 | +9 (docstring) |
-| **U3** NLM cancel-path swallow | ✅ Log visibility | 0 | +14 (logging) |
-| **U5** Stream vs non-stream unification | ✅ Option A helper | 5 | +54 net (extract + rewire) |
-| **U6** Parallel step overshoot | ✅ In-code invariant comment | 0 | +10 (docstring) |
+| Area                                      | Status                       | Tests added   | Source LOC changed         |
+| ----------------------------------------- | ---------------------------- | ------------- | -------------------------- |
+| O2 QueryPlanner active                    | ✅                           | 1             | 0 (no code change)         |
+| O9 MultiAgent fast-path                   | ✅                           | 1             | 0                          |
+| O10 MultiAgent exception fallback         | ✅                           | 1             | 0                          |
+| O11 SpecializedServiceRouter (3 branches) | ✅                           | 3             | 0                          |
+| O13-partial NLM task creation / skip      | ✅                           | 2             | 0                          |
+| O16-sync ReAct raise propagation          | ✅                           | 2             | 0                          |
+| O20 Cautious NLM await + merge            | ✅                           | 1             | 0                          |
+| O21 Non-cautious NLM cancel (I-O4)        | ✅                           | 1             | 0                          |
+| O24 KG Auto-Expansion gate                | ✅                           | 2 (pos + neg) | 0                          |
+| **U1** Tier1 narrow exception             | ✅ Docstring + 2 tripwire    | 2             | +9 (docstring)             |
+| **U3** NLM cancel-path swallow            | ✅ Log visibility            | 0             | +14 (logging)              |
+| **U5** Stream vs non-stream unification   | ✅ Option A helper           | 5             | +54 net (extract + rewire) |
+| **U6** Parallel step overshoot            | ✅ In-code invariant comment | 0             | +10 (docstring)            |
 
 **Total new tests:** 21 (14 outer pipeline + 2 U1 tripwire + 5 U5 helper unit tests).
 **Total LOC changed:** ~87 additions, ~25 deletions in source (reasoning.py + _reasoning_policy.py + orchestrator_core.py).
@@ -46,9 +46,15 @@ returns a shared `_stub_final_state` that individual tests mutate in-place
 KG-expansion paths.
 
 Notable points:
+
 - **O9/O10** use the real `requires_multi_agent` detection (cost + timeline
-  keywords), no monkey-patching — we actually trigger the branch with a real
-  query string, confirming the entry-point predicate still works.
+  keywords) — we actually trigger the branch with a real query string,
+  confirming the entry-point predicate still works. Since 2026-07-27 the branch
+  is OFF by default (`_MULTI_AGENT_COORDINATOR_ENABLED`), so both tests enable
+  it explicitly via `patch.object`; that is the ONLY monkey-patching, and it
+  turns the feature on rather than faking the evidence that would let the
+  branch be entered. The default-off path has its own test
+  (`test_multi_agent_is_off_by_default_and_falls_through_to_react`).
 - **O20 (cautious merge)** uses a real `asyncio.create_task`-spawning
   coroutine (not a pre-resolved Future) so the `asyncio.wait_for(nlm_task)`
   path inside `process_query_core` is exercised for real.
@@ -65,6 +71,7 @@ Notable points:
 File: `test_abstain_bypass_policy.py` — new class `TestApplySharedTrustedFlippers` appended.
 
 Locks the contract of the new helper:
+
 - Early-True preserved (never flips True→False).
 - Pricing marker flips True on empty-tools gateway.
 - Has-tools + final_answer flips True without pricing.
@@ -76,6 +83,7 @@ Locks the contract of the new helper:
 File: `test_orchestrator_state_machine_wave2.py` — class `TestTier1RegenExceptionContract`.
 
 Locks the narrow catch on Tier1 regen:
+
 - ServiceUnavailable (in tuple) → abstain stub fallback (I-R2 preserved).
 - TypeError (NOT in tuple) → propagates → wrapped as `RuntimeError("ReAct loop failed: ...")` by `orchestrator_core.execute_react_loop`.
 
@@ -87,7 +95,7 @@ tuple, the first test (and the pre-existing Wave 1 test) fails.
 
 ## U5 decision: Option A — minimal helper extraction
 
-**Chosen:** partial Option A. Extract the *shared* portion only; document the
+**Chosen:** partial Option A. Extract the _shared_ portion only; document the
 stream-only pre-flippers as intentional widening.
 
 ### Rationale
@@ -107,11 +115,12 @@ streaming author didn't intend. Hiding the divergence behind a
 drift.
 
 Instead, we extracted **only the pair that IS identical** (pricing-in-answer
-+ LLM-had-tools) into `apply_shared_trusted_flippers(trusted_tools_used,
+
+- LLM-had-tools) into `apply_shared_trusted_flippers(trusted_tools_used,
 final_answer, llm_gateway) -> bool`. Both pipelines now call this helper,
-so that pair cannot drift. The stream-only pre-flippers stay in
-`execute_react_loop_stream` with a long docstring flagging them as a
-deliberate streaming-only widening with a cross-reference to this note.
+  so that pair cannot drift. The stream-only pre-flippers stay in
+  `execute_react_loop_stream` with a long docstring flagging them as a
+  deliberate streaming-only widening with a cross-reference to this note.
 
 ### What Option A delivered
 
@@ -164,6 +173,7 @@ hide real programmer errors (`TypeError`, `KeyError`, `AttributeError`)
 behind a graceful-looking abstain stub.
 
 The two tripwire tests fail loudly if either direction is changed:
+
 - `test_tier1_regen_service_unavailable_caught_and_stubbed` — narrowing
   breaks this.
 - `test_tier1_regen_typeerror_propagates_as_runtime` — widening to
@@ -190,6 +200,7 @@ response) while making a misbehaving NLM provider diagnosable with
 
 Kept the `state.current_step += len(tool_calls) - 1` as-is. Added a multi-line
 comment above the statement that:
+
 - Calls out the §U6 flag in docs/audits/2026-04-22-orchestrator-state-machine.md.
 - Explains the budget-enforcement intent (5 parallel tools = 5 units consumed
   even if all run in one physical iteration).
@@ -228,13 +239,13 @@ will see the rationale before touching it.
 
 ## Test results
 
-| Suite | Before Wave 2 | After Wave 2 | Delta |
-|-------|---------------|--------------|-------|
-| `test_orchestrator_state_machine_wave1.py` | 15 pass | 15 pass | 0 |
-| `test_orchestrator_coverage.py` | 37 pass / 7 skip | 37 pass / 7 skip | 0 |
-| `test_reasoning*.py` | — | — | 0 regressions |
-| `test_abstain_bypass_policy.py` | 31 pass | 36 pass | +5 |
-| `test_orchestrator_state_machine_wave2.py` | — | **16 pass** | +16 |
+| Suite                                       | Before Wave 2      | After Wave 2           | Delta                 |
+| ------------------------------------------- | ------------------ | ---------------------- | --------------------- |
+| `test_orchestrator_state_machine_wave1.py`  | 15 pass            | 15 pass                | 0                     |
+| `test_orchestrator_coverage.py`             | 37 pass / 7 skip   | 37 pass / 7 skip       | 0                     |
+| `test_reasoning*.py`                        | —                  | —                      | 0 regressions         |
+| `test_abstain_bypass_policy.py`             | 31 pass            | 36 pass                | +5                    |
+| `test_orchestrator_state_machine_wave2.py`  | —                  | **16 pass**            | +16                   |
 | **Full `tests/unit/services/rag/agentic/`** | 925 pass / 30 skip | **946 pass / 30 skip** | **+21, 0 regression** |
 
 ---
@@ -250,7 +261,7 @@ Not in scope for this PR but natural follow-ups:
    `tool_execution_counter["count"]` is monotonic across an entire
    pipeline invocation. One observational test would lock it.
 3. **ARCH-4 cross-notebook correlator** — the `resolve_multi_notebook`
-   >=2 match branch spawns a `cross_notebook_correlator` task; not tested.
+   > =2 match branch spawns a `cross_notebook_correlator` task; not tested.
 4. **Grading gates ACTIVE** — §U4 clamp behavior in active mode is
    tested at the unit level (Wave 1 clamp patch) but no integration test
    runs the full pipeline with `_ENABLE_GRADING_GATES=True`.

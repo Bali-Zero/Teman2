@@ -1,0 +1,345 @@
+---
+title: "CoreTax DJP 2025: Panduan SPT Tahunan untuk Klien Bali Zero"
+slug: "coretax-spt-tahunan-2025-panduan-bali-zero"
+description: "Panduan praktis SPT Tahunan 2025 via CoreTax untuk PT PMA dan profesional klien Bali Zero. Deadline, langkah pengisian, error umum, dan cara Bali Zero handle proses dari awal sampai submit."
+excerpt: "CoreTax adalah satu-satunya sistem untuk SPT Tahunan 2025. Ini panduan dari Bali Zero: siapa yang wajib, apa yang berbeda dari sistem lama, error apa yang paling sering terjadi — dan bagaimana kami handle prosesnya untuk Anda."
+category: "tax"
+tags:
+  - CoreTax
+  - SPT Tahunan
+  - DJP Online
+  - e-filing pajak
+  - PT PMA pajak
+  - PPh Badan
+  - sertifikat elektronik
+  - SPT 2025
+publishedAt: "2026-07-22"
+updatedAt: "2026-07-22"
+author:
+  name: "Subhi Darajat"
+  avatar: "/static/team/subhi.jpg"
+  role: "Tax & Compliance Analyst"
+featured: false
+adversarial_review: "surya"
+readingTime: 14
+difficulty: "intermediate"
+aiGenerated: false
+tableOfContents: true
+relatedArticles:
+  - "coretax-vs-djp-online-what-changed"
+  - "coretax-login-errors-fixes-2026"
+  - "coretax-npwp16-vs-npwp15-foreigners"
+  - "tax-compliance-checklist-pt-pma"
+  - "tax-calendar-indonesia"
+seoTitle: "CoreTax SPT Tahunan 2025: Panduan Lengkap untuk PT PMA & Profesional"
+seoDescription: "Deadline SPT Badan 2025 sudah lewat? Panduan CoreTax untuk PT PMA dan klien Bali Zero: langkah-langkah, error umum, dan cara kami handle prosesnya untuk Anda."
+faq:
+  - question: "Apa deadline SPT Tahunan 2025 untuk PT PMA?"
+    answer: "SPT Tahunan Badan untuk tahun pajak 2025 memiliki deadline 30 April 2026. DJP memberikan relaksasi perpanjangan hingga 31 Mei 2026 tanpa sanksi administrasi, karena penerapan CoreTax yang masih dalam masa adaptasi. Setelah 31 Mei 2026, denda keterlambatan IDR 1.000.000 berlaku."
+  - question: "Apakah semua PT PMA wajib pakai CoreTax untuk SPT 2025?"
+    answer: "Ya. Mulai tahun pajak 2025 (dilaporkan 2026), seluruh Wajib Pajak Badan termasuk PT PMA diwajibkan menggunakan sistem CoreTax di coretaxdjp.pajak.go.id untuk pelaporan SPT Tahunan. DJP Online tidak lagi menerima SPT Tahunan baru."
+  - question: "Kenapa SPT Tahunan Badan di CoreTax sering error 'Operasi Gagal'?"
+    answer: "Error 'Operasi Gagal' saat menyimpan data SPT Badan di CoreTax paling sering disebabkan oleh Lampiran L6 (Angsuran PPh Pasal 25) yang tidak terisi lengkap. Periksa kembali bagian ini meskipun perusahaan Anda tidak wajib angsuran — kolom perlu diisi atau disesuaikan agar sistem dapat memproses."
+aiOptimization:
+  primaryQuestion: "Bagaimana cara melaporkan SPT Tahunan 2025 via CoreTax DJP untuk PT PMA?"
+  answerSnippet: "Login ke coretaxdjp.pajak.go.id menggunakan NPWP 16 digit (tambahkan '0' di depan NPWP 15 digit lama). Masuk ke menu SPT > Buat Konsep SPT > pilih PPh Badan tahun pajak 2025. Isi mulai dari induk, lampiran keuangan, rekonsiliasi fiskal, dan lampiran-lampiran. Tandatangani dengan sertifikat elektronik + passphrase. Deadline: 30 April 2026 (relaksasi s/d 31 Mei 2026). Denda keterlambatan: IDR 1.000.000."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Pajak (DJP)"
+    - type: "SoftwareApplication"
+      name: "CoreTax DJP"
+      sameAs: "https://coretaxdjp.pajak.go.id"
+contentStructure:
+  hasHowTo: true
+  hasFAQ: true
+  hasTable: true
+canonicalUrl: "https://balizero.com/tax/coretax-spt-tahunan-2025-panduan-bali-zero"
+ogType: "article"
+twitterCard: "summary_large_image"
+locale: "it"
+---
+import { HeaderWhatsAppCTA } from "@/components/blog/HeaderWhatsAppCTA";
+import { ArticleClusterCTA } from "@/components/blog/ArticleClusterCTA";
+import {
+  KeyTakeaway,
+  InfoCard,
+  AskZantara,
+} from "@/components/blog/interactive";
+
+# CoreTax DJP 2025: Guida alla Dichiarazione Unica per i Clienti Bali Zero
+
+<KeyTakeaway>
+  **TL;DR:** La Dichiarazione Unica 2025 deve essere presentata tramite CoreTax (coretaxdjp.pajak.go.id).
+  Scadenza per le Società: 30 aprile 2026, con una proroga fino al **31 maggio 2026** senza multe.
+  Accesso: NPWP 16 cifre + password + passphrase del certificato elettronico. Errori
+  più comuni: Allegato L6 vuoto, certificato non valido, dati non sincronizzati
+  con l'e-Bupot. Bali Zero gestisce l'intero processo dalla preparazione della documentazione fino alla presentazione — i clienti devono solo approvare e firmare digitalmente.
+</KeyTakeaway>
+
+<HeaderWhatsAppCTA />
+
+---
+
+## CoreTax: Non è un'Opzione, è un Obbligo
+
+Dal 2025, **DJP Online non accetta più nuove Dichiarazioni Uniche**. Tutte le dichiarazioni — incluse quelle per le Società di Investimento Estero (PT PMA) — devono essere presentate attraverso il sistema CoreTax Administration System (Sistema Intero Amministrativo Fiscale) su **coretaxdjp.pajak.go.id**.
+
+Questo non è solo un cambio di aspetto del sito web. CoreTax è una nuova infrastruttura fiscale che integra e-Filing, e-Fattura, e-Bupot, e-Billing e la gestione dei certificati elettronici in un unico piattaforma. Il processo è fondamentalmente diverso da DJP Online, e la curva di apprendimento — soprattutto per gli stranieri che si avvicinano per la prima volta al sistema fiscale indonesiano — è ripida.
+
+Questa guida è stata creata appositamente per i clienti di Bali Zero: fondatori stranieri, PT PMA e professionisti che devono comprendere ciò che accade dietro le quinte quando gestiamo le loro dichiarazioni fiscali.
+
+---
+
+## Chi Deve Presentare la Dichiarazione Unica tramite CoreTax?
+
+### Soggetti Obbligati alle Imposte sulle Società (PT PMA)
+
+Ogni PT PMA che:
+
+- È iscritta come Soggetto Obbligato alle Imposte sulle Società in Indonesia
+- È operativa durante l'anno fiscale 2025, anche se non ha generato reddito
+- Possiede un NPWP attivo (inclusi quelli con stato Non-Efettivo — richiedere conferma al KPP)
+
+**Modulo utilizzato: SPT 1771**
+
+### Soggetti Obbligati alle Imposte sulle Persone Fisiche (Professionisti, Consulenti)
+
+Clienti individuali — avvocati, consulenti, freelance stranieri con NPWP — sono anch'essi obbligati a utilizzare CoreTax per la Dichiarazione Unica Personale (Modulo 1770 o 1770S).
+
+<InfoCard variant="note" title="Sui Gruppi PNP e PK">
+
+La breve interna di Bali Zero menziona "PNP" (Imprenditore Non Soggetto a IVA) e "PK"
+(Imprenditore Soggetto a IVA). Dal punto di vista della Dichiarazione Unica, la distinzione più rilevante è tra Soggetti Obbligati alle Imposte sulle Società (Modulo 1771) e Soggetti Obbligati alle Imposte sulle Persone Fisiche (Modulo 1770/1770S). Lo status di PKP influisce sull'obbligo IVA, non sull'obbligo della Dichiarazione Unica PPh. **[NECESSARIA VALIDAZIONE DI SURYA]: confermare se il raggruppamento PNP/PK menzionato nella breve si riferisce a un contesto diverso all'interno di Bali Zero.**
+
+</InfoCard>
+
+---
+
+## Scadenze per la Dichiarazione Unica 2025 — Numeri Importanti
+
+| Tipo di Soggetto Obbligato         | Modulo                  | Scadenza Normale                  | Proroga 2026        | Multa per Ritardo |
+| --------------------------         | ---------------------     | -------------------------------- | --------------------- | --------------- |
+| **Persone Fisiche**                | 1770 / 1770S / 1770SS   | 31 marzo 2026                    | _nessuna proroga_   | IDR 100.000     |
+| **Società (PT PMA)**               | 1771                    | 30 aprile 2026                   | **31 maggio 2026**  | IDR 1.000.000   |
+| **Società (periodo speciale)**     | 1771                    | 4 mesi dopo la fine dell'anno fiscale | _secondo periodo_ | IDR 1.000.000   |
+
+<InfoCard variant="warning" title="La Proroga per le Società è Solo Fino al 31 Maggio 2026">
+
+La DJP, attraverso un annuncio ufficiale, ha concesso una proroga per la presentazione della Dichiarazione Unica delle Società per l'anno fiscale 2025, da 30 aprile a **31 maggio 2026**, senza applicazione della sanzione amministrativa di IDR 1.000.000. La proroga è stata concessa a causa del processo di adattamento al sistema CoreTax che è ancora in corso. **Dopo il 31 maggio 2026, le sanzioni si applicano pienamente.** Fonte: annuncio ufficiale di pajak.go.id e del Ministero delle Finanze.
+
+</InfoCard>
+
+Il ritardo nella presentazione della Dichiarazione Unica non è solo una questione di multe. Le conseguenze pratiche spesso trascurate sono:
+
+- Il processo di rinnovo del KITAS/ITAS che richiede la prova della conformità fiscale sarà ritardato
+- Le richieste di credito bancario o di gare governative richiedono una Certificazione Fiscale che viene rilasciata solo se la Dichiarazione Unica è stata presentata
+- La DJP può emettere un SP2DK (Comunicazione di Richiesta di Spiegazioni sui Dati e le Informazioni) che apre la possibilità di un controllo
+
+---
+
+## Funzionalità di CoreTax 2025 Rilevanti per la Dichiarazione delle Società
+
+### 1. Compilazione Online Integrata
+
+A differenza di DJP Online che accettava l'upload di file CSV/XML, CoreTax richiede la compilazione diretta nel sistema. Il Modulo 1771 viene compilato in modo strutturato:
+
+- **Dichiarazione Principale**: Identità del Soggetto Obbligato, tipo di attività, riepilogo finanziario
+- **Allegato I**: Reddito netto commerciale
+- **Allegato II**: Costo del Bene Venduto (HPP)
+- **Allegato III**: Credito d'imposta (PPh 22, 23, 24, 25)
+- **Allegato IV**: PPh Definitivo e reddito non soggetto a imposta
+- **Allegato V**: Elenco degli azionisti e delle partecipazioni
+- **Allegato VI**: Ratei di PPh 25 _(questo è spesso la fonte di errori)_
+- **Reconciliazione Fiscale**: Correzione tra il profitto commerciale e il profitto fiscale
+
+### 2. Validazione in Tempo Reale
+
+CoreTax valida i dati durante la compilazione, non dopo l'invio. Questo significa:
+
+- Numeri non bilanciati (attivo ≠ passivo + patrimonio netto) vengono rifiutati immediatamente
+- NPWP di terzi non validi vengono immediatamente segnalati
+- Duplicati di e-Bupot vengono rilevati prima di entrare nella dichiarazione
+
+### 3. Cross-Referencing Automatico con l'e-Bupot
+
+CoreTax confronta automaticamente i Buoni di Potting ricevuti dai clienti con la dichiarazione presentata. Questo significa:
+
+- Se uno dei vostri clienti ha trattenuto PPh 23 per un servizio pagato alla vostra PT, quei dati sono già presenti in CoreTax prima che voi li compiliate
+- Discrepanze (mismatch) tra i buoni di potting ricevuti e i crediti d'imposta rivendicati vengono rilevate automaticamente
+
+### 4. Firma Digitale con Passphrase
+
+Tutti gli invii in CoreTax richiedono un **certificato elettronico** rilasciato dalla DJP, completato con una **passphrase** — non solo una password di accesso. Questo è uno strato di sicurezza per la firma digitale sui documenti ufficiali.
+
+Nella pratica, consulenti fiscali certificati come Bali Zero operano utilizzando l'account del direttore come Responsabile (PIC) della PT — non è richiesto un mandato a bollo separato per l'accesso operativo quotidiano in CoreTax.
+
+---
+
+## Errori Più Comuni e Come Risolverli
+
+In base all'esperienza del processo di dichiarazione dei clienti di Bali Zero e ai rapporti pubblici degli contabili, ecco gli errori più comuni:
+
+### Errore 1: "Operazione Non Riuscita" durante il Salvataggio della Dichiarazione
+
+**Causa principale:** L'Allegato L6 (Ratei di PPh Articolo 25) non è stato compilato in modo completo, anche se l'azienda non è obbligata a ratei.
+
+**Soluzione:**
+
+1. Accedere all'Allegato L6 direttamente dal menu del modulo
+2. Verificare se ci sono campi vuoti o con valore zero senza conferma
+3. Se l'azienda non è obbligata a ratei di PPh 25 (perché nuova o con reddito netto fiscale zero), assicurarsi che i campi siano compilati con "0" e non lasciati vuoti
+
+### Errore 2: Errore del Server 500/501/401
+
+**Causa:** Traffico elevato (periodo di scadenza), cache del browser o sessione scaduta.
+
+**Soluzione:**
+
+1. Pulire completamente la cache e i cookie del browser
+2. Utilizzare la modalità Incognito/Finestra Privata
+3. Provare con un browser diverso (Chrome è consigliato dalla DJP)
+4. Accedere fuori dagli orari di punta: prima delle 08.00 o dopo le 20.00
+5. Salvare il draft in modo regolare — CoreTax offre la funzione "Salva Bozza" che dovrebbe essere utilizzata ogni 10-15 minuti
+
+Una cosa che deve essere compresa chiaramente: la DJP non fornisce un ricevuta di presentazione manuale come alternativa all'invio CoreTax se il server ha problemi il giorno della scadenza. Non esiste un meccanismo di backup ufficiale che garantisca la validità delle dichiarazioni non inviate a causa di un downtime. Pertanto, la pratica migliore adottata costantemente dai consulenti fiscali esperti è completare e presentare la dichiarazione molto prima della scadenza — almeno tre a cinque giorni lavorativi prima della data limite.
+
+### Errore 3: Certificato Elettronico Non Valido / Passphrase Rifiutata
+
+**Causa:** Certificato scaduto, passphrase dimenticata o certificato non validato dopo il reset.
+
+**Soluzione:**
+
+1. Accedere: _Il Mio Portale > Il Mio Profilo > Identificativo Esterno > Certificato Digitale_
+2. Cliccare **"Controlla Stato"** — assicurarsi che lo stato sia "Valido"
+3. Se scaduto o non valido: richiedere l'aggiornamento tramite _Il Mio Portale > Richiesta Codice di Autorizzazione/Certificato Elettronico_
+4. Dopo il reset della passphrase, validare nuovamente lo stato prima di inviare la dichiarazione
+
+**Nota Sertel/EFIN:** Secondo la conferma della DJP, questa procedura non può essere delegata a terzi in nessun KPP in Indonesia. Solo uno degli azionisti (shareholder) dell'azienda può presentarsi personalmente per richiedere l'autorizzazione.
+
+La passphrase è diversa dalla password di accesso. La passphrase viene utilizzata esclusivamente per la firma dei documenti e deve rispettare i requisiti: almeno 8 caratteri, contenere lettere maiuscole, minuscole, numeri e caratteri speciali.
+
+### Errore 4: Dati Non Sincronizzati con l'e-Bupot
+
+**Causa:** I buoni di potting ricevuti dai clienti non sono ancora entrati nel sistema, o ci sono discrepanze tra i dati che rivendicate e quelli registrati dalla DJP.
+
+**Soluzione:**
+
+1. Chiedere una conferma alla parte emittente del Buono di Potting che abbiano già inviato alla DJP tramite CoreTax
+2. Controllare il menu _e-Bupot Ricevuti_ in CoreTax — tutti i buoni di potting ricevuti dal vostro NPWP dovrebbero essere elencati qui
+3. Se ci sono discrepanze nei valori, contattare l'emittente del buono per la correzione
+
+### Errore 5: Periodo della Dichiarazione Non Visualizzato
+
+**Causa:** Non è un bug, ma un conflitto tra il periodo contabile registrato nel profilo CoreTax e quello effettivamente utilizzato.
+
+**Soluzione:** Controllare _Il Mio Portale > Il Mio Profilo > Informazioni Generali_. Assicurarsi che il periodo contabile registrato nel sistema corrisponda all'anno fiscale dell'azienda (Gennaio-Dicembre, o periodo speciale se applicabile).
+
+---
+
+## Documenti Necessari Prima di Compilare la SPT 1771
+
+Per le PT PMA, questi documenti devono essere disponibili prima di iniziare:
+
+| Documento                                | Descrizione                                 |
+| --------------------------------------     | ------------------------------------------ |
+| **Bilancio** (P&L + Bilancio Patrimoniale) | Al 31 dicembre 2025, in Rupiah         |
+| **Reconciliazione Fiscale**                | Correzione delle differenze permanenti e temporanee          |
+| **Buoni di Potting Ricevuti**         | PPh 22, 23, 24 da terzi           |
+| **Ricevute di Pagamento PPh 25**                | Tutte le prove di ratei mensili durante il 2025 |
+| **Elenco delle Ammortizzazioni Fiscali**           | Per il metodo fiscale, non commerciale         |
+| **Dati degli Azionisti**                | Nome, NPWP/NIK, percentuale di proprietà     |
+| **Certificato Elettronico + Passphrase** | Per la firma digitale dell'invio      |
+| **Prove di Dividendi / Utili**         | Se ci sono distribuzioni agli azionisti nel 2025 |
+
+<InfoCard variant="note" title="Bilancio Audit: Obbligatorio o No?">
+
+Le PT PMA con un fatturato superiore a IDR 50 miliardi devono allegare un bilancio
+auditato da un Contabile Pubblico iscritto. Sotto i IDR 50 miliardi,
+il bilancio interno è sufficiente come allegato alla dichiarazione — anche se
+è comunque consigliato avere un bilancio preparato professionalmente per
+evitare correzioni fiscali significative.
+
+</InfoCard>
+
+---
+
+## Timeline della Dichiarazione delle Società: Dalla Preparazione all'Invio
+
+Per i clienti di Bali Zero, questa è la timeline che seguiamo:
+
+| Fase                      | Attività                                                            | Chi                           |
+| -------------------------- | ------------------------------------------------------------------- | ------------------------------- |
+| **Febbraio – Marzo**       | Raccolta documenti, riconciliazione bancaria, finalizzazione del bilancio | Cliente → Bali Zero               |
+| **Aprile**                  | Reconciliazione fiscale, calcolo dell'imposta sulle società dovuta, revisione e-Bupot   | Bali Zero                       |
+| **Metà Aprile**      | Bozza della dichiarazione inviata al cliente per la revisione e l'approvazione             | Bali Zero → Cliente               |
+| **Fine Aprile / Inizio Maggio** | Inserimento in CoreTax, validazione del sistema, risoluzione degli errori                   | Bali Zero                       |
+| **Prima del 31 Maggio**         | Invio della passphrase del certificato dal cliente → Invio finale          | Cliente approva, Bali Zero invia |
+
+**Ruolo del cliente in questo processo:** Revisionare il bilancio preparato dal nostro team, fornire l'approvazione e inviare la passphrase del certificato elettronico per la firma. Il processo tecnico in CoreTax lo gestiamo interamente noi.
+
+---
+
+## Cosa è Diverso per la Dichiarazione 2025 rispetto agli Anni Precedenti?
+
+Se voi (o il vostro contabile) avete già presentato tramite DJP Online, ecco ciò che è cambiato in modo significativo:
+
+| Aspetto               | DJP Online (Prima del 2025)                  | CoreTax (2025 e seguenti)                 |
+| ------------------- | ------------------------------------------ | --------------------------------------------- |
+| Modalità di compilazione      | Upload di file CSV/XML                        | Compilazione diretta online                         |
+| Firma        | EFIN o e-Signature separata             | Passphrase del certificato elettronico integrata |
+| Validazione            | Dopo l'upload/invio                      | In tempo reale durante la compilazione                      |
+| Cross-check e-Bupot | Manuale                                     | Automatico dal sistema                          |
+| Errori immediati      | No (si scopre solo dopo il processing della DJP) | Rilevati prima dell'invio                     |
+| Accesso multi-utente    | No                                  | Amministratore può essere assegnato per account                |
+
+---
+
+<ArticleClusterCTA slug="coretax-spt-tahunan-2025-panduan-bali-zero" />
+
+## Se Avete Superato la Scadenza
+
+Se la Dichiarazione delle Società 2025 non è stata presentata e è già passato il 31 maggio 2026:
+
+1. **Presentatela immediatamente** — più si aspetta, maggiore è il rischio di SP2DK o di un controllo
+2. **Calcolate e pagate la multa** — IDR 1.000.000 tramite Codice di Fatturazione in CoreTax (menu e-Billing > Multe/Sanzioni SPT)
+3. **Pagare l'eventuale imposta mancante** (se presente) — prima di inviare la dichiarazione, perché la dichiarazione deve essere in condizione "nula" o "sovrappagata" al momento della presentazione
+4. **Non c'è amnistia per questo** — la proroga al 31 maggio è terminata; le sanzioni si applicano immediatamente
+
+---
+
+## Note per il Team Surya
+
+**Stato: PARZIALMENTE VALIDATO — Angel (23 lug 2026)**
+
+- Q1 (Sertel/EFIN): VALIDATO — non può essere delegato, solo azionista
+- Q2 (Gestione ruoli): VALIDATO — account del direttore come PIC, non è richiesto un mandato a bollo
+- Q3 (CoreTax down): VALIDATO — non c'è ricevuta manuale, inviare prima della scadenza è la procedura standard
+
+⚠️ **Domande per la revisione regolamentare — OBBLIGATORIE prima della pubblicazione:**
+
+**Domande Critiche:**
+
+1. **Scadenza cruciale per i clienti di Bali Zero**: Dall'esperienza nella gestione delle dichiarazioni dei clienti, ci sono scadenze intermedie (_interim deadline_) che spesso vengono dimenticate oltre alla scadenza finale di aprile/maggio? Ad esempio: scadenza del pagamento dei ratei di PPh 25, scadenza della presentazione del bilancio al Ministero della Giustizia, o la presentazione del LKPM che interagisce con il processo della dichiarazione?
+
+2. **Errore più frequente per i clienti di Bali Zero**: Dalle situazioni reali gestite, quale parte del Modulo 1771 causa più problemi? Ci sono errori specifici di CoreTax che sono già stati risolti internamente da Bali Zero e non sono stati pubblicati?
+
+3. **Passphrase e accesso del cliente straniero**: Processo di invio della passphrase da parte del cliente straniero (che potrebbe trovarsi all'estero durante la scadenza) — c'è una procedura speciale? Mandato per l'autorizzazione del Soggetto Obbligato in CoreTax?
+
+4. **Conferma della proroga**: La proroga al 31 maggio 2026 per la Dichiarazione delle Società 2025 — è già scaduta al momento della pubblicazione dell'articolo (22 luglio 2026)? Se sì, la sezione delle scadenze deve essere aggiornata per concentrarsi su "come presentare ora anche se in ritardo" e sulle sanzioni applicabili.
+
+5. **Stato di DJP Online**: È vero che DJP Online è completamente disattivato per le nuove Dichiarazioni Uniche, o ci sono ancora funzioni attive?
+
+---
+
+_La vostra PT PMA non ha ancora presentato la Dichiarazione 2025, o siete bloccati nel processo CoreTax? Il team di Bali Zero gestisce l'intero processo da A a Z — incluso la preparazione del bilancio, la reconciliazione fiscale, l'inserimento in CoreTax e l'invio. Contattateci via WhatsApp._
+
+<AskZantara
+  context="CoreTax DJP, Dichiarazione Unica 2025, Dichiarazione delle Società, PT PMA tasse, scadenza dichiarazione, certificato elettronico, passphrase CoreTax"
+  placeholder="Chiedi sulla Dichiarazione Unica e CoreTax..."
+  suggestedQuestions={[
+    "È già passata la scadenza del 31 maggio, cosa devo fare ora?",
+    "Come impostare l'account CoreTax per una nuova PT PMA?",
+    "Errore 'Operazione Non Riuscita' nel Modulo 1771 — come risolverlo?",
+    "Qual è il costo di Bali Zero per gestire la Dichiarazione Unica della PT PMA?",
+  ]}
+/>

@@ -15,6 +15,7 @@ name: asyncpg-lint
 
 on:
   pull_request:
+  merge_group:
   push:
     branches:
       - main
@@ -24,7 +25,7 @@ permissions:
 
 concurrency:
   group: asyncpg-lint-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   asyncpg-lint:
@@ -35,3 +36,18 @@ jobs:
       - uses: actions/checkout@v7
       - name: Run asyncpg except-completeness lint (blocking)
         run: python3 scripts/lint_asyncpg_except_completeness.py
+
+      # The lint's OWN tests must run where the lint runs. Nothing globs
+      # scripts/tests/ in CI — a test file there executes only if a workflow
+      # NAMES it — so without this step the blind-scan guard below would be
+      # protected by a test that never runs, and any future edit could delete
+      # the guard with CI still green (cicatrix #2, "exists != armed").
+      #
+      # Runs AFTER the lint so a genuine violation still reports first. Costs a
+      # pytest install (~10s) inside an existing job — no extra runner slot,
+      # which is the scarce resource here (see
+      # research/operations/2026-07-26-ci-pr-latency-*.md).
+      - name: Prove the lint's blind-scan guard still bites
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pytest
+          python3 -m pytest scripts/tests/test_lint_asyncpg_except_completeness.py -q

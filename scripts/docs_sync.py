@@ -538,8 +538,21 @@ TEMPLATES: dict[str, Any] = {
 # Stats gathering
 # ---------------------------------------------------------------------------
 
-def gather_stats() -> dict[str, Any]:
-    """Collect all stats from codebase."""
+def gather_stats(*, read_only: bool = False) -> dict[str, Any]:
+    """Collect all stats from codebase.
+
+    read_only=True skips the cache refresh below. Used by --check/--diff/--json:
+    those modes are documented (and, for --check, relied on by CI) as
+    non-mutating, but this function used to call `_save_cache` unconditionally
+    — every "read-only" invocation quietly dirtied `.docs_sync_cache.json` on
+    disk. The tracked cache itself must stay committed: CI's docs-sync.yml
+    workflow has no QDRANT_URL/QDRANT_API_KEY, so `get_qdrant_stats()` falls
+    back to this committed snapshot rather than the older hardcoded
+    `_QDRANT_FALLBACK` — untracking it would make --check fail on every
+    triggering PR (verified empirically: removing the file flips
+    `--check` from OK to STALE). This flag only stops the SIDE-EFFECT write,
+    never the read.
+    """
     qdrant = get_qdrant_stats()
     kg = get_kg_stats()
     stats = {
@@ -558,8 +571,9 @@ def gather_stats() -> dict[str, Any]:
         "skills": list_skills(),
         "automation_coverage": automation_coverage(),
     }
-    # Refresh cache with successful fetches
-    _save_cache({"qdrant": qdrant, "kg": kg})
+    if not read_only:
+        # Refresh cache with successful fetches
+        _save_cache({"qdrant": qdrant, "kg": kg})
     return stats
 
 
@@ -646,7 +660,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    stats = gather_stats()
+    # --check/--diff/--json are all documented as non-mutating; none of them
+    # may leave .docs_sync_cache.json touched on disk.
+    stats = gather_stats(read_only=args.check or args.diff or args.json)
 
     if args.json:
         print(json.dumps(stats, indent=2, default=str))

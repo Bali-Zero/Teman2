@@ -391,5 +391,168 @@
       "button": "Richiedi il Fit Memo gratuito →",
       "note": "Prima risposta su WhatsApp in genere entro 5 ore."
     }
+  },
+  "garudaVoa": {
+    "wizard": {
+      "title": "Verifica il tuo Visa on Arrival",
+      "subtitle": "Poche domande rapide — idoneità VOA, finestra di soggiorno e prezzo.",
+      "trust": {
+        "stat1l": "domande rapide",
+        "stat2l": "documenti da caricare qui",
+        "stat3l": "pagamento richiesto ora"
+      },
+      "caseType": {
+        "stepTitle": "Tipo di richiesta",
+        "question": "Di cosa hai bisogno?",
+        "issuance": "Sto arrivando e ho bisogno di un nuovo Visa on Arrival",
+        "extension": "Sono già in Indonesia e devo estendere il mio VOA attuale",
+        "validate": "Scegli un'opzione per continuare."
+      },
+      "caseDetails": {
+        "stepTitle": "Le tue date",
+        "issuanceQuestion": "Quando prevedi di entrare in Indonesia?",
+        "entryDateLabel": "Data di ingresso prevista",
+        "extensionQuestion": "Quando scade il tuo VOA attuale?",
+        "voaExpiryLabel": "Data di scadenza del VOA attuale",
+        "extensionEntryQuestion": "Quando sei entrato in Indonesia originariamente con questo VOA?",
+        "extensionEntryLabel": "Data di ingresso originale",
+        "extensionUsedQuestion": "Hai già esteso questo VOA una volta in precedenza?",
+        "yes": "Sì",
+        "no": "No",
+        "inPersonNote": "Dal 29 maggio 2025, l'estensione del VOA richiede foto e colloquio di persona presso l'ufficio immigrazione — non è mai interamente online.",
+        "validateEntry": "Scegli la tua data di ingresso prevista.",
+        "validateVoaExpiry": "Scegli la data di scadenza del tuo VOA attuale.",
+        "validateExtensionEntry": "Scegli la tua data di ingresso originale.",
+        "validateExtensionUsed": "Facci sapere se hai già esteso in precedenza.",
+        "summaryIssuance": "Ingresso {{date}}",
+        "summaryExtension": "Scade {{date}}"
+      },
+      "passportExpiry": {
+        "stepTitle": "Passaporto",
+        "question": "Quando scade il tuo passaporto?",
+        "label": "Data di scadenza del passaporto",
+        "validate": "Inserisci la data di scadenza del passaporto."
+      },
+      "nationality": {
+        "stepTitle": "Nazionalità",
+        "question": "Qual è la tua nazionalità?",
+        "placeholder": "Seleziona…",
+        "validate": "Scegli una nazionalità.",
+        "options": {
+          "usa": "Stati Uniti",
+          "gbr": "Regno Unito",
+          "ita": "Italia",
+          "deu": "Germania",
+          "fra": "Francia",
+          "aus": "Australia",
+          "can": "Canada",
+          "nld": "Paesi Bassi",
+          "sgp": "Singapore",
+          "other": "Altro"
+        }
+      },
+      "purpose": {
+        "stepTitle": "Scopo",
+        "question": "Qual è lo scopo del tuo soggiorno?",
+        "tourism": "Turismo",
+        "family": "Visita alla famiglia",
+        "transit": "Transito",
+        "businessMeeting": "Riunione di lavoro",
+        "validate": "Scegli un'opzione."
+      },
+      "travellers": {
+        "stepTitle": "Viaggiatori",
+        "question": "Quante persone viaggiano in questo caso? ({{count}})",
+        "hintMin": "1",
+        "hintMax": "10"
+      },
+      "selfPay": {
+        "stepTitle": "Pagamento",
+        "question": "Stai coprendo tu stesso il costo di questo VOA?",
+        "yes": "Sì, pago io",
+        "no": "No, paga qualcun altro",
+        "validate": "Scegli un'opzione."
+      },
+      "submitError": {
+        "text": "Non siamo riusciti a calcolare un risultato. Riprova oppure",
+        "linkLabel": "scrivici su WhatsApp"
+      },
+      "whatsappLabel": "Inizia su WhatsApp →",
+      "otherNationality": {
+        "title": "Continuiamo su WhatsApp",
+        "subtitle": "La tua nazionalità non è ancora nella nostra verifica rapida, quindi qui non possiamo darti un risultato automatico — ma il nostro team visti può confermarti direttamente l'idoneità al VOA.",
+        "ctaHeadline": "Parla con il nostro team visti",
+        "ctaDescription": "Dicci la tua nazionalità su WhatsApp e confermeremo l'idoneità, la finestra di soggiorno e il prezzo per il tuo caso.",
+        "whatsappContextLabel": "Nazionalità",
+        "whatsappContextValue": "Non nell'elenco rapido"
+      }
+    },
+    "result": {
+      "title": "Visa on Arrival",
+      "loading": "Stiamo calcolando il tuo risultato…",
+      "oneMoment": "Un momento.",
+      "notFound": "Non siamo riusciti a trovare questo risultato. Potrebbe essere scaduto.",
+      "networkError": "Errore di rete. Riprova.",
+      "startAgain": "Ricomincia",
+      "shareTitle": "Bali Zero — Verifica VOA",
+      "decline": {
+        "title": "Continuiamo su WhatsApp",
+        "subtitle": "Il tuo caso ha dei dettagli che il modulo non può cogliere del tutto. Una breve conversazione su WhatsApp con il nostro team visti è più veloce di qualsiasi ipotesi.",
+        "ctaHeadline": "Parla con il nostro team visti",
+        "ctaDescription": "Esamineremo il tuo caso e confermeremo il percorso corretto — prima risposta su WhatsApp in genere entro 5 ore.",
+        "whatsappContextLabel": "Nota"
+      },
+      "eligible": {
+        "title": "Il tuo caso VOA sembra a posto",
+        "subtitle": "Ecco la tua finestra di soggiorno, le scadenze che si applicano e il prezzo tutto incluso.",
+        "ctaHeadline": "Vuoi che se ne occupi il nostro team?",
+        "ctaDescription": "Tariffa fissa, tutto incluso. Inizia su WhatsApp — ti rispondiamo in meno di 5 ore.",
+        "ctaPostScroll": "Inizia su WhatsApp →",
+        "nationalityCaveat": "Una nota: l'idoneità per nazionalità viene confermata dal nostro team prima di qualsiasi pagamento — questo risultato è preliminare su questo punto."
+      },
+      "stayWindowHeading": "La tua finestra di soggiorno",
+      "stayWindowFallback": "Confermiamo le date esatte su WhatsApp — il tuo caso ha delle specificità.",
+      "entryLabel": "Ingresso",
+      "mustLeaveByLabel": "Da lasciare entro",
+      "expiryEstimatedNote": "Questa scadenza è una stima — confermeremo la data esatta dal timbro VOA stampato prima di presentare qualsiasi pratica.",
+      "submitByHeading": "Da presentare entro",
+      "submitByLabel": "Avvia la pratica VOA entro",
+      "submitByNote": "Questo è un nostro impegno interno, non una scadenza governativa: un VOA viene rilasciato in poche ore una volta avviato, quindi questa è la data entro cui ti chiediamo di iniziare — contando che i nostri sistemi sono chiusi nei weekend e nei giorni festivi nazionali indonesiani.",
+      "reasonsHeading": "Perché",
+      "declineReasons": {
+        "NATIONALITY_NOT_ELIGIBLE": "La tua nazionalità richiede una rapida verifica manuale — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "PURPOSE_NOT_ELIGIBLE": "Lo scopo del tuo soggiorno richiede un approfondimento da parte del nostro team — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "GROUP_CASE": "I casi di gruppo o familiari passano dal nostro canale ordinario, che li gestisce con tempi brevi.",
+        "PASSPORT_TYPE": "Il tipo di passaporto richiede una verifica manuale — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "PASSPORT_VALIDITY": "La validità del tuo passaporto richiede un approfondimento — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "NOT_SELF_PAY": "Quando è qualcun altro a coprire il costo, il nostro canale ordinario gestisce il caso con tempi brevi.",
+        "FEEDBACK_REQUIRED": "Ci serve una conferma in più da parte tua per completare questa verifica — il nostro canale ordinario può occuparsene con tempi brevi.",
+        "URGENT_CASE": "I casi urgenti passano direttamente dal nostro canale ordinario, che li gestisce con tempi brevi.",
+        "SPECIAL_PASSPORT": "I passaporti speciali richiedono una verifica manuale — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "PRIOR_ISSUE": "Il tuo caso richiede un approfondimento da parte del nostro team — il nostro canale ordinario gestisce questi casi con tempi brevi.",
+        "FASTLANE_REQUEST": "Le richieste di corsia rapida in aeroporto passano dal nostro canale ordinario, che le gestisce con tempi brevi.",
+        "EXPIRY_UNKNOWN": "Ci serve la tua data di scadenza esatta per confermarlo — il nostro canale ordinario può occuparsene con tempi brevi.",
+        "EXPIRES_TOO_SOON": "La scadenza ufficiale di presentazione per questa proroga è già passata, quindi la nostra verifica online non può gestirla — il nostro canale ordinario esaminerà comunque le opzioni con te.",
+        "EXTENSION_ALREADY_USED": "Questo VOA è già stato esteso una volta — il nostro canale ordinario gestisce ulteriori estensioni con tempi brevi.",
+        "ARRIVAL_TOO_SOON": "La tua data di arrivo ha superato la nostra finestra di presentazione online — il nostro canale ordinario gestisce casi come il tuo con tempi brevi.",
+        "ARRIVAL_DATE_UNCONFIRMED": "Non possiamo ancora calcolare una data limite di presentazione con così tanto anticipo — il nostro team te la confermerà direttamente.",
+        "unknown": "Il tuo caso richiede un approfondimento da parte del nostro team — il nostro canale ordinario gestisce questi casi con tempi brevi."
+      },
+      "checkpointsHeading": "Le tue scadenze",
+      "checkpointsDisclaimer": "Solo la scadenza indicata come limite dell'immigrazione è una regola governativa — i promemoria precedenti sono il margine di sicurezza interno di Bali Zero, non un requisito ufficiale.",
+      "officialBadge": "Limite immigrazione",
+      "filingWindowHeading": "Quando presentare la pratica",
+      "filingDeadlineLabel": "Scadenza di presentazione",
+      "filingWindowDisclaimer": "Questa è la scadenza di presentazione pubblicata da Ngurah Rai — verifica sempre con il tuo documento stampato prima di presentare la pratica.",
+      "inPersonNote": "Promemoria: dal 29 maggio 2025, estendere un VOA richiede foto e colloquio di persona presso l'ufficio immigrazione.",
+      "priceHeading": "Prezzo tutto incluso",
+      "priceNote": "Onorario Bali Zero, tutto incluso (fonte: {{source}}). Le spese governative sono incluse — nessuna voce separata.",
+      "priceFallback": "Confermiamo il costo esatto su WhatsApp — il tuo caso ha delle specificità.",
+      "footer": "Risultato basato sulle tue risposte. I requisiti governativi possono cambiare — confermiamo tutto prima della presentazione.",
+      "whatsapp": {
+        "priceLabel": "Prezzo",
+        "priceUnknown": "Da confermare"
+      }
+    }
   }
 }

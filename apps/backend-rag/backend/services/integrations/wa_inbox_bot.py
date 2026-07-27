@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from typing import Any
 
 import asyncpg
@@ -42,8 +43,76 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
+from backend.channels.format import format_rich_text
 
 logger = logging.getLogger("zantara.backend")
+
+# ── KG workflow-scaffold strip (client-voice hardening, 2026-07-25) ──────
+# `orchestrator_core.py::_format_workflow_for_prompt` appends an internal
+# diagnostics block to the RAG answer on some queries — a "## SUGGESTED
+# WORKFLOW (from <source>, confidence: NN%)" heading, the workflow name,
+# a numbered step list, and an optional "**Confidence**: ..." line — ALWAYS
+# closed by the literal trailer sentence below (`_KG_WORKFLOW_TRAILER`,
+# copied verbatim from orchestrator_core.py). That block is internal
+# diagnostics for an operator reading the raw answer, not a WhatsApp
+# client, and has been observed CONTRADICTING the actual answer (e.g. an
+# E33G remote-worker answer followed by a local-employment IMTA/TKA
+# workflow it never asked for).
+#
+# We do NOT edit orchestrator_core.py (another lane owns it, and the block
+# may be legitimate for other consumers like the web chat UI) — this strip
+# lives at the WhatsApp channel boundary instead.
+#
+# Anchored on the two literal strings the emitter ALWAYS writes together
+# (heading prefix + closing sentence, both from the SAME
+# `_format_workflow_for_prompt` call) rather than a loose "workflow"
+# keyword — see .claude/rules/cicatrix-superscar.md family #3
+# (guard-over-match) for why a bare-substring match would be unsafe: a
+# legitimate client answer ("il nostro workflow di onboarding...") must
+# never be caught by this. The non-greedy DOTALL match between the two
+# anchors also means only the block itself is removed, never content that
+# happens to follow it (e.g. the KG fast-path's reasoning text, which is
+# appended AFTER the workflow block in some code paths and must survive).
+_KG_WORKFLOW_TRAILER = (
+    "IMPORTANT: This is a suggested workflow. "
+    "Always verify current requirements with the user."
+)
+_KG_WORKFLOW_SCAFFOLD_RE = re.compile(
+    r"\s*##\s+SUGGESTED WORKFLOW \(from .*?" + re.escape(_KG_WORKFLOW_TRAILER),
+    re.DOTALL,
+)
+
+
+def _strip_kg_workflow_scaffold(answer: str) -> str:
+    """Remove the internal KG-workflow diagnostics block, if present.
+
+    Safe to call on any answer text — a no-op when the block is absent
+    (the common case).
+    """
+    return _KG_WORKFLOW_SCAFFOLD_RE.sub("", answer).strip()
+
+
+# Mirrors backend/services/integrations/whatsapp_service.py's `text[:4096]`
+# hard cutoff (WhatsApp Cloud API's message-body limit). Duplicated as a
+# local constant rather than imported — this module's job ends at "the
+# text to send"; the actual truncate+send belongs to whatsapp_service.py
+# (another lane's file, out of scope here). Used only to log non-silently
+# when a reply is about to be truncated downstream, so the eventual
+# chunked-sending work has real data on how often/how badly this happens.
+#
+# NOT derived from backend/prompts/channel_overlays.py's
+# ChannelConfig(name="whatsapp", max_words=150, ...): that number is a
+# WORD-count *prompt instruction* to the LLM ("try to keep it short"),
+# empirically NOT obeyed (the production evidence behind this PR was
+# ~450 words / 2923 chars, generated WITH that overlay active) — which is
+# exactly why this fix is deterministic post-processing instead of a
+# stronger instruction. Converting a word budget into a char threshold
+# here would answer a different question ("is this reply longer than our
+# style guideline?") than the one this check needs to answer ("is real
+# content about to be physically deleted by whatsapp_service.py's hard
+# cutoff?"). Coupling to ChannelConfig.max_words was considered and
+# rejected for that reason, not overlooked — see PR description.
+_WHATSAPP_HARD_SEND_LIMIT = 4096
 
 # How many prior turns of the thread to feed the orchestrator as context.
 _HISTORY_TURNS = 12
@@ -290,9 +359,45 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     if not answer:
         raise RuntimeError(f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}")
 
+    # Remove internal KG-workflow diagnostics before the answer ever reaches
+    # the channel formatter — see _strip_kg_workflow_scaffold docstring.
+    answer = _strip_kg_workflow_scaffold(answer)
+    if not answer:
+        raise RuntimeError(
+            f"wa-inbox bot: answer empty after workflow-scaffold strip, thread {thread_id}"
+        )
+
+    # Channel boundary: convert the orchestrator's generic markdown into
+    # WhatsApp-safe formatting (*bold*, unicode bullets, no raw ##/**/[N]
+    # noise) — see backend/channels/format.py::format_rich_text. Length is
+    # tracked pre- AND post-format (not enforced — see
+    # _WHATSAPP_HARD_SEND_LIMIT docstring for why 150-word ChannelConfig
+    # guidance is the wrong unit for this) so the eventual chunked-sending
+    # lane inherits a real length distribution instead of a guess.
+    pre_format_len = len(answer)
+    answer = format_rich_text(answer, "whatsapp")
+    if not answer:
+        raise RuntimeError(
+            f"wa-inbox bot: answer empty after channel formatting, thread {thread_id}"
+        )
+    post_format_len = len(answer)
+
+    if post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
+        logger.warning(
+            "wa-inbox bot: reply for thread %s is %d chars post-format (%d "
+            "pre-format), exceeds WhatsApp's %d-char single-message limit — "
+            "whatsapp_service.py will hard-truncate it on send. Chunked "
+            "sending is out of scope for this change.",
+            thread_id,
+            post_format_len,
+            pre_format_len,
+            _WHATSAPP_HARD_SEND_LIMIT,
+        )
+
     logger.info(
-        "wa-inbox bot generated reply for thread %s (%d chars)",
+        "wa-inbox bot generated reply for thread %s (%d chars post-format, %d chars pre-format)",
         thread_id,
-        len(answer),
+        post_format_len,
+        pre_format_len,
     )
     return answer

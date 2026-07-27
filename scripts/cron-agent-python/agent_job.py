@@ -109,6 +109,43 @@ def _hash(data: Any) -> str:
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
+# ─── Telegram gateway ──────────────────────────────────────────────────────────
+# Every notification from this tree leaves through scripts/tg_notify.py, the ONE
+# gate born 2026-07-06 from Zero's mandate ("non posso più ricevere 600 messaggi
+# al giorno"). It owns the daily P0 budget and the dedup counter this tree never
+# had: the log-anomaly flood of 2026-07-25 (288 alerts/day for three tracebacks
+# from 5 July, W104) would have collapsed into ONE counted message. The
+# candidate list covers the repo checkout and the HOME copy alike, so the same
+# bytes work from either — the file is a declared home-fork pair.
+_TG_TIERS = ("p0", "digest", "log")
+# The gateway NEVER fails its caller: exit 0 is contractual, so the return code
+# proves nothing (the exact trap _REDIS_ERR_RE exists for). Grade the STATUS.
+_TG_ACCEPTED = frozenset({
+    "sent", "spooled", "deduped", "logged", "p0_overflow_spooled",
+    "p0_unsent_spooled",
+})
+_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+
+
+def _tg_gateway() -> Path | None:
+    """Resolve the gateway script, or None if it is unreachable from here."""
+    explicit = os.environ.get("TG_NOTIFY_BIN", "")
+    candidates = [Path(explicit)] if explicit else []
+    candidates += [
+        Path(__file__).resolve().parent.parent / "tg_notify.py",  # repo checkout
+        HOME / "nuzantara" / "scripts" / "tg_notify.py",
+        # No old TCC-protected-home fallback here (dropped 2026-07-27, #3259
+        # antidotes): the repo moved out of the user's home Desktop folder on
+        # 2026-07-16 for TCC immunity (W84 — launchd can silently lose that
+        # grant); a candidate list is not an exemption from that move, it is
+        # the same hazard one entry deeper.
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 @dataclass
 class RunLedgerEntry:
     run_id: str
@@ -197,25 +234,66 @@ class AgentJob:
 
     # ─── Telegram ──────────────────────────────────────────────────────────
 
-    async def send_telegram(self, msg: str, chat_id: str | None = None) -> bool:
-        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        if not token:
-            self.logger.warning("telegram_skipped", reason="no_token")
+    async def send_telegram(
+        self,
+        msg: str,
+        chat_id: str | None = None,
+        tier: str = "p0",
+        dedup_key: str = "",
+    ) -> bool:
+        """Hand a notification to the Telegram gateway.
+
+        `tier` defaults to p0 so a caller that says nothing keeps the latency it
+        has today and merely gains the budget + dedup cap it lacked; pass
+        `digest` for anything informative (it groups into a 12h slot) and `log`
+        for heartbeats. `dedup_key` collapses a flapping alert into a counter.
+        """
+        if tier not in _TG_TIERS:
+            self.logger.warning("telegram_bad_tier", tier=tier, using="p0")
+            tier = "p0"
+        gateway = _tg_gateway()
+        if gateway is None:
+            self.logger.warning("telegram_gateway_missing", tried="TG_NOTIFY_BIN|repo|HOME")
             return False
-        chat = chat_id or self.telegram_chat_id or os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        chat = chat_id or self.telegram_chat_id
+        owner = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        if chat and chat != owner:
+            # The gateway delivers to the owner chat only. Silently redirecting
+            # would hand someone else's message to Zero — refuse, visibly.
+            self.logger.warning("telegram_custom_chat_unsupported", chat=chat)
+            return False
+        argv = [
+            sys.executable or "python3", str(gateway),
+            "--tier", tier, "--source", self.name,
+        ]
+        if dedup_key:
+            argv += ["--dedup-key", dedup_key]
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    data={"chat_id": chat, "text": msg, "parse_mode": "HTML"},
-                )
-                success = r.status_code == 200
-                if success:
-                    self._side_effects.append(f"telegram:{chat}")
-                return success
+            # Message on stdin: no argv length limit, no leading-dash ambiguity.
+            proc = await asyncio.create_subprocess_exec(
+                *argv,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, err = await asyncio.wait_for(proc.communicate(msg.encode()), timeout=20)
         except Exception as e:
-            self.logger.error("telegram_error", error=str(e))
+            self.logger.error("telegram_gateway_error", error=str(e))
             return False
+        found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
+        status = found.group(1) if found else ""
+        if status not in _TG_ACCEPTED:
+            self.logger.warning(
+                "telegram_gateway_rejected", tier=tier,
+                rc=proc.returncode, status=status or "<none>",
+            )
+            return False
+        if status == "p0_unsent_spooled":
+            # Fail-VISIBLE, per the gateway's contract: it took custody but could
+            # not deliver, and the next digest surfaces it as unsent.
+            self.logger.warning("telegram_unsent_spooled", tier=tier)
+        self._side_effects.append(f"telegram:{tier}:{status}")
+        return True
 
     # ─── Backend API ───────────────────────────────────────────────────────
 
@@ -690,9 +768,17 @@ async def run_job(job: AgentJob, send_alerts: bool = True) -> int:
         await job._publish_redis_event(result)  # VADEMECUM §1 point 8 — event bus
 
         if result.status != "ok" and send_alerts:
+            # p0: a job that stopped working is actionable. Keyed on the job name
+            # so a job that fails every 5 minutes costs ONE alert plus a counter.
             await job.send_telegram(
-                f"❌ <b>{job.name}</b> {result.status} ({result.duration_s:.1f}s)\n"
-                f"{result.error or 'no error details'}"
+                # Gateway sends plain text (no parse_mode) — HTML here would
+                # render literally, the same live defect this branch strips
+                # from log_anomaly_detector.py / intel_radar_daily_digest.py,
+                # except this path fires on ANY job's failure fleet-wide.
+                f"❌ {job.name} {result.status} ({result.duration_s:.1f}s)\n"
+                f"{result.error or 'no error details'}",
+                tier="p0",
+                dedup_key=f"cron-job-failed:{job.name}",
             )
 
         return job._exit_code(result)

@@ -627,9 +627,21 @@ async def test_process_query_core_threads_curated_grounding_into_multi_agent_pro
     mock_coordinator.process = AsyncMock(return_value={"final_answer": "x"})
     core._multi_agent_coordinator = mock_coordinator
 
-    with patch(
-        "backend.services.rag.agentic.orchestrator_core.requires_multi_agent",
-        return_value=True,
+    # The branch is OFF by default since 2026-07-27
+    # (`_MULTI_AGENT_COORDINATOR_ENABLED` — it answered with no sources and
+    # could not abstain). This test is about what the branch RECEIVES once
+    # entered, so it enables the feature explicitly; the default-off behaviour
+    # is covered in test_orchestrator_state_machine_wave2.py.
+    with (
+        patch(
+            "backend.services.rag.agentic.orchestrator_core.requires_multi_agent",
+            return_value=True,
+        ),
+        patch.object(
+            orchestrator_core_module,
+            "_MULTI_AGENT_COORDINATOR_ENABLED",
+            True,
+        ),
     ):
         result = await core.process_query_core(
             query="What is the E33 deposit amount?",

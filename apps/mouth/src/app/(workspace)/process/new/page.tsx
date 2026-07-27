@@ -31,6 +31,7 @@ import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { ReferrerDropdown } from "@/components/partners/ReferrerDropdown";
 
 interface ServiceItem {
@@ -61,6 +62,9 @@ export default function NewPracticePage() {
   const preselectedClientId = searchParams?.get("client_id")
     ? Number(searchParams.get("client_id"))
     : undefined;
+  const invalidatePreselectedClient = useInvalidateClient(
+    preselectedClientId ?? 0,
+  );
 
   // Service catalog from backend
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
@@ -482,6 +486,7 @@ export default function NewPracticePage() {
         `${selectedService?.name || "Process"} created successfully.`,
       );
       if (preselectedClientId) {
+        await invalidatePreselectedClient();
         router.push(`/clients/${preselectedClientId}?tab=process`);
       } else {
         const newId = createdPractice?.id;
@@ -545,7 +550,7 @@ export default function NewPracticePage() {
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
           {fieldErrors._form && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+            <div className="rounded-lg border border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] p-4 text-sm text-[var(--state-danger)]">
               {fieldErrors._form}
             </div>
           )}
@@ -553,7 +558,7 @@ export default function NewPracticePage() {
           {/* Client Selection */}
           <div className="space-y-2 relative" ref={searchRef}>
             <label className={labelClass}>
-              Client <span className="text-red-500">*</span>
+              Client <span className="text-[var(--state-danger)]">*</span>
             </label>
             {selectedClient ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10">
@@ -652,7 +657,7 @@ export default function NewPracticePage() {
               </div>
             )}
             {fieldErrors.client_id && (
-              <p className="text-xs text-red-400 mt-1">
+              <p className="text-xs text-[var(--state-danger)] mt-1">
                 {fieldErrors.client_id}
               </p>
             )}
@@ -661,7 +666,7 @@ export default function NewPracticePage() {
           {/* Service Selection — 2 levels */}
           <div className="space-y-4">
             <label className={labelClass}>
-              Service <span className="text-red-500">*</span>
+              Service <span className="text-[var(--state-danger)]">*</span>
             </label>
             {catalogLoading ? (
               <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] py-2">
@@ -744,10 +749,12 @@ export default function NewPracticePage() {
             )}
 
             {fieldErrors.service && (
-              <p className="text-xs text-red-400">{fieldErrors.service}</p>
+              <p className="text-xs text-[var(--state-danger)]">
+                {fieldErrors.service}
+              </p>
             )}
             {fieldErrors.practice_type_code && (
-              <p className="text-xs text-red-400">
+              <p className="text-xs text-[var(--state-danger)]">
                 {fieldErrors.practice_type_code}
               </p>
             )}
@@ -898,7 +905,7 @@ export default function NewPracticePage() {
                   </p>
                 )}
               {fieldErrors.discount_amount && (
-                <p className="text-xs text-red-400">
+                <p className="text-xs text-[var(--state-danger)]">
                   {fieldErrors.discount_amount}
                 </p>
               )}
@@ -934,23 +941,27 @@ export default function NewPracticePage() {
                 {
                   value: "normal" as const,
                   label: "Normal",
-                  color: "text-zinc-400",
-                  activeBg: "bg-zinc-500/20",
-                  activeBorder: "border-zinc-500/40",
+                  color: "text-[var(--bz-text-secondary)]",
+                  activeBg: "bg-[rgba(255,255,255,0.08)]",
+                  activeBorder: "border-[var(--bz-border-hover)]",
                 },
                 {
                   value: "high" as const,
                   label: "High",
-                  color: "text-orange-400",
-                  activeBg: "bg-orange-500/20",
-                  activeBorder: "border-orange-500/40",
+                  color: "text-[var(--state-warning)]",
+                  activeBg:
+                    "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)]",
+                  activeBorder:
+                    "border-[color-mix(in_srgb,var(--state-warning)_40%,transparent)]",
                 },
                 {
                   value: "urgent" as const,
                   label: "Urgent",
-                  color: "text-red-400",
-                  activeBg: "bg-red-500/20",
-                  activeBorder: "border-red-500/40",
+                  color: "text-[var(--state-danger)]",
+                  activeBg:
+                    "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]",
+                  activeBorder:
+                    "border-[color-mix(in_srgb,var(--state-danger)_40%,transparent)]",
                 },
               ].map((p) => (
                 <button

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { e2eEmail, e2ePin } from "../support/credentials";
 
 test.describe("CRM Real UI Journey", () => {
   test("CRM UI smoke: Login -> Clients -> New Client wizard -> Kanban", async ({
@@ -18,8 +19,8 @@ test.describe("CRM Real UI Journey", () => {
     }
 
     // Fill credentials
-    await page.fill('input[type="email"]', "zero@balizero.com");
-    await page.fill('input[type="password"], input[name="pin"]', "010719");
+    await page.fill('input[type="email"]', e2eEmail());
+    await page.fill('input[type="password"], input[name="pin"]', e2ePin());
 
     // Monitor API call
     const loginPromise = page.waitForResponse(
@@ -43,7 +44,9 @@ test.describe("CRM Real UI Journey", () => {
 
     // Wait for redirect
     console.log("🔹 Waiting for redirect...");
-    await page.waitForURL(/.*(chat|dashboard|clients|inbox).*/, { timeout: 15000 });
+    await page.waitForURL(/.*(chat|dashboard|clients|inbox).*/, {
+      timeout: 15000,
+    });
     console.log("✅ Login successful");
 
     // 2. NAVIGATE TO CLIENTS
@@ -99,7 +102,9 @@ test.describe("CRM Real UI Journey", () => {
     const form = page.locator("form").first();
     await expect(form).toBeVisible({ timeout: 10000 });
     await form.locator('input[name="full_name"]').fill(clientName);
-    await form.locator('input[name="email"]').fill(`pw.${uniqueId}@example.com`);
+    await form
+      .locator('input[name="email"]')
+      .fill(`pw.${uniqueId}@example.com`);
 
     // Some forms have required phone
     const phoneInput = form.locator('input[name="phone"]');
@@ -108,7 +113,7 @@ test.describe("CRM Real UI Journey", () => {
     }
 
     await expect(
-      form.locator('button', { hasText: /Next: Personal Details/i }),
+      form.locator("button", { hasText: /Next: Personal Details/i }),
     ).toBeVisible({ timeout: 10000 });
     await expect(page.locator(`text=${clientName}`).first()).toBeVisible();
     console.log("✅ New client wizard accepts basic CRM fields:", clientName);

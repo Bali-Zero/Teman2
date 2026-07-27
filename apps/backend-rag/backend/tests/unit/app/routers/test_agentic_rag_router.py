@@ -1114,3 +1114,352 @@ class TestWaTrustedProfileRouterWiring:
             **{"profile": {"role": "creator"}},
         )
         assert not hasattr(req, "profile")
+
+
+class TestDeriveWaAgentRole:
+    """T4 unified principal (spec `2026-07-24-zantara-bot-consultant-
+    assistant-spec.md` §5 item T4 — "two parallel auth systems").
+    `_derive_wa_agent_role` maps the already-trusted WA profile dict (the
+    SAME shape `TestResolveTrustedWaProfile` above exercises — this
+    function's only caller-shape) onto `team_agent_config`'s existing
+    AgentRole catalogue. No new trust surface: it is read-only over a dict
+    this router never lets a request body populate (see
+    `TestWaAgentRoleForgeryResistance` below)."""
+
+    def test_creator_maps_to_role_admin_by_identity(self):
+        """GUILT — owner: maps to the EXACT SAME object team_agent_config
+        already uses for the JWT-authenticated admin (zero@balizero.com).
+        Owner is not a new privilege tier — it reuses the existing entry by
+        reference (`is` check, not just equal role_id)."""
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+        from backend.services.agents.team_agent_config import ROLE_ADMIN
+
+        assert _derive_wa_agent_role({"role": "creator"}) is ROLE_ADMIN
+
+    def test_registered_team_email_maps_to_that_members_own_role(self):
+        """GUILT — team: a DB-resolved sender with a registered VASSAL role
+        gets THEIR OWN scope, never admin-equivalent."""
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+        from backend.services.agents.team_agent_config import (
+            ROLE_ADMIN,
+            ROLE_EXECUTIVE_CONSULTANT,
+        )
+
+        result = _derive_wa_agent_role(
+            {"role": "team", "name": "Adit", "email": "adit@balizero.com"}
+        )
+        assert result is ROLE_EXECUTIVE_CONSULTANT
+        assert result is not ROLE_ADMIN  # regression guard: never over-grants
+
+    def test_team_without_email_degrades_to_none(self):
+        """INNOCENCE / DEGRADE: the env-resolved `WHATSAPP_TEAM_NUMBERS`
+        branch of `resolve_sender_identity` (see `whatsapp_identity.py`
+        `_team_numbers()`) carries a name but no email — must degrade
+        silently, never crash or over-grant."""
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+
+        assert _derive_wa_agent_role({"role": "team", "name": "Someone"}) is None
+
+    def test_team_with_unregistered_email_degrades_to_none(self):
+        """INNOCENCE: a real `team_members` DB row whose email isn't (yet)
+        registered in `TEAM_AGENTS` must never be silently upgraded to any
+        role."""
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+
+        result = _derive_wa_agent_role(
+            {"role": "team", "name": "Ghost", "email": "ghost@balizero.com"}
+        )
+        assert result is None
+
+    def test_client_unknown_and_absent_profile_all_yield_none(self):
+        """INNOCENCE: the non-privileged branches of `resolve_sender_identity`
+        (client/unknown), plus the "no trusted profile at all" case
+        (`trusted_profile is None` — no dedicated bot key, a non-WA caller,
+        or an empty dict) must never produce a principal."""
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+
+        assert _derive_wa_agent_role({"role": "client", "client_id": 1}) is None
+        assert _derive_wa_agent_role({"role": "unknown"}) is None
+        assert _derive_wa_agent_role(None) is None
+        assert _derive_wa_agent_role({}) is None
+
+    def test_degrade_branches_log_role_and_boolean_never_email(self, caplog):
+        """PII boundary (UU PDP, non-negotiable per project CLAUDE.md §14):
+        the two DEGRADE log lines must be grep-distinguishable from each
+        other, but must NEVER contain the member's email or any phone
+        number — only role + booleans."""
+        import logging
+
+        from backend.app.routers.agentic_rag import _derive_wa_agent_role
+
+        with caplog.at_level(logging.INFO, logger="backend.app.routers.agentic_rag"):
+            _derive_wa_agent_role({"role": "team", "name": "X"})
+            _derive_wa_agent_role(
+                {"role": "team", "name": "Y", "email": "y-secret@balizero.com"}
+            )
+
+        assert "degrade=no_email" in caplog.text
+        assert "degrade=unregistered_email" in caplog.text
+        assert "y-secret@balizero.com" not in caplog.text
+        assert "@" not in caplog.text  # no email of any shape escaped through
+
+
+class TestWaAgentRoleForgeryResistance:
+    """T4 FORGERY tests: no request-body field can ever influence the
+    derived `agent_role` — mirrors `test_request_schema_has_no_client_
+    declarable_profile_field` above for the new T4 surface. The tool-call
+    `arguments`-side forgery vector (`_agent_role`/`_caller_profile`/
+    `_user_id` reserved keys) is covered in
+    `backend/tests/unit/services/rag/agentic/test_tool_executor.py`
+    (P0-ARG containment) — `agent_role` itself never travels through the
+    LLM-facing `arguments` dict at all (it is a separate Python keyword
+    argument threaded via `AgentState.agent_role`), so there is no
+    tool-call-shaped forgery surface for it to begin with."""
+
+    def test_body_supplied_agent_role_and_agent_email_are_dropped(self):
+        """The wire contract (`AgenticQueryRequest`) has no `agent_role` /
+        `agent_email` field — Pydantic silently drops unknown keys (default
+        `extra='ignore'`), so a request body can never reach
+        `_derive_wa_agent_role`, which only ever sees the server-resolved
+        `trusted_profile` dict, never anything off `request`."""
+        req = AgenticQueryRequest(
+            query="test",
+            channel="whatsapp",
+            **{
+                "agent_role": "admin",
+                "agent_email": "zero@balizero.com",
+                "profile": {"role": "creator"},
+            },
+        )
+        assert not hasattr(req, "agent_role")
+        assert not hasattr(req, "agent_email")
+        assert not hasattr(req, "profile")
+
+
+class TestWaAgentRoleFlagWiring:
+    """T4 router-level integration: `query_agentic_rag` must forward the
+    T4-derived `agent_role` to the orchestrator ONLY when
+    `settings.wa_bot_agent_role_enabled` is True, and — mirroring
+    `TestWaTrustedProfileRouterWiring` above for `profile` — the P0-ID
+    tourniquet (dedicated bot key, non-privileged senders) must still hold
+    with the flag on. `is_wa_inbox_bot` is passed explicitly since these
+    tests call the route function directly (bypassing FastAPI's own
+    dependency resolution), same convention as the class above."""
+
+    @staticmethod
+    def _base_kwargs(user_id, channel="whatsapp"):
+        request_data = AgenticQueryRequest(query="Any question", channel=channel, user_id=user_id)
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+        return request_data, mock_ab_manager
+
+    @staticmethod
+    def _internal_user():
+        return {"role": "internal", "email": "wa-mirror-internal@balizero.com"}
+
+    async def _run(
+        self,
+        mock_orchestrator,
+        *,
+        flag_enabled: bool,
+        is_wa_inbox_bot: bool,
+        identity: dict,
+        user_id: str = "whatsapp_62811000111",
+    ):
+        request_data, mock_ab_manager = self._base_kwargs(user_id)
+        internal_user = self._internal_user()
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.resolve_sender_identity",
+                new=AsyncMock(return_value=identity),
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.settings.wa_bot_agent_role_enabled",
+                flag_enabled,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+                is_wa_inbox_bot=is_wa_inbox_bot,
+            )
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        return call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_flag_off_owner_phone_gets_no_agent_role(self, mock_orchestrator):
+        """FLAG-OFF: byte-identical to today even for the strongest possible
+        signal (verified bot key + owner phone) — the flag is the single
+        kill switch, and `profile` (pre-existing V1 field) is UNCHANGED by
+        it either way."""
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=False,
+            is_wa_inbox_bot=True,
+            identity={"role": "owner"},
+        )
+        assert "agent_role" not in call_kwargs
+        assert call_kwargs.get("profile") == {"role": "creator"}
+
+    @pytest.mark.asyncio
+    async def test_flag_on_owner_phone_gets_role_admin(self, mock_orchestrator):
+        """GUILT: flag on + verified bot key + owner phone -> ROLE_ADMIN
+        reaches the orchestrator, alongside the pre-existing `profile`."""
+        from backend.services.agents.team_agent_config import ROLE_ADMIN
+
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=True,
+            is_wa_inbox_bot=True,
+            identity={"role": "owner"},
+        )
+        assert call_kwargs.get("agent_role") is ROLE_ADMIN
+        assert call_kwargs.get("profile") == {"role": "creator"}
+
+    @pytest.mark.asyncio
+    async def test_flag_on_registered_team_email_gets_own_role(self, mock_orchestrator):
+        """GUILT: flag on + verified bot key + DB-resolved team sender with
+        a registered VASSAL role -> that member's own AgentRole (never
+        admin) — this is the actual defect T4 fixes: a real team member
+        can now use a previously-hard-denied SENSITIVE_TOOLS entry with
+        their own scope."""
+        from backend.services.agents.team_agent_config import (
+            ROLE_ADMIN,
+            ROLE_EXECUTIVE_CONSULTANT,
+        )
+
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=True,
+            is_wa_inbox_bot=True,
+            identity={
+                "role": "team",
+                "team_member": "Adit",
+                "team_member_email": "adit@balizero.com",
+            },
+            user_id="whatsapp_62811000222",
+        )
+        assert call_kwargs.get("agent_role") is ROLE_EXECUTIVE_CONSULTANT
+        assert call_kwargs.get("agent_role") is not ROLE_ADMIN
+
+    @pytest.mark.asyncio
+    async def test_flag_on_client_phone_gets_no_agent_role(self, mock_orchestrator):
+        """INNOCENCE: flag on but the resolved sender is a client — never a
+        principal, exactly like `profile` above it (regression target:
+        PR #2962/#3062's public PII-exposure tourniquet on
+        crm_query/timesheet/team_knowledge)."""
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=True,
+            is_wa_inbox_bot=True,
+            identity={"role": "client", "client_id": 1},
+            user_id="whatsapp_62899999999",
+        )
+        assert "agent_role" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_flag_on_unknown_phone_gets_no_agent_role(self, mock_orchestrator):
+        """INNOCENCE: same as above for an unresolvable phone."""
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=True,
+            is_wa_inbox_bot=True,
+            identity={"role": "unknown"},
+            user_id="whatsapp_62800000000",
+        )
+        assert "agent_role" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_flag_on_without_dedicated_bot_key_gets_no_agent_role(
+        self, mock_orchestrator
+    ):
+        """INNOCENCE (the exact regression this proves did not come back —
+        PR #3062 P0-ID hardening): flag on, owner-shaped phone, but the
+        caller lacks wa_inbox_bot.py's OWN dedicated secret
+        (`is_wa_inbox_bot=False`). Any holder of the shared
+        `X-Internal-Key` alone must NEVER be able to mint a principal, T4
+        or not — and `resolve_sender_identity` must not even be called."""
+        mock_resolve = AsyncMock(return_value={"role": "owner"})
+        request_data, mock_ab_manager = self._base_kwargs("whatsapp_62811000111")
+        internal_user = self._internal_user()
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=internal_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=None,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.resolve_sender_identity",
+                new=mock_resolve,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.settings.wa_bot_agent_role_enabled",
+                True,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=request_data,
+                current_user=internal_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+                is_wa_inbox_bot=False,
+            )
+        _, call_kwargs = mock_orchestrator.process_query.call_args
+        assert "agent_role" not in call_kwargs
+        assert "profile" not in call_kwargs
+        mock_resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_flag_on_env_resolved_team_no_email_degrades_silently(
+        self, mock_orchestrator
+    ):
+        """DEGRADE: flag on, dedicated bot key present, but the sender
+        resolves via the env-keyed `WHATSAPP_TEAM_NUMBERS` branch (name
+        only, no email — see `whatsapp_identity.py` `_team_numbers()`) ->
+        no `agent_role`, no crash. `profile` still carries the name
+        unaffected (V1 behavior preserved)."""
+        call_kwargs = await self._run(
+            mock_orchestrator,
+            flag_enabled=True,
+            is_wa_inbox_bot=True,
+            identity={"role": "team", "team_member": "EnvOnly"},
+            user_id="whatsapp_62811000333",
+        )
+        assert "agent_role" not in call_kwargs
+        assert call_kwargs.get("profile") == {"role": "team", "name": "EnvOnly"}

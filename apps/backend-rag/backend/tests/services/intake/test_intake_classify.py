@@ -356,13 +356,45 @@ async def test_ollama_admission_wait_does_not_consume_request_timeout(monkeypatc
         def json(self):
             return {"response": "OCR TEXT", "thinking": ""}
 
+    # #58 (2026-07-27): asyncio.sleep() is a LOWER bound on elapsed time,
+    # never an upper one — the original 0.04/0.05 pair gave this a 10ms
+    # margin, and it does overshoot under load: a confirmed fleet-wide
+    # push-killer (two independent push logs, ~13h apart, same TimeoutError).
+    #
+    # Just widening the timeout (0.04 work / ~0.5 timeout) is NOT enough on
+    # its own — verified by simulation before landing this: it makes the
+    # test blind to the exact regression it guards against. This test's
+    # whole point is that call B (queued behind call A under
+    # MAX_INFLIGHT=1) must get its OWN full timeout budget starting from
+    # when it acquires the gate, not from when it was called — a bug that
+    # starts B's deadline at call-time instead would need B to finish within
+    # ~2x _WORK_SECONDS (its ~1x wait behind A, plus its own ~1x work).
+    # With work=0.04/timeout=0.5, that buggy 2x-work total (~0.08s) is still
+    # nowhere near the 0.5s timeout, so the bug stops failing the test.
+    # The fix has to scale BOTH numbers so the invariant
+    # _WORK_SECONDS < _TIMEOUT_SECONDS < 2 * _WORK_SECONDS still holds —
+    # that band is what makes "1x work, correct clock" pass while "~2x
+    # work, buggy clock" fails — while giving each side a large ABSOLUTE
+    # margin (150ms) so ordinary scheduler jitter under an oversubscribed
+    # pre-push box doesn't cross it. 0.3s/0.5s keeps the original 1.25x
+    # ratio's shape (T sits strictly between W and 2W) but at a scale where
+    # 150ms of real-world overshoot is noise, not a failure.
+    #
+    # THE SPECIFICATION, if you are about to "tidy up" these two constants:
+    #   _WORK_SECONDS < _TIMEOUT_SECONDS < 2 * _WORK_SECONDS   MUST hold.
+    #   Break the left side -> flaky (correct impl can time out on jitter).
+    #   Break the right side -> BLIND (buggy impl passes; this is what a
+    #   naive "just raise the timeout" fix does — verified live 2026-07-27).
+    _WORK_SECONDS = 0.3
+    _TIMEOUT_SECONDS = 0.5
+
     class _SlowClient:
         async def post(self, _url, json):
-            await asyncio.sleep(0.04)
+            await asyncio.sleep(_WORK_SECONDS)
             return _FakeResponse()
 
     monkeypatch.setenv("INTAKE_OLLAMA_MAX_INFLIGHT", "1")
-    monkeypatch.setattr(cls, "OCR_PAGE_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(cls, "OCR_PAGE_TIMEOUT_SECONDS", _TIMEOUT_SECONDS)
     monkeypatch.setattr(cls, "_get_client", lambda: _SlowClient())
     inference_runtime.clear_ollama_inference_gates()
 

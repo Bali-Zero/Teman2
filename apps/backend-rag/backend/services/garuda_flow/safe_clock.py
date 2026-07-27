@@ -55,6 +55,40 @@ class StayWindow:
     checkpoints: list[SafeCheckpoint]
 
 
+def filing_window_opens_for(expiry_date: date) -> date:
+    """D-14 — INTERNAL-ONLY staff estimate of when the extension window
+    opens. NOT client-facing (`client_facing=False` on its `SafeCheckpoint`
+    in `compute_stay()` — do not flip that).
+
+    The source (ngurahrai.imigrasi.go.id/layanan-wna/) states the earliest-
+    filing rule TWO INCOMPATIBLE WAYS on the same page:
+
+      (1) "Permohonan perpanjangan VOA paling cepat diajukan 14 hari
+          sebelum masa berlaku izin tinggal habis" → 14 days BEFORE EXPIRY.
+      (2) "Permohonan perpanjangan VOA paling cepat 14 hari setelah
+          kedatangan dan paling lambat 7 hari sebelum masa izin tinggal
+          berakhir." → 14 days AFTER ARRIVAL.
+
+    On a 30-day B1 these are different dates. This function implements
+    reading (1) — ``expiry_date - EXTENSION_WINDOW_OPENS_DAYS`` — because
+    it is the CONSERVATIVE one: expiry − 14 falls LATER than entry + 14 on
+    a 30-day stay, so this function never tells staff they can file earlier
+    than an office might actually accept. It is still only a reading of a
+    self-contradictory source, not a confirmed rule, so it stays
+    internal-only pending confirmation at the Ngurah Rai counter — never
+    surface this value to a client (see `app/routers/garuda_voa.py` module
+    docstring for the client-facing boundary this backs).
+
+    Pure function of the expiry date — the identical value
+    ``compute_stay()`` derives internally as
+    ``StayWindow.extension_window_opens`` — exposed standalone so an
+    internal caller holding only a persisted/returned ``expiry_date`` can
+    derive this staff-only D-14 estimate without re-running the whole
+    pipeline.
+    """
+    return expiry_date - timedelta(days=EXTENSION_WINDOW_OPENS_DAYS)
+
+
 def compute_stay(
     *,
     entry_date: date,
@@ -88,7 +122,7 @@ def compute_stay(
 
     max_total_days = meta.duration_days + ext_count * ext_days
 
-    window_opens = expiry - timedelta(days=EXTENSION_WINDOW_OPENS_DAYS)
+    window_opens = filing_window_opens_for(expiry)
     published_deadline = expiry - timedelta(days=PUBLISHED_FILING_DEADLINE_DAYS)
 
     checkpoints = [
@@ -104,8 +138,10 @@ def compute_stay(
             at=expiry - timedelta(days=PILOT_INTAKE_THRESHOLD_DAYS),
             kind="internal",
             client_facing=False,
-            note="Pilot intake threshold + internal escalation (SOP §1/§6). "
-            "Below this the pilot declines. Never quote to a client.",
+            note="Internal staff-escalation checkpoint (SOP §6) ONLY — NOT "
+            "the pilot's ACCEPT/DECLINE gate (owner ruling 2026-07-27 moved "
+            "that gate to the published D-7 filing deadline, see "
+            "eligibility.screen). Never quote to a client.",
         ),
         SafeCheckpoint(
             label=f"D-{PUBLISHED_FILING_DEADLINE_DAYS}",
@@ -166,5 +202,6 @@ __all__ = [
     "StayWindow",
     "compute_stay",
     "days_until_expiry",
+    "filing_window_opens_for",
     "is_overstay",
 ]

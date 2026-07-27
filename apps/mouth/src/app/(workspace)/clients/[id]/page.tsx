@@ -41,7 +41,9 @@ import {
   useClientTimeline,
   useDocumentCategories,
   useInvalidateClient,
+  useSetClientCache,
 } from "@/hooks/useClientDetail";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // Local component imports
 import type { TabType, ModalType } from "./components/types";
@@ -64,6 +66,28 @@ import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal
 import { AddDocumentModal } from "./components/modals/AddDocumentModal";
 import { EditDocumentModal } from "./components/modals/EditDocumentModal";
 
+// Client status styling — WS2 (GARUDA OS): mirrors STATUS_STYLES on the
+// clients list page (keep the two aligned): state semantics read --state-*
+// tokens, "completed" keeps its purple identity via --bz-neon-purple,
+// "inactive" is neutral.
+const CLIENT_STATUS_BADGE: Record<string, string> = {
+  lead: "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)]",
+  active:
+    "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)]",
+  completed:
+    "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)]",
+  lost: "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]",
+  inactive:
+    "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)] text-[var(--bz-text-2)]",
+};
+const CLIENT_STATUS_TEXT: Record<string, string> = {
+  lead: "text-[var(--state-info)]",
+  active: "text-[var(--state-success)]",
+  completed: "text-[var(--bz-neon-purple)]",
+  lost: "text-[var(--state-danger)]",
+  inactive: "text-[var(--bz-text-2)]",
+};
+
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,6 +103,7 @@ export default function ClientDetailPage() {
   const { data: timelineData } = useClientTimeline(clientId);
   const { data: docCategoriesData } = useDocumentCategories();
   const invalidateClient = useInvalidateClient(clientId);
+  const setClientCache = useSetClientCache(clientId);
   const businessStoryQuery = useClientBusinessStory(
     clientId,
     profile?.client.full_name ?? "",
@@ -125,6 +150,12 @@ export default function ClientDetailPage() {
   const [logSaved, setLogSaved] = useState(false);
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+  useClickOutside(
+    statusMenuRef,
+    () => setShowStatusMenu(false),
+    showStatusMenu,
+  );
 
   const submitLog = async () => {
     if (!logSummary.trim()) return;
@@ -164,8 +195,13 @@ export default function ClientDetailPage() {
     setShowStatusMenu(false);
     try {
       const user = await api.getProfile();
-      await api.crm.updateClient(clientId, { status: newStatus }, user.email);
-      await invalidateClient();
+      const updatedClient = await api.crm.updateClient(
+        clientId,
+        { status: newStatus },
+        user.email,
+      );
+      setClientCache(updatedClient);
+      void invalidateClient();
       toast.success(`Status updated to ${newStatus}`);
     } catch (err) {
       toast.error("Failed to update status", {
@@ -175,14 +211,6 @@ export default function ClientDetailPage() {
       setIsUpdatingStatus(false);
     }
   };
-
-  // Close status menu on outside click
-  useEffect(() => {
-    if (!showStatusMenu) return;
-    const handleClick = () => setShowStatusMenu(false);
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showStatusMenu]);
 
   // Fix hydration mismatch: only render dates on client
   useEffect(() => {
@@ -251,7 +279,7 @@ export default function ClientDetailPage() {
   if (error || !profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <AlertTriangle className="w-12 h-12 text-red-500" />
+        <AlertTriangle className="w-12 h-12 text-[var(--state-danger)]" />
         <p className="text-[var(--bz-text-2)]">{error || "Client not found"}</p>
         <Button variant="outline" onClick={() => router.push("/clients")}>
           Back to Clients
@@ -328,13 +356,15 @@ export default function ClientDetailPage() {
         <div
           className="flex items-start gap-3 rounded-xl px-4 py-3 border"
           style={{
-            background: "rgba(239,68,68,0.08)",
-            borderColor: "rgba(239,68,68,0.3)",
+            background:
+              "color-mix(in srgb, var(--state-danger) 8%, transparent)",
+            borderColor:
+              "color-mix(in srgb, var(--state-danger) 30%, transparent)",
           }}
         >
-          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-[var(--state-danger)] shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-red-400">
+            <p className="text-sm font-medium text-[var(--state-danger)]">
               {expiry_alerts.filter((a) => a.alert_color === "expired").length >
                 0 && (
                 <span>
@@ -368,8 +398,8 @@ export default function ClientDetailPage() {
                     key={i}
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       alert.alert_color === "expired"
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-orange-500/20 text-orange-400"
+                        ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
+                        : "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)]"
                     }`}
                   >
                     {alert.document_type?.replace(/_/g, " ")}
@@ -384,7 +414,7 @@ export default function ClientDetailPage() {
               {expiry_alerts.filter(
                 (a) => a.alert_color === "expired" || a.alert_color === "red",
               ).length > 4 && (
-                <span className="text-xs text-red-400 opacity-70">
+                <span className="text-xs text-[var(--state-danger)] opacity-70">
                   +
                   {expiry_alerts.filter(
                     (a) =>
@@ -434,18 +464,13 @@ export default function ClientDetailPage() {
                 {client.full_name}
               </h1>
               {/* Status badge — click to change */}
-              <div className="relative">
+              <div ref={statusMenuRef} className="relative">
                 <button
                   onClick={() => setShowStatusMenu((v) => !v)}
                   disabled={isUpdatingStatus}
                   className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-wait ${
-                    {
-                      lead: "bg-blue-500/20 text-blue-400",
-                      active: "bg-green-500/20 text-green-400",
-                      completed: "bg-purple-500/20 text-purple-400",
-                      lost: "bg-red-500/20 text-red-400",
-                      inactive: "bg-gray-500/20 text-gray-400",
-                    }[client.status] || "bg-gray-500/20 text-gray-400"
+                    CLIENT_STATUS_BADGE[client.status] ??
+                    CLIENT_STATUS_BADGE.inactive
                   }`}
                   title="Click to change status"
                   aria-label="Change client status"
@@ -468,15 +493,7 @@ export default function ClientDetailPage() {
                         onClick={() => updateStatus(s)}
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bz-card)] transition-colors ${
                           s === client.status ? "font-bold" : ""
-                        } ${
-                          {
-                            lead: "text-blue-400",
-                            active: "text-green-400",
-                            completed: "text-purple-400",
-                            lost: "text-red-400",
-                            inactive: "text-gray-400",
-                          }[s]
-                        }`}
+                        } ${CLIENT_STATUS_TEXT[s]}`}
                       >
                         {s === client.status ? "✓ " : ""}
                         {s}
@@ -499,11 +516,17 @@ export default function ClientDetailPage() {
                   );
                   if (days > 30)
                     return (
-                      <span className="text-red-400"> • Silent {days}d</span>
+                      <span className="text-[var(--state-danger)]">
+                        {" "}
+                        • Silent {days}d
+                      </span>
                     );
                   if (days > 14)
                     return (
-                      <span className="text-yellow-400"> • {days}d ago</span>
+                      <span className="text-[var(--state-warning)]">
+                        {" "}
+                        • {days}d ago
+                      </span>
                     );
                   return null;
                 })()}
@@ -522,10 +545,10 @@ export default function ClientDetailPage() {
                     ?.avatar
                 }
                 alt={client.assigned_to.split("@")[0]}
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-[color-mix(in_srgb,var(--state-success)_30%,transparent)]"
                 fallback={
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-green-500" />
+                  <div className="w-8 h-8 rounded-full bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] flex items-center justify-center">
+                    <User className="w-4 h-4 text-[var(--state-success)]" />
                   </div>
                 }
               />
@@ -547,19 +570,19 @@ export default function ClientDetailPage() {
           stats.yellow_alerts > 0) && (
           <div className="flex gap-2">
             {stats.expired_count > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-red-600/30 text-red-300 flex items-center gap-1">
+              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] text-[var(--state-danger)] flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {stats.expired_count} expired
               </span>
             )}
             {stats.red_alerts > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400 flex items-center gap-1">
+              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] flex items-center gap-1">
                 <Bell className="w-3 h-3" />
                 {stats.red_alerts} urgent
               </span>
             )}
             {stats.yellow_alerts > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
+              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] flex items-center gap-1">
                 <Bell className="w-3 h-3" />
                 {stats.yellow_alerts} soon
               </span>
@@ -574,7 +597,7 @@ export default function ClientDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 text-green-500 border-green-500/30 hover:bg-green-500/10"
+                className="gap-2 text-[var(--accent-whatsapp)] border-[color-mix(in_srgb,var(--accent-whatsapp)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_10%,transparent)]"
                 onClick={() => {
                   const phone = client.phone?.replace(/\D/g, "");
                   if (phone)
@@ -773,9 +796,9 @@ export default function ClientDetailPage() {
             <span
               className={`text-[10px] tabular-nums transition-colors ${
                 logSummary.length > 400
-                  ? "text-red-400"
+                  ? "text-[var(--state-danger)]"
                   : logSummary.length > 200
-                    ? "text-yellow-400"
+                    ? "text-[var(--state-warning)]"
                     : "text-[var(--bz-text-2)]"
               }`}
             >
@@ -785,7 +808,7 @@ export default function ClientDetailPage() {
               size="sm"
               disabled={!logSummary.trim() || isLogging}
               onClick={submitLog}
-              className={`gap-2 transition-colors ${logSaved ? "bg-green-600 hover:bg-green-700" : ""}`}
+              className={`gap-2 transition-colors ${logSaved ? "bg-[var(--state-success)] hover:opacity-90" : ""}`}
             >
               {isLogging ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -812,7 +835,7 @@ export default function ClientDetailPage() {
           },
           {
             key: "process",
-            label: `Process (${stats.practices_count ?? activePractices.length + completedPractices.length})`,
+            label: `Process (${activePractices.length + completedPractices.length})`,
             icon: FolderOpen,
           },
           {
