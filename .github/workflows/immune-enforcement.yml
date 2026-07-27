@@ -117,6 +117,11 @@ jobs:
               scripts/test_cron_state_alert.sh|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
+              scripts/ci/queue_rearm.sh|\
+              scripts/ci/queue_rearm_classify.sh|\
+              scripts/ci/queue_rearm_population.sh|\
+              scripts/ci/test_queue_rearm_classify.sh|\
+              scripts/ci/test_queue_rearm_population.sh|\
               scripts/tests/test_fly_backup_timeouts.py|\
               scripts/tests/test_no_import_time_chdir_in_tests.py|\
               scripts/tests/test_husky_prepush_venv_guard.py|\
@@ -227,6 +232,25 @@ jobs:
           # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
           # bucket: the qdrant nightly is missing for exactly the night PG failed.
           bash scripts/test_fly_backup_phases.sh
+
+      - name: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Both corpora shipped complete and NEITHER was named by any workflow —
+          # `test_queue_rearm_classify.sh` had been on main since #3342, executed by
+          # nothing. A guilt+innocence corpus that never runs is the exact shape it
+          # was written to prevent (superscar #2), one level down: the guard of the
+          # guard, unarmed.
+          #
+          # What they pin: the classifier must never retry a CODE red and must never
+          # read an unfinished check as "no failure"; the population reader must count
+          # a pull request whose mergeability GitHub has not finished computing as
+          # UNDECIDABLE rather than dropping it into the clean bucket. That third
+          # `mergeable` value is why this step exists — measured 2026-07-28, the tool
+          # reported "0 orphaned" seconds after a merge to main and 13 minutes later,
+          # same code, same world.
+          bash scripts/ci/test_queue_rearm_classify.sh
+          bash scripts/ci/test_queue_rearm_population.sh
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'

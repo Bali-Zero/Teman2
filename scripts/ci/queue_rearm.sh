@@ -40,6 +40,8 @@ APPLY=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLASSIFY="$SCRIPT_DIR/queue_rearm_classify.sh"
 [[ -x "$CLASSIFY" ]] || { echo "FATAL: $CLASSIFY missing or not executable"; exit 3; }
+POPULATION="$SCRIPT_DIR/queue_rearm_population.sh"
+[[ -x "$POPULATION" ]] || { echo "FATAL: $POPULATION missing or not executable"; exit 3; }
 
 # Patterns that identify a red NOT attributable to the diff. Widen ONLY with a
 # cause observed live, never by resemblance — every pattern here is a red this
@@ -94,12 +96,35 @@ if (( open_count == 0 )); then
   exit 3
 fi
 
-cand=$(printf '%s' "$all_open" \
-       | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null)|"\(.number)\t\(.title[0:70])"')
-
+cand=$(printf '%s' "$all_open" | "$POPULATION" --candidates)
 total=$(printf '%s\n' "$cand" | grep -c .)
+
+# THE THIRD VALUE — see the scar documented at the top of
+# `queue_rearm_population.sh`. `mergeable` is not a boolean: GitHub answers
+# UNKNOWN while it recomputes, and it recomputes for EVERY open pull request
+# after every push to the base branch. So a merge to main opens a window in
+# which genuine orphans read as not-MERGEABLE and quietly leave the candidate
+# set — and a scheduled run is most likely to fire exactly then. An unresolved
+# population must never be reported as an empty one.
+undecidable=$(printf '%s' "$all_open" | "$POPULATION" --undecidable)
+if [[ -z "$undecidable" || ! "$undecidable" =~ ^[0-9]+$ ]]; then
+  echo "🔌 could not count undecided mergeable states — refusing to report a verdict on a partially-read set."
+  exit 3
+fi
+
 echo "unarmed candidates: $total (of $open_count open pull request(s))"
+if (( undecidable > 0 )); then
+  echo "   ⏳ $undecidable unarmed pull request(s) have an UNDECIDED mergeable state — GitHub"
+  echo "      recomputes mergeability after every push to the base branch, so this list is"
+  echo "      INCOMPLETE right now. Re-run in a minute for the full picture."
+fi
+
 if (( total == 0 )); then
+  if (( undecidable > 0 )); then
+    echo "🔌 zero decidable candidates, but $undecidable await recomputation. That is"
+    echo "   'ask again shortly', never 'nothing is orphaned'. No verdict."
+    exit 3
+  fi
   echo "✅ no orphaned pull request — every open one is armed, queued or conflicting."
   exit 0
 fi
