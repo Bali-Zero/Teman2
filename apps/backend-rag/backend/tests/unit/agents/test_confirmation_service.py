@@ -274,13 +274,22 @@ class TestRedisPersistence:
             )
 
         task = asyncio.create_task(check_redis_then_resolve())
+        # W58 (2026-07-27): `timeout` here bounds asyncio.wait_for(future, ...) in
+        # request_and_wait — the background task only needs ~0.05s plus an
+        # in-process fakeredis round-trip (no real network I/O), but under CPU
+        # contention the event loop itself can go unscheduled for seconds, which
+        # is scheduler noise, not test signal. Unlike a "buggy code does 2x the
+        # work" case, a genuine wiring bug here means the future is NEVER
+        # resolved — any finite timeout still catches that identically, so a
+        # generous value loses no discriminating power (measured: this test hit
+        # ConfirmationTimeout on a busy box with a 5.0s bound).
         await service.request_and_wait(
             tool_name="image_generation",
             args={"prompt": "test"},
             user_email="damar@balizero.com",
             preview="test preview",
             emitter=emitter,
-            timeout=5.0,
+            timeout=30.0,
         )
         await task
 

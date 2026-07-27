@@ -48,10 +48,15 @@ async def test_fast_lane_reclaims_before_slowest_sibling_finishes(
     monkeypatch.setattr(worker, "run_once", run_once)
     runner = asyncio.create_task(worker.run_forever())
     try:
-        await asyncio.wait_for(fast_lane_reclaimed.wait(), timeout=0.5)
+        # W58 (2026-07-27): pure in-process Event coordination (no real I/O,
+        # run_once is mocked, poll_interval=1ms) — a genuine scheduling
+        # regression means fast_lane_reclaimed never fires, not that it fires
+        # late; a generous bound loses no discriminating power and removes
+        # dependence on the box getting CPU time for this task within 0.5s.
+        await asyncio.wait_for(fast_lane_reclaimed.wait(), timeout=5.0)
         assert not slow_lane_release.is_set()
         assert call_count >= 3
     finally:
         slow_lane_release.set()
         worker.stop()
-        await asyncio.wait_for(runner, timeout=1.0)
+        await asyncio.wait_for(runner, timeout=5.0)
