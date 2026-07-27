@@ -579,6 +579,31 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   pricing triggers, visa-TYPE questions ground on current codes names-only + one-line cost offer.
 - **Full-domain cache lane OPEN** (design pending). Tracked in the main session's task list.
 
+- **🔴 PROBED LIVE 2026-07-27 (3 calls on the prod `ask_legal` surface) — two client-facing
+  defects, one of them fabricating a legal deadline.**
+
+  | probe                                 | `model`                   | `tools_called` | `abstain` | outcome                                                                          |
+  | ------------------------------------- | ------------------------- | -------------- | --------- | -------------------------------------------------------------------------------- |
+  | "KITAS respinto, posso fare ricorso?" | `multi-agent-coordinator` | 3              | **false** | confident answer inventing **"30 giorni per il ricorso"** + a 51-96 day timeline |
+  | E33G requirements                     | `unknown`                 | 0              | true      | correct stub                                                                     |
+  | same rejection question, rephrased    | `unknown`                 | 0              | true      | correct stub                                                                     |
+
+  **All three returned `sources: []`, `context_length: 0`, `evidence_score: 0`.** So the gate is
+  not broken — it is UNREACHABLE on one route: the `multi-agent-coordinator` path ran 3 tools,
+  produced an answer, and reported `abstain: false` at evidence 0. Rephrasing the SAME question
+  took the other route and abstained honestly. This is the nondeterminism §1 already records
+  ("same code, different luck in the ReAct loop") — but now with the consequence measured: on
+  the unlucky route a client is told a **specific appeal deadline that no source supports**, and
+  a missed immigration deadline is not recoverable. Tracked in tasks #20/#23.
+
+  **Second defect, 3/3 — the KG workflow scaffold reaches the client on this surface.** Every
+  answer carried `## SUGGESTED WORKFLOW (from visa_subgraph, confidence: NN%)` plus the internal
+  trailer. Twice it directly CONTRADICTED the refusal printed immediately above it: an
+  "I couldn't find relevant information" was followed by an IMTA/TKA work-permit workflow for a
+  question about remote work, and by a one-step "VITAS Processing" for a question about appeals.
+  `wa_inbox_bot._strip_kg_workflow_scaffold` cures exactly this — but only on the WhatsApp path,
+  which is the 1-of-N consumer problem in task #25, now confirmed live rather than inferred.
+
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
 1. **Two WA code paths exist.** Path B is the live one for this number: Meta webhook →
