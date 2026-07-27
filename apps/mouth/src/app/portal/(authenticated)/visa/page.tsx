@@ -94,6 +94,7 @@ function VisaMasthead() {
 export default function VisaPage() {
   const { error } = useToast();
   const [visaInfo, setVisaInfo] = useState<VisaInfo | null>(null);
+  const [needsClientSelection, setNeedsClientSelection] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -103,9 +104,17 @@ export default function VisaPage() {
   const loadVisaInfo = async () => {
     try {
       setIsLoading(true);
+      setNeedsClientSelection(false);
       const data = await api.portal.getVisaStatus();
       setVisaInfo(data);
     } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message === "Superuser: select a client via ?as_client=<id>"
+      ) {
+        setNeedsClientSelection(true);
+        return;
+      }
       error("Failed to load visa information", "Please try again later");
       logger.error("Failed to load portal visa info", {}, err as Error);
     } finally {
@@ -174,8 +183,16 @@ export default function VisaPage() {
         <VisaMasthead />
         <PortalEmptyState
           icon={Plane}
-          title="No visa information"
-          description="Visa details will appear here once your immigration process begins."
+          title={
+            needsClientSelection
+              ? "Select a client to view visa information"
+              : "No visa information"
+          }
+          description={
+            needsClientSelection
+              ? "Choose a client from the portal selector to inspect their immigration status."
+              : "Visa details will appear here once your immigration process begins."
+          }
         />
       </div>
     );
