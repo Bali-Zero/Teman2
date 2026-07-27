@@ -2,8 +2,8 @@
 # Install with: pip install -r requirements-test.txt
 
 # Test containers for integration tests
-testcontainers[postgres]>=4.0.0
-testcontainers[compose]>=4.0.0
+testcontainers[postgres]>=4.15.0
+testcontainers[compose]>=4.15.0
 
 # Test-runtime deps that CI installs INLINE in .github/workflows/tests.yml
 # ("uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock
