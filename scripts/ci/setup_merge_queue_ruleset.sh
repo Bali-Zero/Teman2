@@ -58,6 +58,24 @@ repo_slug() {
 }
 
 # $1 = enforcement value ("active" | "disabled")
+#
+# NOTE — `max_entries_to_build` (do not lower it back to 1 without reading this).
+# It is how many queue entries GitHub builds — creates a merge-group ref for and
+# runs checks on — CONCURRENTLY. At 1 the queue is strictly SERIAL: entry N's ~20
+# minutes of checks begin only after N-1 merges or is ejected, which caps the repo
+# at roughly 3 PRs/hour no matter how fast everything upstream is. Measured live
+# 2026-07-27: 6 entries waiting, nothing merged for 51 minutes, one entry
+# AWAITING_CHECKS and five idle. Raised to 5 and five went AWAITING_CHECKS at once.
+#
+# Raising it is safe here for one specific reason, which is a precondition and not
+# a property of the number: every workflow triggering on `merge_group` keys its
+# concurrency group on `github.ref`, which for a queue entry is the unique
+# `refs/gh-readonly-queue/main/pr-N-<sha>`, and sets `cancel-in-progress` false for
+# merge_group (PR #3285). With a SHARED group key instead, parallel builds would
+# cancel each other and the queue would eat its own verdicts — silently, since a
+# cancelled run reports no failure. Re-check that invariant before raising further.
+# Cost is only rebuilds when an early entry is ejected, and GitHub-hosted runners
+# are free on a public repo.
 canonical_body() {
   local enforcement="$1"
   cat <<JSON
@@ -77,7 +95,7 @@ canonical_body() {
       "parameters": {
         "check_response_timeout_minutes": 90,
         "grouping_strategy": "ALLGREEN",
-        "max_entries_to_build": 1,
+        "max_entries_to_build": 5,
         "max_entries_to_merge": 4,
         "merge_method": "SQUASH",
         "min_entries_to_merge": 1,

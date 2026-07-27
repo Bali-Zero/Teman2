@@ -153,11 +153,18 @@ Full list: see `.github/CODEOWNERS`.
      (≤10 min) reports it as an EJECTED finding if it's still open, and no other queued PR is
      corrupted by the ejection. This is the "does the safety mechanism the queue exists for actually
      fire" gate — the entire point of §1's rationale, unverified until this step runs for real.
-   - **C3 — two simultaneous entries.** Two independent PRs armed close together. Confirm both are
-     correctly serialized (positions 1 and 2, or grouped per `grouping_strategy: ALLGREEN` /
-     `max_entries_to_build: 1` from the canonical body), and that the second one's required checks
-     run against the _first one's_ result, not against stale `main` — this is the specific race from
-     §1 made concrete and observed, not just argued.
+   - **C3 — two simultaneous entries.** Two independent PRs armed close together. Confirm the second
+     one's required checks run against the _first one's_ result, not against stale `main` — this is
+     the specific race from §1 made concrete and observed, not just argued.
+
+     Note that this no longer looks like strict serialization. `max_entries_to_build` was **1** when
+     this runbook was first written, so C3's expected shape was "positions 1 and 2, one building at a
+     time". It is now **5** (raised 2026-07-27 after the queue sat at 6 waiting entries with nothing
+     merged for 51 minutes — the serial setting caps the repo at roughly 3 PRs/hour). What you should
+     see instead is up to five entries `AWAITING_CHECKS` **simultaneously**, each built speculatively
+     on top of its predecessors. Speculation does not weaken the property C3 exists to verify: entry
+     2 is still built on entry 1's merge result, and if entry 1 is ejected, entries built on it are
+     rebuilt rather than merged. What changes is only how many are in flight while you watch.
 5. **Gradual re-open.** Widen from canary-only PRs to the general `gh pr merge --auto --squash`
    population per the whitelist (§3) and manual arms alike. Watch `merge-queue-watch.yml` and
    `Main-push Failure Watch` (see below) closely through this window — they are the two automated
