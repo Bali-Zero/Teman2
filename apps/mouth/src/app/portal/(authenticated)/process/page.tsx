@@ -48,6 +48,7 @@ import {
   PracticeBaton,
   statusToBaton,
 } from "@/components/portal/PracticeBaton";
+import type { PortalMatter } from "@/lib/api/portal";
 
 // Status configurations — WS3 slice 4 (GARUDA Day Edition, 2026-07-24):
 // state colors read the semantic --state-* tokens (WS2 operative-light AA
@@ -583,6 +584,7 @@ export default function PortalProcessPage() {
     id: number;
     fullName: string;
   } | null>(null);
+  const [matters, setMatters] = useState<PortalMatter[]>([]);
   const [documents, setDocuments] = useState<ClientRequiredDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -600,15 +602,17 @@ export default function PortalProcessPage() {
           setIsLoading(true);
         }
 
-        // Get profile
-        const profileData = await api.portal.getProfile();
+        const [profileData, mattersData, docs] = await Promise.all([
+          api.portal.getProfile(),
+          api.portal.listMatters(),
+          // The portal-scoped endpoint resolves client_id from the caller's
+          // JWT, unlike the CRM endpoint which rejects plain client JWTs.
+          api.portal.getMyRequiredDocuments() as Promise<
+            ClientRequiredDocument[]
+          >,
+        ]);
         setProfile({ id: profileData.id, fullName: profileData.fullName });
-
-        // Get required documents via portal-scoped endpoint. The CRM version
-        // 403s for plain client JWTs — this route resolves client_id from
-        // the caller's JWT so shareholders can load their own checklist.
-        const docs =
-          (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
+        setMatters(mattersData.matters);
         setDocuments(docs);
       } catch (err) {
         if (showErrorToast) {
@@ -674,21 +678,29 @@ export default function PortalProcessPage() {
     }
   };
 
-  // Group documents by process
-  const processGroups: ProcessGroup[] = documents.reduce((groups, doc) => {
-    const existing = groups.find((g) => g.practiceId === doc.practice_id);
+  const processGroups: ProcessGroup[] = matters.map((matter) => ({
+    practiceId: matter.id,
+    processName: matter.title,
+    processStatus: matter.status,
+    documents: documents.filter((doc) => doc.practice_id === matter.id),
+  }));
+
+  for (const doc of documents) {
+    const existing = processGroups.find(
+      (group) => group.practiceId === doc.practice_id,
+    );
     if (existing) {
-      existing.documents.push(doc);
-    } else {
-      groups.push({
-        practiceId: doc.practice_id,
-        processName: doc.process_name,
-        processStatus: doc.process_status,
-        documents: [doc],
-      });
+      continue;
     }
-    return groups;
-  }, [] as ProcessGroup[]);
+    processGroups.push({
+      practiceId: doc.practice_id,
+      processName: doc.process_name,
+      processStatus: doc.process_status,
+      documents: documents.filter(
+        (candidate) => candidate.practice_id === doc.practice_id,
+      ),
+    });
+  }
 
   // Stats
   const totalDocs = documents.length;
