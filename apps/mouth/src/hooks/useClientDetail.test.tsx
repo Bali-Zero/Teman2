@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildBusinessStorySearchTerms,
   clientDetailQueryKey,
@@ -107,9 +107,19 @@ describe("client detail cache transitions", () => {
     });
   });
 
-  it("invalidates the exact client detail query", async () => {
+  it("refetches the exact client detail query even while it is inactive", async () => {
     const queryClient = new QueryClient();
     const queryKey = clientDetailQueryKey(7);
+    const refreshedProfile = {
+      ...makeProfile("active"),
+      practices: [{ id: 71 }],
+      stats: {
+        ...makeProfile("active").stats,
+        practices_count: 1,
+      },
+    } as ClientProfile;
+    const refetchProfile = vi.fn().mockResolvedValue(refreshedProfile);
+    queryClient.setQueryDefaults(queryKey, { queryFn: refetchProfile });
     queryClient.setQueryData(queryKey, makeProfile("active"));
 
     const { result } = renderHook(() => useInvalidateClient(7), {
@@ -120,6 +130,24 @@ describe("client detail cache transitions", () => {
       await result.current();
     });
 
-    expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+    expect(refetchProfile).toHaveBeenCalledTimes(1);
+    expect(queryClient.getQueryData<ClientProfile>(queryKey)).toEqual(
+      refreshedProfile,
+    );
+  });
+
+  it("does not invalidate a synthetic client zero cache key", async () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useInvalidateClient(undefined), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(clientDetailQueryKey(0))).toBeUndefined();
   });
 });
