@@ -1332,6 +1332,7 @@ class TestHRBonus:
 
         # Should return silently if no assigned_to
         await _create_hr_bonus_on_completed(mock_db_pool, 1, None)
+        mock_db_pool.acquire.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_table_not_exists(
@@ -1342,6 +1343,8 @@ class TestHRBonus:
         mock_db_conn.fetchval = AsyncMock(return_value=False)
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, "team@balizero.com")
+        mock_db_conn.fetchval.assert_awaited_once()
+        mock_db_conn.fetchrow.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_no_practice_type(
@@ -1353,6 +1356,8 @@ class TestHRBonus:
         mock_db_conn.fetchrow = AsyncMock(return_value=None)  # no practice type
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, "team@balizero.com")
+        mock_db_conn.fetchrow.assert_awaited_once()
+        mock_db_conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_no_rate(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
@@ -1367,6 +1372,8 @@ class TestHRBonus:
         )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, "team@balizero.com")
+        assert mock_db_conn.fetchrow.await_count == 2
+        mock_db_conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_no_employee(
@@ -1384,6 +1391,8 @@ class TestHRBonus:
         )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, "team@balizero.com")
+        assert mock_db_conn.fetchrow.await_count == 3
+        mock_db_conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_existing_entry(
@@ -1401,6 +1410,8 @@ class TestHRBonus:
         )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, "team@balizero.com")
+        assert mock_db_conn.fetchval.await_count == 2
+        mock_db_conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_hr_bonus_success(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
