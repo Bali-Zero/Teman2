@@ -73,10 +73,10 @@ KBLI_MASTER_PROMPT = (
     "- NIB = Nomor Induk Berusaha = Business Identification Number (first step in OSS)\n"
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "KNOWN KBLI CODES (use these exact definitions when asked):\n"
-    "- 47911 = PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG — Retail trade of various consumer goods via internet/digital media platforms. PMA: TERBATAS (restricted).\n"
+    "- 47901 = PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN — Operating a digital marketplace that intermediates retail sales. PMA: TERBUKA (100% open). NOTE: this is the MARKETPLACE OPERATOR. A business selling its OWN goods online takes the code of the PRODUCT CATEGORY it sells, with that category's restrictions (e.g. 47221 alcoholic beverages TERBATAS, 47222 non-alcoholic TERTUTUP, most others TERBUKA). KBLI 47911 was a 2020 code and does NOT exist in KBLI 2025 — never cite it.\n"
     "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners). Risiko is scale-dependent; for PMA/Besar: Menengah Tinggi.\n"
     "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
-    "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
+    "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBUKA (100% open).\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
     "ACCURACY GUIDELINES:\n"
     "1. Use only real citations from the context data. Don't make up placeholder references like 'Chapter X' or 'Bab Y'.\n"
@@ -95,7 +95,8 @@ KBLI_MASTER_PROMPT = (
     "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), "
     "'mobile app/aplikasi/software development' = aktivitas pemrograman komputer (KBLI 62199) or pengembangan aplikasi e-commerce (KBLI 62191), "
     "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen dan bisnis (KBLI 70209), "
-    "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911), "
+    "'online retail/e-commerce/toko online/online shop' = KBLI 47901 if the client OPERATES a marketplace platform, "
+    "otherwise the code of the PRODUCT CATEGORY sold online (there is no single 'e-commerce' code in KBLI 2025), "
     "'co-working space/ruang kerja bersama/shared office' = pengelolaan gedung perkantoran (KBLI 68127), "
     "'villa/sewa villa/villa rental' = aktivitas vila (KBLI 55203 — rumah pribadi disewakan kepada wisatawan), "
     "'homestay/rumah sewa harian' = aktivitas rumah tinggal sewa (KBLI 55201), "
@@ -181,7 +182,7 @@ _TRANSLATE_SYSTEM = (
     "2. Use terminology from official KBLI 2025 titles (BPS Regulation No. 7/2025).\n"
     "3. For sector/category questions (e.g. 'construction sector', 'tourism sector'), use the Indonesian sector name.\n"
     "4. For comparison questions (e.g. 'difference between X and Y'), output both Indonesian terms separated by a space.\n"
-    "5. For KBLI code numbers (e.g. 'KBLI 47911'), pass them through unchanged.\n"
+    "5. For KBLI code numbers (e.g. 'KBLI 56101'), pass them through unchanged.\n"
     "6. For Indonesian terms already correct (e.g. 'tertutup', 'terbuka', 'terbatas', 'PMA'), pass them through unchanged.\n"
     "7. Prefer specific activity descriptions over generic sector names when the query is about a specific business.\n"
     "8. Known colloquial mappings — use these exact Indonesian phrases:\n"
@@ -473,16 +474,38 @@ MIN_RELEVANCE_SCORE = 0.18
 # Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
 # NOTE: 56101 and 56210 removed — now present in Qdrant with correct BPS data (TERBUKA)
 KNOWN_KBLI_CODES: dict[str, dict] = {
-    "47911": {
-        "title": "PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG",
-        "description": "Retail trade of various consumer goods via internet or other digital media platforms (e-commerce, online shop). Includes online marketplaces and direct-to-consumer digital retail.",
-        "pma_status": "TERBATAS",
+    # Was "47911" with pma_status TERBATAS — a KBLI **2020** code, retired in
+    # 2025 and absent from the catalogue, so both PostgreSQL and Qdrant miss it
+    # by construction and this dict was its ONLY possible answer. It is reached
+    # by the e-commerce keyword row below ("online shop", "toko online",
+    # "jual online", ...), i.e. one of the most common questions there is — and
+    # "TERBATAS" was invented: the 2025 activity is OPEN. Repointed to the real
+    # successor, whose values come from the catalogue, not from this file.
+    "47901": {
+        "title": "PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN",
+        "description": (
+            "Digital intermediation platform for retail trade: online marketplaces "
+            "that intermediate OTHER sellers' transactions. KBLI 2025 split the 2020 "
+            "code 47911 (PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM "
+            "BARANG), which no longer exists, into two different things, and which "
+            "one applies depends on the business: (a) you OPERATE the marketplace "
+            "and intermediate other sellers -> 47901, TERBUKA, 100% foreign "
+            "ownership; (b) you SELL YOUR OWN goods online -> the code is the "
+            "PRODUCT CATEGORY you sell, not the online channel, and it carries that "
+            "category's own restrictions — e.g. alcoholic beverages 47221 is "
+            "TERBATAS and 47222 is TERTUTUP, while most categories are TERBUKA. Ask "
+            "which of the two the client is doing before naming a single code."
+        ),
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "56290": {
-        "title": "AKTIVITAS JASA BOGA LAINNYA",
+        "title": "AKTIVITAS PENYEDIAAN JASA BOGA LAINNYA",
+        # Was "TERBATAS" — the catalogue says TERBUKA, max foreign 100%. A
+        # restriction asserted where none exists refuses a lawful investment,
+        # which is the costlier direction to be wrong in.
         "description": "Other food service and catering activities not elsewhere classified. Includes canteen management, institutional catering, and similar food services.",
-        "pma_status": "TERBATAS",
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "56301": {
@@ -819,7 +842,13 @@ async def chat_kbli(
 
         # P2 FIX: Keyword-to-code injection for activities not in Qdrant
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
-        # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
+        # CORRECTED 2026-07-27: this comment used to read "prevents wrong codes
+        # (e.g. 47901 for online retail instead of 47911)" — exactly backwards, and
+        # that belief is what put a retired 2020 code on the channel. 47911 does not
+        # exist in the KBLI 2025 catalogue; 47901 does, and it is the code that cites
+        # 47911 in its pp28_sources. Verify a target against the catalogue before
+        # adding a row here: a code this map names but the stores do not have will be
+        # answered by the hardcoded dict alone, with no retrieval to correct it.
         _activity_keyword_map: list[tuple[list[str], str]] = [
             # Online retail / e-commerce (handle spaced variants like "e comerce", "e commerce")
             (
@@ -837,7 +866,7 @@ async def chat_kbli(
                     "jual online",
                     "perdagangan online",
                 ],
-                "47911",
+                "47901",
             ),
             # Event catering / catering
             (
@@ -1327,8 +1356,11 @@ async def chat_kbli(
 
         # Use filtered results for explanation (unless we have direct match)
         if has_direct_match and not codes_from_query:
-            # Keyword-injected match (no code in query): use ONLY the direct match
-            # Prevents LLM from preferring wrong Qdrant results (e.g. 47901 over 47911)
+            # Keyword-injected match (no code in query): use ONLY the direct match,
+            # so a lower-ranked Qdrant hit cannot displace the code the keyword map
+            # deliberately chose. (The original comment here named 47901 as the
+            # "wrong" result to suppress in favour of 47911 — backwards: 47911 is a
+            # retired 2020 code absent from KBLI 2025, 47901 is the live successor.)
             results = [direct_kbli_match]
             logger.info(
                 f"🎯 Keyword injection: restricting results to direct match only ({direct_kbli_match.code})",
