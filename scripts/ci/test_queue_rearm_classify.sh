@@ -176,10 +176,18 @@ infra_case() { # <expect: yes|no> <name> <line>
 }
 
 echo "INFRA_RE — guilt:"
-# The verbatim line from #3372, 2026-07-28: the queue destroyed its temporary
-# branch on ejection and a still-running CodeQL then failed uploading to it.
-infra_case yes "post-ejection ref vanished (#3372, verbatim)" \
-  "##[error]ref 'refs/heads/gh-readonly-queue/main/pr-3372-25cdf52620d89182ec184d90a0b9dad23d2af15d' not found in the repository"
+# The line from #3372, 2026-07-28: the queue destroyed its temporary branch on
+# ejection and a still-running CodeQL then failed uploading to it.
+#
+# The 40-char SHA is DELIBERATELY a short placeholder rather than the real one.
+# The first draft pasted the actual commit hash "verbatim" and `Detect Secrets`
+# — a required check — flagged it as a Hex/Base64 High Entropy String and went
+# red. Nothing here needs the true hash: what the matcher keys on is the PATH
+# SHAPE (`refs/heads/gh-readonly-queue/<base>/pr-<n>-<sha>`), so fidelity to the
+# shape is the fidelity that matters, and a realistic-looking 40-hex string buys
+# nothing but a secret-scanner false positive on every future run.
+infra_case yes "post-ejection ref vanished (#3372)" \
+  "##[error]ref 'refs/heads/gh-readonly-queue/main/pr-3372-abc1234' not found in the repository"
 infra_case yes "docker.io container-init timeout (the original cause)" \
   "Error response from daemon: registry-1.docker.io: context deadline exceeded"
 
