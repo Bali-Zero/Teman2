@@ -1190,11 +1190,12 @@ async def update_practice(
             }
 
             update_set = updates.dict(exclude_unset=True)
+            nullable_fields = {"assigned_to", "start_date"}
             for field, value in update_set.items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
-                if value is not None:
+                if value is not None or field in nullable_fields:
                     column_name = field_mapping[field]
                     update_fields.append(f"{column_name} = ${param_index}")
                     params.append(value)
@@ -1269,6 +1270,28 @@ async def update_practice(
                 raise HTTPException(status_code=404, detail="Practice not found")
 
             updated_practice = dict(row)
+            canonical_row = await conn.fetchrow(
+                """
+                SELECT
+                    p.*,
+                    c.full_name as client_name,
+                    c.email as client_email,
+                    c.phone as client_phone,
+                    c.assigned_to as client_lead,
+                    pt.name as practice_type_name,
+                    pt.code as practice_type_code,
+                    pt.category as practice_category,
+                    pt.required_documents as required_documents
+                FROM practices p
+                JOIN clients c ON p.client_id = c.id
+                JOIN practice_types pt ON p.practice_type_id = pt.id
+                WHERE p.id = $1
+                """,
+                practice_id,
+            )
+            response_practice = (
+                dict(canonical_row) if canonical_row is not None else dict(updated_practice)
+            )
 
             # Discount audit log (owner decision Q3=c, 2026-05-06): append an
             # entry to metadata.discount_log every time discount_amount is
@@ -1317,6 +1340,7 @@ async def update_practice(
                         practice_id,
                     )
                     updated_practice["metadata"] = new_meta
+                    response_practice["metadata"] = new_meta
             except Exception as audit_exc:
                 # Audit failure must NOT roll back the user-visible discount
                 # update — the business write already succeeded. Log + move on.
@@ -1385,12 +1409,11 @@ async def update_practice(
                     )
 
                     notif_service = PortalNotificationService(db_pool)
-                    # RETURNING * only has practice_type_id (FK), not the code/name
-                    pt_row = await conn.fetchrow(
-                        "SELECT code FROM practice_types WHERE id = $1",
-                        updated_practice.get("practice_type_id"),
+                    practice_type = (
+                        response_practice.get("practice_type_code")
+                        or response_practice.get("practice_type_name")
+                        or "Practice"
                     )
-                    practice_type = (pt_row["code"] if pt_row else None) or "Practice"
                     spawn(
                         notif_service.notify_practice_status_changed(
                             client_id=practice_client_id,
@@ -1503,7 +1526,7 @@ async def update_practice(
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
             await invalidate_cache("zantara:crm_clients_stats:*")
-            return updated_practice
+            return response_practice
 
     except HTTPException:
         raise

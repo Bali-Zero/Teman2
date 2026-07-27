@@ -272,8 +272,10 @@ export default function CaseDetailPage() {
     setIsSavingNotes(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { notes: notesValue });
-      setPractice((prev) => (prev ? { ...prev, notes: notesValue } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        notes: notesValue,
+      });
+      setPractice(updatedPractice);
       await invalidateClient();
       toast.success("Notes saved");
       setIsEditingNotes(false);
@@ -293,10 +295,10 @@ export default function CaseDetailPage() {
     setIsUpdatingPayment(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { payment_status: nextStatus });
-      setPractice((prev) =>
-        prev ? { ...prev, payment_status: nextStatus } : prev,
-      );
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        payment_status: nextStatus,
+      });
+      setPractice(updatedPractice);
       await invalidateClient();
       toast.success("Payment status updated", `→ ${nextStatus}`);
     } catch (err) {
@@ -315,10 +317,10 @@ export default function CaseDetailPage() {
     setIsUpdatingPriority(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { priority: nextPriority });
-      setPractice((prev) =>
-        prev ? { ...prev, priority: nextPriority } : prev,
-      );
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        priority: nextPriority,
+      });
+      setPractice(updatedPractice);
       await invalidateClient();
       toast.success("Priority updated", `→ ${nextPriority}`);
     } catch (err) {
@@ -338,8 +340,10 @@ export default function CaseDetailPage() {
     setIsSavingPrice(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { [field]: num });
-      setPractice((prev) => (prev ? { ...prev, [field]: num } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        [field]: num,
+      });
+      setPractice(updatedPractice);
       await invalidateClient();
       toast.success("Price updated");
     } catch (err) {
@@ -363,8 +367,10 @@ export default function CaseDetailPage() {
     setIsJumpingStatus(newStatus);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { status: newStatus });
-      setPractice((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      const updatedPractice = await api.crm.updatePractice(caseId, {
+        status: newStatus,
+      });
+      setPractice(updatedPractice);
       await invalidateClient();
       toast.success("Status updated", `→ ${newStatus.replace(/_/g, " ")}`);
     } catch (err) {
@@ -419,18 +425,7 @@ export default function CaseDetailPage() {
 
     try {
       const user = await api.getProfile();
-      const updates: Partial<
-        Pick<
-          Practice,
-          | "status"
-          | "priority"
-          | "payment_status"
-          | "quoted_price"
-          | "actual_price"
-          | "assigned_to"
-          | "start_date"
-        >
-      > = {};
+      const updates: Parameters<typeof api.crm.updatePractice>[1] = {};
 
       if (editForm.status && editForm.status !== practice.status)
         updates.status = editForm.status;
@@ -452,12 +447,12 @@ export default function CaseDetailPage() {
       )
         updates.actual_price = Number(editForm.actual_price);
       if (editForm.assigned_to !== (practice.assigned_to || ""))
-        updates.assigned_to = editForm.assigned_to || undefined;
+        updates.assigned_to = editForm.assigned_to || null;
       const currentStartDate = practice.start_date
         ? practice.start_date.split("T")[0]
         : "";
       if (editForm.start_date !== currentStartDate)
-        updates.start_date = editForm.start_date || undefined;
+        updates.start_date = editForm.start_date || null;
 
       if (Object.keys(updates).length === 0) {
         toast.error("No Changes", "No fields were modified.");
@@ -481,7 +476,7 @@ export default function CaseDetailPage() {
         user: user.email,
       });
 
-      await api.crm.updatePractice(caseId, updates);
+      const updatedPractice = await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/update",
@@ -492,11 +487,7 @@ export default function CaseDetailPage() {
         user.email,
       );
 
-      // Apply only fields submitted by this form. The PATCH endpoint returns a
-      // raw practices row whose legacy columns can shadow joined GET fields.
-      setPractice((current) =>
-        current ? { ...current, ...updates } : current,
-      );
+      setPractice(updatedPractice);
       await invalidateClient();
 
       // Track case update

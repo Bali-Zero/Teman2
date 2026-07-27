@@ -179,7 +179,10 @@ describe("CaseDetailPage", () => {
     mocks.useParams.mockReturnValue({ id: "42" });
     mocks.getProfile.mockResolvedValue(profile);
     mocks.isAdmin.mockReturnValue(true);
-    mocks.updatePractice.mockResolvedValue(undefined);
+    mocks.updatePractice.mockImplementation(
+      async (_practiceId: number, updates: Partial<Practice>) =>
+        makePractice(updates),
+    );
     mocks.deletePractice.mockResolvedValue(undefined);
     mocks.invalidateClient.mockResolvedValue(undefined);
     vi.spyOn(window, "open").mockImplementation(() => null);
@@ -426,17 +429,14 @@ describe("CaseDetailPage", () => {
     expect(await screen.findByText("Rp 2.000.000")).toBeInTheDocument();
   });
 
-  it("merges submitted fields without a stale reload or losing joined labels", async () => {
+  it("uses the canonical update response without a stale reload or losing joined labels", async () => {
     const original = makePractice();
-    const rawUpdateResponse = makePractice({
+    const canonicalUpdateResponse = makePractice({
       priority: "urgent",
       quoted_price: 2_000_000,
-      // The live PATCH returns the legacy raw practices column, which is
-      // usually empty, rather than the joined practice_types.code from GET.
-      practice_type_code: undefined,
     });
     mocks.getPractice.mockResolvedValueOnce(original);
-    mocks.updatePractice.mockResolvedValueOnce(rawUpdateResponse);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
     const user = userEvent.setup();
     render(<CaseDetailPage />);
     await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
@@ -489,6 +489,73 @@ describe("CaseDetailPage", () => {
       "details",
       profile.email,
     );
+  });
+
+  it("persists cleared assignee and start date from the canonical response", async () => {
+    const original = makePractice();
+    const canonicalUpdateResponse = makePractice({
+      assigned_to: undefined,
+      start_date: undefined,
+    });
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
+    const user = userEvent.setup();
+    render(<CaseDetailPage />);
+    await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const modal = screen.getByRole("heading", { name: "Edit Process #42" })
+      .parentElement?.parentElement as HTMLElement;
+    await user.selectOptions(within(modal).getAllByRole("combobox")[2], "");
+    await user.clear(within(modal).getByDisplayValue("2026-02-01"));
+    await user.click(
+      within(modal).getByRole("button", { name: "Save Changes" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.updatePractice).toHaveBeenCalledWith(42, {
+        assigned_to: null,
+        start_date: null,
+      });
+    });
+    expect(screen.queryByText("Zero Tester")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows server-derived completion data immediately after an edit", async () => {
+    const original = makePractice({ status: "on_process" });
+    const canonicalUpdateResponse = makePractice({
+      status: "completed",
+      completion_date: "2026-07-27T08:30:00.000Z",
+    });
+    mocks.getPractice.mockResolvedValueOnce(original);
+    mocks.updatePractice.mockResolvedValueOnce(canonicalUpdateResponse);
+    const user = userEvent.setup();
+    render(<CaseDetailPage />);
+    await screen.findByRole("heading", { name: "KITAS APPLICATION #42" });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const modal = screen.getByRole("heading", { name: "Edit Process #42" })
+      .parentElement?.parentElement as HTMLElement;
+    await user.selectOptions(
+      within(modal).getAllByRole("combobox")[0],
+      "completed",
+    );
+    await user.click(
+      within(modal).getByRole("button", { name: "Save Changes" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.updatePractice).toHaveBeenCalledWith(42, {
+        status: "completed",
+      });
+    });
+    expect(screen.getByText("Completion Date")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
+    ).toBeInTheDocument();
   });
 
   it("maps authorization errors from edit requests to a user-safe message", async () => {
