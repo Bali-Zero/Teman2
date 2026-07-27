@@ -58,7 +58,21 @@ POPULATION="$SCRIPT_DIR/queue_rearm_population.sh"
 # the pull request's health — so it must not be scored as a CODE red that forbids the
 # retry. Unanimity (rule 2 of the classifier) still protects this: one genuinely
 # non-infrastructural failure anywhere in the set still forbids the re-arm.
-INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container|ref .refs/heads/gh-readonly-queue/.*not found in the repository'
+#
+# The ejection is NOT the only way that ref dies. Second attempt on the same pull request,
+# also measured: P6 passed, the only red was `Snyk Docker Security` (NOT a required
+# context, so it cannot eject) — and both CodeQL jobs still died on the identical missing
+# ref. The queue also destroys the temporary branch when it REBUILDS the group after an
+# entry ahead leaves. Same wake, two different upstream events, and neither is the diff.
+#
+# ANCHOR ON THE REF PATH, NOT ON THE SENTENCE. The first version of this pattern ended in
+# `not found in the repository`; GitHub actually writes `not found in THIS repository`, so
+# it matched nothing that the fleet had ever produced. It went undetected because the guilt
+# fixture beside it was typed from memory instead of copied off the artifact — corpus and
+# code wrong in the same direction, which is the one failure a corpus cannot catch about
+# itself. The wording is form and belongs to GitHub; `refs/heads/gh-readonly-queue/…` +
+# `not found` is the entity, and it is the entity that makes this red the queue's own.
+INFRA_RE='registry-1\.docker\.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal|The self-hosted runner.*lost communication|Failed to initialize container|ref .refs/heads/gh-readonly-queue/.*not found'
 
 # ---------------------------------------------------------------------------
 # 1. Who is IN the queue right now. Anyone inside is not orphaned, whatever
