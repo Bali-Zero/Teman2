@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
+          filter: blob:none
       - name: Build review input (untrusted diff → file, never inlined)
         id: input
         if: steps.guard.outputs.has_token == 'true'

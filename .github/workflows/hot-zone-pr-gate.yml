@@ -74,7 +74,7 @@ jobs:
           # For pull_request: github.event.pull_request.base.sha
           ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
           fetch-depth: 0
-
+          filter: blob:none
       # ---------------------------------------------------------------------
       # Step 1bis — Self-test the changed-file enumerator (guilt + innocence)
       #

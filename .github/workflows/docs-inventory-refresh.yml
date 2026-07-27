@@ -84,6 +84,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # needed for docs_audit.py mtime derivation (git log -1 --format=%ct)
+          filter: blob:none
 
       - uses: actions/setup-python@v7
         with:
