@@ -28,6 +28,26 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the PR base ref is resolvable for the diff
+          # blob:none — a partial clone that keeps EVERY commit and tree and omits
+          # only file contents, fetching them on demand. `fetch-depth: 0` above is
+          # deliberately untouched: the history this gate needs (merge-base with a
+          # base ref that may have advanced) is unchanged, so the semantics the
+          # comment above defends are unchanged too. Only blob DELIVERY becomes lazy.
+          #
+          # This is not a speed tidy-up. On 2026-07-27 this checkout consumed 297s of
+          # this job's 300s budget and was killed: the gate itself never ran, the kill
+          # reported `cancelled`, and a cancelled REQUIRED check EJECTS the merge-queue
+          # entry — which then sits open with auto-merge off and nothing retrying it.
+          # Same mechanism killed P6 at 597s of 600s on the same pull request. Measured
+          # locally on this repository: a full clone moves 2,289 MB, blob:none moves
+          # 23.3 MB in 21s — 99% of what every workflow downloads is blobs nobody reads.
+          #
+          # `git diff --name-only` still gets exact results here: rename detection is
+          # the only thing that wants contents, and it wants them only for the files
+          # this pull request touched, which git fetches on demand. If a future step
+          # needs to read many historical file bodies, that step is the thing to
+          # reconsider — do NOT "fix" it by deleting this line and paying 2.3 GB again.
+          filter: blob:none
 
       - uses: actions/setup-python@v7
         with:

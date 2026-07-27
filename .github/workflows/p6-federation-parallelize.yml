@@ -46,6 +46,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+          # blob:none — keep every commit and tree, omit file contents, fetch them on
+          # demand. `fetch-depth: 0` above is untouched, so the sentinel's
+          # `git diff --name-only "$base"...HEAD` resolves exactly as before.
+          #
+          # Why, measured: on 2026-07-27 this checkout burned 597s of this job's 600s
+          # budget and was killed before the sentinel ran at all. The kill is reported
+          # as `cancelled`, and a cancelled REQUIRED check ejects the merge-queue entry,
+          # which then sits open with auto-merge off and nothing retrying it. The
+          # adversarial-review gate died the same way at 297s of 300s on the same pull
+          # request — one cause, two victims. A full clone here moves 2,289 MB; blob:none
+          # moves 23.3 MB. See the longer note in adversarial-review-gate.yml.
+          filter: blob:none
 
       # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
       # the EXACT original pull_request `paths:` list, each anchored ^...$.
