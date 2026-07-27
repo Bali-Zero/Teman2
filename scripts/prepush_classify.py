@@ -609,6 +609,22 @@ def _innocent_reason(path: str) -> str | None:
         return "root-level *.md"
     for prefix, suffixes in ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         if (path == prefix or path.startswith(prefix + "/")) and path.endswith(suffixes):
+            # The MATCH condition above is one uniform mechanism (v6 kept it
+            # deliberately so — see the table's v6 section). Only the human-facing
+            # LABEL branches, because the two arms of that `or` describe different
+            # rules and one string cannot honestly name both:
+            #   - `path == prefix` is an EXACT file rule. Rendering it as
+            #     `<prefix>/**` invents a DIRECTORY that does not exist — the v6
+            #     `.gitignore` entry printed `.gitignore/** (.gitignore)`, which
+            #     reads as "any .gitignore under a .gitignore/ directory" and
+            #     actively misleads anyone asking whether a NESTED .gitignore
+            #     skips (it does not — that is the whole point of root-exact).
+            #   - `path.startswith(prefix + "/")` really is a directory rule.
+            # Same defect class as W106's anchored diagnosis: the verdict was
+            # right, the explanation named the wrong thing, and the explanation
+            # is what the next reader acts on.
+            if path == prefix:
+                return f"{prefix} (exact match)"
             return f"{prefix}/** ({'/'.join(suffixes)})"
     return None
 
