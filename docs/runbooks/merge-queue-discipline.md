@@ -32,7 +32,7 @@ nameWithOwner`), as `scripts/ci/setup_merge_queue_ruleset.sh` does.
 | Ruleset                                                      | id `19779175`, name `merge-queue-main`, created 2026-07-27                                                                                                                                                                                                                                              |
 | Enforcement                                                  | `active` (flipped 2026-07-27 ~01:00Z; proof: first queue-merged SHA `7aab65b1ee`, 25/25 required contexts SUCCESS, 0 cancelled)                                                                                                                                                                         |
 | Rule                                                         | single `merge_queue` rule — see canonical body in `scripts/ci/setup_merge_queue_ruleset.sh`                                                                                                                                                                                                             |
-| Required status checks on `main` (classic branch protection) | **25** contexts, `strict: false`                                                                                                                                                                                                                                                                        |
+| Required status checks on `main` (classic branch protection) | **26** contexts, `strict: false` (was 25 on 2026-07-27 — the count moves as CI grows; re-measure, never cite)                                                                                                                                                                                           |
 | IaC                                                          | `scripts/ci/setup_merge_queue_ruleset.sh --status\|--enable\|--disable\|--apply`                                                                                                                                                                                                                        |
 | Watcher                                                      | `.github/workflows/merge-queue-watch.yml` — polls every 10 min for ejections + armed-but-stuck PRs (GraphQL; `merge_group`'s Actions trigger does not deliver the `destroyed` action, so event-based ejection detection does not exist — verified against GitHub's own Actions-trigger docs 2026-07-27) |
 
@@ -71,13 +71,25 @@ This is unchanged from the original rationale — only the _availability_ fact c
 Live count, re-measurable any time via `gh api repos/Bali-Zero/Teman2/branches/main/protection --jq
 '.required_status_checks.checks[].context'` (or `scripts/ci/setup_merge_queue_ruleset.sh --status`,
 which prints the _effective_ rules including any ruleset-level required checks once the queue rule
-type expands beyond `merge_queue`): **25 contexts**, `strict: false` (merge is allowed once checks
+type expands beyond `merge_queue`): **26 contexts**, `strict: false` (merge is allowed once checks
 pass on the PR's own base, not necessarily on the very latest `main` — this is exactly the race the
 merge queue now closes, enforcement having flipped to `active` on 2026-07-27).
 
 This list is long and changes as CI grows; do not hand-copy it into this doc — it goes stale
-immediately and the live query above is the source of truth. The 2026-07-26 PR-latency report's
-measured "25 required status contexts on main" corroborates the count as of this writing.
+immediately and the live query above is the source of truth. It was **25** when this section was
+written on 2026-07-27, corroborated by the 2026-07-26 PR-latency report's own measurement, and **26**
+one day later: the drift is the normal case, not an anomaly, which is why the query and not the
+number is what this section is really telling you to use.
+
+Two properties of the list that are NOT re-derivable from its length, and that decide whether a
+given check can ever be added to it:
+
+- **A required context that needs a repository secret is impassable for Dependabot**, whose runs do
+  not receive them. `Snyk Docker Security` cannot be made required for this reason — it needs
+  `SNYK_TOKEN`. Anything guarding a secret-dependent job has to alarm instead of gate.
+- **A workflow-level `continue-on-error` does not keep a job's own check green** — the check stays
+  red while the _run_ concludes `success`. So "the run is green" is not evidence that every required
+  context inside it passed; read the contexts.
 
 `strict=false` today means a PR can merge against a base that is no longer `main`'s tip. **This is
 the specific race the queue closes** — not a separate future improvement, the headline reason for
@@ -264,7 +276,10 @@ retried.**
   `registry-1.docker.io|Docker pull failed|context deadline exceeded|no space left on device|Runner has received a shutdown signal`.
   Frequency measured over 100 `merge_group` runs: **1**. Live fragility, not an epidemic.
 - **CODE red** — anything else. Rebase on `main`, fix, push. Do not `gh run rerun`.
-- **CANCELLED** — terminal and easy to misread as "still running"; treat as a legitimate retry.
+- **CANCELLED** — terminal and easy to misread as "still running". It is **not automatically an
+  infra red**: a job killed by its own `timeout-minutes` also reports `cancelled`, and that is a
+  SYSTEMATIC failure that retrying will reproduce forever. Separate the two before retrying —
+  see §6ter, which is the shape that actually bit this repo on 2026-07-27/28.
 
 `gh run rerun <run_id> --failed` is the right gesture ONLY in the INFRA case, and note the trap
 before using it: **`rerun` replays the OLD merge commit**, so on a branch that has since fallen
@@ -346,6 +361,93 @@ wrong inference is the natural one: a session that reasons "HEADGREEN sounds lik
 rule, so it should reduce blast radius" arrives at weakening the merge gate. The real cure for that
 class is upstream — make the E2E container pull robust, or stop letting a page-load smoke block
 merges — plus the re-arm tool in §6 Step 2.
+
+---
+
+## 6ter. The clone can eat the whole job budget — and the kill reads as `cancelled`
+
+This is what the queue was actually dying of on 2026-07-27, and it looked exactly like flakiness.
+
+`fetch-depth: 0` on this repo downloads **2,289 MB**. On a slow runner that alone outlives the job:
+
+| required gate                                 | `timeout-minutes` | time spent IN the checkout |
+| --------------------------------------------- | ----------------- | -------------------------- |
+| `R1 gate — adversarial review present`        | 5                 | 297 s of 300 s             |
+| `P6 parallelize-hypothesis falsifiable gates` | 10                | 597 s of 600 s             |
+| `Prove hooks bite only the guilty`            | 10                | 598 s of 600 s             |
+
+Every step after the checkout reads `skipped`, the job is killed, the conclusion is **`cancelled`**,
+and a `cancelled` REQUIRED check **ejects the entry** — leaving the PR `OPEN` + `MERGEABLE` with the
+auto-merge request consumed and nothing to put it back (§6 Step 2b).
+
+**Why it reads as flakiness and not as a systematic fault:** in a healthy parallel group the SAME
+checkouts finish in 59–60 s. The failures are the tail of that distribution, 5–10× the ~61 s mean.
+Nothing is "sometimes broken" — the budget is simply too close to the cost, so runner variance
+decides. A retry that happens to land on a fast runner "fixes" it and teaches the wrong lesson.
+
+**Cure — a partial clone.** `filter: blob:none` fetches all commits and trees and defers blobs until
+something reads them: **23.3 MB in 21 s** instead of 2,289 MB. Keep `fetch-depth: 0`; the two are
+independent (depth = how much history, filter = whether file contents come along).
+
+```yaml
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0
+    filter: blob:none
+```
+
+Measured after: 297 s → 26 s, 597 s → 23 s, and an entire `merge_group` where 11 gates checked out
+in 23–28 s with zero cancellations.
+
+Do not trust a count written here — counts rot. Ask the tree which workflows still pay full price:
+
+```bash
+comm -23 <(grep -rl 'fetch-depth: 0' .github/workflows/ | xargs -n1 basename | sort) \
+         <(grep -rl 'filter: blob:none' .github/workflows/ | xargs -n1 basename | sort)
+```
+
+Anything that comes out of that command AND produces a **required** context is a live ejection
+risk, not merely slow.
+
+> **A green run does not prove the flag took effect.** An `actions/checkout` input that the action
+> does not recognise is **silently ignored** — no warning, no failure, just a normal full clone. So
+> never accept the check mark as evidence; the proof is the string `--filter=blob:none` in the
+> _Fetching the repository_ log line of the run itself.
+
+**When adding a new required workflow**: if it checks out with `fetch-depth: 0`, it must carry
+`filter: blob:none`, or it arrives with a ~40× handicap against its own timeout on day one.
+
+---
+
+## 6quater. Dependabot: PRs that share a lock file must be armed ONE AT A TIME
+
+Arming several Dependabot PRs together looks like throughput and produces the opposite. Group them
+by the files they touch first:
+
+```bash
+for n in <numbers>; do
+  echo -n "  #$n "; gh pr view $n --repo Bali-Zero/Teman2 --json files --jq '[.files[].path]|join(" ")'
+done
+```
+
+On this repo they fall into two families that overlap totally inside and not at all across:
+
+- **npm** — every PR touches the single hoisted root `package-lock.json`.
+- **pip** — every PR touches `apps/backend-rag/requirements*.lock.txt`.
+
+Two PRs from the same family cannot both be in flight: the first to merge makes the second
+`CONFLICTING`, and if they are queued together the second is ejected. One from each family
+concurrently is safe. Verified the hard way on 2026-07-27 — three armed at once, one came back
+`UNMERGEABLE` over shared lock lines.
+
+Two traps while measuring this:
+
+- **`mergeable` has three values.** Right after any merge to `main` every open PR reads `UNKNOWN`
+  while GitHub recomputes. Filtering `== "MERGEABLE"` at that moment reports a false-clean set;
+  filtering `!= "CONFLICTING"` reports a false-dirty one. Wait for the value to leave `UNKNOWN`.
+- **The PR body is truncated on large group PRs.** A group titled "32 updates" listed only 13
+  `from X to Y` pairs, so a major-version scan over the body silently covered under half of them.
+  Read the **diff**, not the narration.
 
 ---
 
