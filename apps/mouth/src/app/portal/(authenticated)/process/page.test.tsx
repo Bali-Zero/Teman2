@@ -4,12 +4,17 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
 
-const { mockGetProfile, mockGetMyRequiredDocuments, mockUploadClientDocument } =
-  vi.hoisted(() => ({
-    mockGetProfile: vi.fn(),
-    mockGetMyRequiredDocuments: vi.fn(),
-    mockUploadClientDocument: vi.fn(),
-  }));
+const {
+  mockGetProfile,
+  mockListMatters,
+  mockGetMyRequiredDocuments,
+  mockUploadClientDocument,
+} = vi.hoisted(() => ({
+  mockGetProfile: vi.fn(),
+  mockListMatters: vi.fn(),
+  mockGetMyRequiredDocuments: vi.fn(),
+  mockUploadClientDocument: vi.fn(),
+}));
 
 vi.mock("next/dynamic", () => ({
   default: (
@@ -96,6 +101,7 @@ vi.mock("@/lib/api", () => ({
   api: {
     portal: {
       getProfile: mockGetProfile,
+      listMatters: mockListMatters,
       getMyRequiredDocuments: mockGetMyRequiredDocuments,
     },
     crm: {
@@ -135,6 +141,7 @@ describe("PortalProcessPage", () => {
     vi.clearAllMocks();
     globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
     mockGetProfile.mockResolvedValue({ id: 11898, fullName: "Kaiser Test" });
+    mockListMatters.mockResolvedValue({ matters: [] });
     mockUploadClientDocument.mockResolvedValue({
       success: true,
       document_id: 19027,
@@ -144,6 +151,32 @@ describe("PortalProcessPage", () => {
 
   afterEach(() => {
     globalThis.FileReader = originalFileReader;
+  });
+
+  it("renders an active matter that has no required documents", async () => {
+    mockListMatters.mockResolvedValue({
+      matters: [
+        {
+          id: 603,
+          title: "Synthetic Investor KITAS",
+          status: "inquiry",
+          type: "visa",
+          progress: 10,
+          pending_docs: [],
+          next_deadline: null,
+          next_step: "inquiry",
+        },
+      ],
+    });
+    mockGetMyRequiredDocuments.mockResolvedValue([]);
+
+    const { default: PortalProcessPage } = await import("./page");
+    render(<PortalProcessPage />);
+
+    expect(
+      await screen.findByText("Synthetic Investor KITAS"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No documents required")).toBeInTheDocument();
   });
 
   it("shows uploaded status immediately after upload before the background refresh finishes", async () => {
