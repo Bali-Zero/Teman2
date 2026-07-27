@@ -127,9 +127,37 @@ class TestArmedStateIsAudible:
 
         messages = [r.getMessage() for r in caplog.records]
         assert any("NOT ARMED" in m for m in messages)
-        assert any("ARMED (Redis reachable again)" in m for m in messages), (
+        assert any("ARMED again" in m for m in messages), (
             "an outage that ends without a line looks identical to one that never ended"
         )
+
+    def test_the_first_report_does_not_claim_a_recovery_that_never_happened(self, caplog):
+        """A process's first login has no outage behind it — saying "again" there
+        invents a history, and someone reading this line mid-incident will act on it."""
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(True)
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("ARMED at startup" in m for m in messages)
+        assert not any("again" in m for m in messages)
+
+    def test_the_alarm_does_not_overstate_the_damage(self, caplog):
+        """`/api/auth/login` is ALSO behind RateLimitMiddleware's "/api/" bucket at
+        120/min per IP — measured live on prod via `x-ratelimit-limit`, and it
+        survives a Redis outage on its in-memory fallback. Losing the brute-force
+        detector costs the per-(ip+email) failure budget, NOT all rate limiting.
+        An incident-time line that says "unlimited" sends the reader after the
+        wrong thing — the exact defect this whole module exists to prevent."""
+        from backend.services.security.brute_force import report_armed_state
+
+        with caplog.at_level(logging.DEBUG, logger=BF_LOGGER):
+            report_armed_state(False)
+
+        msg = self._errors(caplog)[0].getMessage()
+        assert "unlimited" not in msg.lower(), "the generic 120/min bucket still applies"
+        assert "120/min" in msg, "name the protection that REMAINS, not just the one lost"
 
     def test_a_none_client_is_the_disarmed_case(self, caplog):
         """The realistic failure: get_async_client() RETURNS None, never raises."""
