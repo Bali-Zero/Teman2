@@ -5,6 +5,21 @@
 testcontainers[postgres]>=4.0.0
 testcontainers[compose]>=4.0.0
 
+# Test-runtime deps that CI installs INLINE in .github/workflows/tests.yml
+# ("uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock
+# fakeredis"). Declared here because an inline workflow list is not a manifest:
+# nothing in the repo said the suite needs them, so no machine could rebuild
+# CI's test environment from the tree. Measured consequence (2026-07-27): Mini's
+# venv had no `fakeredis`, two test files ERRORed at collection, and the pre-push
+# gate rejected two branches that never touch them — a red owned by the machine,
+# not the diff. `scripts/tests/test_test_deps_declared.py` pins the two lists
+# together so they cannot drift again.
+pytest
+pytest-cov
+pytest-asyncio
+fakeredis
+fastmcp  # MCP contract-test job in the same workflow, equally undeclared
+
 # Additional test utilities
 pytest-mock>=3.15.1
 pytest-timeout>=2.4.0  # For timeout support (install separately if needed)
