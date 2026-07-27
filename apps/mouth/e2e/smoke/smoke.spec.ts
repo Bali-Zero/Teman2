@@ -23,8 +23,16 @@ import { e2eEmail, e2ePin } from "../support/credentials";
  */
 
 const CONFIG = {
-  email: e2eEmail(),
-  pin: e2ePin(),
+  // Lazy on purpose: Playwright IMPORTS every spec during collection, even the
+  // ones --grep will not run. Calling e2eEmail() here demanded the credential at
+  // import time and failed the whole job wherever the secret is absent. Getters
+  // keep every CONFIG.email call site unchanged and move the throw to first use.
+  get email() {
+    return e2eEmail();
+  },
+  get pin() {
+    return e2ePin();
+  },
   baseUrl: process.env.E2E_BASE_URL || "https://kita.balizero.com",
 };
 
