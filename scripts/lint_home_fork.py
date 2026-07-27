@@ -114,6 +114,49 @@ def sha256_file(path: Path) -> Optional[str]:
         return None
 
 
+def _git_stdout(repo_root: Path, *args: str) -> Optional[bytes]:
+    """stdout of a git command as BYTES, or None on any failure.
+
+    Never raises: a lint that dies because git is absent, slow, or wrapped by a
+    test double is worse than one that degrades. Normalising str→bytes is not
+    cosmetic — the first draft assumed bytes, and a caller handing back text
+    stdout blew up with a TypeError that no `except` here would have caught.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), *args], capture_output=True, timeout=15
+        )
+        if proc.returncode != 0:
+            return None
+        out = proc.stdout
+        return out.encode("utf-8", "replace") if isinstance(out, str) else bytes(out)
+    except (OSError, subprocess.TimeoutExpired, TypeError, ValueError, AttributeError):
+        return None
+
+
+def origin_main_sha(repo_root: Path, rel: str) -> Optional[str]:
+    """sha256 of the blob at `origin/main:<rel>` — what the FLEET agreed the
+    repo says, as opposed to what one machine's checkout happens to hold.
+
+    None when the ref or the path is unreachable (no remote, shallow CI clone,
+    file new on this branch). Callers must then fall back to the old
+    checkout-only verdict — "could not attribute" is never "clean" (W84).
+    """
+    blob = _git_stdout(repo_root, "show", f"origin/main:{rel}")
+    return None if blob is None else hashlib.sha256(blob).hexdigest()
+
+
+def commits_behind_origin(repo_root: Path) -> Optional[int]:
+    """How far this checkout trails origin/main. None when git can't say."""
+    out = _git_stdout(repo_root, "rev-list", "--count", "HEAD..origin/main")
+    if out is None:
+        return None
+    try:
+        return int(out.decode().strip())
+    except (UnicodeDecodeError, ValueError):
+        return None
+
+
 # ---------------------------------------------------------------- pairs
 
 
@@ -176,9 +219,27 @@ def pair_applies(pair: dict[str, Any], label: str) -> bool:
 
 
 def check_pairs(
-    pairs: list[dict[str, Any]], repo_root: Path, home: Path, label: str
+    pairs: list[dict[str, Any]],
+    repo_root: Path,
+    home: Path,
+    label: str,
+    notices: Optional[list[str]] = None,
 ) -> list[str]:
-    """The --check arm: sha256 live vs repo twin for machine-applicable pairs."""
+    """The --check arm: sha256 live vs repo twin for machine-applicable pairs.
+
+    A bare live-vs-checkout comparison knows THAT the two differ, never WHICH
+    side is stale — and the remedy it printed ("realign live from repo") is
+    only right when the checkout is the current one. On 2026-07-27 the M5
+    checkout was 144 commits behind origin/main while both live copies matched
+    origin/main exactly: following the prescription would have overwritten a
+    current worktree-isolation hook with a two-day-old one. A guard whose cure
+    causes the damage it exists to prevent is worse than no guard.
+
+    So when the two differ we ask origin/main — the fleet's copy — which side
+    moved, and only call it a HOME-fork when the LIVE copy is the stale one.
+    A stale checkout goes to `notices` instead: real, differently owned, and
+    on M5 not even fixable (pulling that checkout races ~45 live worktrees).
+    """
     breaches: list[str] = []
     for pair in pairs:
         if not pair_applies(pair, label):
@@ -193,11 +254,39 @@ def check_pairs(
                 f"is not in the repo — the live copy has no source of truth"
             )
             continue
-        if sha256_file(live) != sha256_file(repo):
-            breaches.append(
-                f"DIVERGED: {pair['live']} != {pair['repo']} — a fix is stranded "
-                f"on one side (port the newer content, then realign live from repo)"
-            )
+        live_sha, repo_sha = sha256_file(live), sha256_file(repo)
+        if live_sha == repo_sha:
+            continue
+
+        upstream = origin_main_sha(repo_root, pair["repo"])
+        if upstream is not None and live_sha == upstream:
+            # The live copy IS the fleet's copy; the checkout trails it.
+            behind = commits_behind_origin(repo_root)
+            trail = f" ({behind} commits behind)" if behind else ""
+            if notices is not None:
+                notices.append(
+                    f"CHECKOUT-STALE: {pair['repo']}{trail} — the LIVE copy "
+                    f"{pair['live']} already matches origin/main. Do NOT realign "
+                    f"live from this checkout: it would regress the live copy. "
+                    f"Update the checkout instead."
+                )
+                continue
+            # No notices sink offered: keep it visible as a breach rather than
+            # dropping a real finding on the floor.
+
+        if upstream is None:
+            hint = "no origin/main to compare — direction unattributable"
+        elif live_sha == upstream:
+            # Only reachable with no notices sink: still say which side moved.
+            hint = "the CHECKOUT is the stale side — update it, do not touch live"
+        elif repo_sha == upstream:
+            hint = "the checkout matches origin/main, so the LIVE copy is the stale side"
+        else:
+            hint = "BOTH sides differ from origin/main — read both before porting"
+        breaches.append(
+            f"DIVERGED: {pair['live']} != {pair['repo']} — a fix is stranded "
+            f"on one side ({hint})"
+        )
     return breaches
 
 
@@ -388,6 +477,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--check", action="store_true", help="declared pairs: live vs repo sha256")
     parser.add_argument("--discover", action="store_true", help="find undeclared HOME-executed payloads")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--strict-checkout",
+        action="store_true",
+        help="treat a stale local checkout as a failure too (default: reported, exit 0 — "
+        "on M5 that checkout is deliberately left behind, see AGENT worktree rule)",
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument(
         "--system", action="store_true",
@@ -409,9 +504,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     breaches: list[str] = []
     undeclared: list[str] = []
     errors: list[str] = []
+    stale_checkout: list[str] = []
 
     if run_check:
-        breaches = check_pairs(pairs, args.repo_root, args.home, label)
+        breaches = check_pairs(
+            pairs, args.repo_root, args.home, label, notices=stale_checkout
+        )
+        if args.strict_checkout:
+            breaches += stale_checkout
+            stale_checkout = []
 
     if run_discover:
         plist_dirs = [args.plist_dir or (args.home / "Library" / "LaunchAgents")]
@@ -444,6 +545,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "schema": 1,
                     "machine": label,
                     "check_breaches": breaches,
+                    "check_stale_checkout": stale_checkout,
                     "discover_undeclared": undeclared,
                     "errors": errors,
                     "pairs_declared": len(pairs),
@@ -458,8 +560,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"[check] {len(pairs)} declared pair(s), machine={label}")
         for b in breaches:
             print(f"  - {b}")
+        for s in stale_checkout:
+            print(f"  ~ {s}")
         if not breaches:
-            print("  clean — every live copy matches its repo twin")
+            if stale_checkout:
+                print(
+                    f"  no HOME-fork — but {len(stale_checkout)} pair(s) differ only "
+                    f"because this checkout trails origin/main (--strict-checkout to fail on it)"
+                )
+            else:
+                print("  clean — every live copy matches its repo twin")
     if run_discover:
         print(f"[discover] undeclared HOME-executed payloads: {len(undeclared)}")
         for f in undeclared:
