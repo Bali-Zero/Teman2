@@ -279,27 +279,25 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
     digest = source_digest(body)
 
     existing_fm: str | None = None
-    existing_body = ""
     if out_path.exists():
         if skip_existing:
             logger.info(f"  SKIP (exists): {out_path.name}")
             return "skipped"
-        existing_fm, existing_body = split_frontmatter(
-            out_path.read_text(encoding="utf-8")
-        )
+        existing_fm, _ = split_frontmatter(out_path.read_text(encoding="utf-8"))
 
     verdict = freshness_verdict(existing_fm, digest)
 
     if verdict == "fresh" and not force:
-        # Body is current. The frontmatter is copied verbatim from the source,
-        # so it can drift on its own (a retitle, a new tag) — re-deriving it
-        # costs nothing and needs no model call. Do that instead of pretending
-        # the file is fine, and instead of paying for a re-translation.
-        expected_fm = stamp_frontmatter(patch_frontmatter_locale(fm_block, lang), digest)
-        if expected_fm != existing_fm:
-            out_path.write_text(expected_fm + existing_body, encoding="utf-8")
-            logger.info(f"  RESYNC (frontmatter only, no model call): {out_path.name}")
-            return "resynced"
+        # Source body unchanged: leave the file completely alone.
+        #
+        # An earlier draft ALSO re-derived the translation's frontmatter from
+        # the source here, on the theory that it is a verbatim copy and free
+        # to refresh. Measured before shipping: 1398 of 2559 translations
+        # carry frontmatter that DIFFERS from their source — seoDescription,
+        # excerpt, faq, seoTitle, translated by hand. "Refreshing" them would
+        # have reverted all of it to English. Frontmatter propagation is not
+        # worth re-opening, on the metadata, the exact hole this commit
+        # closes on the body.
         logger.info(f"  FRESH (source unchanged): {out_path.name}")
         return "fresh"
 
@@ -347,7 +345,15 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
 
     # Build output. The stamp goes in with the text it describes: a translation
     # written without its digest would read as 'unstamped' forever.
-    patched_fm = stamp_frontmatter(patch_frontmatter_locale(fm_block, lang), digest)
+    #
+    # On a RE-translation, keep the frontmatter the file already has and only
+    # re-stamp it. The stale thing is the body; the metadata may well have been
+    # translated by hand (measured: 1398 of 2559 translations carry frontmatter
+    # that differs from their source), and deriving it from the English source
+    # again would silently revert that work. A new file has no frontmatter of
+    # its own, so it still inherits the source's.
+    base_fm = existing_fm if existing_fm else fm_block
+    patched_fm = stamp_frontmatter(patch_frontmatter_locale(base_fm, lang), digest)
     output = patched_fm + translated + "\n"
 
     # Write
@@ -532,7 +538,6 @@ def main():
 
     elapsed = time.time() - t_start
     written = tally.get("written", 0) + tally.get("retranslated", 0)
-    resynced = tally.get("resynced", 0)
     fresh = tally.get("fresh", 0)
     unstamped = tally.get("unstamped", 0)
     failed = tally.get("failed", 0)
@@ -545,7 +550,7 @@ def main():
     logger.info(
         f"DONE in {elapsed:.0f}s: {tally.get('written', 0)} new, "
         f"{tally.get('retranslated', 0)} re-translated (stale source), "
-        f"{resynced} frontmatter-resync, {fresh} already fresh, "
+        f"{fresh} already fresh, "
         f"{unstamped} unstamped, {skipped} skipped, {failed} FAILED"
     )
     logger.info(f"Average: {elapsed/max(written,1):.1f}s per translation")
@@ -587,7 +592,6 @@ def main():
             "metadata": {
                 "total": total,
                 "written": written,
-                "resynced": resynced,
                 "fresh": fresh,
                 "unstamped": unstamped,
                 "skipped": skipped,

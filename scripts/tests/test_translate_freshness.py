@@ -145,19 +145,51 @@ def test_fresh_translation_is_left_alone_and_calls_no_model(tmp_path, monkeypatc
     assert out.read_text() == before
 
 
-def test_frontmatter_drift_resyncs_without_calling_the_model(tmp_path, monkeypatch):
-    """The cheap third case: body current, frontmatter moved → copy, don't translate."""
+def test_a_fresh_file_with_drifted_frontmatter_is_still_left_alone(tmp_path, monkeypatch):
+    """Frontmatter drift must NOT trigger a rewrite.
+
+    An earlier draft re-derived the translation's frontmatter from the source
+    here, on the theory that it is a verbatim copy. Measured against the real
+    corpus first: 1398 of 2559 translations carry frontmatter that DIFFERS
+    from their source — seoDescription, excerpt, faq, seoTitle, translated by
+    hand. That 'refresh' would have reverted all of it to English.
+    """
     art = _article(tmp_path)
     _, body = ta.split_frontmatter(art["path"].read_text())
     digest = ta.source_digest(body)
-    stale_fm = ta.stamp_frontmatter('---\ntitle: "OLD"\nlocale: "it"\n---\n', digest)
-    out = _write(tmp_path / "guide.it.mdx", stale_fm, "Testo tradotto.\n")
+    translated_fm = ta.stamp_frontmatter(
+        '---\ntitle: "Titolo tradotto"\nlocale: "it"\n---\n', digest
+    )
+    out = _write(tmp_path / "guide.it.mdx", translated_fm, "Testo tradotto.\n")
+    before = out.read_text()
 
     monkeypatch.setattr(ta, "call_ollama", lambda *a, **k: pytest.fail("model called"))
-    assert ta.translate_article(art, "it", force=False, skip_existing=False) == "resynced"
+    assert ta.translate_article(art, "it", force=False, skip_existing=False) == "fresh"
+    assert out.read_text() == before
+    assert "Titolo tradotto" in out.read_text()
+
+
+def test_retranslation_keeps_the_translated_frontmatter(tmp_path, monkeypatch):
+    """The stale thing is the BODY. Re-deriving frontmatter from the English
+    source on every re-translation would quietly revert hand-translated
+    seoDescription/excerpt/faq across half the corpus."""
+    art = _article(tmp_path)
+    out = _write(
+        tmp_path / "guide.it.mdx",
+        ta.stamp_frontmatter(
+            '---\ntitle: "Titolo tradotto"\nseoDescription: "Descrizione IT"\nlocale: "it"\n---\n',
+            "0" * 64,
+        ),
+        "Vecchia traduzione.\n",
+    )
+
+    monkeypatch.setattr(ta, "call_ollama", lambda *a, **k: "Nuova traduzione, sufficientemente lunga da superare il controllo di lunghezza.")
+    assert ta.translate_article(art, "it", force=False, skip_existing=False) == "retranslated"
     text = out.read_text()
-    assert "Testo tradotto." in text, "the human translation must survive a resync"
-    assert '"T"' in text and "OLD" not in text
+    assert "Titolo tradotto" in text and "Descrizione IT" in text, "translated metadata must survive"
+    assert "Nuova traduzione" in text
+    _, src_body = ta.split_frontmatter(art["path"].read_text())
+    assert ta.read_stamp(ta.split_frontmatter(text)[0]) == ta.source_digest(src_body)
 
 
 def test_unstamped_translation_is_never_overwritten(tmp_path, monkeypatch):
