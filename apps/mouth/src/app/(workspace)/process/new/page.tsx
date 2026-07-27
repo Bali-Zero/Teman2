@@ -31,6 +31,7 @@ import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { ReferrerDropdown } from "@/components/partners/ReferrerDropdown";
 
 interface ServiceItem {
@@ -61,6 +62,9 @@ export default function NewPracticePage() {
   const preselectedClientId = searchParams?.get("client_id")
     ? Number(searchParams.get("client_id"))
     : undefined;
+  const invalidatePreselectedClient = useInvalidateClient(
+    preselectedClientId ?? 0,
+  );
 
   // Service catalog from backend
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
@@ -482,6 +486,7 @@ export default function NewPracticePage() {
         `${selectedService?.name || "Process"} created successfully.`,
       );
       if (preselectedClientId) {
+        await invalidatePreselectedClient();
         router.push(`/clients/${preselectedClientId}?tab=process`);
       } else {
         const newId = createdPractice?.id;
