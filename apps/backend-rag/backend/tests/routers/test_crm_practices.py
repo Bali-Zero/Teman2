@@ -206,7 +206,17 @@ class TestUpdatePractice:
                     "assigned_to": "test@balizero.com",
                 },
                 _practice_row(status="on_process"),
-                {"code": "kitas_investor"},
+                {
+                    **_practice_row(status="on_process"),
+                    "client_name": "Alice Example",
+                    "client_email": "alice@example.com",
+                    "client_phone": "+628123456789",
+                    "client_lead": "test@balizero.com",
+                    "practice_type_name": "Investor KITAS",
+                    "practice_type_code": "kitas_investor",
+                    "practice_category": "visa",
+                    "required_documents": [],
+                },
             ],
         )
         conn.execute = AsyncMock(return_value="OK")
@@ -228,6 +238,7 @@ class TestUpdatePractice:
 
         assert response.status_code == 200
         assert response.json()["status"] == "on_process"
+        assert response.json()["practice_type_code"] == "kitas_investor"
 
     @pytest.mark.integration
     def test_update_practice_status_invalid_transition_returns_400(
